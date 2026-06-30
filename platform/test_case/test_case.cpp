@@ -2187,6 +2187,7 @@ const QVector<GateTypeDescriptor> kTypes = {
     {QStringLiteral("ProtocolMacData"), QStringLiteral("MAC地址"), {{QStringLiteral("mac"), QStringLiteral("MAC文本")}}},
     {QStringLiteral("ProtocolTypeData"), QStringLiteral("状态码"), {{QStringLiteral("type"), QStringLiteral("状态值")}}},
     {QStringLiteral("ProtocolMeasureData"), QStringLiteral("外设测量值"), {{QStringLiteral("value"), QStringLiteral("测量数值")}, {QStringLiteral("valueText"), QStringLiteral("测量文本值")}, {QStringLiteral("deviceName"), QStringLiteral("外设名称")}, {QStringLiteral("channel"), QStringLiteral("通道号")}, {QStringLiteral("type"), QStringLiteral("测量类型")}, {QStringLiteral("unit"), QStringLiteral("单位")}}},
+    {QStringLiteral("ProtocolDongleSuctionData"), QStringLiteral("Dongle吸力"), {{QStringLiteral("leftKpa"), QStringLiteral("左通道(kPa)")}, {QStringLiteral("rightKpa"), QStringLiteral("右通道(kPa)")}}},
 };
 
 double fieldValueFromVariant(const QString& reportType, const QString& field, const QVariant& payload, bool& ok) {
@@ -2345,6 +2346,16 @@ double fieldValueFromVariant(const QString& reportType, const QString& field, co
             ok = true;
             return d.value;
         }
+    } else if (reportType == QLatin1String("ProtocolDongleSuctionData")) {
+        const auto d = payload.value<ProtocolDongleSuctionData>();
+        if (field == QLatin1String("leftKpa")) {
+            ok = true;
+            return d.leftKpa;
+        }
+        if (field == QLatin1String("rightKpa")) {
+            ok = true;
+            return d.rightKpa;
+        }
     }
     return 0.0;
 }
@@ -2468,6 +2479,16 @@ QString fieldStringFromVariant(const QString& reportType, const QString& field, 
         if (field == QLatin1String("unit")) {
             ok = true;
             return d.unit.trimmed();
+        }
+    } else if (reportType == QLatin1String("ProtocolDongleSuctionData")) {
+        const auto d = payload.value<ProtocolDongleSuctionData>();
+        if (field == QLatin1String("leftKpa")) {
+            ok = true;
+            return QString::number(d.leftKpa, 'f', 2);
+        }
+        if (field == QLatin1String("rightKpa")) {
+            ok = true;
+            return QString::number(d.rightKpa, 'f', 2);
         }
     }
     return {};

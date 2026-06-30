@@ -44,7 +44,7 @@
                <string>是否从mes获取mac</string>
               </property>
               <property name="checked">
-               <bool>true</bool>
+               <bool>false</bool>
               </property>
              </widget>
             </item>
@@ -57,7 +57,7 @@
                <bool>true</bool>
               </property>
               <property name="checked">
-               <bool>true</bool>
+               <bool>false</bool>
               </property>
              </widget>
             </item>
@@ -177,7 +177,7 @@
                  <string/>
                 </property>
                 <property name="text">
-                 <string>df:a1:10:00:1d:5d</string>
+                 <string/>
                 </property>
                 <property name="placeholderText">
                  <string>切换英文输入再扫码</string>
@@ -571,6 +571,92 @@
            </widget>
           </item>
          </layout>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tab_chart">
+       <attribute name="title">
+        <string>图形展示</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout_chart">
+        <item row="0" column="0">
+         <widget class="QGroupBox" name="suctionChartGroup">
+          <property name="title">
+           <string>Dongle 双通道吸力</string>
+          </property>
+          <layout class="QVBoxLayout" name="suctionChartVBox">
+           <item>
+            <layout class="QGridLayout" name="suctionPeakGrid">
+             <item row="0" column="0">
+              <widget class="QLabel" name="suctionLiveLeftLabel">
+               <property name="text">
+                <string>左口实时：--</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QLabel" name="suctionLiveRightLabel">
+               <property name="text">
+                <string>右口实时：--</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="suctionLeftPeakHighLabel">
+               <property name="text">
+                <string>左口最高：--</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QLabel" name="suctionLeftPeakLowLabel">
+               <property name="text">
+                <string>左口最低：--</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="suctionRightPeakHighLabel">
+               <property name="text">
+                <string>右口最高：--</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="1">
+              <widget class="QLabel" name="suctionRightPeakLowLabel">
+               <property name="text">
+                <string>右口最低：--</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0" colspan="2">
+              <widget class="QLabel" name="suctionPeakDiffLabel">
+               <property name="text">
+                <string>左右峰差(最低)：--</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <widget class="QWidget" name="suctionPlotHost" native="true">
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>280</height>
+              </size>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="clearSuctionChartButton">
+             <property name="text">
+              <string>清空吸力曲线</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
         </item>
        </layout>
       </widget>

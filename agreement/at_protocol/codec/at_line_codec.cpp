@@ -58,7 +58,7 @@ void AtLineCodec::feed(const QByteArray& chunk, const FrameHandler& onFrame) {
         case State::ReceivingCommand:
             if (c == '\r') {
                 cangonext_ = 1;
-            } else if (cangonext_ && c == '\n') {
+            } else if (c == '\n') {
                 cangonext_ = 0;
                 const QString atLine = parameter_.isEmpty() ? cmd_ + "\r\n" : cmd_ + "=" + parameter_ + "\r\n";
                 if (isPrintableAtLine(atLine)) {
@@ -83,7 +83,7 @@ void AtLineCodec::feed(const QByteArray& chunk, const FrameHandler& onFrame) {
         case State::ReceivingParameter:
             if (c == '\r') {
                 cangonext_ = 1;
-            } else if (cangonext_ && c == '\n') {
+            } else if (c == '\n') {
                 cangonext_ = 0;
                 const QString atLine = parameter_.isEmpty() ? cmd_ + "\r\n" : cmd_ + "=" + parameter_ + "\r\n";
                 if (isPrintableAtLine(atLine)) {

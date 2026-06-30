@@ -1,5 +1,7 @@
 #include "suction.h"
 
+#include "at_suction_frame_codec.h"
+#include "dongle_at_types.h"
 #include "modbus_types.h"
 #include "scpi_types.h"
 #include "ui_suction.h"
@@ -136,7 +138,9 @@ void suction::applySuctionProtocolConfig() {
     // 吸力工站外接程控电源统一由 VisaPower/ScpiUseVisa 控制，避免与 Suction/ExternalPowerEnabled 双开关冲突。
     suctionExternalPowerEnabled = SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), false).toBool();
     suctionPowerOnWaitMs = SETTINGS.value("Suction/PowerOnWaitMs", 5000).toInt();
-    suctionUsePicoSensor = SETTINGS.value(QStringLiteral("Suction/UsePicoSensor"), true).toBool();
+    suctionUseDongleSensor = SETTINGS.value(QStringLiteral("Suction/UseDongleSensor"), true).toBool();
+    suctionUsePicoSensor =
+        suctionUseDongleSensor ? false : SETTINGS.value(QStringLiteral("Suction/UsePicoSensor"), false).toBool();
     if (suctionUsePicoSensor) {
         protocol = UsbProtocolRoute::Scpi;
         usbBaudRate = SETTINGS.value(QStringLiteral("Suction/PicoBaudRate"), 19200).toInt();
@@ -192,6 +196,7 @@ void suction::applySuctionProtocolConfig() {
     showlog("吸力测试配置: machineId=" + QString::number(linkCfg.luxshareMachineId) +
             ", scpi=" + scpiCurrentType + ":" + scpiCurrentMode + " " + scpiRange +
             ", pico=" + QString(suctionUsePicoSensor ? "ON" : "OFF") +
+            ", dongle=" + QString(suctionUseDongleSensor ? "ON" : "OFF") +
             ", picoBaud=" + QString::number(usbBaudRate) +
             ", sampleMs=" + QString::number(suctionSampleDurationMs) +
             ", intervalMs=" + QString::number(suctionSampleIntervalMs) +
@@ -591,56 +596,45 @@ void suction::sendPicoSysModeStop() {
     sendPicoAtCommand(QStringLiteral("AT+SYSMODE=0"));
 }
 
+void suction::setDongleSuctionRead(bool enabled) {
+    if (at && dongleSerialPort && dongleSerialPort->isOpen())
+        at->set(DongleCmd::GetSuction, enabled ? 1 : 0);
+}
+
+void suction::refreshDongleSuctionData(ProtocolDongleSuctionData data) {
+    if (!suctionUseDongleSensor)
+        return;
+    damLeftKpa_ = data.leftKpa;
+    damRightKpa_ = data.rightKpa;
+    measure_ammeter = damLeftKpa_;
+    qDebug() << getIndex() << "Dongle吸力：左" << damLeftKpa_ << "kPa 右" << damRightKpa_ << "kPa";
+}
+
 void suction::refreshAmmeterData(QString data) {
     qDebug() << getIndex() << "收到吸力数据" << data;
     double normalValue = 0;
-    // 使用 toDouble() 进行转换
     bool conversionOk = false;
     if (suctionUsePicoSensor) {
-        QString payload = data.trimmed();
-        const int dollarIndex = payload.indexOf(QLatin1Char('$'));
-        if (dollarIndex < 0) {
-            qDebug() << getIndex() << "忽略Pico非数据帧:" << payload;
-            return;
-        }
-        payload = payload.mid(dollarIndex + 1);
-        const int semicolonIndex = payload.indexOf(QLatin1Char(';'));
-        if (semicolonIndex < 0) {
-            qDebug() << getIndex() << "忽略Pico未结束数据帧:" << data;
-            return;
-        }
-        payload = payload.left(semicolonIndex);
-        const QRegularExpression numberRegex(QStringLiteral("-?\\d+(?:\\.\\d+)?"));
-        QRegularExpressionMatchIterator it = numberRegex.globalMatch(payload);
-        QVector<double> values;
-        while (it.hasNext()) {
-            bool ok = false;
-            const double value = it.next().captured(0).toDouble(&ok);
-            if (ok) {
-                values.append(value);
-            }
-        }
-        if (values.size() >= 2) {
-            const double leftValue = values.at(0);
-            const double rightValue = values.at(1);
+        double leftValue = 0.0;
+        double rightValue = 0.0;
+        if (parseDualChannelSuctionFrame(data, &leftValue, &rightValue)) {
             conversionOk = true;
             damLeftKpa_ = leftValue;
             damRightKpa_ = rightValue;
             normalValue = damLeftKpa_;
         }
-    } else {
+    } else if (!suctionUseDongleSensor) {
         normalValue = data.toDouble(&conversionOk) * 1000;
     }
 
     if (conversionOk) {
         if (suctionUsePicoSensor) {
-            qDebug() << getIndex() << "Pico吸力：左" << damLeftKpa_ << "kPa 右" << damRightKpa_ << "kPa";
+            qDebug() << getIndex() << "吸力：左" << damLeftKpa_ << "kPa 右" << damRightKpa_ << "kPa";
         } else {
             qDebug() << getIndex() << "转换后的数值：" << normalValue << "ma";
         }
         measure_ammeter = normalValue;
     } else {
-        // 转换失败
         qDebug() << getIndex() << "无法将字符串转换为 double 类型";
     }
 }
@@ -648,6 +642,7 @@ void suction::refreshAmmeterData(QString data) {
 suction::~suction() {
     qDebug() << getIndex() << "已进入析构";
     isTestContinue = 0;
+    setDongleSuctionRead(false);
     closeDongleSerialPort();
     closeUsbSerialPort();
     closeJigSerialPort();
@@ -1221,6 +1216,17 @@ void suction::startTask() {
                 waitWork(100);
                 if (picoRxBuffer_.isEmpty())
                     showlog(QStringLiteral("Pico已发送SYSMODE=1，100ms内暂未收到数据"));
+            } else if (suctionUseDongleSensor) {
+                showlog(QStringLiteral("双通道吸力(Dongle)：AT+SUCTION=1，帧格式 $X1 X2 X3 X4;"));
+                if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
+                    showlog(QStringLiteral("Dongle串口未连接，无法采集吸力数据"));
+                    totalresult = failValue;
+                    pack.itemvalue = "dongle_suction_not_connected=NG";
+                    state = STATE_SAVE_RESULT;
+                    break;
+                }
+                setDongleSuctionRead(true);
+                waitWork(100);
             } else {
                 showlog(QStringLiteral("双通道吸力：本协议下按「先左后右」两次读数，左/右数据来自设备返回顺序"));
             }
@@ -1238,21 +1244,22 @@ void suction::startTask() {
                     break;
                 }
                 if (suctionUsePicoSensor) {
-                    // Pico 板持续主动上报；经 SerialChannel 防抖后由 onUsbSerialFrame 解析并更新 damLeftKpa_/damRightKpa_。
                     if (usbSerialPort->bytesAvailable() > 0) {
                         onUsbSerialFrame(usbSerialPort->readAll());
                     }
-                } else {
+                } else if (!suctionUseDongleSensor) {
                     execAmmeterMeasure();
                 }
-                const int readDelayMs = suctionUsePicoSensor ? 0 : 30;
+                const int readDelayMs = (suctionUsePicoSensor || suctionUseDongleSensor) ? 0 : 30;
                 if (readDelayMs > 0) {
                     waitWork(readDelayMs);
                 }
-                const double leftKpa = suctionUsePicoSensor ? damLeftKpa_ : measure_ammeter;
+                const double leftKpa =
+                    (suctionUsePicoSensor || suctionUseDongleSensor) ? damLeftKpa_ : measure_ammeter;
                 leftSamples.append(leftKpa);
 
-                const double rightKpa = suctionUsePicoSensor ? damRightKpa_ : measure_ammeter;
+                const double rightKpa =
+                    (suctionUsePicoSensor || suctionUseDongleSensor) ? damRightKpa_ : measure_ammeter;
                 rightSamples.append(rightKpa);
 
                 showlog(QString("[吸力原始点%1] 左: %2Kpa | 右: %3Kpa")
@@ -1268,16 +1275,26 @@ void suction::startTask() {
                 waitWork(qMax(0, intervalMs - readDelayMs));
             }
             if (collectionStopped) {
-                sendPicoSysModeStop();
+                if (suctionUsePicoSensor)
+                    sendPicoSysModeStop();
+                else if (suctionUseDongleSensor)
+                    setDongleSuctionRead(false);
                 showlog(QStringLiteral("吸力采集已停止"));
                 break;
             }
+
+            if (suctionUsePicoSensor)
+                sendPicoSysModeStop();
+            else if (suctionUseDongleSensor)
+                setDongleSuctionRead(false);
 
             const double lowerBound = suctionPeakTargetKpa - suctionPeakToleranceKpa;
             const double upperBound = suctionPeakTargetKpa + suctionPeakToleranceKpa;
             const bool hasSamples = !leftSamples.isEmpty() && !rightSamples.isEmpty();
             const double leftPeak = hasSamples ? *std::min_element(leftSamples.cbegin(), leftSamples.cend()) : 0.0;
             const double rightPeak = hasSamples ? *std::min_element(rightSamples.cbegin(), rightSamples.cend()) : 0.0;
+            const double leftHigh = hasSamples ? *std::max_element(leftSamples.cbegin(), leftSamples.cend()) : 0.0;
+            const double rightHigh = hasSamples ? *std::max_element(rightSamples.cbegin(), rightSamples.cend()) : 0.0;
             const bool leftPass = hasSamples && leftPeak >= lowerBound && leftPeak <= upperBound;
             const bool rightPass = hasSamples && rightPeak >= lowerBound && rightPeak <= upperBound;
             const double sideDiff = hasSamples ? qAbs(leftPeak - rightPeak) : 0.0;
@@ -1287,12 +1304,12 @@ void suction::startTask() {
                         .arg(totalSamples)
                         .arg(leftSamples.size())
                         .arg(rightSamples.size()));
-            showlog(QString("峰值提取: 10秒采样内取左右最小值，左=%1Kpa，右=%2Kpa")
-                        .arg(leftPeak, 0, 'f', 2)
-                        .arg(rightPeak, 0, 'f', 2));
+            showlog(QString("左口最高: %1Kpa, 最低: %2Kpa").arg(leftHigh, 0, 'f', 2).arg(leftPeak, 0, 'f', 2));
+            showlog(QString("右口最高: %1Kpa, 最低: %2Kpa").arg(rightHigh, 0, 'f', 2).arg(rightPeak, 0, 'f', 2));
+            showlog(QString("左右峰差(最低): %1Kpa").arg(sideDiff, 0, 'f', 2));
             showlog("━━━━━ 测试结果（仅吸力测试）━━━━━");
             showlog("【左侧吸力测量】");
-            showlog(QString("峰值: %1Kpa, 判定: %2")
+            showlog(QString("最低值(卡控峰值): %1Kpa, 判定: %2")
                         .arg(leftPeak, 0, 'f', 2)
                         .arg(leftPass ? "通过" : "不通过"));
             if (!leftPass) {
@@ -1301,7 +1318,7 @@ void suction::startTask() {
                             .arg(upperBound, 0, 'f', 2));
             }
             showlog("【右侧吸力测量】");
-            showlog(QString("峰值: %1Kpa, 判定: %2")
+            showlog(QString("最低值(卡控峰值): %1Kpa, 判定: %2")
                         .arg(rightPeak, 0, 'f', 2)
                         .arg(rightPass ? "通过" : "不通过"));
             if (!rightPass) {
@@ -1309,34 +1326,48 @@ void suction::startTask() {
                             .arg(lowerBound, 0, 'f', 2)
                             .arg(upperBound, 0, 'f', 2));
             }
-            showlog(QString("左右峰值差: %1Kpa, 判定: %2")
+            showlog(QString("左右峰差(最低): %1Kpa, 判定: %2")
                         .arg(sideDiff, 0, 'f', 2)
                         .arg(diffPass ? "通过" : "不通过"));
 
-            TestItem leftTest;
-            leftTest.testItem = "左侧吸力峰值(kPa)";
-            leftTest.testData = QString::number(leftPeak, 'f', 2);
-            leftTest.ask = QString("%1±%2").arg(suctionPeakTargetKpa, 0, 'f', 2).arg(suctionPeakToleranceKpa, 0, 'f', 2);
-            leftTest.testResult = leftPass ? passValue : failValue;
-            testItems.append(leftTest);
-            reportBydSfcKey("左侧吸力峰值", leftPeak, 1);
+            TestItem leftHighTest;
+            leftHighTest.testItem = QStringLiteral("左侧吸力最高(kPa)");
+            leftHighTest.testData = QString::number(leftHigh, 'f', 2);
+            leftHighTest.ask = QStringLiteral("-");
+            leftHighTest.testResult = passValue;
+            testItems.append(leftHighTest);
 
-            TestItem rightTest;
-            rightTest.testItem = "右侧吸力峰值(kPa)";
-            rightTest.testData = QString::number(rightPeak, 'f', 2);
-            rightTest.ask = QString("%1±%2").arg(suctionPeakTargetKpa, 0, 'f', 2).arg(suctionPeakToleranceKpa, 0, 'f', 2);
-            rightTest.testResult = rightPass ? passValue : failValue;
-            testItems.append(rightTest);
-            reportBydSfcKey("右侧吸力峰值", rightPeak, 1);
+            TestItem leftLowTest;
+            leftLowTest.testItem = QStringLiteral("左侧吸力最低(kPa)");
+            leftLowTest.testData = QString::number(leftPeak, 'f', 2);
+            leftLowTest.ask = QString("%1±%2").arg(suctionPeakTargetKpa, 0, 'f', 2).arg(suctionPeakToleranceKpa, 0, 'f', 2);
+            leftLowTest.testResult = leftPass ? passValue : failValue;
+            testItems.append(leftLowTest);
+            reportBydSfcKey(QStringLiteral("左侧吸力最低"), leftPeak, 1);
+
+            TestItem rightHighTest;
+            rightHighTest.testItem = QStringLiteral("右侧吸力最高(kPa)");
+            rightHighTest.testData = QString::number(rightHigh, 'f', 2);
+            rightHighTest.ask = QStringLiteral("-");
+            rightHighTest.testResult = passValue;
+            testItems.append(rightHighTest);
+
+            TestItem rightLowTest;
+            rightLowTest.testItem = QStringLiteral("右侧吸力最低(kPa)");
+            rightLowTest.testData = QString::number(rightPeak, 'f', 2);
+            rightLowTest.ask = QString("%1±%2").arg(suctionPeakTargetKpa, 0, 'f', 2).arg(suctionPeakToleranceKpa, 0, 'f', 2);
+            rightLowTest.testResult = rightPass ? passValue : failValue;
+            testItems.append(rightLowTest);
+            reportBydSfcKey(QStringLiteral("右侧吸力最低"), rightPeak, 1);
 
             TestItem diffTest;
-            diffTest.testItem = "左右吸力峰值差(kPa)";
+            diffTest.testItem = QStringLiteral("左右吸力峰差(最低)(kPa)");
             diffTest.testData = QString::number(sideDiff, 'f', 2);
             diffTest.ask = QString("<=%1").arg(suctionPeakDiffMaxKpa, 0, 'f', 2);
             diffTest.testResult = diffPass ? passValue : failValue;
             testItems.append(diffTest);
             testResultTableUpdate(testItems);
-            reportBydSfcKey("左右吸力峰值差", sideDiff, 1);
+            reportBydSfcKey(QStringLiteral("左右吸力峰差"), sideDiff, 1);
 
             totalresult = (leftPass && rightPass && diffPass) ? passValue : failValue;
             if (totalresult == passValue) {

@@ -241,6 +241,7 @@ class test_base : public QWidget {
     virtual void refreshWifiRssi(QString) {}
     virtual void refreshPressCalibData(ProtocolPressCalibResultData) {}
     virtual void refreshDongleWifi(QString) {}
+    virtual void refreshDongleSuctionData(ProtocolDongleSuctionData) {}
     virtual void refreshDongleVersion(QString);
     virtual void refreshWifiIp(QString) {}
     virtual void refreshBleState(int) {}

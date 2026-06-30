@@ -307,6 +307,12 @@ typedef struct {
     QString deviceRssi;
 } ProtocolDongleScanResultData;
 
+/** Dongle AT+SUCTION=1 后上报：AT+SUCTION_DATA=左,右,...（前两路为左右吸力口） */
+typedef struct {
+    double leftKpa = 0.0;
+    double rightKpa = 0.0;
+} ProtocolDongleSuctionData;
+
 /** USB 电流表 / 治具振幅仪上行 */
 typedef struct {
     QString value;
@@ -532,6 +538,7 @@ Q_DECLARE_METATYPE(ProtocolDongleWifiRssiData)
 Q_DECLARE_METATYPE(ProtocolDongleWifiStateData)
 Q_DECLARE_METATYPE(ProtocolDongleWifiIpData)
 Q_DECLARE_METATYPE(ProtocolDongleScanResultData)
+Q_DECLARE_METATYPE(ProtocolDongleSuctionData)
 Q_DECLARE_METATYPE(ProtocolAmmeterReadingData)
 Q_DECLARE_METATYPE(ProtocolJigAmplitudeData)
 Q_DECLARE_METATYPE(ProtocolFactoryDoneData)

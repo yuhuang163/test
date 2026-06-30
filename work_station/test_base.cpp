@@ -13,6 +13,7 @@
 #include <QDebug>
 #include <QSet>
 #include <QString>
+#include "dongle_at_types.h"
 #include "qcoreapplication.h"
 #include "qprocess.h"
 #include "qfctp.h"
@@ -344,6 +345,8 @@ void test_base::openDongleSerialPort() {
 }
 
 void test_base::closeDongleSerialPort() {
+    if (at && dongleSerialPort && dongleSerialPort->isOpen())
+        at->set(DongleCmd::GetSuction, 0);
     dongleSerialChannel_->close();
     emit send_dongle_serialPort_state(0);
     showlog(QStringLiteral("已经关闭串口"));
@@ -592,6 +595,8 @@ void test_base::onDongleAtReport(const ProtocolReport& report) {
         refreshWifiIp(payload.value<ProtocolDongleWifiIpData>().ip);
     }else if (reportType == QLatin1String("ProtocolDongleDeviceNameData") && payload.canConvert<ProtocolDongleDeviceNameData>()) {
         refreshDongleDeviceName(payload.value<ProtocolDongleDeviceNameData>().name);
+    } else if (reportType == QLatin1String("ProtocolDongleSuctionData") && payload.canConvert<ProtocolDongleSuctionData>()) {
+        refreshDongleSuctionData(payload.value<ProtocolDongleSuctionData>());
     }
 }
 void test_base::refreshDongleDeviceName(const QString& name)

@@ -189,6 +189,7 @@ SOURCES += \
     business/ble_ota/root_ble_ota.cpp \
     agreement/adb_protocol/manager/qadbmanager.cpp \
     agreement/at_protocol/codec/at_line_codec.cpp \
+    agreement/at_protocol/codec/at_suction_frame_codec.cpp \
     agreement/at_protocol/device/dongle/dongle_at_device.cpp \
     agreement/at_protocol/manager/qatmanager.cpp \
     agreement/product_protocol/protocol/qproduct.cpp \
@@ -338,6 +339,7 @@ HEADERS += \
     agreement/adb_protocol/manager/qadbmanager.h \
     agreement/at_protocol/access/at_types.h \
     agreement/at_protocol/codec/at_line_codec.h \
+    agreement/at_protocol/codec/at_suction_frame_codec.h \
     agreement/at_protocol/device/dongle/dongle_at_types.h \
     agreement/at_protocol/device/dongle/dongle_at_device.h \
     agreement/at_protocol/manager/qatmanager.h \

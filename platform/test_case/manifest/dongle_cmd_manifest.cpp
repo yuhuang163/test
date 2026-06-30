@@ -28,6 +28,7 @@ const Row kRows[] = {
     {DongleCmd::MainDataPassthrough, "MainDataPassthrough", u8"主通道数据透传", DeviceCmdParamKind::Int, u8"0=关 1=开", kSet},
     {DongleCmd::BleLog, "BleLog", u8"BLE 日志开关", DeviceCmdParamKind::Int, u8"0=关 1=开", kSet},
     {DongleCmd::BleDeviceLog, "BleDeviceLog", u8"BLE 设备日志开关", DeviceCmdParamKind::Int, u8"0=关 1=开", kSet},
+    {DongleCmd::GetSuction, "GetSuction", u8"吸力读取开关", DeviceCmdParamKind::Int, u8"0=关 1=开（AT+SUCTION）", kSet},
     {DongleCmd::Bomb, "Bomb", u8"广播注入", DeviceCmdParamKind::JsonMap, kHintBomb, kSet},
     {DongleCmd::GetGmac, "GetGmac", u8"GMAC", DeviceCmdParamKind::None, u8"无需参数", kGet},
 };
@@ -45,6 +46,7 @@ const QHash<QString, DongleCmd> kLegacyNameMap = {
     {QStringLiteral("DongleMainDataPassthrough"), DongleCmd::MainDataPassthrough},
     {QStringLiteral("DongleBleLog"), DongleCmd::BleLog},
     {QStringLiteral("DongleBleDeviceLog"), DongleCmd::BleDeviceLog},
+    {QStringLiteral("DongleGetSuction"), DongleCmd::GetSuction},
     {QStringLiteral("DongleBomb"), DongleCmd::Bomb},
     {QStringLiteral("DongleGetGmac"), DongleCmd::GetGmac},
 };
