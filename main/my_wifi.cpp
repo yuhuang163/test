@@ -39,7 +39,7 @@ void wifi_init()
 
     // 设置热点名称
     String ssid = "WIFI_TEST_" + String(macStr);
-    const char *password = "usmile123";
+    const char *password = "12345678"; // 设置热点密码
     Serial.println("wifi名字为" + ssid);
     Serial.print("AT+WIFINAME=");
     Serial.println(ssid);

@@ -646,7 +646,7 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
             if (myadvertisedDevice.getAddress().equals(BLEAddress(targetDeviceAddress)))
             { // mac地址可以，那么准备开始连接
 
-         
+                Serial.printf("AT+DEVICENAME=%s\r\n", deviceName.c_str());
                 {
                     uint8_t addrType = myadvertisedDevice.getAddressType();
                     Serial.print("目标设备地址类型 addrType=");
