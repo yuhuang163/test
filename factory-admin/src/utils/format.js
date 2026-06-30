@@ -26,3 +26,11 @@ export function formatSize(n) {
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`
   return `${(n / 1024 / 1024).toFixed(2)} MB`
 }
+
+/** 整机/分项结果是否为失败（NG、FAIL、失败等） */
+export function isTestFailResult(v) {
+  if (v == null || v === '') return false
+  const s = String(v).trim()
+  const u = s.toUpperCase()
+  return u === 'NG' || u === 'FAIL' || s === '失败'
+}

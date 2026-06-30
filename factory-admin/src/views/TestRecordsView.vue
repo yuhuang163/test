@@ -39,7 +39,13 @@
         <template #default="{ row }">{{ row.hostName || row.deviceId }}</template>
       </el-table-column>
       <el-table-column prop="sn" label="SN" width="140" />
-      <el-table-column prop="testResult" label="结果" width="80" />
+      <el-table-column label="结果" width="80">
+        <template #default="{ row }">
+          <span :class="{ 'result-fail': isTestFailResult(row.testResult) }">
+            {{ row.testResult || '-' }}
+          </span>
+        </template>
+      </el-table-column>
       <el-table-column prop="product" label="产品" width="100" />
       <el-table-column prop="itemCount" label="分项数" width="80" />
       <el-table-column label="操作" fixed="right" width="100">
@@ -66,7 +72,11 @@
           <el-descriptions-item label="工站">{{ detail.station }}</el-descriptions-item>
           <el-descriptions-item label="电脑名字">{{ detail.hostName || detail.deviceId }}</el-descriptions-item>
           <el-descriptions-item label="SN">{{ detail.sn || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="结果">{{ detail.testResult || '-' }}</el-descriptions-item>
+          <el-descriptions-item label="结果">
+            <span :class="{ 'result-fail': isTestFailResult(detail.testResult) }">
+              {{ detail.testResult || '-' }}
+            </span>
+          </el-descriptions-item>
           <el-descriptions-item label="产品">{{ detail.product || '-' }}</el-descriptions-item>
           <el-descriptions-item label="工单">{{ detail.lotName || '-' }}</el-descriptions-item>
           <el-descriptions-item label="操作员">{{ detail.userNo || '-' }}</el-descriptions-item>
@@ -80,7 +90,13 @@
           <el-table-column prop="maxValue" label="上限" width="80" />
           <el-table-column prop="standardValue" label="标准值" width="80" />
           <el-table-column prop="unit" label="单位" width="60" />
-          <el-table-column prop="result" label="结果" width="80" />
+          <el-table-column label="结果" width="80">
+            <template #default="{ row }">
+              <span :class="{ 'result-fail': isTestFailResult(row.result) }">
+                {{ row.result || '-' }}
+              </span>
+            </template>
+          </el-table-column>
         </el-table>
       </div>
     </el-drawer>
@@ -90,7 +106,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
-import { formatTime } from '../utils/format'
+import { formatTime, isTestFailResult } from '../utils/format'
 import http from '../api/http'
 
 const loading = ref(false)
@@ -156,4 +172,5 @@ onMounted(async () => {
 .filter { margin-bottom: 16px; }
 .pager { margin-top: 16px; justify-content: flex-end; }
 .mb { margin-bottom: 16px; }
+.result-fail { color: #f56c6c; font-weight: 600; }
 </style>
