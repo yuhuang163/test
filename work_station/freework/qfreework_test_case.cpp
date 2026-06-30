@@ -953,5 +953,3 @@ void registerFreeWorkTestCaseHooks() {
         fw->markActiveTestCaseStepDone(true, QStringLiteral("hook_ok"), QStringLiteral("通过"));
     });
 }
-
-

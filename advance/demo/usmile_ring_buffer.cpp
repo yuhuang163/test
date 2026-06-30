@@ -24,8 +24,7 @@ RingBuf::RingBuf(usmile_ring_buffer_t* p_ring_buff, uint8_t* p_buff, uint32_t el
     }
 }
 RingBuf::~RingBuf() {
-    mutex.unlock();
-    qDebug() << "Destructor called, lock released.";
+    // QMutex 由 RAII（QMutexLocker）管理，析构时勿手动 unlock，否则未持锁时 unlock 会崩溃
 }
 
 bool RingBuf::usmile_ring_buffer_deinit(usmile_ring_buffer_t* p_ring_buff) {

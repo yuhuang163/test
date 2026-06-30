@@ -11,6 +11,8 @@
 #include "qobject.h"
 #include "test_base.h"
 
+class QAction;
+
 class box_base : public QMainWindow {
     Q_OBJECT
 
@@ -55,6 +57,7 @@ class box_base : public QMainWindow {
     std::vector<int> FixTureStates;
     QLabel* cloudLoginLabel = nullptr;
     void refreshCloudLoginState();
+    void refreshSettingsMenuVisibility();
 
   public slots:
     virtual void checkAllover(int);
@@ -80,6 +83,7 @@ class box_base : public QMainWindow {
     int formColumn = 1;
     bool isTestContinue = true;
     qsetting* qsetting_ui = nullptr;
+    QAction* settingMenuAction = nullptr;
 
   protected:
     void closeEvent(QCloseEvent* event) override;

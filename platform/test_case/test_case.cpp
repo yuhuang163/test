@@ -994,6 +994,64 @@ QStringList TestCaseStore::listCaseIniNames() {
     return names;
 }
 
+namespace {
+
+QHash<QString, QString>& cloudItemNameMapCache() {
+    static QHash<QString, QString> map;
+    return map;
+}
+
+bool& cloudItemNameMapLoaded() {
+    static bool loaded = false;
+    return loaded;
+}
+
+void registerCloudItemNameAlias(QHash<QString, QString>* map, const QString& key, const QString& display) {
+    const QString k = key.trimmed();
+    if (k.isEmpty() || display.trimmed().isEmpty()) {
+        return;
+    }
+    map->insert(k, display.trimmed());
+}
+
+void rebuildCloudItemNameMap() {
+    QHash<QString, QString>& map = cloudItemNameMapCache();
+    map.clear();
+    TestCasePaths::ensureRootDir();
+    for (const QString& caseName : TestCaseStore::listCaseIniNames()) {
+        QSettings ini(TestCasePaths::caseIniPath(caseName), QSettings::IniFormat);
+        applyTestCaseIniCodec(ini);
+        const QString nameInIni = ini.value(QStringLiteral("Meta/Name"), caseName).toString().trimmed();
+        const QString displayInIni = ini.value(QStringLiteral("Meta/DisplayName")).toString().trimmed();
+        const QString mesTag = ini.value(QStringLiteral("Meta/MesTag")).toString().trimmed();
+        const QString display = !displayInIni.isEmpty() ? displayInIni
+                                                        : (!nameInIni.isEmpty() ? nameInIni : caseName.trimmed());
+        registerCloudItemNameAlias(&map, mesTag, display);
+        registerCloudItemNameAlias(&map, nameInIni, display);
+        registerCloudItemNameAlias(&map, caseName, display);
+    }
+    cloudItemNameMapLoaded() = true;
+}
+
+} // namespace
+
+QString TestCaseStore::cloudDisplayNameForItemKey(const QString& itemKey) {
+    const QString key = itemKey.trimmed();
+    if (key.isEmpty()) {
+        return key;
+    }
+    if (!cloudItemNameMapLoaded()) {
+        rebuildCloudItemNameMap();
+    }
+    const auto it = cloudItemNameMapCache().constFind(key);
+    return it != cloudItemNameMapCache().constEnd() ? it.value() : key;
+}
+
+void TestCaseStore::invalidateCloudItemNameCache() {
+    cloudItemNameMapCache().clear();
+    cloudItemNameMapLoaded() = false;
+}
+
 bool TestCaseStore::loadFlowMeta(TestFlowMeta& out) {
     TestCasePaths::ensureRootDir();
     QSettings ini(TestCasePaths::flowIniPath(), QSettings::IniFormat);

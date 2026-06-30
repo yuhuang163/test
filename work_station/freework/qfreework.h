@@ -25,6 +25,16 @@ class QFreeWork;
 class QFreeWorkTestCaseHookRegistrar;
 class TestCaseRunner;
 
+struct QFreeWorkMesSegment {
+    QString name;
+    QString value;
+    QString maxValue;
+    QString minValue;
+    QString standardValue;
+    QString unit;
+    QString result;
+};
+
 class QFreeWork : public test_base {
     Q_OBJECT
     friend class QFreeWorkTestCaseHookRegistrar;
@@ -136,7 +146,7 @@ class QFreeWork : public test_base {
 
     // --- 三元组 / MES 分段 ---
     TupleApplyResult tupleData_;
-    QVector<QPair<QString, QString>> freeWorkMesSegments_;
+    QVector<QFreeWorkMesSegment> freeWorkMesSegments_;
 
     // --- test_case 运行态 ---
     bool stopFlowOnTestFail_ = true;

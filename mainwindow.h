@@ -23,6 +23,7 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QPixmap>
+class QAction;
 #include <QQmlApplicationEngine>
 // #include <QTextToSpeech>
 #include <QUdpSocket>
@@ -187,6 +188,7 @@ class MainWindow : public QMainWindow {
     QLabel* sku_id = nullptr;
     QLabel* cloudLoginLabel = nullptr;
     void refreshCloudLoginState();
+    void refreshSettingsMenuVisibility();
 
     std::atomic<bool> running;
     QFuture<void> future;
@@ -209,6 +211,7 @@ class MainWindow : public QMainWindow {
     } motorState;
     QButtonGroup* OTAGroup = new QButtonGroup(this);
     qsetting* qsetting_ui = NULL;
+    QAction* settingMenuAction = nullptr;
     bool is_motor_continue = false;
     bool is_need_noisy_data = false;
     motorState motorstate = STATE_IDLE;

@@ -61,6 +61,53 @@ QDialog {
 	background-color:#f0f0f0;
 }
 
+/* 云平台登录框 */
+QDialog#LoginDialog {
+	background-color:#f0f0f0;
+}
+QLabel#loginTitleLabel {
+	font-size:20px;
+	font-weight:bold;
+	color:rgb(65,64,59);
+	padding:2px 0 0 0;
+}
+QLabel#loginHintLabel {
+	font-size:12px;
+	color:rgb(120,118,110);
+	padding:0 0 4px 0;
+}
+QFrame#loginFormFrame {
+	background-color:#ffffff;
+	border:1px solid rgb(200,198,190);
+	border-radius:8px;
+}
+QDialog#LoginDialog QLabel#usernameLabel,
+QDialog#LoginDialog QLabel#passwordLabel {
+	color:rgb(81,72,65);
+	min-width:48px;
+}
+QDialog#LoginDialog QLineEdit {
+	min-height:30px;
+	padding:2px 8px;
+	border:1px solid rgb(200,198,190);
+	border-radius:4px;
+}
+QDialog#LoginDialog QLineEdit:focus {
+	border-color:rgb(246,134,86);
+}
+QLabel#statusLabel {
+	color:rgb(200,70,20);
+	font-size:12px;
+}
+QDialog#LoginDialog QPushButton#loginButton,
+QDialog#LoginDialog QPushButton#cancelButton {
+	min-width:88px;
+	min-height:32px;
+}
+QDialog#LoginDialog QPushButton#offlineButton {
+	min-height:30px;
+}
+
 QLabel,QLineEdit {
 	color:rgb(17,17,17);
 }
