@@ -12,6 +12,7 @@
 #include "test_base.h"
 #include "host_ota_service.h"
 #include "platform/cloud/auth/auth_service.h"
+#include "platform/cloud/auth/login_dialog.h"
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
@@ -28,9 +29,7 @@ box_base::box_base(QWidget* parent) : QMainWindow(parent) {
 
     updatamanager = new QNetworkAccessManager(this);
     connect(updatamanager, &QNetworkAccessManager::authenticationRequired, this, &box_base::provideAuthentication);
-    cloudLoginLabel = new QLabel(QStringLiteral("云平台：<font color='gray'>检查中…</font>"));
-    statusBar()->addPermanentWidget(cloudLoginLabel);
-    refreshCloudLoginState();
+
     QTimer* loginTimer = new QTimer(this);
     connect(loginTimer, &QTimer::timeout, this, &box_base::refreshCloudLoginState);
     loginTimer->start(30000);
@@ -375,9 +374,17 @@ void box_base::recoverCustom() {
 }
 
 void box_base::ShowData(QMainWindow* parent) {
+    qWarning() << "ShowUpperComputerOTAFunc ="
+               << SETTINGS.value("SYSTEM/ShowUpperComputerOTAFunc")
+               << "path =" << QDir(QCoreApplication::applicationDirPath()).filePath("上位机设置.ini");
     if (parent) { // 确保 parent 指针不为空
+        cloudLoginLabel = new QLabel(QStringLiteral("云平台：<font color='gray'>检查中…</font>"));
+        parent->statusBar()->addPermanentWidget(cloudLoginLabel);
+        refreshCloudLoginState();
         if (pack.factory == "xwd")
             parent->statusBar()->addPermanentWidget(new QLabel("欣旺达"));
+        else if (pack.factory == "xzw")
+            parent->statusBar()->addPermanentWidget(new QLabel("欣智旺"));
         else if (pack.factory == "lx")
             parent->statusBar()->addPermanentWidget(new QLabel("立讯"));
         else if (pack.factory == "hq")
@@ -407,27 +414,54 @@ void box_base::ShowData(QMainWindow* parent) {
 
 
     QAction* setting = parent->menuBar()->addAction("功能设置");
+    settingMenuAction = setting;
     connect(setting, &QAction::triggered, [=]() { setting_ui(); });
-    if (!SETTINGS.value("SYSTEM/setting").toInt()) {
-        setting->setVisible(false);
-    }
+    refreshSettingsMenuVisibility();
 
-        QAction* updata = parent->menuBar()->addAction("检查更新");
+    QAction* updata = parent->menuBar()->addAction("检查更新");
     connect(updata, &QAction::triggered, [=]() { checkAndUpdateFile(); });
     if (!SETTINGS.value("SYSTEM/ShowUpperComputerOTAFunc").toBool()) {
         updata->setVisible(false);
+           qWarning() << "ss222222222ss";
     }
 
+    QAction* switchAccount = parent->menuBar()->addAction("切换账号");
+    connect(switchAccount, &QAction::triggered, [this]() {
+        LoginDialog loginDialog(this);
+        loginDialog.setWindowModality(Qt::ApplicationModal);
+        // 取消或叉掉对话框时保持原登录态，勿先 logout
+        if (loginDialog.exec() == QDialog::Accepted) {
+            refreshCloudLoginState();
+            refreshSettingsMenuVisibility();
+        }
+    });
+}
+
+void box_base::refreshSettingsMenuVisibility() {
+    if (!settingMenuAction) {
+        return;
+    }
+    settingMenuAction->setVisible(AuthService::canOpenSettings());
 }
 
 void box_base::refreshCloudLoginState() {
+    if (!cloudLoginLabel)
+        return;
+    AuthService::promptReLoginIfExpired(this);
     if (AuthService::isLoggedIn()) {
-        cloudLoginLabel->setText(QStringLiteral("云平台：<font color='green'>已登录</font>"));
+        const QString user = SETTINGS.value(QStringLiteral("FactoryCloud/AuthUser")).toString();
+        cloudLoginLabel->setText(QStringLiteral("云平台：<font color='green'>已登录(%1)</font>").arg(user));
     } else {
         cloudLoginLabel->setText(QStringLiteral("云平台：<font color='red'>未登录</font>"));
     }
+    refreshSettingsMenuVisibility();
 }
 void box_base::setting_ui() {
+    if (!AuthService::canOpenSettings()) {
+        QMessageBox::information(this, QStringLiteral("功能设置"),
+                                 QStringLiteral("仅管理员或工艺工程师账号可打开功能设置。"));
+        return;
+    }
     if (qsetting_ui == nullptr) {
         qsetting_ui = new qsetting;
     } else {

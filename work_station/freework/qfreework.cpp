@@ -1,5 +1,6 @@
 #include "qfreework.h"
 
+#include "huiling_wfp60h_scpi_types.h"
 #include "test_case.h"
 
 #include <QMessageBox>
@@ -56,39 +57,32 @@ QString sanitizeMesValuePipes(QString v) {
     return v;
 }
 
-/** value 尽量 ASCII：PASS / FAIL；通过且有数据时只带数据；失败为 FAIL 或 FAIL;数据。 */
-QString freeWorkMesValueEnglish(bool stepPass, const QString& testData) {
-    const bool hasData = !testData.trimmed().isEmpty() && testData != QStringLiteral("-");
-    if (stepPass)
-        return hasData ? sanitizeMesValuePipes(testData) : QStringLiteral("PASS");
-    return hasData ? (QStringLiteral("FAIL;") + sanitizeMesValuePipes(testData)) : QStringLiteral("FAIL");
-}
-
-static void pushMesSeg(QVector<QPair<QString, QString>>* out, const QString& key, const QString& value) {
-    const QString k = key.trimmed();
-    if (k.isEmpty())
+static void appendOneMesStep(QVector<QFreeWorkMesSegment>* out, const QString& name,
+                              const QString& value, const QString& maxValue, const QString& minValue,
+                              const QString& standardValue, const QString& unit, const QString& result) {
+    const QString n = name.trimmed();
+    if (n.isEmpty())
         return;
-    out->append(qMakePair(k, sanitizeMesValuePipes(value)));
+    out->append({sanitizeMesValuePipes(n), sanitizeMesValuePipes(value), sanitizeMesValuePipes(maxValue),
+                 sanitizeMesValuePipes(minValue), sanitizeMesValuePipes(standardValue),
+                 sanitizeMesValuePipes(unit), sanitizeMesValuePipes(result)});
 }
 
-static void appendOneMesStep(QVector<QPair<QString, QString>>* out, const QString& tag, bool pass, const QString& testData) {
-    pushMesSeg(out, tag, freeWorkMesValueEnglish(pass, testData));
-}
-
-/** 与 hqmes/wksmes 一致：每段一个 ASCII ':' 分隔键值，多段用 | 连接。 */
-QString joinFreeWorkMesItemvalue(const QVector<QPair<QString, QString>>& segments, const QString& overallResult,
+/** 每段格式 NAME:VALUE:MAX:MIN:STANDARD:UNIT:RESULT，多段用 | 连接。 */
+QString joinFreeWorkMesItemvalue(const QVector<QFreeWorkMesSegment>& segments, const QString& overallResult,
                                  const QString& failValueLiteral) {
     QStringList parts;
     parts.reserve(segments.size() + 1);
-    for (const auto& p : segments) {
-        const QString k = p.first.trimmed();
-        if (k.isEmpty())
+    for (const auto& s : segments) {
+        if (s.name.isEmpty())
             continue;
-        parts << k + QLatin1Char(':') + p.second;
+        parts << s.name + QLatin1Char(':') + s.value + QLatin1Char(':') + s.maxValue + QLatin1Char(':') +
+                     s.minValue + QLatin1Char(':') + s.standardValue + QLatin1Char(':') + s.unit +
+                     QLatin1Char(':') + s.result;
     }
     if (parts.isEmpty()) {
         const QString v = (overallResult == failValueLiteral) ? QStringLiteral("FAIL") : QStringLiteral("PASS");
-        parts << QStringLiteral("SUMMARY:") + v;
+        parts << QStringLiteral("SUMMARY:") + v + QStringLiteral(":::::");
     }
     return QStringLiteral("|") + parts.join(QStringLiteral("|")) + QStringLiteral("|");
 }
@@ -156,7 +150,30 @@ void QFreeWork::onTestCaseStepMarkedDone(bool pass, const QString& testData, con
 
 void QFreeWork::appendTestCaseMes(const TestCaseDefinition& def, bool pass, const QString& testData) {
     const QString tag = def.meta.mesTag.trimmed().isEmpty() ? def.meta.name.trimmed() : def.meta.mesTag.trimmed();
-    appendOneMesStep(&freeWorkMesSegments_, tag, pass, testData);
+    const bool hasData = !testData.trimmed().isEmpty() && testData != QStringLiteral("-");
+    const QString value = pass && hasData ? testData : QString();
+    const QString resultVal = pass ? QStringLiteral("PASS") : (hasData ? QStringLiteral("FAIL;") + testData : QStringLiteral("FAIL"));
+
+    QString maxVal, minVal, stdVal;
+    if (def.gate.enabled) {
+        switch (def.gate.op) {
+        case TestCaseGateOp::Range:
+            maxVal = QString::number(def.gate.high);
+            minVal = QString::number(def.gate.low);
+            break;
+        case TestCaseGateOp::Gt:
+            stdVal = QStringLiteral(">") + QString::number(def.gate.low);
+            break;
+        case TestCaseGateOp::Lt:
+            stdVal = QStringLiteral("<") + QString::number(def.gate.high);
+            break;
+        case TestCaseGateOp::Eq:
+        case TestCaseGateOp::CompareVersions:
+            stdVal = def.gate.expected;
+            break;
+        }
+    }
+    appendOneMesStep(&freeWorkMesSegments_, tag, value, maxVal, minVal, stdVal, QString(), resultVal);
 }
 
 #if _MSC_VER >= 1600
@@ -452,7 +469,8 @@ bool QFreeWork::tickOrderedTestStepLoop() {
             sendRetryOver = false;
             stepRuntime_.done = true;
             stepRuntime_.pass = false;
-            stepRuntime_.testData = QStringLiteral("协议FAIL或超时");
+            if (stepRuntime_.testData == QLatin1String("-"))
+                stepRuntime_.testData = QStringLiteral("协议FAIL或超时");
             TestResult = failValue;
             showlog(QStringLiteral("步骤失败：%1（超时未响应或协议 FAIL）").arg(functionName));
         }
@@ -471,15 +489,13 @@ bool QFreeWork::tickOrderedTestStepLoop() {
                     if (stepRuntime_.testData == QLatin1String("-"))
                         stepRuntime_.testData = QStringLiteral("ok");
                 }
-            } else if ((caseDef.hook.enabled || dongleBleConnect) && (lastCommandRetryCount > 0 || (dongleBleConnect && at->getConnected()))) {
+            } else if (dongleBleConnect && at->getConnected()) {
                 stepRuntime_.done = true;
                 stepRuntime_.pass = true;
-                if (dongleBleConnect && at->getConnected()) {
-                    stepRuntime_.testData = QStringLiteral("已连接");
-                } else if (stepRuntime_.testData == QLatin1String("-")) {
-                    stepRuntime_.testData = QStringLiteral("ok");
-                }
+                stepRuntime_.testData = QStringLiteral("已连接");
             }
+            // 阻塞型 Hook（如 DONGLE_SUCTION_SAMPLE）在 waitWork/QEventLoop 内会重入 startTask，
+            // 不可凭 lastCommandRetryCount 提前 done，否则与采样循环并发导致第二次卡死。
         }
 
         if (needCaseDone && !stepRuntime_.done) {
@@ -1117,11 +1133,7 @@ void QFreeWork::runDongleSuctionSampleStep() {
 
     const int durationMs = qMax(1000, suctionSampleDurationMs_);
     const int intervalMs = qMax(20, suctionSampleIntervalMs_);
-    const int totalSamples = qMax(1, durationMs / intervalMs);
-    QVector<double> leftSamples;
-    QVector<double> rightSamples;
-    leftSamples.reserve(totalSamples);
-    rightSamples.reserve(totalSamples);
+    const bool restoreOff = !dongleSuctionReadEnabled_;
 
     showlog(QStringLiteral("双通道吸力(Dongle)：采样 %1ms，间隔 %2ms，目标 %3±%4kPa")
                 .arg(durationMs)
@@ -1129,14 +1141,22 @@ void QFreeWork::runDongleSuctionSampleStep() {
                 .arg(suctionPeakTargetKpa_, 0, 'f', 2)
                 .arg(suctionPeakToleranceKpa_, 0, 'f', 2));
 
+    dongleSuctionLeftSamples_.clear();
+    dongleSuctionRightSamples_.clear();
+    dongleSuctionLastLeftKpa_ = 0.0;
+    dongleSuctionLastRightKpa_ = 0.0;
     resetSuctionChart();
-    if (!dongleSuctionReadEnabled_)
-        setDongleSuctionReadEnabled(true);
-    waitWork(100);
+    setDongleSuctionReadEnabled(true);
 
-    for (int i = 0; i < totalSamples; ++i) {
+    dongleSuctionSampleActive_ = true;
+    QElapsedTimer sampleTimer;
+    sampleTimer.start();
+    int lastLoggedCount = 0;
+    while (sampleTimer.elapsed() < durationMs) {
         if (!isTestContinue) {
-            setDongleSuctionReadEnabled(false);
+            dongleSuctionSampleActive_ = false;
+            if (restoreOff)
+                setDongleSuctionReadEnabled(false);
             stepRuntime_.done = true;
             stepRuntime_.pass = false;
             stepRuntime_.testData = QStringLiteral("测试中止");
@@ -1144,15 +1164,32 @@ void QFreeWork::runDongleSuctionSampleStep() {
             showlog(QStringLiteral("采集双通道吸力已中止"));
             return;
         }
-        leftSamples.append(dongleSuctionLastLeftKpa_);
-        rightSamples.append(dongleSuctionLastRightKpa_);
-        if (((i + 1) % 10) == 0) {
+        const int sampleCount = dongleSuctionLeftSamples_.size();
+        if (sampleCount > 0 && sampleCount % 10 == 0 && sampleCount != lastLoggedCount) {
+            lastLoggedCount = sampleCount;
             showlog(QStringLiteral("[%1] 左: %2Kpa | 右: %3Kpa")
-                        .arg(i + 1)
+                        .arg(sampleCount)
                         .arg(dongleSuctionLastLeftKpa_, 0, 'f', 2)
                         .arg(dongleSuctionLastRightKpa_, 0, 'f', 2));
         }
-        waitWork(intervalMs);
+        waitWork(qMin(intervalMs, durationMs - static_cast<int>(sampleTimer.elapsed())));
+    }
+    dongleSuctionSampleActive_ = false;
+    if (restoreOff)
+        setDongleSuctionReadEnabled(false);
+
+    const QVector<double>& leftSamples = dongleSuctionLeftSamples_;
+    const QVector<double>& rightSamples = dongleSuctionRightSamples_;
+    if (leftSamples.isEmpty() || rightSamples.isEmpty()) {
+        stepRuntime_.done = true;
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = QStringLiteral("无吸力采样点");
+        stepRuntime_.ask =
+            QStringLiteral("%1±%2").arg(suctionPeakTargetKpa_, 0, 'f', 2).arg(suctionPeakToleranceKpa_, 0, 'f', 2);
+        TestResult = failValue;
+        showlog(QStringLiteral("采集双通道吸力失败：采样窗口内未收到 AT+SUCTION_DATA"));
+        markActiveTestCaseStepDone(false, stepRuntime_.testData, stepRuntime_.ask);
+        return;
     }
 
     double leftPeak = 0.0;
@@ -1172,19 +1209,9 @@ void QFreeWork::runDongleSuctionSampleStep() {
         pass = leftPass && rightPass && diffPass;
     };
 
-    if (!leftSamples.isEmpty() && !rightSamples.isEmpty()) {
-        recomputePass(*std::min_element(leftSamples.cbegin(), leftSamples.cend()),
-                      *std::min_element(rightSamples.cbegin(), rightSamples.cend()));
-    }
-    // 轮询缓存仍为 0 时，回退到图形页已记录的样本
-    if (!pass && qFuzzyIsNull(leftPeak) && qFuzzyIsNull(rightPeak) && !suctionChartLeftKpa_.isEmpty()
-        && !suctionChartRightKpa_.isEmpty()) {
-        recomputePass(*std::min_element(suctionChartLeftKpa_.cbegin(), suctionChartLeftKpa_.cend()),
-                      *std::min_element(suctionChartRightKpa_.cbegin(), suctionChartRightKpa_.cend()));
-        showlog(QStringLiteral("吸力采样：使用图形缓存峰值 L=%1 R=%2 kPa")
-                    .arg(leftPeak, 0, 'f', 3)
-                    .arg(rightPeak, 0, 'f', 3));
-    }
+    recomputePass(*std::min_element(leftSamples.cbegin(), leftSamples.cend()),
+                  *std::min_element(rightSamples.cbegin(), rightSamples.cend()));
+    showlog(QStringLiteral("采样完成：有效点 %1 个").arg(leftSamples.size()));
 
     stepRuntime_.done = true;
     stepRuntime_.pass = pass;
@@ -1222,7 +1249,12 @@ void QFreeWork::initData() {
     canGoNext = 1;
     stepRuntime_.reset();
     isovertime = 0;
+    dongleSuctionSampleActive_ = false;
+    dongleSuctionLeftSamples_.clear();
+    dongleSuctionRightSamples_.clear();
     resetSuctionChart();
+    setDongleSuctionReadEnabled(false);
+    huilingVisaLinkCache_.clear();
     BT_RSSI = "";
     BLE_RSSI = "";
     WIFI_RSSI = "";
@@ -1544,7 +1576,6 @@ void QFreeWork::processGetMesTestValue() {
         emit send_mes_test_value(pack);
     }
 }
-
 void QFreeWork::getMac(QString sn_to_search) {
     QFile file("mac_sn.txt");             // 创建一个文件对象
     if (file.open(QIODevice::ReadOnly)) { // 打开文件

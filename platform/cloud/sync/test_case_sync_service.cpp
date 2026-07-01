@@ -1,5 +1,7 @@
 #include "test_case_sync_service.h"
 
+#include "test_case.h"
+
 #include "auth_service.h"
 #include "factory_cloud_client.h"
 
@@ -288,6 +290,10 @@ TestCaseSyncService::SyncResult TestCaseSyncService::uploadToCloud() {
         result.message = QStringLiteral("测试用例云同步未启用");
         return result;
     }
+    if (AuthService::isOfflineSession()) {
+        result.message = QStringLiteral("离线测试模式，无法上传测试用例");
+        return result;
+    }
     if (!AuthService::isLoggedIn()) {
         const AuthService::LoginResult login = AuthService::loginWithSavedCredentials();
         if (!login.ok) {
@@ -342,6 +348,10 @@ TestCaseSyncService::SyncResult TestCaseSyncService::syncFromCloud() {
     SyncResult result;
     if (!isEnabled()) {
         result.message = QStringLiteral("测试用例云同步未启用");
+        return result;
+    }
+    if (AuthService::isOfflineSession()) {
+        result.message = QStringLiteral("离线测试模式，无法从云端同步测试用例");
         return result;
     }
     if (!AuthService::isLoggedIn()) {
@@ -421,6 +431,8 @@ TestCaseSyncService::SyncResult TestCaseSyncService::syncFromCloud() {
         SETTINGS.setValue(QStringLiteral("FactoryCloud/TestCaseBundleVersion"), remoteVersion);
     }
     SETTINGS.sync();
+
+    TestCaseStore::invalidateCloudItemNameCache();
 
     result.ok = true;
     result.bundleVersion = remoteVersion;

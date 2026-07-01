@@ -306,11 +306,15 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
         if (row) {
             out.valid = true;
             out.hint = ScpiPeriphCmdCatalog::paramUiHint(devRoute, name);
-            if (name == QLatin1String("ProgrammablePowerOutput") ||
-                name == QLatin1String("ArbCycles")) {
-                out.kind = SendCmdParamKind::Int;
-            } else if (name == QLatin1String("ConfigureProgrammablePower")) {
+            if (devRoute == ScpiDeviceRoute::HuilingWfp60h
+                && (name == QLatin1String("ConfigureProgrammablePower")
+                    || name == QLatin1String("ReadProgrammableVoltage")
+                    || name == QLatin1String("ReadProgrammableCurrent")
+                    || name == QLatin1String("InitializeProgrammablePower"))) {
                 out.kind = SendCmdParamKind::JsonMap;
+            } else if (name == QLatin1String("ProgrammablePowerOutput") ||
+                       name == QLatin1String("ArbCycles")) {
+                out.kind = SendCmdParamKind::Int;
             } else if (name == QLatin1String("ArbFile") ||
                        name == QLatin1String("SendRawLine") ||
                        name == QLatin1String("WriteLine") ||
@@ -383,7 +387,17 @@ void applySendParamToUi(const SendCmdParamUi& uiSchema, const QVariant& param, Q
     }
     if (uiSchema.kind == SendCmdParamKind::Int || uiSchema.kind == SendCmdParamKind::UInt) {
         stack->setCurrentWidget(pageInt);
-        spinBox->setValue(param.toInt());
+        int intVal = param.toInt();
+        if (param.canConvert<QVariantMap>()) {
+            const QVariantMap map = param.toMap();
+            if (map.contains(QStringLiteral("int")))
+                intVal = map.value(QStringLiteral("int")).toInt();
+            else if (map.contains(QStringLiteral("value")))
+                intVal = map.value(QStringLiteral("value")).toInt();
+            else if (map.size() == 1)
+                intVal = map.constBegin().value().toInt();
+        }
+        spinBox->setValue(intVal);
         return;
     }
     stack->setCurrentWidget(pageJson);

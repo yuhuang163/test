@@ -18,10 +18,10 @@
 #include "test_flow/test_flow_editor.h"
 #include "bydmes.h"
 #include "log_upload_service.h"
-#include "auth_service.h"
 #include "test_case_sync_service.h"
 #include "host_ota_service.h"
 #include "factory_cloud_client.h"
+#include "factory_cloud_env.h"
 
 #include <QtConcurrent>
 
@@ -49,18 +49,6 @@ const QVector<TupleEnvPreset> kTupleEnvPresets = {
 };
 
 const QString kTupleEnvCustomKey = QStringLiteral("custom");
-
-struct FactoryCloudEnvPreset {
-    QString key;
-    QString baseUrl;
-};
-
-const QVector<FactoryCloudEnvPreset> kFactoryCloudEnvPresets = {
-    {QStringLiteral("local"), QStringLiteral("http://127.0.0.1:8800")},
-    {QStringLiteral("prod"), QStringLiteral("https://fctp.luteos.com")},
-};
-
-const QString kFactoryCloudEnvCustomKey = QStringLiteral("custom");
 
 QString normalizeTupleBaseUrl(const QString& u) {
     QString s = u.trimmed();
@@ -94,37 +82,6 @@ int tupleEnvIndexForUrl(QComboBox* combo, const QString& url) {
 
 QString tupleBaseUrlForKey(const QString& key) {
     for (const auto& p : kTupleEnvPresets) {
-        if (p.key == key) {
-            return p.baseUrl;
-        }
-    }
-    return {};
-}
-
-int factoryCloudEnvIndexForKey(QComboBox* combo, const QString& key) {
-    if (!combo) {
-        return -1;
-    }
-    for (int i = 0; i < combo->count(); ++i) {
-        if (combo->itemData(i).toString() == key) {
-            return i;
-        }
-    }
-    return -1;
-}
-
-int factoryCloudEnvIndexForUrl(QComboBox* combo, const QString& url) {
-    const QString n = normalizeTupleBaseUrl(url);
-    for (const auto& p : kFactoryCloudEnvPresets) {
-        if (normalizeTupleBaseUrl(p.baseUrl) == n) {
-            return factoryCloudEnvIndexForKey(combo, p.key);
-        }
-    }
-    return -1;
-}
-
-QString factoryCloudBaseUrlForKey(const QString& key) {
-    for (const auto& p : kFactoryCloudEnvPresets) {
         if (p.key == key) {
             return p.baseUrl;
         }
@@ -167,11 +124,12 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
                                     "电机图像", "按键图像", "显示全部图像"};
     ui->comboBox_displayImageType->addItems(displayImageType);
 
-    QStringList factoryList = {"lx", "xwd", "hq", "wks", "ydm", "byd", "hz", "无mes厂"};
+    QStringList factoryList = {"lx", "xwd", "xzw", "hq", "wks", "ydm", "byd", "hz", "无mes厂"};
     ui->comboBox_factory->addItems(factoryList);
+    connect(ui->comboBox_factory, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+            [this](int) { RestoreFacDefaultSetting(); });
 
     initTupleEnvironmentCombo();
-    initFactoryCloudEnvironmentCombo();
     loadConfig();
     originalStation_ = SETTINGS.value("SYSTEM/station").toString();
     connect(StationGroup, QOverload<int>::of(&QButtonGroup::buttonClicked), this, [this](int) {
@@ -202,7 +160,7 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
 void qsetting::initSettingTooltips() {
     setToolTip(QStringLiteral(
         "上位机全局参数；修改工站类型后需重启程序生效。\n"
-        "串口、窗口大小、当前工站、WIFI/Name* →「上位机设置.local.ini」（不入库）；\n"
+        "串口、窗口大小、当前工站、WIFI/Name*、FactoryCloud（BaseUrl/HostOtaCheckUrl/环境/登录态/工站 Key）→「上位机设置.local.ini」（不入库）；\n"
         "其余参数 →「上位机设置.ini」。"));
     // const int tabFixture = ui->tabWidget->indexOf(ui->tab_fixture_setting);
     const int tabKey = ui->tabWidget->indexOf(ui->tab_key_setting);
@@ -252,36 +210,6 @@ void qsetting::on_comboBox_tupleEnvironment_currentIndexChanged(int index) {
     const QString url = tupleBaseUrlForKey(key);
     if (!url.isEmpty()) {
         ui->lineEdit_tupleBaseUrl->setText(url);
-    }
-}
-
-void qsetting::initFactoryCloudEnvironmentCombo() {
-    QComboBox* c = ui->comboBox_factoryCloudEnvironment;
-    if (!c) {
-        return;
-    }
-    c->clear();
-    c->addItem(QStringLiteral("测试环境"), QStringLiteral("local"));
-    c->addItem(QStringLiteral("服务器"), QStringLiteral("prod"));
-    c->addItem(QStringLiteral("自定义"), kFactoryCloudEnvCustomKey);
-    connect(c, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
-            &qsetting::on_comboBox_factoryCloudEnvironment_currentIndexChanged);
-}
-
-void qsetting::on_comboBox_factoryCloudEnvironment_currentIndexChanged(int index) {
-    Q_UNUSED(index);
-    QComboBox* c = ui->comboBox_factoryCloudEnvironment;
-    if (!c) {
-        return;
-    }
-    const QString key = c->currentData().toString();
-    if (key == kFactoryCloudEnvCustomKey || key.isEmpty()) {
-        return;
-    }
-    const QString url = factoryCloudBaseUrlForKey(key);
-    if (!url.isEmpty()) {
-        ui->lineEdit_factoryCloudBaseUrl->setText(url);
-        syncFactoryCloudDerivedUrls();
     }
 }
 
@@ -416,30 +344,14 @@ void qsetting::loadConfig() {
     }
 
     {
-        QSignalBlocker blocker(ui->comboBox_factoryCloudEnvironment);
-        const QString savedFactoryUrl = ui->lineEdit_factoryCloudBaseUrl->text().trimmed();
-        QString envKey = SETTINGS.value(QStringLiteral("FactoryCloud/Environment")).toString().trimmed();
-        int idx = envKey.isEmpty() ? -1 : factoryCloudEnvIndexForKey(ui->comboBox_factoryCloudEnvironment, envKey);
-        if (idx < 0) {
-            idx = factoryCloudEnvIndexForUrl(ui->comboBox_factoryCloudEnvironment, savedFactoryUrl);
-        }
-        if (idx < 0) {
-            idx = ui->comboBox_factoryCloudEnvironment->count() - 1;
-        }
-        ui->comboBox_factoryCloudEnvironment->setCurrentIndex(idx);
-    }
-
-    {
         const QString capEndian = SETTINGS.value(QStringLiteral("KeyCap/ValueEndian"), QStringLiteral("big")).toString();
         ui->comboBox_KeyCapValueEndian->setCurrentIndex(
             capEndian.compare(QStringLiteral("little"), Qt::CaseInsensitive) == 0 ? 1 : 0);
     }
 
     syncFactoryCloudDerivedUrls();
-    {
-        const QString token = SETTINGS.value(QStringLiteral("FactoryCloud/Token")).toString().trimmed();
-        ui->label_factoryCloudStatus->setText(token.isEmpty() ? QStringLiteral("未登录") : QStringLiteral("已登录"));
-    }
+
+    RestoreFacDefaultSetting();
 }
 void qsetting::updateMainStyle(QString style) {
     applyWidgetStyleSheet(this, style);
@@ -565,8 +477,6 @@ void qsetting::saveConfig() {
 
     SETTINGS.setValue("Tuple/Environment", ui->comboBox_tupleEnvironment->currentData().toString());
     SETTINGS.setValue("Tuple/BaseUrl", ui->lineEdit_tupleBaseUrl->text());
-    SETTINGS.setValue(QStringLiteral("FactoryCloud/Environment"),
-                      ui->comboBox_factoryCloudEnvironment->currentData().toString());
 
     SETTINGS.setValue(QStringLiteral("KeyCap/ValueEndian"),
                       ui->comboBox_KeyCapValueEndian->currentIndex() == 1 ? QStringLiteral("little")
@@ -789,6 +699,8 @@ void qsetting::RestoreFacDefaultSetting() {
     ui->lineEdit_weikesen_order->hide();
     ui->label_78->hide();
     ui->lineEdit_mesUrl->hide();
+    ui->label_75->hide();
+    ui->lineEdit_station->hide();
     ui->label_74->hide();
     ui->lineEdit_macStation->hide();
     ui->label_79->hide();
@@ -833,6 +745,8 @@ void qsetting::RestoreFacDefaultSetting() {
         ui->lineEdit_weikesen_order->show();
     }
     if (ui->comboBox_factory->currentText() == "xwd") {
+        ui->label_75->show();
+        ui->lineEdit_station->show();
         ui->label_74->show();
         ui->lineEdit_macStation->show();
         ui->label_mes_login_account->show();
@@ -843,6 +757,29 @@ void qsetting::RestoreFacDefaultSetting() {
         ui->lineEdit_mes_operator->show();
         ui->label_mes_login_station->show();
         ui->lineEdit_mes_login_station->show();
+        ui->lineEdit_station->setToolTip(
+            QStringLiteral("过站工站号（Mes/machineNo），groupTest / wipTest 的 machineNo。"));
+        ui->lineEdit_macStation->setToolTip(
+            QStringLiteral("getTestData 工序代码（MES/xwdWpCode），如 Q20-JTDLTEST。"));
+        ui->lineEdit_mes_login_account->setToolTip(QStringLiteral("登录账号（Mes/M_USERNO）。"));
+        ui->lineEdit_mes_login_password->setToolTip(QStringLiteral("登录密码（Mes/M_PASSWORD）。"));
+        ui->lineEdit_mes_operator->setToolTip(QStringLiteral("过站员工号（Mes/mUserno），对应 emp / mUserno。"));
+        ui->lineEdit_mes_login_station->setToolTip(
+            QStringLiteral("登录工站（Mes/M_MACHINENO），checkUserDo 的 machineNo。"));
+    }
+    if (ui->comboBox_factory->currentText() == "xzw") {
+        ui->label_78->show();
+        ui->lineEdit_mesUrl->show();
+        ui->label_75->show();
+        ui->lineEdit_station->show();
+        ui->label_mes_operator->show();
+        ui->lineEdit_mes_operator->show();
+        ui->lineEdit_mesUrl->setToolTip(
+            QStringLiteral("Sunwinon MES 根地址（Mes/NET），如 https://hzznyjmes.sunwoda.com/ims-pms；"
+                           "留空则用该默认地址。"));
+        ui->lineEdit_station->setToolTip(
+            QStringLiteral("工站号（Mes/machineNo），groupTest / wipTest 的 machineNo。"));
+        ui->lineEdit_mes_operator->setToolTip(QStringLiteral("过站员工号（Mes/mUserno），对应 emp / mUserno。"));
     }
     if (ui->comboBox_factory->currentText() == "hq") {
         ui->label_action_huaqin->show();
@@ -1029,25 +966,8 @@ void qsetting::initTestFlowEditorUi() {
 }
 
 void qsetting::syncFactoryCloudDerivedUrls() {
-    const QString baseUrl = ui->lineEdit_factoryCloudBaseUrl->text().trimmed();
-    if (baseUrl.isEmpty()) {
-        return;
-    }
-    SETTINGS.setValue(QStringLiteral("FactoryCloud/HostOtaCheckUrl"),
-                      baseUrl + QStringLiteral("/api/factory-tool/host-app/check"));
-}
-
-void qsetting::on_pushButton_factoryCloudLogin_clicked() {
-    saveConfig();
-    const QString user = ui->lineEdit_factoryCloudUser->text().trimmed();
-    const QString password = ui->lineEdit_factoryCloudPassword->text();
-    const AuthService::LoginResult result = AuthService::login(user, password);
-    ui->label_factoryCloudStatus->setText(result.message);
-    if (result.ok) {
-        QMessageBox::information(this, QStringLiteral("云平台登录"), result.message);
-    } else {
-        QMessageBox::warning(this, QStringLiteral("云平台登录"), result.message);
-    }
+    const QString baseUrl = SETTINGS.value(QStringLiteral("FactoryCloud/BaseUrl")).toString().trimmed();
+    FactoryCloudEnv::syncDerivedUrlsFromBaseUrl(baseUrl);
 }
 
 void qsetting::on_pushButton_uploadTestCase_clicked() {

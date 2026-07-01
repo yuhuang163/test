@@ -27,6 +27,16 @@ class QFreeWork;
 class QFreeWorkTestCaseHookRegistrar;
 class TestCaseRunner;
 
+struct QFreeWorkMesSegment {
+    QString name;
+    QString value;
+    QString maxValue;
+    QString minValue;
+    QString standardValue;
+    QString unit;
+    QString result;
+};
+
 class QFreeWork : public test_base {
     Q_OBJECT
     friend class QFreeWorkTestCaseHookRegistrar;
@@ -82,6 +92,8 @@ class QFreeWork : public test_base {
     void executeProductSerialCase(const TestCaseDefinition& def);
     void executeFixturePcbaCase(const TestCaseDefinition& def);
     int resolveFixtureMachineIndex(const QVariant& param) const;
+    QVariantMap cachedHuilingVisaLink() const;
+    void updateHuilingVisaLinkCache(const QVariantMap& link);
     void onUsbInstrumentReport(const ProtocolReport& report) override;
 
   private:
@@ -139,7 +151,7 @@ class QFreeWork : public test_base {
 
     // --- 三元组 / MES 分段 ---
     TupleApplyResult tupleData_;
-    QVector<QPair<QString, QString>> freeWorkMesSegments_;
+    QVector<QFreeWorkMesSegment> freeWorkMesSegments_;
 
     // --- test_case 运行态 ---
     bool stopFlowOnTestFail_ = true;
@@ -294,6 +306,8 @@ class QFreeWork : public test_base {
     double suctionLeftPeakLow_ = 0.0;
     double suctionRightPeakHigh_ = 0.0;
     double suctionRightPeakLow_ = 0.0;
+    /** 本轮回放中已配置的会凌 VISA 连接（地址/电压/电流等），开关步骤可复用。 */
+    QVariantMap huilingVisaLinkCache_;
 
   private slots:
     void initData();

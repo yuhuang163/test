@@ -42,10 +42,34 @@ inline QString settingsIniPath(const char* fileName) {
  * 2. 窗口大小（Window/SettingSize、Window/Size）
  * 3. 当前工站（SYSTEM/station、TestOrderMeta/SelectedStation*）
  * 4. WiFi 名称（WIFI/Name、WIFI/Name0…WIFI/Name9 等，各工位/路号）
+ * 5. 云平台本机项（FactoryCloud：环境、BaseUrl、登录态、工站 Key 等，见 factoryCloudUsesLocalFile）
  */
+inline bool factoryCloudUsesLocalFile(const QString& fullKey) {
+    static const QStringList kFactoryCloudLocalKeys = {
+        QStringLiteral("FactoryCloud/BaseUrl"),
+        QStringLiteral("FactoryCloud/HostOtaCheckUrl"),
+        QStringLiteral("FactoryCloud/Environment"),
+        QStringLiteral("FactoryCloud/Token"),
+        QStringLiteral("FactoryCloud/TokenExpireAt"),
+        QStringLiteral("FactoryCloud/AuthUser"),
+        QStringLiteral("FactoryCloud/AuthPassword"),
+        QStringLiteral("FactoryCloud/RememberPassword"),
+        QStringLiteral("FactoryCloud/AuthRoles"),
+        QStringLiteral("FactoryCloud/StationKey"),
+    };
+    for (const QString& k : kFactoryCloudLocalKeys) {
+        if (fullKey.compare(k, Qt::CaseInsensitive) == 0)
+            return true;
+    }
+    return false;
+}
+
 inline bool settingsUseLocalFile(const QString& fullKey) {
     if (fullKey.isEmpty())
         return false;
+
+    if (factoryCloudUsesLocalFile(fullKey))
+        return true;
 
     const QString head = fullKey.section(QLatin1Char('/'), 0, 0);
     if (head.compare(QStringLiteral("mechine"), Qt::CaseInsensitive) == 0)
@@ -180,6 +204,38 @@ class SettingsManager {
         enter(store);
         store.remove(key);
         leave(store);
+    }
+
+    /** 启动时将 FactoryCloud 本机项从主 ini 并入 local.ini 并从主 ini 删除（兼容旧版写入主 ini） */
+    void migrateFactoryCloudToLocal() {
+        static const QStringList kKeys = {
+            QStringLiteral("BaseUrl"),
+            QStringLiteral("HostOtaCheckUrl"),
+            QStringLiteral("Environment"),
+            QStringLiteral("Token"),
+            QStringLiteral("TokenExpireAt"),
+            QStringLiteral("AuthUser"),
+            QStringLiteral("AuthPassword"),
+            QStringLiteral("RememberPassword"),
+            QStringLiteral("AuthRoles"),
+            QStringLiteral("StationKey"),
+        };
+        QSettings& base = baseIni();
+        QSettings& loc = localIni();
+        base.beginGroup(QStringLiteral("FactoryCloud"));
+        loc.beginGroup(QStringLiteral("FactoryCloud"));
+        for (const QString& key : kKeys) {
+            if (!base.contains(key)) {
+                continue;
+            }
+            // 主 ini 有残留时以主 ini 为准（旧 exe 可能刚写入主 ini）
+            loc.setValue(key, base.value(key));
+            base.remove(key);
+        }
+        loc.endGroup();
+        base.endGroup();
+        base.sync();
+        loc.sync();
     }
 
   private:

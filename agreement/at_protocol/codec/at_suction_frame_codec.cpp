@@ -182,23 +182,19 @@ void AtSuctionFrameCodec::feed(const QByteArray& chunk, const FrameHandler& onFr
 
                 continue;
 
+            // AT+SUCTION_DATA 走 DongleAtDevice::suction_data，此处仅处理 Pico $...; 帧
+
+            if (line.startsWith(QStringLiteral("AT+SUCTION_DATA"), Qt::CaseInsensitive))
+
+                continue;
+
 
 
             double left = 0.0;
 
             double right = 0.0;
 
-            if (parseAtSuctionDataLine(line, &left, &right) && onFrame) {
-
-                ProtocolDongleSuctionData data;
-
-                data.leftKpa = left;
-
-                data.rightKpa = right;
-
-                onFrame(data);
-
-            } else if (parseDualChannelSuctionFrame(line, &left, &right) && onFrame) {
+            if (parseDualChannelSuctionFrame(line, &left, &right) && onFrame) {
 
                 ProtocolDongleSuctionData data;
 

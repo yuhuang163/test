@@ -3,6 +3,7 @@
 
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QSet>
 #include <QString>
 
 #include "my_set/my_typedef.h"
@@ -37,6 +38,8 @@ class bydmes : public Qmes {
     QByteArray sendRequest(const QString& method, const QJsonObject& param, QString* errorMessage) const;
     /// NET 与 LoginID/CLIENT_ID 缺失时 qWarning + operateMesError，返回 true 表示应中止请求（非 const：需 emit 信号）
     bool emitIfMissingLoginClientOrNet(const MesPacketData& pack, const QJsonObject& param, const QString& sceneLabel);
+
+    mutable QSet<QString> settingsValueLoggedKeys_;
 };
 
 #endif // BYDMES_H

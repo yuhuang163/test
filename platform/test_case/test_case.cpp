@@ -646,6 +646,9 @@ void saveMultiGatesToIni(QSettings& ini, const TestCaseDefinition& def) {
 
 namespace {
 QVariant readSendScopedParam(const QSettings& settings, const QString& leafKey, const QVariant& defaultValue);
+QVariantMap readSendParamMap(const QSettings& settings);
+QVariant normalizeScpiModbusParamFromMap(const QVariantMap& map);
+void writeScpiModbusParamToIni(QSettings& ini, const QVariant& param);
 } // namespace
 
 bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, QString* errorOut) {
@@ -739,17 +742,22 @@ bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, Q
             FixturePcbaCmdCatalog::paramFromIniGroup(ini, fixtureCmd, out.send.param);
         }
     } else if (out.send.channel == TestCaseSendChannel::Modbus || out.send.channel == TestCaseSendChannel::Scpi) {
-        QVariant val = ini.value(QStringLiteral("Send/Param"));
-        if (!val.isValid()) {
-            val = readSendScopedParam(ini, QStringLiteral("value"), QVariant());
+        const QVariantMap paramMap = readSendParamMap(ini);
+        if (!paramMap.isEmpty()) {
+            out.send.param = normalizeScpiModbusParamFromMap(paramMap);
+        } else {
+            QVariant val = ini.value(QStringLiteral("Send/Param"));
+            if (!val.isValid()) {
+                val = readSendScopedParam(ini, QStringLiteral("value"), QVariant());
+            }
+            if (!val.isValid()) {
+                val = readSendScopedParam(ini, QStringLiteral("int"), QVariant());
+            }
+            if (!val.isValid()) {
+                val = readSendScopedParam(ini, QStringLiteral("string"), QVariant());
+            }
+            out.send.param = val;
         }
-        if (!val.isValid()) {
-            val = readSendScopedParam(ini, QStringLiteral("int"), QVariant());
-        }
-        if (!val.isValid()) {
-            val = readSendScopedParam(ini, QStringLiteral("string"), QVariant());
-        }
-        out.send.param = val;
     } else {
         DeviceCmd cmd;
         if (DeviceCmdCatalog::deviceCmdFromName(out.send.deviceCmd, cmd)) {
@@ -922,8 +930,7 @@ bool TestCaseStore::saveCase(const TestCaseDefinition& def, QString* errorOut) {
     } else if (def.send.channel == TestCaseSendChannel::Modbus || def.send.channel == TestCaseSendChannel::Scpi) {
         if (!def.send.device.isEmpty())
             ini.setValue(QStringLiteral("Send/Device"), def.send.device);
-        if (def.send.param.isValid())
-            ini.setValue(QStringLiteral("Send/Param"), def.send.param);
+        writeScpiModbusParamToIni(ini, def.send.param);
     } else if (def.send.channel != TestCaseSendChannel::ProductSerial) {
         DeviceCmd cmd;
         if (DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd))
@@ -992,6 +999,64 @@ QStringList TestCaseStore::listCaseIniNames() {
     }
     names.sort();
     return names;
+}
+
+namespace {
+
+QHash<QString, QString>& cloudItemNameMapCache() {
+    static QHash<QString, QString> map;
+    return map;
+}
+
+bool& cloudItemNameMapLoaded() {
+    static bool loaded = false;
+    return loaded;
+}
+
+void registerCloudItemNameAlias(QHash<QString, QString>* map, const QString& key, const QString& display) {
+    const QString k = key.trimmed();
+    if (k.isEmpty() || display.trimmed().isEmpty()) {
+        return;
+    }
+    map->insert(k, display.trimmed());
+}
+
+void rebuildCloudItemNameMap() {
+    QHash<QString, QString>& map = cloudItemNameMapCache();
+    map.clear();
+    TestCasePaths::ensureRootDir();
+    for (const QString& caseName : TestCaseStore::listCaseIniNames()) {
+        QSettings ini(TestCasePaths::caseIniPath(caseName), QSettings::IniFormat);
+        applyTestCaseIniCodec(ini);
+        const QString nameInIni = ini.value(QStringLiteral("Meta/Name"), caseName).toString().trimmed();
+        const QString displayInIni = ini.value(QStringLiteral("Meta/DisplayName")).toString().trimmed();
+        const QString mesTag = ini.value(QStringLiteral("Meta/MesTag")).toString().trimmed();
+        const QString display = !displayInIni.isEmpty() ? displayInIni
+                                                        : (!nameInIni.isEmpty() ? nameInIni : caseName.trimmed());
+        registerCloudItemNameAlias(&map, mesTag, display);
+        registerCloudItemNameAlias(&map, nameInIni, display);
+        registerCloudItemNameAlias(&map, caseName, display);
+    }
+    cloudItemNameMapLoaded() = true;
+}
+
+} // namespace
+
+QString TestCaseStore::cloudDisplayNameForItemKey(const QString& itemKey) {
+    const QString key = itemKey.trimmed();
+    if (key.isEmpty()) {
+        return key;
+    }
+    if (!cloudItemNameMapLoaded()) {
+        rebuildCloudItemNameMap();
+    }
+    const auto it = cloudItemNameMapCache().constFind(key);
+    return it != cloudItemNameMapCache().constEnd() ? it.value() : key;
+}
+
+void TestCaseStore::invalidateCloudItemNameCache() {
+    cloudItemNameMapCache().clear();
+    cloudItemNameMapLoaded() = false;
 }
 
 bool TestCaseStore::loadFlowMeta(TestFlowMeta& out) {
@@ -1189,6 +1254,28 @@ bool TestCaseValidator::validateCase(const TestCaseDefinition& def, QStringList&
             if (!FixturePcbaCmdCatalog::paramSchemaFor(fixtureCmd, schema))
                 errors.append(QStringLiteral("该治具指令尚未配置参数模板，请联系工程师"));
         }
+    } else if (def.send.channel == TestCaseSendChannel::Modbus) {
+        if (def.send.device.isEmpty()) {
+            errors.append(QStringLiteral("请选择 Modbus 目标外设"));
+        } else {
+            const ModbusDeviceRoute devRoute = ModbusPeriphCmdCatalog::deviceFromIni(def.send.device);
+            if (devRoute == ModbusDeviceRoute::None) {
+                errors.append(QStringLiteral("Modbus 目标外设无效"));
+            } else if (!ModbusPeriphCmdCatalog::isCmdForDevice(devRoute, def.send.deviceCmd, def.send.action)) {
+                errors.append(QStringLiteral("Modbus 测试指令无效或与操作方式不匹配"));
+            }
+        }
+    } else if (def.send.channel == TestCaseSendChannel::Scpi) {
+        if (def.send.device.isEmpty()) {
+            errors.append(QStringLiteral("请选择 SCPI 目标外设"));
+        } else {
+            const ScpiDeviceRoute devRoute = ScpiPeriphCmdCatalog::deviceFromIni(def.send.device);
+            if (devRoute == ScpiDeviceRoute::None) {
+                errors.append(QStringLiteral("SCPI 目标外设无效"));
+            } else if (!ScpiPeriphCmdCatalog::isCmdForDevice(devRoute, def.send.deviceCmd, def.send.action)) {
+                errors.append(QStringLiteral("SCPI 测试指令无效或与操作方式不匹配"));
+            }
+        }
     } else {
         DeviceCmd cmd;
         if (!DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd)) {
@@ -1309,6 +1396,34 @@ void writeJsonMap(QSettings& s, const QString& prefix, const QVariant& value) {
 
 QString sendParamIniPrefix() {
     return QStringLiteral("Send/Param");
+}
+
+QVariant normalizeScpiModbusParamFromMap(const QVariantMap& map) {
+    if (map.isEmpty())
+        return QVariant();
+    if (map.contains(QStringLiteral("int")) && map.size() == 1)
+        return map.value(QStringLiteral("int"));
+    if (map.contains(QStringLiteral("value")) && map.size() == 1)
+        return map.value(QStringLiteral("value"));
+    if (map.size() == 1)
+        return map.constBegin().value();
+    return map;
+}
+
+void writeScpiModbusParamToIni(QSettings& ini, const QVariant& param) {
+    removeKeysWithPrefix(ini, QStringLiteral("Param"));
+    removeKeysWithPrefix(ini, sendParamIniPrefix());
+    if (!param.isValid())
+        return;
+    const QString prefix = sendParamIniPrefix();
+    if (param.canConvert<QVariantMap>()) {
+        writeJsonMap(ini, prefix, param);
+        return;
+    }
+    if (param.userType() == QMetaType::QString)
+        ini.setValue(prefix + QStringLiteral("/string"), param.toString());
+    else
+        ini.setValue(prefix + QStringLiteral("/int"), param.toInt());
 }
 
 QVariant readSendScopedParam(const QSettings& settings, const QString& leafKey, const QVariant& defaultValue) {

@@ -51,6 +51,8 @@ class QScpiManager : public QObject {
 
     /** 从 SETTINGS 加载 VISA 会凌程控电源路由与 profile。 */
     void loadHuilingVisaFromSettings();
+    /** 从测试步骤参数 map 加载 VISA 会凌程控电源（visaAddress 等），不读 SETTINGS。 */
+    bool loadHuilingVisaFromParamMap(const QVariantMap& map, int timeoutMs = 3000);
     /** 从 SETTINGS 加载 VISA CMW100 路由。 */
     void loadCmwVisaFromSettings();
 
