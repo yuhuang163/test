@@ -133,6 +133,7 @@ void DongleAtDevice::registerCommand() {
     commandList_["AT+WIFIIP"] = std::bind(&DongleAtDevice::SEND_WIFI_IP, this, _1);
     commandList_["ATCH"] = std::bind(&DongleAtDevice::scan_result, this, _1);
     commandList_["AT+DEVICENAME"] = std::bind(&DongleAtDevice::device_name, this, _1);
+    commandList_["AT+SUCTION_DATA"] = std::bind(&DongleAtDevice::suction_data, this, _1);
 }
 
 void DongleAtDevice::SEND_WIFI_DATA(const QString& p) {
@@ -216,4 +217,20 @@ void DongleAtDevice::scan_result(const QString& p) {
     }
     qDebug() << "Dongle scan result:" << data.deviceName << data.deviceAddress << data.deviceRssi;
     emitReport(QStringLiteral("ProtocolDongleScanResultData"), QVariant::fromValue(data));
+}
+
+void DongleAtDevice::suction_data(const QString& p) {
+    const QStringList parts = p.split(QLatin1Char(','), Qt::SkipEmptyParts);
+    if (parts.size() < 2)
+        return;
+    bool okLeft = false;
+    bool okRight = false;
+    const double left = parts.at(0).toDouble(&okLeft);
+    const double right = parts.at(1).toDouble(&okRight);
+    if (!okLeft || !okRight)
+        return;
+    ProtocolDongleSuctionData data;
+    data.leftKpa = left;
+    data.rightKpa = right;
+    emitReport(QStringLiteral("ProtocolDongleSuctionData"), QVariant::fromValue(data));
 }

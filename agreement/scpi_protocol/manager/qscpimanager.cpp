@@ -115,6 +115,20 @@ void QScpiManager::loadHuilingVisaFromSettings() {
     setHuilingProfilePatch(HuilingWfp60hScpiProfile::fromVisaPowerSettings());
 }
 
+bool QScpiManager::loadHuilingVisaFromParamMap(const QVariantMap& map, int timeoutMs) {
+    const QString visaAddress = map.value(QStringLiteral("visaAddress")).toString().trimmed();
+    if (visaAddress.isEmpty()) {
+        return false;
+    }
+    ScpiVisaLinkConfig link;
+    link.visaAddress = visaAddress;
+    link.timeoutMs = timeoutMs > 0 ? timeoutMs : 3000;
+    setVisaConfig(link);
+    setDeviceRoute(ScpiDeviceRoute::HuilingWfp60h);
+    setHuilingProfilePatch(HuilingWfp60hScpiProfile::fromParamMap(map));
+    return true;
+}
+
 void QScpiManager::loadCmwVisaFromSettings() {
     ScpiVisaLinkConfig link;
     link.visaAddress = SETTINGS.value(QStringLiteral("BlePer/CmwVisaAddress")).toString().trimmed();

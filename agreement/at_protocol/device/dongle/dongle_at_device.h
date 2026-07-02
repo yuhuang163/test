@@ -55,6 +55,7 @@ class DongleAtDevice : public QObject {
     void SEND_WIFI_DATA(const QString& p);
     void SEND_WIFI_IP(const QString& p);
     void scan_result(const QString& p);
+    void suction_data(const QString& p);
 
     QSerialPort* serialPort_ = nullptr;
     std::map<QString, std::function<void(const QString&)>> commandList_;

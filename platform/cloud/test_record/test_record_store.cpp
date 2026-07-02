@@ -34,7 +34,6 @@ QMutex& storeMutex() {
 
 void logRecord(const QString& msg) {
     Qlog::showlog(QStringLiteral("[TestRecord] ") + msg);
-    qDebug() << QStringLiteral("[TestRecord]") << msg;
 }
 
 bool isItemResultToken(QString v) {

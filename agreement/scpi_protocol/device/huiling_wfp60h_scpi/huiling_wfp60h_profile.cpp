@@ -46,6 +46,26 @@ HuilingWfp60hScpiProfile HuilingWfp60hScpiProfile::fromVisaPowerSettings() {
     return profile;
 }
 
+HuilingWfp60hScpiProfile HuilingWfp60hScpiProfile::fromParamMap(const QVariantMap& map) {
+    HuilingWfp60hScpiProfile profile = defaults();
+    if (map.contains(QStringLiteral("voltage")))
+        profile.scpiPowerVoltageV = map.value(QStringLiteral("voltage")).toDouble();
+    if (map.contains(QStringLiteral("current")))
+        profile.scpiPowerCurrentA = map.value(QStringLiteral("current")).toDouble();
+    auto applyCmd = [&](const char* key, QString HuilingWfp60hScpiProfile::* member) {
+        const QString text = map.value(QString::fromLatin1(key)).toString().trimmed();
+        if (!text.isEmpty())
+            profile.*member = text;
+    };
+    applyCmd("scpiSetVoltageCmd", &HuilingWfp60hScpiProfile::scpiSetVoltageCmd);
+    applyCmd("scpiSetCurrentCmd", &HuilingWfp60hScpiProfile::scpiSetCurrentCmd);
+    applyCmd("scpiOutputOnCmd", &HuilingWfp60hScpiProfile::scpiOutputOnCmd);
+    applyCmd("scpiOutputOffCmd", &HuilingWfp60hScpiProfile::scpiOutputOffCmd);
+    applyCmd("scpiReadVoltageCmd", &HuilingWfp60hScpiProfile::scpiReadVoltageCmd);
+    applyCmd("scpiReadCurrentCmd", &HuilingWfp60hScpiProfile::scpiReadCurrentCmd);
+    return profile;
+}
+
 QString HuilingWfp60hScpiProfile::buildConfigureMeasureLine() const {
     return QStringLiteral("CONF:") + scpiCurrentType + QStringLiteral(":") + scpiCurrentMode + QStringLiteral(" ") +
         scpiRange;

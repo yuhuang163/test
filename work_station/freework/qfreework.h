@@ -4,6 +4,7 @@
 #include <QByteArray>
 #include <QHash>
 #include <QPair>
+#include <QElapsedTimer>
 #include <QTimer>
 #include <QWidget>
 
@@ -17,6 +18,7 @@
 #include "ui_qfreework.h"
 
 class QMessageBox;
+class QCustomPlot;
 
 namespace Ui {
 class QFreeWork;
@@ -82,6 +84,7 @@ class QFreeWork : public test_base {
         return activeTestCase_;
     }
     QString currentMacAddress() const;
+    QString parseMacFromSn(const QString& snCode);
     QString resolveTestCaseSendPlaceholder(const QString& text) const;
     QVariant resolveTestCaseSendParamTree(const QVariant& param) const;
     bool prepareTupleProductWriteForTestCase(const TestCaseDefinition& def, DeviceCmd cmd, const QVariant& wireParam);
@@ -89,6 +92,8 @@ class QFreeWork : public test_base {
     void executeProductSerialCase(const TestCaseDefinition& def);
     void executeFixturePcbaCase(const TestCaseDefinition& def);
     int resolveFixtureMachineIndex(const QVariant& param) const;
+    QVariantMap cachedHuilingVisaLink() const;
+    void updateHuilingVisaLinkCache(const QVariantMap& link);
     void onUsbInstrumentReport(const ProtocolReport& report) override;
 
   private:
@@ -269,6 +274,40 @@ class QFreeWork : public test_base {
     void applyRuntimeSnGateExpected(QVector<TestCaseGate>& gates);
     void appendTestCaseMes(const TestCaseDefinition& def, bool pass, const QString& testData);
     void applyFreeWorkExtraTabsVisible(bool visible);
+    bool isFreeWorkXwdKeyStation() const;
+    void loadSuctionGateSettings();
+    void runDongleSuctionSampleStep();
+    void setDongleSuctionReadEnabled(bool enabled);
+    void initSuctionChart();
+    void resetSuctionChart();
+    void appendSuctionChartSample(double leftKpa, double rightKpa);
+    void updateSuctionPeakLabels();
+
+    double suctionPeakTargetKpa_ = -36.0;
+    double suctionPeakToleranceKpa_ = 2.6;
+    double suctionPeakDiffMaxKpa_ = 2.6;
+    int suctionSampleDurationMs_ = 10000;
+    int suctionSampleIntervalMs_ = 20;
+    bool dongleSuctionReadEnabled_ = false;
+    bool dongleSuctionSampleActive_ = false;
+    QVector<double> dongleSuctionLeftSamples_;
+    QVector<double> dongleSuctionRightSamples_;
+    double dongleSuctionLastLeftKpa_ = 0.0;
+    double dongleSuctionLastRightKpa_ = 0.0;
+    QCustomPlot* suctionPlot_ = nullptr;
+    QVector<double> suctionChartTimeSec_;
+    QVector<double> suctionChartLeftKpa_;
+    QVector<double> suctionChartRightKpa_;
+    QElapsedTimer suctionChartTimer_;
+    bool suctionChartTimerStarted_ = false;
+    bool suctionLeftPeakInit_ = false;
+    bool suctionRightPeakInit_ = false;
+    double suctionLeftPeakHigh_ = 0.0;
+    double suctionLeftPeakLow_ = 0.0;
+    double suctionRightPeakHigh_ = 0.0;
+    double suctionRightPeakLow_ = 0.0;
+    /** 本轮回放中已配置的会凌 VISA 连接（地址/电压/电流等），开关步骤可复用。 */
+    QVariantMap huilingVisaLinkCache_;
 
   private slots:
     void initData();
@@ -289,6 +328,7 @@ class QFreeWork : public test_base {
     void refreshResultCode(ProtocolResultData data) override;
     void refreshTypeStatus(ProtocolTypeData data) override;
     void refreshAmmeterData(QString data) override;
+    void refreshDongleSuctionData(ProtocolDongleSuctionData data) override;
     void refreshWifiState(int state);
     void onProductInstrumentStopReceiveAckForPer(int recvPkts);
 
@@ -326,6 +366,7 @@ class QFreeWork : public test_base {
     void on_pushButton_2_clicked();
     void on_stopTest_clicked();
     void on_toggleExtraTabsButton_clicked();
+    void on_clearSuctionChartButton_clicked();
 
   signals:
     void send_go_next_focus();

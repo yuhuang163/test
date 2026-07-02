@@ -5,6 +5,7 @@
 #include <QByteArray>
 #include "../device/dongle/dongle_at_device.h"
 #include "../codec/at_line_codec.h"
+#include "../codec/at_suction_frame_codec.h"
 
 class QSerialPort;
 
@@ -36,6 +37,7 @@ class QatManager : public QObject {
   private:
     DongleAtDevice device_;
     AtLineCodec codec_;
+    AtSuctionFrameCodec suctionCodec_;
 };
 
 #endif // QATMANAGER_H

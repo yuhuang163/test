@@ -739,6 +739,20 @@ void QFreeWork::refreshAmmeterData(QString data) {
     }
 }
 
+void QFreeWork::refreshDongleSuctionData(ProtocolDongleSuctionData data) {
+    dongleSuctionLastLeftKpa_ = data.leftKpa;
+    dongleSuctionLastRightKpa_ = data.rightKpa;
+    qDebug() << getIndex() << "Dongle吸力：左" << data.leftKpa << "kPa 右" << data.rightKpa << "kPa";
+    if (dongleSuctionSampleActive_) {
+        dongleSuctionLeftSamples_.append(data.leftKpa);
+        dongleSuctionRightSamples_.append(data.rightKpa);
+    }
+    if (dongleSuctionReadEnabled_)
+        appendSuctionChartSample(data.leftKpa, data.rightKpa);
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolDongleSuctionData"), QVariant::fromValue(data)))
+        return;
+}
+
 void QFreeWork::refreshWifiMsg(QString data) {
     // qDebug() << getIndex()<< "收到wifi数据为" << data;
     QStringList parts = data.split("-");

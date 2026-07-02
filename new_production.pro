@@ -48,6 +48,7 @@ INCLUDEPATH += agreement/mes_protocol/device/jj_mes
 INCLUDEPATH += agreement/mes_protocol/device/lx_mes
 INCLUDEPATH += agreement/mes_protocol/device/wks_mes
 INCLUDEPATH += agreement/mes_protocol/device/xwd_mes
+INCLUDEPATH += agreement/mes_protocol/device/xzw_mes
 INCLUDEPATH += agreement/mes_protocol/device/ydm_mes
 INCLUDEPATH += agreement/adb_protocol/access
 INCLUDEPATH += agreement/adb_protocol/manager
@@ -175,6 +176,7 @@ SOURCES += \
     business/ble_ota/root_ble_ota.cpp \
     agreement/adb_protocol/manager/qadbmanager.cpp \
     agreement/at_protocol/codec/at_line_codec.cpp \
+    agreement/at_protocol/codec/at_suction_frame_codec.cpp \
     agreement/at_protocol/device/dongle/dongle_at_device.cpp \
     agreement/at_protocol/manager/qatmanager.cpp \
     agreement/product_protocol/protocol/qproduct.cpp \
@@ -194,6 +196,7 @@ SOURCES += \
     agreement/mes_protocol/access/qmes.cpp \
     agreement/mes_protocol/device/wks_mes/wksmes.cpp \
     agreement/mes_protocol/device/xwd_mes/xwdmes.cpp \
+    agreement/mes_protocol/device/xzw_mes/xzwmes.cpp \
     agreement/mes_protocol/device/ydm_mes/ydmmes.cpp \
     agreement/factory_protocol/protocol/qpb/ble_protocol/fx_ble_msg.pb.c \
     agreement/factory_protocol/protocol/qpb/ble_protocol/data_collection.pb.c \
@@ -320,6 +323,7 @@ HEADERS += \
     agreement/adb_protocol/manager/qadbmanager.h \
     agreement/at_protocol/access/at_types.h \
     agreement/at_protocol/codec/at_line_codec.h \
+    agreement/at_protocol/codec/at_suction_frame_codec.h \
     agreement/at_protocol/device/dongle/dongle_at_types.h \
     agreement/at_protocol/device/dongle/dongle_at_device.h \
     agreement/at_protocol/manager/qatmanager.h \
@@ -341,6 +345,7 @@ HEADERS += \
     agreement/mes_protocol/access/qmes.h \
     agreement/mes_protocol/device/wks_mes/wksmes.h \
     agreement/mes_protocol/device/xwd_mes/xwdmes.h \
+    agreement/mes_protocol/device/xzw_mes/xzwmes.h \
     agreement/mes_protocol/device/ydm_mes/ydmmes.h \
     agreement/factory_protocol/protocol/qpb/ble_protocol/fx_ble_msg.pb.h \
     agreement/factory_protocol/protocol/qpb/ble_protocol/data_collection.pb.h \

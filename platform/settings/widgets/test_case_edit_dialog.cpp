@@ -306,11 +306,15 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
         if (row) {
             out.valid = true;
             out.hint = ScpiPeriphCmdCatalog::paramUiHint(devRoute, name);
-            if (name == QLatin1String("ProgrammablePowerOutput") ||
-                name == QLatin1String("ArbCycles")) {
-                out.kind = SendCmdParamKind::Int;
-            } else if (name == QLatin1String("ConfigureProgrammablePower")) {
+            if (devRoute == ScpiDeviceRoute::HuilingWfp60h
+                && (name == QLatin1String("ConfigureProgrammablePower")
+                    || name == QLatin1String("ReadProgrammableVoltage")
+                    || name == QLatin1String("ReadProgrammableCurrent")
+                    || name == QLatin1String("InitializeProgrammablePower"))) {
                 out.kind = SendCmdParamKind::JsonMap;
+            } else if (name == QLatin1String("ProgrammablePowerOutput") ||
+                       name == QLatin1String("ArbCycles")) {
+                out.kind = SendCmdParamKind::Int;
             } else if (name == QLatin1String("ArbFile") ||
                        name == QLatin1String("SendRawLine") ||
                        name == QLatin1String("WriteLine") ||
@@ -383,7 +387,17 @@ void applySendParamToUi(const SendCmdParamUi& uiSchema, const QVariant& param, Q
     }
     if (uiSchema.kind == SendCmdParamKind::Int || uiSchema.kind == SendCmdParamKind::UInt) {
         stack->setCurrentWidget(pageInt);
-        spinBox->setValue(param.toInt());
+        int intVal = param.toInt();
+        if (param.canConvert<QVariantMap>()) {
+            const QVariantMap map = param.toMap();
+            if (map.contains(QStringLiteral("int")))
+                intVal = map.value(QStringLiteral("int")).toInt();
+            else if (map.contains(QStringLiteral("value")))
+                intVal = map.value(QStringLiteral("value")).toInt();
+            else if (map.size() == 1)
+                intVal = map.constBegin().value().toInt();
+        }
+        spinBox->setValue(intVal);
         return;
     }
     stack->setCurrentWidget(pageJson);
@@ -528,6 +542,9 @@ const QHash<QString, QString>& hookDisplayNameMap() {
         {QStringLiteral("NoOp"), QStringLiteral("空操作（示例）")},
         {QStringLiteral("FreeWorkNoOpDemo"), QStringLiteral("示例步骤")},
         {QStringLiteral("JIG_CURRENT_READ"), QStringLiteral("读取治具电流测量值")},
+        {QStringLiteral("DONGLE_SUCTION_ENABLE"), QStringLiteral("开启 dongle 吸力读取")},
+        {QStringLiteral("DONGLE_SUCTION_DISABLE"), QStringLiteral("关闭 dongle 吸力读取")},
+        {QStringLiteral("DONGLE_SUCTION_SAMPLE"), QStringLiteral("采集双通道吸力")},
         {QStringLiteral("SN_WRITE_TAIL"), QStringLiteral("写入 SN 码")},
         {QStringLiteral("PLC_MODBUS_CONN"), QStringLiteral("PLC Modbus 连接")},
         {QStringLiteral("PLC_V3_SWITCH_RIGHT_WHOLE"), QStringLiteral("PLC+V3 旋钮整步右旋")},

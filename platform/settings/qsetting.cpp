@@ -124,8 +124,10 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
                                     "电机图像", "按键图像", "显示全部图像"};
     ui->comboBox_displayImageType->addItems(displayImageType);
 
-    QStringList factoryList = {"lx", "xwd", "hq", "wks", "ydm", "byd", "hz", "无mes厂"};
+    QStringList factoryList = {"lx", "xwd", "xzw", "hq", "wks", "ydm", "byd", "hz", "无mes厂"};
     ui->comboBox_factory->addItems(factoryList);
+    connect(ui->comboBox_factory, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+            [this](int) { RestoreFacDefaultSetting(); });
 
     initTupleEnvironmentCombo();
     loadConfig();
@@ -349,6 +351,7 @@ void qsetting::loadConfig() {
 
     syncFactoryCloudDerivedUrls();
 
+    RestoreFacDefaultSetting();
 }
 void qsetting::updateMainStyle(QString style) {
     applyWidgetStyleSheet(this, style);
@@ -696,6 +699,8 @@ void qsetting::RestoreFacDefaultSetting() {
     ui->lineEdit_weikesen_order->hide();
     ui->label_78->hide();
     ui->lineEdit_mesUrl->hide();
+    ui->label_75->hide();
+    ui->lineEdit_station->hide();
     ui->label_74->hide();
     ui->lineEdit_macStation->hide();
     ui->label_79->hide();
@@ -740,6 +745,8 @@ void qsetting::RestoreFacDefaultSetting() {
         ui->lineEdit_weikesen_order->show();
     }
     if (ui->comboBox_factory->currentText() == "xwd") {
+        ui->label_75->show();
+        ui->lineEdit_station->show();
         ui->label_74->show();
         ui->lineEdit_macStation->show();
         ui->label_mes_login_account->show();
@@ -750,6 +757,29 @@ void qsetting::RestoreFacDefaultSetting() {
         ui->lineEdit_mes_operator->show();
         ui->label_mes_login_station->show();
         ui->lineEdit_mes_login_station->show();
+        ui->lineEdit_station->setToolTip(
+            QStringLiteral("过站工站号（Mes/machineNo），groupTest / wipTest 的 machineNo。"));
+        ui->lineEdit_macStation->setToolTip(
+            QStringLiteral("getTestData 工序代码（MES/xwdWpCode），如 Q20-JTDLTEST。"));
+        ui->lineEdit_mes_login_account->setToolTip(QStringLiteral("登录账号（Mes/M_USERNO）。"));
+        ui->lineEdit_mes_login_password->setToolTip(QStringLiteral("登录密码（Mes/M_PASSWORD）。"));
+        ui->lineEdit_mes_operator->setToolTip(QStringLiteral("过站员工号（Mes/mUserno），对应 emp / mUserno。"));
+        ui->lineEdit_mes_login_station->setToolTip(
+            QStringLiteral("登录工站（Mes/M_MACHINENO），checkUserDo 的 machineNo。"));
+    }
+    if (ui->comboBox_factory->currentText() == "xzw") {
+        ui->label_78->show();
+        ui->lineEdit_mesUrl->show();
+        ui->label_75->show();
+        ui->lineEdit_station->show();
+        ui->label_mes_operator->show();
+        ui->lineEdit_mes_operator->show();
+        ui->lineEdit_mesUrl->setToolTip(
+            QStringLiteral("Sunwinon MES 根地址（Mes/NET），如 https://hzznyjmes.sunwoda.com/ims-pms；"
+                           "留空则用该默认地址。"));
+        ui->lineEdit_station->setToolTip(
+            QStringLiteral("工站号（Mes/machineNo），groupTest / wipTest 的 machineNo。"));
+        ui->lineEdit_mes_operator->setToolTip(QStringLiteral("过站员工号（Mes/mUserno），对应 emp / mUserno。"));
     }
     if (ui->comboBox_factory->currentText() == "hq") {
         ui->label_action_huaqin->show();

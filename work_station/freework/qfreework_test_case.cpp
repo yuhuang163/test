@@ -198,6 +198,75 @@ CmwScpiCmd cmwScpiCmdFromName(const QString& name) {
     return CmwScpiCmd::ClearStatus;
 }
 
+int paramMapSwitchValue(const QVariantMap& map) {
+    if (map.contains(QStringLiteral("int")))
+        return map.value(QStringLiteral("int")).toInt();
+    if (map.contains(QStringLiteral("value")))
+        return map.value(QStringLiteral("value")).toInt();
+    if (map.size() == 1)
+        return map.constBegin().value().toInt();
+    return 0;
+}
+
+QVariantMap huilingVisaLinkKeysFromMap(const QVariantMap& map) {
+    static const QStringList keys = {
+        QStringLiteral("visaAddress"),
+        QStringLiteral("voltage"),
+        QStringLiteral("current"),
+        QStringLiteral("scpiSetVoltageCmd"),
+        QStringLiteral("scpiSetCurrentCmd"),
+        QStringLiteral("scpiOutputOnCmd"),
+        QStringLiteral("scpiOutputOffCmd"),
+        QStringLiteral("scpiReadVoltageCmd"),
+        QStringLiteral("scpiReadCurrentCmd"),
+    };
+    QVariantMap out;
+    for (const QString& key : keys) {
+        if (map.contains(key))
+            out.insert(key, map.value(key));
+    }
+    return out;
+}
+
+struct HuilingScpiStepParams {
+    QVariantMap linkMap;
+    QVariant commandParam;
+};
+
+HuilingScpiStepParams splitHuilingScpiStepParam(const QVariant& resolved, const QString& deviceCmd) {
+    HuilingScpiStepParams out;
+    if (!resolved.canConvert<QVariantMap>()) {
+        out.commandParam = resolved;
+        return out;
+    }
+    const QVariantMap map = resolved.toMap();
+    out.linkMap = huilingVisaLinkKeysFromMap(map);
+    if (deviceCmd == QLatin1String("ProgrammablePowerOutput")) {
+        out.commandParam = paramMapSwitchValue(map);
+    } else if (deviceCmd == QLatin1String("ConfigureProgrammablePower")) {
+        QVariantMap cmd;
+        if (map.contains(QStringLiteral("voltage")))
+            cmd.insert(QStringLiteral("voltage"), map.value(QStringLiteral("voltage")));
+        if (map.contains(QStringLiteral("current")))
+            cmd.insert(QStringLiteral("current"), map.value(QStringLiteral("current")));
+        out.commandParam = cmd;
+    } else if (deviceCmd == QLatin1String("SendRawLine")) {
+        if (map.contains(QStringLiteral("string")))
+            out.commandParam = map.value(QStringLiteral("string"));
+        else if (map.contains(QStringLiteral("line")))
+            out.commandParam = map.value(QStringLiteral("line"));
+        else
+            out.commandParam = map.value(QStringLiteral("value"));
+    } else {
+        out.commandParam = QVariant();
+    }
+    return out;
+}
+
+double huilingParamDouble(const QVariantMap& map, const QString& key, double fallback) {
+    return map.contains(key) ? map.value(key).toDouble() : fallback;
+}
+
 } // namespace
 
 int QFreeWork::resolveFixtureMachineIndex(const QVariant& param) const {
@@ -209,6 +278,16 @@ int QFreeWork::resolveFixtureMachineIndex(const QVariant& param) const {
     if (idx <= 0)
         return qBound(1, getIndex(), 15);
     return idx;
+}
+
+QVariantMap QFreeWork::cachedHuilingVisaLink() const {
+    return huilingVisaLinkCache_;
+}
+
+void QFreeWork::updateHuilingVisaLinkCache(const QVariantMap& link) {
+    if (link.value(QStringLiteral("visaAddress")).toString().trimmed().isEmpty())
+        return;
+    huilingVisaLinkCache_ = link;
 }
 
 QString QFreeWork::resolveTestCaseSendPlaceholder(const QString& text) const {
@@ -225,6 +304,11 @@ QString QFreeWork::resolveTestCaseSendPlaceholder(const QString& text) const {
         return tupleData_.deviceSecret;
     default:
         break;
+    }
+    if (text.startsWith(QStringLiteral("$SETTINGS:"))) {
+        const QString key = text.mid(10).trimmed();
+        if (!key.isEmpty())
+            return SETTINGS.value(key).toString();
     }
     return text;
 }
@@ -567,22 +651,58 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
         QString errStr;
 
         if (devRoute == ScpiDeviceRoute::HuilingWfp60h) {
+            const HuilingScpiStepParams stepParams =
+                splitHuilingScpiStepParam(resolvedParam, def.send.deviceCmd);
+            QVariantMap linkMap = stepParams.linkMap;
+            if (linkMap.value(QStringLiteral("visaAddress")).toString().trimmed().isEmpty())
+                linkMap = ctx->cachedHuilingVisaLink();
+            const int visaTimeoutMs = TestCaseRunner::commandTimeoutMs(def);
+            if (!ctx->scpiVisaManager()->loadHuilingVisaFromParamMap(linkMap, visaTimeoutMs)) {
+                ctx->showlog(QStringLiteral("会凌程控电源：请先执行配置步骤（填写 visaAddress），或在本步参数中指定 VISA 地址"));
+                ctx->markActiveTestCaseStepDone(false, QStringLiteral("visaAddress缺失"), QStringLiteral("失败"));
+                return;
+            }
+            if (!stepParams.linkMap.value(QStringLiteral("visaAddress")).toString().trimmed().isEmpty())
+                ctx->updateHuilingVisaLinkCache(stepParams.linkMap);
             HuilingScpiCmd cmd = huilingScpiCmdFromName(def.send.deviceCmd);
-            bool ok = ctx->scpiVisaManager()->exec(cmd, resolvedParam, &errStr);
+            bool ok = ctx->scpiVisaManager()->exec(cmd, stepParams.commandParam, &errStr);
+            if (!ok) {
+                ctx->resetVisaBackend();
+                ok = ctx->scpiVisaManager()->exec(cmd, stepParams.commandParam, &errStr);
+            }
             if (!ok) {
                 ctx->showlog(QStringLiteral("会凌电源指令 [%1] 执行失败: %2").arg(def.send.deviceCmd, errStr));
                 ctx->markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
             } else {
+                QString testData = QStringLiteral("-");
+                const HuilingWfp60hScpiProfile profile = ctx->scpiVisaManager()->huilingActiveProfile();
+                if (def.send.deviceCmd == QLatin1String("ProgrammablePowerOutput")) {
+                    const bool enable = stepParams.commandParam.toBool();
+                    testData = enable ? QStringLiteral("ON") : QStringLiteral("OFF");
+                    ctx->showlog(QStringLiteral("程控电源输出%1").arg(enable ? QStringLiteral("已打开") : QStringLiteral("已关闭")));
+                } else if (def.send.deviceCmd == QLatin1String("ConfigureProgrammablePower")) {
+                    const QVariantMap cmdMap = stepParams.commandParam.toMap();
+                    const double voltageV =
+                        huilingParamDouble(cmdMap, QStringLiteral("voltage"), profile.scpiPowerVoltageV);
+                    const double currentA =
+                        huilingParamDouble(cmdMap, QStringLiteral("current"), profile.scpiPowerCurrentA);
+                    testData = QStringLiteral("V=%1V,I=%2A").arg(voltageV, 0, 'f', 2).arg(currentA, 0, 'f', 3);
+                    ctx->showlog(QStringLiteral("程控电源已配置：%1 V，限流 %2 A").arg(voltageV, 0, 'f', 2).arg(currentA, 0, 'f', 3));
+                }
                 if (def.send.action == TestCaseSendAction::Get) {
-                    const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
-                    QTimer::singleShot(timeoutMs, ctx, [ctx, def]() {
-                        if (!ctx->isActiveTestCaseStep(def.meta.name) || ctx->isActiveTestCaseStepDone())
-                            return;
-                        ctx->showlog(QStringLiteral("SCPI 设备等待超时：%1").arg(def.send.deviceCmd));
-                        ctx->markActiveTestCaseStepDone(false, QStringLiteral("超时"), QStringLiteral("失败"));
-                    });
+                    if (!def.gate.enabled) {
+                        ctx->markActiveTestCaseStepDone(true, testData, QStringLiteral("通过"));
+                    } else {
+                        const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+                        QTimer::singleShot(timeoutMs, ctx, [ctx, def]() {
+                            if (!ctx->isActiveTestCaseStep(def.meta.name) || ctx->isActiveTestCaseStepDone())
+                                return;
+                            ctx->showlog(QStringLiteral("SCPI 设备等待超时：%1").arg(def.send.deviceCmd));
+                            ctx->markActiveTestCaseStepDone(false, QStringLiteral("超时"), QStringLiteral("失败"));
+                        });
+                    }
                 } else {
-                    ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
+                    ctx->markActiveTestCaseStepDone(true, testData, QStringLiteral("通过"));
                 }
             }
         } else if (devRoute == ScpiDeviceRoute::RsCmw100) {

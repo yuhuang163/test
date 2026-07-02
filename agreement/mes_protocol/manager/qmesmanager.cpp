@@ -4,6 +4,7 @@ QMesManager::QMesManager() {
     MesSystems.push_back(&BydMes);
     MesSystems.push_back(&JjMes);
     MesSystems.push_back(&XwdMes);
+    MesSystems.push_back(&XzwMes);
     MesSystems.push_back(&LxMes);
     MesSystems.push_back(&HqMes);
     MesSystems.push_back(&HzMes);
@@ -24,6 +25,11 @@ QMesManager::QMesManager() {
     connect(&XwdMes, &Qmes::operateMesSucess, this, &QMesManager::handleMesSucess);
     connect(&XwdMes, &Qmes::operateMesError, this, &QMesManager::handleMesError);
     connect(&XwdMes, &Qmes::sendMesTestvalue, this, &QMesManager::handleMesTestvalue);
+
+    connect(&XzwMes, &Qmes::sendMesState, this, &QMesManager::handleMesState);
+    connect(&XzwMes, &Qmes::operateMesSucess, this, &QMesManager::handleMesSucess);
+    connect(&XzwMes, &Qmes::operateMesError, this, &QMesManager::handleMesError);
+    connect(&XzwMes, &Qmes::sendMesTestvalue, this, &QMesManager::handleMesTestvalue);
 
     connect(&HqMes, &Qmes::sendMesState, this, &QMesManager::handleMesState);
     connect(&HqMes, &Qmes::operateMesSucess, this, &QMesManager::handleMesSucess);

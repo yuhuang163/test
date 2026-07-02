@@ -67,6 +67,7 @@ class suction : public test_base {
     double damLeftKpa_ = 0.0;
     double damRightKpa_ = 0.0;
     bool suctionUsePicoSensor = true;
+    bool suctionUseDongleSensor = false;
     QString picoRxBuffer_;
     int suctionSampleDurationMs = 10000;
     int suctionSampleIntervalMs = 20;
@@ -139,6 +140,7 @@ class suction : public test_base {
     bool sendPicoAtCommand(const QString& cmd);
     void sendPicoSysModeStart();
     void sendPicoSysModeStop();
+    void setDongleSuctionRead(bool enabled);
     void refreshProgrammablePowerVoltage(double valueVolts, bool ok);
     void refreshProgrammablePowerCurrent(double valueAmps, bool ok);
 
@@ -157,6 +159,7 @@ class suction : public test_base {
     void refreshBaseData(ProtocolBaseInfoData data) override;
     void refreshMusicState(ProtocolMusicStateData data) override;
     void refreshAmmeterData(QString data) override;
+    void refreshDongleSuctionData(ProtocolDongleSuctionData data) override;
 
     // MES / 绑定
     void getTestValue(const int mechines, const QString value) override;

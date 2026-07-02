@@ -50,6 +50,7 @@
 #include <qsetting.h>   //上位机设置界面
 #include <scpi_types.h> // USB 串口协议路由枚举
 #include <xwdmes.h>     // 欣旺达的mes头文件
+#include <xzwmes.h>     // 欣智旺的mes头文件
 
 #define WAITTIME 0 // 指令的300延时防止粘包
 

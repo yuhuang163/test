@@ -300,7 +300,10 @@ QString bydmes::settingsValue(const QString& key, const QString& fallback) const
         s.sync();
         const QString value = bydMesExternalIniValue(s, key);
         if (!value.isEmpty()) {
-            qDebug() << "BYD MES settingsValue:" << key << "=" << value;
+            if (!settingsValueLoggedKeys_.contains(key)) {
+                qDebug() << "BYD MES settingsValue:" << key << "=" << value;
+                settingsValueLoggedKeys_.insert(key);
+            }
             return value;
         }
     }
@@ -337,7 +340,6 @@ QJsonArray bydmes::buildBydTestDataList(const MesPacketData& pack, const QString
         item[QStringLiteral("REMARK")] = pack.remark.isEmpty() ? QString("备注信息") : pack.remark;
         item[QStringLiteral("TEXT")] = QString("备注");
         list.append(item);
-        qDebug() << "BYD MES TestDataList item:" << item;
     }
 
     qDebug() << "BYD MES TestDataList:" << list;
@@ -500,9 +502,6 @@ QByteArray bydmes::sendRequest(const QString& method, const QJsonObject& param, 
     // qDebug 默认对 QString 转义内部引号；noquote 便于核对 JSON。URL 中 %7B、%E8… 为百分号编码。
     qDebug().noquote() << QStringLiteral("BYD MES request (param): ") + paramStr;
     // qDebug().noquote() << QStringLiteral("BYD MES request (URL): ") + url.toString();
-    const QUrlQuery urlQuery(url);
-    const QString paramDecoded = urlQuery.queryItemValue(QStringLiteral("param"));
-    qDebug().noquote() << QStringLiteral("BYD MES request (param 从 URL 解码): ") + paramDecoded;
 
     QNetworkAccessManager manager;
     QNetworkRequest request(url);
@@ -697,6 +696,8 @@ void bydmes::TestPass(MesPacketData pack) {
     if (!ensureExternalMesConfig(pack)) {
         return;
     }
+
+    settingsValueLoggedKeys_.clear();
 
     const QString normalizedResult = pack.result.trimmed().toUpper();
     const bool isFailResult = normalizedResult == "FAIL" || normalizedResult == "NG" || pack.result.trimmed() == QStringLiteral("失败");
