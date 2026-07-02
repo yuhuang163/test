@@ -340,6 +340,7 @@ class MainWindow : public QMainWindow {
     void sendPicture(const QString& url, const QString& filePath);
     void renamePictureFilesInFolder(const QString& folderPath);
     void convertImageTo16BitPaletteHigh(const QString& imagePath, const QString& outputFileName);
+    void convertImageTo16BitPaletteHigh(const QImage& srcImage, const QString& outputFileName);
     void refreshImuCaliResult(ProtocolImuCalibResultData x);
     void updateComboBox();
     void getMacAddress(const QByteArray& byte);
@@ -550,6 +551,7 @@ class MainWindow : public QMainWindow {
     void on_send_audio_clicked();
     void on_audio_volume_valueChanged(int value);
     void on_is_audio_mode_stateChanged(int arg1);
+    void on_checkBox_uiPreviewJpegLoss_stateChanged(int arg1);
     void on_play_speed_returnPressed();
     void on_uipasswordInput_returnPressed();
     void on_ui_ypos_returnPressed();

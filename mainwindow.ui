@@ -492,7 +492,7 @@
                <bool>true</bool>
               </property>
               <property name="currentIndex">
-               <number>16</number>
+               <number>13</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -5115,12 +5115,91 @@ border-color: rgb(255, 165, 0)</string>
                  <layout class="QHBoxLayout" name="horizontalLayout_93">
                   <item>
                    <widget class="QCheckBox" name="is_audio_mode">
+                    <property name="enabled">
+                     <bool>true</bool>
+                    </property>
                     <property name="text">
                      <string>是否是音频传输模式</string>
+                    </property>
+                    <property name="checkable">
+                     <bool>true</bool>
+                    </property>
+                    <property name="checked">
+                     <bool>false</bool>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QCheckBox" name="checkBox_uiPreviewRgb888">
+                    <property name="text">
+                     <string>RGB888发送（24位真彩）</string>
                     </property>
                     <property name="checked">
                      <bool>true</bool>
                     </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QCheckBox" name="checkBox_uiPreviewJpegLoss">
+                    <property name="text">
+                     <string>模拟JPG压缩画质</string>
+                    </property>
+                    <property name="checked">
+                     <bool>false</bool>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="label_uiPreviewJpegQuality">
+                    <property name="enabled">
+                     <bool>false</bool>
+                    </property>
+                    <property name="text">
+                     <string>JPG质量</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QSpinBox" name="spinBox_uiPreviewJpegQuality">
+                    <property name="enabled">
+                     <bool>false</bool>
+                    </property>
+                    <property name="minimum">
+                     <number>1</number>
+                    </property>
+                    <property name="maximum">
+                     <number>100</number>
+                    </property>
+                    <property name="value">
+                     <number>75</number>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QLabel" name="label_uiPreviewJpegSubsampling">
+                    <property name="enabled">
+                     <bool>false</bool>
+                    </property>
+                    <property name="text">
+                     <string>JPG采样</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QComboBox" name="comboBox_uiPreviewJpegSubsampling">
+                    <property name="enabled">
+                     <bool>false</bool>
+                    </property>
+                    <item>
+                     <property name="text">
+                      <string>4:4:4</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>4:2:2</string>
+                     </property>
+                    </item>
                    </widget>
                   </item>
                   <item>
@@ -5176,7 +5255,7 @@ border-color: rgb(255, 165, 0)</string>
                   <item>
                    <widget class="QLineEdit" name="ui_ip">
                     <property name="text">
-                     <string>http://192.168.137.133/</string>
+                     <string>http://192.168.137.188/</string>
                     </property>
                    </widget>
                   </item>

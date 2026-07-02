@@ -456,6 +456,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
             refreshSettingsMenuVisibility();
         }
     });
+    on_is_audio_mode_stateChanged(0);
 }
 
 void MainWindow::onProtocolReport(const ProtocolReport& report) {
@@ -3231,15 +3232,35 @@ void MainWindow::on_play_picture_clicked() {
         // 检查响应状态码
         if (reply->error() == QNetworkReply::NoError) {
             qDebug() << "Request succeeded";
-            showlog("播放完成");
+            showlog("播放触发成功，正在读取fps");
+            QNetworkRequest fpsRequest;
+            fpsRequest.setUrl(QUrl(ui->ui_ip->text() + "/playback_fps"));
+            QNetworkReply* fpsReply = manager->get(fpsRequest);
+            connect(fpsReply, &QNetworkReply::finished, [=]() {
+                if (fpsReply->error() == QNetworkReply::NoError) {
+                    const QString fpsText = QString::fromUtf8(fpsReply->readAll()).trimmed();
+                    bool ok = false;
+                    const double fps = fpsText.toDouble(&ok);
+                    if (ok) {
+                        showlog(QString("播放完成，fps=%1").arg(fps, 0, 'f', 2));
+                    } else {
+                        showlog("读取fps失败：返回格式异常 " + fpsText);
+                    }
+                } else {
+                    qDebug() << "fps request failed:" << fpsReply->errorString();
+                    showlog("读取fps失败");
+                }
+                fpsReply->deleteLater();
+                manager->deleteLater();
+            });
         } else {
             qDebug() << "Request failed:" << reply->errorString();
             showlog("播放失败");
+            manager->deleteLater();
         }
 
         // 释放资源
         reply->deleteLater();
-        manager->deleteLater();
     });
 }
 
@@ -4249,6 +4270,12 @@ void MainWindow::on_is_audio_mode_stateChanged(int arg1) {
         ui->audio_volume->show();
         ui->label_93->show();
         ui->label_94->show();
+        ui->checkBox_uiPreviewRgb888->hide();
+        ui->checkBox_uiPreviewJpegLoss->hide();
+        ui->label_uiPreviewJpegQuality->hide();
+        ui->spinBox_uiPreviewJpegQuality->hide();
+        ui->label_uiPreviewJpegSubsampling->hide();
+        ui->comboBox_uiPreviewJpegSubsampling->hide();
         ui->play_speed->setText("1");
     }
 
@@ -4263,8 +4290,23 @@ void MainWindow::on_is_audio_mode_stateChanged(int arg1) {
         ui->audio_volume->hide();
         ui->label_93->hide();
         ui->label_94->hide();
+        ui->checkBox_uiPreviewRgb888->show();
+        ui->checkBox_uiPreviewJpegLoss->show();
+        ui->label_uiPreviewJpegQuality->show();
+        ui->spinBox_uiPreviewJpegQuality->show();
+        ui->label_uiPreviewJpegSubsampling->show();
+        ui->comboBox_uiPreviewJpegSubsampling->show();
+        on_checkBox_uiPreviewJpegLoss_stateChanged(ui->checkBox_uiPreviewJpegLoss->checkState());
     }
     qDebug() << "on_is_audio_mode_stateChanged" << arg1;
+}
+
+void MainWindow::on_checkBox_uiPreviewJpegLoss_stateChanged(int arg1) {
+    const bool enabled = arg1 != Qt::Unchecked;
+    ui->spinBox_uiPreviewJpegQuality->setEnabled(enabled);
+    ui->label_uiPreviewJpegQuality->setEnabled(enabled);
+    ui->comboBox_uiPreviewJpegSubsampling->setEnabled(enabled);
+    ui->label_uiPreviewJpegSubsampling->setEnabled(enabled);
 }
 
 void MainWindow::on_play_speed_returnPressed() {

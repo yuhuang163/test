@@ -5,6 +5,15 @@
 #include "my_set/my_typedef.h"
 #include "host_ota_service.h"
 #include "ui_mainwindow.h"
+#include <QBuffer>
+
+#ifdef Q_OS_WIN
+#include <windows.h>
+#include <wincodec.h>
+
+#pragma comment(lib, "ole32.lib")
+#pragma comment(lib, "windowscodecs.lib")
+#endif
 // #include "xlsxdocument.h"
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
@@ -800,18 +809,383 @@ void MainWindow::solve_picture_frame(QByteArray picturedata) {
         QCoreApplication::processEvents();
     }
 }
+
+namespace {
+
+QImage flattenAlphaToBlack(const QImage& srcImage) {
+    if (!srcImage.hasAlphaChannel()) {
+        return srcImage.convertToFormat(QImage::Format_RGB888);
+    }
+
+    // 极低 alpha 视为背景，去掉边缘白点/杂点
+    constexpr int kMinVisibleAlpha = 16;
+
+    const QImage argbImage = srcImage.convertToFormat(QImage::Format_ARGB32);
+    QImage rgbImage(argbImage.size(), QImage::Format_RGB888);
+    rgbImage.fill(0);
+    for (int y = 0; y < argbImage.height(); ++y) {
+        const QRgb* srcLine = reinterpret_cast<const QRgb*>(argbImage.constScanLine(y));
+        uchar* dstLine = rgbImage.scanLine(y);
+        for (int x = 0; x < argbImage.width(); ++x) {
+            const QRgb pixel = srcLine[x];
+            const int alpha = qAlpha(pixel);
+            if (alpha < kMinVisibleAlpha) {
+                continue;
+            }
+            int r = qRed(pixel);
+            int g = qGreen(pixel);
+            int b = qBlue(pixel);
+            // 半透明边缘按 alpha 合成到黑底，消除 PNG 抗锯齿留下的白边/白点；不透明像素不变
+            if (alpha < 255) {
+                r = (r * alpha + 127) / 255;
+                g = (g * alpha + 127) / 255;
+                b = (b * alpha + 127) / 255;
+            }
+            dstLine[x * 3 + 0] = static_cast<uchar>(r);
+            dstLine[x * 3 + 1] = static_cast<uchar>(g);
+            dstLine[x * 3 + 2] = static_cast<uchar>(b);
+        }
+    }
+    return rgbImage;
+}
+
+enum UiPreviewJpegSubsamplingMode {
+    UiPreviewJpegSubsampling444 = 0,
+    UiPreviewJpegSubsampling422 = 1,
+};
+
+#ifdef Q_OS_WIN
+bool decodeJpegFromBytesWic(const QByteArray& jpegBytes, QImage* outImage) {
+    if (!outImage || jpegBytes.isEmpty()) {
+        return false;
+    }
+
+    HGLOBAL hGlobal = GlobalAlloc(GMEM_MOVEABLE, static_cast<SIZE_T>(jpegBytes.size()));
+    if (!hGlobal) {
+        return false;
+    }
+    void* dest = GlobalLock(hGlobal);
+    if (!dest) {
+        GlobalFree(hGlobal);
+        return false;
+    }
+    memcpy(dest, jpegBytes.constData(), static_cast<size_t>(jpegBytes.size()));
+    GlobalUnlock(hGlobal);
+
+    IStream* stream = nullptr;
+    HRESULT hr = CreateStreamOnHGlobal(hGlobal, TRUE, &stream);
+    if (FAILED(hr) || !stream) {
+        GlobalFree(hGlobal);
+        return false;
+    }
+
+    IWICImagingFactory* factory = nullptr;
+    hr = CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_IWICImagingFactory,
+                          reinterpret_cast<void**>(&factory));
+    if (FAILED(hr) || !factory) {
+        stream->Release();
+        return false;
+    }
+
+    IWICBitmapDecoder* decoder = nullptr;
+    hr = factory->CreateDecoderFromStream(stream, nullptr, WICDecodeMetadataCacheOnLoad, &decoder);
+    if (FAILED(hr) || !decoder) {
+        factory->Release();
+        stream->Release();
+        return false;
+    }
+
+    IWICBitmapFrameDecode* frame = nullptr;
+    hr = decoder->GetFrame(0, &frame);
+    if (FAILED(hr) || !frame) {
+        decoder->Release();
+        factory->Release();
+        stream->Release();
+        return false;
+    }
+
+    IWICFormatConverter* converter = nullptr;
+    hr = factory->CreateFormatConverter(&converter);
+    if (FAILED(hr) || !converter) {
+        frame->Release();
+        decoder->Release();
+        factory->Release();
+        stream->Release();
+        return false;
+    }
+
+    hr = converter->Initialize(frame, GUID_WICPixelFormat24bppRGB, WICBitmapDitherTypeNone, nullptr, 0.0,
+                               WICBitmapPaletteTypeCustom);
+    if (FAILED(hr)) {
+        converter->Release();
+        frame->Release();
+        decoder->Release();
+        factory->Release();
+        stream->Release();
+        return false;
+    }
+
+    UINT width = 0;
+    UINT height = 0;
+    hr = converter->GetSize(&width, &height);
+    if (FAILED(hr) || width == 0 || height == 0) {
+        converter->Release();
+        frame->Release();
+        decoder->Release();
+        factory->Release();
+        stream->Release();
+        return false;
+    }
+
+    QImage image(static_cast<int>(width), static_cast<int>(height), QImage::Format_RGB888);
+    hr = converter->CopyPixels(nullptr, static_cast<UINT>(image.bytesPerLine()),
+                               static_cast<UINT>(image.bytesPerLine() * image.height()), image.bits());
+
+    converter->Release();
+    frame->Release();
+    decoder->Release();
+    factory->Release();
+    stream->Release();
+
+    if (FAILED(hr)) {
+        return false;
+    }
+    *outImage = image;
+    return true;
+}
+
+bool encodeRgb888ToJpegWic(const QImage& srcImage, int quality, int subsamplingMode, QByteArray* outBytes) {
+    if (!outBytes || srcImage.isNull()) {
+        return false;
+    }
+
+    const QImage rgbImage = srcImage.convertToFormat(QImage::Format_RGB888);
+    const UINT width = static_cast<UINT>(rgbImage.width());
+    const UINT height = static_cast<UINT>(rgbImage.height());
+    const UINT stride = static_cast<UINT>(rgbImage.bytesPerLine());
+    const UINT bufferSize = stride * height;
+
+    IWICImagingFactory* factory = nullptr;
+    HRESULT hr = CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_IWICImagingFactory,
+                                  reinterpret_cast<void**>(&factory));
+    if (FAILED(hr) || !factory) {
+        return false;
+    }
+
+    IStream* stream = nullptr;
+    hr = CreateStreamOnHGlobal(nullptr, TRUE, &stream);
+    if (FAILED(hr) || !stream) {
+        factory->Release();
+        return false;
+    }
+
+    IWICBitmapEncoder* encoder = nullptr;
+    hr = factory->CreateEncoder(GUID_ContainerFormatJpeg, nullptr, &encoder);
+    if (FAILED(hr) || !encoder) {
+        stream->Release();
+        factory->Release();
+        return false;
+    }
+
+    hr = encoder->Initialize(stream, WICBitmapEncoderNoCache);
+    if (FAILED(hr)) {
+        encoder->Release();
+        stream->Release();
+        factory->Release();
+        return false;
+    }
+
+    IWICBitmapFrameEncode* frame = nullptr;
+    IPropertyBag2* propertyBag = nullptr;
+    hr = encoder->CreateNewFrame(&frame, &propertyBag);
+    if (FAILED(hr) || !frame || !propertyBag) {
+        if (propertyBag) {
+            propertyBag->Release();
+        }
+        if (frame) {
+            frame->Release();
+        }
+        encoder->Release();
+        stream->Release();
+        factory->Release();
+        return false;
+    }
+
+    PROPBAG2 options[2];
+    VARIANT values[2];
+    memset(options, 0, sizeof(options));
+    memset(values, 0, sizeof(values));
+
+    options[0].pstrName = const_cast<LPOLESTR>(L"ImageQuality");
+    options[0].vt = VT_R4;
+    options[0].dwType = PROPBAG2_TYPE_DATA;
+    values[0].vt = VT_R4;
+    values[0].fltVal = qBound(1, quality, 100) / 100.0f;
+
+    options[1].pstrName = const_cast<LPOLESTR>(L"SampleFactors");
+    options[1].vt = VT_UI4;
+    options[1].dwType = PROPBAG2_TYPE_DATA;
+    values[1].vt = VT_UI4;
+    values[1].ulVal = subsamplingMode == UiPreviewJpegSubsampling422 ? WIC_JPEG_SAMPLE_FACTORS_THREE_422
+                                                                     : WIC_JPEG_SAMPLE_FACTORS_THREE_444;
+
+    hr = propertyBag->Write(2, options, values);
+    if (FAILED(hr)) {
+        propertyBag->Release();
+        frame->Release();
+        encoder->Release();
+        stream->Release();
+        factory->Release();
+        return false;
+    }
+
+    hr = frame->Initialize(propertyBag);
+    propertyBag->Release();
+    if (FAILED(hr)) {
+        frame->Release();
+        encoder->Release();
+        stream->Release();
+        factory->Release();
+        return false;
+    }
+
+    IWICBitmap* bitmap = nullptr;
+    hr = factory->CreateBitmapFromMemory(width, height, GUID_WICPixelFormat24bppRGB, stride, bufferSize,
+                                         const_cast<BYTE*>(rgbImage.constBits()), &bitmap);
+    if (FAILED(hr) || !bitmap) {
+        frame->Release();
+        encoder->Release();
+        stream->Release();
+        factory->Release();
+        return false;
+    }
+
+    hr = frame->WriteSource(bitmap, nullptr);
+    bitmap->Release();
+    if (FAILED(hr)) {
+        frame->Release();
+        encoder->Release();
+        stream->Release();
+        factory->Release();
+        return false;
+    }
+
+    hr = frame->Commit();
+    if (FAILED(hr)) {
+        frame->Release();
+        encoder->Release();
+        stream->Release();
+        factory->Release();
+        return false;
+    }
+
+    hr = encoder->Commit();
+    frame->Release();
+    encoder->Release();
+    if (FAILED(hr)) {
+        stream->Release();
+        factory->Release();
+        return false;
+    }
+
+    HGLOBAL hGlobal = nullptr;
+    hr = GetHGlobalFromStream(stream, &hGlobal);
+    if (SUCCEEDED(hr) && hGlobal) {
+        const SIZE_T size = GlobalSize(hGlobal);
+        const void* data = GlobalLock(hGlobal);
+        if (data && size > 0) {
+            outBytes->append(static_cast<const char*>(data), static_cast<int>(size));
+        }
+        GlobalUnlock(hGlobal);
+    }
+
+    stream->Release();
+    factory->Release();
+    return !outBytes->isEmpty();
+}
+#endif
+
+// 内存中 JPEG 编解码往返，模拟实际 JPG 存储带来的画质损失
+QImage applyJpegQualityLoss(const QImage& srcImage, int quality, int subsamplingMode) {
+    QImage rgbImage = srcImage.convertToFormat(QImage::Format_RGB888);
+    const int jpegQuality = qBound(1, quality, 100);
+    const int jpegSubsampling = subsamplingMode == UiPreviewJpegSubsampling422 ? UiPreviewJpegSubsampling422
+                                                                               : UiPreviewJpegSubsampling444;
+
+#ifdef Q_OS_WIN
+    QByteArray wicJpegBytes;
+    if (encodeRgb888ToJpegWic(rgbImage, jpegQuality, jpegSubsampling, &wicJpegBytes)) {
+        QImage decoded;
+        if (decodeJpegFromBytesWic(wicJpegBytes, &decoded)) {
+            return decoded;
+        }
+        qDebug() << "WIC JPEG 解码失败，回退 Qt JPEG";
+    } else {
+        qDebug() << "WIC JPEG 编码失败，回退 Qt JPEG";
+    }
+#endif
+
+    QByteArray qtJpegBytes;
+    QBuffer buffer(&qtJpegBytes);
+    if (!buffer.open(QIODevice::WriteOnly)) {
+        return rgbImage;
+    }
+    if (!rgbImage.save(&buffer, "JPEG", jpegQuality)) {
+        qDebug() << "JPEG 编码失败，跳过画质模拟";
+        return rgbImage;
+    }
+    buffer.close();
+
+    QImage decoded;
+    if (!decoded.loadFromData(qtJpegBytes, "JPEG")) {
+        qDebug() << "JPEG 解码失败，跳过画质模拟";
+        return rgbImage;
+    }
+    return decoded.convertToFormat(QImage::Format_RGB888);
+}
+
+QImage preparePicturePayloadImage(const QImage& srcImage, bool simulateJpegLoss, int jpegQuality,
+                                  int jpegSubsamplingMode) {
+    QImage image = flattenAlphaToBlack(srcImage);
+    if (simulateJpegLoss) {
+        image = applyJpegQualityLoss(image, jpegQuality, jpegSubsamplingMode);
+    }
+    return image;
+}
+
+quint16 packRgb565(const QRgb pixelColor) {
+    const quint16 r = static_cast<quint16>(qRed(pixelColor) >> 3);
+    const quint16 g = static_cast<quint16>(qGreen(pixelColor) >> 2);
+    const quint16 b = static_cast<quint16>(qBlue(pixelColor) >> 3);
+    return static_cast<quint16>((r << 11) | (g << 5) | b);
+}
+
+quint16 toBigEndianU16(quint16 value) {
+    return static_cast<quint16>(((value & 0xFF00) >> 8) | ((value & 0x00FF) << 8));
+}
+
+} // namespace
+
 void MainWindow::convertImageTo16BitPaletteHigh(const QString& imagePath, const QString& outputFileName) {
-    // 加载图片
-    QImage image(imagePath);
-    if (image.isNull()) {
+    const QImage srcImage(imagePath);
+    if (srcImage.isNull()) {
         qDebug() << "无法加载图片：" << imagePath;
         return;
     }
+    convertImageTo16BitPaletteHigh(srcImage, outputFileName);
+}
 
-    // 将图片转换为16位调色板格式
-    QImage convertedImage = image.convertToFormat(QImage::Format_RGB16);
+void MainWindow::convertImageTo16BitPaletteHigh(const QImage& srcImage, const QString& outputFileName) {
+    const bool useRgb888 = ui->checkBox_uiPreviewRgb888 && ui->checkBox_uiPreviewRgb888->isChecked();
+    const bool simulateJpegLoss =
+        ui->checkBox_uiPreviewJpegLoss && ui->checkBox_uiPreviewJpegLoss->isChecked();
+    const int jpegQuality =
+        ui->spinBox_uiPreviewJpegQuality ? ui->spinBox_uiPreviewJpegQuality->value() : 75;
+    const int jpegSubsamplingMode =
+        ui->comboBox_uiPreviewJpegSubsampling ? ui->comboBox_uiPreviewJpegSubsampling->currentIndex() : 0;
+    const QImage rgbImage =
+        preparePicturePayloadImage(srcImage, simulateJpegLoss, jpegQuality, jpegSubsamplingMode);
 
-    // 如果输出目录不存在，则创建
     QDir outputDir("output");
     if (!outputDir.exists()) {
         if (!outputDir.mkpath(".")) {
@@ -842,34 +1216,37 @@ void MainWindow::convertImageTo16BitPaletteHigh(const QString& imagePath, const 
         return;
     }
 
-    // 将图片宽度和高度以16位整数（大端字节序）写入文件
-    quint16 width = convertedImage.width();
-    quint16 height = convertedImage.height();
-    file.write(reinterpret_cast<const char*>(&height), sizeof(quint16));
-    file.write(reinterpret_cast<const char*>(&width), sizeof(quint16));
-
-    // 写入图片数据
-    for (int y = 0; y < convertedImage.height(); ++y) {
-        for (int x = 0; x < convertedImage.width(); ++x) {
-            // 获取像素颜色
-            QRgb pixelColor = convertedImage.pixel(x, y);
-
-            // 提取R、G、B分量
-            uint16_t r = qRed(pixelColor) >> 3;   // 5位
-            uint16_t g = qGreen(pixelColor) >> 2; // 6位
-            uint16_t b = qBlue(pixelColor) >> 3;  // 5位
-
-            // 将分量合并成16位格式
-            uint16_t pixelValue = (r << 11) | (g << 5) | b;
-
-            // 大端字节序下的字节顺序交换
-            uint16_t bigEndianValue = ((pixelValue & 0xFF00) >> 8) | ((pixelValue & 0x00FF) << 8);
-
-            // 将像素值写入文件
-            file.write(reinterpret_cast<const char*>(&bigEndianValue), sizeof(quint16));
+    // 文件头 4 字节（低地址在前，小端）：高 2 字节=高度，低 2 字节=宽度
+    const quint16 width = static_cast<quint16>(rgbImage.width());
+    const quint16 height = static_cast<quint16>(rgbImage.height());
+    QByteArray payload;
+    if (useRgb888) {
+        payload.reserve(4 + rgbImage.width() * rgbImage.height() * 3);
+        CommonUtils::appendLe16(&payload, height);
+        CommonUtils::appendLe16(&payload, width);
+        for (int y = 0; y < rgbImage.height(); ++y) {
+            const uchar* line = rgbImage.constScanLine(y);
+            for (int x = 0; x < rgbImage.width(); ++x) {
+                payload.append(static_cast<char>(line[x * 3 + 0]));
+                payload.append(static_cast<char>(line[x * 3 + 1]));
+                payload.append(static_cast<char>(line[x * 3 + 2]));
+            }
+        }
+    } else {
+        // 与旧版一致：先转 Qt RGB16，再按原公式打包 RGB565（避免手动量化色差）
+        const QImage convertedImage = rgbImage.convertToFormat(QImage::Format_RGB16);
+        payload.reserve(4 + convertedImage.width() * convertedImage.height() * 2);
+        CommonUtils::appendLe16(&payload, height);
+        CommonUtils::appendLe16(&payload, width);
+        for (int y = 0; y < convertedImage.height(); ++y) {
+            for (int x = 0; x < convertedImage.width(); ++x) {
+                quint16 pixelValue = toBigEndianU16(packRgb565(convertedImage.pixel(x, y)));
+                payload.append(reinterpret_cast<const char*>(&pixelValue), sizeof(quint16));
+            }
         }
     }
 
+    file.write(payload);
     file.close();
     sendPicture(ui->ui_ip->text(), outputFilePath);
 }
@@ -897,31 +1274,16 @@ void MainWindow::renameAndProcessFolders(const QString& directoryPath) {
     // 获取当前目录下所有的文件
     QStringList fileList = directory.entryList(QDir::Files, QDir::Name);
 
-    // 如果没有子文件夹，但当前目录中有文件
+    // 如果没有子文件夹，但当前目录中有文件：
+    // 直接从原目录读取并输出到程序 output/1，避免改动原始目录结构。
     if (folderCount == 0 && !fileList.isEmpty()) {
-        // 定义目标输出文件夹路径：当前目录下的 "output/1"
-        QString targetFolderPath = directoryPath + QDir::separator() + "output" + QDir::separator() + "1";
-        QDir targetDir(targetFolderPath);
-        // 如果目标文件夹不存在，则创建整个路径
-        if (!targetDir.exists()) {
-            if (!QDir().mkpath(targetFolderPath)) {
-                qDebug() << "无法创建输出目录:" << targetFolderPath;
-                return;
-            }
+        std::sort(fileList.begin(), fileList.end(), compareFileNames);
+        for (int i = 0; i < fileList.size(); ++i) {
+            const QString srcFilePath = directory.filePath(fileList.at(i));
+            const QString dstFileName = QString::number(i + 1) + ".png";
+            convertImageTo16BitPaletteHigh(srcFilePath, "1/" + dstFileName);
         }
-
-        // 将当前目录下的所有文件移动到目标文件夹中
-        for (const QString& fileName : fileList) {
-            QString oldFilePath = directory.filePath(fileName);
-            QString newFilePath = targetDir.filePath(fileName);
-            if (!QFile::rename(oldFilePath, newFilePath)) {
-                qDebug() << "移动文件" << oldFilePath << "到" << newFilePath << "失败";
-            } else {
-                qDebug() << "移动文件" << oldFilePath << "到" << newFilePath << "成功";
-            }
-        }
-        // 处理目标文件夹中的图片重命名和处理
-        renamePictureFilesInFolder(targetFolderPath);
+        showlog("发送结束");
         return;
     }
 
@@ -986,7 +1348,14 @@ void MainWindow::renamePictureFilesInFolder(const QString& folderPath) {
         }
 
         QImage image(newFilePath);
-        ui->active_picture->setPixmap(QPixmap::fromImage(image));
+        const bool simulateJpegLoss =
+            ui->checkBox_uiPreviewJpegLoss && ui->checkBox_uiPreviewJpegLoss->isChecked();
+        const int jpegQuality =
+            ui->spinBox_uiPreviewJpegQuality ? ui->spinBox_uiPreviewJpegQuality->value() : 75;
+        const int jpegSubsamplingMode =
+            ui->comboBox_uiPreviewJpegSubsampling ? ui->comboBox_uiPreviewJpegSubsampling->currentIndex() : 0;
+        ui->active_picture->setPixmap(QPixmap::fromImage(
+            preparePicturePayloadImage(image, simulateJpegLoss, jpegQuality, jpegSubsamplingMode)));
         if (!QFile::rename(filePath, newFilePath)) {
             qDebug() << "重命名文件" << filePath << "失败";
             convertImageTo16BitPaletteHigh(newFilePath, folderName + "/" + newFileName);
@@ -2777,7 +3146,17 @@ bool MainWindow::eventFilter(QObject* watched, QEvent* event) {
                     } else {
                         showlog("准备删除high_speed_tp");
                         on_clear_picture_clicked();
-                        ui->high_speed_tp->setPixmap(QPixmap::fromImage(image));
+                        const bool simulateJpegLoss = ui->checkBox_uiPreviewJpegLoss &&
+                                                      ui->checkBox_uiPreviewJpegLoss->isChecked();
+                        const int jpegQuality = ui->spinBox_uiPreviewJpegQuality
+                                                    ? ui->spinBox_uiPreviewJpegQuality->value()
+                                                    : 75;
+                        const int jpegSubsamplingMode =
+                            ui->comboBox_uiPreviewJpegSubsampling
+                                ? ui->comboBox_uiPreviewJpegSubsampling->currentIndex()
+                                : 0;
+                        ui->high_speed_tp->setPixmap(QPixmap::fromImage(preparePicturePayloadImage(
+                            image, simulateJpegLoss, jpegQuality, jpegSubsamplingMode)));
                         QFileInfo fileInfo(path);
                         QString fileName = fileInfo.fileName();
                         convertImageTo16BitPaletteHigh(path, fileName);
