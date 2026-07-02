@@ -201,6 +201,7 @@ void DongleAtDevice::wifi_rssi(const QString& p) {
 }
 
 void DongleAtDevice::scan_result(const QString& p) {
+    // 格式: GT 5-777, deviceAddress:c4:27:8c:9d:97:77, deviceRssi:-84
     ProtocolDongleScanResultData data;
     const QStringList parts = p.split(QStringLiteral(","));
     if (parts.size() >= 1) {
