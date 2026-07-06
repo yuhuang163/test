@@ -224,16 +224,15 @@ bool I2CDriver::read_all_sensor_data(int bus_id, uint8_t addr, int32_t *pressure
 // ======================== 数据转换 ========================
 
 float I2CDriver::calc_pressure_pa(uint32_t raw, float p_min, float p_max) {
-    // 24位ADC范围: 0x000000 ~ 0xFFFFFF (0 ~ 16777215)
-    // 正压范围: 0x800000 ~ 0xFFFFFF 对应 0 ~ 110kPa
-    // 负压范围: 0x000000 ~ 0x7FFFFF 对应 -110 ~ 0kPa
-    
+    // 24位校准压力数据 (Reg 0x55~0x57)
+    // 负压: raw / 8388608 * -110  (0x000000=0kPa, 0x7FFFFF≈-110kPa)
+    // 正压: (raw - 16777216) / 8388608 * -110  (0xFFFFFF=0kPa, 0x800000≈+110kPa)
+    // 注意: 正压区 raw 越大压力越小，零点在 0xFFFFFF 而非 0x800000
+
     if (raw >= 0x800000) {
-        // 正压: (raw - 0x800000) / 0x7FFFFF * 110
-        return (float)(raw - 0x800000) / 8388607.0f * p_max;
+        return (float)((int32_t)raw - 0x1000000) / 8388608.0f * -p_max;
     } else {
-        // 负压: raw / 0x7FFFFF * -110
-        return (float)raw / 8388607.0f * p_min;  // p_min = -110
+        return (float)raw / 8388608.0f * p_min;  // p_min = -110
     }
 }
 
