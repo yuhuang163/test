@@ -1040,31 +1040,46 @@ void quiescent_current::startTask() {
                 }
                 break;
 
-            case STATE_WATI_GET_PERIPHERAL_STATE:
-                if (periph_state == 1) // 设备信息正常
+                
+                case STATE_WATI_GET_PERIPHERAL_STATE:
+                if (periph_state == 1)  // 设备信息正常
                 {
                     showlog("外设状态正常");
-                    const QString mesProductName = SETTINGS.value("MES/Product_Name").toString().trimmed();
+                    const QString mesProductName = mesProductNameFromSettings();
                     if (mesProductName.compare(QStringLiteral("V3Pro"), Qt::CaseInsensitive) == 0) {
                         showlog(QStringLiteral("V3Pro产品，读取充电电流"));
                         sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::ChargeCurrentRead); });
                         state = STATE_SLEEP_CURRENT_TEST;
+                    } else if (mesProductName.compare(QStringLiteral("V3"), Qt::CaseInsensitive) == 0) {
+                        showlog(QStringLiteral("V3产品，%1ms 后读取工作电流（不测充电电流）").arg(measure_wait_time));
+                        if (!programmablePowerVisaConfig_.useVisa ||
+                            programmablePowerVisaConfig_.visaAddress.trimmed().isEmpty()) {
+                            showlog(QStringLiteral("VisaPower 未启用或地址为空，无法进行工作电流校验"));
+                            totalresult = failValue;
+                            state = STATE_SAVE_RESULT;
+                        } else {
+                            state = STATE_SLEEP_CURRENT_TEST;
+                            ble_waittime->start(measure_wait_time);
+                        }
                     } else {
                         totalresult = passValue;
                         state = STATE_SAVE_RESULT;
                     }
 
-                } else if (periph_state == 2) // 设备信息异常
+                } else if (periph_state == 2)  // 设备信息异常
                 {
                     showlog("外设状态异常");
                     totalresult = failValue;
                     state = STATE_SAVE_RESULT;
-                } else {
+                }
+                else {
                     waitWork(500);
                     protocolManager.get(DeviceCmd::PeriphState);
                     showlog("正在重发获取外设信息");
                 }
                 break;
+
+         
 
             case STATE_SLEEP_CURRENT_TEST:
                 if (sendRetryOver) {
