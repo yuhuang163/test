@@ -18,7 +18,7 @@
 
 
 
-bool parseAtSuctionDataLine(const QString& line, double* leftKpa, double* rightKpa) {
+bool parseAtSuctionDataLine(const QString& line, double* leftKpa, double* rightKpa, double* thirdKpa) {
 
     if (!leftKpa || !rightKpa)
 
@@ -56,13 +56,23 @@ bool parseAtSuctionDataLine(const QString& line, double* leftKpa, double* rightK
 
     *rightKpa = right;
 
+    if (thirdKpa && parts.size() >= 3) {
+
+        bool okThird = false;
+
+        const double third = parts.at(2).toDouble(&okThird);
+
+        *thirdKpa = okThird ? third : 0.0;
+
+    }
+
     return true;
 
 }
 
 
 
-bool parseDualChannelSuctionFrame(const QString& data, double* leftKpa, double* rightKpa) {
+bool parseDualChannelSuctionFrame(const QString& data, double* leftKpa, double* rightKpa, double* thirdKpa) {
 
     if (!leftKpa || !rightKpa)
 
@@ -111,6 +121,10 @@ bool parseDualChannelSuctionFrame(const QString& data, double* leftKpa, double* 
     *leftKpa = values.at(0);
 
     *rightKpa = values.at(1);
+
+    if (thirdKpa)
+
+        *thirdKpa = values.size() >= 3 ? values.at(2) : 0.0;
 
     return true;
 
@@ -194,13 +208,17 @@ void AtSuctionFrameCodec::feed(const QByteArray& chunk, const FrameHandler& onFr
 
             double right = 0.0;
 
-            if (parseDualChannelSuctionFrame(line, &left, &right) && onFrame) {
+            double third = 0.0;
+
+            if (parseDualChannelSuctionFrame(line, &left, &right, &third) && onFrame) {
 
                 ProtocolDongleSuctionData data;
 
                 data.leftKpa = left;
 
                 data.rightKpa = right;
+
+                data.thirdKpa = third;
 
                 onFrame(data);
 
@@ -234,13 +252,17 @@ void AtSuctionFrameCodec::feed(const QByteArray& chunk, const FrameHandler& onFr
 
         double right = 0.0;
 
-        if (parseDualChannelSuctionFrame(frame, &left, &right) && onFrame) {
+        double third = 0.0;
+
+        if (parseDualChannelSuctionFrame(frame, &left, &right, &third) && onFrame) {
 
             ProtocolDongleSuctionData data;
 
             data.leftKpa = left;
 
             data.rightKpa = right;
+
+            data.thirdKpa = third;
 
             onFrame(data);
 

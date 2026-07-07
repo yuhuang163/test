@@ -892,8 +892,9 @@ void TestFlowEditor::openEditDialog(TestCaseBlock* block) {
 
     if (!block->isBlank()) {
         TestCaseDefinition def;
-        TestCaseStore::loadCase(block->caseName(), def);
+        TestCaseStore::loadCaseForStation(currentStationKey(), block->caseName(), def);
         dlg->setDefinition(def, block->caseName());
+        dlg->setStationContext(currentStationKey());
         dlg->setWindowTitle(QStringLiteral("测试项配置 - %1").arg(block->caseName()));
     } else {
         dlg->setWindowTitle(QStringLiteral("测试项配置 - 新步骤"));

@@ -12,6 +12,7 @@
 #include <QCoreApplication>
 #include <QDebug>
 #include <QFile>
+#include <QTextStream>
 #include <QFileDialog>
 #include <QHttpMultiPart>
 #include <QHttpPart>
@@ -29,6 +30,7 @@ class QAction;
 #include <QUdpSocket>
 #include <QUrl>
 #include <QVector>
+#include <QElapsedTimer>
 #include <algorithm>
 #include <QMessageBox>
 #include "Abini.h"
@@ -51,6 +53,8 @@ class QAction;
 #include "root_ble_ota.h"
 #include "root_ble_ota2.h"
 #include "serial_channel.h"
+
+class QCustomPlot;
 
 extern "C" {
 #include "md5.h" // 引入 tiny-AES-c 的头文件
@@ -149,6 +153,53 @@ class MainWindow : public QMainWindow {
     RootBleOtaClient rootBleOtaClient_;
     RootBleOta2Client rootBleOta2Client_;
     void saveDongleUartLog(QString data);
+    struct DongleSuctionChannelPeakMonitor {
+        enum class Phase { AtBaseline, InCycle };
+        Phase phase = Phase::AtBaseline;
+        double cycleMinKpa = 0.0;
+        bool cycleMinInit = false;
+        double lastPeakEndSec = 0.0;
+        bool waitingNextPeak = false;
+        bool gapMissFlagged = false;
+        int validPeakCount = 0;
+        int missedPeakCount = 0;
+        int weakPeakCount = 0;
+    };
+
+    void initDongleSuctionChart();
+    void resetDongleSuctionChart();
+    void appendDongleSuctionChartSample(double ch1Kpa, double ch2Kpa, double ch3Kpa);
+    void refreshDongleSuctionData(const ProtocolDongleSuctionData& data);
+    void trimDongleSuctionChartToWindow(double tSec);
+    void updateDongleSuctionPeakLabels();
+    void loadDongleSuctionPeakSettings();
+    void setDongleSuctionPeakParamWidgetsEnabled(bool enabled);
+    void resetDongleSuctionPeakMonitor();
+    void updateDongleSuctionPeakMonitor(double ch1Kpa, double ch2Kpa, double ch3Kpa, double tSec, QString& eventOut);
+    void updateDongleSuctionChannelPeakMonitor(int chIndex, double kpa, double tSec, QString& eventOut);
+    void updateDongleSuctionPeakMonitorLabels();
+    bool startDongleSuctionCsvLog();
+    void stopDongleSuctionCsvLog();
+    void writeDongleSuctionCsvRow(double tSec, double ch1Kpa, double ch2Kpa, double ch3Kpa, const QString& event);
+    static constexpr double kDongleSuctionChartWindowSec = 10.0;
+    static constexpr int kDongleSuctionChannelCount = 3;
+    bool dongleSuctionReadEnabled_ = false;
+    QCustomPlot* dongleSuctionPlot_ = nullptr;
+    QVector<double> dongleSuctionChartTimeSec_;
+    QVector<double> dongleSuctionChartCh1_;
+    QVector<double> dongleSuctionChartCh2_;
+    QVector<double> dongleSuctionChartCh3_;
+    QElapsedTimer dongleSuctionChartTimer_;
+    bool dongleSuctionChartTimerStarted_ = false;
+    QFile dongleSuctionCsvFile_;
+    QTextStream dongleSuctionCsvStream_;
+    QString dongleSuctionCsvPath_;
+    DongleSuctionChannelPeakMonitor dongleSuctionPeakMonitors_[kDongleSuctionChannelCount];
+    double dongleSuctionPeakTargetKpa_ = -36.0;
+    double dongleSuctionPeakToleranceKpa_ = 2.6;
+    double dongleSuctionPeakBaselineKpa_ = -8.0;
+    double dongleSuctionPeakDipStartKpa_ = -10.0;
+    double dongleSuctionPeakMaxGapSec_ = 2.5;
     NewImuCalData calData;
     new_imu_calibrate* nqimuc = nullptr;
     QByteArray subpid;
@@ -605,6 +656,9 @@ class MainWindow : public QMainWindow {
     void on_send_custom_msg_clicked();
     void on_open_suction_clicked();
     void on_close_suction_clicked();
+    void on_dongle_suction_open_clicked();
+    void on_dongle_suction_close_clicked();
+    void on_dongle_suction_clear_chart_clicked();
 
   signals:
     void send_uart_state(int data);

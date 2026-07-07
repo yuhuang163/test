@@ -857,6 +857,10 @@ void TestCaseEditDialog::onGateReportTypeChanged(int) {
     updateGateFieldsEnabled();
 }
 
+void TestCaseEditDialog::setStationContext(const QString& stationKey) {
+    stationKey_ = stationKey.trimmed();
+}
+
 void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QString& storageKey) {
     originalCaseName_ = storageKey.trimmed().isEmpty() ? def.meta.name.trimmed() : storageKey.trimmed();
     ui->lineEdit_caseName->setText(def.meta.name);
@@ -1109,14 +1113,22 @@ bool TestCaseEditDialog::saveValidated() {
         QMessageBox::warning(this, QStringLiteral("保存失败"), errors.join(QLatin1Char('\n')));
         return false;
     }
-    if (!TestCaseStore::saveCase(def)) {
+    if (!TestCaseStore::saveCaseForStation(stationKey_, def)) {
         QMessageBox::warning(this, QStringLiteral("保存失败"), QStringLiteral("无法写入配置文件"));
         return false;
     }
     if (!originalCaseName_.isEmpty() && originalCaseName_ != def.meta.name) {
-        const QString oldPath = TestCasePaths::caseIniPath(originalCaseName_);
-        if (QFile::exists(oldPath))
-            QFile::remove(oldPath);
+        const QString oldLegacy = TestCasePaths::caseIniPath(originalCaseName_);
+        if (QFile::exists(oldLegacy))
+            QFile::remove(oldLegacy);
+        const QString oldLibrary = TestCasePaths::stepLibraryPath(originalCaseName_);
+        if (QFile::exists(oldLibrary))
+            QFile::remove(oldLibrary);
+        if (!stationKey_.isEmpty()) {
+            const QString oldOverride = TestCasePaths::profileStepOverridePath(stationKey_, originalCaseName_);
+            if (QFile::exists(oldOverride))
+                QFile::remove(oldOverride);
+        }
     }
     return true;
 }

@@ -7,8 +7,8 @@
 #include "qprotocol_types.h"
 
 /** Dongle AT 行：AT+SUCTION_DATA=左,右,...；Pico 兼容：$左 右 ...; */
-bool parseAtSuctionDataLine(const QString& line, double* leftKpa, double* rightKpa);
-bool parseDualChannelSuctionFrame(const QString& data, double* leftKpa, double* rightKpa);
+bool parseAtSuctionDataLine(const QString& line, double* leftKpa, double* rightKpa, double* thirdKpa = nullptr);
+bool parseDualChannelSuctionFrame(const QString& data, double* leftKpa, double* rightKpa, double* thirdKpa = nullptr);
 
 /** Dongle 吸力原始帧流式组帧 */
 class AtSuctionFrameCodec {
