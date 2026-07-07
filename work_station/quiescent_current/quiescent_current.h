@@ -48,7 +48,9 @@ class quiescent_current : public test_base {
     void applyCurrentProtocolConfig();
     void syncVisaPowerUiFromSettings();
     bool setProgrammablePowerOutput(bool enable);
+    void readAmmeterMeasurement();
     void refreshProgrammablePowerCurrent(double valueAmps, bool ok);
+    void finalizeVisaWorkCurrentResult(bool readOk);
 
     // --- SN / 绑定 ---
     QByteArray sn;
