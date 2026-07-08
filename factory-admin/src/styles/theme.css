@@ -1,0 +1,175 @@
+/* 路特产线管理平台 — 全局主题 */
+:root {
+  --admin-primary: #1677ff;
+  --admin-primary-hover: #4096ff;
+  --admin-primary-active: #0958d9;
+  --admin-primary-light: #e6f4ff;
+  --admin-success: #52c41a;
+  --admin-warning: #faad14;
+  --admin-danger: #ff4d4f;
+
+  --admin-bg: #f5f6f8;
+  --admin-surface: #ffffff;
+  --admin-border: #e8eaed;
+  --admin-border-light: #f0f1f3;
+
+  --admin-text: #1f2329;
+  --admin-text-secondary: #646a73;
+  --admin-text-tertiary: #8f959e;
+
+  --admin-sidebar: #1a1d24;
+  --admin-sidebar-text: rgba(255, 255, 255, 0.78);
+  --admin-sidebar-text-active: #ffffff;
+  --admin-sidebar-hover: rgba(255, 255, 255, 0.06);
+  --admin-sidebar-active-bg: rgba(22, 119, 255, 0.15);
+
+  --admin-radius: 8px;
+  --admin-radius-lg: 12px;
+  --admin-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+
+  /* Element Plus 对齐 */
+  --el-color-primary: var(--admin-primary);
+  --el-color-primary-light-3: #69b1ff;
+  --el-color-primary-light-5: #91caff;
+  --el-color-primary-light-7: #bae0ff;
+  --el-color-primary-light-8: #d6ebff;
+  --el-color-primary-light-9: var(--admin-primary-light);
+  --el-color-primary-dark-2: var(--admin-primary-active);
+  --el-border-radius-base: var(--admin-radius);
+  --el-border-radius-small: 6px;
+  --el-text-color-primary: var(--admin-text);
+  --el-text-color-regular: var(--admin-text-secondary);
+  --el-border-color: var(--admin-border);
+  --el-border-color-light: var(--admin-border-light);
+  --el-bg-color: var(--admin-surface);
+  --el-bg-color-page: var(--admin-bg);
+  --el-fill-color-light: #fafafa;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  margin: 0;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC',
+    sans-serif;
+  font-size: 14px;
+  color: var(--admin-text);
+  background: var(--admin-bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 列表/配置页统一白底卡片（概览页 .dashboard 除外） */
+.el-main > div:not(.dashboard) {
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-lg);
+  padding: 20px;
+  box-shadow: var(--admin-shadow);
+  min-height: calc(100vh - 56px - 40px);
+}
+
+.el-main .toolbar {
+  margin-bottom: 16px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.el-main .filter {
+  margin-bottom: 16px;
+}
+
+.el-main .pager {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* 表格：去厚重边框，保留轻分隔 */
+.el-main .el-table {
+  --el-table-border-color: var(--admin-border-light);
+  --el-table-header-bg-color: #fafafa;
+  border-radius: var(--admin-radius);
+  overflow: hidden;
+}
+
+.el-main .el-table th.el-table__cell {
+  font-weight: 600;
+  color: var(--admin-text-secondary);
+}
+
+.el-card {
+  border: 1px solid var(--admin-border);
+  border-radius: var(--admin-radius-lg) !important;
+  box-shadow: var(--admin-shadow) !important;
+}
+
+.el-card__header {
+  border-bottom-color: var(--admin-border-light);
+  font-weight: 600;
+  color: var(--admin-text);
+}
+
+.el-button--primary {
+  --el-button-bg-color: var(--admin-primary);
+  --el-button-border-color: var(--admin-primary);
+  --el-button-hover-bg-color: var(--admin-primary-hover);
+  --el-button-hover-border-color: var(--admin-primary-hover);
+  --el-button-active-bg-color: var(--admin-primary-active);
+  --el-button-active-border-color: var(--admin-primary-active);
+}
+
+.el-dialog {
+  border-radius: var(--admin-radius-lg);
+}
+
+.el-input__wrapper,
+.el-textarea__inner,
+.el-select__wrapper {
+  border-radius: var(--admin-radius) !important;
+}
+
+/* 左侧导航：覆盖全局深色文字，避免菜单项默认不可见 */
+.layout .aside .el-menu {
+  --el-menu-text-color: var(--admin-sidebar-text);
+  --el-menu-hover-text-color: var(--admin-sidebar-text-active);
+  --el-menu-active-color: var(--admin-sidebar-text-active);
+  --el-menu-bg-color: transparent;
+  --el-menu-hover-bg-color: var(--admin-sidebar-hover);
+  border-right: none;
+}
+
+.layout .aside .el-menu .el-menu-item,
+.layout .aside .el-menu .el-sub-menu__title {
+  color: var(--admin-sidebar-text);
+}
+
+.layout .aside .el-menu .el-menu-item .el-icon,
+.layout .aside .el-menu .el-sub-menu__title .el-icon {
+  color: inherit;
+}
+
+.layout .aside .el-menu .el-menu-item:hover,
+.layout .aside .el-menu .el-sub-menu__title:hover {
+  color: var(--admin-sidebar-text-active);
+}
+
+.layout .aside .el-menu .el-menu-item.is-active {
+  color: var(--admin-sidebar-text-active);
+}
+
+.layout .aside .el-menu .el-sub-menu .el-menu-item {
+  color: var(--admin-sidebar-text);
+}
+
+.layout .aside .el-menu .el-sub-menu .el-menu-item.is-active {
+  color: var(--admin-sidebar-text-active);
+}

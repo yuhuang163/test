@@ -1,93 +1,346 @@
-# fwq
+# 路特产线管理平台
 
+产测上位机云端后台 + 网页管理端，对应设计文档见 `D:\code\new_product_test\docs\云端工厂平台*.md`。
 
+## 本地使用（只需记住两个 bat）
 
-## Getting started
+| 操作 | 双击 |
+|------|------|
+| **启动**前后端 | `D:\code\fwq\启动管理平台.bat` |
+| **停止**前后端 | `D:\code\fwq\停止管理平台.bat` |
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+启动后会自动打开两个窗口（后端 + 管理网页）。浏览器访问：
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+- 管理网页：http://127.0.0.1:5173（请用 `127.0.0.1`，不要用 `localhost`，避免 IPv6 连不上）
+- API 文档：http://127.0.0.1:8800/docs
+- 默认账号：`admin` / `admin123`
 
-## Add your files
+若提示「拒绝连接」：看任务栏 **Lute-API** / **Lute-Admin** 窗口是否报错；首次启动需等 pip/npm 安装完成（1～3 分钟）。
 
-- [ ] [Create](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://docs.gitlab.com/topics/git/add_files/#add-files-to-a-git-repository) or push an existing Git repository with the following command:
+首次运行会自动安装 Python 依赖（后端）和 npm 依赖（前端），稍等片刻即可。
 
+改端口：编辑 `scripts/port.bat`，并同步 `factory-admin/vite.config.js` 里的 `API_PORT`。
+
+## 目录
+## 数据目录
+
+- 本地开发（默认）：`factory-api/data/factory.db`、`factory-api/data/storage/...`
+- 生产部署（建议）：默认指向 D 盘（`D:/fwq/data`），不会随代码包一起上传。请通过 `factory-api/.env` 中的 `DATABASE_URL` 与 `STORAGE_DIR` 覆盖默认路径。
+
+**部署到服务器后请定期备份服务器上的数据目录（例如 `D:/fwq/data`）。**
+├── 启动管理平台.bat      ← 本地启动入口
+ 将 `factory-api/`、`factory-admin/` 拷到服务器（或通过 git 拉取）。**不必上传** `.venv`、`node_modules`、`data/`。打包脚本会自动排除 `data/`，部署后服务器会使用 `factory-api/.env.production.example` 中的默认生产路径（指向 `D:/fwq/data`），如需更改请编辑 `factory-api/.env`。
+├── factory-api/          # Python FastAPI 后端
+├── factory-admin/        # Vue 3 管理网页
+└── scripts/              # 内部脚本（一般不用手动点）
 ```
-cd existing_repo
-git remote add origin https://gitlab.luteos.site/momcozy/momcozy_dfm/fwq.git
-git branch -M master
-git push -uf origin master
+
+## 已实现功能
+
+| 模块 | 状态 |
+|------|------|
+| 登录 / 日志上传与查询 | ✅ 完整实现（DB + 本地存储） |
+| 账号管理 / 登录审计 / 改密 | ✅ 完整实现 |
+| 元数据（工厂 / 工站 / 阈值键） | ✅ 工站与键为内置列表 |
+| 阈值 / 用例 / OTA | ⚠️ 示例实现（可联调，未持久化） |
+| 设备登记 | ❌ 待实现 |
+
+---
+
+## API 接口
+
+**BaseUrl**（本地）：`http://127.0.0.1:8800`  
+**前缀**：`/api/factory-tool`  
+**在线文档**：http://127.0.0.1:8800/docs
+
+### 公共约定
+
+**JSON 响应包络**（除文件下载外）：
+
+```json
+{ "code": 0, "message": "ok", "data": { } }
 ```
 
-## Integrate with your tools
+| code | 含义 |
+|------|------|
+| 0 | 成功 |
+| 401 | 未登录 / Token 无效 |
+| 403 | 无权限 |
+| 404 | 资源不存在 |
+| 409 | 版本冲突 |
 
-- [ ] [Set up project integrations](https://gitlab.luteos.site/momcozy/momcozy_dfm/fwq/-/settings/integrations)
+**鉴权**：除标注「可匿名」外，请求头加 `Authorization: Bearer <accessToken>`。
 
-## Collaborate with your team
+**上位机建议请求头**：
 
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
+```http
+Device-Id: <电脑名>
+Station-Key: <工站标识>
+APP-Version: <exe 版本>
+Authorization: Bearer <token>
+```
 
-## Test and Deploy
+---
 
-Use the built-in continuous integration in GitLab.
+### 认证 `/auth`
 
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+| 方法 | 路径 | 调用方 | 说明 |
+|------|------|--------|------|
+| POST | `/auth/login` | 网页、上位机 | body: `username`, `password`, `hostName`（必填）, `deviceId?`, `stationKey?` |
+| GET | `/auth/me` | 网页 | 当前用户、角色、工站授权 |
+| POST | `/auth/logout` | 网页、上位机 | 退出（当前为无状态 JWT） |
+| POST | `/auth/change-password` | 网页 | body: `oldPassword`, `newPassword` |
 
-***
+登录成功 `data` 示例：
 
-# Editing this README
+```json
+{
+  "accessToken": "...",
+  "expireAt": "2026-06-17T03:00:00",
+  "roles": ["admin"],
+  "stationKeys": []
+}
+```
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
+---
 
-## Suggestions for a good README
+### 日志 `/logs`
 
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+| 方法 | 路径 | 调用方 | 说明 |
+|------|------|--------|------|
+| POST | `/logs/upload` | 上位机 | **可匿名**（`LOG_UPLOAD_ALLOW_ANONYMOUS=true` 时）；`multipart/form-data` |
+| GET | `/logs` | 网页 | 分页列表，需登录 |
+| GET | `/logs/{id}` | 网页 | 详情 + 解压文件树 |
+| GET | `/logs/{id}/files/{path}` | 网页 | txt 在线预览，`text/plain` |
+| GET | `/logs/{id}/download` | 网页 | 原 zip 下载，**二进制，无 JSON 包络** |
 
-## Name
-Choose a self-explaining name for your project.
+**上传字段**（`multipart/form-data`）：
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| `factoryName` | 是 | 工厂代码（来自上位机 `Mes/FACTORY`） |
+| `deviceId` | 是 | 设备/电脑标识 |
+| `station` | 是 | 工站名 |
+| `file` | 是 | zip 包 |
+| `sn` | 否 | 序列号 |
+| `testResult` | 否 | 测试结果 |
+| `clientVersion` | 否 | 上位机版本 |
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+**列表查询参数**：`factoryName`, `station`, `deviceId`, `hostName`, `sn`, `startTime`, `endTime`, `page`, `pageSize`
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
+---
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
+### 阈值 `/thresholds`、`/admin/threshold-templates`
 
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
+| 方法 | 路径 | 调用方 | 说明 |
+|------|------|--------|------|
+| GET | `/thresholds` | 上位机 | query: `stationKey`, `productModel?`；返回 `version` + `items[]` |
+| GET | `/admin/threshold-templates` | 网页 | 模板列表（engineer/admin） |
+| GET | `/admin/threshold-templates/{id}` | 网页 | 模板详情 |
+| POST | `/admin/threshold-templates` | 网页 | 新建草稿 |
+| PUT | `/admin/threshold-templates/{id}` | 网页 | 编辑 |
+| POST | `/admin/threshold-templates/{id}/publish` | 网页 | 发布新版本 |
 
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
+`items[]` 元素：`{ "settingsKey": "BLE/LowRssi", "value": "-80" }`（键名须与上位机 `上位机设置.ini` 一致）
 
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
+---
 
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
+### 测试用例 `/test-cases`、`/admin/test-cases`
 
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
+| 方法 | 路径 | 调用方 | 说明 |
+|------|------|--------|------|
+| GET | `/test-cases/manifest` | 上位机 | 待实现 |
+| GET | `/test-cases/bundle` | 上位机 | zip 下载（用例包），待实现 |
+| GET | `/admin/test-cases/files` | 网页 | 文件列表 / 树 |
+| GET | `/admin/test-cases/files/{path}` | 网页 | 读取 ini 文本 |
+| PUT | `/admin/test-cases/files/{path}` | 网页 | 保存 ini，`Content-Type: text/plain` |
+| POST | `/admin/test-cases/publish` | 网页 | 发布用例包 |
 
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
+---
 
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
+### 上位机 OTA `/host-app`、`/admin/host-app`
 
-## License
-For open source projects, say how it is licensed.
+| 方法 | 路径 | 调用方 | 说明 |
+|------|------|--------|------|
+| GET | `/host-app/check` | 上位机 | query: `packageName`, `buildId?`, `appVersion?`, `stationKey?`, `deviceId?` |
+| GET | `/host-app/download/{buildId}` | 上位机 | exe 下载，待实现 |
+| GET | `/admin/host-app/versions` | 网页 admin | 版本列表 |
+| POST | `/admin/host-app/versions` | 网页 admin | 上传 exe（`multipart`）或登记元数据 |
+| GET | `/admin/host-app/runtime-env` | 网页 admin | 下载路特上位机运行环境（zip） |
+| GET | `/admin/host-app/runtime-env/info` | 网页 admin | 查询运行环境基本信息 |
 
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
+---
+
+### 元数据 `/admin/meta`
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/admin/meta/factories` | 工厂代码与中文名 |
+| GET | `/admin/meta/stations` | 工站键与显示名 |
+| GET | `/admin/meta/settings-keys` | 允许下发的 SETTINGS 键白名单 |
+
+---
+
+### 账号与审计 `/admin`
+
+| 方法 | 路径 | 角色 | 说明 |
+|------|------|------|------|
+| GET | `/admin/users` | admin | 用户列表 |
+| POST | `/admin/users` | admin | 创建用户 |
+| PUT | `/admin/users/{id}` | admin | 改角色、工站、状态 |
+| POST | `/admin/users/{id}/reset-password` | admin | 重置密码，返回新密码 |
+| POST | `/admin/users/{id}/unlock` | admin | 解锁账号 |
+| GET | `/admin/audit-logins` | admin | 登录审计；query: `username`, `hostName`, `page`, `pageSize` |
+| GET | `/admin/devices` | admin | 设备登记列表，**待实现** |
+| POST | `/admin/devices` | admin | 登记 PC，**待实现** |
+| PUT | `/admin/devices/{id}` | admin | 编辑，**待实现** |
+| DELETE | `/admin/devices/{id}` | admin | 删除，**待实现** |
+
+**角色**：`operator`（日志只读）、`engineer`（阈值/用例/发布）、`admin`（全部）
+
+---
+
+### 健康检查
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/health` | 无前缀；返回 `{ "status": "ok" }` |
+
+---
+
+## 上位机联调
+
+设置页日志上传 URL：
+
+```text
+http://127.0.0.1:8800/api/factory-tool/logs/upload
+```
+
+上传前须在 MES 设置中选择工厂（`Mes/FACTORY` → `factoryName`）。
+
+## 数据目录
+
+- SQLite：`factory-api/data/factory.db`
+- 日志文件：`factory-api/data/storage/logs/...`
+
+**部署到服务器后请定期备份 `factory-api/data/` 整个目录。**
+
+---
+
+## 切换到服务器部署时要做什么
+
+本地用 bat 是为了开发联调；上服务器后**不再用 bat**，改为「后端常驻进程 + Nginx 托管网页」。按下面清单逐项完成即可。
+
+### 1. 准备服务器环境
+
+- 操作系统：Linux（推荐 Ubuntu 22.04）或 Windows Server
+- 安装 **Python 3.10+**
+- 安装 **Nginx**（推荐，统一 80/443 入口）
+- 前端只需在构建机或服务器上装 **Node.js**（`npm run build` 用，运行时不需要 node）
+
+### 2. 上传代码
+
+将 `factory-api/`、`factory-admin/` 拷到服务器（或通过 git 拉取）。**不必上传** `.venv`、`node_modules`、`data/`（生产数据在服务器上重新生成或从备份恢复）。
+
+### 3. 配置后端
+
+```bash
+cd factory-api
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .\.venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env
+```
+
+编辑 `factory-api/.env`，**至少修改**：
+
+| 配置项 | 说明 |
+|--------|------|
+| `SECRET_KEY` | 随机长字符串，勿用默认值 |
+| `DEFAULT_ADMIN_PASSWORD` | 改掉默认 `admin123` |
+| `CORS_ORIGINS` | 改成你的管理网页域名，如 `https://admin.example.com` |
+| `LOG_UPLOAD_ALLOW_ANONYMOUS` | 过渡期可 `true`；正式环境建议 `false` 并给上位机加 Token |
+
+用 **systemd** 或 **supervisor** 让后端开机自启（示例）：
+
+```ini
+# /etc/systemd/system/lute-factory-api.service
+[Unit]
+Description=路特产线管理平台 API
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/fwq/factory-api
+ExecStart=/opt/fwq/factory-api/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8800
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+### 4. 构建并部署前端
+
+```bash
+cd factory-admin
+npm install
+npm run build
+```
+
+将生成的 `dist/` 目录放到 Nginx 可访问的位置（如 `/var/www/lute-factory-admin`）。
+
+生产环境**不用 Vite 开发服务器**，`vite.config.js` 里的代理仅本地有效；线上由 Nginx 把 `/api` 转发到后端。
+
+### 5. 配置 Nginx（示例）
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name admin.example.com;
+
+    # ssl_certificate ...（按实际证书配置）
+
+    root /var/www/lute-factory-admin;
+    index index.html;
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:8800;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        client_max_body_size 500m;   # 日志 zip 上传大小
+    }
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}
+```
+
+若上位机从外网直传日志，可另开子域名或同域路径，确保 `POST /api/factory-tool/logs/upload` 可达且 body 大小足够。
+
+### 6. 修改上位机配置
+
+把所有指向本机的地址改为服务器域名，例如：
+
+```text
+https://admin.example.com/api/factory-tool/logs/upload
+```
+
+（路径前缀 `/api/factory-tool` 保持不变，只换域名和协议。）
+
+### 7. 上线检查清单
+
+- [ ] `.env` 中 `SECRET_KEY`、管理员密码已修改
+- [ ] `factory-api/data/` 目录可写，已纳入备份计划
+- [ ] 防火墙只开放 443（后端 8800 仅本机或内网访问）
+- [ ] 浏览器能打开管理网页并登录
+- [ ] 上位机试传一条日志，网页能查到
+- [ ] HTTPS 证书有效（上位机若校验证书需用正规 CA）
+
+### 本地 vs 服务器对照
+
+| 项目 | 本地开发 | 服务器 |
+|------|----------|--------|
+| 启动方式 | `启动管理平台.bat` | systemd + Nginx |
+| 管理网页 | Vite :5173 | Nginx 托管 `dist/` |
+| API | uvicorn :8800 | uvicorn :8800（内网） |
+| 前端访问 API | Vite 代理 `/api` | Nginx 反向代理 `/api` |

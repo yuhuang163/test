@@ -1,0 +1,9 @@
+# 虚拟环境：本机/服务器执行 py -3 -m venv .venv 创建，勿提交
+.venv/
+venv/
+
+__pycache__/
+*.pyc
+data/
+.env
+*.db

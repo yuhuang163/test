@@ -1,0 +1,15 @@
+# Python 虚拟环境（服务器/本机各自 py -3 -m venv 创建，勿入库）
+factory-api/.venv/
+
+# Node 依赖与构建产物
+factory-admin/node_modules/
+factory-admin/dist/
+
+# 生产部署 zip（本机打包脚本生成）
+fwq-deploy-*.zip
+
+# 本地数据与密钥
+factory-api/data/
+factory-api/.env
+factory-admin/.env
+factory-admin/.env.local
