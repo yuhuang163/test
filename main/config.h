@@ -11,8 +11,22 @@
 #define maxWifiData 1024
 #define MyPort 1024
 #define minimum(a, b) (((a) < (b)) ? (a) : (b))
-#define D2_PIN 2
+#define ADC_PIN 2                        // ADC1_CH1 (ADC1: GPIO1~GPIO10)
+#define ADC_BITS 12
+#define ADC_FULL_SCALE 4095.0f           // Dmax, 12bit 单次读取最大值
+#define ADC_VMAX_MV 3100                 // Vmax, ADC_ATTEN_DB_11 可测 0~3100mV
+#define ADC_VREF_V 2.048f                // 原理图运放输出设计基准(非芯片 Vref)
+#define ADC_VOLTAGE_OFFSET_MV 40           // 读数偏低补偿(mV)，偏高改为负数
+// INA180 低侧电流采样 (VCOM: -0.2V~30V, SR: 4V/us)
+#define CURRENT_SHUNT_OHM 0.02f          // 采样电阻 20mΩ
+#define CURRENT_AMP_GAIN 50.0f           // 放大倍数
+#define CURRENT_AMP_INPUT_OFFSET_V 0.0005f // 输入失调 500µV(MAX)
+#define LS_CURRENT_MIN_A 0.25f           // 量程 0.25A
+#define LS_CURRENT_MAX_A 1.6f            // 量程 1.6A
+
 #define RST_PIN 10
+#define WATER_PUMP_PIN 41
+#define VALVE_PIN 42
 #define UART_RX_BUFFER_SIZE (2 * 1024)    // 串口接收setRxBufferSize
 #define UART_SOLVE_BUFFER_SIZE (16 * 1024) // 串口读取处理一口气最多
 
@@ -69,6 +83,7 @@
 #define OTA_LOG_BLE_TX 0        // 1=打印「OTA_BLE_TX len=...」
 
 extern int suction_data;        // 1表示打印传感器数据日志
+extern int adc_data;            // 1表示打印ADC数据日志
 extern int blelogs;        // 蓝牙信号日志1表示默认开
 extern int finddevicelogs; // 蓝牙扫描日志1表示默认开
 extern int data_n;

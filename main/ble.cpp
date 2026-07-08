@@ -614,7 +614,6 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
                 storeDevice(targetDeviceAddress);
 
                 printStoredDevices();
-                digitalWrite(D2_PIN, LOW);
 
                 if (is_ble_connected())
                 {
@@ -628,7 +627,6 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
         }
         else
         {
-            digitalWrite(D2_PIN, HIGH); // 将 D2_PIN 设置为高电平
             String deviceName = advertisedDevice.getName();
             String deviceAddress = advertisedDevice.getAddress().toString();
             int rssi = advertisedDevice.getRSSI();
@@ -655,7 +653,6 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
                     Serial.print((addrType == BLE_ADDR_TYPE_PUBLIC) ? "public" : ((addrType == BLE_ADDR_TYPE_RANDOM) ? "random" : "other"));
                     Serial.println(")");
                 }
-                digitalWrite(D2_PIN, LOW); // 将 D2_PIN 设置为高电
 
                 // colorWipe(strip.Color(255, 0, 0));  // 红色
                 // colorWipe(strip.Color(0, 255, 0));  // 绿色

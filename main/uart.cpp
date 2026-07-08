@@ -42,6 +42,7 @@ enum CommandType
     MAINDATA,
     DCON,
     SUCTION,
+    ADC,
     // 加入其他的at命令
 };
 bool isValidMacAddress(const byte *address, size_t length)
@@ -123,6 +124,7 @@ void processATCommand(byte *get_cmd, int length)
         {"MAINDATA=", 9, MAINDATA},          // 默认使用 FAC
         {"BLEDEVICELOG=", 13, BLEDEVICELOG}, // 默认使用 FAC
         {"SUCTION=", 8, SUCTION},            // 控制吸力值打印
+        {"ADC=", 4, ADC},                    // 控制ADC数据打印
         {"WIFI=", 5, WIFI}                   // 默认使用 FAC
     };
 
@@ -220,6 +222,9 @@ void processATCommand(byte *get_cmd, int length)
         break;
     case SUCTION:
         suction_data = (get_cmd[0] == '1') ? 1 : 0;
+        break;
+    case ADC:
+        adc_data = (get_cmd[0] == '1') ? 1 : 0;
         break;
 
     case BLEDEVICELOG:

@@ -42,11 +42,16 @@
 #include "freertos/queue.h"
 #include "freertos/task.h"
 #include "i2c.h"
+#if 0
+#include "ina236.h"
+#endif
+#include "adc.h"
 /**配置区*/
 #define wifiuse 1
 int blelogs = 0;          // 蓝牙信号日志1表示默认开
 int finddevicelogs = 1;   // 蓝牙扫描日志1表示默认开
-String version = "1.0.7"; // 默认的版本号
+int adc_data = 0;         // 1表示打印ADC数据日志
+String version = "1.0.8"; // 默认的版本号
 int wifistate = 1;
 /**配置区*/
 
@@ -158,8 +163,15 @@ void setup()
   Serial.print("AT+DONGLEVER=");
   Serial.println(version);
 
-  pinMode(D2_PIN, OUTPUT); // 将 D2 管脚设置为输出模式
   pinMode(RST_PIN, INPUT); // 将引脚设置为输入模式，即高阻态
+  ADCDriver::init();
+#if 0
+  INA236Driver::init();
+#endif
+  // pinMode(WATER_PUMP_PIN, OUTPUT);
+  // pinMode(VALVE_PIN, OUTPUT);
+  // digitalWrite(WATER_PUMP_PIN, HIGH);
+  // digitalWrite(VALVE_PIN, HIGH);
   colorWipe(strip.Color(0, 0, 255)); // 蓝色
 
   ble_init();
@@ -233,6 +245,7 @@ void loop()
   }
 
   I2CDriver::read_and_print_three_pressures();
+  ADCDriver::read_and_print();
 
 #if wifiuse == 1
 
