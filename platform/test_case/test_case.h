@@ -35,6 +35,8 @@ QString profileStepOverridePath(const QString& stationKey, const QString& stepId
 QString stepLibraryPath(const QString& stepId);
 QString flowIniPath();
 QString caseIniPath(const QString& caseName);
+/** 步骤是否在 steps 库或工站 profiles/{key}/steps 覆盖中存在 */
+bool stepIniExistsForStation(const QString& stationKey, const QString& stepId);
 QString flowIniFileName();
 bool ensureRootDir();
 bool isValidCaseFileName(const QString& name, QString* errorOut = nullptr);

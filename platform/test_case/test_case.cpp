@@ -77,6 +77,21 @@ QString stepLibraryPath(const QString& stepId) {
     return stepsDir() + QLatin1Char('/') + stepId.trimmed() + QStringLiteral(".ini");
 }
 
+bool stepIniExistsForStation(const QString& stationKey, const QString& stepId) {
+    const QString id = stepId.trimmed();
+    if (id.isEmpty()) {
+        return false;
+    }
+    if (QFile::exists(stepLibraryPath(id))) {
+        return true;
+    }
+    const QString key = stationKey.trimmed();
+    if (key.isEmpty()) {
+        return false;
+    }
+    return QFile::exists(profileStepOverridePath(key, id));
+}
+
 bool ensureRootDir() {
     QDir dir(rootDir());
     if (!dir.exists() && !dir.mkpath(QStringLiteral(".")))

@@ -790,7 +790,7 @@ bool TestFlowEditor::saveStationFlow(const QString& stationKey) {
     }
     const QVector<TestFlowItemEntry> entries = currentFlowEntries();
     for (const TestFlowItemEntry& entry : entries) {
-        if (!QFile::exists(TestCasePaths::caseIniPath(entry.caseName))) {
+        if (!TestCasePaths::stepIniExistsForStation(key, entry.caseName)) {
             QMessageBox::warning(dialogParent_, QStringLiteral("保存失败"),
                                  QStringLiteral("case 不存在: %1，请先保存配置").arg(entry.caseName));
             return false;
