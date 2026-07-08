@@ -4780,3 +4780,13 @@ void MainWindow::on_open_suction_clicked() {
 void MainWindow::on_close_suction_clicked() {
     at->set(DongleCmd::GetSuction, 0); // 关闭读取吸力
 }
+
+void MainWindow::on_checkBox_adcSwitch_stateChanged(int arg1) {
+    if (!at) {
+        showlog(QStringLiteral("AT+ADC 发送失败：Dongle 未就绪"));
+        return;
+    }
+    const int state = arg1 != Qt::Unchecked ? 1 : 0;
+    at->set(DongleCmd::AdcSwitch, state);
+    showlog(QStringLiteral("已发送 AT+ADC=%1").arg(state));
+}

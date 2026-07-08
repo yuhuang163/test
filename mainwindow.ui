@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1483</width>
+    <width>1649</width>
     <height>1016</height>
    </rect>
   </property>
@@ -492,7 +492,7 @@
                <bool>true</bool>
               </property>
               <property name="currentIndex">
-               <number>13</number>
+               <number>16</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -5706,6 +5706,22 @@ border-color: rgb(255, 165, 0)</string>
                  <string>指令测试</string>
                 </property>
                </widget>
+               <widget class="QCheckBox" name="checkBox_adcSwitch">
+                <property name="geometry">
+                 <rect>
+                  <x>41</x>
+                  <y>360</y>
+                  <width>200</width>
+                  <height>28</height>
+                 </rect>
+                </property>
+                <property name="toolTip">
+                 <string>开启后发送 AT+ADC=1，关闭发送 AT+ADC=0</string>
+                </property>
+                <property name="text">
+                 <string>AT+ADC 上报</string>
+                </property>
+               </widget>
                <widget class="QPushButton" name="open_suction">
                 <property name="geometry">
                  <rect>
@@ -5750,7 +5766,7 @@ border-color: rgb(255, 165, 0)</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1483</width>
+     <width>1649</width>
      <height>21</height>
     </rect>
    </property>

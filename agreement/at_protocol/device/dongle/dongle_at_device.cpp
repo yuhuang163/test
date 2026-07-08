@@ -62,6 +62,14 @@ void DongleAtDevice::set(DongleCmd cmd, const QVariant& data) {
         sendAtLine(QStringLiteral("AT+SUCTION=%1\r\n").arg(state));
         break;
     }
+    case DongleCmd::AdcSwitch: {
+        int state = data.toInt();
+        if (state > 1) {
+            state = 1;
+        }
+        sendAtLine(QStringLiteral("AT+ADC=%1\r\n").arg(state));
+        break;
+    }
     case DongleCmd::BleDeviceLog:
         sendAtLine(QStringLiteral("AT+BLEDEVICELOG=%1\r\n").arg(data.toInt()));
         break;

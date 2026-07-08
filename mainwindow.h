@@ -605,6 +605,7 @@ class MainWindow : public QMainWindow {
     void on_send_custom_msg_clicked();
     void on_open_suction_clicked();
     void on_close_suction_clicked();
+    void on_checkBox_adcSwitch_stateChanged(int arg1);
 
   signals:
     void send_uart_state(int data);
