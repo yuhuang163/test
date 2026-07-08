@@ -790,7 +790,7 @@ bool TestFlowEditor::saveStationFlow(const QString& stationKey) {
     }
     const QVector<TestFlowItemEntry> entries = currentFlowEntries();
     for (const TestFlowItemEntry& entry : entries) {
-        if (!QFile::exists(TestCasePaths::caseIniPath(entry.caseName))) {
+        if (!TestCasePaths::stepIniExistsForStation(key, entry.caseName)) {
             QMessageBox::warning(dialogParent_, QStringLiteral("保存失败"),
                                  QStringLiteral("case 不存在: %1，请先保存配置").arg(entry.caseName));
             return false;
@@ -892,8 +892,9 @@ void TestFlowEditor::openEditDialog(TestCaseBlock* block) {
 
     if (!block->isBlank()) {
         TestCaseDefinition def;
-        TestCaseStore::loadCase(block->caseName(), def);
+        TestCaseStore::loadCaseForStation(currentStationKey(), block->caseName(), def);
         dlg->setDefinition(def, block->caseName());
+        dlg->setStationContext(currentStationKey());
         dlg->setWindowTitle(QStringLiteral("测试项配置 - %1").arg(block->caseName()));
     } else {
         dlg->setWindowTitle(QStringLiteral("测试项配置 - 新步骤"));

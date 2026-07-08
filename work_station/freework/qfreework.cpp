@@ -288,6 +288,7 @@ void QFreeWork::refreshOrderedTestIndexes() {
     }
     if (stationKey.isEmpty())
         stationKey = QStringLiteral("default");
+    activeFlowStationKey_ = stationKey;
 
     if (!QFile::exists(TestCasePaths::flowIniPath())) {
         showlog(QStringLiteral("未找到测试流程文件，请在设置页「测试流程编排」中配置"));
@@ -320,7 +321,7 @@ bool QFreeWork::currentOrderedStepIsDongleBleConnect() const {
         return false;
     }
     TestCaseDefinition caseDef;
-    if (!TestCaseRunner::loadCase(orderedTestCaseNames_.at(teststate), caseDef)) {
+    if (!TestCaseRunner::loadCaseForStation(activeFlowStationKey_, orderedTestCaseNames_.at(teststate), caseDef)) {
         return false;
     }
     if (TestCaseRunner::isDongleBleConnectStep(caseDef)) {
@@ -338,7 +339,7 @@ bool QFreeWork::canRunOrderedTestStepLoop() const {
     }
     if (teststate >= 0 && teststate < orderedTestCaseNames_.count()) {
         TestCaseDefinition caseDef;
-        if (TestCaseRunner::loadCase(orderedTestCaseNames_.at(teststate), caseDef)) {
+        if (TestCaseRunner::loadCaseForStation(activeFlowStationKey_, orderedTestCaseNames_.at(teststate), caseDef)) {
             return !TestCaseRunner::stepRequiresProductBle(caseDef);
         }
         return true;
@@ -432,7 +433,7 @@ bool QFreeWork::tickOrderedTestStepLoop() {
         TestCaseDefinition caseDef;
         QString functionName;
         const QString caseName = orderedTestCaseNames_.at(teststate);
-        if (!TestCaseRunner::loadCase(caseName, caseDef)) {
+        if (!TestCaseRunner::loadCaseForStation(activeFlowStationKey_, caseName, caseDef)) {
             ++teststate;
             stepRuntime_.reset();
             clearActiveTestCase();

@@ -51,11 +51,54 @@ QString caseIniPath(const QString& caseName) {
     return rootDir() + QLatin1Char('/') + caseName.trimmed() + QStringLiteral(".ini");
 }
 
+QString stepsDir() {
+    return rootDir() + QStringLiteral("/steps");
+}
+
+QString profilesDir() {
+    return rootDir() + QStringLiteral("/profiles");
+}
+
+QString profileDir(const QString& stationKey);
+
+QString profileMetaPath(const QString& stationKey) {
+    return profileDir(stationKey) + QStringLiteral("/profile.ini");
+}
+
+QString profileFlowPath(const QString& stationKey) {
+    return profileDir(stationKey) + QStringLiteral("/flow.ini");
+}
+
+QString profileStepOverridePath(const QString& stationKey, const QString& stepId) {
+    return profileDir(stationKey) + QStringLiteral("/steps/") + stepId.trimmed() + QStringLiteral(".ini");
+}
+
+QString stepLibraryPath(const QString& stepId) {
+    return stepsDir() + QLatin1Char('/') + stepId.trimmed() + QStringLiteral(".ini");
+}
+
+bool stepIniExistsForStation(const QString& stationKey, const QString& stepId) {
+    const QString id = stepId.trimmed();
+    if (id.isEmpty()) {
+        return false;
+    }
+    if (QFile::exists(stepLibraryPath(id))) {
+        return true;
+    }
+    const QString key = stationKey.trimmed();
+    if (key.isEmpty()) {
+        return false;
+    }
+    return QFile::exists(profileStepOverridePath(key, id));
+}
+
 bool ensureRootDir() {
     QDir dir(rootDir());
-    if (dir.exists())
-        return true;
-    return dir.mkpath(QStringLiteral("."));
+    if (!dir.exists() && !dir.mkpath(QStringLiteral(".")))
+        return false;
+    QDir(stepsDir()).mkpath(QStringLiteral("."));
+    QDir(profilesDir()).mkpath(QStringLiteral("."));
+    return true;
 }
 
 bool isReservedCaseName(const QString& name) {
@@ -257,6 +300,57 @@ bool normalizeFlowStationCatalogKeys(QVector<TestFlowStationEntry>& catalog) {
     return changed;
 }
 
+bool copyDirectoryRecursively(const QString& srcDir, const QString& dstDir) {
+    const QDir src(srcDir);
+    if (!src.exists())
+        return false;
+    QDir().mkpath(dstDir);
+    const QDir dst(dstDir);
+    for (const QFileInfo& fi : src.entryInfoList(QDir::Files | QDir::NoDotAndDotDot)) {
+        const QString dstPath = dst.filePath(fi.fileName());
+        if (QFile::exists(dstPath))
+            QFile::remove(dstPath);
+        if (!QFile::copy(fi.absoluteFilePath(), dstPath))
+            return false;
+    }
+    for (const QFileInfo& fi : src.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+        if (!copyDirectoryRecursively(fi.absoluteFilePath(), dst.filePath(fi.fileName())))
+            return false;
+    }
+    return true;
+}
+
+void ensureProfileDirectory(const QString& stationKey, const QString& displayName, const QString& createdFrom) {
+    const QString key = stationKey.trimmed();
+    if (key.isEmpty())
+        return;
+    TestCasePaths::ensureRootDir();
+    QDir().mkpath(TestCasePaths::profileDir(key) + QStringLiteral("/steps"));
+    const QString metaPath = TestCasePaths::profileMetaPath(key);
+    if (!QFile::exists(metaPath)) {
+        QSettings meta(metaPath, QSettings::IniFormat);
+        applyTestCaseIniCodec(meta);
+        meta.setValue(QStringLiteral("Profile/StationKey"), key);
+        meta.setValue(QStringLiteral("Profile/DisplayName"), displayName.isEmpty() ? key : displayName.trimmed());
+        if (!createdFrom.isEmpty())
+            meta.setValue(QStringLiteral("Profile/CreatedFrom"), createdFrom.trimmed());
+        meta.setValue(QStringLiteral("Profile/CreatedAt"), QDateTime::currentDateTime().toString(Qt::ISODate));
+        meta.setValue(QStringLiteral("Profile/ProfileVersion"), 1);
+        meta.setValue(QStringLiteral("Profile/StepsLibraryVersion"), 1);
+        syncTestCaseIni(meta, metaPath);
+        return;
+    }
+    if (!displayName.isEmpty()) {
+        QSettings meta(metaPath, QSettings::IniFormat);
+        applyTestCaseIniCodec(meta);
+        const QString cur = meta.value(QStringLiteral("Profile/DisplayName")).toString();
+        if (cur != displayName.trimmed()) {
+            meta.setValue(QStringLiteral("Profile/DisplayName"), displayName.trimmed());
+            syncTestCaseIni(meta, metaPath);
+        }
+    }
+}
+
 } // namespace
 
 QVector<TestFlowStationEntry> TestCaseStore::defaultFlowStationPresets() {
@@ -359,6 +453,30 @@ QString TestCaseStore::flowStationDisplayName(const QString& stationKey) {
     return preset.isEmpty() ? k : preset;
 }
 
+QString TestCasePaths::profileFolderName(const QString& stationKey) {
+    const QString key = stationKey.trimmed();
+    if (key.isEmpty())
+        return QString();
+    QString folder = TestCaseStore::flowStationDisplayName(key);
+    if (!isValidCaseFileName(folder, nullptr))
+        folder = key;
+    return folder;
+}
+
+QString TestCasePaths::profileDir(const QString& stationKey) {
+    const QString key = stationKey.trimmed();
+    const QString folder = profileFolderName(key);
+    const QString displayPath = profilesDir() + QLatin1Char('/') + folder;
+    if (key.isEmpty())
+        return displayPath;
+    const QString legacyPath = profilesDir() + QLatin1Char('/') + key;
+    if (QDir(displayPath).exists())
+        return displayPath;
+    if (legacyPath.compare(displayPath, Qt::CaseInsensitive) != 0 && QDir(legacyPath).exists())
+        return legacyPath;
+    return displayPath;
+}
+
 QString TestCaseStore::resolveFlowStationKey(const QString& displayNameOrKey) {
     const QString t = displayNameOrKey.trimmed();
     if (t.isEmpty())
@@ -405,7 +523,10 @@ bool TestCaseStore::addFlowStation(const QString& displayName, QString* errorOut
         }
     }
     catalog.append({key, name});
-    return saveFlowStationCatalog(catalog);
+    if (!saveFlowStationCatalog(catalog))
+        return false;
+    ensureProfileDirectory(key, name, QString());
+    return true;
 }
 
 bool TestCaseStore::copyFlowStation(const QString& sourceStationKey, const QString& newDisplayName,
@@ -439,6 +560,13 @@ bool TestCaseStore::copyFlowStation(const QString& sourceStationKey, const QStri
         if (errorOut)
             *errorOut = QStringLiteral("新工站创建后无法解析键");
         return false;
+    }
+    const QString srcProfile = TestCasePaths::profileDir(src);
+    if (QDir(srcProfile).exists()) {
+        copyDirectoryRecursively(srcProfile, TestCasePaths::profileDir(newKey));
+        ensureProfileDirectory(newKey, newDisplayName.trimmed(), src);
+    } else {
+        ensureProfileDirectory(newKey, newDisplayName.trimmed(), QString());
     }
     if (!saveStationFlowItems(newKey, items, stopFlowOnTestFail)) {
         if (errorOut)
@@ -497,8 +625,26 @@ bool TestCaseStore::renameFlowStation(const QString& stationKey, const QString& 
         }
     }
 
+    const QString oldDisplayName = catalog[targetIdx].displayName;
     catalog[targetIdx].displayName = name;
-    return saveFlowStationCatalog(catalog);
+    if (!saveFlowStationCatalog(catalog))
+        return false;
+
+    const QString profilesRoot = TestCasePaths::profilesDir();
+    const QString newDir = profilesRoot + QLatin1Char('/') + name;
+    const QString oldDir = profilesRoot + QLatin1Char('/') + oldDisplayName;
+    if (QDir(oldDir).exists() && oldDir.compare(newDir, Qt::CaseInsensitive) != 0) {
+        if (QDir(newDir).exists())
+            QDir(newDir).removeRecursively();
+        QDir().rename(oldDir, newDir);
+    }
+    const QString legacyKeyDir = profilesRoot + QLatin1Char('/') + k;
+    if (QDir(legacyKeyDir).exists() && legacyKeyDir.compare(newDir, Qt::CaseInsensitive) != 0) {
+        if (QDir(newDir).exists())
+            QDir(newDir).removeRecursively();
+        QDir().rename(legacyKeyDir, newDir);
+    }
+    return true;
 }
 
 bool TestCaseStore::removeFlowStation(const QString& key, QString* errorOut) {
@@ -532,6 +678,13 @@ bool TestCaseStore::removeFlowStation(const QString& key, QString* errorOut) {
     ini.remove(QString());
     ini.endGroup();
     syncTestCaseIni(ini, flowPath);
+
+    const QString profilePath = TestCasePaths::profileDir(k);
+    if (QDir(profilePath).exists())
+        QDir(profilePath).removeRecursively();
+    const QString legacyKeyPath = TestCasePaths::profilesDir() + QLatin1Char('/') + k;
+    if (legacyKeyPath.compare(profilePath, Qt::CaseInsensitive) != 0 && QDir(legacyKeyPath).exists())
+        QDir(legacyKeyPath).removeRecursively();
     return true;
 }
 
@@ -649,23 +802,91 @@ QVariant readSendScopedParam(const QSettings& settings, const QString& leafKey, 
 QVariantMap readSendParamMap(const QSettings& settings);
 QVariant normalizeScpiModbusParamFromMap(const QVariantMap& map);
 void writeScpiModbusParamToIni(QSettings& ini, const QVariant& param);
-} // namespace
+bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId, TestCaseDefinition& out);
+void applyCaseIniOverlay(QSettings& overlay, TestCaseDefinition& def);
+bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool profileOverlayOnly);
+void syncProfileFlowFromLegacyIni(const QString& stationKey);
 
-bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, QString* errorOut) {
-    Q_UNUSED(errorOut);
+bool stepIniHasMeaningfulContent(const QString& path) {
+    if (!QFile::exists(path))
+        return false;
+    if (QFileInfo(path).size() < 24)
+        return false;
+    QSettings ini(path, QSettings::IniFormat);
+    applyTestCaseIniCodec(ini);
+    return ini.contains(QStringLiteral("Send/Channel")) || ini.contains(QStringLiteral("Send/DeviceCmd"))
+           || ini.contains(QStringLiteral("Meta/MesTag")) || ini.contains(QStringLiteral("Hook/HookId"));
+}
+
+/** 将 test_case 根目录平铺 ini 迁入 steps/（库文件缺失或为空时覆盖） */
+void migrateLegacyFlatInisToStepLibrary() {
     TestCasePaths::ensureRootDir();
-    const QString casePath = TestCasePaths::caseIniPath(caseName);
-    QSettings ini(casePath, QSettings::IniFormat);
+    const QString flowName = TestCasePaths::flowIniFileName();
+    QDir root(TestCasePaths::rootDir());
+    for (const QFileInfo& fi : root.entryInfoList({QStringLiteral("*.ini")}, QDir::Files)) {
+        if (fi.fileName().compare(flowName, Qt::CaseInsensitive) == 0)
+            continue;
+        const QString stepId = fi.completeBaseName();
+        if (TestCasePaths::isReservedCaseName(stepId))
+            continue;
+
+        const QString legacyPath = fi.absoluteFilePath();
+        if (!stepIniHasMeaningfulContent(legacyPath))
+            continue;
+
+        const QString libraryPath = TestCasePaths::stepLibraryPath(stepId);
+        const bool libraryOk = stepIniHasMeaningfulContent(libraryPath);
+        if (libraryOk)
+            continue;
+
+        if (QFile::exists(libraryPath))
+            QFile::remove(libraryPath);
+        QFile::copy(legacyPath, libraryPath);
+    }
+}
+
+/** 将工站流程中各步骤的 Send/Timing/Gate 参数写入 profiles/{Key}/steps/ 覆盖层 */
+void migrateProfileStepOverridesForStation(const QString& stationKey) {
+    const QString key = stationKey.trimmed();
+    if (key.isEmpty())
+        return;
+    ensureProfileDirectory(key, TestCaseStore::flowStationDisplayName(key), QString());
+    QDir().mkpath(TestCasePaths::profileDir(key) + QStringLiteral("/steps"));
+
+    for (const TestFlowItemEntry& entry : TestCaseStore::loadStationFlowItems(key)) {
+        const QString stepId = entry.caseName.trimmed();
+        if (stepId.isEmpty())
+            continue;
+
+        const QString overlayPath = TestCasePaths::profileStepOverridePath(key, stepId);
+        if (stepIniHasMeaningfulContent(overlayPath))
+            continue;
+
+        TestCaseDefinition def;
+        const QString libraryPath = TestCasePaths::stepLibraryPath(stepId);
+        const QString legacyPath = TestCasePaths::caseIniPath(stepId);
+        if (!loadCaseDefinitionFromIniFile(libraryPath, stepId, def)
+            && !loadCaseDefinitionFromIniFile(legacyPath, stepId, def)) {
+            continue;
+        }
+        writeCaseIniFile(overlayPath, def, true);
+    }
+}
+
+bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId, TestCaseDefinition& out) {
+    if (!QFile::exists(iniPath))
+        return false;
+    QSettings ini(iniPath, QSettings::IniFormat);
     applyTestCaseIniCodec(ini);
 
-    const QString nameInIni = ini.value(QStringLiteral("Meta/Name"), caseName).toString().trimmed();
+    const QString nameInIni = ini.value(QStringLiteral("Meta/Name"), stepId).toString().trimmed();
     const QString displayInIni = ini.value(QStringLiteral("Meta/DisplayName")).toString().trimmed();
     if (!displayInIni.isEmpty())
         out.meta.name = displayInIni;
     else if (!nameInIni.isEmpty())
         out.meta.name = nameInIni;
     else
-        out.meta.name = caseName.trimmed();
+        out.meta.name = stepId.trimmed();
     out.meta.displayName = out.meta.name;
     out.meta.mesTag = ini.value(QStringLiteral("Meta/MesTag")).toString().trimmed();
     out.meta.promptEnabled = ini.value(QStringLiteral("Meta/PromptEnabled"), false).toBool();
@@ -879,15 +1100,367 @@ bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, Q
     return true;
 }
 
-bool TestCaseStore::saveCase(const TestCaseDefinition& def, QString* errorOut) {
-    Q_UNUSED(errorOut);
+void applyCaseIniOverlay(QSettings& overlay, TestCaseDefinition& def) {
+    if (overlay.contains(QStringLiteral("Meta/MesTag")))
+        def.meta.mesTag = overlay.value(QStringLiteral("Meta/MesTag")).toString().trimmed();
+    if (overlay.contains(QStringLiteral("Meta/PromptEnabled")))
+        def.meta.promptEnabled = overlay.value(QStringLiteral("Meta/PromptEnabled")).toBool();
+    if (overlay.contains(QStringLiteral("Meta/PromptText")))
+        def.meta.promptText = overlay.value(QStringLiteral("Meta/PromptText")).toString();
+
+    const bool hasSendOverlay = overlay.allKeys().contains(QStringLiteral("Send/Action"))
+        || overlay.allKeys().contains(QStringLiteral("Send/Channel"))
+        || overlay.allKeys().contains(QStringLiteral("Send/DeviceCmd"))
+        || overlay.allKeys().contains(QStringLiteral("Send/Device"))
+        || !readSendParamMap(overlay).isEmpty()
+        || overlay.contains(QStringLiteral("Send/Param"));
+    if (hasSendOverlay) {
+        if (overlay.contains(QStringLiteral("Send/Action"))) {
+            const QString action = overlay.value(QStringLiteral("Send/Action")).toString();
+            def.send.action = action.compare(QLatin1String("Get"), Qt::CaseInsensitive) == 0 ? TestCaseSendAction::Get
+                                                                                             : TestCaseSendAction::Set;
+        }
+        if (overlay.contains(QStringLiteral("Send/Device")))
+            def.send.device = overlay.value(QStringLiteral("Send/Device")).toString().trimmed();
+        if (overlay.contains(QStringLiteral("Send/DeviceCmd")))
+            def.send.deviceCmd = overlay.value(QStringLiteral("Send/DeviceCmd")).toString().trimmed();
+        const QVariantMap paramMap = readSendParamMap(overlay);
+        if (!paramMap.isEmpty()) {
+            def.send.param = normalizeScpiModbusParamFromMap(paramMap);
+        } else if (overlay.contains(QStringLiteral("Send/Param"))) {
+            def.send.param = overlay.value(QStringLiteral("Send/Param"));
+        } else if (def.send.channel == TestCaseSendChannel::Dongle) {
+            DongleCmd dongleCmd;
+            if (DongleCmdCatalog::dongleCmdFromName(def.send.deviceCmd, dongleCmd))
+                DongleCmdCatalog::paramFromIniGroup(overlay, dongleCmd, def.send.param);
+        } else if (def.send.channel == TestCaseSendChannel::Cloud) {
+            TupleCmd tupleCmd;
+            if (TupleCmdCatalog::tupleCmdFromName(def.send.deviceCmd, tupleCmd))
+                TupleCmdCatalog::paramFromIniGroup(overlay, tupleCmd, def.send.param);
+        } else if (def.send.channel == TestCaseSendChannel::Fixture) {
+            FixturePcbaCmd fixtureCmd;
+            if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd))
+                FixturePcbaCmdCatalog::paramFromIniGroup(overlay, fixtureCmd, def.send.param);
+        } else if (def.send.channel == TestCaseSendChannel::Modbus || def.send.channel == TestCaseSendChannel::Scpi) {
+            // paramMap 已在上方处理
+        } else {
+            DeviceCmd cmd;
+            if (DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd))
+                DeviceCmdCatalog::paramFromIniGroup(overlay, cmd, def.send.param);
+        }
+    }
+
+    if (overlay.contains(QStringLiteral("Timing/DelayBeforeMs")))
+        def.timing.delayBeforeMs = overlay.value(QStringLiteral("Timing/DelayBeforeMs")).toInt();
+    if (overlay.contains(QStringLiteral("Timing/DelayAfterMs")))
+        def.timing.delayAfterMs = overlay.value(QStringLiteral("Timing/DelayAfterMs")).toInt();
+    if (overlay.contains(QStringLiteral("Timing/CommandTimeoutMs")))
+        def.timing.commandTimeoutMs = overlay.value(QStringLiteral("Timing/CommandTimeoutMs")).toInt();
+
+    if (overlay.contains(QStringLiteral("Gate/Enabled")) || overlay.contains(QStringLiteral("Gate/ReportType"))
+        || overlay.contains(QStringLiteral("Gate/Count"))) {
+        if (overlay.contains(QStringLiteral("Gate/Enabled")))
+            def.gate.enabled = overlay.value(QStringLiteral("Gate/Enabled")).toBool();
+        if (overlay.contains(QStringLiteral("Gate/ReportType")))
+            def.gate.reportType = overlay.value(QStringLiteral("Gate/ReportType")).toString().trimmed();
+        if (overlay.contains(QStringLiteral("Gate/Field")))
+            def.gate.field = overlay.value(QStringLiteral("Gate/Field")).toString().trimmed();
+        if (overlay.contains(QStringLiteral("Gate/Op")))
+            def.gate.op = gateOpFromString(overlay.value(QStringLiteral("Gate/Op")).toString());
+        if (overlay.contains(QStringLiteral("Gate/Low")))
+            def.gate.low = overlay.value(QStringLiteral("Gate/Low")).toDouble();
+        if (overlay.contains(QStringLiteral("Gate/High")))
+            def.gate.high = overlay.value(QStringLiteral("Gate/High")).toDouble();
+        if (overlay.contains(QStringLiteral("Gate/Expected")))
+            def.gate.expected = overlay.value(QStringLiteral("Gate/Expected")).toString();
+        if (overlay.contains(QStringLiteral("Gate/ExpectedSettingsKey")))
+            def.gate.expectedSettingsKey = overlay.value(QStringLiteral("Gate/ExpectedSettingsKey")).toString();
+        if (overlay.contains(QStringLiteral("Gate/LowSettingsKey")))
+            def.gate.lowSettingsKey = overlay.value(QStringLiteral("Gate/LowSettingsKey")).toString();
+        if (overlay.contains(QStringLiteral("Gate/HighSettingsKey")))
+            def.gate.highSettingsKey = overlay.value(QStringLiteral("Gate/HighSettingsKey")).toString();
+        loadMultiGatesFromIni(overlay, def);
+    }
+
+    if (overlay.contains(QStringLiteral("Hook/Enabled")) || overlay.contains(QStringLiteral("Hook/HookId"))) {
+        if (overlay.contains(QStringLiteral("Hook/Enabled")))
+            def.hook.enabled = overlay.value(QStringLiteral("Hook/Enabled")).toBool();
+        if (overlay.contains(QStringLiteral("Hook/HookId")))
+            def.hook.hookId = overlay.value(QStringLiteral("Hook/HookId")).toString().trimmed();
+    }
+}
+
+QVector<TestFlowItemEntry> parseFlowItemsFromSettingsGroup(QSettings& ini) {
+    const QString rawItems = ini.value(QStringLiteral("Items")).toString();
+    const QString rawDisabled = ini.value(QStringLiteral("DisabledItems")).toString();
+    const QString rawEnabled = ini.value(QStringLiteral("ItemEnabled")).toString();
+
+    QSet<QString> disabledNames;
+    for (const QString& part : rawDisabled.split(QLatin1Char(','), Qt::SkipEmptyParts)) {
+        const QString name = part.trimmed();
+        if (!name.isEmpty())
+            disabledNames.insert(name);
+    }
+
+    const QStringList enabledParts = rawEnabled.split(QLatin1Char(','), Qt::SkipEmptyParts);
+    const bool useLegacyItemEnabled = disabledNames.isEmpty() && !rawEnabled.trimmed().isEmpty();
+
+    QVector<TestFlowItemEntry> entries;
+    int index = 0;
+    for (const QString& part : rawItems.split(QLatin1Char(','), Qt::SkipEmptyParts)) {
+        const QString name = part.trimmed();
+        if (name.isEmpty())
+            continue;
+        TestFlowItemEntry entry;
+        entry.caseName = name;
+        entry.enabled = true;
+        if (disabledNames.contains(name)) {
+            entry.enabled = false;
+        } else if (useLegacyItemEnabled && index < enabledParts.size()) {
+            const QString flag = enabledParts.at(index).trimmed();
+            entry.enabled = !(flag == QLatin1String("0") || flag.compare(QLatin1String("false"), Qt::CaseInsensitive) == 0);
+        }
+        entries.append(entry);
+        ++index;
+    }
+    return entries;
+}
+
+void writeFlowItemsToSettingsGroup(QSettings& ini, const QVector<TestFlowItemEntry>& items, bool stopFlowOnTestFail) {
+    QStringList names;
+    QStringList disabledNames;
+    for (const TestFlowItemEntry& entry : items) {
+        const QString name = entry.caseName.trimmed();
+        if (name.isEmpty())
+            continue;
+        names.append(name);
+        if (!entry.enabled)
+            disabledNames.append(name);
+    }
+    ini.setValue(QStringLiteral("Items"), names.join(QLatin1Char(',')));
+    if (disabledNames.isEmpty()) {
+        ini.remove(QStringLiteral("DisabledItems"));
+    } else {
+        ini.setValue(QStringLiteral("DisabledItems"), disabledNames.join(QLatin1Char(',')));
+    }
+    ini.remove(QStringLiteral("ItemEnabled"));
+    ini.setValue(QStringLiteral("StopFlowOnTestFail"), stopFlowOnTestFail);
+    ini.remove(QStringLiteral("StopOnGateFail"));
+}
+
+void syncProfileFlowFromLegacyIni(const QString& stationKey) {
+    const QString k = stationKey.trimmed();
+    if (k.isEmpty())
+        return;
+    const QString profileFlow = TestCasePaths::profileFlowPath(k);
+    if (QFile::exists(profileFlow)) {
+        QSettings existing(profileFlow, QSettings::IniFormat);
+        applyTestCaseIniCodec(existing);
+        existing.beginGroup(QStringLiteral("Flow"));
+        const bool hasItems = existing.contains(QStringLiteral("Items"));
+        existing.endGroup();
+        if (hasItems)
+            return;
+    }
+
+    QSettings legacy(TestCasePaths::flowIniPath(), QSettings::IniFormat);
+    applyTestCaseIniCodec(legacy);
+    legacy.beginGroup(stationGroup(k));
+    const bool hadData = legacy.contains(QStringLiteral("Items")) || legacy.contains(QStringLiteral("StopFlowOnTestFail"))
+                         || legacy.contains(QStringLiteral("StopOnGateFail"));
+    if (!hadData) {
+        legacy.endGroup();
+        return;
+    }
+    const QVector<TestFlowItemEntry> items = parseFlowItemsFromSettingsGroup(legacy);
+    bool stopFlow = true;
+    if (legacy.contains(QStringLiteral("StopFlowOnTestFail")))
+        stopFlow = legacy.value(QStringLiteral("StopFlowOnTestFail"), true).toBool();
+    else if (legacy.contains(QStringLiteral("StopOnGateFail")))
+        stopFlow = true;
+    legacy.endGroup();
+
+    ensureProfileDirectory(k, TestCaseStore::flowStationDisplayName(k), QString());
+    QSettings profileIni(profileFlow, QSettings::IniFormat);
+    applyTestCaseIniCodec(profileIni);
+    profileIni.beginGroup(QStringLiteral("Flow"));
+    writeFlowItemsToSettingsGroup(profileIni, items, stopFlow);
+    profileIni.endGroup();
+    syncTestCaseIni(profileIni, profileFlow);
+}
+
+/** 将 profiles/{StationKey} 旧目录重命名为 profiles/{中文显示名} */
+void migrateProfileDirToDisplayName(const QString& stationKey) {
+    const QString key = stationKey.trimmed();
+    if (key.isEmpty())
+        return;
+    const QString folder = TestCasePaths::profileFolderName(key);
+    if (folder.isEmpty() || folder.compare(key, Qt::CaseInsensitive) == 0)
+        return;
+
+    const QString root = TestCasePaths::profilesDir();
+    const QString legacyDir = root + QLatin1Char('/') + key;
+    const QString targetDir = root + QLatin1Char('/') + folder;
+    if (!QDir(legacyDir).exists())
+        return;
+    if (QDir(targetDir).exists()) {
+        if (legacyDir.compare(targetDir, Qt::CaseInsensitive) == 0)
+            return;
+        copyDirectoryRecursively(legacyDir, targetDir);
+        QDir(legacyDir).removeRecursively();
+        return;
+    }
+    QDir().rename(legacyDir, targetDir);
+}
+
+/** 扫描 profiles/{中文名}/profile.ini，将复制进来的工站自动登记到 FlowStations */
+void registerFlowStationsFromProfileDirs() {
+    const QString profilesRoot = TestCasePaths::profilesDir();
+    QDir profiles(profilesRoot);
+    if (!profiles.exists())
+        return;
+
+    QVector<TestFlowStationEntry> catalog = TestCaseStore::loadFlowStationCatalog();
+    QHash<QString, int> keyToIndex;
+    for (int i = 0; i < catalog.size(); ++i)
+        keyToIndex.insert(catalog[i].key.trimmed(), i);
+
+    bool catalogChanged = false;
+    for (const QFileInfo& fi : profiles.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot)) {
+        const QString folderName = fi.fileName().trimmed();
+        if (folderName.isEmpty() || !TestCasePaths::isValidCaseFileName(folderName, nullptr))
+            continue;
+
+        const QString profileIniPath = fi.absoluteFilePath() + QStringLiteral("/profile.ini");
+        const QString flowIniPath = fi.absoluteFilePath() + QStringLiteral("/flow.ini");
+        if (!QFile::exists(profileIniPath) || !QFile::exists(flowIniPath))
+            continue;
+
+        QSettings meta(profileIniPath, QSettings::IniFormat);
+        applyTestCaseIniCodec(meta);
+        QString stationKey = meta.value(QStringLiteral("Profile/StationKey")).toString().trimmed();
+        QString displayName = meta.value(QStringLiteral("Profile/DisplayName")).toString().trimmed();
+        if (displayName.isEmpty())
+            displayName = folderName;
+
+        if (stationKey.isEmpty()) {
+            stationKey = lookupPresetKeyFromDisplayName(folderName);
+            if (stationKey.isEmpty())
+                stationKey = allocateCustomFlowStationKey(catalog);
+            meta.setValue(QStringLiteral("Profile/StationKey"), stationKey);
+            catalogChanged = true;
+        }
+        if (displayName != folderName) {
+            displayName = folderName;
+            meta.setValue(QStringLiteral("Profile/DisplayName"), displayName);
+            catalogChanged = true;
+        }
+        if (meta.status() == QSettings::NoError)
+            syncTestCaseIni(meta, profileIniPath);
+
+        const int existingIdx = keyToIndex.value(stationKey, -1);
+        if (existingIdx < 0) {
+            catalog.append({stationKey, displayName});
+            keyToIndex.insert(stationKey, catalog.size() - 1);
+            catalogChanged = true;
+        } else if (catalog[existingIdx].displayName != displayName) {
+            catalog[existingIdx].displayName = displayName;
+            catalogChanged = true;
+        }
+    }
+
+    if (catalogChanged)
+        TestCaseStore::saveFlowStationCatalog(catalog);
+}
+
+void ensureFilesystemLayoutOnce() {
+    static bool profileSynced = false;
+
     TestCasePaths::ensureRootDir();
-    const QString casePath = TestCasePaths::caseIniPath(def.meta.name);
-    QSettings ini(casePath, QSettings::IniFormat);
+    migrateLegacyFlatInisToStepLibrary();
+
+    if (profileSynced)
+        return;
+    profileSynced = true;
+
+    registerFlowStationsFromProfileDirs();
+
+    QSet<QString> stationKeys;
+    for (const TestFlowStationEntry& entry : TestCaseStore::loadFlowStationCatalog())
+        stationKeys.insert(entry.key.trimmed());
+    for (const QString& key : TestCaseStore::listStationKeysFromFlow()) {
+        if (!key.trimmed().isEmpty())
+            stationKeys.insert(key.trimmed());
+    }
+    for (const QString& key : stationKeys) {
+        migrateProfileDirToDisplayName(key);
+        ensureProfileDirectory(key, TestCaseStore::flowStationDisplayName(key), QString());
+        syncProfileFlowFromLegacyIni(key);
+        migrateProfileStepOverridesForStation(key);
+    }
+
+    // 复制进来的 profiles 目录：补登记后再次纳入迁移
+    for (const TestFlowStationEntry& entry : TestCaseStore::loadFlowStationCatalog()) {
+        const QString key = entry.key.trimmed();
+        if (key.isEmpty() || stationKeys.contains(key))
+            continue;
+        migrateProfileDirToDisplayName(key);
+        ensureProfileDirectory(key, entry.displayName, QString());
+    }
+}
+
+bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool profileOverlayOnly) {
+    const QString stepId = def.meta.name.trimmed();
+    if (stepId.isEmpty() || path.trimmed().isEmpty())
+        return false;
+
+    QSettings ini(path, QSettings::IniFormat);
     applyTestCaseIniCodec(ini);
     ini.clear();
 
-    ini.setValue(QStringLiteral("Meta/Name"), def.meta.name);
+    ini.setValue(QStringLiteral("Meta/StepId"), stepId);
+    ini.setValue(QStringLiteral("Meta/Name"), stepId);
+
+    if (profileOverlayOnly) {
+        if (!def.send.device.isEmpty())
+            ini.setValue(QStringLiteral("Send/Device"), def.send.device);
+        if (def.send.channel == TestCaseSendChannel::Dongle) {
+            DongleCmd dongleCmd;
+            if (DongleCmdCatalog::dongleCmdFromName(def.send.deviceCmd, dongleCmd))
+                DongleCmdCatalog::paramToIniGroup(ini, dongleCmd, def.send.param);
+        } else if (def.send.channel == TestCaseSendChannel::Cloud) {
+            TupleCmd tupleCmd;
+            if (TupleCmdCatalog::tupleCmdFromName(def.send.deviceCmd, tupleCmd))
+                TupleCmdCatalog::paramToIniGroup(ini, tupleCmd, def.send.param);
+        } else if (def.send.channel == TestCaseSendChannel::Fixture) {
+            FixturePcbaCmd fixtureCmd;
+            if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd))
+                FixturePcbaCmdCatalog::paramToIniGroup(ini, fixtureCmd, def.send.param);
+        } else if (def.send.channel == TestCaseSendChannel::Modbus || def.send.channel == TestCaseSendChannel::Scpi) {
+            writeScpiModbusParamToIni(ini, def.send.param);
+        } else if (def.send.channel != TestCaseSendChannel::ProductSerial) {
+            DeviceCmd cmd;
+            if (DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd))
+                DeviceCmdCatalog::paramToIniGroup(ini, cmd, def.send.param);
+        }
+        ini.setValue(QStringLiteral("Timing/DelayBeforeMs"), def.timing.delayBeforeMs);
+        ini.setValue(QStringLiteral("Timing/DelayAfterMs"), def.timing.delayAfterMs);
+        ini.setValue(QStringLiteral("Timing/CommandTimeoutMs"), def.timing.commandTimeoutMs);
+        ini.setValue(QStringLiteral("Gate/Enabled"), def.gate.enabled);
+        ini.setValue(QStringLiteral("Gate/ReportType"), def.gate.reportType);
+        ini.setValue(QStringLiteral("Gate/Field"), def.gate.field);
+        ini.setValue(QStringLiteral("Gate/Op"), gateOpToString(def.gate.op));
+        ini.setValue(QStringLiteral("Gate/Low"), def.gate.low);
+        ini.setValue(QStringLiteral("Gate/High"), def.gate.high);
+        ini.setValue(QStringLiteral("Gate/Expected"), def.gate.expected);
+        ini.setValue(QStringLiteral("Gate/ExpectedSettingsKey"), def.gate.expectedSettingsKey);
+        ini.setValue(QStringLiteral("Gate/LowSettingsKey"), def.gate.lowSettingsKey);
+        ini.setValue(QStringLiteral("Gate/HighSettingsKey"), def.gate.highSettingsKey);
+        saveMultiGatesToIni(ini, def);
+        syncTestCaseIni(ini, path);
+        return true;
+    }
+
     ini.setValue(QStringLiteral("Meta/DisplayName"), def.meta.name);
     ini.setValue(QStringLiteral("Meta/MesTag"), def.meta.mesTag);
     ini.setValue(QStringLiteral("Meta/PromptEnabled"), def.meta.promptEnabled);
@@ -909,11 +1482,9 @@ bool TestCaseStore::saveCase(const TestCaseDefinition& def, QString* errorOut) {
         channelStr = QStringLiteral("Scpi");
     ini.setValue(QStringLiteral("Send/Channel"), channelStr);
     if (def.send.channel == TestCaseSendChannel::Product)
-        ini.setValue(QStringLiteral("Send/Protocol"),
-                     DeviceCmdCatalog::productProtocolToIni(def.send.productProtocol));
+        ini.setValue(QStringLiteral("Send/Protocol"), DeviceCmdCatalog::productProtocolToIni(def.send.productProtocol));
     else if (def.send.channel == TestCaseSendChannel::Fixture)
-        ini.setValue(QStringLiteral("Send/Protocol"),
-                     FixturePcbaCmdCatalog::fixtureProtocolToIni(def.send.fixtureProtocol));
+        ini.setValue(QStringLiteral("Send/Protocol"), FixturePcbaCmdCatalog::fixtureProtocolToIni(def.send.fixtureProtocol));
     ini.setValue(QStringLiteral("Send/DeviceCmd"), def.send.deviceCmd);
     if (def.send.channel == TestCaseSendChannel::Dongle) {
         DongleCmd dongleCmd;
@@ -955,8 +1526,82 @@ bool TestCaseStore::saveCase(const TestCaseDefinition& def, QString* errorOut) {
 
     ini.setValue(QStringLiteral("Hook/Enabled"), def.hook.enabled);
     ini.setValue(QStringLiteral("Hook/HookId"), def.hook.hookId);
-    syncTestCaseIni(ini, casePath);
+    syncTestCaseIni(ini, path);
     return true;
+}
+
+} // namespace
+
+void TestCaseStore::ensureFilesystemLayout() {
+    ensureFilesystemLayoutOnce();
+}
+
+bool TestCaseStore::loadCaseForStation(const QString& stationKey, const QString& stepId, TestCaseDefinition& out,
+                                       QString* errorOut) {
+    Q_UNUSED(errorOut);
+    TestCasePaths::ensureRootDir();
+    ensureFilesystemLayout();
+
+    const QString id = stepId.trimmed();
+    if (id.isEmpty())
+        return false;
+
+    out = TestCaseDefinition{};
+    const QString libraryPath = TestCasePaths::stepLibraryPath(id);
+    const QString legacyPath = TestCasePaths::caseIniPath(id);
+    bool loaded = loadCaseDefinitionFromIniFile(libraryPath, id, out);
+    if (!loaded)
+        loaded = loadCaseDefinitionFromIniFile(legacyPath, id, out);
+    if (!loaded)
+        return false;
+
+    const QString key = stationKey.trimmed();
+    if (!key.isEmpty()) {
+        const QString overlayPath = TestCasePaths::profileStepOverridePath(key, id);
+        if (QFile::exists(overlayPath)) {
+            QSettings overlayIni(overlayPath, QSettings::IniFormat);
+            applyTestCaseIniCodec(overlayIni);
+            applyCaseIniOverlay(overlayIni, out);
+        }
+    }
+    return true;
+}
+
+bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, QString* errorOut) {
+    return loadCaseForStation(QString(), caseName, out, errorOut);
+}
+
+bool TestCaseStore::saveCaseForStation(const QString& stationKey, const TestCaseDefinition& def, QString* errorOut) {
+    Q_UNUSED(errorOut);
+    TestCasePaths::ensureRootDir();
+    const QString stepId = def.meta.name.trimmed();
+    if (stepId.isEmpty())
+        return false;
+
+    const QString key = stationKey.trimmed();
+    if (!key.isEmpty()) {
+        ensureProfileDirectory(key, TestCaseStore::flowStationDisplayName(key), QString());
+        QDir().mkpath(TestCasePaths::profileDir(key) + QStringLiteral("/steps"));
+        const QString libraryPath = TestCasePaths::stepLibraryPath(stepId);
+        const QString legacyPath = TestCasePaths::caseIniPath(stepId);
+        // 新步骤尚未入库时，先写入步骤库
+        if (!QFile::exists(libraryPath) && !QFile::exists(legacyPath)) {
+            if (!writeCaseIniFile(libraryPath, def, false))
+                return false;
+        }
+        if (!writeCaseIniFile(TestCasePaths::profileStepOverridePath(key, stepId), def, true))
+            return false;
+    } else {
+        if (!writeCaseIniFile(TestCasePaths::stepLibraryPath(stepId), def, false))
+            return false;
+        writeCaseIniFile(TestCasePaths::caseIniPath(stepId), def, false);
+    }
+    invalidateCloudItemNameCache();
+    return true;
+}
+
+bool TestCaseStore::saveCase(const TestCaseDefinition& def, QString* errorOut) {
+    return saveCaseForStation(QString(), def, errorOut);
 }
 
 QVector<TestCaseGate> TestCaseStore::effectiveGates(const TestCaseDefinition& def) {
@@ -989,14 +1634,23 @@ bool TestCaseStore::usesMultiFieldGates(const TestCaseDefinition& def) {
 
 QStringList TestCaseStore::listCaseIniNames() {
     TestCasePaths::ensureRootDir();
-    QDir dir(TestCasePaths::rootDir());
+    ensureFilesystemLayout();
+    QSet<QString> nameSet;
+    const QDir stepsDir(TestCasePaths::stepsDir());
+    if (stepsDir.exists()) {
+        for (const QFileInfo& fi : stepsDir.entryInfoList({QStringLiteral("*.ini")}, QDir::Files))
+            nameSet.insert(fi.completeBaseName());
+    }
+    QDir root(TestCasePaths::rootDir());
     const QString flowName = TestCasePaths::flowIniFileName();
-    QStringList names;
-    for (const QFileInfo& fi : dir.entryInfoList({QStringLiteral("*.ini")}, QDir::Files)) {
+    for (const QFileInfo& fi : root.entryInfoList({QStringLiteral("*.ini")}, QDir::Files)) {
         if (fi.fileName().compare(flowName, Qt::CaseInsensitive) == 0)
             continue;
-        names.append(fi.completeBaseName());
+        const QString base = fi.completeBaseName();
+        if (!TestCasePaths::isReservedCaseName(base))
+            nameSet.insert(base);
     }
+    QStringList names = nameSet.values();
     names.sort();
     return names;
 }
@@ -1026,7 +1680,10 @@ void rebuildCloudItemNameMap() {
     map.clear();
     TestCasePaths::ensureRootDir();
     for (const QString& caseName : TestCaseStore::listCaseIniNames()) {
-        QSettings ini(TestCasePaths::caseIniPath(caseName), QSettings::IniFormat);
+        const QString libPath = TestCasePaths::stepLibraryPath(caseName);
+        const QString legacyPath = TestCasePaths::caseIniPath(caseName);
+        const QString iniPath = QFile::exists(libPath) ? libPath : legacyPath;
+        QSettings ini(iniPath, QSettings::IniFormat);
         applyTestCaseIniCodec(ini);
         const QString nameInIni = ini.value(QStringLiteral("Meta/Name"), caseName).toString().trimmed();
         const QString displayInIni = ini.value(QStringLiteral("Meta/DisplayName")).toString().trimmed();
@@ -1103,87 +1760,76 @@ bool TestCaseStore::saveStationItems(const QString& stationKey, const QStringLis
 
 bool TestCaseStore::loadStationStopFlowOnTestFail(const QString& stationKey, bool defaultValue) {
     TestCasePaths::ensureRootDir();
+    ensureFilesystemLayout();
+    const QString key = stationKey.trimmed();
+
+    const QString profileFlow = TestCasePaths::profileFlowPath(key);
+    if (QFile::exists(profileFlow)) {
+        QSettings profileIni(profileFlow, QSettings::IniFormat);
+        applyTestCaseIniCodec(profileIni);
+        profileIni.beginGroup(QStringLiteral("Flow"));
+        const bool hasItems = profileIni.contains(QStringLiteral("Items"));
+        bool result = defaultValue;
+        if (profileIni.contains(QStringLiteral("StopFlowOnTestFail")))
+            result = profileIni.value(QStringLiteral("StopFlowOnTestFail"), defaultValue).toBool();
+        else if (profileIni.contains(QStringLiteral("StopOnGateFail")))
+            result = true;
+        profileIni.endGroup();
+        if (hasItems)
+            return result;
+    }
+
     QSettings ini(TestCasePaths::flowIniPath(), QSettings::IniFormat);
     applyTestCaseIniCodec(ini);
-    ini.beginGroup(stationGroup(stationKey));
+    ini.beginGroup(stationGroup(key));
     bool result = defaultValue;
     if (ini.contains(QStringLiteral("StopFlowOnTestFail")))
         result = ini.value(QStringLiteral("StopFlowOnTestFail"), defaultValue).toBool();
     else if (ini.contains(QStringLiteral("StopOnGateFail")))
-        result = true; // 兼容旧 per-case 列表
+        result = true;
     ini.endGroup();
     return result;
 }
 
 QVector<TestFlowItemEntry> TestCaseStore::loadStationFlowItems(const QString& stationKey) {
     TestCasePaths::ensureRootDir();
+    ensureFilesystemLayout();
+    const QString key = stationKey.trimmed();
+
+    const QString profileFlow = TestCasePaths::profileFlowPath(key);
+    if (QFile::exists(profileFlow)) {
+        QSettings profileIni(profileFlow, QSettings::IniFormat);
+        applyTestCaseIniCodec(profileIni);
+        profileIni.beginGroup(QStringLiteral("Flow"));
+        if (profileIni.contains(QStringLiteral("Items"))) {
+            const QVector<TestFlowItemEntry> entries = parseFlowItemsFromSettingsGroup(profileIni);
+            profileIni.endGroup();
+            return entries;
+        }
+        profileIni.endGroup();
+    }
+
     QSettings ini(TestCasePaths::flowIniPath(), QSettings::IniFormat);
     applyTestCaseIniCodec(ini);
-    ini.beginGroup(stationGroup(stationKey));
-    const QString rawItems = ini.value(QStringLiteral("Items")).toString();
-    const QString rawDisabled = ini.value(QStringLiteral("DisabledItems")).toString();
-    const QString rawEnabled = ini.value(QStringLiteral("ItemEnabled")).toString();
+    ini.beginGroup(stationGroup(key));
+    const QVector<TestFlowItemEntry> entries = parseFlowItemsFromSettingsGroup(ini);
     ini.endGroup();
-
-    QSet<QString> disabledNames;
-    for (const QString& part : rawDisabled.split(QLatin1Char(','), Qt::SkipEmptyParts)) {
-        const QString name = part.trimmed();
-        if (!name.isEmpty())
-            disabledNames.insert(name);
-    }
-
-    const QStringList enabledParts = rawEnabled.split(QLatin1Char(','), Qt::SkipEmptyParts);
-    const bool useLegacyItemEnabled = disabledNames.isEmpty() && !rawEnabled.trimmed().isEmpty();
-
-    QVector<TestFlowItemEntry> entries;
-    int index = 0;
-    for (const QString& part : rawItems.split(QLatin1Char(','), Qt::SkipEmptyParts)) {
-        const QString name = part.trimmed();
-        if (name.isEmpty())
-            continue;
-        TestFlowItemEntry entry;
-        entry.caseName = name;
-        entry.enabled = true;
-        if (disabledNames.contains(name)) {
-            entry.enabled = false;
-        } else if (useLegacyItemEnabled && index < enabledParts.size()) {
-            const QString flag = enabledParts.at(index).trimmed();
-            entry.enabled = !(flag == QLatin1String("0") || flag.compare(QLatin1String("false"), Qt::CaseInsensitive) == 0);
-        }
-        entries.append(entry);
-        ++index;
-    }
     return entries;
 }
 
 bool TestCaseStore::saveStationFlowItems(const QString& stationKey, const QVector<TestFlowItemEntry>& items,
                                          bool stopFlowOnTestFail) {
     TestCasePaths::ensureRootDir();
-    const QString flowPath = TestCasePaths::flowIniPath();
-    QSettings ini(flowPath, QSettings::IniFormat);
-    applyTestCaseIniCodec(ini);
-    ini.beginGroup(stationGroup(stationKey));
-    QStringList names;
-    QStringList disabledNames;
-    for (const TestFlowItemEntry& entry : items) {
-        const QString name = entry.caseName.trimmed();
-        if (name.isEmpty())
-            continue;
-        names.append(name);
-        if (!entry.enabled)
-            disabledNames.append(name);
-    }
-    ini.setValue(QStringLiteral("Items"), names.join(QLatin1Char(',')));
-    if (disabledNames.isEmpty()) {
-        ini.remove(QStringLiteral("DisabledItems"));
-    } else {
-        ini.setValue(QStringLiteral("DisabledItems"), disabledNames.join(QLatin1Char(',')));
-    }
-    ini.remove(QStringLiteral("ItemEnabled"));
-    ini.setValue(QStringLiteral("StopFlowOnTestFail"), stopFlowOnTestFail);
-    ini.remove(QStringLiteral("StopOnGateFail"));
-    ini.endGroup();
-    syncTestCaseIni(ini, flowPath);
+    const QString key = stationKey.trimmed();
+    ensureProfileDirectory(key, flowStationDisplayName(key), QString());
+
+    const QString profileFlow = TestCasePaths::profileFlowPath(key);
+    QSettings profileIni(profileFlow, QSettings::IniFormat);
+    applyTestCaseIniCodec(profileIni);
+    profileIni.beginGroup(QStringLiteral("Flow"));
+    writeFlowItemsToSettingsGroup(profileIni, items, stopFlowOnTestFail);
+    profileIni.endGroup();
+    syncTestCaseIni(profileIni, profileFlow);
     return true;
 }
 
@@ -1320,8 +1966,9 @@ bool TestCaseValidator::validateCase(const TestCaseDefinition& def, QStringList&
     if (def.hook.enabled && !TestCaseHookRegistry::contains(def.hook.hookId))
         errors.append(QStringLiteral("预置流程类型无效，请联系工程师"));
 
-    const QString path = TestCasePaths::caseIniPath(def.meta.name);
-    if (QFile::exists(path)) {
+    const QString libraryPath = TestCasePaths::stepLibraryPath(def.meta.name);
+    const QString legacyPath = TestCasePaths::caseIniPath(def.meta.name);
+    if (QFile::exists(libraryPath) || QFile::exists(legacyPath)) {
         TestCaseDefinition existing;
         TestCaseStore::loadCase(def.meta.name, existing);
         Q_UNUSED(existing);
@@ -2302,7 +2949,7 @@ const QVector<GateTypeDescriptor> kTypes = {
     {QStringLiteral("ProtocolMacData"), QStringLiteral("MAC地址"), {{QStringLiteral("mac"), QStringLiteral("MAC文本")}}},
     {QStringLiteral("ProtocolTypeData"), QStringLiteral("状态码"), {{QStringLiteral("type"), QStringLiteral("状态值")}}},
     {QStringLiteral("ProtocolMeasureData"), QStringLiteral("外设测量值"), {{QStringLiteral("value"), QStringLiteral("测量数值")}, {QStringLiteral("valueText"), QStringLiteral("测量文本值")}, {QStringLiteral("deviceName"), QStringLiteral("外设名称")}, {QStringLiteral("channel"), QStringLiteral("通道号")}, {QStringLiteral("type"), QStringLiteral("测量类型")}, {QStringLiteral("unit"), QStringLiteral("单位")}}},
-    {QStringLiteral("ProtocolDongleSuctionData"), QStringLiteral("Dongle吸力"), {{QStringLiteral("leftKpa"), QStringLiteral("左通道(kPa)")}, {QStringLiteral("rightKpa"), QStringLiteral("右通道(kPa)")}}},
+    {QStringLiteral("ProtocolDongleSuctionData"), QStringLiteral("Dongle吸力"), {{QStringLiteral("leftKpa"), QStringLiteral("左通道(kPa)")}, {QStringLiteral("rightKpa"), QStringLiteral("右通道(kPa)")}, {QStringLiteral("thirdKpa"), QStringLiteral("第三通道(kPa)")}}},
 };
 
 double fieldValueFromVariant(const QString& reportType, const QString& field, const QVariant& payload, bool& ok) {
@@ -2471,6 +3118,10 @@ double fieldValueFromVariant(const QString& reportType, const QString& field, co
             ok = true;
             return d.rightKpa;
         }
+        if (field == QLatin1String("thirdKpa")) {
+            ok = true;
+            return d.thirdKpa;
+        }
     }
     return 0.0;
 }
@@ -2604,6 +3255,10 @@ QString fieldStringFromVariant(const QString& reportType, const QString& field, 
         if (field == QLatin1String("rightKpa")) {
             ok = true;
             return QString::number(d.rightKpa, 'f', 2);
+        }
+        if (field == QLatin1String("thirdKpa")) {
+            ok = true;
+            return QString::number(d.thirdKpa, 'f', 2);
         }
     }
     return {};
@@ -2942,6 +3597,11 @@ QStringList TestCaseRunner::loadFlowForStation(const QString& stationKey) {
 
 bool TestCaseRunner::loadCase(const QString& caseName, TestCaseDefinition& out, QString* errorOut) {
     return TestCaseStore::loadCase(caseName, out, errorOut);
+}
+
+bool TestCaseRunner::loadCaseForStation(const QString& stationKey, const QString& stepId, TestCaseDefinition& out,
+                                        QString* errorOut) {
+    return TestCaseStore::loadCaseForStation(stationKey, stepId, out, errorOut);
 }
 
 QString TestCaseRunner::stepLabel(const TestCaseDefinition& def) {

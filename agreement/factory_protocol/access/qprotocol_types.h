@@ -307,10 +307,11 @@ typedef struct {
     QString deviceRssi;
 } ProtocolDongleScanResultData;
 
-/** Dongle AT+SUCTION=1 后上报：AT+SUCTION_DATA=左,右,...（前两路为左右吸力口） */
+/** Dongle AT+SUCTION=1 后上报：AT+SUCTION_DATA=左,右,第三路,...（前两路为左右吸力口） */
 typedef struct {
     double leftKpa = 0.0;
     double rightKpa = 0.0;
+    double thirdKpa = 0.0;
 } ProtocolDongleSuctionData;
 
 /** USB 电流表 / 治具振幅仪上行 */

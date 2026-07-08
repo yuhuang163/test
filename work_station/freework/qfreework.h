@@ -155,6 +155,7 @@ class QFreeWork : public test_base {
 
     // --- test_case 运行态 ---
     bool stopFlowOnTestFail_ = true;
+    QString activeFlowStationKey_;
     QStringList orderedTestCaseNames_;
     TestCaseDefinition activeTestCase_;
     QString activeTestCaseStepLabel_;

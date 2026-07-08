@@ -79,6 +79,17 @@ void saveUartRawLogImpl(int txrx, const QByteArray& data, const QString& fileNam
     logFile.close();
 }
 
+/** CSV 单元格：含逗号/引号/换行时用双引号包裹，避免 [0,1] 等被 Excel 拆列 */
+QString csvEscapeCell(QString value) {
+    value.replace(QLatin1String("\r\n"), QString());
+    value.replace(QLatin1Char('\n'), QString());
+    value.replace(QLatin1Char('\r'), QString());
+    if (!value.contains(QLatin1Char(',')) && !value.contains(QLatin1Char('"')) && !value.contains(QLatin1Char('\n')))
+        return value;
+    value.replace(QLatin1Char('"'), QStringLiteral("\"\""));
+    return QLatin1Char('"') + value + QLatin1Char('"');
+}
+
 } // namespace
 
 void qlogQtMessageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg) {
@@ -208,11 +219,13 @@ void Qlog::saveTestCsv(const QString& ver, const QString& sn, const QString& mac
         }
 
         for (const TestItem& item : testItems) {
-            QString testData = item.testData;
-            testData.replace(QStringLiteral("\r\n"), QString());
-            testData.replace(QStringLiteral(","), QString());
-            stream << sn << "," << ver << "," << macAddress << "," << timestamp << "," << item.testItem << ","
-                   << testData << "," << item.testResult << "," << item.ask << "\n";
+            const QStringList row = {sn, ver, macAddress, timestamp, item.testItem, item.testData,
+                                     item.testResult, item.ask};
+            QStringList escaped;
+            escaped.reserve(row.size());
+            for (const QString& cell : row)
+                escaped.append(csvEscapeCell(cell));
+            stream << escaped.join(QStringLiteral(",")) << "\n";
         }
         file.close();
         qDebug() << "Data appended to" << filePath;

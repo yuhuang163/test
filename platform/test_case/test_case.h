@@ -24,8 +24,19 @@ class QFreeWork;
 // ---------- 路径 ----------
 namespace TestCasePaths {
 QString rootDir();
+QString stepsDir();
+QString profilesDir();
+/** profiles 子目录名：工站中文显示名（与 FlowStations 一致） */
+QString profileFolderName(const QString& stationKey);
+QString profileDir(const QString& stationKey);
+QString profileMetaPath(const QString& stationKey);
+QString profileFlowPath(const QString& stationKey);
+QString profileStepOverridePath(const QString& stationKey, const QString& stepId);
+QString stepLibraryPath(const QString& stepId);
 QString flowIniPath();
 QString caseIniPath(const QString& caseName);
+/** 步骤是否在 steps 库或工站 profiles/{key}/steps 覆盖中存在 */
+bool stepIniExistsForStation(const QString& stationKey, const QString& stepId);
 QString flowIniFileName();
 bool ensureRootDir();
 bool isValidCaseFileName(const QString& name, QString* errorOut = nullptr);
@@ -36,7 +47,15 @@ bool isReservedCaseName(const QString& name);
 class TestCaseStore {
   public:
     static bool loadCase(const QString& caseName, TestCaseDefinition& out, QString* errorOut = nullptr);
+    /** 合并 steps 库 + profiles/{stationKey}/steps 覆盖；stationKey 为空则仅库/旧平铺 ini */
+    static bool loadCaseForStation(const QString& stationKey, const QString& stepId, TestCaseDefinition& out,
+                                   QString* errorOut = nullptr);
     static bool saveCase(const TestCaseDefinition& def, QString* errorOut = nullptr);
+    /** 写入 steps 库；stationKey 非空时另存 profiles/{key}/steps 工站参数覆盖 */
+    static bool saveCaseForStation(const QString& stationKey, const TestCaseDefinition& def,
+                                   QString* errorOut = nullptr);
+    /** 将旧平铺 ini 迁入 steps/，并为各工站生成 profiles 目录（幂等） */
+    static void ensureFilesystemLayout();
     /** 运行时实际参与判定的卡控列表（gates 优先，否则单项 gate） */
     static QVector<TestCaseGate> effectiveGates(const TestCaseDefinition& def);
     /** 运行时参与判定的卡控项（case ini 中 Gate/N/Enabled） */
@@ -277,6 +296,8 @@ class TestCaseRunner {
   public:
     static QStringList loadFlowForStation(const QString& stationKey);
     static bool loadCase(const QString& caseName, TestCaseDefinition& out, QString* errorOut = nullptr);
+    static bool loadCaseForStation(const QString& stationKey, const QString& stepId, TestCaseDefinition& out,
+                                   QString* errorOut = nullptr);
     static void beginStep(QFreeWork* ctx, const TestCaseDefinition& def);
     static QString stepLabel(const TestCaseDefinition& def);
     static bool needAsyncDone(const TestCaseDefinition& def);

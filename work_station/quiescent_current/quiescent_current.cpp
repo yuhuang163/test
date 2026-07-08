@@ -1,7 +1,12 @@
 #include "quiescent_current.h"
 
 #include "ui_quiescent_current.h"
+#include <QCoreApplication>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
 #include <QMessageBox>
+#include <QRegularExpression>
 #include <QTimer>
 #include <QVector>
 
@@ -22,6 +27,226 @@ UsbProtocolRoute protocolTypeFromSetting(const QString& type) {
         return UsbProtocolRoute::LxModbus;
     }
     return UsbProtocolRoute::Auto;
+}
+
+/// 从扫码内容识别 V3 / V3Pro：长度优先（12=V3，15=V3Pro），再回退关键字
+QString detectQuiescentProductFromSn(const QString& sn, bool* ok)
+{
+    const QString trimmed = sn.trimmed();
+    if (trimmed.isEmpty()) {
+        if (ok) {
+            *ok = false;
+        }
+        return QString();
+    }
+
+    if (trimmed.length() == 15) {
+        if (ok) {
+            *ok = true;
+        }
+        return QStringLiteral("V3Pro");
+    }
+    if (trimmed.length() == 12) {
+        if (ok) {
+            *ok = true;
+        }
+        return QStringLiteral("V3");
+    }
+
+    const QString upper = trimmed.toUpper();
+    if (upper.contains(QStringLiteral("V3PRO"))) {
+        if (ok) {
+            *ok = true;
+        }
+        return QStringLiteral("V3Pro");
+    }
+    if (upper.contains(QStringLiteral("V3"))) {
+        if (ok) {
+            *ok = true;
+        }
+        return QStringLiteral("V3");
+    }
+    if (ok) {
+        *ok = false;
+    }
+    return QString();
+}
+
+QString normalizeMesProductName(const QString& productName)
+{
+    if (productName.compare(QStringLiteral("V3Pro"), Qt::CaseInsensitive) == 0) {
+        return QStringLiteral("V3Pro");
+    }
+    if (productName.compare(QStringLiteral("V3"), Qt::CaseInsensitive) == 0) {
+        return QStringLiteral("V3");
+    }
+    return productName.trimmed();
+}
+
+QString resolveSettingsIniPath()
+{
+    return QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral(SETTING_NAME));
+}
+
+QStringList collectSettingsIniPaths()
+{
+    QStringList paths;
+    const QString exeIni = resolveSettingsIniPath();
+    paths.append(exeIni);
+    const QString cwdIni = QDir(QDir::currentPath()).filePath(QStringLiteral(SETTING_NAME));
+    if (QFileInfo(cwdIni).absoluteFilePath() != QFileInfo(exeIni).absoluteFilePath() &&
+        QFileInfo::exists(cwdIni)) {
+        paths.append(cwdIni);
+    }
+    return paths;
+}
+
+bool readMesProductNameFromIniFile(const QString& iniPath, QString* productNameOut)
+{
+    if (!productNameOut) {
+        return false;
+    }
+    QFile file(iniPath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return false;
+    }
+    QByteArray raw = file.readAll();
+    file.close();
+
+    QString content;
+    if (raw.startsWith("\xEF\xBB\xBF")) {
+        content = QString::fromUtf8(raw.constData() + 3, raw.size() - 3);
+    } else {
+        content = QString::fromUtf8(raw);
+    }
+
+    bool inMes = false;
+    for (const QString& line : content.split(QRegularExpression(QStringLiteral("\r?\n")))) {
+        const QString trimmed = line.trimmed();
+        if (trimmed.startsWith(QLatin1Char('[')) && trimmed.endsWith(QLatin1Char(']'))) {
+            const QString group = trimmed.mid(1, trimmed.size() - 2).trimmed();
+            inMes = group.compare(QStringLiteral("Mes"), Qt::CaseInsensitive) == 0;
+            continue;
+        }
+        if (inMes && trimmed.startsWith(QStringLiteral("Product_Name="), Qt::CaseInsensitive)) {
+            *productNameOut = trimmed.mid(QStringLiteral("Product_Name=").size()).trimmed();
+            return true;
+        }
+        if (inMes && trimmed.startsWith(QLatin1Char('['))) {
+            break;
+        }
+    }
+    return false;
+}
+
+bool patchMesProductNameInIniFile(const QString& iniPath, const QString& productName)
+{
+    QFile file(iniPath);
+    if (!file.open(QIODevice::ReadOnly)) {
+        return false;
+    }
+    QByteArray raw = file.readAll();
+    file.close();
+
+    const bool hasBom = raw.startsWith("\xEF\xBB\xBF");
+    const bool crlf = raw.contains("\r\n");
+    const QString eol = crlf ? QStringLiteral("\r\n") : QStringLiteral("\n");
+
+    QString content;
+    if (hasBom) {
+        content = QString::fromUtf8(raw.constData() + 3, raw.size() - 3);
+    } else {
+        content = QString::fromUtf8(raw);
+    }
+
+    const QStringList lines = content.split(QRegularExpression(QStringLiteral("\r?\n")), Qt::KeepEmptyParts);
+    QStringList out;
+    bool inMes = false;
+    bool replaced = false;
+    bool mesSeen = false;
+
+    for (const QString& line : lines) {
+        const QString trimmed = line.trimmed();
+        if (trimmed.startsWith(QLatin1Char('[')) && trimmed.endsWith(QLatin1Char(']'))) {
+            if (inMes && !replaced) {
+                out.append(QStringLiteral("Product_Name=") + productName);
+                replaced = true;
+            }
+            const QString group = trimmed.mid(1, trimmed.size() - 2).trimmed();
+            inMes = group.compare(QStringLiteral("Mes"), Qt::CaseInsensitive) == 0;
+            if (inMes) {
+                mesSeen = true;
+            }
+            out.append(line);
+            continue;
+        }
+        if (inMes && trimmed.startsWith(QStringLiteral("Product_Name="), Qt::CaseInsensitive)) {
+            out.append(QStringLiteral("Product_Name=") + productName);
+            replaced = true;
+            continue;
+        }
+        out.append(line);
+    }
+
+    if (mesSeen && !replaced) {
+        out.append(QStringLiteral("Product_Name=") + productName);
+        replaced = true;
+    }
+    if (!replaced) {
+        return false;
+    }
+
+    QString newContent = out.join(eol);
+    if (hasBom) {
+        raw = QByteArray("\xEF\xBB\xBF") + newContent.toUtf8();
+    } else {
+        raw = newContent.toUtf8();
+    }
+
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        return false;
+    }
+    if (file.write(raw) != raw.size()) {
+        file.close();
+        return false;
+    }
+    file.close();
+    return true;
+}
+
+QString mesProductNameFromSettings()
+{
+    QString name = SETTINGS.value(QStringLiteral("Mes/Product_Name")).toString().trimmed();
+    if (name.isEmpty()) {
+        name = SETTINGS.value(QStringLiteral("MES/Product_Name")).toString().trimmed();
+    }
+    return normalizeMesProductName(name);
+}
+
+bool saveMesProductNameToSettings(const QString& productName, QString* iniPathOut)
+{
+    const QString canonical = normalizeMesProductName(productName);
+    const QString iniPath = resolveSettingsIniPath();
+    if (iniPathOut) {
+        *iniPathOut = iniPath;
+    }
+
+    // 仅更新内存；勿 sync()——会把 QSettings 旧缓存整表刷回 ini，覆盖后续 patch（日志 V3Pro、文件仍 V3 的根因）
+    SETTINGS.setValue(QStringLiteral("Mes/Product_Name"), canonical);
+    SETTINGS.setValue(QStringLiteral("MES/Product_Name"), canonical);
+
+    const QStringList iniPaths = collectSettingsIniPaths();
+    for (const QString& path : iniPaths) {
+        if (!patchMesProductNameInIniFile(path, canonical)) {
+            return false;
+        }
+    }
+
+    QString fromFile;
+    if (!readMesProductNameFromIniFile(iniPath, &fromFile)) {
+        return false;
+    }
+    return fromFile.compare(canonical, Qt::CaseInsensitive) == 0;
 }
 } // namespace
 quiescent_current::quiescent_current(int index, QWidget* parent) : test_base(parent), ui(new Ui::quiescent_current), basicInfoModel(new TestModel), peripheralModel(new TestModel) {
@@ -50,8 +275,9 @@ quiescent_current::quiescent_current(int index, QWidget* parent) : test_base(par
     });
     connect(ble_waittime, &QTimer::timeout, [=]() {
         ble_waittime->stop();
-        state = STATE_SLEEP_CURRENT_TEST;
-        qDebug() << getIndex() << "计时结束，进入电流测试" << QDateTime::currentDateTime();
+        qDebug() << getIndex() << "计时结束，读取工作电流" << QDateTime::currentDateTime();
+        showlog(QStringLiteral("等待结束，读取工作电流"));
+        readAmmeterMeasurement();
     });
     connect(usblogwaittime, &QTimer::timeout, [=]() {
         at->get(DongleCmd::GetGmac);
@@ -182,15 +408,70 @@ bool quiescent_current::setProgrammablePowerOutput(bool enable) {
     return ok;
 }
 
+void quiescent_current::readAmmeterMeasurement() {
+    if (useProgrammablePower) {
+        execVisaHuiling(HuilingScpiCmd::ReadProgrammableCurrent);
+    } else {
+        execAmmeterMeasure();
+    }
+}
+
 void quiescent_current::refreshProgrammablePowerCurrent(double valueAmps, bool ok) {
     programmablePowerMeasuredCurrentA_ = valueAmps;
     programmablePowerCurrentReadOk_ = ok;
     if (ok) {
         measure_ammeter = valueAmps * 1000.0;
-        showlog(QStringLiteral("程控电源电流回读：%1 mA").arg(measure_ammeter, 0, 'f', 4));
+        showlog(QStringLiteral("读取工作电流：%1 mA").arg(measure_ammeter, 0, 'f', 4));
     } else {
-        showlog(QStringLiteral("程控电源电流回读失败或无法解析"));
+        showlog(QStringLiteral("读取工作电流失败或无法解析"));
     }
+
+    if (state != STATE_SLEEP_CURRENT_TEST) {
+        return;
+    }
+    const QString mesProductName = mesProductNameFromSettings();
+    if (mesProductName.compare(QStringLiteral("V3"), Qt::CaseInsensitive) == 0) {
+        finalizeVisaWorkCurrentResult(ok);
+    }
+}
+
+void quiescent_current::finalizeVisaWorkCurrentResult(bool readOk) {
+    const double lowWorkCurrent = SETTINGS.value(QStringLiteral("Current/LowworkCurrent")).toDouble();
+    const double highWorkCurrent = SETTINGS.value(QStringLiteral("Current/HighworkCurrent")).toDouble();
+
+    if (!readOk) {
+        showlog(QStringLiteral("读取工作电流失败"));
+        appendStationResult(testItems, QStringLiteral("工作电流(ma)"), QStringLiteral("读取失败"), failValue);
+        testResultTableUpdate(testItems);
+        pack.itemvalue += QStringLiteral("|WORK_CURRENT:READ_FAIL::::ma:FAIL");
+        totalresult = failValue;
+        state = STATE_SAVE_RESULT;
+        return;
+    }
+
+    const bool pass = measure_ammeter >= lowWorkCurrent && measure_ammeter <= highWorkCurrent;
+    showlog(QStringLiteral("工作电流%1，当前=%2mA，范围=%3~%4mA")
+                .arg(pass ? QStringLiteral("通过") : QStringLiteral("失败"))
+                .arg(measure_ammeter, 0, 'f', 2)
+                .arg(lowWorkCurrent)
+                .arg(highWorkCurrent));
+
+    TestItem test;
+    test.testItem = QStringLiteral("工作电流(ma)");
+    test.testData = QString::number(measure_ammeter, 'f', 2);
+    test.testResult = pass ? passValue : failValue;
+    test.ask = QString("%1~%2").arg(lowWorkCurrent).arg(highWorkCurrent);
+    testItems.append(test);
+    testResultTableUpdate(testItems);
+
+    pack.itemvalue += QStringLiteral("|WORK_CURRENT:%1:%2:%3::ma:%4")
+                          .arg(measure_ammeter, 0, 'f', 2)
+                          .arg(highWorkCurrent)
+                          .arg(lowWorkCurrent)
+                          .arg(pass ? QStringLiteral("PASS") : QStringLiteral("FAIL"));
+
+    totalresult = pass ? passValue : failValue;
+    state = STATE_SAVE_RESULT;
 }
 
 void quiescent_current::disconnect_dongle() {
@@ -229,6 +510,10 @@ void quiescent_current::refreshMusicState(ProtocolMusicStateData data) {
 
 void quiescent_current::refreshChargeCurrentRead(ProtocolChargeCurrentData data) {
     if (state != STATE_SLEEP_CURRENT_TEST) {
+        return;
+    }
+    // V3 只测工作电流（Visa）；充电电流协议读仅 V3Pro 使用
+    if (mesProductNameFromSettings().compare(QStringLiteral("V3Pro"), Qt::CaseInsensitive) != 0) {
         return;
     }
 
@@ -704,20 +989,53 @@ void quiescent_current::on_snInput_returnPressed() {
     usblogwaittime->setInterval(5000);
     usblogwaittime->start();
     firstconnectbrush = 1;
-    applyAdaptiveV3ProductBySn(ui->snInput);
+    const QString snText = ui->snInput->text().trimmed().remove(
+        QRegularExpression(QStringLiteral("[^0-9a-zA-Z]")));
+    ui->snInput->setText(snText);
 
-    QRegularExpression snRegex(snPattern);
-    if (!snRegex.match(ui->snInput->text()).hasMatch()) {
-        showlog("序列号错误");
-        showlog("实际长度为" + QString::number(ui->snInput->text().length()));
-        showlog("要求格式为" + snPattern);
+    bool productDetected = false;
+    const QString productName = detectQuiescentProductFromSn(snText, &productDetected);
+    if (!productDetected) {
+        showlog(QStringLiteral("无法识别产品型号，V3 长度 12、V3Pro 长度 15，或条码含 V3/V3Pro"));
         ui->snInput->clear();
         return;
     }
 
+    const int requiredLen =
+        (productName.compare(QStringLiteral("V3Pro"), Qt::CaseInsensitive) == 0) ? 15 : 12;
+    if (snText.length() != requiredLen) {
+        showlog(QStringLiteral("序列号长度错误"));
+        showlog(QStringLiteral("当前长度=%1，%2 要求长度=%3")
+                    .arg(snText.length())
+                    .arg(productName)
+                    .arg(requiredLen));
+        ui->snInput->clear();
+        return;
+    }
+
+    QString iniPath;
+    if (!saveMesProductNameToSettings(productName, &iniPath)) {
+        QString fromFile;
+        readMesProductNameFromIniFile(iniPath, &fromFile);
+        showlog(QStringLiteral("Product_Name 写入 ini 失败，文件=%1，读回=%2，期望=%3")
+                    .arg(iniPath)
+                    .arg(fromFile.isEmpty() ? QStringLiteral("(空)") : fromFile)
+                    .arg(normalizeMesProductName(productName)));
+        ui->snInput->clear();
+        return;
+    }
+    pack.product = normalizeMesProductName(productName);
+    snPattern = QStringLiteral("^[0-9a-zA-Z]{%1}$").arg(requiredLen);
+    stringsn = snText;
+    sn = snText.toUtf8();
+    QString fromFile;
+    readMesProductNameFromIniFile(iniPath, &fromFile);
+    showlog(QStringLiteral("识别产品型号：%1，ini=%2，[Mes] Product_Name=%3")
+                .arg(pack.product)
+                .arg(iniPath)
+                .arg(fromFile));
+
     emit send_start_test(getIndex());
-    // stringsn = ui->snInput->text();
-    // sn = ui->snInput->text().toUtf8();
     ui->snInput->setDisabled(1);
 
     // 新流程：SN校验后先解析MAC
@@ -1040,37 +1358,57 @@ void quiescent_current::startTask() {
                 }
                 break;
 
-            case STATE_WATI_GET_PERIPHERAL_STATE:
-                if (periph_state == 1) // 设备信息正常
+                
+                case STATE_WATI_GET_PERIPHERAL_STATE:
+                if (periph_state == 1)  // 设备信息正常
                 {
                     showlog("外设状态正常");
-                    const QString mesProductName = SETTINGS.value("MES/Product_Name").toString().trimmed();
+                    const QString mesProductName = mesProductNameFromSettings();
                     if (mesProductName.compare(QStringLiteral("V3Pro"), Qt::CaseInsensitive) == 0) {
                         showlog(QStringLiteral("V3Pro产品，读取充电电流"));
                         sendCommandWithRetry([&]() { protocolManager.get(DeviceCmd::ChargeCurrentRead); });
                         state = STATE_SLEEP_CURRENT_TEST;
+                    } else if (mesProductName.compare(QStringLiteral("V3"), Qt::CaseInsensitive) == 0) {
+                        showlog(QStringLiteral("V3产品，%1ms 后读取工作电流（不测充电电流）").arg(measure_wait_time));
+                        const bool visaUse =
+                            SETTINGS.value(QStringLiteral("VisaPower/ScpiUseVisa"), false).toBool();
+                        const QString visaAddress =
+                            SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QString()).toString().trimmed();
+                        if (!visaUse || visaAddress.isEmpty()) {
+                            showlog(QStringLiteral("VisaPower 未启用或地址为空，无法进行工作电流校验"));
+                            totalresult = failValue;
+                            state = STATE_SAVE_RESULT;
+                        } else {
+                            state = STATE_SLEEP_CURRENT_TEST;
+                            ble_waittime->start(measure_wait_time);
+                        }
                     } else {
                         totalresult = passValue;
                         state = STATE_SAVE_RESULT;
                     }
 
-                } else if (periph_state == 2) // 设备信息异常
+                } else if (periph_state == 2)  // 设备信息异常
                 {
                     showlog("外设状态异常");
                     totalresult = failValue;
                     state = STATE_SAVE_RESULT;
-                } else {
+                }
+                else {
                     waitWork(500);
                     protocolManager.get(DeviceCmd::PeriphState);
                     showlog("正在重发获取外设信息");
                 }
                 break;
 
+         
+
             case STATE_SLEEP_CURRENT_TEST:
-                if (sendRetryOver) {
+                // 充电电流超时仅 V3Pro（协议 ChargeCurrentRead）；V3 走 Visa 工作电流，不在此判超时
+                if (canGoNext &&
+                    mesProductNameFromSettings().compare(QStringLiteral("V3Pro"), Qt::CaseInsensitive) == 0) {
                     sendRetryOver = false;
                     showlog(QStringLiteral("读取充电电流超时"));
-                    appendStationResult(testItems, "充电电流(ma)", "读取超时", failValue);
+                    appendStationResult(testItems, QStringLiteral("充电电流(ma)"), QStringLiteral("读取超时"), failValue);
                     testResultTableUpdate(testItems);
                     pack.itemvalue += QStringLiteral("|CHARGE_CURRENT:TIMEOUT::::ma:FAIL");
                     totalresult = failValue;
@@ -1157,11 +1495,7 @@ void quiescent_current::on_pushButton_clicked() {
 }
 
 void quiescent_current::on_pushButton_3_clicked() {
-    if (useProgrammablePower) {
-        execVisaHuiling(HuilingScpiCmd::ReadProgrammableCurrent);
-    } else {
-        execAmmeterMeasure();
-    }
+    readAmmeterMeasurement();
 
     // at->get(DongleCmd::GetGmac);
     // MesInit();

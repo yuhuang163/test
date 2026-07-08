@@ -875,14 +875,32 @@ void QFreeWork::refreshButton(ProtocolButtonStateData data) {
 void QFreeWork::onUsbInstrumentReport(const ProtocolReport& report) {
     if (report.reportType == QLatin1String("ProtocolMeasureData")) {
         if (report.payload.canConvert<ProtocolMeasureData>()) {
-            const auto data = report.payload.value<ProtocolMeasureData>();
+            ProtocolMeasureData data = report.payload.value<ProtocolMeasureData>();
             if (data.type == QLatin1String("Current")) {
+                // 程控电源 VISA/USB 回读为 A，设置页工作电流卡控为 mA
+                if (data.unit == QLatin1String("A") &&
+                    (data.deviceName == QLatin1String("VISA_Power") ||
+                     data.deviceName == QLatin1String("USB_Power"))) {
+                    data.value *= 1000.0;
+                    data.valueText = QString::number(data.value, 'f', 4);
+                    data.unit = QStringLiteral("mA");
+                }
                 measure_ammeter = data.value;
                 showlog(QStringLiteral("上报电流值: %1 mA").arg(data.value, 0, 'f', 4));
             } else if (data.type == QLatin1String("Voltage")) {
                 showlog(QStringLiteral("上报电压值: %1 V").arg(data.value, 0, 'f', 4));
             }
-            evaluateActiveTestCaseGate(QStringLiteral("ProtocolMeasureData"), report.payload);
+            if (!data.isOk && testCaseStepActive_ && activeTestCase_.gate.enabled &&
+                activeTestCase_.gate.reportType == QLatin1String("ProtocolMeasureData")) {
+                markActiveTestCaseStepDone(false, QStringLiteral("读取失败"), QStringLiteral("失败"));
+                if (commandRetryTimer)
+                    finishCommandRetryWait(false, QStringLiteral("读取失败"));
+            } else {
+                evaluateActiveTestCaseGate(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(data));
+            }
+            test_base::onUsbInstrumentReport(
+                ProtocolReport(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(data)));
+            return;
         }
     }
     test_base::onUsbInstrumentReport(report);

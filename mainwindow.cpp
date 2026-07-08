@@ -13,9 +13,13 @@
 #include "qeventloop.h"
 #include "ui_mainwindow.h"
 #include "common_utils.h"
+#include <QDateTime>
+#include <QDir>
+#include <QTextStream>
 #include "platform/cloud/auth/auth_service.h"
 #include "platform/cloud/auth/login_dialog.h"
 #include "qatmanager.h"
+#include "qcustomplot.h"
 // f4:12:fa:c5:51:c6
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
@@ -102,6 +106,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
                                           peripheralModel(new TestModel),
                                           ui(new Ui::MainWindow) {
     ui->setupUi(this);
+    initDongleSuctionChart();
     ui->tabWidget->tabBar()->setElideMode(Qt::ElideRight);
     protocolManager.bindQpb(pb);
     protocolManager.bindQfctp(qfctp);
@@ -530,6 +535,8 @@ void MainWindow::onDongleAtReport(const ProtocolReport& report) {
         getWifiIp(payload.value<ProtocolDongleWifiIpData>().ip);
     }else if (reportType == QLatin1String("ProtocolDongleDeviceNameData") && payload.canConvert<ProtocolDongleDeviceNameData>()) {
         refreshDongleDeviceName(payload.value<ProtocolDongleDeviceNameData>().name);
+    } else if (reportType == QLatin1String("ProtocolDongleSuctionData") && payload.canConvert<ProtocolDongleSuctionData>()) {
+        refreshDongleSuctionData(payload.value<ProtocolDongleSuctionData>());
     }
 }
 void MainWindow::refreshDongleDeviceName(const QString& name)
@@ -800,12 +807,20 @@ MainWindow::~MainWindow() {
     isimuCaliContinue = false;
     isrssiContinue = false;
     isWifiOtaContinue = false;
+    stopDongleSuctionCsvLog();
     delete ui;
 }
 
 void MainWindow::closeEvent(QCloseEvent*) {
     qDebug() << "关闭上位机";
     on_stopBleOta_clicked();
+    if (dongleSuctionReadEnabled_) {
+        dongleSuctionReadEnabled_ = false;
+        if (at)
+            at->set(DongleCmd::GetSuction, 0);
+        setDongleSuctionPeakParamWidgetsEnabled(true);
+    }
+    stopDongleSuctionCsvLog();
     running.store(false);
     // 等待线程结束
     future.waitForFinished();
@@ -4773,12 +4788,433 @@ void MainWindow::on_send_custom_msg_clicked() {
     }
 }
 
+void MainWindow::loadDongleSuctionPeakSettings() {
+    if (!ui)
+        return;
+    dongleSuctionPeakTargetKpa_ = ui->dongleSuctionPeakTargetSpin->value();
+    dongleSuctionPeakToleranceKpa_ = ui->dongleSuctionPeakToleranceSpin->value();
+    dongleSuctionPeakBaselineKpa_ = ui->dongleSuctionPeakBaselineSpin->value();
+    dongleSuctionPeakDipStartKpa_ = ui->dongleSuctionPeakDipStartSpin->value();
+    dongleSuctionPeakMaxGapSec_ = ui->dongleSuctionPeakMaxGapSpin->value();
+}
+
+void MainWindow::setDongleSuctionPeakParamWidgetsEnabled(bool enabled) {
+    if (!ui)
+        return;
+    if (ui->dongleSuctionPeakTargetSpin)
+        ui->dongleSuctionPeakTargetSpin->setEnabled(enabled);
+    if (ui->dongleSuctionPeakToleranceSpin)
+        ui->dongleSuctionPeakToleranceSpin->setEnabled(enabled);
+    if (ui->dongleSuctionPeakBaselineSpin)
+        ui->dongleSuctionPeakBaselineSpin->setEnabled(enabled);
+    if (ui->dongleSuctionPeakDipStartSpin)
+        ui->dongleSuctionPeakDipStartSpin->setEnabled(enabled);
+    if (ui->dongleSuctionPeakMaxGapSpin)
+        ui->dongleSuctionPeakMaxGapSpin->setEnabled(enabled);
+}
+
+void MainWindow::resetDongleSuctionPeakMonitor() {
+    for (int i = 0; i < kDongleSuctionChannelCount; ++i)
+        dongleSuctionPeakMonitors_[i] = {};
+    updateDongleSuctionPeakMonitorLabels();
+}
+
+void MainWindow::updateDongleSuctionPeakMonitorLabels() {
+    QLabel* labels[kDongleSuctionChannelCount] = {ui->dongleSuctionCh1PeakStatLabel, ui->dongleSuctionCh2PeakStatLabel,
+                                                  ui->dongleSuctionCh3PeakStatLabel};
+    const QString channelNames[kDongleSuctionChannelCount] = {QStringLiteral("第一通道"), QStringLiteral("第二通道"),
+                                                              QStringLiteral("第三通道")};
+    for (int i = 0; i < kDongleSuctionChannelCount; ++i) {
+        if (!labels[i])
+            continue;
+        const auto& m = dongleSuctionPeakMonitors_[i];
+        labels[i]->setText(QStringLiteral("%1峰检：有效%2 漏峰%3 弱峰%4")
+                               .arg(channelNames[i])
+                               .arg(m.validPeakCount)
+                               .arg(m.missedPeakCount)
+                               .arg(m.weakPeakCount));
+    }
+}
+
+void MainWindow::updateDongleSuctionChannelPeakMonitor(int chIndex, double kpa, double tSec, QString& eventOut) {
+    if (chIndex < 0 || chIndex >= kDongleSuctionChannelCount)
+        return;
+
+    auto& m = dongleSuctionPeakMonitors_[chIndex];
+    const double lowerBound = dongleSuctionPeakTargetKpa_ - dongleSuctionPeakToleranceKpa_;
+    const double upperBound = dongleSuctionPeakTargetKpa_ + dongleSuctionPeakToleranceKpa_;
+    const QString chTag = QStringLiteral("CH%1").arg(chIndex + 1);
+
+    if (m.phase == DongleSuctionChannelPeakMonitor::Phase::AtBaseline && m.waitingNextPeak && !m.gapMissFlagged &&
+        tSec - m.lastPeakEndSec > dongleSuctionPeakMaxGapSec_) {
+        m.missedPeakCount++;
+        m.gapMissFlagged = true;
+        if (eventOut.isEmpty())
+            eventOut = QStringLiteral("MISS_%1").arg(chTag);
+        showlog(QStringLiteral("【漏峰】%1：距上次有效峰已超过 %2s（累计漏峰 %3）")
+                    .arg(chTag)
+                    .arg(dongleSuctionPeakMaxGapSec_, 0, 'f', 1)
+                    .arg(m.missedPeakCount));
+        updateDongleSuctionPeakMonitorLabels();
+    }
+
+    if (kpa >= dongleSuctionPeakBaselineKpa_) {
+        if (m.phase == DongleSuctionChannelPeakMonitor::Phase::InCycle) {
+            if (m.cycleMinInit) {
+                const double peakKpa = m.cycleMinKpa;
+                const bool dippedEnough = peakKpa <= dongleSuctionPeakDipStartKpa_;
+                const bool inRange = peakKpa >= lowerBound && peakKpa <= upperBound;
+                if (dippedEnough && inRange) {
+                    m.validPeakCount++;
+                    m.waitingNextPeak = true;
+                    m.lastPeakEndSec = tSec;
+                    m.gapMissFlagged = false;
+                    if (eventOut.isEmpty())
+                        eventOut = QStringLiteral("VALID_%1:%2").arg(chTag).arg(peakKpa, 0, 'f', 3);
+                    showlog(QStringLiteral("【有效峰】%1：%2 kPa（累计 %3）")
+                                .arg(chTag)
+                                .arg(peakKpa, 0, 'f', 3)
+                                .arg(m.validPeakCount));
+                } else if (dippedEnough) {
+                    m.weakPeakCount++;
+                    if (eventOut.isEmpty())
+                        eventOut = QStringLiteral("WEAK_%1:%2").arg(chTag).arg(peakKpa, 0, 'f', 3);
+                    showlog(QStringLiteral("【弱峰】%1：%2 kPa，不在 %3~%4 kPa")
+                                .arg(chTag)
+                                .arg(peakKpa, 0, 'f', 3)
+                                .arg(lowerBound, 0, 'f', 2)
+                                .arg(upperBound, 0, 'f', 2));
+                }
+                updateDongleSuctionPeakMonitorLabels();
+            }
+            m.phase = DongleSuctionChannelPeakMonitor::Phase::AtBaseline;
+            m.cycleMinInit = false;
+        }
+        return;
+    }
+
+    if (kpa < dongleSuctionPeakDipStartKpa_) {
+        if (m.phase == DongleSuctionChannelPeakMonitor::Phase::AtBaseline) {
+            m.phase = DongleSuctionChannelPeakMonitor::Phase::InCycle;
+            m.cycleMinKpa = kpa;
+            m.cycleMinInit = true;
+            m.gapMissFlagged = false;
+        } else if (!m.cycleMinInit || kpa < m.cycleMinKpa) {
+            m.cycleMinKpa = kpa;
+            m.cycleMinInit = true;
+        }
+        return;
+    }
+
+    if (m.phase == DongleSuctionChannelPeakMonitor::Phase::InCycle &&
+        (!m.cycleMinInit || kpa < m.cycleMinKpa)) {
+        m.cycleMinKpa = kpa;
+        m.cycleMinInit = true;
+    }
+}
+
+void MainWindow::updateDongleSuctionPeakMonitor(double ch1Kpa, double ch2Kpa, double ch3Kpa, double tSec,
+                                                QString& eventOut) {
+    const double values[kDongleSuctionChannelCount] = {ch1Kpa, ch2Kpa, ch3Kpa};
+    QStringList events;
+    for (int i = 0; i < kDongleSuctionChannelCount; ++i) {
+        QString chEvent;
+        updateDongleSuctionChannelPeakMonitor(i, values[i], tSec, chEvent);
+        if (!chEvent.isEmpty())
+            events << chEvent;
+    }
+    eventOut = events.join(QLatin1Char(';'));
+}
+
+bool MainWindow::startDongleSuctionCsvLog() {
+    stopDongleSuctionCsvLog();
+
+    const QString relDir = QStringLiteral("所有log/dongle吸力log");
+    if (!CommonUtils::ensureLogDirectory(relDir)) {
+        showlog(QStringLiteral("无法创建 Dongle 吸力 CSV 目录：%1").arg(relDir));
+        return false;
+    }
+
+    const QString fileName =
+        QStringLiteral("dongle吸力_") + QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss")) +
+        QStringLiteral(".csv");
+    dongleSuctionCsvPath_ = CommonUtils::joinPath(relDir, fileName);
+    dongleSuctionCsvFile_.setFileName(dongleSuctionCsvPath_);
+    if (!dongleSuctionCsvFile_.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        showlog(QStringLiteral("无法创建 Dongle 吸力 CSV：%1").arg(dongleSuctionCsvPath_));
+        dongleSuctionCsvPath_.clear();
+        return false;
+    }
+
+    dongleSuctionCsvStream_.setDevice(&dongleSuctionCsvFile_);
+    dongleSuctionCsvStream_.setCodec("UTF-8");
+    dongleSuctionCsvStream_ << QStringLiteral("time_s,ch1_kpa,ch2_kpa,ch3_kpa,event\n");
+    dongleSuctionCsvStream_.flush();
+
+    if (ui->dongleSuctionCsvPathLabel)
+        ui->dongleSuctionCsvPathLabel->setText(QStringLiteral("CSV：%1").arg(dongleSuctionCsvPath_));
+    showlog(QStringLiteral("Dongle 吸力 CSV 已开始记录：%1").arg(dongleSuctionCsvPath_));
+    return true;
+}
+
+void MainWindow::stopDongleSuctionCsvLog() {
+    if (!dongleSuctionCsvFile_.isOpen())
+        return;
+
+    dongleSuctionCsvStream_ << QStringLiteral("#summary,valid_ch1,miss_ch1,weak_ch1,valid_ch2,miss_ch2,weak_ch2,valid_ch3,"
+                                                "miss_ch3,weak_ch3\n");
+    dongleSuctionCsvStream_ << QStringLiteral("#");
+    for (int i = 0; i < kDongleSuctionChannelCount; ++i) {
+        const auto& m = dongleSuctionPeakMonitors_[i];
+        dongleSuctionCsvStream_ << m.validPeakCount << QLatin1Char(',') << m.missedPeakCount << QLatin1Char(',')
+                                << m.weakPeakCount;
+        if (i + 1 < kDongleSuctionChannelCount)
+            dongleSuctionCsvStream_ << QLatin1Char(',');
+    }
+    dongleSuctionCsvStream_ << QLatin1Char('\n');
+    dongleSuctionCsvStream_.flush();
+    dongleSuctionCsvFile_.close();
+    dongleSuctionCsvStream_.setDevice(nullptr);
+
+    showlog(QStringLiteral("Dongle 吸力 CSV 已保存：%1（有效峰/漏峰/弱峰 见页内统计）").arg(dongleSuctionCsvPath_));
+    if (ui->dongleSuctionCsvPathLabel)
+        ui->dongleSuctionCsvPathLabel->setText(QStringLiteral("CSV 已保存：%1").arg(dongleSuctionCsvPath_));
+}
+
+void MainWindow::writeDongleSuctionCsvRow(double tSec, double ch1Kpa, double ch2Kpa, double ch3Kpa,
+                                          const QString& event) {
+    if (!dongleSuctionCsvFile_.isOpen())
+        return;
+    dongleSuctionCsvStream_ << QString::number(tSec, 'f', 3) << QLatin1Char(',') << QString::number(ch1Kpa, 'f', 3)
+                              << QLatin1Char(',') << QString::number(ch2Kpa, 'f', 3) << QLatin1Char(',')
+                              << QString::number(ch3Kpa, 'f', 3) << QLatin1Char(',') << event << QLatin1Char('\n');
+    dongleSuctionCsvStream_.flush();
+}
+
+void MainWindow::initDongleSuctionChart() {
+    if (!ui->dongleSuctionPlotHost || dongleSuctionPlot_ != nullptr)
+        return;
+
+    auto* layout = new QVBoxLayout(ui->dongleSuctionPlotHost);
+    layout->setContentsMargins(0, 0, 0, 0);
+    dongleSuctionPlot_ = new QCustomPlot(ui->dongleSuctionPlotHost);
+    layout->addWidget(dongleSuctionPlot_);
+
+    dongleSuctionPlot_->legend->setVisible(true);
+    for (int i = 0; i < 3; ++i)
+        dongleSuctionPlot_->addGraph();
+    dongleSuctionPlot_->graph(0)->setPen(QPen(QColor(30, 120, 220), 2));
+    dongleSuctionPlot_->graph(0)->setName(QStringLiteral("第一通道"));
+    dongleSuctionPlot_->graph(1)->setPen(QPen(QColor(220, 80, 50), 2));
+    dongleSuctionPlot_->graph(1)->setName(QStringLiteral("第二通道"));
+    dongleSuctionPlot_->graph(2)->setPen(QPen(QColor(50, 160, 80), 2));
+    dongleSuctionPlot_->graph(2)->setName(QStringLiteral("第三通道"));
+    dongleSuctionPlot_->xAxis->setLabel(QStringLiteral("时间(s，最近10秒)"));
+    dongleSuctionPlot_->yAxis->setLabel(QStringLiteral("吸力(kPa)"));
+    dongleSuctionPlot_->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
+    dongleSuctionPlot_->xAxis->setRange(0, kDongleSuctionChartWindowSec);
+    dongleSuctionPlot_->yAxis->setRange(-40, 0);
+    dongleSuctionPlot_->replot();
+}
+
+void MainWindow::resetDongleSuctionChart() {
+    dongleSuctionChartTimeSec_.clear();
+    dongleSuctionChartCh1_.clear();
+    dongleSuctionChartCh2_.clear();
+    dongleSuctionChartCh3_.clear();
+    dongleSuctionChartTimerStarted_ = false;
+    resetDongleSuctionPeakMonitor();
+
+    if (ui->dongleSuctionLiveCh1Label)
+        ui->dongleSuctionLiveCh1Label->setText(QStringLiteral("第一通道实时：--"));
+    if (ui->dongleSuctionLiveCh2Label)
+        ui->dongleSuctionLiveCh2Label->setText(QStringLiteral("第二通道实时：--"));
+    if (ui->dongleSuctionLiveCh3Label)
+        ui->dongleSuctionLiveCh3Label->setText(QStringLiteral("第三通道实时：--"));
+    if (ui->dongleSuctionCh1PeakHighLabel)
+        ui->dongleSuctionCh1PeakHighLabel->setText(QStringLiteral("第一通道最高：--"));
+    if (ui->dongleSuctionCh1PeakLowLabel)
+        ui->dongleSuctionCh1PeakLowLabel->setText(QStringLiteral("第一通道最低：--"));
+    if (ui->dongleSuctionCh2PeakHighLabel)
+        ui->dongleSuctionCh2PeakHighLabel->setText(QStringLiteral("第二通道最高：--"));
+    if (ui->dongleSuctionCh2PeakLowLabel)
+        ui->dongleSuctionCh2PeakLowLabel->setText(QStringLiteral("第二通道最低：--"));
+    if (ui->dongleSuctionCh3PeakHighLabel)
+        ui->dongleSuctionCh3PeakHighLabel->setText(QStringLiteral("第三通道最高：--"));
+    if (ui->dongleSuctionCh3PeakLowLabel)
+        ui->dongleSuctionCh3PeakLowLabel->setText(QStringLiteral("第三通道最低：--"));
+
+    if (!dongleSuctionPlot_)
+        return;
+    for (int i = 0; i < 3; ++i)
+        dongleSuctionPlot_->graph(i)->data()->clear();
+    dongleSuctionPlot_->xAxis->setRange(0, kDongleSuctionChartWindowSec);
+    dongleSuctionPlot_->yAxis->setRange(-40, 0);
+    dongleSuctionPlot_->replot();
+}
+
+void MainWindow::trimDongleSuctionChartToWindow(double tSec) {
+    const double windowStart = qMax(0.0, tSec - kDongleSuctionChartWindowSec);
+    while (!dongleSuctionChartTimeSec_.isEmpty() && dongleSuctionChartTimeSec_.first() < windowStart) {
+        dongleSuctionChartTimeSec_.removeFirst();
+        dongleSuctionChartCh1_.removeFirst();
+        dongleSuctionChartCh2_.removeFirst();
+        dongleSuctionChartCh3_.removeFirst();
+    }
+}
+
+void MainWindow::updateDongleSuctionPeakLabels() {
+    auto minMax = [](const QVector<double>& values, double& outMin, double& outMax) -> bool {
+        if (values.isEmpty())
+            return false;
+        outMin = outMax = values.first();
+        for (double v : values) {
+            outMin = qMin(outMin, v);
+            outMax = qMax(outMax, v);
+        }
+        return true;
+    };
+
+    double ch1Min = 0.0;
+    double ch1Max = 0.0;
+    double ch2Min = 0.0;
+    double ch2Max = 0.0;
+    double ch3Min = 0.0;
+    double ch3Max = 0.0;
+    const bool ch1Ok = minMax(dongleSuctionChartCh1_, ch1Min, ch1Max);
+    const bool ch2Ok = minMax(dongleSuctionChartCh2_, ch2Min, ch2Max);
+    const bool ch3Ok = minMax(dongleSuctionChartCh3_, ch3Min, ch3Max);
+
+    if (ui->dongleSuctionCh1PeakHighLabel) {
+        ui->dongleSuctionCh1PeakHighLabel->setText(ch1Ok ? QStringLiteral("第一通道最高：%1 kPa").arg(ch1Max, 0, 'f', 3)
+                                                         : QStringLiteral("第一通道最高：--"));
+    }
+    if (ui->dongleSuctionCh1PeakLowLabel) {
+        ui->dongleSuctionCh1PeakLowLabel->setText(ch1Ok ? QStringLiteral("第一通道最低：%1 kPa").arg(ch1Min, 0, 'f', 3)
+                                                        : QStringLiteral("第一通道最低：--"));
+    }
+    if (ui->dongleSuctionCh2PeakHighLabel) {
+        ui->dongleSuctionCh2PeakHighLabel->setText(ch2Ok ? QStringLiteral("第二通道最高：%1 kPa").arg(ch2Max, 0, 'f', 3)
+                                                         : QStringLiteral("第二通道最高：--"));
+    }
+    if (ui->dongleSuctionCh2PeakLowLabel) {
+        ui->dongleSuctionCh2PeakLowLabel->setText(ch2Ok ? QStringLiteral("第二通道最低：%1 kPa").arg(ch2Min, 0, 'f', 3)
+                                                        : QStringLiteral("第二通道最低：--"));
+    }
+    if (ui->dongleSuctionCh3PeakHighLabel) {
+        ui->dongleSuctionCh3PeakHighLabel->setText(ch3Ok ? QStringLiteral("第三通道最高：%1 kPa").arg(ch3Max, 0, 'f', 3)
+                                                         : QStringLiteral("第三通道最高：--"));
+    }
+    if (ui->dongleSuctionCh3PeakLowLabel) {
+        ui->dongleSuctionCh3PeakLowLabel->setText(ch3Ok ? QStringLiteral("第三通道最低：%1 kPa").arg(ch3Min, 0, 'f', 3)
+                                                        : QStringLiteral("第三通道最低：--"));
+    }
+}
+
+void MainWindow::appendDongleSuctionChartSample(double ch1Kpa, double ch2Kpa, double ch3Kpa) {
+    if (!dongleSuctionChartTimerStarted_) {
+        dongleSuctionChartTimer_.start();
+        dongleSuctionChartTimerStarted_ = true;
+    }
+    const double tSec = dongleSuctionChartTimer_.elapsed() / 1000.0;
+    dongleSuctionChartTimeSec_.append(tSec);
+    dongleSuctionChartCh1_.append(ch1Kpa);
+    dongleSuctionChartCh2_.append(ch2Kpa);
+    dongleSuctionChartCh3_.append(ch3Kpa);
+    trimDongleSuctionChartToWindow(tSec);
+
+    QString peakEvent;
+    updateDongleSuctionPeakMonitor(ch1Kpa, ch2Kpa, ch3Kpa, tSec, peakEvent);
+    writeDongleSuctionCsvRow(tSec, ch1Kpa, ch2Kpa, ch3Kpa, peakEvent);
+
+    if (ui->dongleSuctionLiveCh1Label)
+        ui->dongleSuctionLiveCh1Label->setText(QStringLiteral("第一通道实时：%1 kPa").arg(ch1Kpa, 0, 'f', 3));
+    if (ui->dongleSuctionLiveCh2Label)
+        ui->dongleSuctionLiveCh2Label->setText(QStringLiteral("第二通道实时：%1 kPa").arg(ch2Kpa, 0, 'f', 3));
+    if (ui->dongleSuctionLiveCh3Label)
+        ui->dongleSuctionLiveCh3Label->setText(QStringLiteral("第三通道实时：%1 kPa").arg(ch3Kpa, 0, 'f', 3));
+    updateDongleSuctionPeakLabels();
+
+    if (!dongleSuctionPlot_)
+        return;
+
+    const double windowStart = qMax(0.0, tSec - kDongleSuctionChartWindowSec);
+    QVector<double> relTime;
+    relTime.reserve(dongleSuctionChartTimeSec_.size());
+    for (double t : dongleSuctionChartTimeSec_)
+        relTime.append(t - windowStart);
+
+    dongleSuctionPlot_->graph(0)->setData(relTime, dongleSuctionChartCh1_);
+    dongleSuctionPlot_->graph(1)->setData(relTime, dongleSuctionChartCh2_);
+    dongleSuctionPlot_->graph(2)->setData(relTime, dongleSuctionChartCh3_);
+
+    dongleSuctionPlot_->xAxis->setRange(0, kDongleSuctionChartWindowSec);
+
+    double yMin = qMin(qMin(ch1Kpa, ch2Kpa), ch3Kpa);
+    double yMax = qMax(qMax(ch1Kpa, ch2Kpa), ch3Kpa);
+    for (double v : dongleSuctionChartCh1_) {
+        yMin = qMin(yMin, v);
+        yMax = qMax(yMax, v);
+    }
+    for (double v : dongleSuctionChartCh2_) {
+        yMin = qMin(yMin, v);
+        yMax = qMax(yMax, v);
+    }
+    for (double v : dongleSuctionChartCh3_) {
+        yMin = qMin(yMin, v);
+        yMax = qMax(yMax, v);
+    }
+    const double yPad = qMax(0.5, (yMax - yMin) * 0.1);
+    dongleSuctionPlot_->yAxis->setRange(yMin - yPad, yMax + yPad);
+    dongleSuctionPlot_->replot();
+}
+
+void MainWindow::refreshDongleSuctionData(const ProtocolDongleSuctionData& data) {
+    if (!dongleSuctionReadEnabled_)
+        return;
+    appendDongleSuctionChartSample(data.leftKpa, data.rightKpa, data.thirdKpa);
+}
+
 void MainWindow::on_open_suction_clicked() {
-    at->set(DongleCmd::GetSuction, 1); // 开启读取吸力
+    on_dongle_suction_open_clicked();
 }
 
 void MainWindow::on_close_suction_clicked() {
-    at->set(DongleCmd::GetSuction, 0); // 关闭读取吸力
+    on_dongle_suction_close_clicked();
+}
+
+void MainWindow::on_dongle_suction_open_clicked() {
+    if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
+        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("请先连接 Dongle 串口"));
+        return;
+    }
+    loadDongleSuctionPeakSettings();
+    setDongleSuctionPeakParamWidgetsEnabled(false);
+    dongleSuctionReadEnabled_ = true;
+    resetDongleSuctionChart();
+    if (!startDongleSuctionCsvLog()) {
+        dongleSuctionReadEnabled_ = false;
+        setDongleSuctionPeakParamWidgetsEnabled(true);
+        return;
+    }
+    at->set(DongleCmd::GetSuction, 1);
+    showlog(QStringLiteral("已开启 Dongle 吸力读取（峰目标 %1±%2 kPa，漏峰间隔>%3s）")
+                .arg(dongleSuctionPeakTargetKpa_, 0, 'f', 2)
+                .arg(dongleSuctionPeakToleranceKpa_, 0, 'f', 2)
+                .arg(dongleSuctionPeakMaxGapSec_, 0, 'f', 1));
+}
+
+void MainWindow::on_dongle_suction_close_clicked() {
+    dongleSuctionReadEnabled_ = false;
+    if (at)
+        at->set(DongleCmd::GetSuction, 0);
+    stopDongleSuctionCsvLog();
+    setDongleSuctionPeakParamWidgetsEnabled(true);
+    showlog(QStringLiteral("已关闭 Dongle 吸力读取"));
+}
+
+void MainWindow::on_dongle_suction_clear_chart_clicked() {
+    resetDongleSuctionChart();
 }
 
 void MainWindow::on_checkBox_adcSwitch_stateChanged(int arg1) {

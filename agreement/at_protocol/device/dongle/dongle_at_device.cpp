@@ -240,5 +240,11 @@ void DongleAtDevice::suction_data(const QString& p) {
     ProtocolDongleSuctionData data;
     data.leftKpa = left;
     data.rightKpa = right;
+    if (parts.size() >= 3) {
+        bool okThird = false;
+        const double third = parts.at(2).toDouble(&okThird);
+        if (okThird)
+            data.thirdKpa = third;
+    }
     emitReport(QStringLiteral("ProtocolDongleSuctionData"), QVariant::fromValue(data));
 }

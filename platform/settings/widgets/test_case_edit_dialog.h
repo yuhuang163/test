@@ -18,6 +18,7 @@ class TestCaseEditDialog : public QDialog {
     explicit TestCaseEditDialog(QWidget* parent = nullptr);
     ~TestCaseEditDialog() override;
     void setDefinition(const TestCaseDefinition& def, const QString& storageKey = QString());
+    void setStationContext(const QString& stationKey);
     TestCaseDefinition definition() const;
 
   private slots:
@@ -49,6 +50,8 @@ class TestCaseEditDialog : public QDialog {
     QTableWidget* tableWidget_multiGates_ = nullptr;
     /** 打开对话框时的配置名（用于改名后删除旧 ini） */
     QString originalCaseName_;
+    /** 当前工站 Profile 键；非空时保存工站参数覆盖 */
+    QString stationKey_;
 };
 
 #endif // TEST_CASE_EDIT_DIALOG_H

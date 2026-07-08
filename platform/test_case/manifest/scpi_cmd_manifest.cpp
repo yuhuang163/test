@@ -23,7 +23,7 @@ const Row kRows[] = {
      u8"int=1开/0关（须先执行配置步骤；无需重复填 visaAddress）", kSet},
     {ScpiDeviceRoute::HuilingWfp60h, "ReadProgrammableVoltage", u8"读取源电压测量值",
      u8"复用配置步骤的 VISA 连接；或填写 visaAddress", kGet},
-    {ScpiDeviceRoute::HuilingWfp60h, "ReadProgrammableCurrent", u8"读取源电流测量值",
+    {ScpiDeviceRoute::HuilingWfp60h, "ReadProgrammableCurrent", u8"读取工作电流（程控电源源电流）",
      u8"复用配置步骤的 VISA 连接；或填写 visaAddress", kGet},
     {ScpiDeviceRoute::HuilingWfp60h, "InitializeProgrammablePower", u8"初始化源通道",
      u8"复用配置步骤；或填写 visaAddress、voltage/current", kGet},
