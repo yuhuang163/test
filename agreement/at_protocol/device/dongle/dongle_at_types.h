@@ -16,6 +16,7 @@ enum class DongleCmd {
     MainDataPassthrough, // AT+MAINDATA= 0/1
     BleLog,              // AT+BLELOG= 0/1
     GetSuction,          // AT+SUCTION= 0/1
+    AdcSwitch,           // AT+ADC= 0/1
     BleDeviceLog,        // AT+BLEDEVICELOG= 0/1
     Bomb,                // AT+BOMB= QVariantMap{deviceName,rssi,connectionInterval,command}
     GetGmac,             // get: AT+GMAC

@@ -5216,3 +5216,13 @@ void MainWindow::on_dongle_suction_close_clicked() {
 void MainWindow::on_dongle_suction_clear_chart_clicked() {
     resetDongleSuctionChart();
 }
+
+void MainWindow::on_checkBox_adcSwitch_stateChanged(int arg1) {
+    if (!at) {
+        showlog(QStringLiteral("AT+ADC 发送失败：Dongle 未就绪"));
+        return;
+    }
+    const int state = arg1 != Qt::Unchecked ? 1 : 0;
+    at->set(DongleCmd::AdcSwitch, state);
+    showlog(QStringLiteral("已发送 AT+ADC=%1").arg(state));
+}
