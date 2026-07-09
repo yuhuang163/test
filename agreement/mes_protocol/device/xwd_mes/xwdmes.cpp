@@ -5,7 +5,47 @@
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
 #endif
+
+namespace {
+
+QString normalizeSunwinonBaseUrl(QString url) {
+    url = url.trimmed();
+    if (url.isEmpty()) {
+        url = QStringLiteral("https://hzznyjmes.sunwoda.com/ims-pms");
+    }
+    while (url.endsWith(QLatin1Char('/'))) {
+        url.chop(1);
+    }
+    return url;
+}
+
+QString readSunwinonBaseUrl() {
+    QString url = SETTINGS.value(QStringLiteral("Mes/NET"), QString()).toString();
+    if (url.trimmed().isEmpty()) {
+        url = SETTINGS.value(QStringLiteral("MES/NET"), QString()).toString();
+    }
+    return normalizeSunwinonBaseUrl(url);
+}
+
+QString normalizeWipTestResult(const QString& resultText) {
+    QString mesResult = resultText.trimmed().toUpper();
+    if (mesResult != QStringLiteral("PASS") && mesResult != QStringLiteral("NG")) {
+        if (mesResult == QStringLiteral("FAIL") || resultText.trimmed() == QStringLiteral("失败")) {
+            mesResult = QStringLiteral("NG");
+        } else {
+            mesResult = QStringLiteral("PASS");
+        }
+    }
+    return mesResult;
+}
+
+} // namespace
+
 xwdmes::xwdmes() {
+}
+
+QString xwdmes::apiUrl(const QString& path) const {
+    return readSunwinonBaseUrl() + QStringLiteral("/api/device/") + path;
 }
 // 标签不存在，表示sn有问题
 // QString M_USERNO, QString M_PASSWORD, QString M_MACHINENO
@@ -74,7 +114,7 @@ void xwdmes::onNetworkReplyFinished() {
 void xwdmes::ProcessInspection(MesPacketData pack) {
     if (pack.factory == "xwd") {
         // 接口地址
-        QString url = "https://hzznyjmes.sunwoda.com/ims-pms/api/device/groupTest";
+        QString url = apiUrl(QStringLiteral("groupTest"));
         QString logMsg = QString("发送网络请求，URL：%1").arg(url);
         qDebug() << logMsg;
         // 构建请求参数
@@ -127,7 +167,7 @@ void xwdmes::ProcessInspection(MesPacketData pack) {
 void xwdmes::collectPass(const int mechines, const QString& sn, const QString& mo, const QString& userno,
                          const QString& machineno, const QString& result, const QString& itemvalue) {
     // 接口地址
-    QString url = "https://hzznyjmes.sunwoda.com/ims-pms/api/device/weldInputTest";
+    QString url = apiUrl(QStringLiteral("weldInputTest"));
 
     // 构建请求参数
     QJsonObject requestData;
@@ -182,12 +222,12 @@ void xwdmes::TestPass(MesPacketData pack) {
     if (pack.factory == "xwd") {
         qDebug() << "欣旺达开始测试过站";
         // 接口地址
-        QString url = "https://hzznyjmes.sunwoda.com/ims-pms/api/device/wipTest";
+        QString url = apiUrl(QStringLiteral("wipTest"));
 
         // 构建请求参数
         QJsonObject requestData;
         requestData["mSn"] = pack.sn;
-        requestData["mResult"] = pack.result;
+        requestData["mResult"] = normalizeWipTestResult(pack.result);
         requestData["mUserno"] = pack.Employee_ID;
         requestData["mMachineno"] = pack.machineNo;
         requestData["mError"] = pack.error;
@@ -235,7 +275,7 @@ void xwdmes::TestPass(MesPacketData pack) {
 void xwdmes::assemblePass(const int mechines, const QString& machineNo, const QString& productSN, const QString& mo,
                           const QString& emp, const QString& kpItemSnAll) {
     // 接口地址
-    QString url = "https://hzznyjmes.sunwoda.com/ims-pms/api/device/hwInterface";
+    QString url = apiUrl(QStringLiteral("hwInterface"));
 
     // 构建请求参数
     QJsonObject requestData;
@@ -286,7 +326,7 @@ void xwdmes::assemblePass(const int mechines, const QString& machineNo, const QS
 void xwdmes::uploadOfflineData(const int mechines, const QString& mSn, const QString& mResult, const QString& mUserno,
                                const QString& mMachineno, const QString& mError, const QString& mItemvalue) {
     // 接口地址
-    QString url = "https://hzznyjmes.sunwoda.com/ims-pms/api/device/offlineData";
+    QString url = apiUrl(QStringLiteral("offlineData"));
 
     // 构建请求参数
     QJsonObject requestData;
@@ -344,7 +384,7 @@ void xwdmes::GetTestData(MesPacketData pack) {
         QString wpCode = SETTINGS.value("Mes/xwdWpCode", "Q20-JTDLTEST").toString();
 
         // 接口地址
-        QString url = "https://hzznyjmes.sunwoda.com/ims-pms/api/device/getTestData";
+        QString url = apiUrl(QStringLiteral("getTestData"));
 
         // 构建请求参数
         QJsonObject requestData;
@@ -417,7 +457,7 @@ void xwdmes::GetTestData(MesPacketData pack) {
 
 void xwdmes::getSoftwareVersionBySn(const int mechines, const QString& sn) {
     // 接口地址
-    QString url = "https://hzznyjmes.sunwoda.com/ims-pms/api/device/getSoftwareVersionBySn";
+    QString url = apiUrl(QStringLiteral("getSoftwareVersionBySn"));
 
     // 构建请求参数
     QJsonObject requestData;
@@ -471,7 +511,7 @@ void xwdmes::getSoftwareVersionBySn(const int mechines, const QString& sn) {
 
 void xwdmes::getKeyToProduct(const int mechines, const QString& productKey, const QString& itemCode) {
     // 接口地址
-    QString url = "https://hzznyjmes.sunwoda.com/ims-pms/api/device/getKeyToProduct";
+    QString url = apiUrl(QStringLiteral("getKeyToProduct"));
 
     // 构建请求参数
     QJsonObject requestData;
@@ -521,7 +561,7 @@ void xwdmes::getKeyToProduct(const int mechines, const QString& productKey, cons
 }
 void xwdmes::getBindTable(const int mechines, const QString& productSN) {
     // 接口地址
-    QString url = "https://hzznyjmes.sunwoda.com/ims-pms/api/device/getBindTable";
+    QString url = apiUrl(QStringLiteral("getBindTable"));
 
     // 构建请求参数
     QJsonObject requestData;
@@ -579,7 +619,7 @@ void xwdmes::getBindTable(const int mechines, const QString& productSN) {
 
 void xwdmes::replaceSN(const int mechines, const QString& mo, const QString& itemSN) {
     // 接口地址
-    QString url = "https://hzznyjmes.sunwoda.com/ims-pms/api/device/replaceSN";
+    QString url = apiUrl(QStringLiteral("replaceSN"));
 
     // 构建请求参数
     QJsonObject requestData;
@@ -629,7 +669,7 @@ void xwdmes::replaceSN(const int mechines, const QString& mo, const QString& ite
 }
 void xwdmes::getMaterialAndMoBySN(const int mechines, const QString& SN) {
     // 接口地址
-    QString url = "https://hzznyjmes.sunwoda.com/ims-pms/api/device/getMaterialAndMoBySN";
+    QString url = apiUrl(QStringLiteral("getMaterialAndMoBySN"));
 
     // 构建请求参数
     QJsonObject requestData;
@@ -681,7 +721,7 @@ void xwdmes::getMaterialAndMoBySN(const int mechines, const QString& SN) {
 }
 void xwdmes::getGroupItem(const int mechines, const QString& mo, const QString& machineNo) {
     // 接口地址
-    QString url = "https://hzznyjmes.sunwoda.com/ims-pms/api/device/getGroupItem";
+    QString url = apiUrl(QStringLiteral("getGroupItem"));
 
     // 构建请求参数
     QJsonObject requestData;

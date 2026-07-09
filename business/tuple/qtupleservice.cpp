@@ -201,6 +201,8 @@ static const QHash<QString, QString>& tupleInspectionOpLabels() {
 static QString tupleReportWireKeyFromDisplayZh(const QString& displayZh) {
     static const QHash<QString, QString> kZhToWire = {
         {QString::fromUtf8("读三元组"), QString::fromUtf8("R_D_TUPLE")},
+        {QString::fromUtf8("写入MAC"), QString::fromUtf8("W_MAC")},
+        {QString::fromUtf8("更新烧录状态"), QString::fromUtf8("Q_UPDATE_MAC_STATUS")},
         {QString::fromUtf8("蓝牙链路RSSI"), QString::fromUtf8("R_BT_RSSI")},
         {QString::fromUtf8("检测信号"), QString::fromUtf8("R_JL_F_BLE_RSSI")},
         {QString::fromUtf8("读版本信息"), QString::fromUtf8("R_VAR")},
@@ -323,6 +325,15 @@ void QTupleService::set(TupleCmd cmd, const QVariant& data) {
         break;
     }
     case TupleCmd::ReportWriteRecord: {
+        const QString burnMac = m.value(QStringLiteral("burnMac")).toString().trimmed();
+        if (!burnMac.isEmpty()) {
+            const QString productSn = m.value(QStringLiteral("productSn")).toString().trimmed();
+            const bool pass = m.value(QStringLiteral("pass")).toBool();
+            if (!reportBurnInspectionImpl(productSn, burnMac, pass, &error)) {
+                lastError_ = error;
+            }
+            break;
+        }
         const TupleApplyResult tuple = tupleFromMap(m);
         const QString productSn = m.value(QStringLiteral("productSn")).toString();
         const QString result = m.value(QStringLiteral("result")).toString();
@@ -570,6 +581,51 @@ bool QTupleService::reportWriteRecordImpl(const TupleApplyResult& tuple, const Q
     }
 
     qDebug().noquote() << "[Tuple] reportWriteRecord response:" << QString::fromUtf8(response);
+    return true;
+}
+
+bool QTupleService::reportBurnInspectionImpl(const QString& productSn, const QString& macWritten, bool pass,
+                                           QString* error) {
+    const QString sn = productSn.trimmed();
+    const QString mac = macWritten.trimmed();
+    if (sn.isEmpty() || mac.isEmpty()) {
+        if (error) {
+            *error = QStringLiteral("检验上报缺少 SN 或 MAC");
+        }
+        return false;
+    }
+
+    const qint64 timestamp = QDateTime::currentMSecsSinceEpoch();
+    const QString reportTime = QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss"));
+    QJsonArray inspectionItems;
+    const QString macItem =
+        formatTupleReportInspectionItem(QString::fromUtf8("写入MAC"), mac, pass, timestamp);
+    if (!macItem.isEmpty()) {
+        inspectionItems.append(macItem);
+    }
+    const QString statusItem =
+        formatTupleReportInspectionItem(QString::fromUtf8("更新烧录状态"), QStringLiteral("1"), pass, timestamp);
+    if (!statusItem.isEmpty()) {
+        inspectionItems.append(statusItem);
+    }
+    if (inspectionItems.isEmpty()) {
+        if (error) {
+            *error = QStringLiteral("检验上报项为空");
+        }
+        return false;
+    }
+
+    QJsonObject bodyObj;
+    bodyObj.insert(QStringLiteral("sn"), sn);
+    bodyObj.insert(QStringLiteral("reportTime"), reportTime);
+    bodyObj.insert(QStringLiteral("inspectionItems"), inspectionItems);
+    const QByteArray body = QJsonDocument(bodyObj).toJson(QJsonDocument::Compact);
+
+    QByteArray response;
+    if (!requestPost(QStringLiteral("/api/inspection/report"), body, &response, error)) {
+        return false;
+    }
+    qDebug().noquote() << "[Tuple] reportBurnInspection response:" << QString::fromUtf8(response);
     return true;
 }
 

@@ -494,6 +494,14 @@ bool QFreeWork::tickOrderedTestStepLoop() {
                 stepRuntime_.done = true;
                 stepRuntime_.pass = true;
                 stepRuntime_.testData = QStringLiteral("已连接");
+            } else if (caseDef.hook.enabled && lastCommandRetryCount > 0) {
+                // Hook + sendCommandWithRetry：产测应答后须结束步骤（如 MAC_WRITE_ROOT、SN_WRITE_TAIL）；
+                // 按键/采样/串口仪器等 Hook 自行维护 stepRuntime_，不会走到 lastCommandRetryCount>0。
+                const QString hookId = caseDef.hook.hookId;
+                if (hookId == QStringLiteral("MAC_WRITE_ROOT") || hookId == QStringLiteral("SN_WRITE_TAIL")) {
+                    stepRuntime_.done = true;
+                    stepRuntime_.pass = true;
+                }
             }
             // 阻塞型 Hook（如 DONGLE_SUCTION_SAMPLE）在 waitWork/QEventLoop 内会重入 startTask，
             // 不可凭 lastCommandRetryCount 提前 done，否则与采样循环并发导致第二次卡死。
@@ -1548,9 +1556,11 @@ void QFreeWork::processInspection(QString inputSnText) {
 }
 
 void QFreeWork::processGetMesTestValue() {
-        // 不从MES获取SN的模式（包括纯离线，以及接通MES但不取SN的M8板厂模式）：
-    // 直接把界面上的扫码（或输入）当做真实SN并解析
-    if (ui && ui->isformmes && !ui->isformmes->checkState()) {
+    // 不从 MES 拉 MAC：未勾选「从 mes 获取 mac」、或 xwd（暂不调 getTestData/BTMAC）
+    const bool localMacFromSn =
+        (ui && ui->isformmes && !ui->isformmes->checkState())
+        || pack.factory.trimmed().compare(QStringLiteral("xwd"), Qt::CaseInsensitive) == 0;
+    if (localMacFromSn) {
         QString mesmacAddress = parseMacFromSn(ui->getMac->text());
         if (!mesmacAddress.isEmpty()) {
             ui->macInput->setText(mesmacAddress);

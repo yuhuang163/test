@@ -237,6 +237,35 @@ QString allocateCustomFlowStationKey(const QVector<TestFlowStationEntry>& catalo
     return QStringLiteral("FLOW_ST_%1").arg(QDateTime::currentMSecsSinceEpoch());
 }
 
+/** 工站对外以 profiles 目录名（中文）区分；StationKey 仅 ini 内 ASCII 键，已被其它目录占用则分配 FLOW_ST_xxxx */
+QString resolveStationKeyForProfileFolder(const QString& folderName, const QString& profileIniKey,
+                                          const QVector<TestFlowStationEntry>& catalog,
+                                          const QHash<QString, int>& keyToIndex,
+                                          const QHash<QString, int>& displayNameToIndex) {
+    const QString displayName = folderName.trimmed();
+    const int byNameIdx = displayNameToIndex.value(displayName, -1);
+    if (byNameIdx >= 0)
+        return catalog[byNameIdx].key.trimmed();
+
+    auto keyTakenByOtherFolder = [&](const QString& key) {
+        const QString k = key.trimmed();
+        if (k.isEmpty())
+            return false;
+        const int idx = keyToIndex.value(k, -1);
+        return idx >= 0 && catalog[idx].displayName != displayName;
+    };
+
+    QString stationKey = profileIniKey.trimmed();
+    if (stationKey.isEmpty()) {
+        stationKey = lookupPresetKeyFromDisplayName(displayName);
+        if (stationKey.isEmpty() || keyTakenByOtherFolder(stationKey))
+            stationKey = allocateCustomFlowStationKey(catalog);
+    } else if (keyTakenByOtherFolder(stationKey)) {
+        stationKey = allocateCustomFlowStationKey(catalog);
+    }
+    return stationKey;
+}
+
 void migrateFlowStationIniData(const QString& oldKey, const QString& newKey, const QString& displayName) {
     if (oldKey.isEmpty() || newKey.isEmpty() || oldKey.compare(newKey, Qt::CaseInsensitive) == 0)
         return;
@@ -509,19 +538,24 @@ bool TestCaseStore::addFlowStation(const QString& displayName, QString* errorOut
 
     const QString presetKey = lookupPresetKeyFromDisplayName(name);
     QVector<TestFlowStationEntry> catalog = loadFlowStationCatalog();
-    const QString key = presetKey.isEmpty() ? allocateCustomFlowStationKey(catalog) : presetKey;
+    QString key = presetKey;
     for (const TestFlowStationEntry& entry : catalog) {
         if (entry.displayName == name) {
             if (errorOut)
                 *errorOut = QStringLiteral("工站名称已存在：%1").arg(name);
             return false;
         }
-        if (entry.key.compare(key, Qt::CaseInsensitive) == 0) {
-            if (errorOut)
-                *errorOut = QStringLiteral("工站已存在：%1").arg(name);
-            return false;
+    }
+    if (!key.isEmpty()) {
+        for (const TestFlowStationEntry& entry : catalog) {
+            if (entry.key.compare(key, Qt::CaseInsensitive) == 0) {
+                key = QString();
+                break;
+            }
         }
     }
+    if (key.isEmpty())
+        key = allocateCustomFlowStationKey(catalog);
     catalog.append({key, name});
     if (!saveFlowStationCatalog(catalog))
         return false;
@@ -806,6 +840,24 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
 void applyCaseIniOverlay(QSettings& overlay, TestCaseDefinition& def);
 bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool profileOverlayOnly);
 void syncProfileFlowFromLegacyIni(const QString& stationKey);
+QString sendParamIniPrefix();
+QString sendParamIniKey(const QString& leafKey);
+void removeSendParamKeys(QSettings& s);
+void writeSendParamMap(QSettings& s, const QVariantMap& map);
+void writeSendParamLeaf(QSettings& s, const QString& leafKey, const QVariant& value);
+
+bool overlayHasSendParamKeys(const QSettings& overlay) {
+    if (!readSendParamMap(overlay).isEmpty())
+        return true;
+    if (overlay.contains(QStringLiteral("Send/Param")))
+        return true;
+    const QString prefix = sendParamIniPrefix() + QLatin1Char('_');
+    for (const QString& key : overlay.allKeys()) {
+        if (key.startsWith(prefix))
+            return true;
+    }
+    return false;
+}
 
 bool stepIniHasMeaningfulContent(const QString& path) {
     if (!QFile::exists(path))
@@ -1126,27 +1178,39 @@ void applyCaseIniOverlay(QSettings& overlay, TestCaseDefinition& def) {
             def.send.deviceCmd = overlay.value(QStringLiteral("Send/DeviceCmd")).toString().trimmed();
         const QVariantMap paramMap = readSendParamMap(overlay);
         if (!paramMap.isEmpty()) {
-            def.send.param = normalizeScpiModbusParamFromMap(paramMap);
+            if (def.send.channel == TestCaseSendChannel::Modbus || def.send.channel == TestCaseSendChannel::Scpi) {
+                def.send.param = normalizeScpiModbusParamFromMap(paramMap);
+            } else if (def.send.channel == TestCaseSendChannel::Product) {
+                DeviceCmd cmd;
+                if (DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd))
+                    def.send.param = DeviceCmdCatalog::normalizeSendParam(cmd, paramMap);
+                else
+                    def.send.param = paramMap;
+            } else {
+                def.send.param = paramMap;
+            }
         } else if (overlay.contains(QStringLiteral("Send/Param"))) {
             def.send.param = overlay.value(QStringLiteral("Send/Param"));
-        } else if (def.send.channel == TestCaseSendChannel::Dongle) {
-            DongleCmd dongleCmd;
-            if (DongleCmdCatalog::dongleCmdFromName(def.send.deviceCmd, dongleCmd))
-                DongleCmdCatalog::paramFromIniGroup(overlay, dongleCmd, def.send.param);
-        } else if (def.send.channel == TestCaseSendChannel::Cloud) {
-            TupleCmd tupleCmd;
-            if (TupleCmdCatalog::tupleCmdFromName(def.send.deviceCmd, tupleCmd))
-                TupleCmdCatalog::paramFromIniGroup(overlay, tupleCmd, def.send.param);
-        } else if (def.send.channel == TestCaseSendChannel::Fixture) {
-            FixturePcbaCmd fixtureCmd;
-            if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd))
-                FixturePcbaCmdCatalog::paramFromIniGroup(overlay, fixtureCmd, def.send.param);
-        } else if (def.send.channel == TestCaseSendChannel::Modbus || def.send.channel == TestCaseSendChannel::Scpi) {
-            // paramMap 已在上方处理
-        } else {
-            DeviceCmd cmd;
-            if (DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd))
-                DeviceCmdCatalog::paramFromIniGroup(overlay, cmd, def.send.param);
+        } else if (overlayHasSendParamKeys(overlay)) {
+            if (def.send.channel == TestCaseSendChannel::Dongle) {
+                DongleCmd dongleCmd;
+                if (DongleCmdCatalog::dongleCmdFromName(def.send.deviceCmd, dongleCmd))
+                    DongleCmdCatalog::paramFromIniGroup(overlay, dongleCmd, def.send.param);
+            } else if (def.send.channel == TestCaseSendChannel::Cloud) {
+                TupleCmd tupleCmd;
+                if (TupleCmdCatalog::tupleCmdFromName(def.send.deviceCmd, tupleCmd))
+                    TupleCmdCatalog::paramFromIniGroup(overlay, tupleCmd, def.send.param);
+            } else if (def.send.channel == TestCaseSendChannel::Fixture) {
+                FixturePcbaCmd fixtureCmd;
+                if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd))
+                    FixturePcbaCmdCatalog::paramFromIniGroup(overlay, fixtureCmd, def.send.param);
+            } else if (def.send.channel == TestCaseSendChannel::Modbus || def.send.channel == TestCaseSendChannel::Scpi) {
+                // paramMap 已在上方处理
+            } else {
+                DeviceCmd cmd;
+                if (DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd))
+                    DeviceCmdCatalog::paramFromIniGroup(overlay, cmd, def.send.param);
+            }
         }
     }
 
@@ -1313,7 +1377,7 @@ void migrateProfileDirToDisplayName(const QString& stationKey) {
     QDir().rename(legacyDir, targetDir);
 }
 
-/** 扫描 profiles/{中文名}/profile.ini，将复制进来的工站自动登记到 FlowStations */
+/** 扫描 profiles/{中文名}/profile.ini，将复制进来的工站自动登记到 FlowStations（一目录一条，目录名即显示名） */
 void registerFlowStationsFromProfileDirs() {
     const QString profilesRoot = TestCasePaths::profilesDir();
     QDir profiles(profilesRoot);
@@ -1322,8 +1386,11 @@ void registerFlowStationsFromProfileDirs() {
 
     QVector<TestFlowStationEntry> catalog = TestCaseStore::loadFlowStationCatalog();
     QHash<QString, int> keyToIndex;
-    for (int i = 0; i < catalog.size(); ++i)
+    QHash<QString, int> displayNameToIndex;
+    for (int i = 0; i < catalog.size(); ++i) {
         keyToIndex.insert(catalog[i].key.trimmed(), i);
+        displayNameToIndex.insert(catalog[i].displayName.trimmed(), i);
+    }
 
     bool catalogChanged = false;
     for (const QFileInfo& fi : profiles.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot)) {
@@ -1338,34 +1405,36 @@ void registerFlowStationsFromProfileDirs() {
 
         QSettings meta(profileIniPath, QSettings::IniFormat);
         applyTestCaseIniCodec(meta);
-        QString stationKey = meta.value(QStringLiteral("Profile/StationKey")).toString().trimmed();
-        QString displayName = meta.value(QStringLiteral("Profile/DisplayName")).toString().trimmed();
-        if (displayName.isEmpty())
-            displayName = folderName;
+        const QString profileIniKey = meta.value(QStringLiteral("Profile/StationKey")).toString().trimmed();
+        const QString displayName = folderName;
 
-        if (stationKey.isEmpty()) {
-            stationKey = lookupPresetKeyFromDisplayName(folderName);
-            if (stationKey.isEmpty())
-                stationKey = allocateCustomFlowStationKey(catalog);
+        const QString stationKey =
+            resolveStationKeyForProfileFolder(folderName, profileIniKey, catalog, keyToIndex, displayNameToIndex);
+
+        if (profileIniKey != stationKey) {
             meta.setValue(QStringLiteral("Profile/StationKey"), stationKey);
             catalogChanged = true;
         }
-        if (displayName != folderName) {
-            displayName = folderName;
+        if (meta.value(QStringLiteral("Profile/DisplayName")).toString().trimmed() != displayName) {
             meta.setValue(QStringLiteral("Profile/DisplayName"), displayName);
             catalogChanged = true;
         }
         if (meta.status() == QSettings::NoError)
             syncTestCaseIni(meta, profileIniPath);
 
-        const int existingIdx = keyToIndex.value(stationKey, -1);
-        if (existingIdx < 0) {
+        const int byNameIdx = displayNameToIndex.value(displayName, -1);
+        if (byNameIdx < 0) {
             catalog.append({stationKey, displayName});
-            keyToIndex.insert(stationKey, catalog.size() - 1);
+            const int newIdx = catalog.size() - 1;
+            keyToIndex.insert(stationKey, newIdx);
+            displayNameToIndex.insert(displayName, newIdx);
             catalogChanged = true;
-        } else if (catalog[existingIdx].displayName != displayName) {
-            catalog[existingIdx].displayName = displayName;
-            catalogChanged = true;
+        } else {
+            if (catalog[byNameIdx].key != stationKey) {
+                catalog[byNameIdx].key = stationKey;
+                keyToIndex.insert(stationKey, byNameIdx);
+                catalogChanged = true;
+            }
         }
     }
 
@@ -2035,6 +2104,10 @@ void removeKeysWithPrefix(QSettings& s, const QString& prefix) {
 }
 
 void writeJsonMap(QSettings& s, const QString& prefix, const QVariant& value) {
+    if (prefix == sendParamIniPrefix()) {
+        writeSendParamMap(s, value.toMap());
+        return;
+    }
     removeKeysWithPrefix(s, prefix);
     const QVariantMap map = value.toMap();
     for (auto it = map.cbegin(); it != map.cend(); ++it)
@@ -2043,6 +2116,31 @@ void writeJsonMap(QSettings& s, const QString& prefix, const QVariant& value) {
 
 QString sendParamIniPrefix() {
     return QStringLiteral("Send/Param");
+}
+
+QString sendParamIniKey(const QString& leafKey) {
+    return sendParamIniPrefix() + QLatin1Char('_') + leafKey;
+}
+
+void removeSendParamKeys(QSettings& s) {
+    const QString underscorePrefix = sendParamIniPrefix() + QLatin1Char('_');
+    const QString slashPrefix = sendParamIniPrefix() + QLatin1Char('/');
+    for (const QString& key : s.allKeys()) {
+        if (key.startsWith(underscorePrefix) || key.startsWith(slashPrefix))
+            s.remove(key);
+    }
+    removeKeysWithPrefix(s, QStringLiteral("Param"));
+}
+
+void writeSendParamMap(QSettings& s, const QVariantMap& map) {
+    removeSendParamKeys(s);
+    for (auto it = map.cbegin(); it != map.cend(); ++it)
+        s.setValue(sendParamIniKey(it.key()), it.value());
+}
+
+void writeSendParamLeaf(QSettings& s, const QString& leafKey, const QVariant& value) {
+    removeSendParamKeys(s);
+    s.setValue(sendParamIniKey(leafKey), value);
 }
 
 QVariant normalizeScpiModbusParamFromMap(const QVariantMap& map) {
@@ -2058,8 +2156,7 @@ QVariant normalizeScpiModbusParamFromMap(const QVariantMap& map) {
 }
 
 void writeScpiModbusParamToIni(QSettings& ini, const QVariant& param) {
-    removeKeysWithPrefix(ini, QStringLiteral("Param"));
-    removeKeysWithPrefix(ini, sendParamIniPrefix());
+    removeSendParamKeys(ini);
     if (!param.isValid())
         return;
     const QString prefix = sendParamIniPrefix();
@@ -2068,26 +2165,39 @@ void writeScpiModbusParamToIni(QSettings& ini, const QVariant& param) {
         return;
     }
     if (param.userType() == QMetaType::QString)
-        ini.setValue(prefix + QStringLiteral("/string"), param.toString());
+        writeSendParamLeaf(ini, QStringLiteral("string"), param.toString());
     else
-        ini.setValue(prefix + QStringLiteral("/int"), param.toInt());
+        writeSendParamLeaf(ini, QStringLiteral("int"), param.toInt());
 }
 
 QVariant readSendScopedParam(const QSettings& settings, const QString& leafKey, const QVariant& defaultValue) {
-    const QString sendKey = sendParamIniPrefix() + QLatin1Char('/') + leafKey;
+    const QString sendKey = sendParamIniKey(leafKey);
     if (settings.contains(sendKey))
         return settings.value(sendKey);
-    const QString legacyKey = QStringLiteral("Param/") + leafKey;
-    if (settings.contains(legacyKey))
-        return settings.value(legacyKey);
     return defaultValue;
 }
 
 QVariantMap readSendParamMap(const QSettings& settings) {
-    QVariantMap map = readJsonMap(settings, sendParamIniPrefix()).toMap();
+    QVariantMap map;
+    const QString keyPrefix = sendParamIniPrefix() + QLatin1Char('_');
+    for (const QString& key : settings.allKeys()) {
+        if (!key.startsWith(keyPrefix))
+            continue;
+        const QString leaf = key.mid(keyPrefix.size());
+        if (leaf.isEmpty() || leaf == QStringLiteral("json"))
+            continue;
+        map.insert(leaf, settings.value(key));
+    }
     if (!map.isEmpty())
         return map;
-    return readJsonMap(settings, QStringLiteral("Param")).toMap();
+
+    const QString json = settings.value(sendParamIniKey(QStringLiteral("json"))).toString();
+    if (!json.isEmpty()) {
+        const QJsonDocument doc = QJsonDocument::fromJson(json.toUtf8());
+        if (doc.isObject())
+            return doc.object().toVariantMap();
+    }
+    return map;
 }
 
 int jsonMapIntValue(const QVariantMap& map, int defaultValue = 0) {
@@ -2303,6 +2413,7 @@ QVariant DeviceCmdCatalog::normalizeSendParam(DeviceCmd cmd, const QVariant& par
     }
     case DeviceCmd::Sleep:
     case DeviceCmd::BurningMode:
+    case DeviceCmd::SuctionMode:
     case DeviceCmd::WifiConnect:
     case DeviceCmd::RssiRead:
         return map;
@@ -2323,8 +2434,7 @@ QVariant DeviceCmdCatalog::normalizeSendParam(DeviceCmd cmd, const QVariant& par
 }
 
 void DeviceCmdCatalog::paramToIniGroup(QSettings& settings, DeviceCmd cmd, const QVariant& value) {
-    removeKeysWithPrefix(settings, QStringLiteral("Param"));
-    removeKeysWithPrefix(settings, sendParamIniPrefix());
+    removeSendParamKeys(settings);
     DeviceCmdParamSchema schema;
     if (!paramSchemaFor(cmd, schema))
         return;
@@ -2333,9 +2443,9 @@ void DeviceCmdCatalog::paramToIniGroup(QSettings& settings, DeviceCmd cmd, const
         if (value.canConvert<QVariantMap>()) {
             writeJsonMap(settings, prefix, value);
         } else if (value.type() == QVariant::String) {
-            settings.setValue(prefix + QStringLiteral("/value"), value.toString());
+            writeSendParamLeaf(settings, QStringLiteral("value"), value.toString());
         } else {
-            settings.setValue(prefix + QStringLiteral("/value"), value.toInt());
+            writeSendParamLeaf(settings, QStringLiteral("value"), value.toInt());
         }
         return;
     }
@@ -2435,8 +2545,7 @@ bool DongleCmdCatalog::paramFromIniGroup(const QSettings& settings, DongleCmd cm
 }
 
 void DongleCmdCatalog::paramToIniGroup(QSettings& settings, DongleCmd cmd, const QVariant& value) {
-    removeKeysWithPrefix(settings, QStringLiteral("Param"));
-    removeKeysWithPrefix(settings, sendParamIniPrefix());
+    removeSendParamKeys(settings);
     DeviceCmdParamSchema schema;
     if (!paramSchemaFor(cmd, schema))
         return;
@@ -2445,10 +2554,10 @@ void DongleCmdCatalog::paramToIniGroup(QSettings& settings, DongleCmd cmd, const
     case DeviceCmdParamKind::None:
         break;
     case DeviceCmdParamKind::Int:
-        settings.setValue(prefix + QStringLiteral("/int"), value.toInt());
+        writeSendParamLeaf(settings, QStringLiteral("int"), value.toInt());
         break;
     case DeviceCmdParamKind::String:
-        settings.setValue(prefix + QStringLiteral("/string"), value.toString());
+        writeSendParamLeaf(settings, QStringLiteral("string"), value.toString());
         break;
     case DeviceCmdParamKind::JsonMap:
         writeJsonMap(settings, prefix, value);
@@ -2549,7 +2658,7 @@ bool FixturePcbaCmdCatalog::paramFromIniGroup(const QSettings& settings, Fixture
     case FixturePcbaCmd::StartWhiteMode: {
         QVariant machine = readSendScopedParam(settings, QStringLiteral("MachineIndex"), QVariant());
         if (!machine.isValid())
-            machine = settings.value(QStringLiteral("Send/Param/MachineIndex"));
+            machine = settings.value(sendParamIniKey(QStringLiteral("MachineIndex")));
         if (!machine.isValid()) {
             const QString legacyKey = QStringLiteral("SendParam/MachineIndex");
             if (settings.contains(legacyKey))
@@ -2583,16 +2692,15 @@ bool FixturePcbaCmdCatalog::paramFromIniGroup(const QSettings& settings, Fixture
 
 void FixturePcbaCmdCatalog::paramToIniGroup(QSettings& settings, FixturePcbaCmd cmd, const QVariant& value) {
     removeKeysWithPrefix(settings, QStringLiteral("SendParam"));
-    removeKeysWithPrefix(settings, sendParamIniPrefix());
-    const QString prefix = sendParamIniPrefix();
+    removeSendParamKeys(settings);
     switch (cmd) {
     case FixturePcbaCmd::StartTest:
     case FixturePcbaCmd::StartSleep:
     case FixturePcbaCmd::StartWhiteMode:
         if (value.userType() == QMetaType::QString)
-            settings.setValue(prefix + QStringLiteral("/MachineIndex"), value.toString().trimmed());
+            writeSendParamLeaf(settings, QStringLiteral("MachineIndex"), value.toString().trimmed());
         else
-            settings.setValue(prefix + QStringLiteral("/MachineIndex"), value.toInt());
+            writeSendParamLeaf(settings, QStringLiteral("MachineIndex"), value.toInt());
         break;
     default:
         break;
@@ -2903,8 +3011,7 @@ bool TupleCmdCatalog::paramFromIniGroup(const QSettings& settings, TupleCmd cmd,
 }
 
 void TupleCmdCatalog::paramToIniGroup(QSettings& settings, TupleCmd cmd, const QVariant& value) {
-    removeKeysWithPrefix(settings, QStringLiteral("Param"));
-    removeKeysWithPrefix(settings, sendParamIniPrefix());
+    removeSendParamKeys(settings);
     DeviceCmdParamSchema schema;
     if (!paramSchemaFor(cmd, schema))
         return;
@@ -2913,10 +3020,10 @@ void TupleCmdCatalog::paramToIniGroup(QSettings& settings, TupleCmd cmd, const Q
     case DeviceCmdParamKind::None:
         break;
     case DeviceCmdParamKind::Int:
-        settings.setValue(prefix + QStringLiteral("/int"), value.toInt());
+        writeSendParamLeaf(settings, QStringLiteral("int"), value.toInt());
         break;
     case DeviceCmdParamKind::String:
-        settings.setValue(prefix + QStringLiteral("/string"), value.toString());
+        writeSendParamLeaf(settings, QStringLiteral("string"), value.toString());
         break;
     case DeviceCmdParamKind::JsonMap:
         writeJsonMap(settings, prefix, value);

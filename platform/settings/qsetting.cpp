@@ -124,7 +124,7 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
                                     "电机图像", "按键图像", "显示全部图像"};
     ui->comboBox_displayImageType->addItems(displayImageType);
 
-    QStringList factoryList = {"lx", "xwd", "xzw", "hq", "wks", "ydm", "byd", "hz", "无mes厂"};
+    QStringList factoryList = {"lx", "xwd", "hq", "wks", "ydm", "byd", "hz", "无mes厂"};
     ui->comboBox_factory->addItems(factoryList);
     connect(ui->comboBox_factory, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
             [this](int) { RestoreFacDefaultSetting(); });
@@ -745,6 +745,8 @@ void qsetting::RestoreFacDefaultSetting() {
         ui->lineEdit_weikesen_order->show();
     }
     if (ui->comboBox_factory->currentText() == "xwd") {
+        ui->label_78->show();
+        ui->lineEdit_mesUrl->show();
         ui->label_75->show();
         ui->lineEdit_station->show();
         ui->label_74->show();
@@ -757,6 +759,9 @@ void qsetting::RestoreFacDefaultSetting() {
         ui->lineEdit_mes_operator->show();
         ui->label_mes_login_station->show();
         ui->lineEdit_mes_login_station->show();
+        ui->lineEdit_mesUrl->setToolTip(
+            QStringLiteral("Sunwinon MES 根地址（Mes/NET），如 https://hzznyjmes.sunwoda.com/ims-pms；"
+                           "留空则用该默认地址。"));
         ui->lineEdit_station->setToolTip(
             QStringLiteral("过站工站号（Mes/machineNo），groupTest / wipTest 的 machineNo。"));
         ui->lineEdit_macStation->setToolTip(
@@ -766,20 +771,6 @@ void qsetting::RestoreFacDefaultSetting() {
         ui->lineEdit_mes_operator->setToolTip(QStringLiteral("过站员工号（Mes/mUserno），对应 emp / mUserno。"));
         ui->lineEdit_mes_login_station->setToolTip(
             QStringLiteral("登录工站（Mes/M_MACHINENO），checkUserDo 的 machineNo。"));
-    }
-    if (ui->comboBox_factory->currentText() == "xzw") {
-        ui->label_78->show();
-        ui->lineEdit_mesUrl->show();
-        ui->label_75->show();
-        ui->lineEdit_station->show();
-        ui->label_mes_operator->show();
-        ui->lineEdit_mes_operator->show();
-        ui->lineEdit_mesUrl->setToolTip(
-            QStringLiteral("Sunwinon MES 根地址（Mes/NET），如 https://hzznyjmes.sunwoda.com/ims-pms；"
-                           "留空则用该默认地址。"));
-        ui->lineEdit_station->setToolTip(
-            QStringLiteral("工站号（Mes/machineNo），groupTest / wipTest 的 machineNo。"));
-        ui->lineEdit_mes_operator->setToolTip(QStringLiteral("过站员工号（Mes/mUserno），对应 emp / mUserno。"));
     }
     if (ui->comboBox_factory->currentText() == "hq") {
         ui->label_action_huaqin->show();

@@ -65,6 +65,7 @@ class QTupleService {
     bool reportWriteRecordImpl(const TupleApplyResult& tuple, const QString& productSn, const QString& result,
                                const QString& btRssi, bool btRssiPass, const QString& bleRssi, bool bleRssiPass,
                                const QString& softwareVersion, bool softwareVersionPass, QString* error);
+    bool reportBurnInspectionImpl(const QString& productSn, const QString& macWritten, bool pass, QString* error);
     TupleApplyResult parseApplyTupleResponse(const QByteArray& response) const;
 
     QString normalizedBaseUrl() const;

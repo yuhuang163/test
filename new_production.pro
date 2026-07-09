@@ -48,7 +48,6 @@ INCLUDEPATH += agreement/mes_protocol/device/jj_mes
 INCLUDEPATH += agreement/mes_protocol/device/lx_mes
 INCLUDEPATH += agreement/mes_protocol/device/wks_mes
 INCLUDEPATH += agreement/mes_protocol/device/xwd_mes
-INCLUDEPATH += agreement/mes_protocol/device/xzw_mes
 INCLUDEPATH += agreement/mes_protocol/device/ydm_mes
 INCLUDEPATH += agreement/adb_protocol/access
 INCLUDEPATH += agreement/adb_protocol/manager
@@ -196,7 +195,6 @@ SOURCES += \
     agreement/mes_protocol/access/qmes.cpp \
     agreement/mes_protocol/device/wks_mes/wksmes.cpp \
     agreement/mes_protocol/device/xwd_mes/xwdmes.cpp \
-    agreement/mes_protocol/device/xzw_mes/xzwmes.cpp \
     agreement/mes_protocol/device/ydm_mes/ydmmes.cpp \
     agreement/factory_protocol/protocol/qpb/ble_protocol/fx_ble_msg.pb.c \
     agreement/factory_protocol/protocol/qpb/ble_protocol/data_collection.pb.c \
@@ -345,7 +343,6 @@ HEADERS += \
     agreement/mes_protocol/access/qmes.h \
     agreement/mes_protocol/device/wks_mes/wksmes.h \
     agreement/mes_protocol/device/xwd_mes/xwdmes.h \
-    agreement/mes_protocol/device/xzw_mes/xzwmes.h \
     agreement/mes_protocol/device/ydm_mes/ydmmes.h \
     agreement/factory_protocol/protocol/qpb/ble_protocol/fx_ble_msg.pb.h \
     agreement/factory_protocol/protocol/qpb/ble_protocol/data_collection.pb.h \

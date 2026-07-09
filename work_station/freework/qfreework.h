@@ -269,7 +269,7 @@ class QFreeWork : public test_base {
     void reportBydBluetoothMesKeyMaterials();
     bool failTupleWriteIfNoValidField(const QString& stepName, bool fieldOk, const QString& emptyReason);
     void reportTupleWriteRecord();
-    void debugUpdateTupleMacStatus();
+    void debugUpdateTupleMacStatus(const TestCaseDefinition& def);
     void emitFixtureMultiGateTableRows(const QVector<TestCaseGate>& gates, const QString& reportType,
                                        const QVariant& payload, bool& allPass, QString& detailOut);
     void applyRuntimeSnGateExpected(QVector<TestCaseGate>& gates);

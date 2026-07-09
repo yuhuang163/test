@@ -383,8 +383,6 @@ void box_base::ShowData(QMainWindow* parent) {
         refreshCloudLoginState();
         if (pack.factory == "xwd")
             parent->statusBar()->addPermanentWidget(new QLabel("欣旺达"));
-        else if (pack.factory == "xzw")
-            parent->statusBar()->addPermanentWidget(new QLabel("欣智旺"));
         else if (pack.factory == "lx")
             parent->statusBar()->addPermanentWidget(new QLabel("立讯"));
         else if (pack.factory == "hq")

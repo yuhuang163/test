@@ -818,7 +818,15 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
         }
 
         const auto sendFn = [ctx, def, dongleCmd]() {
-            const QVariant param = ctx->resolveTestCaseSendParamTree(def.send.param);
+            QVariant param = ctx->resolveTestCaseSendParamTree(def.send.param);
+            if (param.toString().trimmed().isEmpty()
+                && (dongleCmd == DongleCmd::BleDirectConnect || dongleCmd == DongleCmd::BleScanConnect
+                    || dongleCmd == DongleCmd::BleOtaConnect || dongleCmd == DongleCmd::BleAppConnect
+                    || dongleCmd == DongleCmd::BleMainConnect)) {
+                const QString mac = ctx->currentMacAddress();
+                if (!mac.isEmpty() && mac != QStringLiteral("没有mac地址"))
+                    param = mac;
+            }
             if (def.send.action == TestCaseSendAction::Get)
                 ctx->at->get(dongleCmd, param);
             else

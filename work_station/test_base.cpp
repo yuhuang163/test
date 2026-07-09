@@ -124,7 +124,7 @@ bool test_base::execVisaHuiling(HuilingScpiCmd cmd, const QVariant& param, QStri
 }
 
 void test_base::initData() {
-    pack.factory = SETTINGS.value("Mes/FACTORY").toString();
+    pack.factory = SETTINGS.value(QStringLiteral("Mes/FACTORY")).toString().trimmed();
     pack.Employee_ID = SETTINGS.value("Mes/mUserno").toString();
     pack.action = SETTINGS.value("Mes/Action").toString();
     pack.machineNo = SETTINGS.value("Mes/machineNo").toString();

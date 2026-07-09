@@ -10,7 +10,7 @@ constexpr uint8_t kSet = TestCaseCmdManifest::kSendActionSet;
 constexpr uint8_t kGet = TestCaseCmdManifest::kSendActionGet;
 
 constexpr const char kHintBleScan[] =
-    u8"蓝牙 MAC：留空或 $MAC = 当前工位 MAC\n示例：$MAC";
+    u8"蓝牙 MAC：留空或 $MAC = 当前工位 MAC\n示例：Param_string=$MAC";
 constexpr const char kHintBomb[] =
     u8"广播注入：deviceName,rssi,connectionInterval,command\n按 Dongle 协议填 JSON 或 name=value";
 

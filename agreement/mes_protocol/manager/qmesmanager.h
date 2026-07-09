@@ -7,7 +7,6 @@
 #include <lxmes.h>  // 立讯的mes头文件
 #include <wksmes.h> // 伟克森的mes头文件
 #include <xwdmes.h> // 欣旺达的mes头文件
-#include <xzwmes.h> // 欣智旺的mes头文件
 
 #include <vector>
 
@@ -37,7 +36,6 @@ class QMesManager : public QObject {
     bydmes BydMes;
     jjmes JjMes;
     xwdmes XwdMes;
-    xzwmes XzwMes;
     lxmes LxMes;
     hqmes HqMes;
     hzmes HzMes;

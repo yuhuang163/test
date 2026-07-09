@@ -13,6 +13,9 @@ class xwdmes : public Qmes {
     void TestPass(MesPacketData pack) override;
     void GetTestData(MesPacketData pack) override;
 
+  private:
+    QString apiUrl(const QString& path) const;
+
   private slots:
 
     void onNetworkReplyFinished();

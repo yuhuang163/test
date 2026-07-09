@@ -38,6 +38,26 @@ namespace {
 // ① URL中param参数组包{KEY:value,...}
 // =============================================================================
 
+// BYD 花括号 param 中，含中文等非 ASCII 的字符串须加双引号，避免 MES 解析歧义（如 NC_CODE/NC_CONTEXT）
+QString bydQuoteParamStringIfNeeded(const QString& raw) {
+    if (raw.isEmpty()) {
+        return raw;
+    }
+    bool needsQuote = false;
+    for (const QChar& ch : raw) {
+        if (ch.unicode() > 127) {
+            needsQuote = true;
+            break;
+        }
+    }
+    if (!needsQuote) {
+        return raw;
+    }
+    QString escaped = raw;
+    escaped.replace(QLatin1Char('"'), QStringLiteral("\\\""));
+    return QStringLiteral("\"%1\"").arg(escaped);
+}
+
 QString bydParamValueToken(const QJsonValue& v) {
     if (v.isBool()) {
         return v.toBool() ? QStringLiteral("1") : QStringLiteral("0");
@@ -54,7 +74,7 @@ QString bydParamValueToken(const QJsonValue& v) {
         return QString::number(d, 'g', 15);
     }
     if (v.isString()) {
-        return v.toString();
+        return bydQuoteParamStringIfNeeded(v.toString());
     }
     if (v.isArray()) {
         QStringList elems;
@@ -738,7 +758,7 @@ void bydmes::TestPass(MesPacketData pack) {
         const QString ncitemname = pack.error.isEmpty() ? QString("TEST_ITEM_NG") : pack.error;
         completeParam["STATION_ID"] = settingsValue("StationID");
         completeParam["NC_CODE"] = ncitemname;
-        completeParam["NC_CONTEXT"] = QStringLiteral("不良原因:%1; 测试结果:%2").arg(pack.remark, pack.result);
+        completeParam["NC_CONTEXT"] = QStringLiteral("不良原因 %1; 测试结果 %2").arg(pack.remark, pack.result);
         completeParam["NC_TYPE"] = ncitemname;
     } else {
         completeParam["STATION_ID"] = settingsValue("StationID");
