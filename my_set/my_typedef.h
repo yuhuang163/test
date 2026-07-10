@@ -25,6 +25,7 @@
 
 #include "qeventloop.h"
 #include "qlibrary.h"
+#include "common_utils.h"
 
 /** 团队默认配置（入库） */
 #define SETTING_NAME "上位机设置.ini"
@@ -146,8 +147,15 @@ class SettingsManager {
     }
 
     void sync() {
-        baseIni().sync();
-        localIni().sync();
+        QSettings& base = baseIni();
+        QSettings& loc = localIni();
+        base.sync();
+        loc.sync();
+        // QSettings 在 Windows 上写 UTF-8 ini 可能带 BOM，保存后统一去掉
+        if (base.status() == QSettings::NoError)
+            CommonUtils::stripUtf8BomFromFile(settingsIniPath(SETTING_NAME));
+        if (loc.status() == QSettings::NoError)
+            CommonUtils::stripUtf8BomFromFile(settingsIniPath(SETTING_LOCAL_NAME));
     }
 
     void beginGroup(const QString& prefix) {
@@ -234,8 +242,7 @@ class SettingsManager {
         }
         loc.endGroup();
         base.endGroup();
-        base.sync();
-        loc.sync();
+        sync();
     }
 
   private:

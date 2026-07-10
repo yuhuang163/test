@@ -42,6 +42,8 @@ class CommonUtils {
     static bool ensureDirectory(const QString& dirPath);
     static bool ensureLogDirectory(const QString& relativeDir);
     static QByteArray readAllBytes(const QString& filePath, QString* errorOut = nullptr);
+    /** 若文件以 UTF-8 BOM 开头则去掉（项目约定 ini 等为 UTF-8 无 BOM） */
+    static void stripUtf8BomFromFile(const QString& filePath);
     static QString joinPath(const QString& dir, const QString& fileName);
 
     // --- 字符串（版本卡控与 test_base::compareVersions 语义一致）---

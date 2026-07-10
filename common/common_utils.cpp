@@ -185,6 +185,19 @@ QByteArray CommonUtils::readAllBytes(const QString& filePath, QString* errorOut)
     return file.readAll();
 }
 
+void CommonUtils::stripUtf8BomFromFile(const QString& filePath) {
+    QFile file(filePath);
+    if (!file.open(QIODevice::ReadWrite))
+        return;
+    QByteArray data = file.readAll();
+    static const QByteArray kUtf8Bom = QByteArray::fromHex("EFBBBF");
+    if (!data.startsWith(kUtf8Bom))
+        return;
+    file.seek(0);
+    file.resize(0);
+    file.write(data.mid(kUtf8Bom.size()));
+}
+
 QString CommonUtils::joinPath(const QString& dir, const QString& fileName) {
     return QDir(dir).filePath(fileName);
 }
