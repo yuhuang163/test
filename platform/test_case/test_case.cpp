@@ -187,24 +187,24 @@ void applyTestCaseIniCodec(QSettings& ini) {
     ini.setIniCodec(QTextCodec::codecForName("UTF-8"));
 }
 
-void ensureUtf8BomOnIniFile(const QString& filePath) {
+/// 保存后去掉 UTF-8 BOM（项目约定 ini 为 UTF-8 无 BOM）
+void stripUtf8BomOnIniFile(const QString& filePath) {
     QFile file(filePath);
     if (!file.open(QIODevice::ReadWrite))
         return;
     QByteArray data = file.readAll();
     static const QByteArray kUtf8Bom = QByteArray::fromHex("EFBBBF");
-    if (data.startsWith(kUtf8Bom))
+    if (!data.startsWith(kUtf8Bom))
         return;
     file.seek(0);
     file.resize(0);
-    file.write(kUtf8Bom);
-    file.write(data);
+    file.write(data.mid(kUtf8Bom.size()));
 }
 
 void syncTestCaseIni(QSettings& ini, const QString& filePath) {
     ini.sync();
     if (ini.status() == QSettings::NoError)
-        ensureUtf8BomOnIniFile(filePath);
+        stripUtf8BomOnIniFile(filePath);
 }
 
 /** FlowStations / Station 组用的 ini 键须为 ASCII，否则 QSettings 会写成 %U5389%U5BB3 等形式。 */

@@ -112,7 +112,7 @@ def convert_file(path: Path, dry_run: bool) -> str:
 
     crlf_text = normalize_to_crlf(text)
     encoded = crlf_text.encode("utf-8")
-    new_raw = b"\xef\xbb\xbf" + encoded if raw.startswith(b"\xef\xbb\xbf") else encoded
+    new_raw = encoded
 
     if new_raw == raw:
         return "skip"

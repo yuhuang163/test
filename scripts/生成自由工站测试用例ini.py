@@ -85,7 +85,7 @@ def write_ini(path: str, meta: dict, send: dict, timing: dict, gate: dict, hook:
         "",
     ]
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8-sig") as f:
+    with open(path, "w", encoding="utf-8", newline="\r\n") as f:
         f.write("\n".join(lines))
 
 

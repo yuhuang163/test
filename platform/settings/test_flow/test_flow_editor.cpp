@@ -478,17 +478,17 @@ QMenu* TestFlowEditor::createFlowStationMenu(QWidget* parent, int hitComboIndex)
         if (hitComboIndex >= 0 && !activateStationComboIndex(hitComboIndex))
             return;
         promptRenameCurrentFlowStation();
-    });
+    }, Qt::QueuedConnection);
     connect(actCopy, &QAction::triggered, this, [this, hitComboIndex]() {
         if (hitComboIndex >= 0 && !activateStationComboIndex(hitComboIndex))
             return;
         promptCopyCurrentFlowStation();
-    });
+    }, Qt::QueuedConnection);
     connect(actDel, &QAction::triggered, this, [this, hitComboIndex]() {
         if (hitComboIndex >= 0 && !activateStationComboIndex(hitComboIndex))
             return;
         promptRemoveCurrentFlowStation();
-    });
+    }, Qt::QueuedConnection);
     return menu;
 }
 
@@ -500,12 +500,25 @@ void TestFlowEditor::setupStationComboContextMenu() {
 
     if (auto* manageBtn =
             stationCombo_->parentWidget()->findChild<QToolButton*>(QStringLiteral("toolButton_testFlowStationMenu"))) {
-        manageBtn->setMenu(createFlowStationMenu(manageBtn, stationCombo_->currentIndex()));
+        // 固定菜单 + aboutToShow 刷新可用态；勿在 currentIndexChanged 里反复 setMenu，否则 InstantPopup 下 QAction 可能不触发
+        auto* menu = new QMenu(manageBtn);
+        QAction* const actNew = menu->addAction(QStringLiteral("新建工站"));
+        QAction* const actRename = menu->addAction(QStringLiteral("重命名工站"));
+        QAction* const actCopy = menu->addAction(QStringLiteral("复制工站"));
+        QAction* const actDel = menu->addAction(QStringLiteral("删除工站"));
+        connect(actNew, &QAction::triggered, this, [this]() { promptAddFlowStation(); }, Qt::QueuedConnection);
+        connect(actRename, &QAction::triggered, this, [this]() { promptRenameCurrentFlowStation(); },
+                Qt::QueuedConnection);
+        connect(actCopy, &QAction::triggered, this, [this]() { promptCopyCurrentFlowStation(); }, Qt::QueuedConnection);
+        connect(actDel, &QAction::triggered, this, [this]() { promptRemoveCurrentFlowStation(); }, Qt::QueuedConnection);
+        connect(menu, &QMenu::aboutToShow, this, [this, actRename, actCopy, actDel]() {
+            const bool hasStation = stationCombo_ && stationCombo_->count() > 0;
+            actRename->setEnabled(hasStation);
+            actCopy->setEnabled(hasStation);
+            actDel->setEnabled(hasStation);
+        });
+        manageBtn->setMenu(menu);
         manageBtn->setPopupMode(QToolButton::InstantPopup);
-        connect(stationCombo_, QOverload<int>::of(&QComboBox::currentIndexChanged), manageBtn,
-                [this, manageBtn](int) {
-                    manageBtn->setMenu(createFlowStationMenu(manageBtn, stationCombo_->currentIndex()));
-                });
     }
 
     stationCombo_->setContextMenuPolicy(Qt::CustomContextMenu);
