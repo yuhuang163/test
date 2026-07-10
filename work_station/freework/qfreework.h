@@ -319,6 +319,7 @@ class QFreeWork : public test_base {
     void refreshBaseData(ProtocolBaseInfoData data) override;
     void refreshBattaryData(ProtocolBatteryData data) override;
     void refreshSn(ProtocolSnData data) override;
+    void refreshMacData(ProtocolMacData data) override;
     void refreshPeriphData(ProtocolPeriphStateData data) override;
     void refreshRssiRead(ProtocolRssiData data) override;
     void refreshChargeCurrentRead(ProtocolChargeCurrentData data) override;

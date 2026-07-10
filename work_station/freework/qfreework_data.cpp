@@ -190,6 +190,18 @@ void QFreeWork::refreshSn(ProtocolSnData data) {
     }
 }
 
+void QFreeWork::refreshMacData(ProtocolMacData data) {
+    const QString mac = data.mac.trimmed();
+    if (mac.isEmpty())
+        return;
+
+    macAddress = mac;
+    if (ui && ui->macLabel)
+        ui->macLabel->setText(QStringLiteral("蓝牙mac: ") + mac);
+
+    evaluateActiveTestCaseGate(QStringLiteral("ProtocolMacData"), QVariant::fromValue(data));
+}
+
 void QFreeWork::refreshPeriphData(ProtocolPeriphStateData data) {
     if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolPeriphStateData"), QVariant::fromValue(data)))
         return;

@@ -525,6 +525,8 @@ void test_base::onProtocolReport(const ProtocolReport& report) {
         refreshBaseData(payload.value<ProtocolBaseInfoData>());
     } else if (reportType == "ProtocolSnData" && payload.canConvert<ProtocolSnData>()) {
         refreshSn(payload.value<ProtocolSnData>());
+    } else if (reportType == QLatin1String("ProtocolMacData") && payload.canConvert<ProtocolMacData>()) {
+        refreshMacData(payload.value<ProtocolMacData>());
     } else if (reportType == "ProtocolBatteryData" && payload.canConvert<ProtocolBatteryData>()) {
         refreshBattaryData(payload.value<ProtocolBatteryData>());
     } else if (reportType == "ProtocolButtonStateData" && payload.canConvert<ProtocolButtonStateData>()) {

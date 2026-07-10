@@ -396,6 +396,7 @@ class MainWindow : public QMainWindow {
     void updateComboBox();
     void getMacAddress(const QByteArray& byte);
     void refreshSn(ProtocolSnData data);
+    void refreshMacData(ProtocolMacData data);
     void refreshWifiState(int state);
     void getWifiMsg(QString data);
     void getWifiIp(QString data);

@@ -251,6 +251,7 @@ class test_base : public QWidget {
     virtual void refreshBattaryData(ProtocolBatteryData) {}
     virtual void refreshMusicState(ProtocolMusicStateData) {}
     virtual void refreshSn(ProtocolSnData) {}
+    virtual void refreshMacData(ProtocolMacData) {}
     virtual void refreshLcdControl(ProtocolLcdControlData) {}
     virtual void refreshPeriphData(ProtocolPeriphStateData) {}
     virtual void refreshRssiRead(ProtocolRssiData) {}

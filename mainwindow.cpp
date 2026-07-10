@@ -495,6 +495,8 @@ void MainWindow::onProtocolReport(const ProtocolReport& report) {
         refreshWifiStateData(payload.value<ProtocolWifiStateData>());
     } else if (reportType == QLatin1String("ProtocolSnData") && payload.canConvert<ProtocolSnData>()) {
         refreshSn(payload.value<ProtocolSnData>());
+    } else if (reportType == QLatin1String("ProtocolMacData") && payload.canConvert<ProtocolMacData>()) {
+        refreshMacData(payload.value<ProtocolMacData>());
     } else if (reportType == QLatin1String("ProtocolMusicStateData") && payload.canConvert<ProtocolMusicStateData>()) {
         refreshMusicState(payload.value<ProtocolMusicStateData>());
     } else if (reportType == QLatin1String("ProtocolInternetOtaData") && payload.canConvert<ProtocolResultData>()) {

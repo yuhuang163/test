@@ -1681,6 +1681,17 @@ void MainWindow::refreshSn(ProtocolSnData data) {
         break;
     }
 }
+
+void MainWindow::refreshMacData(ProtocolMacData data) {
+    const QString mac = data.mac.trimmed();
+    if (mac.isEmpty())
+        return;
+
+    macAddress = mac;
+    if (macLabel)
+        macLabel->setText(QStringLiteral("蓝牙mac: ") + mac);
+}
+
 void MainWindow::refreshBleRssi(QString data) {
     // qDebug() << "rssi = " << data;
     ui->BLE_RSSI->setText("BLE的RSSI：" + data);

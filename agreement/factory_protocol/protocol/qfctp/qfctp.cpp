@@ -30,6 +30,43 @@ static quint32 qfctpParseKeyCapU32(const uint8_t* p) {
     return (static_cast<quint32>(p[0]) << 24) | (static_cast<quint32>(p[1]) << 16) | (static_cast<quint32>(p[2]) << 8) | static_cast<quint32>(p[3]);
 }
 
+/// 线序 6 字节 → 显示用 MAC（与 Qroot::formatMacFromWire 一致：wire[0] 对应显示末字节）
+static QString qfctpFormatMacFromWire(const QByteArray& mac6) {
+    if (mac6.size() != 6)
+        return {};
+    QStringList parts;
+    parts.reserve(6);
+    for (int i = 5; i >= 0; --i)
+        parts.append(QString::number(static_cast<quint8>(mac6.at(i)), 16).rightJustified(2, QLatin1Char('0')).toUpper());
+    return parts.join(QLatin1Char(':'));
+}
+
+/// 显示用 MAC → 线序 6 字节（写 MAC TLV：AA:BB:CC:DD:EE:FF → FF EE DD CC BB AA）
+static QByteArray qfctpParseMacToWire(const QVariant& value) {
+    QString text;
+    if (value.canConvert<QByteArray>()) {
+        const QByteArray bytes = value.toByteArray();
+        if (bytes.size() == 6)
+            return bytes;
+        text = QString::fromLatin1(bytes).trimmed();
+    } else {
+        text = value.toString().trimmed();
+    }
+    text.remove(QLatin1Char(':'));
+    text.remove(QLatin1Char('-'));
+    text.remove(QLatin1Char(' '));
+    if (text.size() % 2 != 0)
+        text.prepend(QLatin1Char('0'));
+    const QByteArray hex = QByteArray::fromHex(text.toLatin1());
+    if (hex.size() != 6)
+        return {};
+    QByteArray wire;
+    wire.resize(6);
+    for (int i = 0; i < 6; ++i)
+        wire[i] = hex.at(5 - i);
+    return wire;
+}
+
 static QByteArray qfctpParseValueString(const QString& text, bool* ok) {
     QString s = text.trimmed();
     if (s.isEmpty()) {
@@ -480,11 +517,7 @@ void Qfctp::handleRspMacRead(const uint8_t* mainValue, uint16_t mainLen) {
         const QString hex = raw.toHex(' ').toUpper();
         QString macText;
         if (mainLen == 6) {
-            QStringList parts;
-            for (int i = 0; i < raw.size(); ++i) {
-                parts << QString::number(static_cast<uint8_t>(raw.at(i)), 16).toUpper().rightJustified(2, '0');
-            }
-            macText = parts.join(":");
+            macText = qfctpFormatMacFromWire(raw);
         } else {
             macText = QString::fromLatin1(raw).trimmed();
         }
@@ -1031,7 +1064,12 @@ bool Qfctp::setCaseTrimSet(const QVariantMap& map) {
 }
 
 bool Qfctp::setCaseMacWrite(const QVariantMap& map) {
-    return sendRequest(kSystemConfigService, kTlvMacWrite, map.value("value").toByteArray(), "写MAC");
+    const QByteArray wire = qfctpParseMacToWire(map.value(QStringLiteral("value")));
+    if (wire.size() != 6) {
+        qWarning() << "FCTP 写MAC 参数非法，需要 6 字节 MAC，value=" << map.value(QStringLiteral("value"));
+        return false;
+    }
+    return sendRequest(kSystemConfigService, kTlvMacWrite, wire, "写MAC");
 }
 
 bool Qfctp::setCaseNightLightSet(const QVariantMap& map) {
@@ -1249,10 +1287,14 @@ void Qfctp::set(DeviceCmd cmd, const QVariant& data) {
         if (setCaseTrimSet(data.toMap()))
             return;
         break;
-    case DeviceCmd::MacWrite:
-        if (setCaseMacWrite(data.toMap()))
+    case DeviceCmd::MacWrite: {
+        QVariantMap map = data.toMap();
+        if (map.isEmpty() && data.canConvert<QString>())
+            map.insert(QStringLiteral("value"), data.toString());
+        if (setCaseMacWrite(map))
             return;
         break;
+    }
     case DeviceCmd::NightLightSet:
         if (setCaseNightLightSet(data.toMap()))
             return;
