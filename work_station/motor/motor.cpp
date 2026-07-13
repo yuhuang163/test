@@ -590,7 +590,7 @@ void motor::startTask() {
             if (pb->getState(Qpb::PbStateType::StopMotorCali)) {
                 refreshMotorCaliMsg("正在进行电机测试");
                 // showlog("正在进行电机测试");
-                protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
+                protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2f, 190}));
                 //  protocolManager.set(DeviceCmd::MotorTestState, 1);
 
                 state = MOTOR_TESTING;
@@ -607,7 +607,7 @@ void motor::startTask() {
                 emit send_go_next_test(getIndex());
                 state = MOTOR_WAIT_TESTING;
             } else {
-                protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
+                protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2f, 190}));
                 refreshMotorCaliMsg("重发电机测试");
                 waitWork(500);
             }

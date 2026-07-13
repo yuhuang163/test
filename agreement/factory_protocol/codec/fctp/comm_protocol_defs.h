@@ -65,6 +65,11 @@ static inline void hex_to_ascii(const unsigned char* hex, int len, char* out) {
 #define COMM_PROTOCOL_MAX_TLV_NUM 32         ///< 单Service最大TLV数量
 #define COMM_PROTOCOL_MAX_TLV_VALUE_SIZE 256 ///< 单个TLV最大Value长度
 
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4200) // 协议变长载荷：柔性数组成员
+#endif
+
 /// TLV结构定义
 typedef struct {
     uint16_t type;    ///< Type ID
@@ -108,6 +113,10 @@ typedef struct {
     uint8_t payload[0];      ///< 柔性数组成员，Payload数据
     // uint16_t checksum;      ///< CRC16校验和，覆盖Header和Payload域
 } comm_protocol_frame_t;
+
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
 /// 完整的通讯帧节点（用于构建和解析）
 typedef struct {

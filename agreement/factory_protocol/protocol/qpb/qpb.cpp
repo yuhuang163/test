@@ -914,17 +914,17 @@ uint32_t Qpb::sendlongPack(const FactoryDataPackage& pack) {
 
     // 创建一个输出流用于protobuf编码
     pb_ostream_t o_stream = pb_ostream_from_buffer(tx_buffer.data() + 1, tx_buffer.size() - 1);
-    size_t pkt_cnt;
+    int pkt_cnt = 0;
 
     // 使用protobuf对pack进行编码
     if (pb_encode(&o_stream, FactoryDataPackage_fields, &pack)) {
         size_t length = o_stream.bytes_written; // 获取编码后的数据长度
 
         // 计算数据包的数量
-        pkt_cnt = length / max_data_cnt;
+        pkt_cnt = static_cast<int>(length / max_data_cnt);
 
         // 将数据包的编号和CRC校验码放入tx_buffer
-        tx_buffer[0] = pkt_cnt;
+        tx_buffer[0] = static_cast<uint8_t>(pkt_cnt);
         tx_buffer[length + 1] = calCrc16(std::vector<uint8_t>(tx_buffer.begin() + 1, tx_buffer.begin() + length + 1));
 
         // 计算最后一个数据包的负载长度

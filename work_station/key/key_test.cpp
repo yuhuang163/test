@@ -612,7 +612,6 @@ bool key_test::runPlcV3TouchKeyFull(int keyIndex0To6, QString* summary) {
 
     const QString host = resolvedPlcIpAddress();
     const int port = resolvedPlcPort();
-    const int connMs = SETTINGS.value(QStringLiteral("PLC/ConnectTimeoutMs"), 3000).toInt();
     QString err;
     showlog(QStringLiteral("PLC按键整步连接: 键Index=%1 工位=%2 IP=%3 Port=%4 UnitId=%5")
                 .arg(keyIndex0To6)

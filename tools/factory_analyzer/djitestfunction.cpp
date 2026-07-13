@@ -360,10 +360,9 @@ void factory_analyzer::dragMoveEvent(QDragMoveEvent* event) {
 }
 
 void factory_analyzer::calculateGridPosition(const QPoint& globalPos,
-                                             const QRect& area,
+                                             const QRect& /*area*/,
                                              int& row,
                                              int& col)
-
 {
     row = col = -1;
 

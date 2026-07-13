@@ -739,7 +739,7 @@ void MainWindow::on_add_data_clicked() {
         std::vector<uint8_t> p_data(36040 - ring_size,
                                     0); // 动态分配大小并初始化为0
         write_camera_data(p_data.data(),
-                          p_data.size()); // 使用向量的数据和大小
+                          static_cast<int>(p_data.size())); // 使用向量的数据和大小
                                           //  solve_picture_frame();
     }
 }
@@ -1595,7 +1595,7 @@ void MainWindow::on_motor_cali_clicked() {
                     protocolManager.set(DeviceCmd::ScreenCameraState, 1);
                 } else {
                     if (ui->is_sero_motor->checkState()) {
-                        protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
+                        protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2f, 190}));
                     } else {
                         protocolManager.set(DeviceCmd::MotorParam, QVariantList{270, 60});
                         protocolManager.set(DeviceCmd::MotorState, 1);
@@ -1620,7 +1620,7 @@ void MainWindow::on_motor_cali_clicked() {
                 }
                 showlog("已经发送电机测试指令");
                 if (ui->is_sero_motor->checkState()) {
-                    protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
+                    protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2f, 190}));
                 } else {
                     protocolManager.set(DeviceCmd::MotorParam, QVariantList{270, 60});
                     protocolManager.set(DeviceCmd::MotorState, 1);
@@ -1644,7 +1644,7 @@ void MainWindow::on_motor_cali_clicked() {
             } else {
                 waitWork(500);
                 if (ui->is_sero_motor->checkState()) {
-                    protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
+                    protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2f, 190}));
                 } else {
                     protocolManager.set(DeviceCmd::MotorParam, QVariantList{270, 60});
                     protocolManager.set(DeviceCmd::MotorState, 1);
@@ -2262,7 +2262,7 @@ void MainWindow::on_swing_test_clicked() {
             showlog("跑的是P30P");
             protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{3500, 14000, 10, 380}));
         } else {
-            protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
+            protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2f, 190}));
         }
 
         showlog("已经设置摆幅测试");

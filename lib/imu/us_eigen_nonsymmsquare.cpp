@@ -425,8 +425,8 @@ int us_blas_sgemm(CBLAS_TRANSPOSE_t TransA, CBLAS_TRANSPOSE_t TransB, float alph
 
     if (M == MA && N == NB && NA == MB) /* [MxN] = [MAxNA][MBxNB] */
     {
-        cblas_sgemm(CblasRowMajor, TransA, TransB, M, N, NA, alpha, A->data, A->tda, B->data,
-                    B->tda, beta, C->data, C->tda);
+        cblas_sgemm(CblasRowMajor, TransA, TransB, INT(M), INT(N), INT(NA), alpha, A->data,
+                    INT(A->tda), B->data, INT(B->tda), beta, C->data, INT(C->tda));
         return GSL_SUCCESS;
     } else {
         printf("invalid length");

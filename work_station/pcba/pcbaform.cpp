@@ -1393,7 +1393,7 @@ void PcbaForm::startTask() {
 
         case STATE_WATI_GET_CORRECT_MOTOR:
             if (canGoNext) {
-                protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
+                protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2f, 190}));
 
                 showlog("已收到电机校准参数");
                 showlog("5、蓝牙强度测试");
@@ -1534,7 +1534,7 @@ void PcbaForm::startTask() {
                 showlog("播放结束");
                 protocolManager.set(DeviceCmd::FacMode, 1);
                 if (SETTINGS.value("SYSTEM/ServoMotorStart").toBool()) {
-                    protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
+                    protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2f, 190}));
                     showlog("已经发送电机测试指令");
                 } else {
                     if (SETTINGS.value("SYSTEM/uperMotor").toBool()) {
@@ -1599,7 +1599,7 @@ void PcbaForm::startTask() {
             } else {
                 waitWork(500);
                 if (SETTINGS.value("SYSTEM/ServoMotorStart").toBool()) {
-                    protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2, 190}));
+                    protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2f, 190}));
                     showlog("已经发送电机测试指令");
                 } else {
                     if (SETTINGS.value("SYSTEM/uperMotor").toBool()) {

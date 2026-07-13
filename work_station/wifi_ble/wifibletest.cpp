@@ -2330,6 +2330,7 @@ void wifibletest::bindingMacSn(QString bindingMac, QString bindingSn) {
 }
 
 void wifibletest::bindingMacSnMes(QString bindingMac, QString bindingSn) {
+    Q_UNUSED(bindingSn);
     pack.mechines = 1; // 1脱1,1号上位机
     pack.sn = snBinding;
 

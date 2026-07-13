@@ -34,7 +34,6 @@ bool QBulkManager::openDevice(uint16_t vid, uint16_t pid, int interfaceNumber) {
     usb_find_devices();
     struct usb_bus* bus;
     struct usb_device* dev = nullptr;
-    const struct usb_interface_descriptor* ifd = nullptr;
 
     for (bus = usb_get_busses(); bus; bus = bus->next) {
         for (dev = bus->devices; dev; dev = dev->next) {

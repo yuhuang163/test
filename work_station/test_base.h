@@ -260,9 +260,9 @@ class test_base : public QWidget {
     virtual void refreshTupleData(ProtocolTupleData) {}
     virtual void refreshPictureSendOver(ProtocolPictureSendOverData) {}
     virtual void refreshAgingStatus(ProtocolAgingStatusData) {}
-    virtual void refreshRootBatteryTemp(quint8 temp) {}
-    virtual void refreshResultCode(ProtocolResultData data) {}
-    virtual void refreshTypeStatus(ProtocolTypeData data) {}
+    virtual void refreshRootBatteryTemp(quint8) {}
+    virtual void refreshResultCode(ProtocolResultData) {}
+    virtual void refreshTypeStatus(ProtocolTypeData) {}
     virtual void refreshAmmeterData(QString) {}
     virtual void refreshDongleUartState(int) {}
     virtual void refreshUsbUartState(int) {}

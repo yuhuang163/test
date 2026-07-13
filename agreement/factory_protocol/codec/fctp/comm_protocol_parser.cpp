@@ -247,7 +247,7 @@ int comm_protocol_frame_deserialize(const uint8_t* buffer, uint16_t buffer_size,
     /// 获取Payload指针
     const uint8_t* payload = buffer + COMM_PROTOCOL_HEADER_SIZE;
     comm_protocol_service_t* service = NULL;
-    uint32_t payload_offset = 0, next_offset = 0;
+    uint32_t payload_offset = 0;
     frame->payload.service_count = 0;
     for (uint8_t i = 0; i < COMM_PROTOCOL_MAX_SERVICE_NUM; i++) {
         if (payload_offset >= frame->payload_length) {

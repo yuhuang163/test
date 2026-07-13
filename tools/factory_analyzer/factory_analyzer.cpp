@@ -204,7 +204,7 @@ factory_analyzer::factory_analyzer(QWidget* parent)
     canUselayout = qobject_cast<QGridLayout*>(ui->use_areas);
 
     // 定义行列数
-    size_t colCount = 3; // 例如：3列
+    int colCount = 3; // 例如：3列
 
     canUserCol = colCount;
     // 计算 canUserRow 并向上取整
@@ -962,7 +962,7 @@ void factory_analyzer::setupUSB() {
     // });
 
     // 4️⃣ 错误处理
-    connect(bulk, &QBulkManager::bulk_device_error, this, [this](int code, const QString& e) {
+    connect(bulk, &QBulkManager::bulk_device_error, this, [this](int /*code*/, const QString& e) {
         qDebug() << "bulk error:" << e;
         bulkStatusLabel->setText("bulk连接：: <font color='red'>失败</font>");
         reconnectTimer->start();
@@ -1423,7 +1423,7 @@ void factory_analyzer::updateAdbStatus() {
     adb->start();
     // 发送测试命令判断 ADB 是否可用
     adb->sendCommand(
-        "echo success", [this](const QString& output, qint64 elapsed) {
+        "echo success", [this](const QString& output, qint64 /*elapsed*/) {
             // qDebug() << "[factory_analyzer] adb sendCommand 输出:" << output
             //          << ", 耗时:" << elapsed << "ms";
 
@@ -1625,7 +1625,7 @@ void factory_analyzer::on_pushButton_clicked() {
                 // qDebug() << "flight fullCmd"  <<fullCmd;
                 shell->sendCommand(
                     fullCmd,
-                    [this](const QString& out, qint64 elapsed) {
+                    [this](const QString& out, qint64 /*elapsed*/) {
                         mf_dirProgressIndex++;
 
                         int value = 50 + mf_dirProgressIndex * mf_dirStep;
@@ -2544,7 +2544,7 @@ QString parseJsonLine(const QString& line) {
     }
 
     // ③ 清洗
-    value.remove('"').remove(',').trimmed();
+    value = value.remove('"').remove(',').trimmed();
 
     return value;
 }
@@ -2704,7 +2704,7 @@ void factory_analyzer::on_lineEdit_returnPressed() {
 
     showlog("> " + cmd);
     // 使用 Qadb 封装的 sendCommand
-    adb->sendCommand(cmd, [this](const QString& output, qint64 elapsed) {
+    adb->sendCommand(cmd, [this](const QString& output, qint64 /*elapsed*/) {
         // 输出命令结果
         showlog(output);
     });

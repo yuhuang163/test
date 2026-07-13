@@ -99,7 +99,7 @@ void Qadb::startKeyMonitorAdbShell(const QString& deviceEvent, KeyCallback cb) {
         }
     });
     connect(keyProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-            this, [this](int exitCode, QProcess::ExitStatus exitStatus) {
+            this, [this](int /*exitCode*/, QProcess::ExitStatus /*exitStatus*/) {
                 // qDebug() << "adb shell finished:";
                 // USB拔插导致cat结束时，清理并延时重启
                 keyProcess->kill();

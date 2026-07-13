@@ -108,13 +108,6 @@ void DjiBulkDevice::get_product_dbg_misc_subcmd_count() {
 
 void DjiBulkDevice::get_Esdd_Check_Antirollback() {
 
-    typedef struct {
-        uint8_t sec_comm_subcmd;
-        uint8_t reserved;
-        uint16_t sec_comm_len;
-        uint8_t data[0];
-    } dji_sec_comm_req_t;
-
     QByteArray v1data;
     v1data.append(char(0x03));
     v1data.append(char(0x00));
@@ -136,13 +129,6 @@ void DjiBulkDevice::get_Esdd_Check_Antirollback() {
 
 void DjiBulkDevice::get_current_slot() {
 
-    typedef struct {
-        uint8_t sec_comm_subcmd;
-        uint8_t reserved;
-        uint16_t sec_comm_len;
-        uint8_t data[0];
-    } dji_sec_comm_req_t;
-
     QByteArray v1data;
     v1data.append(char(0x02));
     v1data.append(char(0x00));
@@ -160,13 +146,6 @@ void DjiBulkDevice::get_current_slot() {
         writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
 }
 void DjiBulkDevice::get_product_md5_result() {
-
-    typedef struct {
-        uint8_t sec_comm_subcmd;
-        uint8_t reserved;
-        uint16_t sec_comm_len;
-        uint8_t data[0];
-    } dji_sec_comm_req_t;
 
     QByteArray v1data;
     v1data.append(char(0x02));
@@ -1412,12 +1391,10 @@ void DjiBulkDevice::process_get_sn_operate(QByteArray& f) {
 #pragma pack(push, 1)
     struct DeviceInfo {
         uint8_t retCode;
-        uint16_t length; // little-endian
-        uint8_t serial_number[0];
+        uint16_t length; // little-endian；其后紧跟变长 SN 载荷
         // 椋炴帶鍦板潃
         // uint32_t fc_addr;浠栫殑boradsn鍙湁10涓師鍥犳槸杩欎釜
         // 鐪熷疄product sn
-        // uint8_t product_sn[0];
     };
 #pragma pack(pop)
 
@@ -1819,7 +1796,7 @@ void DjiBulkDevice::process_djiFactroyCmd_get_version(QByteArray& f) {
     // 3锔忊儯 hardware_version (CHAR8, 0 缁撳熬)
     info.hardwareVersion =
         QString::fromLatin1(reinterpret_cast<const char*>(p + 2),
-                            strnlen(reinterpret_cast<const char*>(p + 2), 16));
+                            static_cast<int>(strnlen(reinterpret_cast<const char*>(p + 2), 16)));
 
     // 4锔忊儯 loader_version (LSB 鈫?MSB)
     info.loaderVersion = QString("%1.%2.%3.%4")

@@ -98,7 +98,6 @@ FactoryCloudClient::ApiResult parseEnvelope(const QByteArray& body, int httpStat
 }
 
 QByteArray waitReply(QNetworkReply* reply, QString* qtError, int* httpStatus) {
-    QNetworkAccessManager* manager = qobject_cast<QNetworkAccessManager*>(reply->manager());
     QEventLoop loop;
     QTimer timer;
     timer.setSingleShot(true);
