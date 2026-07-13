@@ -77,21 +77,21 @@ void DjiBulkDevice::get_dev_ver_status() {
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0, 0x01, v1data);
     if (writeCb_)
-        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+        writeCb_(pkt); // 发到 OUT endpoint 0x01，100ms超时
 }
 void DjiBulkDevice::get_device_date() {
     QByteArray v1data;
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0, 0x4b, v1data);
     if (writeCb_)
-        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+        writeCb_(pkt); // 发到 OUT endpoint 0x01，100ms超时
 }
 void DjiBulkDevice::get_product_status() {
     QByteArray v1data;
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0804), 2, 0, 0xc5, v1data);
     if (writeCb_)
-        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+        writeCb_(pkt); // 发到 OUT endpoint 0x01，100ms超时
 }
 void DjiBulkDevice::get_product_dbg_misc_subcmd_count() {
     QByteArray v1data;
@@ -103,7 +103,7 @@ void DjiBulkDevice::get_product_dbg_misc_subcmd_count() {
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0804), 2, 0, 0xe0, v1data);
     if (writeCb_)
-        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+        writeCb_(pkt); // 发到 OUT endpoint 0x01，100ms超时
 }
 
 void DjiBulkDevice::get_Esdd_Check_Antirollback() {
@@ -124,7 +124,7 @@ void DjiBulkDevice::get_Esdd_Check_Antirollback() {
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0x36, v1data);
     if (writeCb_)
-        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+        writeCb_(pkt); // 发到 OUT endpoint 0x01，100ms超时
 }
 
 void DjiBulkDevice::get_current_slot() {
@@ -134,7 +134,7 @@ void DjiBulkDevice::get_current_slot() {
     v1data.append(char(0x00));
     v1data.append(char(0x03));
     v1data.append(char(0x00));
-    // 涓嬮潰鏄痙ata
+    // 下面是data
     v1data.append(char(0x00));
     v1data.append(char(0x00));
     v1data.append(char(0x03));
@@ -143,7 +143,7 @@ void DjiBulkDevice::get_current_slot() {
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0x36, v1data);
     if (writeCb_)
-        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+        writeCb_(pkt); // 发到 OUT endpoint 0x01，100ms超时
 }
 void DjiBulkDevice::get_product_md5_result() {
 
@@ -152,7 +152,7 @@ void DjiBulkDevice::get_product_md5_result() {
     v1data.append(char(0x00));
     v1data.append(char(0x03));
     v1data.append(char(0x00));
-    // 涓嬮潰鏄痙ata
+    // 下面是data
     v1data.append(char(0x00));
     v1data.append(char(0x00));
     v1data.append(char(0x04));
@@ -161,7 +161,7 @@ void DjiBulkDevice::get_product_md5_result() {
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0x36, v1data);
     if (writeCb_)
-        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+        writeCb_(pkt); // 发到 OUT endpoint 0x01，100ms超时
 }
 
 void DjiBulkDevice::get_active_times() {
@@ -175,7 +175,7 @@ void DjiBulkDevice::get_active_times() {
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0804), 2, 0, 0x32, v1data);
     if (writeCb_)
-        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+        writeCb_(pkt); // 发到 OUT endpoint 0x01，100ms超时
 }
 void DjiBulkDevice::set_wake_wifi() {
     QByteArray v1data;
@@ -185,7 +185,7 @@ void DjiBulkDevice::set_wake_wifi() {
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0700), 2, 0x07, 0x41, v1data);
     if (writeCb_)
-        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+        writeCb_(pkt); // 发到 OUT endpoint 0x01，100ms超时
 }
 
 void DjiBulkDevice::get_product_active() {
@@ -195,7 +195,7 @@ void DjiBulkDevice::get_product_active() {
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0804), 2, 0, 0x32, v1data);
     if (writeCb_)
-        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+        writeCb_(pkt); // 发到 OUT endpoint 0x01，100ms超时
 }
 
 void DjiBulkDevice::set_device_restory_setting() {
@@ -203,7 +203,7 @@ void DjiBulkDevice::set_device_restory_setting() {
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x1704), 2, 0x03, 0xf3, v1data);
     if (writeCb_)
-        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+        writeCb_(pkt); // 发到 OUT endpoint 0x01，100ms超时
 }
 void DjiBulkDevice::set_product_dbg_count() {
     QByteArray v1data;
@@ -221,7 +221,7 @@ void DjiBulkDevice::set_product_dbg_count() {
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0804), 2, 0, 0xe1, v1data);
     if (writeCb_)
-        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+        writeCb_(pkt); // 发到 OUT endpoint 0x01，100ms超时
 }
 
 void DjiBulkDevice::set_sec_dbg_auth_req_one_func(const QString& snStr,
@@ -235,10 +235,10 @@ void DjiBulkDevice::set_sec_dbg_auth_req_one_func(const QString& snStr,
         uint16_t sn_length; // little-endian
         uint8_t sn[32];     // SN padded
         uint8_t name[32];   // name padded
-        uint32_t perm;      // 鎺堟潈鐨勬潈闄?
+        uint32_t perm;      // 授权的权限
         uint32_t
-            count;        // 鎺堟潈娆℃暟銆備笉杩囦娇鐢ㄦ鏁帮紝瀵筈A娴嬭瘯浼氭湁涓€浜涢棶棰樸€?xFFFFFFFF鍙互涓嶉檺鍒?
-        uint32_t time;    // 鎺堟潈鐨勫埌鏈熸椂闂?
+            count;        // 授权次数。不过使用次数，对QA测试会有一些问题。0xFFFFFFFF可以不限制
+        uint32_t time;    // 授权的到期时间
         uint32_t nonce;   // random
         uint8_t cmac[32]; // only first 16 bytes used
         uint8_t sig[64];  // ECDSA signature
@@ -248,45 +248,46 @@ void DjiBulkDevice::set_sec_dbg_auth_req_one_func(const QString& snStr,
     static_assert(sizeof(sec_cmd_dbg_auth_req_t) == 180,
                   "sec_cmd_dbg_auth_req_t size mismatch");
 
-    // 1锔忊儯 init
+    // 1. init
     sec_cmd_dbg_auth_req_t req;
     memset(&req, 0, sizeof(req));
 
-    // 2锔忊儯 fixed fields
+    // 2. fixed fields
     req.version = 0x01;
     req.resv = 0x00;
 
-    // 3锔忊儯 SN
+    // 3. SN
     QByteArray sn = snStr.toLatin1();
     req.sn_length = qMin<int>(sn.size(), sizeof(req.sn));
     memcpy(req.sn, sn.constData(), req.sn_length);
 
-    // 4锔忊儯 name
+    // 4. name
     QByteArray name = nameStr.toLatin1();
     memcpy(req.name, name.constData(), qMin<int>(name.size(), sizeof(req.name)));
 
-    // 5锔忊儯 numeric fields
+    // 5. numeric fields
     req.perm = perm;
     req.count = count;
     req.time = time;
     req.nonce = nonce;
 
-    // 6锔忊儯 CMAC (placeholder, first 16 bytes valid)
+    // 6. CMAC (placeholder, first 16 bytes valid)
     // TODO: calculate real CMAC
-    // 鍏堟竻闆跺叏閮?32 瀛楄妭
+    // 先清零全部 32 字节
     memset(req.cmac, 0x00, sizeof(req.cmac));
 
-    // 鎶撳寘閲岀殑 CMAC锛?6 瀛楄妭锛?
+    // 抓包里的 CMAC（16 字节）
+
     static const uint8_t cmac_data[16] = {0x72, 0x7f, 0xd7, 0xf3, 0x0b, 0xd4,
                                           0xb3, 0x34, 0xbd, 0x2d, 0xc4, 0x6a,
                                           0x5c, 0xc2, 0x92, 0x30};
 
-    // 鎷疯礉鍒?cmac[0..15]
+    // 拷贝到 cmac[0..15]
     memcpy(req.cmac, cmac_data, sizeof(cmac_data));
 
-    // 7锔忊儯 Signature (placeholder)
+    // 7. Signature (placeholder)
     // TODO: calculate real ECDSA signature
-    // 涓嶉渶瑕佸啀 memset锛屼竴娆?memcpy 灏卞
+    // 不需要再 memset，一次 memcpy 就够
     static const uint8_t sig_data[64] = {
         0x25, 0x53, 0x70, 0x57, 0x57, 0x00, 0x49, 0x33, 0x52, 0x3f, 0xe5,
         0xfa, 0xd2, 0xf1, 0x39, 0x4d, 0xa1, 0xd1, 0x96, 0xa6, 0x6c, 0x45,
@@ -297,10 +298,11 @@ void DjiBulkDevice::set_sec_dbg_auth_req_one_func(const QString& snStr,
 
     memcpy(req.sig, sig_data, sizeof(sig_data));
 
-    // 8锔忊儯 build QByteArray
+    // 8. build QByteArray
     QByteArray v1data;
 
-    // magic / header锛堝鏋滀綘鍗忚闇€瑕侊級
+    // magic / header（如果你协议需要）
+
     v1data.append(char(0x00));
     v1data.append(char(0x00));
     v1data.append(char(0x00));
@@ -311,7 +313,7 @@ void DjiBulkDevice::set_sec_dbg_auth_req_one_func(const QString& snStr,
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0804), 2, 0, 0xe2, v1data);
     if (writeCb_)
-        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+        writeCb_(pkt); // 发到 OUT endpoint 0x01，100ms超时
 }
 
 // void DjiBulkDevice::set_check_one_time_auth (){
@@ -319,8 +321,8 @@ void DjiBulkDevice::set_sec_dbg_auth_req_one_func(const QString& snStr,
 //         uint8_t version;//01
 //         uint8_t resv;//00
 //         uint16_t sn_length;//0a 00
-//         uint8_t sn[32];//sn鍑戞弧32涓?
-//         uint8_t name[32];//o-joy鍑戞弧32涓?
+//         uint8_t sn[32];//sn凑满32个
+//         uint8_t name[32];//o-joy凑满32个
 //         uint32_t perm;//  70 00 00 00
 //         uint32_t count;//  32 00 00 00
 //         uint32_t time;//ea  07 01 1c
@@ -346,9 +348,10 @@ void DjiBulkDevice::set_sec_dbg_auth_req_one_func(const QString& snStr,
 //     v1data.append(char(0x00));
 
 //     QByteArray pkt = DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0804), 2, 0,
-//     0xe2, v1data); bulkWrite( pkt, 1000); // 鍙戝埌 OUT endpoint
-//     0x01锛?00ms瓒呮椂
-// }
+//     0xe2, v1data); bulkWrite( pkt, 1000); // 发到 OUT endpoint
+//     0x01，100ms超时
+    // }
+
 
 void DjiBulkDevice::set_device_date() {
     QByteArray v1data;
@@ -357,7 +360,7 @@ void DjiBulkDevice::set_device_date() {
     QDate date = now.date();
     QTime time = now.time();
 
-    // year锛歶int16_t锛堝皬绔級
+    // year：uint16_t（小端）
     uint16_t year = date.year();
     v1data.append(static_cast<char>(year & 0xFF));
     v1data.append(static_cast<char>((year >> 8) & 0xFF));
@@ -372,7 +375,7 @@ void DjiBulkDevice::set_device_date() {
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0, 0x4a, v1data);
     if (writeCb_)
-        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+        writeCb_(pkt); // 发到 OUT endpoint 0x01，100ms超时
 }
 
 void DjiBulkDevice::get_Rpmb_Board() {
@@ -383,7 +386,7 @@ void DjiBulkDevice::get_Rpmb_Board() {
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0x51, v1data);
     if (writeCb_)
-        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+        writeCb_(pkt); // 发到 OUT endpoint 0x01，100ms超时
 }
 void DjiBulkDevice::get_Rpmb_Device() {
 
@@ -393,7 +396,7 @@ void DjiBulkDevice::get_Rpmb_Device() {
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0x51, v1data);
     if (writeCb_)
-        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+        writeCb_(pkt); // 发到 OUT endpoint 0x01，100ms超时
 }
 void DjiBulkDevice::get_root_key_status() {
 
@@ -402,35 +405,38 @@ void DjiBulkDevice::get_root_key_status() {
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0804), 2, 0, 0xc6, v1data);
     if (writeCb_)
-        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+        writeCb_(pkt); // 发到 OUT endpoint 0x01，100ms超时
 }
 void DjiBulkDevice::set_sys_event_reboot() {
     QByteArray v1data;
 
     v1data.append(char(0x00));
 
-    // DJI_RESET_TYPE_WARM_RESET	0x00	鐑噸鍚?
-    // DJI_RESET_TYPE_COLD_RESET	0x01	     鍐烽噸鍚?
-    // DJI_RESET_TYPE_POWER_OFF	0x02	    鍏虫満
-    // DJI_RESET_TYPE_OVER_TMEP_PROTECTION	0x03	   杩囨俯淇濇姢
-    // DJI_RESET_TYPE_POWER_ON	0x04	 寮€鏈?
-    // DJI_RESET_TYPE_EMC_RESET	0x05	鐢变簬闈欑數鎴栧叾浠栧悎瑙勫師鍥犲鑷寸殑閲嶅惎
+    // DJI_RESET_TYPE_WARM_RESET	0x00	热重启
+    // DJI_RESET_TYPE_COLD_RESET	0x01	     冷重启
+    // DJI_RESET_TYPE_POWER_OFF	0x02	    关机
+    // DJI_RESET_TYPE_OVER_TMEP_PROTECTION	0x03	   过温保护
+    // DJI_RESET_TYPE_POWER_ON	0x04	 开机
+
+    // DJI_RESET_TYPE_EMC_RESET	0x05	由于静电或其他合规原因导致的重启
+
     v1data.append(char(0x01));
 
-    // 閲嶅惎寤惰繜鏃堕棿
+    // 重启延迟时间
     v1data.append(char(0x00));
     v1data.append(char(0x00));
     v1data.append(char(0x00));
     v1data.append(char(0x00));
 
-    //   0x0005	dji_sys寮傛涓婃姤閲嶅惎缁撴灉銆?
+    // 0x0005	dji_sys异步上报重启结果。
+
     v1data.append(char(0x00));
     v1data.append(char(0x05));
 
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0, 0x0b, v1data);
     if (writeCb_)
-        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+        writeCb_(pkt); // 发到 OUT endpoint 0x01，100ms超时
 }
 void DjiBulkDevice::set_Rpmb_Board(const QString& sn) {
     QByteArray snBytes = sn.toUtf8();
@@ -441,16 +447,19 @@ void DjiBulkDevice::set_Rpmb_Board(const QString& sn) {
     uint8_t sn_type = 0x01;
     v1data.append(char(sn_type));
 
-    // 鈶?sn_length锛堝皬绔級
+    // ③ sn_length（小端）
+
     v1data.append(char(snLen & 0xFF));
     v1data.append(char((snLen >> 8) & 0xFF));
 
-    // 鈶?sn 鍐呭
+    // ④ sn 内容
+
     v1data.append(snBytes);
 
-    // 鉂?涓€鑸?SN 涓嶉渶瑕?\0锛岄櫎闈炲崗璁姹?
+    // ❌ 一般 SN 不需要 \0，除非协议要求
+
     // v1data.append(char(0x00));
-    emit send_bulk_data("鍐欏叆鐨勬牳蹇冩澘sn鏄?" + sn);
+    emit send_bulk_data("写入的核心板sn是:" + sn);
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0x50, v1data);
 
@@ -466,21 +475,25 @@ void DjiBulkDevice::set_Rpmb_Device(const QString& sn) {
     uint8_t sn_type = 0x04;
     v1data.append(char(sn_type));
 
-    // 鈶?sn_length锛堝皬绔級
+    // ③ sn_length（小端）
+
     v1data.append(char(snLen & 0xFF));
     v1data.append(char((snLen >> 8) & 0xFF));
-    //sn鐨勫湴鍧€
+    // sn的地址
+
     v1data.append(char(0x00));
     v1data.append(char(0x10));
     v1data.append(char(0x00));
     v1data.append(char(0xf5));
 
-    // 鈶?sn 鍐呭
+    // ④ sn 内容
+
     v1data.append(snBytes);
 
-    // 鉂?涓€鑸?SN 涓嶉渶瑕?\0锛岄櫎闈炲崗璁姹?
+    // ❌ 一般 SN 不需要 \0，除非协议要求
+
     // v1data.append(char(0x00));
-    emit send_bulk_data("鍐欏叆鐨勮澶噑n鏄?" + sn);
+    emit send_bulk_data("写入的设备sn是:" + sn);
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0x50, v1data);
 
@@ -497,7 +510,7 @@ void DjiBulkDevice::set_amt_clean_flag() {
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0x44, v1data);
     if (writeCb_)
-        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+        writeCb_(pkt); // 发到 OUT endpoint 0x01，100ms超时
 }
 void DjiBulkDevice::set_amt_check_clean_flag() {
     QByteArray v1data;
@@ -509,18 +522,18 @@ void DjiBulkDevice::set_amt_check_clean_flag() {
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0x44, v1data);
     if (writeCb_)
-        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+        writeCb_(pkt); // 发到 OUT endpoint 0x01，100ms超时
 }
 void DjiBulkDevice::set_sys_poweroff() { // 0x0a00 set system power_level: 5
     QByteArray v1data;
 
-    v1data.append(char(0x82)); // 01 00 0001 璁剧疆涓?锛岃〃鏄巗ysmode娑堟伅
-    v1data.append(char(0x05)); // s5鍏虫満鐨勬剰鎬?
+    v1data.append(char(0x82)); // 01 00 0001 设置为2，表明sysmode消息
+    v1data.append(char(0x05)); // s5关机的意思
 
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0, 0x44, v1data);
     if (writeCb_)
-        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+        writeCb_(pkt); // 发到 OUT endpoint 0x01，100ms超时
 }
 void DjiBulkDevice::set_2a_send_file_data() {
     if (tow_a_filepath.isEmpty()) {
@@ -550,20 +563,24 @@ void DjiBulkDevice::set_2a_send_file_data() {
 
         QByteArray v1data;
 
-        // 鈶?璇锋眰绫诲瀷
+        // ① 请求类型
+
         v1data.append(char(0x04));
 
-        // 鈶?seq_num锛堝皬绔級
+        // ② seq_num（小端）
+
         v1data.append(reinterpret_cast<const char*>(&seq), sizeof(uint32_t));
 
-        // 鈶?payload
+        // payload
         v1data.append(payload);
 
-        // 鈶?缁勫寘
+        // ④ 组包
+
         QByteArray pkt =
             DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0x00, 0x2a, v1data);
 
-        // 鈶?鍙戦€?
+        // ⑤ 发送
+
         if (writeCb_)
             writeCb_(pkt);
 
@@ -591,17 +608,20 @@ void DjiBulkDevice::set_2a_send_file_info_check() {
 
     QByteArray v1data;
 
-    // 鈶?璇锋眰绫诲瀷
-    v1data.append(char(0x03)); // 璇锋眰鎺ユ敹鏂囦欢 + 鏍￠獙
+    // ① 请求类型
 
-    // 鈶?鎵撳紑鏂囦欢
+    v1data.append(char(0x03)); // 请求接收文件 + 校验
+
+    // ② 打开文件
+
     QFile file(tow_a_filepath);
     if (!file.open(QIODevice::ReadOnly)) {
         qWarning() << "[2A] open file failed:" << tow_a_filepath;
         return;
     }
 
-    // 鈶?MD5 璁＄畻锛堜娇鐢?md5_append锛?
+    // ③ MD5 计算（使用 md5_append）
+
     md5_state_t md5;
     md5_byte_t digest[16];
 
@@ -617,15 +637,17 @@ void DjiBulkDevice::set_2a_send_file_info_check() {
 
     DjiBulkCodec::md5_finish(&md5, digest);
 
-    // 鈶?娣诲姞 md5锛坲int8_t[16]锛?
+    // ④ 添加 md5（uint8_t[16]）
+
     v1data.append(reinterpret_cast<const char*>(digest), 16);
 
-    // 璋冭瘯杈撳嚭
+    // 调试输出
     QByteArray md5Hex(reinterpret_cast<const char*>(digest), 16);
     qDebug() << "[2A] file path =" << tow_a_filepath;
     qDebug() << "[2A] file md5  =" << md5Hex.toHex();
 
-    // 鈶?缁勫寘骞跺彂閫?
+    // ⑤ 组包并发送
+
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0x00, 0x2a, v1data);
 
@@ -636,41 +658,47 @@ void DjiBulkDevice::set_2a_send_file_info_check() {
 void DjiBulkDevice::set_2a_send_file_info(const QString& filepath) {
     QByteArray v1data;
     tow_a_filepath = filepath;
-    // 鈶?璇锋眰绫诲瀷
-    v1data.append(char(0x01)); // 璇锋眰鎺ユ敹鏂囦欢
+    // ① 请求类型
 
-    // 鈶?鎵撳紑鏂囦欢
+    v1data.append(char(0x01)); // 请求接收文件
+
+    // ② 打开文件
+
     QFile file(filepath);
     if (!file.open(QIODevice::ReadOnly)) {
         qWarning() << "open file failed:" << filepath;
         return;
     }
 
-    // 鈶?鏂囦欢澶у皬 uint32_t
+    // ③ 文件大小 uint32_t
+
     quint32 fileSize = file.size();
     v1data.append(reinterpret_cast<const char*>(&fileSize), sizeof(fileSize));
 
-    // 鈶?鏂囦欢鍚嶏紙鍙彇鍚嶅瓧锛屼笉瑕佽矾寰勶級
+    // ④ 文件名（只取名字，不要路径）
+
     QString fileName = QFileInfo(filepath).fileName();
     QByteArray fileNameBytes = fileName.toUtf8();
 
-    // 鈶?鏂囦欢鍚嶉暱搴?uint8_t
+    // ⑤ 文件名长度 uint8_t
+
     quint8 fileNameLen = static_cast<quint8>(fileNameBytes.size());
     v1data.append(char(fileNameLen));
 
-    // 鈶?鏂囦欢鍚嶆湰浣?
+    // ⑥ 文件名本体
+
     v1data.append(fileNameBytes);
 
     qDebug() << "[2A] file size  =" << fileSize;
 
-    v1data.append(char(0x00)); // 鎷撳睍鐨?
-    v1data.append(char(0x01)); // 鎷撳睍鐨?
-    v1data.append(char(0x01)); // 鎷撳睍鐨?
+    v1data.append(char(0x00)); // 拓展的
+    v1data.append(char(0x01));// 拓展的
+    v1data.append(char(0x01));// 拓展的
 
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0x00, 0x2a, v1data);
     if (writeCb_)
-        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+        writeCb_(pkt); // 发到 OUT endpoint 0x01，100ms超时
 }
 void DjiBulkDevice::set_amt_task_test(const QString& cmdStr, uint32_t timeout) {
 
@@ -684,7 +712,8 @@ void DjiBulkDevice::set_amt_task_test(const QString& cmdStr, uint32_t timeout) {
         return;
     }
 
-    // 1锔忊儯 鎸夌┖鏍煎垎鍓诧紙鏀寔澶氫釜绌烘牸锛?
+    // 1️⃣ 按空格分割（支持多个空格）
+
     QStringList parts =
         input.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
     qDebug() << "[ComboBox] split parts =" << parts;
@@ -694,11 +723,13 @@ void DjiBulkDevice::set_amt_task_test(const QString& cmdStr, uint32_t timeout) {
         return;
     }
 
-    // 2锔忊儯 绗竴涓槸鑴氭湰鍚?
+    // 2️⃣ 第一个是脚本名
+
     QString cmd = parts.takeFirst();
     qDebug() << "[ComboBox] cmd =" << cmd;
 
-    // 3锔忊儯 鍓╀綑鐨勬槸鍙傛暟
+    // 3️⃣ 剩余的是参数
+
     QByteArray param;
     if (!parts.isEmpty()) {
         param = parts.join(' ').toUtf8();
@@ -728,41 +759,45 @@ void DjiBulkDevice::waitWork(int ms) {
 void DjiBulkDevice::set_2a_download_path_info(const QString& filepath) {
     QByteArray v1data;
     tow_a_download_filepath = filepath;
-    // 鈶?璇锋眰绫诲瀷
-    v1data.append(char(0x06)); // 璇锋眰鎺ユ敹鏂囦欢
+    // ① 请求类型
+
+    v1data.append(char(0x06)); // 请求接收文件
     QByteArray fileNameBytes = tow_a_download_filepath.toUtf8();
 
     quint8 fileNameLen = static_cast<quint8>(tow_a_download_filepath.size());
     v1data.append(char(fileNameLen));
 
-    // 鈶?鏂囦欢鍚嶆湰浣?
+    // ⑥ 文件名本体
+
     v1data.append(fileNameBytes);
 
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0x00, 0x2a, v1data);
     if (writeCb_)
-        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+        writeCb_(pkt); // 发到 OUT endpoint 0x01，100ms超时
 }
 
 void DjiBulkDevice::set_2a_download_file_info(const QString& filepath) {
-    m_totalFileSize = 0; // 鏂囦欢鎬诲ぇ灏忥紙瀛楄妭锛?
-    m_receivedSize = 0;  // 宸叉帴鏀跺瓧鑺傛暟
+    m_totalFileSize = 0; // 文件总大小（字节）
+    m_receivedSize = 0;  // 已接收字节数
     lost_list_rsp_seq = 0;
     QByteArray v1data;
     tow_a_download_filepath = filepath;
     QString fileName = QFileInfo(tow_a_download_filepath).fileName();
 
-    // exe 鍚岀骇鐩綍
+    // exe 同级目录
+
     QString basePath = QCoreApplication::applicationDirPath() + "/two_a_data";
 
-    // 褰撳墠鏃ユ湡
+    // 当前日期
     QString dateDirName = QDate::currentDate().toString("yyyyMMdd");
     QString timeTag = QDateTime::currentDateTime().toString("_HHmmss");
 
     // two_a_data/YYYYMMDD
     QDir dir(basePath + "/" + dateDirName + timeTag);
 
-    // 閫掑綊鍒涘缓鐩綍
+    // 递归创建目录
+
     if (!dir.exists()) {
         if (!dir.mkpath(".")) {
             qWarning() << "create dir failed:" << dir.absolutePath();
@@ -772,52 +807,56 @@ void DjiBulkDevice::set_2a_download_file_info(const QString& filepath) {
 
     tow_a_download_filepath_local = dir.filePath(fileName);
 
-    // 鈶?璇锋眰绫诲瀷
-    v1data.append(char(0x08)); // 璇锋眰鎺ユ敹鏂囦欢
+    // ① 请求类型
+
+    v1data.append(char(0x08)); // 请求接收文件
     QByteArray fileNameBytes = tow_a_download_filepath.toUtf8();
 
     quint8 fileNameLen = static_cast<quint8>(tow_a_download_filepath.size());
     v1data.append(char(fileNameLen));
 
-    // 鈶?鏂囦欢鍚嶆湰浣?
+    // ⑥ 文件名本体
+
     v1data.append(fileNameBytes);
 
-    v1data.append(char(0x00)); // 鎷撳睍鐨?
-    v1data.append(char(0x01)); // 鎷撳睍鐨?
-    v1data.append(char(0x01)); // 鎷撳睍鐨?
+    v1data.append(char(0x00)); // 拓展的
+    v1data.append(char(0x01));// 拓展的
+    v1data.append(char(0x01));// 拓展的
 
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0x00, 0x2a, v1data);
     if (writeCb_)
-        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+        writeCb_(pkt); // 发到 OUT endpoint 0x01，100ms超时
 }
 
 void DjiBulkDevice::set_2a_download_file_devide_rsp() {
     QByteArray v1data;
 
-    // 鈶?璇锋眰绫诲瀷
-    v1data.append(char(0x00)); // 璇锋眰鎺ユ敹鏂囦欢
+    // ① 请求类型
 
-    // // 鈶?鎷撳睍瀛楁
+    v1data.append(char(0x00)); // 请求接收文件
+
+    // // ② 拓展字段
+
     // v1data.append(char(0x00));
     // v1data.append(char(0x01));
     // v1data.append(char(0x01));
 
-    // 鈶?pack_size = 980 (0x03D4)
+    // pack_size = 980 (0x03D4)
     uint16_t pack_size = 980;
     v1data.append(char(pack_size & 0xFF));        // L
     v1data.append(char((pack_size >> 8) & 0xFF)); // H
 
-    // 鈶?window_size = 5000 (0x1388)
+    // window_size = 5000 (0x1388)
     uint16_t window_size = 5000;
     v1data.append(char(window_size & 0xFF));        // L
     v1data.append(char((window_size >> 8) & 0xFF)); // H
 
-    // 鈶?checksum_type
-    v1data.append(char(0x01)); // 涓句緥锛歮d5
+    // checksum_type
+    v1data.append(char(0x01)); // 举例：md5
 
-    // 鈶?protocol_type
-    v1data.append(char(0x01)); // 涓句緥锛?A 鍗忚
+    // protocol_type
+    v1data.append(char(0x01)); // 举例：2A 协议
 
     QByteArray pkt = DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0801), 2, 0x00,
                                                0x2a, v1data, 0, 1);
@@ -828,8 +867,9 @@ void DjiBulkDevice::set_2a_download_file_devide_rsp() {
 void DjiBulkDevice::set_2a_download_file_devide_lost_list_rsp() {
     QByteArray v1data;
 
-    // 鈶?璇锋眰绫诲瀷
-    v1data.append(char(0x00)); // 璇锋眰鎺ユ敹鏂囦欢
+    // ① 请求类型
+
+    v1data.append(char(0x00)); // 请求接收文件
 
     v1data.append(reinterpret_cast<const char*>(&lost_list_rsp_seq),
                   sizeof(uint32_t));
@@ -845,7 +885,8 @@ void DjiBulkDevice::set_2a_download_file_ok_rsp(QByteArray& f) {
     qDebug() << "f.size() =" << f.size();
     qDebug() << "f md5 HEX =" << f.toHex(' ');
 
-    // 鈶?鏍￠獙 MD5 闀垮害
+    // ① 校验 MD5 长度
+
     if (f.size() != 16) {
         qWarning() << "[2A] invalid md5 length:" << f.size();
         return;
@@ -856,7 +897,8 @@ void DjiBulkDevice::set_2a_download_file_ok_rsp(QByteArray& f) {
         return;
     }
 
-    // 鈶?鎵撳紑鏂囦欢
+    // ② 打开文件
+
 
     QFile file(tow_a_download_filepath_local);
     if (!file.open(QIODevice::ReadOnly)) {
@@ -864,7 +906,8 @@ void DjiBulkDevice::set_2a_download_file_ok_rsp(QByteArray& f) {
         return;
     }
 
-    // 鈶?璁＄畻鏈湴鏂囦欢 MD5
+    // ③ 计算本地文件 MD5
+
     md5_state_t md5;
     md5_byte_t digest[16];
 
@@ -884,20 +927,22 @@ void DjiBulkDevice::set_2a_download_file_ok_rsp(QByteArray& f) {
 
     qDebug() << "[2A] local file md5 =" << localMd5.toHex();
 
-    // 鈶?姣斿 MD5
+    // ④ 比对 MD5
+
     bool md5_ok = (localMd5 == f);
 
     qDebug() << "[2A] md5 compare result =" << md5_ok;
     if (md5_ok)
-        emit send_bulk_data("2a涓嬭浇md5鏁版嵁姣斿鎴愬姛");
+        emit send_bulk_data("2a下载md5数据比对成功");
     else
-        emit send_bulk_data("2a涓嬭浇md5鏁版嵁姣斿澶辫触");
+        emit send_bulk_data("2a下载md5数据比对失败");
 
-    // 鈶?缁?rsp 鍖?
+    // ⑤ 组 rsp 包
+
     QByteArray v1data;
 
     /*
-   * 寤鸿鍗忚璇箟锛?
+   * 建议协议语义：
    * 0x00 = MD5 OK
    * 0x01 = MD5 FAIL
    */
@@ -920,7 +965,8 @@ void DjiBulkDevice::prase_2a_download_file_data(QByteArray& f) {
         return;
     }
 
-    // 鈶?瑙ｆ瀽鍓?4 涓瓧鑺傦紙uint32锛屽皬绔級
+    // ① 解析前 4 个字节（uint32，小端）
+
     const uint8_t* p = reinterpret_cast<const uint8_t*>(f.constData());
 
     lost_list_rsp_seq = (uint32_t)p[0] | ((uint32_t)p[1] << 8) |
@@ -928,10 +974,11 @@ void DjiBulkDevice::prase_2a_download_file_data(QByteArray& f) {
 
     qDebug() << "lost_list_rsp_seq =" << lost_list_rsp_seq;
 
-    emit send_bulk_data(QStringLiteral("当前PC端收到的窗口内的最大值：") +
+    emit send_bulk_data(QStringLiteral("当前PC端收到的窗口内的最大值") +
                         QString::number(lost_list_rsp_seq));
 
-    // 鈶?鐪熸鐨勬枃浠跺唴瀹癸紙浠庣 4 瀛楄妭寮€濮嬶級
+    // ② 真正的文件内容（从第 4 字节开始）
+
     QByteArray payload = f.mid(4);
 
     // qDebug() << "payload size =" << payload.size();
@@ -945,7 +992,8 @@ void DjiBulkDevice::prase_2a_download_file_data(QByteArray& f) {
         return;
     }
 
-    // 猸?鍏抽敭锛氬師濮嬪瓧鑺傚啓鍏?
+    // ⭐ 关键：原始字节写入
+
     qint64 written = file.write(payload);
     file.close();
 
@@ -954,7 +1002,8 @@ void DjiBulkDevice::prase_2a_download_file_data(QByteArray& f) {
                    << payload.size();
     }
 
-    // ================== 猸?鍏抽敭杩涘害閫昏緫 ==================
+    // ================== ⭐ 关键进度逻辑 ==================
+
     m_receivedSize += written;
 
     int progress = 0;
@@ -973,7 +1022,7 @@ void DjiBulkDevice::set_amt_task_start(const QString& cmdStr, uint32_t timeout,
                                        const QByteArray& param) {
     QByteArray payload;
 
-    // ---------- cmd锛氬浐瀹?SYS_AMT_TEST_CMD_STR_LEN ----------
+    // ---------- cmd：固定 SYS_AMT_TEST_CMD_STR_LEN ----------
     QByteArray cmdBuf(SYS_AMT_TEST_CMD_STR_LEN, 0);
     QByteArray cmdUtf8 = cmdStr.toUtf8();
     uint32_t cmdlen = cmdUtf8.size();
@@ -981,7 +1030,7 @@ void DjiBulkDevice::set_amt_task_start(const QString& cmdStr, uint32_t timeout,
     memcpy(cmdBuf.data(), cmdUtf8.constData(),
            qMin(cmdUtf8.size(), cmdBuf.size()));
 
-    payload.append(cmdBuf); // 鉁?鍥哄畾闀垮害
+    payload.append(cmdBuf); // ✅ 固定长度
 
     // ---------- cmdid ----------
     uint32_t cmdid = ++m_cmdId;
@@ -1010,19 +1059,19 @@ void DjiBulkDevice::set_amt_task_start(const QString& cmdStr, uint32_t timeout,
 
 void DjiBulkDevice::set_amt_task_get_result() {
     QByteArray v1data;
-    uint32_t cmdid = m_cmdId; // 鉁?鍐呴儴鑷
+    uint32_t cmdid = m_cmdId; // ✅ 内部自增
     v1data.append(reinterpret_cast<const char*>(&cmdid), sizeof(cmdid));
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0xf6, v1data);
     if (writeCb_)
-        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+        writeCb_(pkt); // 发到 OUT endpoint 0x01，100ms超时
 }
 
 void DjiBulkDevice::set_amt_task_get_log(uint32_t offset) {
     QByteArray v1data;
-    uint32_t cmdid = m_cmdId;    // 鉁?鍐呴儴鑷
-    uint16_t metaId = 0xffff;    // 娌℃湁鐢?
-    uint8_t metaDataType = 0x01; // 娌℃湁鐢?
+    uint32_t cmdid = m_cmdId;    // ✅ 内部自增
+    uint16_t metaId = 0xffff;    // 没有用
+    uint8_t metaDataType = 0x01; // 没有用
     uint32_t fetchLen = 4096;
 
     v1data.append(reinterpret_cast<const char*>(&cmdid), sizeof(cmdid));
@@ -1041,14 +1090,14 @@ void DjiBulkDevice::set_amt_task_get_log(uint32_t offset) {
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0xf8, v1data);
     if (writeCb_)
-        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+        writeCb_(pkt); // 发到 OUT endpoint 0x01，100ms超时
 }
 void DjiBulkDevice::set_amt_task_rst() {
     QByteArray v1data;
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0803), 2, 0, 0xf7, v1data);
     if (writeCb_)
-        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+        writeCb_(pkt); // 发到 OUT endpoint 0x01，100ms超时
 }
 void DjiBulkDevice::set_write_product_status() {
     QByteArray v1data;
@@ -1057,7 +1106,7 @@ void DjiBulkDevice::set_write_product_status() {
     QByteArray pkt =
         DjiBulkCodec::buildPacket(HOST_ID_FROM_16BIT_TO_8BIT(0x0804), 2, 0, 0xc4, v1data);
     if (writeCb_)
-        writeCb_(pkt); // 鍙戝埌 OUT endpoint 0x01锛?00ms瓒呮椂
+        writeCb_(pkt); // 发到 OUT endpoint 0x01，100ms超时
 }
 
 void DjiBulkDevice::process_dji_amt_task_start(QByteArray& f) {
@@ -1081,19 +1130,19 @@ static QString amtAckCodeToString(int code) {
         return QStringLiteral("不支持命令");
 
     case AMT_TASK_COMMON_ACK_FAILURE:
-        return QString("鎵ц澶辫触");
+        return QString("执行失败");
 
     case AMT_TASK_COMMON_ACK_INVALID_STATE:
         return QStringLiteral("无效的设备状态");
 
     case AMT_TASK_COMMON_ACK_OUTOFTASK:
-        return QString("浠诲姟瓒呮暟閲忎簡");
+        return QString("任务超数量了");
 
     case AMT_TASK_COMMON_ACK_ILLEGAL:
-        return QString("闈炴硶鍙傛暟");
+        return QString("非法参数");
 
     default:
-        return QString("鏈煡杩斿洖鍊?(0x%1)").arg(code, 2, 16, QLatin1Char('0'));
+        return QString("未知返回值 (0x%1)").arg(code, 2, 16, QLatin1Char('0'));
     }
 }
 QString DjiBulkDevice::amtTaskResultToString(uint8_t code) {
@@ -1137,7 +1186,7 @@ void DjiBulkDevice::process_dji_amt_task_get_result(QByteArray& f) {
     info.retCode = p[0];
     if (info.retCode == 0) {
 
-        emit send_bulk_data("鑴氭湰鎵ц鐘舵€侊細" + amtTaskResultToString(p[1]));
+        emit send_bulk_data("脚本执行状态：" + amtTaskResultToString(p[1]));
         if (p[1] == AMT_TASK_RESULT_ONGOING)
             ;
         else if (p[1] == AMT_TASK_RESULT_PASS)
@@ -1148,7 +1197,7 @@ void DjiBulkDevice::process_dji_amt_task_get_result(QByteArray& f) {
         emit sendGetDjiResponse(1, info.retCode);
         emit send_bulk_data(QStringLiteral("amt执行错误码翻译为：") +
                             amtAckCodeToString(info.retCode));
-        emit send_bulk_data("鑴氭湰鎵ц鐘舵€侊細" + amtTaskResultToString(p[1]));
+        emit send_bulk_data("脚本执行状态：" + amtTaskResultToString(p[1]));
     }
 }
 
@@ -1166,16 +1215,16 @@ void DjiBulkDevice::process_dji_2a_send_file(QByteArray& f) {
     emit sendGetDjiResponse(1, info.retCode);
     if (f.size() == 1) {
         emit send_bulk_data(QStringLiteral("收到回应成功状态"));
-        return; // 姝ｅ父鍥炲簲涓嶅笇鏈涘線涓嬭窇
+        return; // 正常回应不希望往下跑
     }
-    if (f.size() == 5) // 绐楀彛鐨勬枃浠剁鍑犲寘
+    if (f.size() == 5) // 窗口的文件第几包
     {
         uint32_t window_size = static_cast<uint32_t>(p[1]) |
             (static_cast<uint32_t>(p[2]) << 8) |
             (static_cast<uint32_t>(p[3]) << 16) |
             (static_cast<uint32_t>(p[4]) << 24);
 
-        emit send_bulk_data(QStringLiteral("当前设备端收到的窗口内的最大值：") +
+        emit send_bulk_data(QStringLiteral("当前设备端收到的窗口内的最大值") +
                             QString::number(window_size));
         two_a_can_send = 1;
         return;
@@ -1188,7 +1237,7 @@ void DjiBulkDevice::process_dji_2a_send_file(QByteArray& f) {
             (static_cast<uint32_t>(p[4]) << 24);
 
         set_2a_download_file_devide_rsp();
-        return; // 涓嶅笇鏈涘線涓嬭窇
+        return; // 不希望往下跑
     }
     if (retCode == 0x04) {
         QByteArray payload = QByteArray::fromRawData(
@@ -1197,17 +1246,18 @@ void DjiBulkDevice::process_dji_2a_send_file(QByteArray& f) {
         prase_2a_download_file_data(payload);
         set_2a_download_file_devide_lost_list_rsp();
 
-        return; // 涓嶅笇鏈涘線涓嬭窇
+        return; // 不希望往下跑
     }
     if (retCode == 0x03) {
         QByteArray payload = QByteArray::fromRawData(
             reinterpret_cast<const char*>(p + 1), f.size() - 1);
         set_2a_download_file_ok_rsp(payload);
-        emit send_bulk_data("鏂囦欢涓嬭浇瀹屾垚");
-        return; // 涓嶅笇鏈涘線涓嬭窇
+        emit send_bulk_data("文件下载完成");
+        return; // 不希望往下跑
     }
 
-    // 灏忕瑙ｆ瀽
+    // 小端解析
+
     two_a_pack_size =
         static_cast<uint16_t>(p[1]) | (static_cast<uint16_t>(p[2]) << 8);
 
@@ -1217,7 +1267,8 @@ void DjiBulkDevice::process_dji_2a_send_file(QByteArray& f) {
     uint8_t checksum_type = p[5];
     uint8_t protocol_type = p[6];
 
-    // ---- 鏃ュ織 ----
+    // ---- 日志 ----
+
     qDebug() << "[2A]"
              << "retCode ="
              << QString("0x%1").arg(retCode, 2, 16, QLatin1Char('0'))
@@ -1227,50 +1278,65 @@ void DjiBulkDevice::process_dji_2a_send_file(QByteArray& f) {
              << "protocol_type =" << protocol_type;
 
     // checksum_type
-    // DJI_FILE_TRANS_CHECKSUM_MD5	0X01	  MD5鏍￠獙
-    // DJI_FILE_TRANS_CHECKSUM_CRC16	0X02	  CRC16鏍￠獙
-    // DJI_FILE_TRANS_CHECKSUM_CRC32	0X03	 CRC32鏍￠獙
+    // DJI_FILE_TRANS_CHECKSUM_MD5	0X01	  MD5校验
+    // DJI_FILE_TRANS_CHECKSUM_CRC16	0X02	  CRC16校验
+    // DJI_FILE_TRANS_CHECKSUM_CRC32	0X03	 CRC32校验
 
     // protocol_type
-    // DJI_TRANS_EVERY_PACK_ACK	0X00	姣忎釜鍖卆ck
-    // DJI_TRANS_LOST_LIST_ACK	0X01	涓㈠寘鍒楄〃ack
+    // DJI_TRANS_EVERY_PACK_ACK	0X00	每个包ack
 
-    // DJI_DUSS_MB_RET_OK = 0, // 鍥炲OK
-    // DJI_DUSS_MB_RET_ACK = 1, // 鍥炲ACK
-    // DJI_DUSS_MB_RET_INVALID_CMD = 224, // 鍛戒护鏃犳晥
-    // DJI_DUSS_MB_RET_TIMEOUT = 225, // 瓒呮椂
-    // DJI_DUSS_MB_RET_OUT_OF_MEMORY = 226, // 瓒呭嚭鍐呭瓨
-    // DJI_DUSS_MB_RET_INVALID_PARAM = 227, // 鍙傛暟鏃犳晥
-    // DJI_DUSS_MB_RET_INVALID_STATE = 228, // 鐘舵€佹棤鏁?
-    // DJI_DUSS_MB_RET_TIME_NOT_SYNC = 229, // 鏃堕棿涓嶅悓姝?
-    // DJI_DUSS_MB_RET_SET_PARAM_FAILED = 230, // 璁剧疆鍙傛暟澶辫触
-    // DJI_DUSS_MB_RET_GET_PARAM_FAILED = 231, // 鑾峰彇鍙傛暟澶辫触
-    // DJI_DUSS_MB_RET_SDCARD_NOT_INSERTED = 232, // 鏈彃SD鍗?
-    // DJI_DUSS_MB_RET_SDCARD_FULL = 233, // SD鍗℃弧
-    // DJI_DUSS_MB_RET_SDCARD_ERR = 234, // SD鍗￠敊璇?
-    // DJI_DUSS_MB_RET_SENSOR_ERR = 235, // 浼犳劅鍣ㄩ敊璇?
-    // DJI_DUSS_MB_RET_CRITICAL_ERR = 236, // 涓ラ噸閿欒
-    // DJI_DUSS_MB_RET_PRARM_LEN_TOO_LONG = 237, // 鍙傛暟闀垮害瓒呴暱
-    // DJI_DUSS_MB_RET_FW_SEQNUM_NOT_IN_ORDER = 240, // 鍥轰欢搴忓垪涓嶅湪鍛戒护涓?
-    // DJI_DUSS_MB_RET_FW_EXCEED_FLASH = 241, // 鍥轰欢瓒呭嚭flash鍐呭瓨鑼冨洿
-    // DJI_DUSS_MB_RET_FW_CHECK_ERR = 242, // 鍥轰欢妫€鏌ュけ璐?
-    // DJI_DUSS_MB_RET_FW_FLASH_ERASE_ERR = 243, // 鍥轰欢flash鎿﹂櫎澶辫触
-    // DJI_DUSS_MB_RET_FW_FLASH_PROGRAM_ERR = 244, // 鍥轰欢flash缂栫▼澶辫触
-    // DJI_DUSS_MB_RET_FW_UPDATE_STATE_ERR = 245, // 鍥轰欢鍗囩骇鐘舵€侀敊璇?
-    // DJI_DUSS_MB_RET_FW_INVALID_TYPE = 246, // 鍥轰欢绫诲瀷鏃犳晥
-    // DJI_DUSS_MB_RET_FW_UPDATE_WAIT_FINISH = 247, // 鍥轰欢鍗囩骇绛夊緟瀹屾垚
-    // DJI_DUSS_MB_RET_FW_UPDATE_RC_DISCONNECT = 248, // 鍥轰欢鍗囩骇閬ユ帶鍣ㄦ柇杩?
-    // DJI_DUSS_MB_RET_FW_UPGRADE_MOTOR_RUNNING = 249, // 鍥轰欢鍗囩骇鐢垫満杩愯浆
-    // DJI_DUSS_MB_RET_HARDWARE_ERR = 250, // 纭欢閿欒
-    // DJI_DUSS_MB_RET_DEV_BAT_NOT_ENOUGH = 251, // 璁惧鐢垫睜鐢甸噺涓嶈冻
-    // DJI_DUSS_MB_RET_DEV_UAV_DISCONNECT = 252, // 璁惧椋炴満澶辫繛
-    // DJI_DUSS_MB_RET_FW_FLASH_ERASING = 253, // 鍥轰欢flash鎿﹂櫎涓?
-    // DJI_DUSS_MB_RET_CHECK_CONNECTION_ERR = 254, // 妫€鏌ヨ繛鎺ラ敊璇?
-    // DJI_DUSS_MB_RET_UNSPECIFIED = 255, // 淇濈暀
-    // ---- 涓氬姟澶勭悊 ----
+    // DJI_TRANS_LOST_LIST_ACK	0X01	丢包列表ack
+
+    // DJI_DUSS_MB_RET_OK = 0, // 回复OK
+
+    // DJI_DUSS_MB_RET_ACK = 1, // 回复ACK
+
+    // DJI_DUSS_MB_RET_INVALID_CMD = 224, // 命令无效
+
+    // DJI_DUSS_MB_RET_TIMEOUT = 225, // 超时
+    // DJI_DUSS_MB_RET_OUT_OF_MEMORY = 226, // 超出内存
+    // DJI_DUSS_MB_RET_INVALID_PARAM = 227, // 参数无效
+    // DJI_DUSS_MB_RET_INVALID_STATE = 228, // 状态无效
+    // DJI_DUSS_MB_RET_TIME_NOT_SYNC = 229, // 时间不同步
+    // DJI_DUSS_MB_RET_SET_PARAM_FAILED = 230, // 设置参数失败
+    // DJI_DUSS_MB_RET_GET_PARAM_FAILED = 231, // 获取参数失败
+    // DJI_DUSS_MB_RET_SDCARD_NOT_INSERTED = 232, // 未插SD卡
+
+    // DJI_DUSS_MB_RET_SDCARD_FULL = 233, // SD卡满
+    // DJI_DUSS_MB_RET_SDCARD_ERR = 234, // SD卡错误
+
+    // DJI_DUSS_MB_RET_SENSOR_ERR = 235, // 传感器错误
+    // DJI_DUSS_MB_RET_CRITICAL_ERR = 236, // 严重错误
+
+    // DJI_DUSS_MB_RET_PRARM_LEN_TOO_LONG = 237, // 参数长度超长
+    // DJI_DUSS_MB_RET_FW_SEQNUM_NOT_IN_ORDER = 240, // 固件序列不在命令中
+
+    // DJI_DUSS_MB_RET_FW_EXCEED_FLASH = 241, // 固件超出flash内存范围
+    // DJI_DUSS_MB_RET_FW_CHECK_ERR = 242, // 固件检查失败
+    // DJI_DUSS_MB_RET_FW_FLASH_ERASE_ERR = 243, // 固件flash擦除失败
+    // DJI_DUSS_MB_RET_FW_FLASH_PROGRAM_ERR = 244, // 固件flash编程失败
+    // DJI_DUSS_MB_RET_FW_UPDATE_STATE_ERR = 245, // 固件升级状态错误
+    // DJI_DUSS_MB_RET_FW_INVALID_TYPE = 246, // 固件类型无效
+    // DJI_DUSS_MB_RET_FW_UPDATE_WAIT_FINISH = 247, // 固件升级等待完成
+    // DJI_DUSS_MB_RET_FW_UPDATE_RC_DISCONNECT = 248, // 固件升级遥控器断连
+
+    // DJI_DUSS_MB_RET_FW_UPGRADE_MOTOR_RUNNING = 249, // 固件升级电机运转
+    // DJI_DUSS_MB_RET_HARDWARE_ERR = 250, // 硬件错误
+
+    // DJI_DUSS_MB_RET_DEV_BAT_NOT_ENOUGH = 251, // 设备电池电量不足
+
+    // DJI_DUSS_MB_RET_DEV_UAV_DISCONNECT = 252, // 设备飞机失连
+
+    // DJI_DUSS_MB_RET_FW_FLASH_ERASING = 253, // 固件flash擦除中
+
+    // DJI_DUSS_MB_RET_CHECK_CONNECTION_ERR = 254, // 检查连接错误
+    // DJI_DUSS_MB_RET_UNSPECIFIED = 255, // 保留
+
+    // ---- 业务处理 ----
 }
 
-// test_wakealarm_interrupts.sh  鐮旂┒鐪嬬湅鏃ュ織灏戞崬鐨勯棶棰?
+// test_wakealarm_interrupts.sh  研究看看日志少捞的问题
+
 void DjiBulkDevice::process_dji_amt_task_get_log(QByteArray& f) {
     struct DeviceInfo {
         uint8_t retCode;
@@ -1287,13 +1353,13 @@ void DjiBulkDevice::process_dji_amt_task_get_log(QByteArray& f) {
     uint8_t retCode = p[0];
     emit sendGetDjiResponse(1, info.retCode);
 
-    // 2锔忊儯 actual_log_length (LSB)
+    // 2. actual_log_length (LSB)
     uint32_t actualLen = p[1] | (p[2] << 8) | (p[3] << 16) | (p[4] << 24);
 
-    // 3锔忊儯 remainder_log_length
+    // 3. remainder_log_length
     uint32_t remainLen = p[5] | (p[6] << 8) | (p[7] << 16) | (p[8] << 24);
 
-    // 4锔忊儯 meta_data
+    // 4. meta_data
     QByteArray metaData = f.mid(9, actualLen);
 
     // ---- debug ----
@@ -1302,12 +1368,14 @@ void DjiBulkDevice::process_dji_amt_task_get_log(QByteArray& f) {
                        << "remainLen=" << remainLen
                        << "metaData HEX=" << metaData.toHex(' ').toUpper();
 
-    // 濡傛灉 metaData 鏄枃鏈?
+    // 如果 metaData 是文本
+
     if (!metaData.isEmpty()) {
         qDebug().noquote() << "metaData TXT=" << QString::fromUtf8(metaData);
     }
-    emit send_bulk_data(QString("鎵ц鏃ュ織锛?1").arg(QString::fromUtf8(metaData)));
-    // 5锔忊儯 濡傛灉杩樻湁鍓╀綑鏃ュ織锛岀户缁?fetch
+    emit send_bulk_data(QString("执行日志：%1").arg(QString::fromUtf8(metaData)));
+    // 5️⃣ 如果还有剩余日志，继续 fetch
+
     if (remainLen > 0) {
         set_amt_task_get_log(actualLen);
     }
@@ -1337,7 +1405,7 @@ void DjiBulkDevice::process_sys_event_report_status(QByteArray& f) {
     info.product_status = (uint32_t)p[1] | ((uint32_t)p[2] << 8) |
         ((uint32_t)p[3] << 16) | ((uint32_t)p[4] << 24);
 
-    emit send_bulk_data(QString("鎶ュ憡鍐呭=%1").arg(info.product_status));
+    emit send_bulk_data(QString("报告内容=%1").arg(info.product_status));
 }
 void DjiBulkDevice::process_set_product_status(QByteArray& f) {
     struct DeviceInfo {
@@ -1364,7 +1432,7 @@ void DjiBulkDevice::process_read_root_key_status(QByteArray& f) {
     if (info.retCode == 0) {
         info.key_status = (uint8_t)p[1];
 
-        emit send_bulk_data(QString("key娉ㄥ叆鎯呭喌=%1").arg(info.key_status));
+        emit send_bulk_data(QString("key注入情况=%1").arg(info.key_status));
     }
 }
 
@@ -1383,7 +1451,7 @@ void DjiBulkDevice::process_dji_get_product_status(QByteArray& f) {
         info.product_status = (uint32_t)p[1] | ((uint32_t)p[2] << 8) |
             ((uint32_t)p[3] << 16) | ((uint32_t)p[4] << 24);
 
-        emit send_bulk_data(QString("鍒囬噺浜х姸鎬?%1").arg(info.product_status));
+        emit send_bulk_data(QString("切量产状态=%1").arg(info.product_status));
     }
 }
 
@@ -1391,14 +1459,18 @@ void DjiBulkDevice::process_get_sn_operate(QByteArray& f) {
 #pragma pack(push, 1)
     struct DeviceInfo {
         uint8_t retCode;
-        uint16_t length; // little-endian；其后紧跟变长 SN 载荷
-        // 椋炴帶鍦板潃
-        // uint32_t fc_addr;浠栫殑boradsn鍙湁10涓師鍥犳槸杩欎釜
-        // 鐪熷疄product sn
+        uint16_t length;// 飞控地址
+        // uint32_t fc_addr;他的boradsn只有10个原因是这个
+
+    // 真实product sn
+
+    // 1️⃣ 最小包校验
+
     };
 #pragma pack(pop)
 
-    // 1锔忊儯 鏈€灏忓寘鏍￠獙
+    // 2️⃣ 端序修正
+
     if (f.size() < int(sizeof(DeviceInfo))) {
         qWarning() << "SN packet too short";
         return;
@@ -1406,16 +1478,19 @@ void DjiBulkDevice::process_get_sn_operate(QByteArray& f) {
 
     const DeviceInfo* info = reinterpret_cast<const DeviceInfo*>(f.constData());
 
-    // 2锔忊儯 绔簭淇
+    // 3️⃣ 长度一致性校验
+
     uint16_t sn_len = qFromLittleEndian(info->length);
 
-    // 3锔忊儯 闀垮害涓€鑷存€ф牎楠?
+    // 4️⃣ 取 SN
+
     if (f.size() != int(sizeof(DeviceInfo) + sn_len)) {
         qWarning() << "SN length mismatch:" << sn_len << f.size();
         return;
     }
 
-    // 4锔忊儯 鍙?SN
+    // 5️⃣ 正确的返回码逻辑
+
     const char* sn_ptr =
         reinterpret_cast<const char*>(info) + sizeof(DeviceInfo);
 
@@ -1426,12 +1501,14 @@ void DjiBulkDevice::process_get_sn_operate(QByteArray& f) {
 
     QByteArray snData(sn_ptr, sn_len);
     QString sn = QString::fromLatin1(snData);
-    // 5锔忊儯 姝ｇ‘鐨勮繑鍥炵爜閫昏緫
+    // 6️⃣ 调试输出
+
 
     emit sendGetDjiResponse(1, info->retCode);
 
-    // 6锔忊儯 璋冭瘯杈撳嚭
-    emit send_bulk_data(QString("闀垮害=%1").arg(sn_len));
+    // 长度=%1
+
+    emit send_bulk_data(QString("长度=%1").arg(sn_len));
     emit send_bulk_data(QString("sn=%1").arg(sn));
 }
 
@@ -1492,15 +1569,15 @@ void DjiBulkDevice::process_get_anti_rollback_comm(QByteArray& f) {
     emit sendGetDjiResponse(1, info.retCode);
 
     if (f.size() == 2) {
-        emit send_bulk_data(QString("褰撳墠鎵€鍦ㄦЫ=%1").arg(p[1]));
+        emit send_bulk_data(QString("当前所在槽=%1").arg(p[1]));
         return;
     }
     if (f.size() == 3) {
 
         emit send_bulk_data(
-            QString("ab鍒嗗尯鏍￠獙澶辫触鍊煎垎鍒负=%1 %2").arg(p[1]).arg(p[2]));
+            QString("ab分区校验失败值分别为=%1 %2").arg(p[1]).arg(p[2]));
         if (info.retCode == 0x00)
-            emit send_bulk_data("ab鍒嗗尯鏍￠獙鎴愬姛");
+            emit send_bulk_data("ab分区校验成功");
         else
             emit send_bulk_data(QStringLiteral("AB 分区校验失败：") + QStringLiteral("A[%1: %2], B[%3: %4]").arg(p[1]).arg(checkErrToString(p[1])).arg(p[2]).arg(checkErrToString(p[2])));
 
@@ -1509,7 +1586,7 @@ void DjiBulkDevice::process_get_anti_rollback_comm(QByteArray& f) {
     info.value = (uint32_t)p[1] | ((uint32_t)p[2] << 8) | ((uint32_t)p[3] << 16) |
         ((uint32_t)p[4] << 24);
 
-    emit send_bulk_data(QString("杩斿洖婊氱殑value=%1").arg(info.value));
+    emit send_bulk_data(QString("返回滚的value=%1").arg(info.value));
 }
 
 void DjiBulkDevice::process_sec_dbg_command_auth_handler(QByteArray& f) {
@@ -1535,7 +1612,7 @@ void DjiBulkDevice::process_sec_dbg_command_req_handler(QByteArray& f) {
 #pragma pack(push, 1)
     struct DeviceInfo {
         uint8_t retCode;    // 0
-        uint16_t sn_length; // 1~2  灏忕
+        uint16_t sn_length; // 1~2  小端
         uint8_t sn[32];     // 3~34
         uint32_t nonce;     // 35~38
     };
@@ -1550,21 +1627,24 @@ void DjiBulkDevice::process_sec_dbg_command_req_handler(QByteArray& f) {
     DeviceInfo info;
     memcpy(&info, f.constData(), sizeof(DeviceInfo));
 
-    // 1锔忊儯 retCode
+    // 1. retCode
     emit sendGetDjiResponse(1, info.retCode);
 
-    // 2锔忊儯 sn_length锛圲SB 鍗忚榛樿灏忕锛孮t / x86 鐩存帴鍙敤锛?
+    // 2️⃣ sn_length（USB 协议默认小端，Qt / x86 直接可用）
+
     uint16_t snLen = info.sn_length;
     if (snLen > sizeof(info.sn))
         snLen = sizeof(info.sn);
 
-    // 3锔忊儯 sn 杞?QString锛堝亣璁炬槸 ASCII锛?
+    // 3️⃣ sn 转 QString（假设是 ASCII）
+
     QString snStr =
         QString::fromLatin1(reinterpret_cast<const char*>(info.sn), snLen);
 
     emit send_bulk_data(QStringLiteral("SN=%1").arg(snStr));
 
-    // // 4锔忊儯 nonce锛堝鏋滀綘鍚庨潰瑕佺敤锛?
+    // // 4️⃣ nonce（如果你后面要用）
+
     // qDebug() << "nonce =" << Qt::hex << info.nonce;
 
     set_sec_dbg_auth_req_one_func(snStr, "o-joy", 0x70, 0x32, 0x1c0107ea,
@@ -1584,7 +1664,7 @@ void DjiBulkDevice::process_get_product_dbg_misc_subcmd_count(QByteArray& f) {
     info.left_count = (uint32_t)p[1] | ((uint32_t)p[2] << 8) |
         ((uint32_t)p[3] << 16) | ((uint32_t)p[4] << 24);
 
-    emit send_bulk_data(QString("瀹夊叏璋冭瘯妯″紡娆℃暟=%1").arg(info.left_count));
+    emit send_bulk_data(QString("安全调试模式次数=%1").arg(info.left_count));
 }
 
 void DjiBulkDevice::process_dji_get_active(QByteArray& f) {
@@ -1618,16 +1698,16 @@ void DjiBulkDevice::process_dji_get_active(QByteArray& f) {
         memcpy(&times_info, f.constData(), sizeof(sec_cmd_act_trial_times_ack_t));
 
         emit send_bulk_data(
-            QString("璇曠敤鎬绘鏁?%1").arg(times_info.total_trial_times));
+            QString("试用总次数=%1").arg(times_info.total_trial_times));
         emit send_bulk_data(
-            QString("宸茶瘯鐢ㄦ鏁?%1").arg(times_info.used_trial_times));
+            QString("已试用次数=%1").arg(times_info.used_trial_times));
         return;
     }
 
     int len = f.size();
     int offset = 0;
     info.retCode = p[0];
-    // 1锔忊儯 retCode
+    // 1. retCode
     if (len < 1)
         return;
     uint8_t retCode = p[offset++];
@@ -1638,7 +1718,7 @@ void DjiBulkDevice::process_dji_get_active(QByteArray& f) {
         return;
     }
 
-    // 2锔忊儯 reserved(6) + activate_state(2)
+    // 2. reserved(6) + activate_state(2)
     if (offset + 1 > len)
         return;
     uint8_t state_byte = p[offset++];
@@ -1647,11 +1727,12 @@ void DjiBulkDevice::process_dji_get_active(QByteArray& f) {
     uint8_t reserved = state_byte >> 2;         // bit[7:2]
 
     qDebug() << "activate_state =" << activate_state;
-    emit send_bulk_data(QString("婵€娲荤姸鎬佸€?%1").arg(activate_state));
+    emit send_bulk_data(QString("激活状态值=%1").arg(activate_state));
 
     qDebug() << "reserved =" << reserved;
 
-    // 3锔忊儯 activation_time锛? 瀛楄妭锛?
+    // 3️⃣ activation_time（7 字节）
+
     if (offset + 7 > len)
         return;
 
@@ -1674,12 +1755,13 @@ void DjiBulkDevice::process_dji_get_active(QByteArray& f) {
                     .arg(time.minute, 2, 10, QChar('0'))
                     .arg(time.second, 2, 10, QChar('0'));
 
-    // 4锔忊儯 board_num_length
+    // 4. board_num_length
     if (offset + 1 > len)
         return;
     uint8_t board_num_length = p[offset++];
 
-    // 5锔忊儯 board_num锛堝彉闀匡級
+    // 5️⃣ board_num（变长）
+
     if (offset + board_num_length > len)
         return;
     QByteArray board_num(reinterpret_cast<const char*>(p + offset),
@@ -1721,24 +1803,26 @@ void DjiBulkDevice::process_dji_get_date(QByteArray& f) {
 
     int idx = 0;
 
-    // 1锔忊儯 retCode
+    // 1. retCode
     info.retCode = p[idx++];
 
-    // 2锔忊儯 year锛坲int16_t锛屽皬绔級
+    // 2️⃣ year（uint16_t，小端）
+
     info.year = p[idx] | (p[idx + 1] << 8);
     idx += 2;
 
-    // 3锔忊儯 time fields
+    // 3. time fields
     info.month = p[idx++];
     info.day = p[idx++];
     info.hour = p[idx++];
     info.minute = p[idx++];
     info.second = p[idx++];
 
-    // ===== 涓氬姟澶勭悊 =====
+    // ===== 业务处理 =====
     emit sendGetDjiResponse(1, info.retCode);
 
-    // ===== 鏍煎紡鍖栨棩鏈熸椂闂?=====
+    // ===== 格式化日期时间 =====
+
     QString dateStr = QString("%1-%2-%3 %4:%5:%6")
                           .arg(info.year, 4, 10, QLatin1Char('0'))
                           .arg(info.month, 2, 10, QLatin1Char('0'))
@@ -1747,7 +1831,7 @@ void DjiBulkDevice::process_dji_get_date(QByteArray& f) {
                           .arg(info.minute, 2, 10, QLatin1Char('0'))
                           .arg(info.second, 2, 10, QLatin1Char('0'));
 
-    emit send_bulk_data(QString("鏃ユ湡=%1").arg(dateStr));
+    emit send_bulk_data(QString("日期=%1").arg(dateStr));
 }
 
 void DjiBulkDevice::process_dji_factory_mode_handle(QByteArray& f) {
@@ -1789,23 +1873,24 @@ void DjiBulkDevice::process_djiFactroyCmd_get_version(QByteArray& f) {
     info.retCode = p[0];
 
     emit sendGetDjiResponse(1, info.retCode);
-    // 2锔忊儯 major / minor version (4bit + 4bit)
+    // 2. major / minor version (4bit + 4bit)
     info.majorVersion = (p[1] >> 4) & 0x0F;
     info.minorVersion = p[1] & 0x0F;
 
-    // 3锔忊儯 hardware_version (CHAR8, 0 缁撳熬)
+    // 3️⃣ hardware_version (CHAR8, 0 结尾)
+
     info.hardwareVersion =
         QString::fromLatin1(reinterpret_cast<const char*>(p + 2),
                             static_cast<int>(strnlen(reinterpret_cast<const char*>(p + 2), 16)));
 
-    // 4锔忊儯 loader_version (LSB 鈫?MSB)
+    // 4. loader_version (LSB -> MSB)
     info.loaderVersion = QString("%1.%2.%3.%4")
                              .arg(p[21], 2, 10, QChar('0'))  // AA
                              .arg(p[20], 2, 10, QChar('0'))  // BB
                              .arg(p[19], 2, 10, QChar('0'))  // CC
                              .arg(p[18], 2, 10, QChar('0')); // DD
 
-    // 5锔忊儯 firmware_version (LSB 鈫?MSB)
+    // 5. firmware_version (LSB -> MSB)
     info.firmwareVersion = QString("%1.%2.%3.%4")
                                .arg(p[25], 2, 10, QChar('0'))
                                .arg(p[24], 2, 10, QChar('0'))
@@ -1821,7 +1906,8 @@ void DjiBulkDevice::process_djiFactroyCmd_get_version(QByteArray& f) {
 
     info.is_not_existed = flags & (1u << 29);
 
-    // 6锔忊儯 鎵撳嵃锛堝共鍑€銆佷笉涓戯級
+    // 6️⃣ 打印（干净、不丑）
+
     qDebug().noquote()
         << "[GET_VERSION]" << QString("ret=%1").arg(info.retCode)
         << QString("proto=%1.%2").arg(info.majorVersion).arg(info.minorVersion)
@@ -1829,6 +1915,6 @@ void DjiBulkDevice::process_djiFactroyCmd_get_version(QByteArray& f) {
         << QString("loader=%1").arg(info.loaderVersion)
         << QString("fw=%1").arg(info.firmwareVersion);
 
-    emit send_bulk_data(QString("鐗堟湰鍙?%1").arg(info.firmwareVersion));
-    emit send_bulk_data(QString("鍔犲瘑鐘舵€?%1").arg(info.is_mass_product));
+    emit send_bulk_data(QString("版本号=%1").arg(info.firmwareVersion));
+    emit send_bulk_data(QString("加密状态=%1").arg(info.is_mass_product));
 }

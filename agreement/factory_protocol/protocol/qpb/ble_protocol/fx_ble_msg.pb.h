@@ -102,20 +102,20 @@ typedef enum _OperationType {
 
 typedef enum _KeyType { 
     KeyType_DEFAULT_KEY = 0, 
-    KeyType_VEC_BRUSH_TIME_RAW = 1, /* ����ˢ��ʱ�� (У��ǰ) */
-    KeyType_VEC_BRUSH_TIME_CORRECTED = 2, /* ����ˢ��ʱ�� (У����) */
-    KeyType_VEC_OP_TIME_RAW = 3, /* �����ѹʱ�� (У��ǰ) */
-    KeyType_VEC_OP_TIME_CORRECTED = 4, /* �����ѹʱ�� (У����) */
-    KeyType_VEC_HB_TIME_RAW = 5, /* �����ˢʱ�� (У��ǰ) */
-    KeyType_VEC_HB_TIME_CORRECTED = 6 /* �����ˢʱ�� (У����) */
+    KeyType_VEC_BRUSH_TIME_RAW = 1, /* 区域使用时长 (校正前) */
+    KeyType_VEC_BRUSH_TIME_CORRECTED = 2, /* 区域使用时长 (校正后) */
+    KeyType_VEC_OP_TIME_RAW = 3, /* 区域过压时长 (校正前) */
+    KeyType_VEC_OP_TIME_CORRECTED = 4, /* 区域过压时长 (校正后) */
+    KeyType_VEC_HB_TIME_RAW = 5, /* 区域横向动作时长 (校正前) */
+    KeyType_VEC_HB_TIME_CORRECTED = 6 /* 区域横向动作时长 (校正后) */
 } KeyType;
 
 typedef enum _SwitchType { 
-    SwitchType_BRUSHING_REAL_TIME = 0, /* ˢ��ʱ�� */
-    SwitchType_OP_TIME = 1, /* ��ѹʱ�� */
-    SwitchType_HB_TIME = 2, /* ��ˢʱ�� */
-    SwitchType_COVERAGE = 3, /* ������ */
-    SwitchType_PLAQUE_RESIDUE = 4 /* ���߲��� */
+    SwitchType_BRUSHING_REAL_TIME = 0, /* 使用时长 */
+    SwitchType_OP_TIME = 1, /* 过压时长 */
+    SwitchType_HB_TIME = 2, /* 横向动作时长 */
+    SwitchType_COVERAGE = 3, /* 覆盖率 */
+    SwitchType_PLAQUE_RESIDUE = 4 /* 菌斑残留 */
 } SwitchType;
 
 typedef enum _Button { 
@@ -179,7 +179,7 @@ typedef enum _ErrorCode {
     ErrorCode_SUCCESS = 0, 
     ErrorCode_CRC_ERROR = 1, 
     ErrorCode_PB_ERROR = 2, 
-    ErrorCode_FAIL = 3, /* �������� */
+    ErrorCode_FAIL = 3, /* 其他错误 */
     ErrorCode_NOT_SUPPORT = 4, 
     ErrorCode_SUPPORT = 5, 
     ErrorCode_ALGORITHM_CRASH = 6, 
@@ -189,8 +189,8 @@ typedef enum _ErrorCode {
     ErrorCode_MODEL_OPTIMIZING = 10, 
     ErrorCode_EXPERT_MODEL_IN_USE = 11, 
     ErrorCode_NOT_DOWNLOADED = 12, 
-    ErrorCode_WIFI_NOT_FOUND = 13, /* �Ҳ������� */
-    ErrorCode_WIFI_PASSWORD_ERROR = 14, /* ������� */
+    ErrorCode_WIFI_NOT_FOUND = 13, /* 找不到网络 */
+    ErrorCode_WIFI_PASSWORD_ERROR = 14, /* 密码错误 */
     ErrorCode_DOWNLOADING = 15, 
     ErrorCode_WIFI_DISABLE = 16, 
     ErrorCode_PROTOCOL_ID_ERROR = 17, 
@@ -467,14 +467,14 @@ typedef enum _TeethNumber {
 
 typedef enum _ProblemTeeth { 
     ProblemTeeth_NO_PROBLEM = 0, 
-    ProblemTeeth_SENSITIVE_TEETH = 1, /* ������ */
-    ProblemTeeth_DENTAL_IMPLANTS = 2, /* ��ֲ�� */
-    ProblemTeeth_ORTHODONTICS_TEETH = 3, /* ���� */
-    ProblemTeeth_MISSING_TEETH = 4, /* ȱ�� */
-    ProblemTeeth_WISDOM_TEETH = 5, /* ȣ���� */
-    ProblemTeeth_STONE_TEETH = 6, /* ��ʯ�� */
-    ProblemTeeth_PIGMENT_TEETH = 7, /* ɫ���� */
-    ProblemTeeth_BACTERIAL_PLAQUE = 8 /* ������ */
+    ProblemTeeth_SENSITIVE_TEETH = 1, /* 敏感类型 */
+    ProblemTeeth_DENTAL_IMPLANTS = 2, /* 植入类型 */
+    ProblemTeeth_ORTHODONTICS_TEETH = 3, /* 正畸 */
+    ProblemTeeth_MISSING_TEETH = 4, /* 缺失类型 */
+    ProblemTeeth_WISDOM_TEETH = 5, /* 龋坏类型 */
+    ProblemTeeth_STONE_TEETH = 6, /* 结石类型 */
+    ProblemTeeth_PIGMENT_TEETH = 7, /* 色素类型 */
+    ProblemTeeth_BACTERIAL_PLAQUE = 8 /* 菌斑类型 */
 } ProblemTeeth;
 
 typedef enum _BrushTotalArea { 
@@ -875,28 +875,28 @@ typedef enum _RotasUpdateFile {
 typedef enum _RotaErrorCode { 
     RotaErrorCode_ROTA_SUCCESS = 0, 
     RotaErrorCode_GENERAL = 1, 
-    RotaErrorCode_LOW_BATTERY = 2, /* �͵��� */
+    RotaErrorCode_LOW_BATTERY = 2, /* 低电量 */
     RotaErrorCode_OTA_ALREADY = 3, 
     RotaErrorCode_FILE_TOO_LAGER = 4, 
     RotaErrorCode_MD5_FAIL = 5, 
     RotaErrorCode_FILE_NO_SUPPORT = 6, 
-    RotaErrorCode_FLASH_ERR = 7, /* �洢�쳣 */
-    RotaErrorCode_NO_MEMORY = 8, /* �ڴ治�� */
+    RotaErrorCode_FLASH_ERR = 7, /* 存储异常 */
+    RotaErrorCode_NO_MEMORY = 8, /* 内存不足 */
     RotaErrorCode_TRANS_TIMEOUT = 9, 
     RotaErrorCode_TRANS_OVER_RANGE = 10, 
     RotaErrorCode_DOWNLOAD_SUCCESS = 11, 
-    RotaErrorCode_DOWNLOAD_FAIL = 12, /* ��ȡ�ļ�ʧ�� */
-    RotaErrorCode_NO_NETWORK_CONFIG = 13, /* û���� */
-    RotaErrorCode_NETWORK_CONN_FAIL = 14, /* ��������ʧ�� */
-    RotaErrorCode_GET_FILE_INFO_FAIL = 15, /* ��ȡ�ļ�URLʧ�� */
-    RotaErrorCode_DOWNLOAD_CHECKOUT = 16, /* �ļ�����У��ʧ�� */
-    RotaErrorCode_INSTALL_FAIL = 17, /* �ļ����ذ�װʧ�� */
-    RotaErrorCode_OTA_WIFI_NOT_FOUND = 18, /* �Ҳ������� */
-    RotaErrorCode_OTA_WIFI_PASSWORD_ERROR = 19, /* ������� */
-    RotaErrorCode_OTA_DOWNLOADING = 20, /* ���������ļ��� */
-    RotaErrorCode_OTA_WIFI_DISABLE = 21, /* WIFI�ѽ��� */
-    RotaErrorCode_RESOURCE_UPDATING = 22, /* ��Դ������ */
-    RotaErrorCode_FLASH_NOT_ENOUGH = 23 /* �洢�ռ䲻�� */
+    RotaErrorCode_DOWNLOAD_FAIL = 12, /* 获取文件失败 */
+    RotaErrorCode_NO_NETWORK_CONFIG = 13, /* 没配网 */
+    RotaErrorCode_NETWORK_CONN_FAIL = 14, /* 网络连接失败 */
+    RotaErrorCode_GET_FILE_INFO_FAIL = 15, /* 获取文件URL失败 */
+    RotaErrorCode_DOWNLOAD_CHECKOUT = 16, /* 文件下载校验失败 */
+    RotaErrorCode_INSTALL_FAIL = 17, /* 文件下载安装失败 */
+    RotaErrorCode_OTA_WIFI_NOT_FOUND = 18, /* 找不到网络 */
+    RotaErrorCode_OTA_WIFI_PASSWORD_ERROR = 19, /* 密码错误 */
+    RotaErrorCode_OTA_DOWNLOADING = 20, /* 正在下载文件中 */
+    RotaErrorCode_OTA_WIFI_DISABLE = 21, /* WIFI已禁用 */
+    RotaErrorCode_RESOURCE_UPDATING = 22, /* 资源更新中 */
+    RotaErrorCode_FLASH_NOT_ENOUGH = 23 /* 存储空间不足 */
 } RotaErrorCode;
 
 /* ############################# 0x70 Plan Service Start ################################### */
@@ -1022,7 +1022,7 @@ typedef struct _AudioRemindState {
 
 typedef PB_BYTES_ARRAY_T(64) BackupConfigInfo_byte_data_t;
 typedef struct _BackupConfigInfo { 
-    uint32_t backup_code; /* BackupCode: 1:�����2:AIѧϰ��3:��ǻ���� */
+    uint32_t backup_code; /* BackupCode: 1:设置项，2:AI学习，3:用户档案 */
     pb_size_t which_config_data;
     union {
         BackupConfigInfo_byte_data_t byte_data;
@@ -1033,7 +1033,7 @@ typedef struct _BackupConfigInfo {
 } BackupConfigInfo;
 
 typedef struct _BackupFileInfo { 
-    uint32_t backup_code; /* BackupCode: 1:�����2:AIѧϰ��3:������չ */
+    uint32_t backup_code; /* BackupCode: 1:设置项，2:AI学习，3:其他扩展 */
     char file_name[32]; 
     uint32_t file_size; 
     uint32_t file_id; 
@@ -1307,7 +1307,7 @@ typedef struct _WifiInfo {
 typedef struct _AlgoOtherData { 
     pb_size_t other_data_list_count;
     AlgoOtherDataResult other_data_list[6]; 
-    uint32_t pause_count; /* 2��10��󴥷�����ͣ"���� */
+    uint32_t pause_count; /* 2分10秒后触发“暂停"次数 */
 } AlgoOtherData;
 
 typedef struct _AlgorithmCollectList { 
@@ -1571,33 +1571,33 @@ typedef PB_BYTES_ARRAY_T(5) AlgoResultFusion_param_switch_t;
 typedef PB_BYTES_ARRAY_T(4) AlgoResultFusion_factor_switch_t;
 typedef PB_BYTES_ARRAY_T(256) AlgoResultFusion_other_data_bytes_t;
 typedef struct _AlgoResultFusion { 
-    AlgoResultFusion_param_switch_t param_switch; /* ȫ�ڲ������� ˳��ʹ��SwitchType */
-    AlgoResultFusion_factor_switch_t factor_switch; /* ������ģ���� ˳��ʹ��SwitchType */
-    uint32_t time_op; /* ȫ�ڹ�ѹʱ�� */
-    uint32_t time_hb; /* ȫ�ں�ˢʱ�� */
-    uint32_t plaque_residue; /* ȫ�ھ��߲��� */
-    uint32_t n_area; /* �������� */
-    uint32_t n_facet; /* �������� */
+    AlgoResultFusion_param_switch_t param_switch; /* 全口参数开关 顺序使用SwitchType */
+    AlgoResultFusion_factor_switch_t factor_switch; /* 区域模型开关 顺序使用SwitchType */
+    uint32_t time_op; /* 全口过压时长 */
+    uint32_t time_hb; /* 全口横向动作时长 */
+    uint32_t plaque_residue; /* 全口菌斑残留 */
+    uint32_t n_area; /* 区域数量 */
+    uint32_t n_facet; /* 面位数量 */
     pb_size_t vec_time_display_count;
-    int32_t vec_time_display[6]; /* ����ˢ��ʱ�����ְٷֱ� */
+    int32_t vec_time_display[6]; /* 区域使用时长呈现百分比 */
     pb_size_t vec_time_op_display_count;
-    int32_t vec_time_op_display[6]; /* �����ѹʱ�����ְٷֱ� */
+    int32_t vec_time_op_display[6]; /* 区域过压时长呈现百分比 */
     pb_size_t vec_time_hb_display_count;
-    int32_t vec_time_hb_display[6]; /* �����ˢʱ�����ְٷֱ� */
+    int32_t vec_time_hb_display[6]; /* 区域横向动作时长呈现百分比 */
     pb_size_t vec_coverage_count;
-    uint32_t vec_coverage[6]; /* ���򸲸��� */
-    uint32_t algo_ver; /* �㷨�汾�� */
-    uint32_t protocol_ver; /* Э���� */
-    uint32_t timestamp_end; /* ˢ������ʱ�� */
+    uint32_t vec_coverage[6]; /* 区域覆盖率 */
+    uint32_t algo_ver; /* 算法版本号 */
+    uint32_t protocol_ver; /* 协议编号 */
+    uint32_t timestamp_end; /* 使用结束时间 */
     pb_size_t vec_brush_time_raw_count;
-    uint32_t vec_brush_time_raw[6]; /* ����ˢ��ʱ������ֵ */
+    uint32_t vec_brush_time_raw[6]; /* 区域使用时长呈现值 */
     pb_size_t vec_op_time_raw_count;
-    uint32_t vec_op_time_raw[6]; /* �����ѹˢ��ʱ������ֵ */
+    uint32_t vec_op_time_raw[6]; /* 区域过压使用时长呈现值 */
     pb_size_t which_other_data;
     union {
         AlgoOtherData other_data_result;
         AlgoResultFusion_other_data_bytes_t other_data_bytes;
-    } other_data; /* �о����� */
+    } other_data; /* 研究数据 */
 } AlgoResultFusion;
 
 typedef struct _DeviceInfo { 
@@ -1643,15 +1643,15 @@ typedef struct _UserBackupData {
 } UserBackupData;
 
 typedef struct _ReportData { 
-    uint32_t timestamp; /* ˢ����ʼʱ�� */
-    BrushingModel brushing_model; /* ˢ��ģʽ */
-    uint32_t brushing_power_level; /* ˢ������ */
-    uint32_t brushing_time; /* ˢ��ֹͣʱ�� */
-    uint32_t brushing_real_time; /* ʵ��ˢ��ʱ�� */
-    uint32_t brushing_time_score; /* ˢ��ʱ���ܷ��� */
-    uint32_t coverage_rate_score; /* �������ܷ��� */
-    uint32_t brushing_score; /* ˢ���ܷ��� */
-    uint32_t pressure_sensor_score; /* ѹ����Ӧ�ܵ÷� */
+    uint32_t timestamp; /* 使用开始时间 */
+    BrushingModel brushing_model; /* 使用模式 */
+    uint32_t brushing_power_level; /* 使用力度 */
+    uint32_t brushing_time; /* 使用停止时长 */
+    uint32_t brushing_real_time; /* 实际使用时长 */
+    uint32_t brushing_time_score; /* 使用时长总分数 */
+    uint32_t coverage_rate_score; /* 覆盖率总分数 */
+    uint32_t brushing_score; /* 使用总分数 */
+    uint32_t pressure_sensor_score; /* 压力感应总得分 */
     pb_size_t which_add_data;
     union {
         AlgorithmReport algorithm_report;
