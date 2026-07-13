@@ -603,6 +603,24 @@ void fillHookCombo(QComboBox* box) {
         box->addItem(item.first, item.second);
 }
 
+bool isSuctionSampleHookId(const QString& hookId) {
+    return hookId == QLatin1String("DONGLE_SUCTION_SAMPLE");
+}
+
+SendCmdParamUi suctionSampleHookParamUi() {
+    SendCmdParamUi out;
+    out.valid = true;
+    out.kind = SendCmdParamKind::JsonMap;
+    out.hint = QStringLiteral(
+        "吸力卡控（写入本工站 profiles/<工站>/steps/步骤.ini，不读上位机设置.ini）：\n"
+        "sampleDurationMs=10000   采样时长(ms)\n"
+        "sampleIntervalMs=20      采样间隔(ms)\n"
+        "peakTargetKpa=-36        目标峰值(kPa)\n"
+        "peakToleranceKpa=2.6     允许偏差(kPa)\n"
+        "peakDiffMaxKpa=2.6       左右峰差上限(kPa)");
+    return out;
+}
+
 } // namespace
 
 TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(new Ui::TestCaseEditDialog) {
@@ -638,6 +656,8 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
     connect(ui->checkBox_gateEnabled, &QCheckBox::toggled, this, &TestCaseEditDialog::updateGateFieldsEnabled);
     connect(ui->checkBox_promptEnabled, &QCheckBox::toggled, this, &TestCaseEditDialog::updatePromptFieldsEnabled);
     connect(ui->checkBox_hookEnabled, &QCheckBox::toggled, this, &TestCaseEditDialog::updateHookFieldsEnabled);
+    connect(ui->comboBox_hookId, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+            &TestCaseEditDialog::onHookIdChanged);
     connect(ui->buttonBox, &QDialogButtonBox::accepted, this, [this]() {
         if (saveValidated())
             accept();
@@ -838,12 +858,28 @@ void TestCaseEditDialog::updatePromptFieldsEnabled() {
 
 void TestCaseEditDialog::updateHookFieldsEnabled() {
     const bool on = ui->checkBox_hookEnabled->isChecked();
+    const QString hookId = on ? comboData(ui->comboBox_hookId) : QString();
+    const bool suctionHook = isSuctionSampleHookId(hookId);
     ui->label_hookId->setVisible(on);
     ui->comboBox_hookId->setVisible(on);
     ui->groupBox_send->setVisible(!on);
     if (!on) {
         updateProductProtocolRowVisible();
+        onDeviceCmdChanged(ui->comboBox_deviceCmd->currentIndex());
+        return;
     }
+    if (suctionHook) {
+        const SendCmdParamUi schema = suctionSampleHookParamUi();
+        updateSendParamVisibility(true);
+        applySendParamHintToUi(schema, ui->label_sendParamHint, ui->plainTextEdit_jsonParam, ui->spinBox_intParam);
+        ui->stackedWidget_param->setCurrentWidget(ui->page_paramJson);
+        return;
+    }
+    updateSendParamVisibility(false);
+}
+
+void TestCaseEditDialog::onHookIdChanged(int) {
+    updateHookFieldsEnabled();
 }
 
 void TestCaseEditDialog::updateSendParamVisibility(bool hasParam) {
@@ -960,6 +996,12 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     updateGateFieldsEnabled();
     updatePromptFieldsEnabled();
     updateHookFieldsEnabled();
+    if (def.hook.enabled && isSuctionSampleHookId(def.hook.hookId)) {
+        applySendParamToUi(suctionSampleHookParamUi(), def.send.param, ui->page_paramNone, ui->page_paramInt,
+                           ui->page_paramJson, ui->stackedWidget_param, ui->spinBox_intParam,
+                           ui->plainTextEdit_jsonParam);
+        ui->stackedWidget_param->setCurrentWidget(ui->page_paramJson);
+    }
 }
 
 TestCaseDefinition TestCaseEditDialog::definition() const {
@@ -982,10 +1024,18 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
         def.send.productProtocol = productProtocolFromComboData(comboData(ui->comboBox_productProtocol));
     }
     def.send.deviceCmd = comboData(ui->comboBox_deviceCmd);
-    const SendCmdParamUi uiSchema = sendCmdParamUiForName(def.send.deviceCmd, def.send.channel, def.send.device);
-    def.send.param = readSendParamFromUi(uiSchema, ui->spinBox_intParam, ui->plainTextEdit_jsonParam);
-    if (def.send.channel == TestCaseSendChannel::Fixture && uiSchema.kind == SendCmdParamKind::Int && ui->spinBox_intParam->value() == 0)
-        def.send.param = QStringLiteral("$INDEX");
+    def.hook.enabled = ui->checkBox_hookEnabled->isChecked();
+    def.hook.hookId = comboData(ui->comboBox_hookId);
+    if (def.hook.enabled && isSuctionSampleHookId(def.hook.hookId)) {
+        def.send.param =
+            readSendParamFromUi(suctionSampleHookParamUi(), ui->spinBox_intParam, ui->plainTextEdit_jsonParam);
+    } else {
+        const SendCmdParamUi uiSchema = sendCmdParamUiForName(def.send.deviceCmd, def.send.channel, def.send.device);
+        def.send.param = readSendParamFromUi(uiSchema, ui->spinBox_intParam, ui->plainTextEdit_jsonParam);
+        if (def.send.channel == TestCaseSendChannel::Fixture && uiSchema.kind == SendCmdParamKind::Int
+            && ui->spinBox_intParam->value() == 0)
+            def.send.param = QStringLiteral("$INDEX");
+    }
 
     def.timing.delayBeforeMs = ui->spinBox_delayBefore->value();
     def.timing.delayAfterMs = ui->spinBox_delayAfter->value();
@@ -1016,8 +1066,6 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
         if (def.gate.enabled)
             def.gates.append(def.gate);
     }
-    def.hook.enabled = ui->checkBox_hookEnabled->isChecked();
-    def.hook.hookId = comboData(ui->comboBox_hookId);
     return def;
 }
 
@@ -1111,6 +1159,11 @@ bool TestCaseEditDialog::saveValidated() {
     QStringList errors;
     if (!TestCaseValidator::validateCase(def, errors)) {
         QMessageBox::warning(this, QStringLiteral("保存失败"), errors.join(QLatin1Char('\n')));
+        return false;
+    }
+    if (stationKey_.isEmpty()) {
+        QMessageBox::warning(this, QStringLiteral("保存失败"),
+                             QStringLiteral("请先在「测试流程编排」顶部选择工站，再保存步骤参数到该工站 profiles/.../steps/ 目录。"));
         return false;
     }
     if (!TestCaseStore::saveCaseForStation(stationKey_, def)) {

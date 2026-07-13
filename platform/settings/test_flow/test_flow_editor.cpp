@@ -898,16 +898,17 @@ void TestFlowEditor::openEditDialog(TestCaseBlock* block) {
     }
 
     const QString oldFlowKey = block->caseName();
+    const QString stationKey = currentStationKey();
     auto* dlg = new TestCaseEditDialog(dialogParent_);
     dlg->setAttribute(Qt::WA_DeleteOnClose, true);
     dlg->setWindowModality(Qt::NonModal);
     dlg->setWindowFlag(Qt::Window, true);
+    dlg->setStationContext(stationKey);
 
     if (!block->isBlank()) {
         TestCaseDefinition def;
-        TestCaseStore::loadCaseForStation(currentStationKey(), block->caseName(), def);
+        TestCaseStore::loadCaseForStation(stationKey, block->caseName(), def);
         dlg->setDefinition(def, block->caseName());
-        dlg->setStationContext(currentStationKey());
         dlg->setWindowTitle(QStringLiteral("测试项配置 - %1").arg(block->caseName()));
     } else {
         dlg->setWindowTitle(QStringLiteral("测试项配置 - 新步骤"));

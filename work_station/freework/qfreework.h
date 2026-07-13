@@ -94,6 +94,7 @@ class QFreeWork : public test_base {
     int resolveFixtureMachineIndex(const QVariant& param) const;
     QVariantMap cachedHuilingVisaLink() const;
     void updateHuilingVisaLinkCache(const QVariantMap& link);
+    void seedHuilingVisaLinkCacheFromFlowOrSettings();
     void onUsbInstrumentReport(const ProtocolReport& report) override;
 
   private:
@@ -277,6 +278,8 @@ class QFreeWork : public test_base {
     void applyFreeWorkExtraTabsVisible(bool visible);
     bool isFreeWorkXwdKeyStation() const;
     void loadSuctionGateSettings();
+    /** 从工站步骤 send.param 加载吸力卡控（不读全局 SETTINGS）。 */
+    void applySuctionGateFromStepParam(const QVariant& param);
     void runDongleSuctionSampleStep();
     void setDongleSuctionReadEnabled(bool enabled);
     void initSuctionChart();

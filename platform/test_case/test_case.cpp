@@ -8,6 +8,7 @@
 #include "modbus_cmd_manifest.h"
 #include "scpi_cmd_manifest.h"
 #include "tuple_cmd_manifest.h"
+#include "huiling_wfp60h_profile.h"
 
 #include <QCoreApplication>
 #include <QDateTime>
@@ -188,9 +189,8 @@ void applyTestCaseIniCodec(QSettings& ini) {
 }
 
 void syncTestCaseIni(QSettings& ini, const QString& filePath) {
+    Q_UNUSED(filePath);
     ini.sync();
-    if (ini.status() == QSettings::NoError)
-        CommonUtils::stripUtf8BomFromFile(filePath);
 }
 
 /** FlowStations / Station 组用的 ini 键须为 ASCII，否则 QSettings 会写成 %U5389%U5BB3 等形式。 */
@@ -907,7 +907,7 @@ void migrateProfileStepOverridesForStation(const QString& stationKey) {
             && !loadCaseDefinitionFromIniFile(legacyPath, stepId, def)) {
             continue;
         }
-        writeCaseIniFile(overlayPath, def, true);
+        writeCaseIniFile(overlayPath, def, false);
     }
 }
 
@@ -1165,7 +1165,14 @@ void applyCaseIniOverlay(QSettings& overlay, TestCaseDefinition& def) {
         const QVariantMap paramMap = readSendParamMap(overlay);
         if (!paramMap.isEmpty()) {
             if (def.send.channel == TestCaseSendChannel::Modbus || def.send.channel == TestCaseSendChannel::Scpi) {
-                def.send.param = normalizeScpiModbusParamFromMap(paramMap);
+                QVariantMap merged;
+                if (def.send.param.canConvert<QVariantMap>()) {
+                    merged = def.send.param.toMap();
+                }
+                for (auto it = paramMap.constBegin(); it != paramMap.constEnd(); ++it) {
+                    merged.insert(it.key(), it.value());
+                }
+                def.send.param = normalizeScpiModbusParamFromMap(merged);
             } else if (def.send.channel == TestCaseSendChannel::Product) {
                 DeviceCmd cmd;
                 if (DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd))
@@ -1479,6 +1486,15 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
     if (profileOverlayOnly) {
         if (!def.send.device.isEmpty())
             ini.setValue(QStringLiteral("Send/Device"), def.send.device);
+        if (def.send.channel == TestCaseSendChannel::Modbus || def.send.channel == TestCaseSendChannel::Scpi) {
+            QString channelStr = def.send.channel == TestCaseSendChannel::Scpi ? QStringLiteral("Scpi")
+                                                                               : QStringLiteral("Modbus");
+            ini.setValue(QStringLiteral("Send/Channel"), channelStr);
+            if (!def.send.deviceCmd.isEmpty())
+                ini.setValue(QStringLiteral("Send/DeviceCmd"), def.send.deviceCmd);
+            ini.setValue(QStringLiteral("Send/Action"),
+                         def.send.action == TestCaseSendAction::Get ? QStringLiteral("Get") : QStringLiteral("Set"));
+        }
         if (def.send.channel == TestCaseSendChannel::Dongle) {
             DongleCmd dongleCmd;
             if (DongleCmdCatalog::dongleCmdFromName(def.send.deviceCmd, dongleCmd))
@@ -1512,6 +1528,8 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
         ini.setValue(QStringLiteral("Gate/LowSettingsKey"), def.gate.lowSettingsKey);
         ini.setValue(QStringLiteral("Gate/HighSettingsKey"), def.gate.highSettingsKey);
         saveMultiGatesToIni(ini, def);
+        ini.setValue(QStringLiteral("Hook/Enabled"), def.hook.enabled);
+        ini.setValue(QStringLiteral("Hook/HookId"), def.hook.hookId);
         syncTestCaseIni(ini, path);
         return true;
     }
@@ -1604,20 +1622,22 @@ bool TestCaseStore::loadCaseForStation(const QString& stationKey, const QString&
     out = TestCaseDefinition{};
     const QString libraryPath = TestCasePaths::stepLibraryPath(id);
     const QString legacyPath = TestCasePaths::caseIniPath(id);
+    const QString key = stationKey.trimmed();
+    const QString profileStepPath =
+        key.isEmpty() ? QString() : TestCasePaths::profileStepOverridePath(key, id);
+
     bool loaded = loadCaseDefinitionFromIniFile(libraryPath, id, out);
     if (!loaded)
         loaded = loadCaseDefinitionFromIniFile(legacyPath, id, out);
+    if (!loaded && !profileStepPath.isEmpty())
+        loaded = loadCaseDefinitionFromIniFile(profileStepPath, id, out);
     if (!loaded)
         return false;
 
-    const QString key = stationKey.trimmed();
-    if (!key.isEmpty()) {
-        const QString overlayPath = TestCasePaths::profileStepOverridePath(key, id);
-        if (QFile::exists(overlayPath)) {
-            QSettings overlayIni(overlayPath, QSettings::IniFormat);
-            applyTestCaseIniCodec(overlayIni);
-            applyCaseIniOverlay(overlayIni, out);
-        }
+    if (!profileStepPath.isEmpty() && QFile::exists(profileStepPath)) {
+        QSettings overlayIni(profileStepPath, QSettings::IniFormat);
+        applyTestCaseIniCodec(overlayIni);
+        applyCaseIniOverlay(overlayIni, out);
     }
     return true;
 }
@@ -1644,7 +1664,7 @@ bool TestCaseStore::saveCaseForStation(const QString& stationKey, const TestCase
             if (!writeCaseIniFile(libraryPath, def, false))
                 return false;
         }
-        if (!writeCaseIniFile(TestCasePaths::profileStepOverridePath(key, stepId), def, true))
+        if (!writeCaseIniFile(TestCasePaths::profileStepOverridePath(key, stepId), def, false))
             return false;
     } else {
         if (!writeCaseIniFile(TestCasePaths::stepLibraryPath(stepId), def, false))

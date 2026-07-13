@@ -290,6 +290,46 @@ void QFreeWork::updateHuilingVisaLinkCache(const QVariantMap& link) {
     huilingVisaLinkCache_ = link;
 }
 
+void QFreeWork::seedHuilingVisaLinkCacheFromFlowOrSettings() {
+    auto trySeedFromConfigureStep = [this](const TestCaseDefinition& def) {
+        if (def.send.channel != TestCaseSendChannel::Scpi) {
+            return false;
+        }
+        if (def.send.deviceCmd.compare(QLatin1String("ConfigureProgrammablePower"), Qt::CaseInsensitive) != 0) {
+            return false;
+        }
+        if (!def.send.param.canConvert<QVariantMap>()) {
+            return false;
+        }
+        const QVariantMap map = def.send.param.toMap();
+        if (map.value(QStringLiteral("visaAddress")).toString().trimmed().isEmpty()) {
+            return false;
+        }
+        updateHuilingVisaLinkCache(map);
+        return true;
+    };
+
+    const QVector<TestFlowItemEntry> flowItems = TestCaseStore::loadStationFlowItems(activeFlowStationKey_);
+    for (const TestFlowItemEntry& entry : flowItems) {
+        if (!entry.enabled) {
+            continue;
+        }
+        TestCaseDefinition def;
+        if (!TestCaseStore::loadCaseForStation(activeFlowStationKey_, entry.caseName, def)) {
+            continue;
+        }
+        if (trySeedFromConfigureStep(def)) {
+            return;
+        }
+    }
+
+    TestCaseDefinition libraryDef;
+    if (TestCaseStore::loadCaseForStation(activeFlowStationKey_, QStringLiteral("配置Visa程控电源"), libraryDef)
+        && trySeedFromConfigureStep(libraryDef)) {
+        return;
+    }
+}
+
 QString QFreeWork::resolveTestCaseSendPlaceholder(const QString& text) const {
     if (isRuntimeMacPlaceholder(text))
         return currentMacAddress();
@@ -654,11 +694,13 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             const HuilingScpiStepParams stepParams =
                 splitHuilingScpiStepParam(resolvedParam, def.send.deviceCmd);
             QVariantMap linkMap = stepParams.linkMap;
-            if (linkMap.value(QStringLiteral("visaAddress")).toString().trimmed().isEmpty())
+            if (linkMap.value(QStringLiteral("visaAddress")).toString().trimmed().isEmpty()) {
                 linkMap = ctx->cachedHuilingVisaLink();
+            }
             const int visaTimeoutMs = TestCaseRunner::commandTimeoutMs(def);
-            if (!ctx->scpiVisaManager()->loadHuilingVisaFromParamMap(linkMap, visaTimeoutMs)) {
-                ctx->showlog(QStringLiteral("会凌程控电源：请先执行配置步骤（填写 visaAddress），或在本步参数中指定 VISA 地址"));
+            const bool visaReady = ctx->scpiVisaManager()->loadHuilingVisaFromParamMap(linkMap, visaTimeoutMs);
+            if (!visaReady) {
+                ctx->showlog(QStringLiteral("会凌程控电源：请在本工站步骤「配置Visa程控电源」或本步参数中填写 visaAddress"));
                 ctx->markActiveTestCaseStepDone(false, QStringLiteral("visaAddress缺失"), QStringLiteral("失败"));
                 return;
             }

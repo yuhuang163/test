@@ -961,11 +961,30 @@ void QFreeWork::on_toggleExtraTabsButton_clicked() {
 }
 
 void QFreeWork::loadSuctionGateSettings() {
-    suctionSampleDurationMs_ = SETTINGS.value(QStringLiteral("Suction/SampleDurationMs"), 10000).toInt();
-    suctionSampleIntervalMs_ = SETTINGS.value(QStringLiteral("Suction/SampleIntervalMs"), 20).toInt();
-    suctionPeakTargetKpa_ = SETTINGS.value(QStringLiteral("Suction/PeakTargetKpa"), -36.0).toDouble();
-    suctionPeakToleranceKpa_ = SETTINGS.value(QStringLiteral("Suction/PeakToleranceKpa"), 2.6).toDouble();
-    suctionPeakDiffMaxKpa_ = SETTINGS.value(QStringLiteral("Suction/PeakDiffMaxKpa"), 2.6).toDouble();
+    // 仅作未执行「采集双通道吸力」前的界面缺省；实际卡控以工站 steps/*.ini 中步骤参数为准。
+    suctionSampleDurationMs_ = 10000;
+    suctionSampleIntervalMs_ = 20;
+    suctionPeakTargetKpa_ = -36.0;
+    suctionPeakToleranceKpa_ = 2.6;
+    suctionPeakDiffMaxKpa_ = 2.6;
+}
+
+void QFreeWork::applySuctionGateFromStepParam(const QVariant& param) {
+    if (!param.canConvert<QVariantMap>()) {
+        loadSuctionGateSettings();
+        return;
+    }
+    const QVariantMap map = param.toMap();
+    if (map.contains(QStringLiteral("sampleDurationMs")))
+        suctionSampleDurationMs_ = map.value(QStringLiteral("sampleDurationMs")).toInt();
+    if (map.contains(QStringLiteral("sampleIntervalMs")))
+        suctionSampleIntervalMs_ = map.value(QStringLiteral("sampleIntervalMs")).toInt();
+    if (map.contains(QStringLiteral("peakTargetKpa")))
+        suctionPeakTargetKpa_ = map.value(QStringLiteral("peakTargetKpa")).toDouble();
+    if (map.contains(QStringLiteral("peakToleranceKpa")))
+        suctionPeakToleranceKpa_ = map.value(QStringLiteral("peakToleranceKpa")).toDouble();
+    if (map.contains(QStringLiteral("peakDiffMaxKpa")))
+        suctionPeakDiffMaxKpa_ = map.value(QStringLiteral("peakDiffMaxKpa")).toDouble();
 }
 
 void QFreeWork::initSuctionChart() {
@@ -1131,6 +1150,8 @@ void QFreeWork::setDongleSuctionReadEnabled(bool enabled) {
 }
 
 void QFreeWork::runDongleSuctionSampleStep() {
+    applySuctionGateFromStepParam(activeTestCase_.send.param);
+
     if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
         stepRuntime_.done = true;
         stepRuntime_.pass = false;
@@ -1264,6 +1285,7 @@ void QFreeWork::initData() {
     resetSuctionChart();
     setDongleSuctionReadEnabled(false);
     huilingVisaLinkCache_.clear();
+    seedHuilingVisaLinkCacheFromFlowOrSettings();
     BT_RSSI = "";
     BLE_RSSI = "";
     WIFI_RSSI = "";

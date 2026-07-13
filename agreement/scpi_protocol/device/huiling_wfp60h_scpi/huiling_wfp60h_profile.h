@@ -2,6 +2,7 @@
 #define HUILING_WFP60H_PROFILE_H
 
 #include <QString>
+#include <QVariantMap>
 
 /** 会凌电子 HUILING ELECTRONIC（因曼吉）WFP60H 双通道电池模拟器 SCPI 命令表。 */
 struct HuilingWfp60hScpiProfile {

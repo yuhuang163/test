@@ -38,6 +38,7 @@ class TestCaseEditDialog : public QDialog {
     void writePeriphGatesToTable(const QVector<TestCaseGate>& gates);
     void updatePromptFieldsEnabled();
     void updateHookFieldsEnabled();
+    void onHookIdChanged(int index);
 
   private:
     bool saveValidated();

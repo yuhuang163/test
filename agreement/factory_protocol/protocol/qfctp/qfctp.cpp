@@ -20,14 +20,29 @@ static uint16_t qfctpReadLe16(const uint8_t* p) {
 }
 
 /// 按键电容 4 字节 → uint32；与现场约定一致：大端=0123，小端=2301（高低16位字交换）
+static quint32 qfctpNormalizeKeyCapU32(quint32 raw) {
+    // 部分固件 4 字节中高 16 位为电容、低 16 位为保留/噪声；全 32 位会远大于卡控上限。
+    if (raw <= 0xFFFFu) {
+        return raw;
+    }
+    const quint32 hi = raw >> 16;
+    const quint32 lo = raw & 0xFFFFu;
+    return hi > 0 ? hi : lo;
+}
+
 static quint32 qfctpParseKeyCapU32(const uint8_t* p) {
     const QString endian = SETTINGS.value(QStringLiteral("KeyCap/ValueEndian"), QStringLiteral("big")).toString();
+    quint32 raw = 0;
     if (endian.compare(QStringLiteral("little"), Qt::CaseInsensitive) == 0) {
         // 小端 2301：原始 12 34 56 78 -> 56 78 12 34
-        return (static_cast<quint32>(p[2]) << 24) | (static_cast<quint32>(p[3]) << 16) | (static_cast<quint32>(p[0]) << 8) | static_cast<quint32>(p[1]);
+        raw = (static_cast<quint32>(p[2]) << 24) | (static_cast<quint32>(p[3]) << 16) | (static_cast<quint32>(p[0]) << 8) |
+        static_cast<quint32>(p[1]);
+    } else {
+        // 大端 0123：p[0] 为最高字节
+        raw = (static_cast<quint32>(p[0]) << 24) | (static_cast<quint32>(p[1]) << 16) | (static_cast<quint32>(p[2]) << 8) |
+        static_cast<quint32>(p[3]);
     }
-    // 大端 0123：p[0] 为最高字节
-    return (static_cast<quint32>(p[0]) << 24) | (static_cast<quint32>(p[1]) << 16) | (static_cast<quint32>(p[2]) << 8) | static_cast<quint32>(p[3]);
+    return qfctpNormalizeKeyCapU32(raw);
 }
 
 /// 线序 6 字节 → 显示用 MAC（与 Qroot::formatMacFromWire 一致：wire[0] 对应显示末字节）
