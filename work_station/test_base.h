@@ -18,7 +18,7 @@
 #include "qpushbutton.h"
 #include "qtablewidget.h"
 #include "qatmanager.h"
-#include "qjig.h"
+#include "xwd_fixture_device.h"
 #include "serial_channel.h"
 #include "test_case_types.h"
 
@@ -157,7 +157,7 @@ class test_base : public QWidget {
     QScpiManager scpiUsbManager_;
     QScpiManager scpiVisaManager_;
     QSerialPort* jigSerialPort = nullptr;
-    Qjig* jig = nullptr;
+    XwdFixtureDevice* jig = nullptr;
     QSerialPort* productSerialPort = nullptr;
     Qproduct* product = nullptr;
 

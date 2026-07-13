@@ -32,7 +32,9 @@ enum class TestCaseProductProtocol { Qfctp,
                                      Qpb,
                                      Qroot };
 
-enum class TestCaseFixtureProtocol { Pcba };
+enum class TestCaseFixtureProtocol { Pcba,
+                                     Asd9026a,
+                                     XwdBle };
 
 // --- Case 元数据 / 发送 / 时序 ---
 struct TestCaseMeta {

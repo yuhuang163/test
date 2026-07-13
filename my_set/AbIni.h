@@ -44,7 +44,7 @@
 #include <jjmes.h>      // 金进的mes头文件
 #include <lxmes.h>      // 立讯的mes头文件
 #include <qatmanager.h> // 与esp32的at指令
-#include <qjig.h>
+#include <xwd_fixture_device.h>
 #include <qpb.h> // 与设备的pb协议
 #include <qproduct.h>
 #include <qsetting.h>   //上位机设置界面

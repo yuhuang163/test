@@ -5,7 +5,9 @@
 #include "qatmanager.h"
 #include "qfreeworkbox.h"
 #include "fixture_uart.h"
-#include "fixture_pcba_device.h"
+#include "pcba_uart_codec.h"
+#include "asd9026a_device.h"
+#include "xwd_ble_fixture_device.h"
 #include "qprotocol_types.h"
 
 #include <QFile>
@@ -13,6 +15,8 @@
 #include <QElapsedTimer>
 
 #include <memory>
+
+#include "Abini.h"
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
@@ -47,6 +51,83 @@ int fixtureMachineIndexFromParam(const QVariant& param) {
     if (idx > 15)
         idx = 15;
     return idx;
+}
+
+int asd9026aChannelFromMap(const QVariantMap& map) {
+    return qBound(1, map.value(QStringLiteral("channel"), 1).toInt(), 2);
+}
+
+double asd9026aParamDouble(const QVariantMap& map, const QString& key, double fallback) {
+    if (!map.contains(key))
+        return fallback;
+    return map.value(key).toDouble();
+}
+
+quint8 asd9026aModuleAddr(int channel) {
+    const QString key =
+        channel == 2 ? QStringLiteral("ASD9026A/ModuleAddrCh2") : QStringLiteral("ASD9026A/ModuleAddrCh1");
+    const int fallback = channel == 2 ? 2 : 1;
+    return static_cast<quint8>(qBound(1, SETTINGS.value(key, fallback).toInt(), 255));
+}
+
+bool ensureAsd9026aConnected(QFreeWork* ctx, Asd9026aDevice& dev, QString* errorMessage) {
+    if (dev.isOpen())
+        return true;
+    QString port = SETTINGS.value(QStringLiteral("ASD9026A/ComPort")).toString().trimmed();
+    if (port.isEmpty()) {
+        if (QComboBox* usbCombo = ctx->getUsbcomNameCombo())
+            port = usbCombo->currentText().trimmed();
+    }
+    if (port.isEmpty()) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("ASD9026A 万用表串口未选择，请在工位界面选择万用表串口");
+        return false;
+    }
+    // ASD9026A 与万用表复用同一物理串口，先释放 test_base 已占用的 USB 通道
+    if (ctx->usbSerialPort && ctx->usbSerialPort->isOpen()
+        && ctx->usbSerialPort->portName().compare(port, Qt::CaseInsensitive) == 0) {
+        ctx->closeUsbSerialPort();
+    }
+    const int baudRate = SETTINGS.value(QStringLiteral("ASD9026A/BaudRate"), 115200).toInt();
+    if (!dev.open(port, baudRate, errorMessage))
+        return false;
+    ctx->showlog(QStringLiteral("ASD9026A 已连接万用表串口 %1 @ %2").arg(port).arg(baudRate));
+    return true;
+}
+
+bool ensureXwdBleJigUartOpen(QFreeWork* ctx, QString* errorMessage) {
+    if (!ctx) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("工站上下文无效");
+        return false;
+    }
+    QComboBox* jigCombo = ctx->getJigcomNameCombo();
+    if (!jigCombo) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("当前工站未配置治具串口");
+        return false;
+    }
+    const QString port = jigCombo->currentText().trimmed();
+    if (port.isEmpty()) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("请在工位界面选择治具串口");
+        return false;
+    }
+
+    const int baudRate = SETTINGS.value(QStringLiteral("XwdBleFixture/BaudRate"), 9600).toInt();
+    if (ctx->jigBaudRate != baudRate) {
+        ctx->jigBaudRate = baudRate;
+        if (ctx->jigSerialPort && ctx->jigSerialPort->isOpen())
+            ctx->closeJigSerialPort();
+    }
+    if (!ctx->jigSerialPort || !ctx->jigSerialPort->isOpen())
+        ctx->openJigSerialPort();
+    if (!ctx->jigSerialPort || !ctx->jigSerialPort->isOpen()) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("治具串口打开失败：%1").arg(port);
+        return false;
+    }
+    return true;
 }
 
 bool isRuntimeMacPlaceholder(const QString& text) {
@@ -584,7 +665,12 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
     }
 
     if (def.send.channel == TestCaseSendChannel::Fixture) {
-        ctx->executeFixturePcbaCase(def);
+        if (def.send.fixtureProtocol == TestCaseFixtureProtocol::Asd9026a)
+            ctx->executeFixtureAsd9026aCase(def);
+        else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::XwdBle)
+            ctx->executeFixtureXwdBleCase(def);
+        else
+            ctx->executeFixturePcbaCase(def);
         return;
     }
 
@@ -910,7 +996,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
 
 void QFreeWork::executeFixturePcbaCase(const TestCaseDefinition& def) {
     if (def.send.fixtureProtocol != TestCaseFixtureProtocol::Pcba) {
-        showlog(QStringLiteral("暂不支持的治具协议类型"));
+        showlog(QStringLiteral("治具协议类型不匹配，请检查 Send/Protocol"));
         markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
         return;
     }
@@ -1070,6 +1156,148 @@ void QFreeWork::executeFixturePcbaCase(const TestCaseDefinition& def) {
     showlog(QStringLiteral("等待治具回包：%1（超时 %2ms）")
                 .arg(FixturePcbaCmdCatalog::fixturePcbaCmdUiLabel(def.send.deviceCmd))
                 .arg(timeoutMs));
+}
+
+void QFreeWork::executeFixtureAsd9026aCase(const TestCaseDefinition& def) {
+    if (def.send.fixtureProtocol != TestCaseFixtureProtocol::Asd9026a) {
+        showlog(QStringLiteral("ASD9026A 协议类型不匹配，请检查 Send/Protocol"));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+
+    Asd9026aCmd cmd;
+    if (!Asd9026aCmdCatalog::asd9026aCmdFromName(def.send.deviceCmd, cmd)) {
+        showlog(QStringLiteral("未知 ASD9026A 指令：%1").arg(def.send.deviceCmd));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+    if (!Asd9026aCmdCatalog::isCmdForAction(cmd, def.send.action)) {
+        showlog(QStringLiteral("ASD9026A 指令与操作方式不匹配：%1").arg(def.send.deviceCmd));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+
+    QString errStr;
+    if (!ensureAsd9026aConnected(this, asd9026aDevice_, &errStr)) {
+        showlog(errStr);
+        markActiveTestCaseStepDone(false, QStringLiteral("串口未连接"), QStringLiteral("失败"));
+        return;
+    }
+
+    const QVariantMap cmdMap = resolveTestCaseSendParamTree(def.send.param).toMap();
+    const int channel = asd9026aChannelFromMap(cmdMap);
+    const quint8 moduleAddr = asd9026aModuleAddr(channel);
+    const QString channelText = QStringLiteral("CH%1").arg(channel);
+
+    auto reportMeasure = [this, def, channelText](const QString& type, double value, const QString& unit,
+                                                  const QString& valueText) {
+        ProtocolMeasureData measureData;
+        measureData.deviceName = QStringLiteral("ASD9026A");
+        measureData.channel = channelText;
+        measureData.type = type;
+        measureData.value = value;
+        measureData.valueText = valueText.isEmpty() ? QString::number(value, 'f', 4) : valueText;
+        measureData.unit = unit;
+        measureData.isOk = true;
+        onUsbInstrumentReport(
+            ProtocolReport(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(measureData)));
+    };
+
+    bool ok = false;
+    QString testData = QStringLiteral("-");
+
+    switch (cmd) {
+    case Asd9026aCmd::ProgrammablePowerOutput: {
+        const bool enable = cmdMap.value(QStringLiteral("enable"), 1).toInt() != 0;
+        ok = asd9026aDevice_.setOutputEnabled(moduleAddr, enable, &errStr);
+        testData = enable ? QStringLiteral("ON") : QStringLiteral("OFF");
+        if (ok)
+            showlog(QStringLiteral("ASD9026A %1 输出%2").arg(channelText, enable ? QStringLiteral("已打开") : QStringLiteral("已关闭")));
+        break;
+    }
+    case Asd9026aCmd::ConfigureProgrammablePower: {
+        const double voltageV = asd9026aParamDouble(cmdMap, QStringLiteral("voltage"), 4.2);
+        const double currentA = asd9026aParamDouble(cmdMap, QStringLiteral("current"), 2.0);
+        ok = asd9026aDevice_.configureConstantVoltage(moduleAddr, voltageV, currentA, &errStr);
+        testData = QStringLiteral("V=%1V,I=%2A").arg(voltageV, 0, 'f', 2).arg(currentA, 0, 'f', 3);
+        if (ok)
+            showlog(QStringLiteral("ASD9026A %1 已配置：%2 V，限流 %3 A").arg(channelText).arg(voltageV, 0, 'f', 2).arg(currentA, 0, 'f', 3));
+        break;
+    }
+    case Asd9026aCmd::ReadProgrammableVoltage:
+    case Asd9026aCmd::ReadProgrammableCurrent: {
+        Asd9026aAnalogStatus status;
+        ok = asd9026aDevice_.readAnalogStatus(moduleAddr, &status, &errStr);
+        if (!ok)
+            break;
+        if (cmd == Asd9026aCmd::ReadProgrammableVoltage) {
+            testData = QStringLiteral("%1 V").arg(status.voltage, 0, 'f', 4);
+            showlog(QStringLiteral("ASD9026A %1 电压：%2").arg(channelText, testData));
+            reportMeasure(QStringLiteral("Voltage"), status.voltage, QStringLiteral("V"), testData);
+            return;
+        }
+        testData = QStringLiteral("%1 A").arg(status.current, 0, 'f', 4);
+        showlog(QStringLiteral("ASD9026A %1 电流：%2").arg(channelText, testData));
+        reportMeasure(QStringLiteral("Current"), status.current, QStringLiteral("A"), testData);
+        return;
+    }
+    default:
+        errStr = QStringLiteral("未实现的 ASD9026A 指令");
+        break;
+    }
+
+    if (!ok) {
+        showlog(QStringLiteral("ASD9026A 指令 [%1] 执行失败: %2").arg(def.send.deviceCmd, errStr));
+        markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
+        return;
+    }
+
+    if (!def.gate.enabled)
+        markActiveTestCaseStepDone(true, testData, QStringLiteral("通过"));
+}
+
+void QFreeWork::executeFixtureXwdBleCase(const TestCaseDefinition& def) {
+    if (def.send.fixtureProtocol != TestCaseFixtureProtocol::XwdBle) {
+        showlog(QStringLiteral("XWD蓝牙治具协议类型不匹配，请检查 Send/Protocol"));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+
+    XwdBleFixtureCmd cmd;
+    if (!XwdBleFixtureCmdCatalog::xwdBleFixtureCmdFromName(def.send.deviceCmd, cmd)) {
+        showlog(QStringLiteral("未知 XWD蓝牙治具指令：%1").arg(def.send.deviceCmd));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+    if (!XwdBleFixtureCmdCatalog::isCmdForAction(cmd, def.send.action)) {
+        showlog(QStringLiteral("XWD蓝牙治具指令与操作方式不匹配：%1").arg(def.send.deviceCmd));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+
+    QString errStr;
+    if (!ensureXwdBleJigUartOpen(this, &errStr)) {
+        showlog(errStr);
+        markActiveTestCaseStepDone(false, QStringLiteral("串口未连接"), QStringLiteral("失败"));
+        return;
+    }
+
+    const QString rawText = resolveTestCaseSendParamTree(def.send.param).toString();
+    if (rawText.isEmpty()) {
+        showlog(QStringLiteral("XWD蓝牙治具发送内容为空，请配置 Send/Param/string"));
+        markActiveTestCaseStepDone(false, QStringLiteral("参数为空"), QStringLiteral("失败"));
+        return;
+    }
+
+    if (!XwdBleFixtureDevice::sendRawText(jigSerialPort, rawText, &errStr)) {
+        showlog(QStringLiteral("XWD蓝牙治具指令 [%1] 发送失败: %2").arg(def.send.deviceCmd, errStr));
+        markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
+        return;
+    }
+
+    showlog(QStringLiteral("XWD蓝牙治具已原文发送：%1").arg(rawText));
+    if (!def.gate.enabled)
+        markActiveTestCaseStepDone(true, rawText, QStringLiteral("通过"));
 }
 
 void QFreeWork::executeProductSerialCase(const TestCaseDefinition& def) {

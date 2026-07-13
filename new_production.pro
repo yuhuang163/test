@@ -90,10 +90,23 @@ INCLUDEPATH += agreement/factory_protocol/protocol/qpb/ble_protocol
 INCLUDEPATH += agreement/factory_protocol/protocol/qpb/factory_protocol
 INCLUDEPATH += agreement/scpi_protocol/access
 INCLUDEPATH += agreement/scpi_protocol/manager
-INCLUDEPATH += agreement/fixture_protocol/access
-INCLUDEPATH += agreement/fixture_protocol/device
 INCLUDEPATH += agreement/fixture_protocol/manager
-INCLUDEPATH += agreement/fixture_protocol/codec
+INCLUDEPATH += agreement/fixture_protocol/uart_fixture/access
+INCLUDEPATH += agreement/fixture_protocol/uart_fixture/codec/press
+INCLUDEPATH += agreement/fixture_protocol/uart_fixture/codec/camera
+INCLUDEPATH += agreement/fixture_protocol/uart_fixture/codec/imu
+INCLUDEPATH += agreement/fixture_protocol/uart_fixture/device/press_fixture_device
+INCLUDEPATH += agreement/fixture_protocol/uart_fixture/device/camera_fixture_device
+INCLUDEPATH += agreement/fixture_protocol/uart_fixture/device/imu_fixture_device
+INCLUDEPATH += agreement/fixture_protocol/hz_fixture/access
+INCLUDEPATH += agreement/fixture_protocol/hz_fixture/codec
+INCLUDEPATH += agreement/fixture_protocol/hz_fixture/device/hz_pcba_fixture_device
+INCLUDEPATH += agreement/fixture_protocol/xwd_fixture/access
+INCLUDEPATH += agreement/fixture_protocol/xwd_fixture/codec
+INCLUDEPATH += agreement/fixture_protocol/xwd_fixture/device/xwd_fixture_device
+INCLUDEPATH += agreement/fixture_protocol/xwd_fixture/device/xwd_ble_fixture_device
+INCLUDEPATH += agreement/fixture_protocol/asd9026a/codec
+INCLUDEPATH += agreement/fixture_protocol/asd9026a/device/asd9026a_device
 INCLUDEPATH += agreement/qbrush
 INCLUDEPATH += agreement/product_protocol/protocol
 INCLUDEPATH += agreement/adb
@@ -181,11 +194,23 @@ SOURCES += \
     agreement/product_protocol/protocol/qproduct.cpp \
     platform/settings/widgets/fixture_uart.cpp \
     agreement/fixture_protocol/manager/qfixturemanager.cpp \
-    agreement/fixture_protocol/device/fixture_camera_device.cpp \
-    agreement/fixture_protocol/device/fixture_imu_device.cpp \
-    agreement/fixture_protocol/device/fixture_pcba_device.cpp \
-    agreement/fixture_protocol/device/fixture_press_device.cpp \
-    agreement/fixture_protocol/device/qjig.cpp \
+    agreement/fixture_protocol/uart_fixture/codec/imu/imu_uart_codec.cpp \
+    agreement/fixture_protocol/uart_fixture/codec/camera/camera_uart_codec.cpp \
+    agreement/fixture_protocol/uart_fixture/codec/press/press_uart_codec.cpp \
+    agreement/fixture_protocol/hz_fixture/codec/pcba_uart_codec.cpp \
+    agreement/fixture_protocol/hz_fixture/device/hz_pcba_fixture_device/hz_pcba_fixture_device.cpp \
+    agreement/fixture_protocol/uart_fixture/device/press_fixture_device/press_fixture_device.cpp \
+    agreement/fixture_protocol/uart_fixture/device/camera_fixture_device/camera_fixture_device.cpp \
+    agreement/fixture_protocol/uart_fixture/device/imu_fixture_device/imu_fixture_device.cpp \
+    agreement/fixture_protocol/asd9026a/codec/asd9026a_codec.cpp \
+    agreement/fixture_protocol/asd9026a/device/asd9026a_device/asd9026a_device.cpp \
+    agreement/fixture_protocol/xwd_fixture/codec/fixture_uart_codec.cpp \
+    agreement/fixture_protocol/xwd_fixture/codec/xwd_line_text_codec.cpp \
+    agreement/fixture_protocol/xwd_fixture/codec/xwd_line_hex_codec.cpp \
+    agreement/fixture_protocol/xwd_fixture/codec/xwd_amplitude_codec.cpp \
+    agreement/fixture_protocol/xwd_fixture/codec/xwd_ble_uart_codec.cpp \
+    agreement/fixture_protocol/xwd_fixture/device/xwd_fixture_device/xwd_fixture_device.cpp \
+    agreement/fixture_protocol/xwd_fixture/device/xwd_ble_fixture_device/xwd_ble_fixture_device.cpp \
     agreement/mes_protocol/device/byd_mes/bydmes.cpp \
     agreement/mes_protocol/device/hq_mes/hqmes.cpp \
     agreement/mes_protocol/device/hz_mes/hzmes.cpp \
@@ -210,6 +235,8 @@ SOURCES += \
     platform/test_case/manifest/device_cmd_manifest.cpp \
     platform/test_case/manifest/dongle_cmd_manifest.cpp \
     platform/test_case/manifest/fixture_pcba_cmd_manifest.cpp \
+    platform/test_case/manifest/asd9026a_cmd_manifest.cpp \
+    platform/test_case/manifest/xwd_ble_fixture_cmd_manifest.cpp \
     platform/test_case/manifest/product_serial_cmd_manifest.cpp \
     platform/test_case/manifest/modbus_cmd_manifest.cpp \
     platform/test_case/manifest/scpi_cmd_manifest.cpp \
@@ -328,12 +355,26 @@ HEADERS += \
     agreement/product_protocol/protocol/qproduct.h \
     platform/settings/widgets/fixture_uart.h \
     agreement/fixture_protocol/manager/qfixturemanager.h \
-    agreement/fixture_protocol/device/fixture_camera_device.h \
-    agreement/fixture_protocol/device/fixture_imu_device.h \
-    agreement/fixture_protocol/device/fixture_pcba_device.h \
-    agreement/fixture_protocol/device/fixture_press_device.h \
-    agreement/fixture_protocol/access/fixture_uart_types.h \
-    agreement/fixture_protocol/device/qjig.h \
+    agreement/fixture_protocol/uart_fixture/codec/imu/imu_uart_codec.h \
+    agreement/fixture_protocol/uart_fixture/codec/camera/camera_uart_codec.h \
+    agreement/fixture_protocol/uart_fixture/codec/press/press_uart_codec.h \
+    agreement/fixture_protocol/hz_fixture/codec/pcba_uart_codec.h \
+    agreement/fixture_protocol/hz_fixture/device/hz_pcba_fixture_device/hz_pcba_fixture_device.h \
+    agreement/fixture_protocol/hz_fixture/access/hz_fixture_types.h \
+    agreement/fixture_protocol/uart_fixture/device/press_fixture_device/press_fixture_device.h \
+    agreement/fixture_protocol/uart_fixture/device/camera_fixture_device/camera_fixture_device.h \
+    agreement/fixture_protocol/uart_fixture/device/imu_fixture_device/imu_fixture_device.h \
+    agreement/fixture_protocol/asd9026a/codec/asd9026a_codec.h \
+    agreement/fixture_protocol/asd9026a/device/asd9026a_device/asd9026a_device.h \
+    agreement/fixture_protocol/uart_fixture/access/fixture_uart_types.h \
+    agreement/fixture_protocol/xwd_fixture/access/xwd_fixture_types.h \
+    agreement/fixture_protocol/xwd_fixture/codec/fixture_uart_codec.h \
+    agreement/fixture_protocol/xwd_fixture/codec/xwd_line_text_codec.h \
+    agreement/fixture_protocol/xwd_fixture/codec/xwd_line_hex_codec.h \
+    agreement/fixture_protocol/xwd_fixture/codec/xwd_amplitude_codec.h \
+    agreement/fixture_protocol/xwd_fixture/codec/xwd_ble_uart_codec.h \
+    agreement/fixture_protocol/xwd_fixture/device/xwd_fixture_device/xwd_fixture_device.h \
+    agreement/fixture_protocol/xwd_fixture/device/xwd_ble_fixture_device/xwd_ble_fixture_device.h \
     agreement/mes_protocol/device/byd_mes/bydmes.h \
     agreement/mes_protocol/device/hq_mes/hqmes.h \
     agreement/mes_protocol/device/hz_mes/hzmes.h \
@@ -360,6 +401,8 @@ HEADERS += \
     platform/test_case/manifest/device_cmd_manifest.h \
     platform/test_case/manifest/dongle_cmd_manifest.h \
     platform/test_case/manifest/fixture_pcba_cmd_manifest.h \
+    platform/test_case/manifest/asd9026a_cmd_manifest.h \
+    platform/test_case/manifest/xwd_ble_fixture_cmd_manifest.h \
     platform/test_case/manifest/modbus_cmd_manifest.h \
     platform/test_case/manifest/scpi_cmd_manifest.h \
     platform/test_case/manifest/product_serial_cmd_manifest.h \

@@ -74,6 +74,10 @@ void fillFixtureProtocolCombo(QComboBox* box) {
     box->clear();
     box->addItem(FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol::Pcba),
                  FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::Pcba));
+    box->addItem(FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol::Asd9026a),
+                 FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::Asd9026a));
+    box->addItem(FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol::XwdBle),
+                 FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::XwdBle));
 }
 
 void fillProtocolComboForChannel(QComboBox* box, TestCaseSendChannel channel) {
@@ -121,9 +125,20 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
                 items.append({ProductSerialCmdCatalog::productSerialCmdUiLabel(name), name});
         }
     } else if (channel == TestCaseSendChannel::Fixture) {
-        items.reserve(FixturePcbaCmdCatalog::allFixturePcbaCmdNames(action).size());
-        for (const QString& name : FixturePcbaCmdCatalog::allFixturePcbaCmdNames(action))
-            items.append({FixturePcbaCmdCatalog::fixturePcbaCmdUiLabel(name), name});
+        const TestCaseFixtureProtocol proto = FixturePcbaCmdCatalog::fixtureProtocolFromIni(device);
+        if (proto == TestCaseFixtureProtocol::Asd9026a) {
+            items.reserve(Asd9026aCmdCatalog::allAsd9026aCmdNames(action).size());
+            for (const QString& name : Asd9026aCmdCatalog::allAsd9026aCmdNames(action))
+                items.append({Asd9026aCmdCatalog::asd9026aCmdUiLabel(name), name});
+        } else if (proto == TestCaseFixtureProtocol::XwdBle) {
+            items.reserve(XwdBleFixtureCmdCatalog::allXwdBleFixtureCmdNames(action).size());
+            for (const QString& name : XwdBleFixtureCmdCatalog::allXwdBleFixtureCmdNames(action))
+                items.append({XwdBleFixtureCmdCatalog::xwdBleFixtureCmdUiLabel(name), name});
+        } else {
+            items.reserve(FixturePcbaCmdCatalog::allFixturePcbaCmdNames(action).size());
+            for (const QString& name : FixturePcbaCmdCatalog::allFixturePcbaCmdNames(action))
+                items.append({FixturePcbaCmdCatalog::fixturePcbaCmdUiLabel(name), name});
+        }
     } else if (channel == TestCaseSendChannel::Modbus) {
         ModbusDeviceRoute devRoute = ModbusPeriphCmdCatalog::deviceFromIni(device);
         const QStringList names = ModbusPeriphCmdCatalog::allCmdNames(devRoute, action);
@@ -261,6 +276,34 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
         return out;
     }
     if (channel == TestCaseSendChannel::Fixture) {
+        const TestCaseFixtureProtocol proto = FixturePcbaCmdCatalog::fixtureProtocolFromIni(device);
+        if (proto == TestCaseFixtureProtocol::Asd9026a) {
+            Asd9026aCmd asdCmd;
+            if (Asd9026aCmdCatalog::asd9026aCmdFromName(name, asdCmd)) {
+                DeviceCmdParamSchema schema;
+                if (Asd9026aCmdCatalog::paramSchemaFor(asdCmd, schema)) {
+                    out.valid = true;
+                    out.hint = Asd9026aCmdCatalog::paramUiHint(name);
+                    out.kind = schema.kind == DeviceCmdParamKind::JsonMap ? SendCmdParamKind::JsonMap : SendCmdParamKind::None;
+                }
+            }
+            return out;
+        }
+        if (proto == TestCaseFixtureProtocol::XwdBle) {
+            XwdBleFixtureCmd xwdCmd;
+            if (XwdBleFixtureCmdCatalog::xwdBleFixtureCmdFromName(name, xwdCmd)) {
+                DeviceCmdParamSchema schema;
+                if (XwdBleFixtureCmdCatalog::paramSchemaFor(xwdCmd, schema)) {
+                    out.valid = true;
+                    out.hint = XwdBleFixtureCmdCatalog::paramUiHint(name);
+                    if (schema.kind == DeviceCmdParamKind::String)
+                        out.kind = SendCmdParamKind::String;
+                    else
+                        out.kind = SendCmdParamKind::None;
+                }
+            }
+            return out;
+        }
         FixturePcbaCmd fixtureCmd;
         if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(name, fixtureCmd)) {
             DeviceCmdParamSchema schema;

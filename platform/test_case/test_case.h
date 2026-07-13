@@ -146,6 +146,47 @@ enum class ProductSerialCmd {
     StopRxAndPer,
 };
 
+/** ASD9026A 双通道模拟电池串口协议（Send/Channel=Fixture 且 Send/Protocol=ASD9026A）。 */
+enum class Asd9026aCmd {
+    ConfigureProgrammablePower,
+    ProgrammablePowerOutput,
+    ReadProgrammableVoltage,
+    ReadProgrammableCurrent,
+};
+
+class Asd9026aCmdCatalog {
+  public:
+    static QStringList allAsd9026aCmdNames(TestCaseSendAction action);
+    static TestCaseSendAction actionFor(Asd9026aCmd cmd);
+    static bool isCmdForAction(Asd9026aCmd cmd, TestCaseSendAction action);
+    static QString asd9026aCmdUiLabel(const QString& enumName);
+    static bool asd9026aCmdFromName(const QString& name, Asd9026aCmd& out);
+    static QString asd9026aCmdToName(Asd9026aCmd cmd);
+    static bool paramSchemaFor(Asd9026aCmd cmd, DeviceCmdParamSchema& out);
+    static QString paramUiHint(const QString& enumName);
+    static bool paramFromIniGroup(const QSettings& settings, Asd9026aCmd cmd, QVariant& out);
+    static void paramToIniGroup(QSettings& settings, Asd9026aCmd cmd, const QVariant& value);
+};
+
+/** 欣旺达 xwd 蓝牙工站治具（Send/Channel=Fixture 且 Send/Protocol=XWD_BLE，治具串口原文下发）。 */
+enum class XwdBleFixtureCmd {
+    SendRaw,
+};
+
+class XwdBleFixtureCmdCatalog {
+  public:
+    static QStringList allXwdBleFixtureCmdNames(TestCaseSendAction action);
+    static TestCaseSendAction actionFor(XwdBleFixtureCmd cmd);
+    static bool isCmdForAction(XwdBleFixtureCmd cmd, TestCaseSendAction action);
+    static QString xwdBleFixtureCmdUiLabel(const QString& enumName);
+    static bool xwdBleFixtureCmdFromName(const QString& name, XwdBleFixtureCmd& out);
+    static QString xwdBleFixtureCmdToName(XwdBleFixtureCmd cmd);
+    static bool paramSchemaFor(XwdBleFixtureCmd cmd, DeviceCmdParamSchema& out);
+    static QString paramUiHint(const QString& enumName);
+    static bool paramFromIniGroup(const QSettings& settings, XwdBleFixtureCmd cmd, QVariant& out);
+    static void paramToIniGroup(QSettings& settings, XwdBleFixtureCmd cmd, const QVariant& value);
+};
+
 /** PCBA 治具 0x55 协议指令（Send/Channel=Fixture 且 Send/Protocol=Pcba）。 */
 enum class FixturePcbaCmd {
     StartTest,
