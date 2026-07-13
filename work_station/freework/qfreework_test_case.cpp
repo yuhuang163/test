@@ -1104,14 +1104,14 @@ void QFreeWork::executeFixturePcbaCase(const TestCaseDefinition& def) {
     if (cmd == FixturePcbaCmd::WaitFixturePacket) {
         const auto connPtr = std::make_shared<QMetaObject::Connection>();
         *connPtr = connect(uart, &Fixture_uart::send_data_to_mechine, this,
-                           [connPtr, handlePacket](const FixturePacketData& pack) {
+                           [this, connPtr, handlePacket](const FixturePacketData& pack) {
                                QObject::disconnect(*connPtr);
                                handlePacket(pack);
                            });
     } else if (cmd == FixturePcbaCmd::WaitSleepRequest) {
         const auto connPtr = std::make_shared<QMetaObject::Connection>();
         *connPtr = connect(uart, &Fixture_uart::send_data_to_mechine_sleep, this,
-                           [connPtr, handlePacket](const FixturePacketData& pack) {
+                           [this, connPtr, handlePacket](const FixturePacketData& pack) {
                                QObject::disconnect(*connPtr);
                                handlePacket(pack);
                            });

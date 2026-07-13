@@ -1072,7 +1072,6 @@ void suction::processInspection(QString inputSnText) {
 }
 
 void suction::startFlowWithMac(const QString& mac) {
-    const bool simulateFlow = SETTINGS.value("SYSTEM/DebugSimulateFlow", false).toBool();
     usblogwaittime->stop();
     firstconnectbrush = 0;
     // ui->macInput->setDisabled(1);

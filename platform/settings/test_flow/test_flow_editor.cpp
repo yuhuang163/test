@@ -293,8 +293,8 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
                 if (names.isEmpty())
                     return;
 
-                const QString preview = names.count() > 5 ? names.mid(0, 5).join(QLatin1Char('、')) + QStringLiteral(" 等 %1 项").arg(names.count())
-                                                          : names.join(QLatin1Char('、'));
+                const QString preview = names.count() > 5 ? names.mid(0, 5).join(QStringLiteral("、")) + QStringLiteral(" 等 %1 项").arg(names.count())
+                                                          : names.join(QStringLiteral("、"));
                 if (QMessageBox::question(dialogParent_, QStringLiteral("确认删除"),
                                           QStringLiteral("将永久删除 test_case 下以下功能块 ini：\n%1\n\n"
                                                          "若当前编排区已引用，会同步移除对应块（须保存流程后生效）。")
@@ -851,7 +851,6 @@ bool TestFlowEditor::confirmDiscardOrSaveOnLeave() {
     box.setText(QStringLiteral("测试流程编排已修改，是否保存？"));
     box.setIcon(QMessageBox::Question);
     auto* btnSave = box.addButton(QStringLiteral("保存"), QMessageBox::AcceptRole);
-    auto* btnDiscard = box.addButton(QStringLiteral("不保存"), QMessageBox::DestructiveRole);
     auto* btnCancel = box.addButton(QStringLiteral("取消"), QMessageBox::RejectRole);
     box.setDefaultButton(btnSave);
     box.exec();

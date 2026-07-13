@@ -63,6 +63,11 @@ extern "C" {
 #include "usmile_ring_buffer.h"
 Q_DECLARE_METATYPE(FacErrorCode)
 
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4200) // 协议柔性数组成员 data[0]（moc 编译也需文件级抑制）
+#endif
+
 QT_BEGIN_NAMESPACE
 namespace Ui {
 class MainWindow;
@@ -676,5 +681,9 @@ class MainWindow : public QMainWindow {
     void sendBelOtaSpeed(int);
     void sendBelSourceOtaSpeed(int);
 };
+
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
 #endif // MAINWINDOW_H

@@ -8,12 +8,12 @@
 #include "ble_protocol/fx_ble_msg.pb.h"
 #include "factory_protocol/factory_msg.pb.h"
 
-typedef struct {
+struct ImuCalData {
     int magic;
     short gyro_offset[3];
-} ImuCalData;
+};
 
-typedef struct {
+struct NewImuCalData {
     short gyro_offset[3];
     float kx;
     float ky;
@@ -24,27 +24,27 @@ typedef struct {
     float bx;
     float by;
     float bz;
-} NewImuCalData;
+};
 
-typedef struct {
+struct ImuDataT {
     short gyro[3];
     short acc[3];
-} ImuDataT;
+};
 
-typedef struct {
+struct ImuCalDataOld {
     int magic;
     ImuDataT imu_offset;
     float acc_scalar[3];
-} ImuCalDataOld;
+};
 
-typedef struct {
+struct local_ota_data {
     int is_have_data;
     int file_size;
     int version_code; // 版本号
     int version_type; // 文件类型  201固件  202资源  303音频 304主题 305音乐文件
     QByteArray url;   //
     QByteArray md5;   //
-} local_ota_data;
+};
 
 typedef enum {
     MODULE_INVALID,
@@ -55,20 +55,20 @@ typedef enum {
     MODULE_MAX,
 } press_module_e;
 
-typedef struct {
+struct press_calib_data_t {
     unsigned short calib_factor[MODULE_MAX];
     short temperature[MODULE_MAX];
-} press_calib_data_t;
+};
 
-typedef struct {
+struct WifiConnectPayload {
     QByteArray name;
     QByteArray password;
-} WifiConnectPayload;
+};
 
-typedef struct {
+struct DeviceSnPayload {
     FacDevInfoType which_sn;
     QByteArray sn;
-} DeviceSnPayload;
+};
 
 enum class ProtocolSnType {
     Unknown = 0,
@@ -78,32 +78,32 @@ enum class ProtocolSnType {
     SkuId,   //产品id
 };
 
-typedef struct {
+struct ProtocolSnData {
     ProtocolSnType type = ProtocolSnType::Unknown;
     QString value;
-} ProtocolSnData;
+};
 
-typedef struct {
+struct ProtocolBatteryData {
     int chargeState = 0;
     int percent = 0;
     int voltageMv = 0;
-} ProtocolBatteryData;
+};
 
-typedef struct {
+struct ProtocolWifiStateData {
     QString wifiName;
     QString wifiPassword;
-} ProtocolWifiStateData;
+};
 
-typedef struct {
+struct ProtocolMusicStateData {
     int musicState = 0;
-} ProtocolMusicStateData;
+};
 
-typedef struct {
+struct ProtocolMacBytesData {
     int size = 0;
     uint8_t bytes[6] = {0};
-} ProtocolMacBytesData;
+};
 
-typedef struct {
+struct ProtocolBaseInfoData {
     QString product_name;
     int pb_phone_ver = 0;
     int pb_factory_ver = 0;
@@ -122,9 +122,9 @@ typedef struct {
     int result = 0;
     int ageing_state = 0;
     int ageingState = 0;
-} ProtocolBaseInfoData;
+};
 
-typedef struct {
+struct ProtocolPeriphStateData {
     int imu_state = 0;
     int flash_state = 0;
     int magnet_state = 0;
@@ -138,43 +138,43 @@ typedef struct {
     int led_ic_state = -1;
     int pd_ic_state = -1;
     int result = 0;
-} ProtocolPeriphStateData;
+};
 
-typedef struct {
+struct ProtocolButtonStateData {
     int modeButtonState = 0;
     int powerButtonState = 0;
     int keyButtonId = 0;
-} ProtocolButtonStateData;
+};
 
-typedef struct {
+struct ProtocolBrushControlData {
     int brushStart = 0;
-} ProtocolBrushControlData;
+};
 
-typedef struct {
+struct ProtocolLedControlData {
     int switchState = 0;
     int ledStateCount = 0;
-} ProtocolLedControlData;
+};
 
-typedef struct {
+struct ProtocolTypeData {
     int type = 0;
-} ProtocolTypeData;
+};
 
 typedef ProtocolTypeData ProtocolLcdControlData;
 typedef ProtocolTypeData ProtocolBatteryTempData;
 
-typedef struct {
+struct ProtocolPressSampleData {
     int timeStamp = 0;
     QVector<int> adcValues;
     QVector<int> valueValues;
-} ProtocolPressSampleData;
+};
 
-typedef struct {
+struct ProtocolImuSampleData {
     int timeStamp = 0;
     QVector<int> accelValues;
     QVector<int> gyroValues;
-} ProtocolImuSampleData;
+};
 
-typedef struct {
+struct ProtocolImuCalibResultData {
     int result = 0;
     int gyroX = 0;
     int gyroY = 0;
@@ -188,25 +188,25 @@ typedef struct {
     int syx = 0;
     int szx = 0;
     int szy = 0;
-} ProtocolImuCalibResultData;
+};
 
-typedef struct {
+struct ProtocolPressCalibResultData {
     int brushHeadAdc = 0;
     int modeButtonAdc = 0;
     int powerButtonAdc = 0;
     int assistantComponent = 0;
     int temperature = 0;
-} ProtocolPressCalibResultData;
+};
 
-typedef struct {
+struct ProtocolResultData {
     int result = 0;
-} ProtocolResultData;
+};
 
 typedef ProtocolResultData ProtocolInternetOtaData;
 typedef ProtocolResultData ProtocolWifiDemandData;
 typedef ProtocolTypeData ProtocolCameraControlData;
 
-typedef struct {
+struct ProtocolServoMotorInfoData {
     int uploadType = 0;
     int whichValue = 0;
     int motorCaliMark = 0;
@@ -216,130 +216,130 @@ typedef struct {
     int faultCode = 0;
     QString hallInfo;
     QString zeroInfo;
-} ProtocolServoMotorInfoData;
+};
 
 typedef ProtocolResultData ProtocolPictureSendOverData;
 
-typedef struct {
+struct ProtocolPhotosensitiveData {
     int lightSensor = 0;
-} ProtocolPhotosensitiveData;
+};
 
-typedef struct {
+struct ProtocolSdInfoData {
     int cmd = 0;
     QString data;
-} ProtocolSdInfoData;
+};
 
-typedef struct {
+struct ProtocolTupleData {
     QString productId;
     QString deviceId;
     QString key;
-} ProtocolTupleData;
+};
 
-typedef struct {
+struct ProtocolAgingStatusData {
     int status = 0;
     int loops = 0;
     uint32_t seconds = 0;
-} ProtocolAgingStatusData;
+};
 
-typedef struct {
+struct ProtocolDeviceExceptionData {
     int status = 0;
     QString statusText;
-} ProtocolDeviceExceptionData;
+};
 
-typedef struct {
+struct ProtocolKeyCapData {
     uint32_t capacitance = 0;
     int keyId = -1; // 按键编号 KK，无则 -1
-} ProtocolKeyCapData;
+};
 
-typedef struct {
+struct ProtocolChargeCurrentData {
     uint32_t currentMa = 0;
-} ProtocolChargeCurrentData;
+};
 
-typedef struct {
+struct ProtocolTrimData {
     uint32_t trim = 0;
-} ProtocolTrimData;
+};
 
-typedef struct {
+struct ProtocolLightCalibData {
     uint32_t calibValue = 0;
-} ProtocolLightCalibData;
+};
 
 /** Dongle AT 上行 */
-typedef struct {
+struct ProtocolDongleBleStateData {
     int connected = 0;
-} ProtocolDongleBleStateData;
+};
 
-typedef struct {
+struct ProtocolDongleBleRssiData {
     QString rssi;
-} ProtocolDongleBleRssiData;
+};
 
-typedef struct {
+struct ProtocolDongleWifiMsgData {
     QString text;
-} ProtocolDongleWifiMsgData;
+};
 
-typedef struct {
+struct ProtocolDongleVersionData {
     QString version;
-} ProtocolDongleVersionData;
+};
 
 
-typedef struct {
+struct ProtocolDongleDeviceNameData {
     QString name;
-} ProtocolDongleDeviceNameData;
+};
 
-typedef struct {
+struct ProtocolDongleWifiSsidData {
     QString ssid;
-} ProtocolDongleWifiSsidData;
+};
 
-typedef struct {
+struct ProtocolDongleWifiRssiData {
     QString rssi;
-} ProtocolDongleWifiRssiData;
+};
 
-typedef struct {
+struct ProtocolDongleWifiStateData {
     int connected = 0;
-} ProtocolDongleWifiStateData;
+};
 
-typedef struct {
+struct ProtocolDongleWifiIpData {
     QString ip;
-} ProtocolDongleWifiIpData;
+};
 
-typedef struct {
+struct ProtocolDongleScanResultData {
     QString deviceName;
     QString deviceAddress;
     QString deviceRssi;
-} ProtocolDongleScanResultData;
+};
 
 /** Dongle AT+SUCTION=1 后上报：AT+SUCTION_DATA=左,右,第三路,...（前两路为左右吸力口） */
-typedef struct {
+struct ProtocolDongleSuctionData {
     double leftKpa = 0.0;
     double rightKpa = 0.0;
     double thirdKpa = 0.0;
-} ProtocolDongleSuctionData;
+};
 
 /** USB 电流表 / 治具振幅仪上行 */
-typedef struct {
+struct ProtocolAmmeterReadingData {
     QString value;
-} ProtocolAmmeterReadingData;
+};
 
-typedef struct {
+struct ProtocolJigAmplitudeData {
     QString value;
-} ProtocolJigAmplitudeData;
+};
 
-typedef struct {
+struct ProtocolFactoryDoneData {
     bool done = false;
-} ProtocolFactoryDoneData;
+};
 
-typedef struct {
+struct ProtocolRssiData {
     int dbm = 0;
-} ProtocolRssiData;
+};
 
-typedef struct {
+struct ProtocolMacData {
     QString mac;
-} ProtocolMacData;
+};
 
-typedef struct {
+struct ProtocolAckData {
     int ack = 0;
-} ProtocolAckData;
+};
 
-typedef struct {
+struct ProtocolMeasureData {
     QString deviceName; // 设备名称，如 "HuilingWfp60h"
     QString channel;    // 通道号（如有，如 "CH1"）
     QString type;       // 测量类型：Current(电流), Voltage(电压), Power(功率), Temp(温度)
@@ -347,31 +347,31 @@ typedef struct {
     QString valueText;  // 测量文本结果（用于非数值匹配，如 CMW IDN、错误文本）
     QString unit;       // 单位，如 "mA", "V", "W"
     bool isOk = true;   // 状态是否有效
-} ProtocolMeasureData;
+};
 
-typedef struct {
+struct NewWifiConnectPayload {
     QByteArray name;
     QByteArray password;
     QString ip;
     QString port;
-} NewWifiConnectPayload;
+};
 
-typedef struct {
+struct SevorMotorParamPayload {
     uint32_t sweeping_angle;
     float vibrate_angle;
     float sweeping_freq;
     uint32_t vibrate_freq;
-} SevorMotorParamPayload;
+};
 
-typedef struct {
+struct LocalOtaPayload {
     local_ota_data file0;
     local_ota_data file1;
-} LocalOtaPayload;
+};
 
-typedef struct {
+struct StartMultiBleOtaPayload {
     RotasFileStatusReq req0;
     RotasFileStatusReq req1;
-} StartMultiBleOtaPayload;
+};
 
 enum class DeviceCmd {
     // set commands

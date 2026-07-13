@@ -15,6 +15,11 @@
 #include "ui_cameratest.h"
 #include "usmile_ring_buffer.h"
 
+#if defined(_MSC_VER)
+#pragma warning(push)
+#pragma warning(disable : 4200) // 协议柔性数组成员 data[0]（moc 编译也需文件级抑制）
+#endif
+
 namespace Ui {
 class cameratest;
 }
@@ -274,5 +279,9 @@ class cameratest : public test_base {
     void send_camera_respone(FacErrorCode);
     void send_set_camera_action(camreaFixtureState);
 };
+
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
 #endif // CAMERATEST_H
