@@ -1419,6 +1419,7 @@ void QFreeWork::runPlcModbusConnectTest() {
     applyPlcStepResult(result, PlcV3Command::ModbusConnectTest);
 }
 
+
 void QFreeWork::runPlcV3TouchKeyFull(int keyIndex0To6, bool finishStepRuntime) {
     const PlcV3RunResult result = runPlcV3(PlcV3Command::TouchKey, keyIndex0To6, finishStepRuntime);
     applyPlcStepResult(result, PlcV3Command::TouchKey, finishStepRuntime);

@@ -9,6 +9,79 @@
 #pragma execution_character_set(push, "utf-8")
 #endif
 
+bool runPlcV3FailRecoveryReset(PlcModbusSession& session, QString* errorMessage) {
+    const PlcStationConfig& cfg = session.config();
+    const int offset = cfg.mCoilAddressOffset;
+    const int stepDoneM = cfg.stepDoneBase;
+    const int keyDoneM = cfg.keyDoneM;
+    const int resetM = cfg.switchTestDoneResetM;
+    const int gapMs = SETTINGS.value(QStringLiteral("PLC/CommandGapMs"), 80).toInt();
+    const int pulseMs = SETTINGS.value(QStringLiteral("PLC/SwitchTestDoneResetPulseMs"), 0).toInt();
+    const int keyDoneTimeout = SETTINGS.value(QStringLiteral("PLC/KeyDoneTimeoutMs"), 8000).toInt();
+    const int keyDonePoll = SETTINGS.value(QStringLiteral("PLC/KeyDonePollMs"), 50).toInt();
+
+    session.logLine(QStringLiteral("PLC失败恢复: StepDone M%1(addr=%2)=1 → 等 KeyDone M%3(addr=%4)=1 → 复位 M%5(addr=%6)=1")
+                        .arg(stepDoneM)
+                        .arg(stepDoneM + offset)
+                        .arg(keyDoneM)
+                        .arg(keyDoneM + offset)
+                        .arg(resetM)
+                        .arg(resetM + offset));
+
+    if (!session.isConnected()) {
+        QString connErr;
+        if (!session.connectPlc(&connErr)) {
+            const QString detail = QStringLiteral("失败恢复连接 PLC 失败: %1").arg(connErr);
+            if (errorMessage) {
+                *errorMessage = detail;
+            }
+            session.logLine(QStringLiteral("PLC失败恢复: %1").arg(detail));
+            return false;
+        }
+    }
+
+    auto failOut = [&](const QString& detail) {
+        if (errorMessage) {
+            *errorMessage = detail;
+        }
+        session.logLine(QStringLiteral("PLC失败恢复: %1").arg(detail));
+        return false;
+    };
+
+    QString err;
+    if (!session.writeCoil(stepDoneM, true, &err)) {
+        return failOut(err.isEmpty() ? QStringLiteral("写 StepDone M%1 失败").arg(stepDoneM) : err);
+    }
+    if (gapMs > 0) {
+        QThread::msleep(static_cast<unsigned long>(gapMs));
+    }
+
+    if (!session.waitCoilTrue(keyDoneM, keyDoneTimeout, keyDonePoll, &err)) {
+        return failOut(err.isEmpty() ? QStringLiteral("等待 KeyDone M%1 超时").arg(keyDoneM) : err);
+    }
+
+    if (!session.writeCoil(resetM, true, &err)) {
+        return failOut(err.isEmpty() ? QStringLiteral("写复位 M%1 失败").arg(resetM) : err);
+    }
+    if (gapMs > 0) {
+        QThread::msleep(static_cast<unsigned long>(gapMs));
+    }
+    if (pulseMs > 0) {
+        QThread::msleep(static_cast<unsigned long>(pulseMs));
+        session.logLine(QStringLiteral("PLC失败恢复: 脉冲置0 M%1(addr=%2)").arg(resetM).arg(resetM + offset));
+        QString pulseErr;
+        if (!session.writeCoil(resetM, false, &pulseErr)) {
+            return failOut(QStringLiteral("复位脉冲回0失败: %1").arg(pulseErr));
+        }
+        if (gapMs > 0) {
+            QThread::msleep(static_cast<unsigned long>(gapMs));
+        }
+    }
+
+    session.logLine(QStringLiteral("PLC失败恢复完成"));
+    return true;
+}
+
 PlcV3TouchResult runPlcV3TouchKey(PlcModbusSession& session, int keyIndex0To6, const PlcV3TouchKeyOptions& options) {
     PlcV3TouchResult result;
     const PlcStationConfig& cfg = session.config();
@@ -57,21 +130,13 @@ PlcV3TouchResult runPlcV3TouchKey(PlcModbusSession& session, int keyIndex0To6, c
     const int keyM = cfg.mBase + keyIndex0To6;
     const int posReadyM = cfg.positionReadyBase + keyIndex0To6;
     const int stepDoneM = cfg.stepDoneBase;
-    const int failResetM = cfg.switchTestDoneResetM;
     const int keyDoneM = cfg.keyDoneM;
 
     const auto fail = [&](const QString& msg) {
         if (session.isConnected()) {
             QString plcErr;
-            session.logLine(QStringLiteral("按键测试失败补发：StepDone M%1(addr=%2)=1").arg(stepDoneM).arg(stepDoneM + offset));
-            if (!session.writeCoil(stepDoneM, true, &plcErr)) {
-                session.logLine(QStringLiteral("按键失败补发 StepDone 失败: %1").arg(plcErr));
-            } else if (gapMs > 0) {
-                QThread::msleep(static_cast<unsigned long>(gapMs));
-            }
-            session.logLine(QStringLiteral("按键测试失败补发：复位 M%1(addr=%2)=1").arg(failResetM).arg(failResetM + offset));
-            if (!session.writeCoil(failResetM, true, &plcErr)) {
-                session.logLine(QStringLiteral("按键失败补发复位M失败: %1").arg(plcErr));
+            if (!runPlcV3FailRecoveryReset(session, &plcErr)) {
+                session.logLine(QStringLiteral("按键测试失败恢复未完全成功: %1").arg(plcErr));
             }
         }
         session.disconnect();
@@ -277,6 +342,12 @@ PlcV3TouchResult runPlcV3TouchSwitch(PlcModbusSession& session) {
     const int keyDoneM = cfg.keyDoneM;
 
     const auto fail = [&](const QString& msg) {
+        if (session.isConnected()) {
+            QString plcErr;
+            if (!runPlcV3FailRecoveryReset(session, &plcErr)) {
+                session.logLine(QStringLiteral("旋钮测试失败恢复未完全成功: %1").arg(plcErr));
+            }
+        }
         session.disconnect();
         result.summary = msg;
     };

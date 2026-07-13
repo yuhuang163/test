@@ -164,6 +164,7 @@ class key_test : public test_base {
     void resetPlcKeyCapSyncReadState();
     bool pollKeyCapDuringPress(QString* errOut, QString* outSummary);
     bool runPlcV3TouchKeyFull(int keyIndex0To6, QString* summary);
+    bool plcRunFailRecoveryReset(bool alreadyConnected, QString* errorMessage = nullptr);
     int resolvedPlcMBase() const;
     int resolvedPlcConnectVerifyM() const;
     QString resolvedPlcIpAddress() const;

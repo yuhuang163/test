@@ -15,6 +15,12 @@ struct PlcV3TouchResult {
     QString summary;
 };
 
+/**
+ * 失败恢复：StepDone=1 → 等待 KeyDone=1 → 复位线圈=1（可选脉冲回 0）。
+ * 要求 session 已连接 PLC，或在内部自动 connectPlc。
+ */
+bool runPlcV3FailRecoveryReset(PlcModbusSession& session, QString* errorMessage = nullptr);
+
 /** V3 治具单键整步（Modbus 握手 + 可选电容读取）。 */
 PlcV3TouchResult runPlcV3TouchKey(PlcModbusSession& session, int keyIndex0To6,
                                   const PlcV3TouchKeyOptions& options = {});

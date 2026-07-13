@@ -1,5 +1,6 @@
 #include "key_test.h"
 
+#include "plc_v3_touch.h"
 #include "ui_key_test.h"
 #include <QCoreApplication>
 #include <QElapsedTimer>
@@ -572,6 +573,33 @@ bool key_test::plcSendStepDone(QString* errorMessage) {
     return modbusManager.exec(PlcCmd::SendStepDone, {}, nullptr, errorMessage);
 }
 
+bool key_test::plcRunFailRecoveryReset(bool alreadyConnected, QString* errorMessage) {
+    const bool needConnect = !alreadyConnected && !modbusManager.isPlcConnected();
+    if (needConnect) {
+        QString err;
+        if (!modbusManager.connectPlc(&err)) {
+            if (errorMessage) {
+                *errorMessage = QStringLiteral("失败恢复连接 PLC 失败: %1").arg(err);
+            }
+            showlog(QStringLiteral("PLC失败恢复: %1").arg(errorMessage ? *errorMessage : err));
+            return false;
+        }
+    }
+
+    bool ok = false;
+    QString recoveryErr;
+    modbusManager.withSession([&](PlcModbusSession& session) {
+        ok = runPlcV3FailRecoveryReset(session, &recoveryErr);
+    });
+    if (!ok && errorMessage) {
+        *errorMessage = recoveryErr;
+    }
+    if (needConnect) {
+        modbusManager.disconnectPlc();
+    }
+    return ok;
+}
+
 bool key_test::runPlcV3TouchKeyFull(int keyIndex0To6, QString* summary) {
     // inovancePlcTcp_.setTraceEnabled(SETTINGS.value(QStringLiteral("PLC/ModbusTrace"), false).toBool()
     //                                 || (qEnvironmentVariableIntValue("PLC_MODBUS_TRACE") != 0));
@@ -640,11 +668,9 @@ bool key_test::runPlcV3TouchKeyFull(int keyIndex0To6, QString* summary) {
 
     const auto fail = [&](const QString& msg) {
         if (modbusManager.isPlcConnected()) {
-            QString releaseErr;
-            if (!plcWriteCoil(keyM, false, &releaseErr)) {
-                showlog(QStringLiteral("按键测试失败后释放 M%1 失败: %2").arg(keyM).arg(releaseErr));
-            } else if (gapMs > 0) {
-                QThread::msleep(static_cast<unsigned long>(gapMs));
+            QString plcErr;
+            if (!plcRunFailRecoveryReset(true, &plcErr)) {
+                showlog(QStringLiteral("按键测试失败恢复未完全成功: %1").arg(plcErr));
             }
         }
         modbusManager.disconnectPlc();
