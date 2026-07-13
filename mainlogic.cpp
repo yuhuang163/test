@@ -2831,8 +2831,19 @@ void MainWindow::recoverCustom() {
     QString comName = SETTINGS.value(QString("%1/comName").arg(baseKey)).toString();
     ui->comNameCombo->setCurrentText(comName);
 
-    const QString getMacDefault = SETTINGS.value(QString("%1/getMacDefault").arg(baseKey)).toString();
-    if (!getMacDefault.isEmpty())
+    const QString getMacDefault = SETTINGS.value(QString("%1/getMacDefault").arg(baseKey)).toString().trimmed();
+    const QString macInputDefault = SETTINGS.value(QString("%1/macInputDefault").arg(baseKey)).toString().trimmed();
+    static const QRegularExpression macRegex(QStringLiteral("^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$"));
+    const bool getMacDefaultIsMac = macRegex.match(getMacDefault).hasMatch();
+
+    {
+        QString macDefault = macInputDefault;
+        if (macDefault.isEmpty() && getMacDefaultIsMac)
+            macDefault = getMacDefault;
+        if (!macDefault.isEmpty())
+            ui->macInput->setText(macDefault);
+    }
+    if (!getMacDefault.isEmpty() && !getMacDefaultIsMac)
         ui->getMac->setText(getMacDefault);
 
     ui->otaFilePath->setText(SETTINGS.value("Window/otaFilePath").toString());
