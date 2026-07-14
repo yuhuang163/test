@@ -269,7 +269,7 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     ui->tabWidget->setCurrentIndex(0); // 设置当前页为第一页
 }
 void QFreeWork::refreshOrderedTestIndexes() {
-    const QString stationName = SETTINGS.value("TestOrderMeta/SelectedStationName").toString().trimmed();
+    const QString stationName = TestCaseStore::loadSelectedFlowStationName();
     const QString tabName = stationName.isEmpty() ? "自由工站" : stationName;
     ui->tabWidget->setTabText(0, tabName);
     setupFreeWorkTabBar(ui->tabWidget);
@@ -278,11 +278,9 @@ void QFreeWork::refreshOrderedTestIndexes() {
     orderedTestCaseNames_.clear();
     stopFlowOnTestFail_ = true;
 
-    QString stationKey = TestCaseStore::resolveFlowStationKey(
-        SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString());
+    QString stationKey = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationKey());
     if (TestCaseStore::loadStationFlowItems(stationKey).isEmpty()) {
-        const QString byName = TestCaseStore::resolveFlowStationKey(
-            SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStationName")).toString());
+        const QString byName = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationName());
         if (!byName.isEmpty())
             stationKey = byName;
     }
@@ -352,13 +350,12 @@ bool QFreeWork::isBydFactory() const {
 }
 
 bool QFreeWork::isFreeWorkXwdKeyStation() const {
-    const QString stationName = SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStationName")).toString().trimmed();
+    const QString stationName = TestCaseStore::loadSelectedFlowStationName();
     if (stationName.contains(QStringLiteral("xwd"), Qt::CaseInsensitive))
         return true;
     if (pack.factory.trimmed().compare(QStringLiteral("xwd"), Qt::CaseInsensitive) == 0)
         return true;
-    QString stationKey = TestCaseStore::resolveFlowStationKey(
-        SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString());
+    QString stationKey = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationKey());
     if (stationKey.isEmpty()) {
         stationKey = TestCaseStore::resolveFlowStationKey(stationName);
     }

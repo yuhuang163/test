@@ -252,6 +252,16 @@ QString resolveStationKeyForProfileFolder(const QString& folderName, const QStri
     return stationKey;
 }
 
+void stripLegacyFlowMetaFromFlowIniFile() {
+    const QString flowPath = TestCasePaths::flowIniPath();
+    QSettings ini(flowPath, QSettings::IniFormat);
+    applyTestCaseIniCodec(ini);
+    ini.beginGroup(QStringLiteral("Meta"));
+    ini.remove(QString());
+    ini.endGroup();
+    syncTestCaseIni(ini, flowPath);
+}
+
 void migrateFlowStationIniData(const QString& oldKey, const QString& newKey, const QString& displayName) {
     if (oldKey.isEmpty() || newKey.isEmpty() || oldKey.compare(newKey, Qt::CaseInsensitive) == 0)
         return;
@@ -296,7 +306,7 @@ void migrateFlowStationIniData(const QString& oldKey, const QString& newKey, con
         metaChanged = true;
     }
     if (metaChanged)
-        TestCaseStore::saveFlowMeta(meta);
+        TestCaseStore::saveSelectedFlowStation(meta.selectedStation, meta.selectedStationName);
 
     syncTestCaseIni(ini, flowPath);
 }
@@ -1791,25 +1801,66 @@ void TestCaseStore::invalidateCloudItemNameCache() {
     cloudItemNameMapLoaded() = false;
 }
 
-bool TestCaseStore::loadFlowMeta(TestFlowMeta& out) {
+void TestCaseStore::migrateLegacyFlowMetaToLocalSettings() {
+    if (!SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString().trimmed().isEmpty())
+        return;
     TestCasePaths::ensureRootDir();
-    QSettings ini(TestCasePaths::flowIniPath(), QSettings::IniFormat);
+    const QString flowPath = TestCasePaths::flowIniPath();
+    if (!QFile::exists(flowPath))
+        return;
+    QSettings ini(flowPath, QSettings::IniFormat);
     applyTestCaseIniCodec(ini);
-    out.version = ini.value(QStringLiteral("Meta/Version"), 1).toInt();
-    out.selectedStation = ini.value(QStringLiteral("Meta/SelectedStation")).toString().trimmed();
-    out.selectedStationName = ini.value(QStringLiteral("Meta/SelectedStationName")).toString().trimmed();
+    const QString legacyKey = ini.value(QStringLiteral("Meta/SelectedStation")).toString().trimmed();
+    const QString legacyName = ini.value(QStringLiteral("Meta/SelectedStationName")).toString().trimmed();
+    if (legacyKey.isEmpty() && legacyName.isEmpty())
+        return;
+    if (!legacyKey.isEmpty())
+        SETTINGS.setValue(QStringLiteral("TestOrderMeta/SelectedStation"), legacyKey);
+    const QString name = legacyName.isEmpty() ? flowStationDisplayName(legacyKey) : legacyName;
+    if (!name.isEmpty())
+        SETTINGS.setValue(QStringLiteral("TestOrderMeta/SelectedStationName"), name);
+    stripLegacyFlowMetaFromFlowIniFile();
+}
+
+QString TestCaseStore::loadSelectedFlowStationKey() {
+    migrateLegacyFlowMetaToLocalSettings();
+    return SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString().trimmed();
+}
+
+QString TestCaseStore::loadSelectedFlowStationName() {
+    migrateLegacyFlowMetaToLocalSettings();
+    QString name = SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStationName")).toString().trimmed();
+    if (name.isEmpty()) {
+        const QString key = loadSelectedFlowStationKey();
+        if (!key.isEmpty())
+            name = flowStationDisplayName(key);
+    }
+    return name;
+}
+
+void TestCaseStore::saveSelectedFlowStation(const QString& stationKey, const QString& displayName) {
+    const QString key = stationKey.trimmed();
+    if (key.isEmpty())
+        return;
+    QString name = displayName.trimmed();
+    if (name.isEmpty())
+        name = flowStationDisplayName(key);
+    SETTINGS.setValue(QStringLiteral("TestOrderMeta/SelectedStation"), key);
+    SETTINGS.setValue(QStringLiteral("TestOrderMeta/SelectedStationName"), name);
+}
+
+bool TestCaseStore::loadFlowMeta(TestFlowMeta& out) {
+    migrateLegacyFlowMetaToLocalSettings();
+    out.version = 1;
+    out.selectedStation = loadSelectedFlowStationKey();
+    out.selectedStationName = loadSelectedFlowStationName();
     return true;
 }
 
 bool TestCaseStore::saveFlowMeta(const TestFlowMeta& meta) {
-    TestCasePaths::ensureRootDir();
-    const QString flowPath = TestCasePaths::flowIniPath();
-    QSettings ini(flowPath, QSettings::IniFormat);
-    applyTestCaseIniCodec(ini);
-    ini.setValue(QStringLiteral("Meta/Version"), meta.version);
-    ini.setValue(QStringLiteral("Meta/SelectedStation"), meta.selectedStation);
-    ini.setValue(QStringLiteral("Meta/SelectedStationName"), meta.selectedStationName);
-    syncTestCaseIni(ini, flowPath);
+    Q_UNUSED(meta);
+    saveSelectedFlowStation(meta.selectedStation, meta.selectedStationName);
+    stripLegacyFlowMetaFromFlowIniFile();
     return true;
 }
 

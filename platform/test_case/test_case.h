@@ -66,7 +66,14 @@ class TestCaseStore {
     static QString cloudDisplayNameForItemKey(const QString& itemKey);
     static void invalidateCloudItemNameCache();
     static bool loadFlowMeta(TestFlowMeta& out);
+    /** @deprecated 工站选择请用 saveSelectedFlowStation；此方法不再写入总的测试流程.ini */
     static bool saveFlowMeta(const TestFlowMeta& meta);
+    /** 当前选中工站（仅存上位机设置.local.ini / TestOrderMeta） */
+    static QString loadSelectedFlowStationKey();
+    static QString loadSelectedFlowStationName();
+    static void saveSelectedFlowStation(const QString& stationKey, const QString& displayName);
+    /** 旧版总的测试流程.ini [Meta] 一次性迁入本地设置并清除 */
+    static void migrateLegacyFlowMetaToLocalSettings();
     static QStringList loadStationItems(const QString& stationKey);
     static bool saveStationItems(const QString& stationKey, const QStringList& items);
     static QVector<TestFlowItemEntry> loadStationFlowItems(const QString& stationKey);

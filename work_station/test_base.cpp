@@ -22,6 +22,7 @@
 #include "common_utils.h"
 #include "test_data_upload_service.h"
 #include "test_record_store.h"
+#include "test_case.h"
 
 #pragma comment(lib, "hid.lib")
 #pragma comment(lib, "setupapi.lib")
@@ -469,7 +470,7 @@ QString test_base::sessionMacForLog() {
 }
 
 void test_base::onTestSessionStarting(const QString& sn, const QString& mac) {
-    QString station = SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStationName")).toString().trimmed();
+    QString station = TestCaseStore::loadSelectedFlowStationName();
     if (station.isEmpty()) {
         station = SETTINGS.value(QStringLiteral("SYSTEM/station")).toString().trimmed();
     }

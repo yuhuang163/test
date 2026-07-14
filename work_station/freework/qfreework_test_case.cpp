@@ -407,10 +407,9 @@ QString QFreeWork::currentMacAddress() const {
 bool QFreeWork::useTestCaseFlow(const QString& stationKey) const {
     QString key = TestCaseStore::resolveFlowStationKey(stationKey.trimmed());
     if (key.isEmpty())
-        key = TestCaseStore::resolveFlowStationKey(SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString());
+        key = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationKey());
     if (TestCaseStore::loadStationItems(key).isEmpty()) {
-        const QString byName = TestCaseStore::resolveFlowStationKey(
-            SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStationName")).toString());
+        const QString byName = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationName());
         if (!byName.isEmpty())
             key = byName;
     }
@@ -424,10 +423,9 @@ bool QFreeWork::useTestCaseFlow(const QString& stationKey) const {
 QStringList QFreeWork::testCaseFlowItems(const QString& stationKey) const {
     QString key = TestCaseStore::resolveFlowStationKey(stationKey.trimmed());
     if (key.isEmpty())
-        key = TestCaseStore::resolveFlowStationKey(SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString());
+        key = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationKey());
     if (TestCaseStore::loadStationItems(key).isEmpty()) {
-        const QString byName = TestCaseStore::resolveFlowStationKey(
-            SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStationName")).toString());
+        const QString byName = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationName());
         if (!byName.isEmpty())
             key = byName;
     }

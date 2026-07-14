@@ -159,15 +159,8 @@ QString FactoryCloudClient::deviceId() {
 }
 
 QString FactoryCloudClient::stationKey() {
-    // 与「总的测试流程.ini」[Meta]/SelectedStationName 同源（如 m8烧录工站）
-    TestFlowMeta meta;
-    if (TestCaseStore::loadFlowMeta(meta)) {
-        const QString name = meta.selectedStationName.trimmed();
-        if (!name.isEmpty()) {
-            return name;
-        }
-    }
-    QString key = SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStationName")).toString().trimmed();
+    // 与上位机设置.local.ini TestOrderMeta/SelectedStationName 同源（如 m8烧录工站）
+    QString key = TestCaseStore::loadSelectedFlowStationName();
     if (key.isEmpty()) {
         key = SETTINGS.value(QStringLiteral("SYSTEM/station")).toString().trimmed();
     }
