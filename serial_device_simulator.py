@@ -106,13 +106,16 @@ class SerialDeviceSimulator:
         return body + struct.pack('<H', self._calculate_crc(body))
 
     def _is_modbus_frame(self, data):
-        if len(data) < 5:
+        if len(data) < 6:
             return False
         fc = data[1]
-        if 0x01 <= fc <= 0x7F:
+        if 0x10 <= fc <= 0x22 or fc == 0x11 or fc == 0x21:
             crc = struct.unpack('<H', data[-2:])[0]
             calculated = self._calculate_crc(data[:-2])
-            return crc == calculated
+            result = crc == calculated
+            if result:
+                print(f"检测到Modbus帧: 长度={len(data)}, FC=0x{fc:02X}")
+            return result
         return False
 
     def _handle_modbus(self, data):
@@ -457,6 +460,9 @@ class SerialDeviceSimulator:
                 try:
                     if self.ser.in_waiting > 0:
                         data = self.ser.read(self.ser.in_waiting)
+                        timestamp = time.strftime('%H:%M:%S.%f')[:-3]
+                        hex_str = ' '.join(f'{b:02X}' for b in data)
+                        print(f"[{timestamp}] 收到原始数据: {len(data)} bytes | HEX: {hex_str}")
                         self._process_data(data, self.ser.write)
                     time.sleep(0.01)
                 except serial.SerialException as e:
