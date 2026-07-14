@@ -35,6 +35,8 @@ class CommonUtils {
     static QString formatTimestampMs(const QDateTime& dateTime = QDateTime::currentDateTime());
     static QString formatElapsedMs(qint64 elapsedMs, bool compact = true);
     static QString formatElapsedSeconds(int seconds, bool compact = true);
+    /** 界面计时标签：无效 timer 为 0.0 s，保留 fractionDigits 位小数 */
+    static QString formatElapsedSeconds(const QElapsedTimer& timer, int fractionDigits = 1);
     static QString formatElapsedTimer(const QElapsedTimer& timer, bool compact = true);
 
     // --- 文件 ---

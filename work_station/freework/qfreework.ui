@@ -62,12 +62,40 @@
              </widget>
             </item>
             <item>
-             <widget class="QLCDNumber" name="test_time">
-              <property name="smallDecimalPoint">
-               <bool>false</bool>
+             <widget class="QLabel" name="test_time_caption">
+              <property name="styleSheet">
+               <string>font-size: 13px; color: #666666; padding-right: 2px;</string>
               </property>
-              <property name="segmentStyle">
-               <enum>QLCDNumber::Flat</enum>
+              <property name="text">
+               <string>用时</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="test_time">
+              <property name="minimumSize">
+               <size>
+                <width>76</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>88</width>
+                <height>16777215</height>
+               </size>
+              </property>
+              <property name="styleSheet">
+               <string>font-size: 13px; font-weight: 500; color: #333333; background-color: #f0f0f0; border: 1px solid #d9d9d9; border-radius: 4px; padding: 1px 8px;</string>
+              </property>
+              <property name="text">
+               <string>0.0 s</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
               </property>
              </widget>
             </item>

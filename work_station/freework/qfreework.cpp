@@ -1,5 +1,6 @@
 #include "qfreework.h"
 
+#include "common_utils.h"
 #include "huiling_wfp60h_scpi_types.h"
 #include "test_case.h"
 
@@ -586,6 +587,7 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     qDebug() << "测试结束";
     teststate = -1;
     stepRuntime_.reset();
+    ui->test_time->setText(CommonUtils::formatElapsedSeconds(TestTime));
     ui->macInput->clear();
     ui->snInput->clear();
     ui->macInput->setDisabled(0);
@@ -602,9 +604,11 @@ void QFreeWork::startTask() {
         return;
     }
 
-    ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);
     if (teststate == -1) {
         runTestFlowBootstrap();
+    }
+    if (teststate >= 0) {
+        ui->test_time->setText(CommonUtils::formatElapsedSeconds(TestTime));
     }
     if (canRunOrderedTestStepLoop()) {
         tickOrderedTestStepLoop();
@@ -1328,6 +1332,7 @@ void QFreeWork::initData() {
     tupleData_ = TupleApplyResult{};
     QTupleService::clearSharedSession();
     freeWorkMesSegments_.clear();
+    ui->test_time->setText(QStringLiteral("0.0 s"));
     TestTime.start();
 }
 
@@ -1507,6 +1512,7 @@ void QFreeWork::on_macInput_returnPressed() {
 
         isTestContinue = true;
         teststate = -1;
+        ui->test_time->setText(QStringLiteral("0.0 s"));
 
         emit send_go_next_focus();
         ui->getMac->setDisabled(1);
