@@ -387,6 +387,9 @@ class SerialDeviceSimulator:
         elif not hasattr(self, 'last_char_time'):
             self.last_char_time = time.time()
 
+        if not self.data_buffer:
+            return
+
         while True:
             print(f"[DEBUG] loop: buffer_len={len(self.data_buffer)}")
             if self._is_modbus_frame(self.data_buffer):
