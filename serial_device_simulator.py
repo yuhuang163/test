@@ -180,20 +180,8 @@ class SerialDeviceSimulator:
                 data.append(0x00)
                 return self._build_asd_frame(channel.addr, cmd, func, data)
 
-        elif cmd == 0x20:
-            # 读模拟电池设置: 请求 01 20 10 00 CRC → 回 01 20 10 0D + 13字节
-            if func in (0x10, 0x0D):
-                data = bytearray()
-                data.append(1 if channel.output_enabled else 0)
-                data.extend(struct.pack('>I', channel.battery_voltage_uv))
-                data.extend(struct.pack('>I', channel.max_current_ma))
-                data.append(channel.current_range)
-                data.append(channel.display_speed)
-                data.extend(struct.pack('>H', channel.internal_resistance_mohm))
-                return self._build_asd_frame(channel.addr, cmd, 0x10, data)
-
-        elif cmd == 0x22:
-            # 读测量: 请求 01 22 10 00 CRC → 回 01 22 10 0E + 14字节
+        elif cmd in (0x20, 0x22):
+            # 兼容 0x20 和 0x22 读测量: 请求 01 20/22 10 00 CRC → 回 01 20/22 10 0E + 14字节
             if func == 0x10:
                 data = bytearray()
                 data.append(1 if channel.output_enabled else 0)
