@@ -5,6 +5,7 @@ import time
 import threading
 import struct
 import random
+from datetime import datetime
 
 try:
     import win32file
@@ -152,7 +153,7 @@ class VirtualSerialSimulator:
         self.output_enabled = False
 
     def _log(self, direction, data):
-        timestamp = time.strftime('%H:%M:%S.%f')[:-3]
+        timestamp = datetime.now().strftime('%H:%M:%S.%f')[:-3]
         if isinstance(data, str):
             hex_data = ' '.join(f'{ord(c):02X}' for c in data)
             print(f"[{timestamp}] {direction}: '{data}' | HEX: {hex_data}")

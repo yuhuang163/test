@@ -6,24 +6,28 @@ import threading
 import time
 import random
 import argparse
+from datetime import datetime
 
 class Asd9026aChannel:
     def __init__(self, addr):
         self.addr = addr
-        self.output_enabled = False
-        self.battery_voltage_uv = 3700000
-        self.max_current_ma = 1000
+        self.output_enabled = True
+        # 设置寄存器用 uV / mA
+        self.battery_voltage_uv = 12000000
+        self.max_current_ma = 2500
         self.current_range = 4
         self.display_speed = 2
         self.internal_resistance_mohm = 10
         self.protection_current_ma = 2000
         self.protection_power_w = 200
         self.protection_time_ms = 100
+        # 温度编码: 实际℃ = 数值 - 40，65 → 25℃
         self.temperature = 65
         self.protection_flags = 0
         self.locked = False
-        self.voltage_avg = 3700000
-        self.current_avg = 0
+        # 测量值与单位字段一致: 12V / 2500mA≈2.5A
+        self.voltage_avg = 12
+        self.current_avg = 2500
         self.voltage_unit = 1
         self.current_unit = 2
         self.current_direction = 0
@@ -31,16 +35,17 @@ class Asd9026aChannel:
     def set_output(self, enabled):
         self.output_enabled = enabled
         if enabled:
-            self.voltage_avg = self.battery_voltage_uv
-            self.current_avg = 0
+            self.voltage_avg = max(1, self.battery_voltage_uv // 1000000)
+            self.current_avg = self.max_current_ma
         else:
             self.voltage_avg = 0
             self.current_avg = 0
 
     def update_measurements(self):
         if self.output_enabled:
-            self.voltage_avg = self.battery_voltage_uv + int((time.time() * 100) % 1000) - 500
-            self.current_avg = int((time.time() * 50) % 100) - 50
+            base_v = max(1, self.battery_voltage_uv // 1000000)
+            self.voltage_avg = base_v
+            self.current_avg = max(0, self.max_current_ma + int((time.time() * 50) % 20) - 10)
 
 class SerialDeviceSimulator:
     def __init__(self, mode='serial', port='COM1', baud_rate=9600, tcp_host='0.0.0.0', tcp_port=5028):
@@ -65,7 +70,7 @@ class SerialDeviceSimulator:
         self.output_enabled = False
 
     def _log(self, direction, data):
-        timestamp = time.strftime('%H:%M:%S.%f')[:-3]
+        timestamp = datetime.now().strftime('%H:%M:%S.%f')[:-3]
         if isinstance(data, str):
             hex_data = ' '.join(f'{ord(c):02X}' for c in data)
             print(f"[{timestamp}] {direction}: '{data}' | HEX: {hex_data}")
@@ -92,6 +97,14 @@ class SerialDeviceSimulator:
                     crc >>= 1
         return crc
 
+    def _build_asd_frame(self, addr, cmd, func, payload=b'', length=None):
+        """回: 地址 + 命令码 + 功能码 + 数据长度 + 数据内容(高位在前) + 校验码"""
+        payload = bytes(payload)
+        if length is None:
+            length = len(payload)
+        body = bytes([addr, cmd, func, length & 0xFF]) + payload
+        return body + struct.pack('<H', self._calculate_crc(body))
+
     def _is_modbus_frame(self, data):
         if len(data) < 5:
             return False
@@ -106,16 +119,19 @@ class SerialDeviceSimulator:
         if len(data) < 5:
             return None
 
+        # 收: 地址 + 命令码 + 功能码 + 数据长度 [+ 数据内容] + 校验码
         addr = data[0]
-        fc = data[1]
+        cmd = data[1]
+        func = data[2] if len(data) > 2 else 0
+        length = data[3] if len(data) > 3 else 0
         crc = struct.unpack('<H', data[-2:])[0]
         calculated_crc = self._calculate_crc(data[:-2])
-        
+
         if crc != calculated_crc:
             print(f"CRC校验失败: 收到=0x{crc:04X}, 计算=0x{calculated_crc:04X}")
             return None
 
-        print(f"Modbus请求: 地址=0x{addr:02X}, 功能码=0x{fc:02X}")
+        print(f"ASD请求: 地址=0x{addr:02X}, 命令码=0x{cmd:02X}, 功能码=0x{func:02X}, 数据长度=0x{length:02X}")
 
         channel = self.asd_channels.get(addr)
         if not channel:
@@ -123,36 +139,29 @@ class SerialDeviceSimulator:
 
         response = None
 
-        if fc in (0x10, 0x20, 0x22):
-            if len(data) >= 6:
-                start_addr = struct.unpack('>H', data[2:4])[0]
-                quantity = struct.unpack('>H', data[4:6])[0] if len(data) >= 6 else 0
-                response = self._handle_modbus_read(channel, fc, start_addr, quantity)
+        if cmd in (0x10, 0x20, 0x22):
+            response = self._handle_modbus_read(channel, cmd, func, length)
 
-        elif fc in (0x11, 0x21):
-            if len(data) >= 6:
-                start_addr = struct.unpack('>H', data[2:4])[0]
-                byte_count = data[4] if len(data) > 4 else 0
-                write_data = data[5:5+byte_count] if len(data) > 5+byte_count else data[5:-2]
-                response = self._handle_modbus_write(channel, fc, start_addr, write_data)
+        elif cmd in (0x11, 0x21):
+            write_data = data[4:4 + length] if length else b''
+            if not write_data and len(data) > 6:
+                write_data = data[4:-2]
+            response = self._handle_modbus_write(channel, cmd, func, write_data)
 
-        elif fc == 0x12:
+        elif cmd == 0x12:
             crc_out = self._calculate_crc(data[:-2])
-            data_out = bytearray()
-            data_out.extend(struct.pack('<H', crc_out))
-            data_out.append(fc)
-            response_crc = self._calculate_crc([addr, fc, 0x03] + list(data_out))
-            response = struct.pack('>BBB', addr, fc, 0x03) + data_out + struct.pack('<H', response_crc)
+            payload = struct.pack('<H', crc_out) + bytes([cmd])
+            response = self._build_asd_frame(addr, cmd, 0x03, payload)
 
         if response:
             self._log("OUT", response)
         return response
 
-    def _handle_modbus_read(self, channel, fc, start_addr, quantity):
+    def _handle_modbus_read(self, channel, cmd, func, length):
         channel.update_measurements()
 
-        if fc == 0x10:
-            if start_addr == 0x00 and quantity == 0x02:
+        if cmd == 0x10:
+            if func == 0x00 and length == 0x02:
                 data = bytearray(24)
                 data[0] = 0x01
                 data[1] = 0x02
@@ -160,88 +169,82 @@ class SerialDeviceSimulator:
                 data[5] = 0x55
                 data[6] = 0x01
                 data[7] = 0x02
-                crc = self._calculate_crc([channel.addr, fc, 0x18] + list(data))
-                return struct.pack('>BBB', channel.addr, fc, 0x18) + data + struct.pack('<H', crc)
+                return self._build_asd_frame(channel.addr, cmd, func, data)
 
-            elif start_addr == 0x02 and quantity == 0x02:
+            elif func == 0x02 and length == 0x02:
                 data = bytearray()
                 data.append(channel.temperature & 0xFF)
-                data.extend(struct.pack('<H', 12000))
+                data.extend(struct.pack('>H', 12000))
                 data.append(channel.protection_flags & 0xFF)
                 data.append(0x00)
                 data.append(0x00)
-                crc = self._calculate_crc([channel.addr, fc, 0x06] + list(data))
-                return struct.pack('>BBB', channel.addr, fc, 0x06) + data + struct.pack('<H', crc)
+                return self._build_asd_frame(channel.addr, cmd, func, data)
 
-        elif fc == 0x20:
-            if start_addr == 0x10 and quantity == 0x00:
-                data = bytearray()
-                data.append(0x00)
-                data.extend(struct.pack('<I', channel.battery_voltage_uv))
-                data.extend(struct.pack('<I', channel.max_current_ma))
-                data.append(channel.current_range)
-                data.append(channel.display_speed)
-                data.extend(struct.pack('<H', channel.internal_resistance_mohm))
-                crc = self._calculate_crc([channel.addr, fc, 0x0D] + list(data))
-                return struct.pack('>BBB', channel.addr, fc, 0x0D) + data + struct.pack('<H', crc)
-
-        elif fc == 0x22:
-            if start_addr == 0x10 and quantity == 0x0E:
+        elif cmd == 0x20:
+            # 读模拟电池设置: 请求 01 20 10 00 CRC → 回 01 20 10 0D + 13字节
+            if func in (0x10, 0x0D):
                 data = bytearray()
                 data.append(1 if channel.output_enabled else 0)
-                data.extend(struct.pack('<I', channel.voltage_avg))
-                data.append(channel.voltage_unit)
-                data.extend(struct.pack('<I', abs(channel.current_avg)))
-                data.append(channel.current_unit)
-                data.append(channel.current_direction)
-                data.append(channel.temperature)
-                data.append(channel.protection_flags)
-                crc = self._calculate_crc([channel.addr, fc, 0x0E] + list(data))
-                return struct.pack('>BBB', channel.addr, fc, 0x0E) + data + struct.pack('<H', crc)
+                data.extend(struct.pack('>I', channel.battery_voltage_uv))
+                data.extend(struct.pack('>I', channel.max_current_ma))
+                data.append(channel.current_range)
+                data.append(channel.display_speed)
+                data.extend(struct.pack('>H', channel.internal_resistance_mohm))
+                return self._build_asd_frame(channel.addr, cmd, 0x10, data)
+
+        elif cmd == 0x22:
+            # 读测量: 请求 01 22 10 00 CRC → 回 01 22 10 0E + 14字节
+            if func == 0x10:
+                data = bytearray()
+                data.append(1 if channel.output_enabled else 0)
+                data.extend(struct.pack('>I', channel.voltage_avg & 0xFFFFFFFF))
+                data.append(channel.voltage_unit & 0xFF)
+                data.extend(struct.pack('>I', abs(channel.current_avg) & 0xFFFFFFFF))
+                data.append(channel.current_unit & 0xFF)
+                data.append(channel.current_direction & 0xFF)
+                data.append(channel.temperature & 0xFF)
+                data.append(channel.protection_flags & 0xFF)
+                return self._build_asd_frame(channel.addr, cmd, func, data)
 
         return None
 
-    def _handle_modbus_write(self, channel, fc, start_addr, data):
-        if fc == 0x11:
-            if start_addr == 0x03 and len(data) >= 6:
+    def _handle_modbus_write(self, channel, cmd, func, data):
+        if cmd == 0x11:
+            if func == 0x03 and len(data) >= 6:
                 channel.current_range = data[0]
-                channel.protection_current_ma = struct.unpack('<H', data[1:3])[0]
-                channel.protection_power_w = struct.unpack('<H', data[3:5])[0]
+                channel.protection_current_ma = struct.unpack('>H', data[1:3])[0]
+                channel.protection_power_w = struct.unpack('>H', data[3:5])[0]
                 channel.protection_time_ms = data[5]
                 print(f"通道{channel.addr} 保护设置: 量程={channel.current_range}, 保护电流={channel.protection_current_ma}mA")
-                crc = self._calculate_crc([channel.addr, fc, 0x03])
-                return struct.pack('>BBBH', channel.addr, fc, 0x03, crc)
+                return self._build_asd_frame(channel.addr, cmd, func, length=0x03)
 
-            elif start_addr == 0x04 and len(data) >= 1:
+            elif func == 0x04 and len(data) >= 1:
                 enable = data[0]
                 channel.set_output(enable == 1)
                 print(f"通道{channel.addr} 开关控制: {'开' if enable == 1 else '关'}")
-                crc = self._calculate_crc([channel.addr, fc, 0x03])
-                return struct.pack('>BBBH', channel.addr, fc, 0x03, crc)
+                return self._build_asd_frame(channel.addr, cmd, func, length=0x03)
 
-            elif start_addr == 0x0C and len(data) >= 1:
+            elif func == 0x0C and len(data) >= 1:
                 channel.locked = data[0] == 1
                 print(f"通道{channel.addr} 面板锁屏: {'锁屏' if channel.locked else '解锁'}")
-                crc = self._calculate_crc([channel.addr, fc, 0x01])
-                return struct.pack('>BBBH', channel.addr, fc, 0x01, crc)
+                return self._build_asd_frame(channel.addr, cmd, func, length=0x01)
 
-        elif fc == 0x21:
-            if start_addr == 0x10 and len(data) >= 13:
+        elif cmd == 0x21:
+            if func == 0x10 and len(data) >= 13:
                 if data[0] != 0:
                     channel.set_output(data[0] == 1)
-                if struct.unpack('<I', data[1:5])[0] != 0:
-                    channel.battery_voltage_uv = struct.unpack('<I', data[1:5])[0]
-                if struct.unpack('<I', data[5:9])[0] != 0:
-                    channel.max_current_ma = struct.unpack('<I', data[5:9])[0]
+                if struct.unpack('>I', data[1:5])[0] != 0:
+                    channel.battery_voltage_uv = struct.unpack('>I', data[1:5])[0]
+                if struct.unpack('>I', data[5:9])[0] != 0:
+                    channel.max_current_ma = struct.unpack('>I', data[5:9])[0]
                 if data[9] != 0:
                     channel.current_range = data[9]
                 if data[10] != 0:
                     channel.display_speed = data[10]
-                if struct.unpack('<H', data[11:13])[0] != 0:
-                    channel.internal_resistance_mohm = struct.unpack('<H', data[11:13])[0]
+                if struct.unpack('>H', data[11:13])[0] != 0:
+                    channel.internal_resistance_mohm = struct.unpack('>H', data[11:13])[0]
                 print(f"通道{channel.addr} 模拟电池设置: 电压={channel.battery_voltage_uv/1e6}V, 电流={channel.max_current_ma}mA")
-                crc = self._calculate_crc([channel.addr, fc, 0x0D])
-                return struct.pack('>BBBH', channel.addr, fc, 0x0D, crc)
+                return self._build_asd_frame(channel.addr, cmd, func, length=0x0D)
 
         return None
 
