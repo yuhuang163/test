@@ -388,6 +388,7 @@ class SerialDeviceSimulator:
             self.last_char_time = time.time()
 
         while True:
+            print(f"[DEBUG] loop: buffer_len={len(self.data_buffer)}")
             if self._is_modbus_frame(self.data_buffer):
                 response = self._handle_modbus(self.data_buffer)
                 if response:
@@ -462,7 +463,10 @@ class SerialDeviceSimulator:
                     print(f"串口错误: {e}")
                     break
                 except Exception as e:
+                    import traceback
                     print(f"错误: {e}")
+                    print("完整错误堆栈:")
+                    traceback.print_exc()
 
         except serial.SerialException as e:
             print(f"无法打开串口 {self.port}: {e}")
