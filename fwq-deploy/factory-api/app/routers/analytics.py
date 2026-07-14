@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.deps import get_current_user
+from app.factory_scope import apply_factory_name_filter
 from app.models import LogArchive, TestRecord, TestRecordItem, User
 from app.response import ok
 from app.seed import get_factory_display_name
@@ -22,34 +23,39 @@ def dashboard_summary(
     db: Annotated[Session, Depends(get_db)],
     user: Annotated[User, Depends(get_current_user)],
 ):
-    total_records = db.query(func.count(TestRecord.id)).scalar() or 0
+    base_records_q = apply_factory_name_filter(
+        db.query(TestRecord), TestRecord.factory_name, db, user, None
+    )
+    total_records = base_records_q.count()
 
     today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-    today_q = db.query(TestRecord).filter(TestRecord.created_at >= today_start)
-    today_total = today_q.count()
+    today_rows = base_records_q.filter(TestRecord.created_at >= today_start).all()
+    today_total = len(today_rows)
     today_pass = sum(
-        1 for r in today_q.all()
+        1 for r in today_rows
         if r.test_result and r.test_result.upper() in ("PASS", "OK", "通过")
     )
     today_fail = today_total - today_pass
     today_yield_pct = round(today_pass / today_total * 100, 1) if today_total else 0.0
 
-    total_logs = db.query(func.count(LogArchive.id)).scalar() or 0
+    logs_q = apply_factory_name_filter(db.query(LogArchive), LogArchive.factory_name, db, user, None)
+    total_logs = logs_q.count()
 
     factory_counts = (
-        db.query(TestRecord.factory_name, func.count(TestRecord.id).label("cnt"))
+        apply_factory_name_filter(
+            db.query(TestRecord.factory_name, func.count(TestRecord.id).label("cnt")),
+            TestRecord.factory_name,
+            db,
+            user,
+            None,
+        )
         .group_by(TestRecord.factory_name)
         .order_by(func.count(TestRecord.id).desc())
         .all()
     )
     factories = [{"name": get_factory_display_name(db, r[0]), "count": r[1]} for r in factory_counts]
 
-    recent_records = (
-        db.query(TestRecord)
-        .order_by(TestRecord.created_at.desc())
-        .limit(5)
-        .all()
-    )
+    recent_records = base_records_q.order_by(TestRecord.created_at.desc()).limit(5).all()
     recent = [
         {
             "id": r.id,
@@ -63,12 +69,7 @@ def dashboard_summary(
         for r in recent_records
     ]
 
-    recent_logs_rows = (
-        db.query(LogArchive)
-        .order_by(LogArchive.created_at.desc())
-        .limit(5)
-        .all()
-    )
+    recent_logs_rows = logs_q.order_by(LogArchive.created_at.desc()).limit(5).all()
     recent_logs = [
         {
             "id": r.id,
@@ -109,10 +110,9 @@ def data_curve(
     q = db.query(TestRecordItem, TestRecord).join(
         TestRecord, TestRecordItem.record_id == TestRecord.id
     )
-    if factoryName:
-        q = q.filter(TestRecord.factory_name == factoryName)
+    q = apply_factory_name_filter(q, TestRecord.factory_name, db, user, factoryName)
     if station:
-        q = q.filter(TestRecord.station == station)
+        q = q.filter(TestRecord.station.contains(station))
     if itemName:
         q = q.filter(TestRecordItem.name.contains(itemName))
     if startTime:
@@ -157,10 +157,9 @@ def curve_item_names(
     q = db.query(TestRecordItem.name).distinct().join(
         TestRecord, TestRecordItem.record_id == TestRecord.id
     )
-    if factoryName:
-        q = q.filter(TestRecord.factory_name == factoryName)
+    q = apply_factory_name_filter(q, TestRecord.factory_name, db, user, factoryName)
     if station:
-        q = q.filter(TestRecord.station == station)
+        q = q.filter(TestRecord.station.contains(station))
     if keyword:
         q = q.filter(TestRecordItem.name.contains(keyword))
     if startTime:
@@ -183,10 +182,9 @@ def yield_stats(
     groupBy: str = Query("day", regex="^(day|week|month)$"),
 ):
     q = db.query(TestRecord)
-    if factoryName:
-        q = q.filter(TestRecord.factory_name == factoryName)
+    q = apply_factory_name_filter(q, TestRecord.factory_name, db, user, factoryName)
     if station:
-        q = q.filter(TestRecord.station == station)
+        q = q.filter(TestRecord.station.contains(station))
     if startTime:
         q = q.filter(TestRecord.created_at >= datetime.fromisoformat(startTime))
     if endTime:
@@ -238,10 +236,9 @@ def yield_stats(
         .filter(TestRecordItem.result.isnot(None))
         .filter(func.upper(TestRecordItem.result).in_(["NG", "FAIL", "失败"]))
     )
-    if factoryName:
-        fail_items_q = fail_items_q.filter(TestRecord.factory_name == factoryName)
+    fail_items_q = apply_factory_name_filter(fail_items_q, TestRecord.factory_name, db, user, factoryName)
     if station:
-        fail_items_q = fail_items_q.filter(TestRecord.station == station)
+        fail_items_q = fail_items_q.filter(TestRecord.station.contains(station))
     if startTime:
         fail_items_q = fail_items_q.filter(TestRecord.created_at >= datetime.fromisoformat(startTime))
     if endTime:

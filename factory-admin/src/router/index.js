@@ -16,6 +16,7 @@ import UsersView from '../views/system/UsersView.vue'
 import FactoriesView from '../views/system/FactoriesView.vue'
 import DevicesView from '../views/system/DevicesView.vue'
 import AuditLoginsView from '../views/system/AuditLoginsView.vue'
+import StorageView from '../views/system/StorageView.vue'
 import ProfileView from '../views/ProfileView.vue'
 
 const router = createRouter({
@@ -67,6 +68,11 @@ const router = createRouter({
           path: 'system/audit-logins',
           component: AuditLoginsView,
           meta: { title: '登录审计', menu: '/system/audit-logins', roles: ['admin'] },
+        },
+        {
+          path: 'system/storage',
+          component: StorageView,
+          meta: { title: '存储管理', menu: '/system/storage', roles: ['admin'] },
         },
         { path: 'profile', component: ProfileView, meta: { title: '个人中心', menu: '/profile' } },
       ],

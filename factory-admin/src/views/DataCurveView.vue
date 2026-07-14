@@ -1,13 +1,16 @@
 <template>
   <div>
     <el-form :inline="true" class="filter">
-      <el-form-item label="工厂">
+      <el-form-item v-if="isFactoryScoped" label="工厂">
+        <el-input :model-value="scopedFactoryLabel" disabled style="width: 140px" />
+      </el-form-item>
+      <el-form-item v-else label="工厂">
         <el-select v-model="filters.factoryName" clearable placeholder="全部" style="width: 140px">
           <el-option v-for="f in factories" :key="f.code" :label="f.displayName" :value="f.code" />
         </el-select>
       </el-form-item>
       <el-form-item label="工站">
-        <el-input v-model="filters.station" clearable placeholder="工站" style="width: 140px" />
+        <el-input v-model="filters.station" clearable placeholder="工站（模糊）" style="width: 140px" />
       </el-form-item>
       <el-form-item label="日期段">
         <el-date-picker
@@ -86,8 +89,11 @@ import { ElMessage } from 'element-plus'
 import { formatTime } from '../utils/format'
 import { DATE_RANGE_SHORTCUTS, defaultDateRange, toApiTimeRange } from '../utils/dateRange'
 import * as api from '../api/analytics'
+import { useFactoryScope } from '../composables/useFactoryScope'
 import http from '../api/http'
 import * as echarts from 'echarts'
+
+const { isFactoryScoped, scopedFactoryLabel, applyScopedFactoryFilter } = useFactoryScope()
 
 const factories = ref([])
 const itemNames = ref([])
@@ -269,6 +275,7 @@ watch(dateRange, () => {
 
 onMounted(async () => {
   await loadFactories()
+  applyScopedFactoryFilter(filters)
 })
 
 window.addEventListener('resize', () => {

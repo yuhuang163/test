@@ -35,6 +35,7 @@ def list_users(db: Annotated[Session, Depends(get_db)], user: Annotated[User, De
                 "id": r.id,
                 "username": r.username,
                 "password": r.password_plain or "",
+                "factoryCode": r.factory_code or "",
                 "roles": (r.roles or "").split(","),
                 "stationKeys": [s for s in (r.station_keys or "").split(",") if s],
                 "status": r.status,
@@ -59,6 +60,7 @@ def create_user(
     password = body.get("password") or ""
     roles = body.get("roles") or ["operator"]
     station_keys = body.get("stationKeys") or []
+    factory_code = (body.get("factoryCode") or "").strip() or None
     if not username or not password:
         from app.response import fail
 
@@ -73,6 +75,7 @@ def create_user(
         password_plain=password,
         roles=",".join(roles),
         station_keys=",".join(station_keys),
+        factory_code=factory_code,
         status="active",
     )
     db.add(u)
@@ -130,6 +133,9 @@ def update_user(
         u.roles = ",".join(body.get("roles") or [])
     if "stationKeys" in body:
         u.station_keys = ",".join(body.get("stationKeys") or [])
+    if "factoryCode" in body:
+        code = (body.get("factoryCode") or "").strip()
+        u.factory_code = code or None
     if "status" in body:
         u.status = body.get("status") or "active"
     db.commit()
@@ -382,4 +388,13 @@ def delete_device(
     db.delete(d)
     db.commit()
     return ok(message="已删除")
+
+
+@router.get("/admin/storage/info")
+def storage_info(user: Annotated[User, Depends(get_current_user)]):
+    """盘符容量、日志/测试数据等占用与爆满预警。"""
+    _require_admin(user)
+    from app.services.storage_stats import collect_storage_info
+
+    return ok(collect_storage_info())
 

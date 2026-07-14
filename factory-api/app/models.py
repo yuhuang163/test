@@ -17,6 +17,7 @@ class User(Base):
     password_plain: Mapped[str | None] = mapped_column(String(128), nullable=True)  # 管理员可见，创建/重置时写入
     roles: Mapped[str] = mapped_column(String(255), default="operator")  # 逗号分隔
     station_keys: Mapped[str] = mapped_column(Text, default="")  # 逗号分隔
+    factory_code: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     status: Mapped[str] = mapped_column(String(16), default="active")
     failed_login_count: Mapped[int] = mapped_column(Integer, default=0)
     locked_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -58,11 +59,13 @@ class LogArchive(Base):
     host_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
     station: Mapped[str] = mapped_column(String(128), index=True)
     sn: Mapped[str | None] = mapped_column(String(128), nullable=True)
+    mac: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     test_result: Mapped[str | None] = mapped_column(String(32), nullable=True)
     client_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
     object_key: Mapped[str] = mapped_column(String(512))
     size: Mapped[int] = mapped_column(Integer, default=0)
     file_count: Mapped[int] = mapped_column(Integer, default=0)
+    test_record_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), index=True)
 
     files: Mapped[list["LogFile"]] = relationship(back_populates="archive", cascade="all, delete-orphan")
@@ -91,6 +94,7 @@ class TestRecord(Base):
     station: Mapped[str] = mapped_column(String(128), index=True)
     station_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
     sn: Mapped[str | None] = mapped_column(String(128), index=True)
+    mac: Mapped[str | None] = mapped_column(String(64), nullable=True, index=True)
     test_result: Mapped[str | None] = mapped_column(String(32), nullable=True)
     machine_no: Mapped[str | None] = mapped_column(String(64), nullable=True)
     product: Mapped[str | None] = mapped_column(String(64), nullable=True)

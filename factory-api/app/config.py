@@ -13,6 +13,9 @@ class Settings(BaseSettings):
     storage_dir: str = "./data/storage"
     log_upload_max_mb: int = 500
     log_upload_allow_anonymous: bool = True
+    # 存储盘占用预警阈值（百分比）
+    storage_warn_percent: float = 80
+    storage_critical_percent: float = 90
     cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
     access_token_expire_hours: int = 12
     default_admin_user: str = "admin"

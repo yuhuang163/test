@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.deps import client_ip, get_current_user
+from app.factory_scope import get_user_factory_scope
 from app.models import LoginAudit, User
 from app.response import fail, ok
 from app.schemas import LoginRequest, LoginResponseData, UserMeData
@@ -80,16 +81,21 @@ def login(body: LoginRequest, request: Request, db: Annotated[Session, Depends(g
         expireAt=expire,
         roles=parse_roles(user.roles),
         stationKeys=parse_station_keys(user.station_keys),
+        factoryCode=get_user_factory_scope(db, user) or None,
     )
     return ok(data.model_dump(mode="json"))
 
 
 @router.get("/me")
-def me(user: Annotated[User, Depends(get_current_user)]):
+def me(
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+):
     data = UserMeData(
         username=user.username,
         roles=parse_roles(user.roles),
         stationKeys=parse_station_keys(user.station_keys),
+        factoryCode=get_user_factory_scope(db, user) or None,
     )
     return ok(data.model_dump(mode="json"))
 

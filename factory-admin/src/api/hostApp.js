@@ -19,7 +19,24 @@ export function getRuntimeEnvInfo() {
 }
 
 export function downloadRuntimeEnv() {
-  return http.get('/admin/host-app/runtime-env', { responseType: 'blob' })
+  return http.get('/admin/host-app/runtime-env', {
+    responseType: 'blob',
+    timeout: 600000,
+  }).then(async (data) => {
+    // 失败时后端可能仍返回 JSON Blob，这里统一转成可读错误
+    if (data instanceof Blob && data.type && data.type.includes('application/json')) {
+      const text = await data.text()
+      let message = '下载失败'
+      try {
+        const body = JSON.parse(text)
+        message = body?.detail?.message || body?.message || message
+      } catch {
+        message = text || message
+      }
+      throw new Error(message)
+    }
+    return data
+  })
 }
 
 export function uploadRuntimeEnv(formData) {

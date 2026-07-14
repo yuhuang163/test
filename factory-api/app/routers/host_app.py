@@ -212,23 +212,33 @@ async def upload_runtime_env(
 
 @admin_router.get("/runtime-env")
 def download_runtime_env(user: Annotated[User, Depends(get_current_user)]):
-    """管理员下载路特上位机运行环境（首次使用上位机时需下载）。"""
-    _require_admin(user)
+    """管理员/工程师下载路特上位机运行环境（首次使用上位机时需下载）。"""
+    _require_engineer_or_admin(user)
+    from urllib.parse import quote
+
     from fastapi.responses import Response
 
     try:
         zip_bytes = host_app_service.build_runtime_env_zip()
     except FileNotFoundError as exc:
         fail(404, str(exc), 404)
+    except Exception as exc:  # noqa: BLE001 — 打包/读盘异常转可读错误，避免裸 500
+        fail(500, f"运行环境打包失败：{exc}", 500)
+
+    # starlette 响应头按 latin-1 编码，中文文件名须用 RFC5987 filename*
+    ascii_name = "lute_host_runtime_env.zip"
+    utf8_name = quote("路特上位机运行环境.zip")
     return Response(
         content=zip_bytes,
         media_type="application/zip",
-        headers={"Content-Disposition": 'attachment; filename="路特上位机运行环境.zip"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="{ascii_name}"; filename*=UTF-8\'\'{utf8_name}',
+        },
     )
 
 
 @admin_router.get("/runtime-env/info")
 def runtime_env_info(user: Annotated[User, Depends(get_current_user)]):
     """查询运行环境信息。"""
-    _require_admin(user)
+    _require_engineer_or_admin(user)
     return ok(host_app_service.get_runtime_env_info())

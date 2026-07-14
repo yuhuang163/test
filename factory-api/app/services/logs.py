@@ -31,8 +31,10 @@ def save_and_index_log(
     zip_bytes: bytes,
     host_name: str | None = None,
     sn: str | None = None,
+    mac: str | None = None,
     test_result: str | None = None,
     client_version: str | None = None,
+    test_record_id: int | None = None,
 ) -> LogArchive:
     now = utc_now_naive()
     archive = LogArchive(
@@ -41,11 +43,13 @@ def save_and_index_log(
         host_name=host_name or device_id,
         station=station,
         sn=sn,
+        mac=mac,
         test_result=test_result,
         client_version=client_version,
         object_key="",
         size=len(zip_bytes),
         file_count=0,
+        test_record_id=test_record_id if test_record_id and test_record_id > 0 else None,
         created_at=now,
     )
     db.add(archive)

@@ -8,6 +8,7 @@
       <el-descriptions-item label="电脑名字">{{ detail.hostName || detail.deviceId }}</el-descriptions-item>
       <el-descriptions-item label="上传时间">{{ formatTime(detail.createdAt) }}</el-descriptions-item>
       <el-descriptions-item label="SN">{{ detail.sn || '-' }}</el-descriptions-item>
+      <el-descriptions-item label="MAC">{{ detail.mac || '-' }}</el-descriptions-item>
       <el-descriptions-item label="结果">{{ detail.testResult || '-' }}</el-descriptions-item>
       <el-descriptions-item label="版本">{{ detail.clientVersion || '-' }}</el-descriptions-item>
       <el-descriptions-item label="操作">

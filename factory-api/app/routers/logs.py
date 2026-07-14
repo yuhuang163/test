@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.database import get_db
 from app.deps import get_current_user, get_optional_user
+from app.factory_scope import apply_factory_name_filter, assert_factory_access
 from app.models import LogArchive, LogFile, User
 from app.response import fail, ok
 from app.schemas import LogDetailData, LogFileItem, LogListData, LogListItem, LogUploadData
@@ -30,6 +31,7 @@ def _to_list_item(db: Session, row: LogArchive) -> LogListItem:
         hostName=row.host_name,
         station=row.station,
         sn=row.sn,
+        mac=row.mac,
         testResult=row.test_result,
         clientVersion=row.client_version,
         size=row.size,
@@ -48,8 +50,10 @@ async def upload_log(
     file: Annotated[UploadFile, File()],
     hostName: Annotated[str | None, Form()] = None,
     sn: Annotated[str | None, Form()] = None,
+    mac: Annotated[str | None, Form()] = None,
     testResult: Annotated[str | None, Form()] = None,
     clientVersion: Annotated[str | None, Form()] = None,
+    testRecordId: Annotated[int | None, Form()] = None,
 ):
     if not settings.log_upload_allow_anonymous and not user:
         fail(401, "请先登录", 401)
@@ -79,8 +83,10 @@ async def upload_log(
         zip_bytes=content,
         host_name=(hostName or device_id).strip() or device_id,
         sn=sn,
+        mac=mac,
         test_result=testResult,
         client_version=clientVersion,
+        test_record_id=testRecordId,
     )
     return ok(LogUploadData(logId=archive.id).model_dump(mode="json"), message="上传成功")
 
@@ -94,22 +100,27 @@ def list_logs(
     deviceId: str | None = None,
     hostName: str | None = None,
     sn: str | None = None,
+    mac: str | None = None,
+    testResult: str | None = None,
     startTime: str | None = None,
     endTime: str | None = None,
     page: int = Query(1, ge=1),
     pageSize: int = Query(20, ge=1, le=100),
 ):
     q = db.query(LogArchive)
-    if factoryName:
-        q = q.filter(LogArchive.factory_name == factoryName)
+    q = apply_factory_name_filter(q, LogArchive.factory_name, db, user, factoryName)
     if station:
-        q = q.filter(LogArchive.station == station)
+        q = q.filter(LogArchive.station.contains(station))
     if deviceId:
         q = q.filter(LogArchive.device_id.contains(deviceId))
     if hostName:
         q = q.filter(LogArchive.host_name.contains(hostName))
     if sn:
         q = q.filter(LogArchive.sn.contains(sn))
+    if mac:
+        q = q.filter(LogArchive.mac.contains(mac))
+    if testResult:
+        q = q.filter(LogArchive.test_result == testResult)
     if startTime:
         q = q.filter(LogArchive.created_at >= datetime.fromisoformat(startTime))
     if endTime:
@@ -131,6 +142,7 @@ def log_detail(
     row = db.get(LogArchive, log_id)
     if not row:
         fail(404, "日志不存在", 404)
+    assert_factory_access(db, user, row.factory_name)
     files = [
         LogFileItem(
             relativePath=f.relative_path,
@@ -157,6 +169,7 @@ def log_file_preview(
     row = db.get(LogArchive, log_id)
     if not row:
         fail(404, "日志不存在", 404)
+    assert_factory_access(db, user, row.factory_name)
     target = db.query(LogFile).filter(LogFile.archive_id == log_id, LogFile.relative_path == file_path).first()
     if not target:
         fail(404, "文件不存在", 404)
@@ -178,6 +191,7 @@ def log_download(
     row = db.get(LogArchive, log_id)
     if not row:
         fail(404, "日志不存在", 404)
+    assert_factory_access(db, user, row.factory_name)
     zip_bytes = read_zip_bytes(row)
     filename = f"log_{row.factory_name}_{row.device_id}_{row.id}.zip"
     return Response(

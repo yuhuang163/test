@@ -91,6 +91,10 @@
             <el-icon><Clock /></el-icon>
             <template #title>登录审计</template>
           </el-menu-item>
+          <el-menu-item index="/system/storage">
+            <el-icon><Coin /></el-icon>
+            <template #title>存储管理</template>
+          </el-menu-item>
         </el-sub-menu>
       </el-menu>
 
@@ -141,7 +145,7 @@ import { useRole } from '../composables/useRole'
 import {
   Odometer, Search, Document, List, Setting, Files, Upload,
   Monitor, UserFilled, Tools, Clock, DArrowLeft, ArrowDown,
-  User, SwitchButton, DataAnalysis, DataLine, Histogram, OfficeBuilding
+  User, SwitchButton, DataAnalysis, DataLine, Histogram, OfficeBuilding, Coin
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
@@ -165,7 +169,10 @@ function handleCommand(cmd) {
   }
 }
 
-onMounted(() => meta.load())
+onMounted(async () => {
+  await user.refreshMe()
+  await meta.load()
+})
 </script>
 
 <style scoped>

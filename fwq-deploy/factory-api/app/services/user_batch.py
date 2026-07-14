@@ -115,6 +115,7 @@ def import_batch_accounts(
             password_plain=row["password"],
             roles=",".join(row["roles"]),
             station_keys=stations,
+            factory_code=row["factoryCode"],
             status="active",
         )
         db.add(u)

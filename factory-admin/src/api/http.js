@@ -32,7 +32,16 @@ http.interceptors.response.use(
   (err) => {
     const status = err.response?.status
     const detail = err.response?.data
-    const msg = detail?.message || (typeof detail === 'string' ? detail : '') || err.message
+    let msg = ''
+    // blob 下载失败时 data 常为 Blob，需异步解析；这里同步尽量取可读文案
+    if (detail && typeof detail === 'object' && !(detail instanceof Blob)) {
+      msg = detail.message || detail.detail?.message || (typeof detail.detail === 'string' ? detail.detail : '')
+    } else if (typeof detail === 'string') {
+      msg = detail
+    }
+    if (!msg) {
+      msg = err.message
+    }
     if (status === 401) {
       const user = useUserStore()
       user.logout()

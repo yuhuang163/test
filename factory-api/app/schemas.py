@@ -24,12 +24,14 @@ class LoginResponseData(BaseModel):
     expireAt: ApiDateTime
     roles: list[str]
     stationKeys: list[str]
+    factoryCode: str | None = None
 
 
 class UserMeData(BaseModel):
     username: str
     roles: list[str]
     stationKeys: list[str]
+    factoryCode: str | None = None
 
 
 class FactoryItem(BaseModel):
@@ -52,6 +54,7 @@ class LogListItem(BaseModel):
     hostName: str | None
     station: str
     sn: str | None
+    mac: str | None = None
     testResult: str | None
     clientVersion: str | None
     size: int
@@ -60,6 +63,14 @@ class LogListItem(BaseModel):
 
 
 class LogDetailData(LogListItem):
+    files: list[LogFileItem]
+
+
+class LogArchiveSummary(BaseModel):
+    id: int
+    createdAt: ApiDateTime
+    fileCount: int
+    size: int
     files: list[LogFileItem]
 
 
@@ -91,6 +102,7 @@ class TestRecordUploadIn(BaseModel):
     station: str
     stationKey: str | None = None
     sn: str | None = None
+    mac: str | None = None
     testResult: str | None = None
     machineNo: str | None = None
     product: str | None = None
@@ -120,6 +132,7 @@ class TestRecordListItem(BaseModel):
     station: str
     stationKey: str | None
     sn: str | None
+    mac: str | None = None
     testResult: str | None
     machineNo: str | None
     product: str | None
@@ -133,6 +146,7 @@ class TestRecordDetailData(TestRecordListItem):
     lotName: str | None
     userNo: str | None
     items: list[TestRecordItemOut]
+    logArchive: LogArchiveSummary | None = None
 
 
 class TestRecordListData(BaseModel):

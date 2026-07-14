@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.deps import get_current_user
+from app.factory_scope import list_visible_factories
 from app.models import Factory, User
 from app.response import fail, ok
 from app.schemas import FactoryItem
@@ -32,7 +33,7 @@ def _factory_item(row: Factory) -> dict:
 
 @router.get("/factories")
 def list_factories(db: Annotated[Session, Depends(get_db)], user: Annotated[User, Depends(get_current_user)]):
-    rows = db.query(Factory).filter(Factory.enabled.is_(True)).order_by(Factory.sort_order).all()
+    rows = list_visible_factories(db, user)
     items = [FactoryItem(code=r.code, displayName=r.display_name).model_dump() for r in rows]
     return ok(items)
 
