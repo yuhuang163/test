@@ -381,8 +381,11 @@ class SerialDeviceSimulator:
         return response
 
     def _process_data(self, data, send_func):
-        self.data_buffer += data
-        last_char_time = time.time()
+        if data:
+            self.data_buffer += data
+            self.last_char_time = time.time()
+        elif not hasattr(self, 'last_char_time'):
+            self.last_char_time = time.time()
 
         while True:
             if self._is_modbus_frame(self.data_buffer):
@@ -411,7 +414,7 @@ class SerialDeviceSimulator:
                                 send_func((response + '\r\n').encode('utf-8'))
                 except:
                     self.data_buffer = b""
-            elif time.time() - last_char_time > 0.5 and len(self.data_buffer) > 0:
+            elif time.time() - self.last_char_time > 0.5 and len(self.data_buffer) > 0:
                 try:
                     text_data = self.data_buffer.decode('utf-8', errors='ignore')
                     self.text_buffer += text_data
@@ -452,6 +455,8 @@ class SerialDeviceSimulator:
                         hex_str = ' '.join(f'{b:02X}' for b in data)
                         print(f"[{timestamp}] 收到原始数据: {len(data)} bytes | HEX: {hex_str}")
                         self._process_data(data, self.ser.write)
+                    else:
+                        self._process_data(b'', self.ser.write)
                     time.sleep(0.01)
                 except serial.SerialException as e:
                     print(f"串口错误: {e}")
@@ -468,7 +473,7 @@ class SerialDeviceSimulator:
 
     def _tcp_client_handler(self, conn, addr):
         print(f"TCP客户端连接: {addr}")
-        conn.settimeout(5)
+        conn.settimeout(0.1)
         try:
             while self.running:
                 try:
@@ -477,6 +482,7 @@ class SerialDeviceSimulator:
                         break
                     self._process_data(data, lambda x: conn.sendall(x))
                 except socket.timeout:
+                    self._process_data(b'', lambda x: conn.sendall(x))
                     continue
                 except Exception as e:
                     print(f"TCP客户端错误: {e}")
