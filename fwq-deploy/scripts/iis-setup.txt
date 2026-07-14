@@ -28,8 +28,9 @@
      - 物理路径：...\factory-admin\dist
      - 绑定：http，端口 80，主机名 fctp.luteos.com
      - HTTPS：申请证书后增加 https:443 同名绑定（推荐）
-  3. web.config 已将 /api 反代到 http://127.0.0.1:8800
+  3. web.config 已将 /api 反代到 http://127.0.0.1:8800；/docs、/openapi.json 同理（Swagger 文档）
   4. 访问：https://fctp.luteos.com/  登录 admin / admin123
+     API 文档（外网）：https://fctp.luteos.com/docs
 
 五、防火墙 / 安全组（服务器本机能开、外网电脑打不开时，优先查这里）
   A. 阿里云 ECS 安全组（控制台 → 云服务器 → 安全组 → 入方向）
