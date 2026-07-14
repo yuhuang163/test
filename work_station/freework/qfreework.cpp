@@ -151,8 +151,8 @@ void QFreeWork::onTestCaseStepMarkedDone(bool pass, const QString& testData, con
 void QFreeWork::appendTestCaseMes(const TestCaseDefinition& def, bool pass, const QString& testData) {
     const QString tag = def.meta.mesTag.trimmed().isEmpty() ? def.meta.name.trimmed() : def.meta.mesTag.trimmed();
     const bool hasData = !testData.trimmed().isEmpty() && testData != QStringLiteral("-");
-    const QString value = pass && hasData ? testData : QString();
-    const QString resultVal = pass ? QStringLiteral("PASS") : (hasData ? QStringLiteral("FAIL;") + testData : QStringLiteral("FAIL"));
+    const QString value = hasData ? testData : QString();
+    const QString resultVal = pass ? QStringLiteral("PASS") : QStringLiteral("FAIL");
 
     QString maxVal, minVal, stdVal;
     if (def.gate.enabled) {
@@ -418,6 +418,11 @@ QByteArray QFreeWork::resolvedTailSnToWrite() const {
 }
 
 void QFreeWork::runTestFlowBootstrap() {
+    const QString sn = ui->getMac->text().trimmed();
+    const QString mac = ui->macInput->text().trimmed();
+    if (!sn.isEmpty() || !mac.isEmpty()) {
+        onTestSessionStarting(sn, mac);
+    }
     showlog(QStringLiteral("开始测试"));
     initData();
     // 每次开始测试都重新读取配置，避免设置页调整后本页仍使用旧队列。
@@ -561,7 +566,8 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     const QString mesItemValue = joinFreeWorkMesItemvalue(freeWorkMesSegments_, TestResult, failValue);
     showlog(QStringLiteral("mesItemValue======") + mesItemValue);
     pack.itemvalue = mesItemValue;
-    pack.sn = ui->getMac->text();
+    pack.sn = ui->getMac->text().trimmed();
+    pack.mac = ui->macInput->text().trimmed();
     pack.product = SETTINGS.value("Mes/Product_Name").toString();
     pack.instruct_num = QStringLiteral("079");
     if (TestResult == failValue) {

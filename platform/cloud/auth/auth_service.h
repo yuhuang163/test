@@ -17,7 +17,7 @@ class AuthService {
 
     static LoginResult login(const QString& username, const QString& password);
     static LoginResult loginWithSavedCredentials();
-    /** 服务器不可用时，凭 FactoryCloud/OfflineBypass* 配置本地进入（仅本地测试） */
+    /** 服务器不可用时，凭 FactoryCloud/OfflineBypass*（ini）本地进入；仅本地测试 */
     static LoginResult loginOffline(const QString& username, const QString& password);
     static bool isOfflineBypassEnabled();
     static bool isOfflineSession();

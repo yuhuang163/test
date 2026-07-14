@@ -454,8 +454,61 @@ void test_base::refreshPbData(QString data) {
     msgEdit()->appendPlainText(data);
 }
 
+QString test_base::sessionSnForLog() {
+    if (QLineEdit* le = getMacLineEdit()) {
+        return le->text().trimmed();
+    }
+    return {};
+}
+
+QString test_base::sessionMacForLog() {
+    if (QLineEdit* le = macInputLineEdit()) {
+        return le->text().trimmed();
+    }
+    return {};
+}
+
+void test_base::onTestSessionStarting(const QString& sn, const QString& mac) {
+    QString station = SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStationName")).toString().trimmed();
+    if (station.isEmpty()) {
+        station = SETTINGS.value(QStringLiteral("SYSTEM/station")).toString().trimmed();
+    }
+    Qlog::beginSession(m_index, sn.trimmed(), mac.trimmed(), station);
+}
+
+void test_base::abortTestSessionAndUpload() {
+    if (!Qlog::hasActiveSession(m_index)) {
+        return;
+    }
+    MesPacketData abortPack = pack;
+    const QString sn = sessionSnForLog();
+    const QString mac = sessionMacForLog();
+    if (!sn.isEmpty()) {
+        abortPack.sn = sn;
+    }
+    if (!mac.isEmpty()) {
+        abortPack.mac = mac;
+    }
+    abortPack.result = QStringLiteral("ABORT");
+    Qlog::endSession(m_index, QStringLiteral("ABORT"));
+    TestDataUploadService::tryUploadTestAndLogAsync(abortPack, m_index);
+}
+
 void test_base::showlog(QString msg) {
-    Qlog::showlog(msg, m_index, msgEdit());
+    if (msg.contains(QStringLiteral("开始测试")) && !Qlog::hasActiveSession(m_index)) {
+        const QString sn = sessionSnForLog();
+        const QString mac = sessionMacForLog();
+        if (!sn.isEmpty() || !mac.isEmpty()) {
+            onTestSessionStarting(sn, mac);
+        }
+    }
+    Qlog::logUi(m_index, msg);
+    if (msgEdit()) {
+        msgEdit()->appendPlainText(msg);
+    }
+    if (msg.contains(QStringLiteral("触发停止测试"))) {
+        abortTestSessionAndUpload();
+    }
 }
 
 int test_base::getIndex() const {
@@ -739,9 +792,23 @@ QString test_base::exportTableContent() {
     return result;
 }
 
-void test_base::finishTestRecord(const MesPacketData& pack, bool useMes) {
+void test_base::finishTestRecord(const MesPacketData& packIn, bool useMes) {
+    MesPacketData pack = packIn;
+    if (pack.sn.trimmed().isEmpty()) {
+        pack.sn = sessionSnForLog();
+    }
+    if (pack.mac.trimmed().isEmpty()) {
+        pack.mac = sessionMacForLog();
+    }
     TestRecordStore::instance().saveOnTestPass(pack);
-    TestDataUploadService::tryUploadAsync(pack);
+    QString result = pack.result.trimmed();
+    if (result.isEmpty()) {
+        result = QStringLiteral("NG");
+    }
+    if (Qlog::hasActiveSession(m_index)) {
+        Qlog::endSession(m_index, result);
+    }
+    TestDataUploadService::tryUploadTestAndLogAsync(pack, m_index);
     if (useMes) {
         emit send_end_test_pass(pack);
     }

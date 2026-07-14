@@ -150,6 +150,7 @@ INCLUDEPATH += platform/driver/process
 
 SOURCES += \
     common/common_utils.cpp \
+    common/app_help_menu.cpp \
     platform/driver/serial/serial_channel.cpp \
     advance/demo/usmile_ring_buffer.cpp \
     advance/imagewindow/draggablecheckbox.cpp \
@@ -291,6 +292,7 @@ SOURCES += \
 
 HEADERS += \
     common/common_utils.h \
+    common/app_help_menu.h \
     platform/driver/serial/serial_channel.h \
     advance/demo/usmile_ring_buffer.h \
     advance/imagewindow/draggablecheckbox.h \

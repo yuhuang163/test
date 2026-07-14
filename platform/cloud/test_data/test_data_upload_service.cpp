@@ -2,6 +2,7 @@
 
 #include "auth_service.h"
 #include "factory_cloud_client.h"
+#include "log_upload_service.h"
 #include "test_case.h"
 #include "test_record_store.h"
 
@@ -43,17 +44,7 @@ QJsonObject itemToJson(const TestRecordStore::ParsedItem& item) {
 
 } // namespace
 
-bool TestDataUploadService::isUploadEnabled() {
-    return SETTINGS.value(QStringLiteral("FactoryCloud/Feature/TestDataUpload"), true).toBool();
-}
-
-bool TestDataUploadService::uploadFromPack(const MesPacketData& pack, QString* message) {
-    if (!isUploadEnabled()) {
-        if (message) {
-            *message = QStringLiteral("测试数据上传已关闭");
-        }
-        return false;
-    }
+int TestDataUploadService::uploadFromPack(const MesPacketData& pack, QString* message) {
     QString factoryName = pack.factory.trimmed();
     if (factoryName.isEmpty()) {
         factoryName = SETTINGS.value(QStringLiteral("Mes/FACTORY")).toString().trimmed();
@@ -62,33 +53,28 @@ bool TestDataUploadService::uploadFromPack(const MesPacketData& pack, QString* m
         if (message) {
             *message = QStringLiteral("工厂名为空，跳过测试数据上报");
         }
-        return false;
+        return 0;
     }
     if (AuthService::isOfflineSession()) {
         if (message) {
             *message = QStringLiteral("离线测试模式，跳过测试数据上报");
         }
-        return false;
+        return 0;
     }
     if (!AuthService::isLoggedIn()) {
         (void)AuthService::loginWithSavedCredentials();
     }
 
-    // 优先使用测试流程编排中选中的工站名称（与自由工站 tab 显示名称一致）
-    QString station = SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStationName")).toString().trimmed();
-    if (station.isEmpty()) {
-        station = SETTINGS.value(QStringLiteral("SYSTEM/station")).toString().trimmed();
-    }
-    if (station.isEmpty()) {
-        station = FactoryCloudClient::stationKey();
-    }
+    // 工站名称与自由工站 / 上报 stationKey 一致（SelectedStationName）
+    const QString station = FactoryCloudClient::stationKey();
     QJsonObject body;
     body.insert(QStringLiteral("factoryName"), factoryName);
     body.insert(QStringLiteral("deviceId"), FactoryCloudClient::deviceId());
     body.insert(QStringLiteral("hostName"), QSysInfo::machineHostName());
     body.insert(QStringLiteral("station"), station);
-    body.insert(QStringLiteral("stationKey"), FactoryCloudClient::stationKey());
+    body.insert(QStringLiteral("stationKey"), station);
     body.insert(QStringLiteral("sn"), pack.sn.trimmed());
+    body.insert(QStringLiteral("mac"), pack.mac.trimmed());
     body.insert(QStringLiteral("testResult"), pack.result.trimmed());
     body.insert(QStringLiteral("machineNo"), pack.machineNo.trimmed());
     body.insert(QStringLiteral("product"), pack.product.trimmed());
@@ -112,7 +98,7 @@ bool TestDataUploadService::uploadFromPack(const MesPacketData& pack, QString* m
         if (message) {
             *message = api.message.isEmpty() ? QStringLiteral("测试数据上报失败") : api.message;
         }
-        return false;
+        return 0;
     }
 
     const int recordId = api.data.value(QStringLiteral("recordId")).toInt(0);
@@ -120,20 +106,32 @@ bool TestDataUploadService::uploadFromPack(const MesPacketData& pack, QString* m
         *message = recordId > 0 ? QStringLiteral("测试数据上报成功（recordId=%1）").arg(recordId)
                                 : QStringLiteral("测试数据上报成功");
     }
-    return true;
+    return recordId;
 }
 
 void TestDataUploadService::tryUploadAsync(const MesPacketData& pack) {
-    if (!isUploadEnabled()) {
-        qDebug() << "没有使能上传";
-        return;
-    }
     const MesPacketData copy = pack;
     QtConcurrent::run([copy]() {
         QString message;
-        uploadFromPack(copy, &message);
+        const int recordId = uploadFromPack(copy, &message);
+        Q_UNUSED(recordId);
         if (!message.isEmpty()) {
             qDebug() << QStringLiteral("[TestDataUpload]") << message;
+        }
+    });
+}
+
+void TestDataUploadService::tryUploadTestAndLogAsync(const MesPacketData& pack, int slot) {
+    const MesPacketData copy = pack;
+    QtConcurrent::run([copy, slot]() {
+        QString message;
+        const int recordId = uploadFromPack(copy, &message);
+        if (!message.isEmpty()) {
+            qDebug() << QStringLiteral("[TestDataUpload]") << message;
+        }
+        LogUploadService::uploadSessionFromPack(copy, slot, recordId, &message);
+        if (!message.isEmpty()) {
+            qDebug() << QStringLiteral("[LogUpload]") << message;
         }
     });
 }

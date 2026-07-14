@@ -1,6 +1,7 @@
 #include "factory_cloud_client.h"
 
 #include "my_set/my_typedef.h"
+#include "test_case.h"
 
 #include <QCoreApplication>
 #include <QEventLoop>
@@ -158,13 +159,17 @@ QString FactoryCloudClient::deviceId() {
 }
 
 QString FactoryCloudClient::stationKey() {
-    QString key = readSetting("FactoryCloud/StationKey");
-    if (key.isEmpty()) {
-        // 云端工站授权与设置页「工站类型」一致（SYSTEM/station），勿用测试流程 SelectedStation
-        key = SETTINGS.value(QStringLiteral("SYSTEM/station")).toString().trimmed();
+    // 与「总的测试流程.ini」[Meta]/SelectedStationName 同源（如 m8烧录工站）
+    TestFlowMeta meta;
+    if (TestCaseStore::loadFlowMeta(meta)) {
+        const QString name = meta.selectedStationName.trimmed();
+        if (!name.isEmpty()) {
+            return name;
+        }
     }
+    QString key = SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStationName")).toString().trimmed();
     if (key.isEmpty()) {
-        key = SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString().trimmed();
+        key = SETTINGS.value(QStringLiteral("SYSTEM/station")).toString().trimmed();
     }
     if (key.isEmpty()) {
         key = QStringLiteral("DEFAULT");

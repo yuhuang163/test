@@ -1,6 +1,8 @@
 #include "log_upload_service.h"
 
+#include "auth_service.h"
 #include "factory_cloud_client.h"
+#include "qlog.h"
 
 #include "my_set/my_typedef.h"
 
@@ -168,6 +170,10 @@ bool uploadByCurl(const QString& zipPath, const LogUploadService::UploadConfig& 
     if (!sn.isEmpty()) {
         args << QStringLiteral("-F") << QStringLiteral("sn=") + sn;
     }
+    const QString mac = cfg.mac.trimmed();
+    if (!mac.isEmpty()) {
+        args << QStringLiteral("-F") << QStringLiteral("mac=") + mac;
+    }
     const QString testResult = cfg.testResult.trimmed();
     if (!testResult.isEmpty()) {
         args << QStringLiteral("-F") << QStringLiteral("testResult=") + testResult;
@@ -175,6 +181,9 @@ bool uploadByCurl(const QString& zipPath, const LogUploadService::UploadConfig& 
     const QString clientVersion = cfg.clientVersion.trimmed();
     if (!clientVersion.isEmpty()) {
         args << QStringLiteral("-F") << QStringLiteral("clientVersion=") + clientVersion;
+    }
+    if (cfg.testRecordId > 0) {
+        args << QStringLiteral("-F") << QStringLiteral("testRecordId=") + QString::number(cfg.testRecordId);
     }
     const QString token = SETTINGS.value(QStringLiteral("FactoryCloud/Token")).toString().trimmed();
     if (!token.isEmpty()) {
@@ -262,6 +271,72 @@ bool parseUploadResponse(const QByteArray& body, const QString& uploadUrl, QStri
     return false;
 }
 
+QString compressExplicitFiles(const QStringList& absPaths, const QStringList& relPaths, QString* error,
+                              QString* warning = nullptr) {
+    if (absPaths.isEmpty() || absPaths.size() != relPaths.size()) {
+        if (error) {
+            *error = QStringLiteral("压缩文件列表无效");
+        }
+        return {};
+    }
+    const QString timestamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss"));
+    const QString zipName = LogUploadService::defaultDeviceId() + QStringLiteral("_session_") + timestamp +
+                            QStringLiteral(".zip");
+    const QString zipPath = QDir(QDir::tempPath()).filePath(zipName);
+    if (QFile::exists(zipPath) && !QFile::remove(zipPath)) {
+        if (error) {
+            *error = QStringLiteral("无法覆盖临时压缩包：") + zipPath;
+        }
+        return {};
+    }
+
+    QString addBlock;
+    for (int i = 0; i < absPaths.size(); ++i) {
+        if (!QFile::exists(absPaths.at(i))) {
+            continue;
+        }
+        const QString src = QDir::toNativeSeparators(absPaths.at(i));
+        QString rel = relPaths.at(i);
+        rel.replace(QLatin1Char('\\'), QLatin1Char('/'));
+        addBlock += QStringLiteral("$src='%1';$rel='%2';")
+                        .arg(escapePowerShellSingleQuoted(src), escapePowerShellSingleQuoted(rel));
+        addBlock += QStringLiteral(
+            "try{$in=[IO.File]::Open($src,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::ReadWrite);"
+            "$ent=$zip.CreateEntry($rel,[IO.Compression.CompressionLevel]::Optimal);"
+            "$out=$ent.Open();$in.CopyTo($out);$out.Dispose();$in.Dispose();$added++}"
+            "catch{$skipped+=$rel};");
+    }
+
+    const QString zipPathNative = QDir::toNativeSeparators(zipPath);
+    const QString script =
+        QStringLiteral("$ErrorActionPreference='Stop';"
+                       "Add-Type -AssemblyName System.IO.Compression;"
+                       "Add-Type -AssemblyName System.IO.Compression.FileSystem;"
+                       "if (Test-Path -LiteralPath '%1') { Remove-Item -LiteralPath '%1' -Force };"
+                       "$dst='%1';$fs=[IO.File]::Open($dst,[IO.FileMode]::CreateNew);"
+                       "$zip=New-Object IO.Compression.ZipArchive($fs,[IO.Compression.ZipArchiveMode]::Create);"
+                       "$added=0;$skipped=@();")
+            .arg(escapePowerShellSingleQuoted(zipPathNative)) +
+        addBlock +
+        QStringLiteral("$zip.Dispose();$fs.Dispose();"
+                       "if ($added -eq 0) { throw '无可读会话日志文件' };"
+                       "if ($skipped.Count -gt 0) { [Console]::Error.WriteLine(('skipped:'+($skipped -join ';'))) }");
+    QString compressWarning;
+    if (!runPowerShell(script, error, &compressWarning)) {
+        return {};
+    }
+    if (warning && !compressWarning.isEmpty()) {
+        *warning = compressWarning;
+    }
+    if (!QFile::exists(zipPath)) {
+        if (error) {
+            *error = QStringLiteral("压缩完成但未找到文件：") + zipPath;
+        }
+        return {};
+    }
+    return zipPath;
+}
+
 } // namespace
 
 QString LogUploadService::defaultLogRootPath() {
@@ -277,7 +352,30 @@ QString LogUploadService::defaultDeviceId() {
 }
 
 bool LogUploadService::isUploadEnabled() {
-    return SETTINGS.value(QStringLiteral("FactoryCloud/Feature/LogUpload"), true).toBool();
+    // 功能开关已从设置页移除，始终允许（测完自动上传仍可由 LogUploadOnTestComplete 控制）
+    return true;
+}
+
+bool LogUploadService::isUploadOnTestCompleteEnabled() {
+    return isUploadEnabled() &&
+           SETTINGS.value(QStringLiteral("FactoryCloud/Feature/LogUploadOnTestComplete"), true).toBool();
+}
+
+bool LogUploadService::configFromPack(const MesPacketData& pack, UploadConfig* cfg, QString* error) {
+    if (!configFromSettings(cfg, error)) {
+        return false;
+    }
+    const QString sn = pack.sn.trimmed();
+    const QString mac = pack.mac.trimmed();
+    cfg->sn = sn;
+    cfg->mac = mac;
+    cfg->testResult = pack.result.trimmed();
+    // configFromSettings 已写入 SelectedStationName；此处再覆盖保证与当前流程一致
+    const QString station = FactoryCloudClient::stationKey().trimmed();
+    if (!station.isEmpty()) {
+        cfg->station = station;
+    }
+    return true;
 }
 
 bool LogUploadService::configFromSettings(UploadConfig* cfg, QString* error) {
@@ -305,9 +403,6 @@ bool LogUploadService::configFromSettings(UploadConfig* cfg, QString* error) {
 
     QString station = FactoryCloudClient::stationKey().trimmed();
     if (station.isEmpty()) {
-        station = SETTINGS.value(QStringLiteral("SYSTEM/station")).toString().trimmed();
-    }
-    if (station.isEmpty()) {
         station = QStringLiteral("DEFAULT");
     }
 
@@ -315,9 +410,11 @@ bool LogUploadService::configFromSettings(UploadConfig* cfg, QString* error) {
     cfg->station = station;
     cfg->factoryName = factoryName;
     cfg->hostName = QSysInfo::machineHostName();
-    cfg->sn = SETTINGS.value(QStringLiteral("RemoteLog/LastSn")).toString().trimmed();
-    cfg->testResult = SETTINGS.value(QStringLiteral("RemoteLog/LastTestResult")).toString().trimmed();
+    cfg->sn.clear();
+    cfg->mac.clear();
+    cfg->testResult.clear();
     cfg->clientVersion = FactoryCloudClient::appVersion();
+    cfg->testRecordId = 0;
     return true;
 }
 
@@ -443,6 +540,10 @@ bool LogUploadService::uploadLogArchive(const QString& zipPath, const UploadConf
     if (!sn.isEmpty()) {
         appendTextPart(QStringLiteral("sn"), sn);
     }
+    const QString mac = cfg.mac.trimmed();
+    if (!mac.isEmpty()) {
+        appendTextPart(QStringLiteral("mac"), mac);
+    }
     const QString testResult = cfg.testResult.trimmed();
     if (!testResult.isEmpty()) {
         appendTextPart(QStringLiteral("testResult"), testResult);
@@ -450,6 +551,9 @@ bool LogUploadService::uploadLogArchive(const QString& zipPath, const UploadConf
     const QString clientVersion = cfg.clientVersion.trimmed();
     if (!clientVersion.isEmpty()) {
         appendTextPart(QStringLiteral("clientVersion"), clientVersion);
+    }
+    if (cfg.testRecordId > 0) {
+        appendTextPart(QStringLiteral("testRecordId"), QString::number(cfg.testRecordId));
     }
 
     QHttpPart filePart;
@@ -552,3 +656,99 @@ bool LogUploadService::packAndUpload(const UploadConfig& cfg, QString* message) 
     }
     return ok;
 }
+
+QString LogUploadService::compressSessionArchive(const QlogSessionInfo& info, QString* error, QString* warning) {
+    if (!info.valid || info.sessionAbsolutePath.isEmpty()) {
+        if (error) {
+            *error = QStringLiteral("无有效会话日志");
+        }
+        return {};
+    }
+    QStringList absPaths;
+    QStringList relPaths;
+    absPaths << info.sessionAbsolutePath;
+    relPaths << info.sessionRelativePath;
+
+    if (SETTINGS.value(QStringLiteral("FactoryCloud/Log/UploadIncludeDongleDir"), true).toBool()) {
+        QString dongleErr;
+        const QString dongleRel = Qlog::exportDongleSessionSlice(info, &dongleErr);
+        if (!dongleRel.isEmpty()) {
+            absPaths << QDir(QCoreApplication::applicationDirPath()).filePath(dongleRel);
+            relPaths << dongleRel;
+        } else if (!dongleErr.isEmpty() && warning) {
+            *warning = dongleErr;
+        }
+    }
+    if (SETTINGS.value(QStringLiteral("FactoryCloud/Log/UploadIncludeProcessBackend"), true).toBool()) {
+        QString backendErr;
+        const QString backendRel = Qlog::exportProcessBackgroundSessionSlice(info, &backendErr);
+        if (!backendRel.isEmpty()) {
+            absPaths << QDir(QCoreApplication::applicationDirPath()).filePath(backendRel);
+            relPaths << backendRel;
+        } else if (!backendErr.isEmpty() && warning) {
+            *warning = warning->isEmpty() ? backendErr : *warning + QStringLiteral("；") + backendErr;
+        }
+    }
+    return compressExplicitFiles(absPaths, relPaths, error, warning);
+}
+
+bool LogUploadService::uploadSessionFromPack(const MesPacketData& pack, int slot, int testRecordId, QString* message) {
+    if (!isUploadOnTestCompleteEnabled()) {
+        if (message) {
+            *message = QStringLiteral("测完自动上传日志已关闭");
+        }
+        return false;
+    }
+    if (AuthService::isOfflineSession()) {
+        if (message) {
+            *message = QStringLiteral("离线测试模式，跳过日志上传");
+        }
+        return false;
+    }
+    if (!AuthService::isLoggedIn()) {
+        (void)AuthService::loginWithSavedCredentials();
+    }
+
+    const QlogSessionInfo info = Qlog::lastSessionInfo(slot);
+    if (!info.valid) {
+        if (message) {
+            *message = QStringLiteral("无会话日志可上传");
+        }
+        return false;
+    }
+
+    UploadConfig cfg;
+    QString cfgError;
+    if (!configFromPack(pack, &cfg, &cfgError)) {
+        if (message) {
+            *message = cfgError;
+        }
+        return false;
+    }
+    cfg.testRecordId = testRecordId;
+
+    QString zipError;
+    QString zipWarning;
+    const QString zipPath = compressSessionArchive(info, &zipError, &zipWarning);
+    if (zipPath.isEmpty()) {
+        if (message) {
+            *message = zipError;
+        }
+        return false;
+    }
+
+    QString uploadMessage;
+    const bool ok = uploadLogArchive(zipPath, cfg, &uploadMessage);
+    QFile::remove(zipPath);
+    if (message) {
+        *message = uploadMessage;
+        if (ok && !zipWarning.isEmpty()) {
+            *message += QStringLiteral("；") + zipWarning;
+        }
+    }
+    return ok;
+}
+
+#if _MSC_VER >= 1600
+#pragma execution_character_set(pop)
+#endif

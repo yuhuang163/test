@@ -43,7 +43,7 @@ inline QString settingsIniPath(const char* fileName) {
  * 2. 窗口大小（Window/SettingSize、Window/Size）
  * 3. 当前工站（SYSTEM/station、TestOrderMeta/SelectedStation*）
  * 4. WiFi 名称（WIFI/Name、WIFI/Name0…WIFI/Name9 等，各工位/路号）
- * 5. 云平台本机项（FactoryCloud：环境、BaseUrl、登录态、工站 Key 等，见 factoryCloudUsesLocalFile）
+ * 5. 云平台本机项（FactoryCloud：环境、BaseUrl、登录态等，见 factoryCloudUsesLocalFile）
  */
 inline bool factoryCloudUsesLocalFile(const QString& fullKey) {
     static const QStringList kFactoryCloudLocalKeys = {
@@ -56,7 +56,6 @@ inline bool factoryCloudUsesLocalFile(const QString& fullKey) {
         QStringLiteral("FactoryCloud/AuthPassword"),
         QStringLiteral("FactoryCloud/RememberPassword"),
         QStringLiteral("FactoryCloud/AuthRoles"),
-        QStringLiteral("FactoryCloud/StationKey"),
     };
     for (const QString& k : kFactoryCloudLocalKeys) {
         if (fullKey.compare(k, Qt::CaseInsensitive) == 0)
@@ -226,7 +225,6 @@ class SettingsManager {
             QStringLiteral("AuthPassword"),
             QStringLiteral("RememberPassword"),
             QStringLiteral("AuthRoles"),
-            QStringLiteral("StationKey"),
         };
         QSettings& base = baseIni();
         QSettings& loc = localIni();

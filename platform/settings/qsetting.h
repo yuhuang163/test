@@ -29,7 +29,6 @@ class qsetting : public QWidget {
     void initSettingTooltips();
     void initTestFlowEditorUi();
     void syncFactoryCloudDerivedUrls();
-    void startLogUpload();
     void initTupleEnvironmentCombo();
     QString originalStation_;
     bool stationReloading_ = false;
@@ -46,9 +45,6 @@ class qsetting : public QWidget {
     void on_comboBox_factory_textActivated(const QString& arg1);
     void on_comboBox_tupleEnvironment_currentIndexChanged(int index);
     void on_pushButton_mesConfigFileBrowse_clicked();
-    void on_pushButton_factoryCloudUploadLogs_clicked();
-    void on_pushButton_uploadTestCase_clicked();
-    void on_pushButton_syncTestCase_clicked();
 };
 
 #endif // QSETTING_H

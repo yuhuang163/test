@@ -53,7 +53,8 @@ bool AuthService::isOfflineSession() {
 AuthService::LoginResult AuthService::loginOffline(const QString& username, const QString& password) {
     LoginResult result;
     if (!isOfflineBypassEnabled()) {
-        result.message = QStringLiteral("未启用离线测试入口，请在设置或上位机设置.ini 中开启 FactoryCloud/OfflineBypassEnabled");
+        result.message = QStringLiteral(
+            "未启用离线测试入口，请在上位机设置.ini（或 .local.ini）中设置 FactoryCloud/OfflineBypassEnabled=true");
         return result;
     }
     const QString user = username.trimmed();

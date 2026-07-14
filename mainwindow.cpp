@@ -2,6 +2,7 @@
 
 #include <QInputDialog>
 #include <QLineEdit>
+#include <QMenu>
 #include <QPushButton>
 #include <QRandomGenerator>
 #include <QSlider>
@@ -16,8 +17,8 @@
 #include <QDateTime>
 #include <QDir>
 #include <QTextStream>
+#include "app_help_menu.h"
 #include "platform/cloud/auth/auth_service.h"
-#include "platform/cloud/auth/login_dialog.h"
 #include "qatmanager.h"
 #include "qcustomplot.h"
 // f4:12:fa:c5:51:c6
@@ -446,21 +447,17 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     aimanager = new QNetworkAccessManager(this);
     connect(aimanager, &QNetworkAccessManager::finished, this, &MainWindow::onRequestFinished);
     ui->wifiotaprogress->setMaximum(100);
-     QAction* updata = ui->menubar->addAction("检查更新");
-    if (!SETTINGS.value("SYSTEM/ShowUpperComputerOTAFunc").toBool())
-        updata->setVisible(false);
-    connect(updata, &QAction::triggered, [=]() { checkAndUpdateFile(); });
 
-    QAction* switchAccount = ui->menubar->addAction("切换账号");
-    connect(switchAccount, &QAction::triggered, [=]() {
-        LoginDialog loginDialog(this);
-        loginDialog.setWindowModality(Qt::ApplicationModal);
-        // 取消或叉掉对话框时保持原登录态，勿先 logout
-        if (loginDialog.exec() == QDialog::Accepted) {
-            refreshCloudLoginState();
-            refreshSettingsMenuVisibility();
-        }
-    });
+    // 切换账号 / 用例上传 / 日志上传 / 检查更新 统一进「帮助」，并固定在最右侧
+    AppHelpMenu::HostCallbacks helpCb;
+    helpCb.onAccountSwitched = [this]() {
+        refreshCloudLoginState();
+        refreshSettingsMenuVisibility();
+    };
+    helpCb.onCheckUpdate = [this]() { checkAndUpdateFile(); };
+    QMenu* helpMenu = AppHelpMenu::install(ui->menubar, this, helpCb);
+    AppHelpMenu::ensureRightmost(ui->menubar, helpMenu);
+
     on_is_audio_mode_stateChanged(0);
 }
 
