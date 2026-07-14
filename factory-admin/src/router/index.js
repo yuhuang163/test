@@ -17,6 +17,7 @@ import FactoriesView from '../views/system/FactoriesView.vue'
 import DevicesView from '../views/system/DevicesView.vue'
 import AuditLoginsView from '../views/system/AuditLoginsView.vue'
 import StorageView from '../views/system/StorageView.vue'
+import DownloadCenterView from '../views/DownloadCenterView.vue'
 import ProfileView from '../views/ProfileView.vue'
 
 const router = createRouter({
@@ -29,6 +30,11 @@ const router = createRouter({
       redirect: '/dashboard',
       children: [
         { path: 'dashboard', component: DashboardView, meta: { title: '概览' } },
+        {
+          path: 'downloads',
+          component: DownloadCenterView,
+          meta: { title: '上位机下载', menu: '/downloads' },
+        },
         { path: 'data/logs', component: LogsView, meta: { title: '日志查询', menu: '/data/logs' } },
         { path: 'data/logs/:id', component: LogDetailView, meta: { title: '日志详情', menu: '/data/logs' } },
         { path: 'data/test-records', component: TestRecordsView, meta: { title: '测试数据', menu: '/data/test-records' } },

@@ -25,6 +25,11 @@
           <template #title>概览</template>
         </el-menu-item>
 
+        <el-menu-item index="/downloads">
+          <el-icon><Download /></el-icon>
+          <template #title>上位机下载</template>
+        </el-menu-item>
+
         <el-sub-menu index="data">
           <template #title>
             <el-icon><Search /></el-icon>
@@ -145,7 +150,7 @@ import { useRole } from '../composables/useRole'
 import {
   Odometer, Search, Document, List, Setting, Files, Upload,
   Monitor, UserFilled, Tools, Clock, DArrowLeft, ArrowDown,
-  User, SwitchButton, DataAnalysis, DataLine, Histogram, OfficeBuilding, Coin
+  User, SwitchButton, DataAnalysis, DataLine, Histogram, OfficeBuilding, Coin, Download
 } from '@element-plus/icons-vue'
 
 const route = useRoute()
