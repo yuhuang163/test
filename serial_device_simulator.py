@@ -448,7 +448,7 @@ class SerialDeviceSimulator:
                 try:
                     if self.ser.in_waiting > 0:
                         data = self.ser.read(self.ser.in_waiting)
-                        timestamp = time.strftime('%H:%M:%S.%f')[:-3]
+                        timestamp = datetime.now().strftime('%H:%M:%S.%f')[:-3]
                         hex_str = ' '.join(f'{b:02X}' for b in data)
                         print(f"[{timestamp}] 收到原始数据: {len(data)} bytes | HEX: {hex_str}")
                         self._process_data(data, self.ser.write)
