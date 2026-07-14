@@ -195,7 +195,7 @@ class SerialDeviceSimulator:
                 data.append(channel.current_direction & 0xFF)
                 data.append(channel.temperature & 0xFF)
                 data.append(channel.protection_flags & 0xFF)
-                return self._build_asd_frame(channel.addr, cmd, func, data)
+                return self._build_asd_frame(channel.addr, 0x22, func, data)
 
         return None
 
