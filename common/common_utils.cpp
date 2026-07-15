@@ -291,3 +291,40 @@ bool CommonUtils::equalsIgnoreCase(const QString& left, const QString& right) {
 QString CommonUtils::formatList(const QStringList& items, const QString& separator) {
     return items.join(separator);
 }
+
+bool CommonUtils::resolveDongleDeviceMapping(const QString& dongleName, QString* productOut, QString* protocolOut) {
+    if (dongleName.isEmpty())
+        return false;
+
+    // containsMatch：对大写名做 contains；否则原文精确相等。
+    // 顺序敏感：更具体的 contains 规则须靠前（如 V3 PRO 先于 V3）。
+    struct Rule {
+        bool containsMatch;
+        const char* pattern;
+        const char* product;
+        const char* protocol;
+    };
+    // clang-format off
+    static const Rule kRules[] = {
+        {true,  "V3 PRO",  "V3Pro",   "qfctp"},
+        {true,  "V3",      "V3",      "qfctp"},
+        {false, "Pump-E",  "M8",      "qroot"},
+        {true,  "W1 LITE", "W1 Lite", "qroot"},
+        {false, "M8P",     "M8P",     "qaiot"},
+    };
+    // clang-format on
+
+    const QString upper = dongleName.toUpper();
+    for (const Rule& rule : kRules) {
+        const bool hit = rule.containsMatch ? upper.contains(QString::fromLatin1(rule.pattern))
+                                            : (dongleName == QString::fromLatin1(rule.pattern));
+        if (!hit)
+            continue;
+        if (productOut)
+            *productOut = QString::fromUtf8(rule.product);
+        if (protocolOut)
+            *protocolOut = QString::fromUtf8(rule.protocol);
+        return true;
+    }
+    return false;
+}

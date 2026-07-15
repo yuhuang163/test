@@ -462,7 +462,7 @@
            <string>信息显示</string>
           </property>
           <layout class="QGridLayout" name="gridLayout_13">
-           <item row="0" column="2">
+           <item row="0" column="0">
             <widget class="QSplitter" name="splitter_3">
              <property name="orientation">
               <enum>Qt::Vertical</enum>
@@ -492,7 +492,7 @@
                <bool>true</bool>
               </property>
               <property name="currentIndex">
-               <number>5</number>
+               <number>1</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -1034,8 +1034,8 @@
                <widget class="QGroupBox" name="groupBox_root_suction_test">
                 <property name="geometry">
                  <rect>
-                  <x>300</x>
-                  <y>230</y>
+                  <x>20</x>
+                  <y>250</y>
                   <width>371</width>
                   <height>81</height>
                  </rect>
@@ -1157,8 +1157,8 @@
                <widget class="QGroupBox" name="groupBox_root_heat_level">
                 <property name="geometry">
                  <rect>
-                  <x>680</x>
-                  <y>230</y>
+                  <x>40</x>
+                  <y>110</y>
                   <width>301</width>
                   <height>121</height>
                  </rect>
@@ -1167,11 +1167,11 @@
                  <string>加热(0x83/0x98)</string>
                 </property>
                 <layout class="QVBoxLayout" name="verticalLayout_root_heat">
-                 <property name="topMargin">
-                  <number>1</number>
-                 </property>
                  <property name="spacing">
                   <number>2</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>1</number>
                  </property>
                  <item>
                   <layout class="QHBoxLayout" name="horizontalLayout_root_heat">
@@ -1282,7 +1282,7 @@
                <widget class="QWidget" name="widget_flange" native="true">
                 <property name="geometry">
                  <rect>
-                  <x>300</x>
+                  <x>20</x>
                   <y>340</y>
                   <width>371</width>
                   <height>41</height>
@@ -1336,8 +1336,8 @@
                <widget class="QWidget" name="widget_pump_stall" native="true">
                 <property name="geometry">
                  <rect>
-                  <x>680</x>
-                  <y>360</y>
+                  <x>30</x>
+                  <y>390</y>
                   <width>301</width>
                   <height>41</height>
                  </rect>
@@ -1390,8 +1390,8 @@
                <widget class="QGroupBox" name="verticalGroupBox_3">
                 <property name="geometry">
                  <rect>
-                  <x>320</x>
-                  <y>400</y>
+                  <x>30</x>
+                  <y>440</y>
                   <width>302</width>
                   <height>91</height>
                  </rect>

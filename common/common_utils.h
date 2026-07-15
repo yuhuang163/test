@@ -71,6 +71,12 @@ class CommonUtils {
     static QString trimmed(const QString& text);
     static bool equalsIgnoreCase(const QString& left, const QString& right);
     static QString formatList(const QStringList& items, const QString& separator = QStringLiteral(", "));
+
+    /**
+     * Dongle 广播名 → Mes/Product_Name + SYSTEM/ProtocolType。
+     * 规则表集中在 common_utils.cpp；未命中返回 false。
+     */
+    static bool resolveDongleDeviceMapping(const QString& dongleName, QString* productOut, QString* protocolOut);
 };
 
 #endif // COMMON_UTILS_H

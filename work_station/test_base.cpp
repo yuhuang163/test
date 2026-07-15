@@ -669,45 +669,25 @@ void test_base::refreshDongleDeviceName(const QString& name)
     }
 
     QString targetProduct;
-    QString targetProtocol;   // ✅ 改这里
-
-    QString upperName = name.toUpper();
-
-    if (upperName.contains("V3 PRO")) {
-        targetProduct = "V3Pro";
-        targetProtocol = "qfctp";
-    } else if (upperName.contains("V3")) {
-        targetProduct = "V3";
-        targetProtocol = "qfctp";
-    } else if (name == "Pump-E") {
-        targetProduct = "M8";
-        targetProtocol = "qroot";
-    } else if (name == "M8P") {
-        targetProduct = "M8P";
-        targetProtocol = "qaiot";
-    } else {
+    QString targetProtocol;
+    if (!CommonUtils::resolveDongleDeviceMapping(name, &targetProduct, &targetProtocol)) {
         qDebug() << "未知设备名称，不切换:" << name;
         return;
     }
 
     SETTINGS.setValue("Mes/Product_Name", targetProduct);
-
     SETTINGS.setValue("SYSTEM/ProtocolType", targetProtocol);
-
     SETTINGS.sync();
-    auto selectedType =
-        QProtocolManager::protocolTypeFromString(
-            targetProtocol.toStdString()
-            );
 
+    auto selectedType =
+        QProtocolManager::protocolTypeFromString(targetProtocol.toStdString());
     protocolManager.setCurrentProtocolType(selectedType);
 
     showlog(QString("根据Dongle设备名称切换 - 产品型号: %1 -> %2, 协议类型: %3")
             .arg(name)
             .arg(targetProduct)
             .arg(targetProtocol));
-  qDebug() << "当前的产品型号:" << SETTINGS.value("Mes/Product_Name").toString();
-            
+    qDebug() << "当前的产品型号:" << SETTINGS.value("Mes/Product_Name").toString();
 }
 void test_base::onUsbInstrumentReport(const ProtocolReport& report) {
     if (report.reportType == "ProtocolAmmeterReadingData" && report.payload.canConvert<ProtocolAmmeterReadingData>()) {
