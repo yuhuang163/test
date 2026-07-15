@@ -491,7 +491,7 @@ flowchart TB
 
 - [自由工站协议调用说明.md](./自由工站协议调用说明.md)（迁移后需同步路径）
 - [factory_protocol产测协议四层架构.md](./factory_protocol产测协议四层架构.md)（虚函数 / 访问 / 管理 / 协议字符层对照）
-- [Root吸奶器PCBA串口测试协议.md](./Root吸奶器PCBA串口测试协议.md)（qroot 属 factory_protocol）
+- [Root吸奶器PCBA串口测试协议.md](./protocol/Root吸奶器PCBA串口测试协议.md)（qroot 属 factory_protocol）
 - 旧版 [agreement目录分层重构方案.md](./agreement目录分层重构方案.md) — **仅供参考，不再作为执行依据**
 
 ---
