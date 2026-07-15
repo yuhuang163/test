@@ -61,14 +61,25 @@
         </property>
        </widget>
       </item>
-      <item row="3" column="0">
+      <item row="3" column="0" colspan="2">
+       <widget class="QCheckBox" name="checkBox_promptOnly">
+        <property name="text">
+         <string>纯空白提醒（确认后不发送指令）</string>
+        </property>
+        <property name="toolTip">
+         <string>勾选：仅弹窗，点「是」后进入下一步，不执行下方测试指令。
+不勾选：弹窗提示的同时仍会执行下方测试指令。</string>
+        </property>
+       </widget>
+      </item>
+      <item row="4" column="0">
        <widget class="QLabel" name="label_promptText">
         <property name="text">
          <string>提示文字</string>
         </property>
        </widget>
       </item>
-      <item row="3" column="1">
+      <item row="4" column="1">
        <widget class="QPlainTextEdit" name="plainTextEdit_promptText">
         <property name="maximumSize">
          <size>
