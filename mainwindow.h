@@ -448,6 +448,10 @@ class MainWindow : public QMainWindow {
     void scanIpPorts();
     void refreshButtonState(ProtocolButtonStateData data);
     void refreshRootBatteryTemp(quint8 temp);
+    void refreshRootHeatTemp(quint8 temp);
+    void refreshFlangeStatus(ProtocolTypeData data);
+    void refreshPumpStallCurrent(ProtocolPumpStallCurrentData data);
+    void refreshTupleData(ProtocolTupleData data);
     void refreshDongleDeviceName(const QString& name) ;
 
   private slots:
@@ -569,6 +573,9 @@ class MainWindow : public QMainWindow {
     void on_init_ui_data_clicked();
     void on_get_battery_clicked();
     void on_get_root_battery_temp_clicked();
+    void on_get_root_heat_temp_clicked();
+    void on_get_root_flange_clicked();
+    void on_get_root_pump_stall_clicked();
     void on_get_motor_info_clicked();
     void on_get_board_sn_clicked();
     void on_write_device_sn_clicked();
@@ -598,7 +605,7 @@ class MainWindow : public QMainWindow {
     void on_write_device_skuid_clicked();
     void on_get_device_skuid_clicked();
     void on_set_hw_ver_clicked();
-    // void on_set_battery_clicked();
+    void on_set_battery_clicked();
     void on_brush_relocation_clicked();
     void on_stopBleOta_clicked();
     void on_setOtaPktSizeButton_clicked();
@@ -629,6 +636,8 @@ class MainWindow : public QMainWindow {
     void on_btn_getLDRInfo_clicked();
     void on_enterSuctionMode_clicked();
     void on_exitSuctionMode_clicked();
+    void on_send_root_suction_test_clicked();
+    void on_send_root_heat_level_clicked();
     void on_readBurningModestatus_clicked();
     void on_kTlvKeyWrite_clicked();
     void on_kTlvKeyread_clicked();
@@ -660,8 +669,6 @@ class MainWindow : public QMainWindow {
     void on_get_keysignal_clicked();
     void on_get_ble_rssi_device_clicked();
     void on_send_custom_msg_clicked();
-    void on_open_suction_clicked();
-    void on_close_suction_clicked();
     void on_dongle_suction_open_clicked();
     void on_dongle_suction_close_clicked();
     void on_dongle_suction_clear_chart_clicked();

@@ -2643,6 +2643,7 @@ QVariant DeviceCmdCatalog::normalizeSendParam(DeviceCmd cmd, const QVariant& par
         case DeviceCmd::PeriphState:
         case DeviceCmd::FactoryReset:
         case DeviceCmd::ShipMode:
+        case DeviceCmd::RootEnterOta:
             return QVariant();
         default:
             return QVariant();
@@ -2704,6 +2705,7 @@ QVariant DeviceCmdCatalog::normalizeSendParam(DeviceCmd cmd, const QVariant& par
     case DeviceCmd::PeriphState:
     case DeviceCmd::FactoryReset:
     case DeviceCmd::ShipMode:
+    case DeviceCmd::RootEnterOta:
         return map.isEmpty() ? QVariant() : QVariant(map);
     default:
         return map;
@@ -3757,6 +3759,10 @@ const QVector<GateTypeDescriptor> kTypes = {
     {QStringLiteral("ProtocolJieliBtBoxData"), QStringLiteral("杰理蓝牙盒子RF"), {{QStringLiteral("rssi"), QStringLiteral("RSSI(dBm)")}, {QStringLiteral("freqOffset"), QStringLiteral("频偏")}}},
     {QStringLiteral("ProtocolMacData"), QStringLiteral("MAC地址"), {{QStringLiteral("mac"), QStringLiteral("MAC文本")}}},
     {QStringLiteral("ProtocolTypeData"), QStringLiteral("状态码"), {{QStringLiteral("type"), QStringLiteral("状态值")}}},
+    {QStringLiteral("ProtocolFlangeData"), QStringLiteral("法兰状态"), {{QStringLiteral("type"), QStringLiteral("法兰类型")}}},
+    {QStringLiteral("ProtocolPumpStallCurrentData"), QStringLiteral("泵堵电流"), {{QStringLiteral("adcValue"), QStringLiteral("堵转ADC")}}},
+    {QStringLiteral("ProtocolBatteryTempData"), QStringLiteral("电池温度"), {{QStringLiteral("type"), QStringLiteral("温度值")}}},
+    {QStringLiteral("ProtocolHeatTempData"), QStringLiteral("加热温度"), {{QStringLiteral("type"), QStringLiteral("温度值")}}},
     {QStringLiteral("ProtocolMeasureData"), QStringLiteral("外设测量值"), {{QStringLiteral("value"), QStringLiteral("测量数值")}, {QStringLiteral("valueText"), QStringLiteral("测量文本值")}, {QStringLiteral("deviceName"), QStringLiteral("外设名称")}, {QStringLiteral("channel"), QStringLiteral("通道号")}, {QStringLiteral("type"), QStringLiteral("测量类型")}, {QStringLiteral("unit"), QStringLiteral("单位")}}},
     {QStringLiteral("ProtocolDongleSuctionData"),
      QStringLiteral("Dongle吸力实时"),
@@ -3810,6 +3816,12 @@ double fieldValueFromVariant(const QString& reportType, const QString& field, co
         if (field == QLatin1String("currentMa")) {
             ok = true;
             return static_cast<double>(d.currentMa);
+        }
+    } else if (reportType == QLatin1String("ProtocolPumpStallCurrentData")) {
+        const auto d = payload.value<ProtocolPumpStallCurrentData>();
+        if (field == QLatin1String("adcValue")) {
+            ok = true;
+            return static_cast<double>(d.adcValue);
         }
     } else if (reportType == QLatin1String("ProtocolTrimData")) {
         const auto d = payload.value<ProtocolTrimData>();
@@ -3895,7 +3907,9 @@ double fieldValueFromVariant(const QString& reportType, const QString& field, co
             ok = true;
             return d.result;
         }
-    } else if (reportType == QLatin1String("ProtocolTypeData") || reportType == QLatin1String("ProtocolBatteryTempData")) {
+    } else if (reportType == QLatin1String("ProtocolTypeData") || reportType == QLatin1String("ProtocolBatteryTempData")
+               || reportType == QLatin1String("ProtocolFlangeData")
+               || reportType == QLatin1String("ProtocolHeatTempData")) {
         const auto d = payload.value<ProtocolTypeData>();
         if (field == QLatin1String("type")) {
             ok = true;
@@ -4046,11 +4060,19 @@ QString fieldStringFromVariant(const QString& reportType, const QString& field, 
             ok = true;
             return d.mac.trimmed();
         }
-    } else if (reportType == QLatin1String("ProtocolTypeData") || reportType == QLatin1String("ProtocolBatteryTempData")) {
+    } else if (reportType == QLatin1String("ProtocolTypeData") || reportType == QLatin1String("ProtocolBatteryTempData")
+               || reportType == QLatin1String("ProtocolFlangeData")
+               || reportType == QLatin1String("ProtocolHeatTempData")) {
         const auto d = payload.value<ProtocolTypeData>();
         if (field == QLatin1String("type")) {
             ok = true;
             return QString::number(d.type);
+        }
+    } else if (reportType == QLatin1String("ProtocolPumpStallCurrentData")) {
+        const auto d = payload.value<ProtocolPumpStallCurrentData>();
+        if (field == QLatin1String("adcValue")) {
+            ok = true;
+            return QString::number(d.adcValue);
         }
     } else if (reportType == QLatin1String("ProtocolPeriphStateData")) {
         const auto d = payload.value<ProtocolPeriphStateData>();

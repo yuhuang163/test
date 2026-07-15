@@ -188,7 +188,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
         }
     });
 
-    QStringList productList = {"V3","V3 PRO", "Pump-E", "M8P", };
+    QStringList productList = {"V3","V3 PRO", "Pump-E", "M8P","W1 Lite", "W1","W2",};
     ui->name_range->addItems(productList);
     ui->rssi_range_value->setText(QString("%1 dBm").arg(ui->rssi_range->value()));
     connect(ui->rssi_range, &QSlider::valueChanged, this, [=](int value) {
@@ -219,9 +219,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     sub_pid = new QLabel("sub_pid:        ");
     sku_id = new QLabel("sku_id:        ");
     cloudLoginLabel = new QLabel("云平台：<font color='gray'>检查中…</font>");
-    // 添加用户友好的字符串到下拉框
-    // ui->battery_type_combox->addItem("两节电池", FacBatteryType_TWO_BATTERY);
-    // ui->battery_type_combox->addItem("单节电池",FacBatteryType_ONE_BATTERY);
+    ui->battery_type_combox->addItem(QStringLiteral("两节电池"), FacBatteryType_TWO_BATTERY);
+    ui->battery_type_combox->addItem(QStringLiteral("单节电池"), FacBatteryType_ONE_BATTERY);
 
     otaSourceSet(1); // 一开机锁住
     otaFwSet(1);     // 一开机锁住
@@ -510,6 +509,15 @@ void MainWindow::onProtocolReport(const ProtocolReport& report) {
         refreshButtonState(payload.value<ProtocolButtonStateData>());
     } else if (reportType == QLatin1String("ProtocolBatteryTempData") && payload.canConvert<ProtocolTypeData>()) {
         refreshRootBatteryTemp(static_cast<quint8>(payload.value<ProtocolTypeData>().type));
+    } else if (reportType == QLatin1String("ProtocolHeatTempData") && payload.canConvert<ProtocolTypeData>()) {
+        refreshRootHeatTemp(static_cast<quint8>(payload.value<ProtocolTypeData>().type));
+    } else if (reportType == QLatin1String("ProtocolFlangeData") && payload.canConvert<ProtocolTypeData>()) {
+        refreshFlangeStatus(payload.value<ProtocolTypeData>());
+    } else if (reportType == QLatin1String("ProtocolPumpStallCurrentData")
+               && payload.canConvert<ProtocolPumpStallCurrentData>()) {
+        refreshPumpStallCurrent(payload.value<ProtocolPumpStallCurrentData>());
+    } else if (reportType == QLatin1String("ProtocolTupleData") && payload.canConvert<ProtocolTupleData>()) {
+        refreshTupleData(payload.value<ProtocolTupleData>());
     }
 }
 
@@ -697,6 +705,73 @@ void MainWindow::refreshRootBatteryTemp(quint8 temp) {
     ui->root_battery_temp_value->setText(QStringLiteral("电池温度：%1°C").arg(temp));
     showlog(QStringLiteral("电池温度：%1°C (0x80)").arg(temp));
 }
+
+void MainWindow::refreshRootHeatTemp(quint8 temp) {
+    ui->root_heat_temp_value->setText(QStringLiteral("加热温度：%1°C").arg(temp));
+    showlog(QStringLiteral("加热温度：%1°C (0x98)").arg(temp));
+}
+
+void MainWindow::refreshFlangeStatus(ProtocolTypeData data) {
+    const quint8 type = static_cast<quint8>(data.type);
+    QString typeName;
+    switch (type) {
+    case 0x00:
+        typeName = QStringLiteral("无法兰");
+        break;
+    case 0x01:
+        typeName = QStringLiteral("加热法兰");
+        break;
+    case 0x02:
+        typeName = QStringLiteral("震动法兰");
+        break;
+    case 0xA0:
+        typeName = QStringLiteral("二合一法兰");
+        break;
+    default:
+        typeName = QStringLiteral("未知类型(0x%1)").arg(type, 2, 16, QChar('0'));
+        break;
+    }
+    const bool present = (type != 0x00);
+    const QString presence = present ? QStringLiteral("在位") : QStringLiteral("不在位");
+    ui->root_flange_value->setText(QStringLiteral("法兰状态：%1 · %2").arg(presence, typeName));
+    showlog(QStringLiteral("法兰在位检测：%1，类型=%2 (0x96)").arg(presence, typeName));
+}
+
+void MainWindow::refreshPumpStallCurrent(ProtocolPumpStallCurrentData data) {
+    ui->root_pump_stall_value->setText(QStringLiteral("泵堵电流 ADC：%1").arg(data.adcValue));
+    showlog(QStringLiteral("泵堵电流：ADC=%1 (0x82)").arg(data.adcValue));
+}
+
+void MainWindow::refreshTupleData(ProtocolTupleData data) {
+    if (!data.productId.isEmpty() && sku_id)
+        sku_id->setText(QStringLiteral("sku:") + data.productId);
+    if (!data.deviceId.isEmpty() && sub_pid)
+        sub_pid->setText(QStringLiteral("sub_pid:") + data.deviceId);
+
+    // qroot KeyTail 为 RC4 密文：优先用输入框/本会话写入密钥解密后展示
+    if (!data.keyCipherHex.isEmpty()) {
+        QByteArray fullKey;
+        auto* keyEdit = this->findChild<QLineEdit*>("kTlvKey_data");
+        if (keyEdit != nullptr && !keyEdit->text().trimmed().isEmpty())
+            fullKey = keyEdit->text().trimmed().toLatin1();
+        const QByteArray cipher = QByteArray::fromHex(data.keyCipherHex.toLatin1());
+        if (!fullKey.isEmpty() && cipher.size() == 8) {
+            const QByteArray plain = CommonUtils::decryptRootTupleKeyTail(fullKey, cipher);
+            const bool ok = CommonUtils::matchRootTupleKeyTail(fullKey, cipher);
+            showlog(QStringLiteral("三元组：productId=%1 deviceId=%2 keyCipher=%3 keyPlainTail=%4 %5 (0xF7)")
+                        .arg(data.productId, data.deviceId, data.keyCipherHex, QString::fromLatin1(plain),
+                             ok ? QStringLiteral("校验通过") : QStringLiteral("校验失败(与密钥后8位不符)")));
+            return;
+        }
+        showlog(QStringLiteral("三元组：productId=%1 deviceId=%2 keyCipher=%3 (未提供完整密钥，无法解密) (0xF7)")
+                    .arg(data.productId, data.deviceId, data.keyCipherHex));
+        return;
+    }
+
+    showlog(QStringLiteral("三元组：productId=%1 deviceId=%2 key=%3")
+                .arg(data.productId, data.deviceId, data.key));
+}
+
 void MainWindow::refreshSettingsMenuVisibility() {
     if (!settingMenuAction) {
         return;
@@ -2091,14 +2166,14 @@ void MainWindow::on_configWifiPushButton_2_clicked() {
     memcpy(info.device_secret, deviceSecret.toUtf8(), deviceSecret.size());
     memcpy(info.iot_url, iotUrl.toUtf8(), iotUrl.size());
 
-    QString msg = QString("发送升级的信息：\n"
-                          "------------------------------------\n"
-                          "📶 WiFi 名称    : %1\n"
-                          "🔑 WiFi 密码    : %2\n"
-                          "🏷️ Product Key  : %3\n"
-                          "📛 Device Name  : %4\n"
-                          "🔒 Device Secret : %5\n"
-                          "🌐 IoT URL       : %6\n"
+    QString msg = QString("发送升级的信息：\r\n"
+                          "------------------------------------\r\n"
+                          "📶 WiFi 名称    : %1\r\n"
+                          "🔑 WiFi 密码    : %2\r\n"
+                          "🏷️ Product Key  : %3\r\n"
+                          "📛 Device Name  : %4\r\n"
+                          "🔒 Device Secret : %5\r\n"
+                          "🌐 IoT URL       : %6\r\n"
                           "------------------------------------")
                       .arg(name)
                       .arg(password)
@@ -3076,6 +3151,21 @@ void MainWindow::on_get_root_battery_temp_clicked() {
 
     protocolManager.get(DeviceCmd::RootBatteryTempQuery);
     showlog(QStringLiteral("正在查询电池温度(8001)"));
+}
+
+void MainWindow::on_get_root_heat_temp_clicked() {
+    protocolManager.get(DeviceCmd::RootHeatTempQuery);
+    showlog(QStringLiteral("正在查询加热温度(9801)"));
+}
+
+void MainWindow::on_get_root_flange_clicked() {
+    protocolManager.get(DeviceCmd::RootFlangeQuery);
+    showlog(QStringLiteral("正在查询法兰状态(9601)"));
+}
+
+void MainWindow::on_get_root_pump_stall_clicked() {
+    protocolManager.get(DeviceCmd::RootPumpStallCurrentQuery);
+    showlog(QStringLiteral("正在读取泵堵电流(8200)"));
 }
 
 void MainWindow::on_get_motor_info_clicked() {
@@ -4238,21 +4328,16 @@ void MainWindow::on_set_hw_ver_clicked() {
     protocolManager.set(DeviceCmd::BaseInfo, QVariantList{static_cast<int>(FacBasInfoType_HW_VERSION), QVariant::fromValue(data)});
 }
 
-// void MainWindow::on_set_battery_clicked() {
-//     // 枚举定义
-//     // typedef enum _FacBatteryType {
-//     //     FacBatteryType_TWO_BATTERY = 0,
-//     //     FacBatteryType_ONE_BATTERY = 1
-//     // } FacBatteryType;
-
-//     // 获取当前选中的枚举值并设置
-//     int currentIndex = ui->battery_type_combox->currentIndex();
-//     if (currentIndex >= 0) {
-//         FacBatteryType selectedType =
-//         static_cast<FacBatteryType>(ui->battery_type_combox->itemData(currentIndex).toInt());
-//         pb->set_battery(selectedType);
-//     }
-// }
+void MainWindow::on_set_battery_clicked() {
+    const int currentIndex = ui->battery_type_combox->currentIndex();
+    if (currentIndex < 0) {
+        showlog(QStringLiteral("请先选择电池类型"));
+        return;
+    }
+    const int type = ui->battery_type_combox->itemData(currentIndex).toInt();
+    protocolManager.set(DeviceCmd::SetBattery, type);
+    showlog(QStringLiteral("已设置电池类型：%1").arg(ui->battery_type_combox->currentText()));
+}
 
 void MainWindow::on_brush_relocation_clicked() {
     protocolManager.set(DeviceCmd::MotorDampingState, 0);
@@ -4539,6 +4624,26 @@ void MainWindow::on_exitSuctionMode_clicked() {
     QVariantMap m;
     m["enter"] = 0;
     protocolManager.set(DeviceCmd::SuctionMode, m);
+}
+
+void MainWindow::on_send_root_suction_test_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("switch"), ui->root_suction_switch->currentIndex()); // 0关 1开
+    m.insert(QStringLiteral("mode"), ui->root_suction_mode->currentIndex());     // 0按摩 1吸乳 2混合
+    m.insert(QStringLiteral("level"), ui->root_suction_level->value());
+    protocolManager.set(DeviceCmd::RootSuctionTest, m);
+    showlog(QStringLiteral("已发送吸力测试(0x81)：开关=%1，模式=%2，强度=%3")
+                .arg(ui->root_suction_switch->currentText(), ui->root_suction_mode->currentText())
+                .arg(ui->root_suction_level->value()));
+}
+
+void MainWindow::on_send_root_heat_level_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("switch"), ui->root_heat_switch->currentIndex()); // 0关 1开
+    m.insert(QStringLiteral("level"), ui->root_heat_level->currentIndex());   // 0=L1 1=L2 2=L3
+    protocolManager.set(DeviceCmd::RootHeatLevelControl, m);
+    showlog(QStringLiteral("已发送加热档位(0x83)：开关=%1，档位=%2")
+                .arg(ui->root_heat_switch->currentText(), ui->root_heat_level->currentText()));
 }
 
 void MainWindow::on_readBurningModestatus_clicked() {
@@ -4947,7 +5052,7 @@ bool MainWindow::startDongleSuctionCsvLog() {
 
     dongleSuctionCsvStream_.setDevice(&dongleSuctionCsvFile_);
     dongleSuctionCsvStream_.setCodec("UTF-8");
-    dongleSuctionCsvStream_ << QStringLiteral("time_s,ch1_kpa,ch2_kpa,ch3_kpa,event\n");
+    dongleSuctionCsvStream_ << QStringLiteral("time_s,ch1_kpa,ch2_kpa,ch3_kpa,event\r\n");
     dongleSuctionCsvStream_.flush();
 
     if (ui->dongleSuctionCsvPathLabel)
@@ -4961,7 +5066,7 @@ void MainWindow::stopDongleSuctionCsvLog() {
         return;
 
     dongleSuctionCsvStream_ << QStringLiteral("#summary,valid_ch1,miss_ch1,weak_ch1,valid_ch2,miss_ch2,weak_ch2,valid_ch3,"
-                                                "miss_ch3,weak_ch3\n");
+                                                "miss_ch3,weak_ch3\r\n");
     dongleSuctionCsvStream_ << QStringLiteral("#");
     for (int i = 0; i < kDongleSuctionChannelCount; ++i) {
         const auto& m = dongleSuctionPeakMonitors_[i];
@@ -4970,7 +5075,7 @@ void MainWindow::stopDongleSuctionCsvLog() {
         if (i + 1 < kDongleSuctionChannelCount)
             dongleSuctionCsvStream_ << QLatin1Char(',');
     }
-    dongleSuctionCsvStream_ << QLatin1Char('\n');
+    dongleSuctionCsvStream_ << QLatin1Char('\r') << QLatin1Char('\n');
     dongleSuctionCsvStream_.flush();
     dongleSuctionCsvFile_.close();
     dongleSuctionCsvStream_.setDevice(nullptr);
@@ -4986,7 +5091,8 @@ void MainWindow::writeDongleSuctionCsvRow(double tSec, double ch1Kpa, double ch2
         return;
     dongleSuctionCsvStream_ << QString::number(tSec, 'f', 3) << QLatin1Char(',') << QString::number(ch1Kpa, 'f', 3)
                               << QLatin1Char(',') << QString::number(ch2Kpa, 'f', 3) << QLatin1Char(',')
-                              << QString::number(ch3Kpa, 'f', 3) << QLatin1Char(',') << event << QLatin1Char('\n');
+                              << QString::number(ch3Kpa, 'f', 3) << QLatin1Char(',') << event << QLatin1Char('\r')
+                              << QLatin1Char('\n');
     dongleSuctionCsvStream_.flush();
 }
 
@@ -5174,14 +5280,6 @@ void MainWindow::refreshDongleSuctionData(const ProtocolDongleSuctionData& data)
     appendDongleSuctionChartSample(data.ch1Kpa, data.ch2Kpa, data.ch3Kpa);
 }
 
-void MainWindow::on_open_suction_clicked() {
-    on_dongle_suction_open_clicked();
-}
-
-void MainWindow::on_close_suction_clicked() {
-    on_dongle_suction_close_clicked();
-}
-
 void MainWindow::on_dongle_suction_open_clicked() {
     if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
         QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("请先连接 Dongle 串口"));
@@ -5225,3 +5323,6 @@ void MainWindow::on_checkBox_adcSwitch_stateChanged(int arg1) {
     at->set(DongleCmd::AdcSwitch, state);
     showlog(QStringLiteral("已发送 AT+ADC=%1").arg(state));
 }
+
+
+

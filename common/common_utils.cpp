@@ -79,6 +79,68 @@ QByteArray CommonUtils::fromHexString(const QString& hex, bool* ok) {
     return parsed;
 }
 
+void CommonUtils::rc4Crypt(const QByteArray& key, QByteArray& data) {
+    if (key.isEmpty() || data.isEmpty())
+        return;
+    quint8 s[256];
+    for (int i = 0; i < 256; ++i)
+        s[i] = static_cast<quint8>(i);
+    int j = 0;
+    const int keyLen = key.size();
+    for (int i = 0; i < 256; ++i) {
+        j = (j + s[i] + static_cast<quint8>(key.at(i % keyLen))) & 0xFF;
+        qSwap(s[i], s[j]);
+    }
+    int i = 0;
+    j = 0;
+    for (int n = 0; n < data.size(); ++n) {
+        i = (i + 1) & 0xFF;
+        j = (j + s[i]) & 0xFF;
+        qSwap(s[i], s[j]);
+        const quint8 k = s[(s[i] + s[j]) & 0xFF];
+        data[n] = static_cast<char>(static_cast<quint8>(data.at(n)) ^ k);
+    }
+}
+
+QByteArray CommonUtils::normalizeRootEncryptionKey(const QByteArray& key) {
+    QByteArray k = key;
+    if (k.size() > 16)
+        k = k.left(16);
+    if (k.size() < 16)
+        k.append(QByteArray(16 - k.size(), '\0'));
+    return k;
+}
+
+QByteArray CommonUtils::decryptRootTupleKeyTail(const QByteArray& encryptionKey, const QByteArray& cipher8) {
+    if (cipher8.size() != 8)
+        return {};
+    QByteArray plain = cipher8;
+    rc4Crypt(normalizeRootEncryptionKey(encryptionKey), plain);
+    return plain;
+}
+
+bool CommonUtils::matchRootTupleKeyTail(const QByteArray& encryptionKey, const QByteArray& cipher8) {
+    const QByteArray fullKey = normalizeRootEncryptionKey(encryptionKey);
+    const QByteArray plain = decryptRootTupleKeyTail(fullKey, cipher8);
+    if (plain.size() != 8)
+        return false;
+    return plain == fullKey.mid(8, 8);
+}
+
+bool CommonUtils::matchTupleDeviceSecret(const QString& deviceKeyField, const QString& keyCipherHex,
+                                         const QString& expectedSecret) {
+    const QString expect = expectedSecret.trimmed();
+    if (expect.isEmpty())
+        return false;
+    // qroot：线上为 RC4 密文，用完整密钥校验后 8 位
+    if (!keyCipherHex.trimmed().isEmpty()) {
+        const QByteArray cipher = QByteArray::fromHex(keyCipherHex.toLatin1());
+        return matchRootTupleKeyTail(expect.toLatin1(), cipher);
+    }
+    // Qpb/FCTP：明文整串
+    return deviceKeyField.trimmed() == expect;
+}
+
 quint32 CommonUtils::crc32Update(quint32 crc, const char* data, int length) {
     if (!data || length <= 0)
         return crc;

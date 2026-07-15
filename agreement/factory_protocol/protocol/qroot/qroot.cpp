@@ -1,5 +1,7 @@
 #include "qroot.h"
 
+#include "common_utils.h"
+
 #include <QDebug>
 #include <QVariantMap>
 
@@ -18,6 +20,8 @@ constexpr int kPhyHeaderSize = 8;
 constexpr quint8 kPhyChannelFac = 1;
 /** 0x9A 开/关按键上报的 Ack body：0xFF=已接收（旧固件曾为 0x00） */
 constexpr quint8 kKeyNotifySwitchAck = 0xFF;
+/** 内层 body 合理上限；串口噪声偶发伪帧头 + 超大 CAL 会卡住后续合法应答 */
+constexpr int kMaxFrameBodyLen = 64;
 
 } // namespace
 
@@ -284,22 +288,32 @@ void Qroot::drainRxBuffer() {
         }
         if (start > 0)
             rxBuffer_.remove(0, start);
-        if (rxBuffer_.size() < 2)
-            return;
         if (rxBuffer_.size() < kHeaderSize)
             return;
+
         const quint8 cal = static_cast<quint8>(rxBuffer_.at(4));
+        // 超大 CAL 多为串口噪声伪造的 AA55 头，丢弃帧头后重新搜，避免堵死后续合法应答
+        if (cal > kMaxFrameBodyLen) {
+            qWarning() << "[Qroot] invalid CAL" << cal << ", resync";
+            rxBuffer_.remove(0, 2);
+            continue;
+        }
+
         const int frameLen = kHeaderSize + cal + 1;
         if (rxBuffer_.size() < frameLen)
             return;
+
         const QByteArray frame = rxBuffer_.left(frameLen);
-        rxBuffer_.remove(0, frameLen);
         const quint8 expectCs = static_cast<quint8>(frame.at(frameLen - 1));
         const quint8 actualCs = checksum8(frame.left(frameLen - 1));
         if (expectCs != actualCs) {
-            qWarning() << "[Qroot] checksum mismatch";
+            // 校验失败：只跳过 AA55，不要按 CAL 整帧丢弃（否则会吞掉夹在伪帧后的合法包）
+            qWarning() << "[Qroot] checksum mismatch, resync";
+            rxBuffer_.remove(0, 2);
             continue;
         }
+
+        rxBuffer_.remove(0, frameLen);
         const quint8 ct = static_cast<quint8>(frame.at(2));
         const quint8 cid = static_cast<quint8>(frame.at(3));
         const QByteArray body = frame.mid(kHeaderSize, cal);
@@ -348,9 +362,9 @@ void Qroot::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
 
     if (ct == Notify) {
         if (cid == FlangeStatus && body.size() >= 1) {
-            ProtocolTypeData status;
+            ProtocolFlangeData status;
             status.type = static_cast<quint8>(body.at(0));
-            emitReport(QStringLiteral("ProtocolTypeData"), QVariant::fromValue(status));
+            emitReport(QStringLiteral("ProtocolFlangeData"), QVariant::fromValue(status));
             return;
         }
         if (cid == NtcStatus && body.size() >= 2) {
@@ -388,9 +402,10 @@ void Qroot::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
             return;
         }
         if (cid == HeatTemp && body.size() >= 1) {
-            ProtocolTypeData status;
+            ProtocolHeatTempData status;
             status.type = static_cast<quint8>(body.at(0));
-            emitReport(QStringLiteral("ProtocolTypeData"), QVariant::fromValue(status));
+            qDebug().noquote() << "[Qroot] HeatTemp:" << status.type << "C";
+            emitReport(QStringLiteral("ProtocolHeatTempData"), QVariant::fromValue(status));
             return;
         }
         if (cid == VibStatus && body.size() >= 1) {
@@ -442,6 +457,8 @@ void Qroot::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
             info.soft_version = formatSoftVersion(body);
             if (body.size() >= 3)
                 info.hw_version = QString::number(static_cast<quint8>(body.at(2)));
+            qDebug().noquote() << "[Qroot] SoftVersion:" << info.soft_version
+                               << "hw:" << info.hw_version;
             emitReport(QStringLiteral("ProtocolBaseInfoData"), QVariant::fromValue(info));
         }
         emit sendGetProductResponse(1);
@@ -497,6 +514,84 @@ void Qroot::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
         emit sendGetProductResponse(1);
         hasPending_ = false;
         break;
+    case PumpStallCurrent:
+        if (body.size() >= 2) {
+            // 协议约定堵转 ADC 高字节在前（大端）
+            ProtocolPumpStallCurrentData stall;
+            stall.adcValue = (static_cast<quint8>(body.at(0)) << 8) | static_cast<quint8>(body.at(1));
+            qDebug().noquote() << "[Qroot] PumpStallCurrent ADC=" << stall.adcValue
+                               << QStringLiteral("(0x%1)").arg(stall.adcValue, 4, 16, QChar('0'));
+            emitReport(QStringLiteral("ProtocolPumpStallCurrentData"), QVariant::fromValue(stall));
+        }
+        emit sendGetProductResponse(1);
+        hasPending_ = false;
+        break;
+    case HeatLevelControl:
+        if (body.size() >= 1) {
+            ProtocolResultData result;
+            // Ack 结果 0xFF 表示执行成功（与按键开关 Ack 约定一致）
+            result.result = (static_cast<quint8>(body.at(0)) == 0xFF) ? 1 : 0;
+            emitReport(QStringLiteral("ProtocolResultData"), QVariant::fromValue(result));
+        }
+        emit sendGetProductResponse(1);
+        hasPending_ = false;
+        break;
+    case DeviceSnRead:
+        if (!body.isEmpty()) {
+            ProtocolSnData sn;
+            sn.type = pendingSnType_;
+            sn.value = QString::fromUtf8(body.left(40)).trimmed();
+            qDebug().noquote() << "[Qroot] DeviceSN:" << sn.value << "len=" << body.size();
+            emitReport(QStringLiteral("ProtocolSnData"), QVariant::fromValue(sn));
+        }
+        emit sendGetProductResponse(1);
+        hasPending_ = false;
+        break;
+    case TupleRead:
+        if (body.size() >= 30) {
+            const QString prod = QString::fromLatin1(body.left(6)).trimmed();
+            const QString dev = QString::fromLatin1(body.mid(6, 16)).trimmed();
+            const QByteArray cipher8 = body.mid(22, 8);
+            ProtocolTupleData tuple;
+            tuple.productId = prod;
+            tuple.deviceId = dev;
+            tuple.keyCipherHex = QString::fromLatin1(cipher8.toHex());
+            // 有会话内写入的完整 16B key 时，按固件算法解密后 8 位明文
+            if (!lastEncryptionKey_.isEmpty()) {
+                const QByteArray plain =
+                    CommonUtils::decryptRootTupleKeyTail(lastEncryptionKey_, cipher8);
+                const bool ok = CommonUtils::matchRootTupleKeyTail(lastEncryptionKey_, cipher8);
+                tuple.key = QString::fromLatin1(plain);
+                tuple.keyDecrypted = ok;
+                qDebug().noquote() << "[Qroot] TupleRead prod=" << prod << "dev=" << dev
+                                   << "keyCipher=" << tuple.keyCipherHex << "keyPlainTail=" << tuple.key
+                                   << "decryptOk=" << ok;
+            } else {
+                tuple.key = tuple.keyCipherHex;
+                tuple.keyDecrypted = false;
+                qDebug().noquote() << "[Qroot] TupleRead prod=" << prod << "dev=" << dev
+                                   << "keyCipher=" << tuple.keyCipherHex
+                                   << "(无缓存密钥，未解密；比对请用云端/写入密钥做 RC4)";
+            }
+            emitReport(QStringLiteral("ProtocolTupleData"), QVariant::fromValue(tuple));
+        } else {
+            qWarning() << "[Qroot] TupleRead len" << body.size() << "expect >=30";
+        }
+        emit sendGetProductResponse(1);
+        hasPending_ = false;
+        break;
+    case DeviceSnWrite:
+    case ProductIdWrite:
+    case DeviceIdWrite:
+    case EncryptionKeyWrite:
+        {
+            ProtocolResultData result;
+            result.result = 1;
+            emitReport(QStringLiteral("ProtocolResultData"), QVariant::fromValue(result));
+        }
+        emit sendGetProductResponse(1);
+        hasPending_ = false;
+        break;
     case PumpControl:
         if (body.size() >= 1) {
             ProtocolTypeData status;
@@ -507,8 +602,15 @@ void Qroot::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
         hasPending_ = false;
         break;
     case FlangeStatus:
+        if (body.size() >= 1) {
+            ProtocolFlangeData status;
+            status.type = static_cast<quint8>(body.at(0));
+            emitReport(QStringLiteral("ProtocolFlangeData"), QVariant::fromValue(status));
+        }
+        emit sendGetProductResponse(1);
+        hasPending_ = false;
+        break;
     case NtcStatus:
-    case HeatTemp:
     case VibStatus:
         if (body.size() >= 1) {
             ProtocolTypeData status;
@@ -517,6 +619,16 @@ void Qroot::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
             else
                 status.type = static_cast<quint8>(body.at(0));
             emitReport(QStringLiteral("ProtocolTypeData"), QVariant::fromValue(status));
+        }
+        emit sendGetProductResponse(1);
+        hasPending_ = false;
+        break;
+    case HeatTemp:
+        if (body.size() >= 1) {
+            ProtocolHeatTempData status;
+            status.type = static_cast<quint8>(body.at(0));
+            qDebug().noquote() << "[Qroot] HeatTemp Ack:" << status.type << "C";
+            emitReport(QStringLiteral("ProtocolHeatTempData"), QVariant::fromValue(status));
         }
         emit sendGetProductResponse(1);
         hasPending_ = false;
@@ -618,6 +730,129 @@ void Qroot::sendSuctionTest(const QByteArray& body3) {
     sendPacket(Req, SuctionTest, body3);
 }
 
+QByteArray Qroot::buildHeatLevelControlBody(const QVariant& data) {
+    QVariantMap map;
+    if (data.canConvert<QVariantMap>())
+        map = data.toMap();
+    const auto u8 = [&map](const QString& key, quint8 def) -> quint8 {
+        if (!map.contains(key))
+            return def;
+        return static_cast<quint8>(map.value(key).toUInt() & 0xFF);
+    };
+    quint8 switchVal = 1;
+    if (map.contains(QStringLiteral("switch")))
+        switchVal = u8(QStringLiteral("switch"), 1);
+    else if (map.contains(QStringLiteral("on")))
+        switchVal = u8(QStringLiteral("on"), 1);
+    else if (map.contains(QStringLiteral("status")))
+        switchVal = u8(QStringLiteral("status"), 1);
+    quint8 level = 0;
+    if (map.contains(QStringLiteral("level")))
+        level = u8(QStringLiteral("level"), 0);
+    else if (map.contains(QStringLiteral("heatLevel")))
+        level = u8(QStringLiteral("heatLevel"), 0);
+    if (level > 2)
+        level = 2;
+    QByteArray body(2, '\0');
+    body[0] = static_cast<char>(switchVal ? 1 : 0);
+    body[1] = static_cast<char>(level);
+    return body;
+}
+
+void Qroot::sendHeatLevelControl(const QByteArray& body2) {
+    if (body2.size() != 2) {
+        qWarning() << "[Qroot] HeatLevelControl body must be 2 bytes, got" << body2.size();
+        return;
+    }
+    sendPacket(Req, HeatLevelControl, body2);
+}
+
+QByteArray Qroot::truncateUtf8Bytes(const QVariant& data, int maxLen, const QString& valueKey) {
+    QByteArray bytes;
+    if (data.canConvert<DeviceSnPayload>()) {
+        bytes = data.value<DeviceSnPayload>().sn;
+    } else if (data.type() == QVariant::ByteArray) {
+        bytes = data.toByteArray();
+    } else if (data.canConvert<QVariantMap>()) {
+        const QVariantMap map = data.toMap();
+        if (map.contains(valueKey))
+            bytes = map.value(valueKey).toByteArray();
+        else if (map.contains(QStringLiteral("sn")))
+            bytes = map.value(QStringLiteral("sn")).toByteArray();
+        else if (map.contains(QStringLiteral("value")))
+            bytes = map.value(QStringLiteral("value")).toByteArray();
+    } else {
+        bytes = data.toString().toUtf8();
+    }
+    if (bytes.size() > maxLen)
+        bytes = bytes.left(maxLen);
+    return bytes;
+}
+
+void Qroot::sendDeviceSnWrite(const QByteArray& sn) {
+    sendPacket(Req, DeviceSnWrite, sn.left(40));
+}
+
+void Qroot::sendProductIdWrite(const QByteArray& productId) {
+    sendPacket(Req, ProductIdWrite, productId.left(6));
+}
+
+void Qroot::sendDeviceIdWrite(const QByteArray& deviceId) {
+    sendPacket(Req, DeviceIdWrite, deviceId.left(16));
+}
+
+void Qroot::sendEncryptionKeyWrite(const QByteArray& key) {
+    lastEncryptionKey_ = CommonUtils::normalizeRootEncryptionKey(key);
+    sendPacket(Req, EncryptionKeyWrite, key.left(16));
+}
+
+bool Qroot::setSn(const QVariant& data) {
+    if (data.canConvert<DeviceSnPayload>()) {
+        const DeviceSnPayload payload = data.value<DeviceSnPayload>();
+        switch (payload.which_sn) {
+        case FacDevInfoType_SKUID:
+            sendProductIdWrite(payload.sn);
+            return true;
+        case FacDevInfoType_SUB_PID:
+            sendDeviceIdWrite(payload.sn);
+            return true;
+        case FacDevInfoType_BOARD_SN:
+        case FacDevInfoType_TAIL_SN:
+        default:
+            sendDeviceSnWrite(payload.sn);
+            return true;
+        }
+    }
+
+    const QVariantList list = data.toList();
+    if (list.size() >= 2) {
+        const auto which = static_cast<FacDevInfoType>(list.at(0).toInt());
+        const QByteArray sn = list.at(1).toByteArray();
+        if (which == FacDevInfoType_SKUID) {
+            sendProductIdWrite(sn);
+            return true;
+        }
+        if (which == FacDevInfoType_SUB_PID) {
+            sendDeviceIdWrite(sn);
+            return true;
+        }
+        sendDeviceSnWrite(sn);
+        return true;
+    }
+
+    const QByteArray sn = truncateUtf8Bytes(data, 40, QStringLiteral("sn"));
+    if (sn.isEmpty()) {
+        qWarning() << "[Qroot] SN写入参数为空";
+        return false;
+    }
+    sendDeviceSnWrite(sn);
+    return true;
+}
+
+bool Qroot::sendSystemControl(quint8 ctrl) {
+    return sendPacket(Req, FactoryReset, QByteArray(1, static_cast<char>(ctrl)));
+}
+
 void Qroot::set(DeviceCmd cmd, const QVariant& data) {
     switch (cmd) {
     case DeviceCmd::FacMode: {
@@ -647,9 +882,25 @@ void Qroot::set(DeviceCmd cmd, const QVariant& data) {
     case DeviceCmd::RootSuctionTest:
         sendSuctionTest(buildSuctionTestBody(data));
         return;
+    case DeviceCmd::RootHeatLevelControl:
+        sendHeatLevelControl(buildHeatLevelControlBody(data));
+        return;
     case DeviceCmd::RootPumpControl:
         sendPumpControl(buildPumpControlBody(data));
         return;
+    case DeviceCmd::Sn:
+        if (setSn(data))
+            return;
+        break;
+    case DeviceCmd::WriteKey: {
+        const QByteArray key = truncateUtf8Bytes(data, 16, QStringLiteral("value"));
+        if (key.isEmpty()) {
+            qWarning() << "[Qroot] WriteKey 参数为空";
+            return;
+        }
+        sendEncryptionKeyWrite(key);
+        return;
+    }
     case DeviceCmd::BurningMode: {
         bool wantExit = false;
         if (data.canConvert<QVariantMap>()) {
@@ -670,12 +921,22 @@ void Qroot::set(DeviceCmd cmd, const QVariant& data) {
         sendPacket(Notify, AgingEnter, QByteArray(1, '\x01'));
         return;
     }
+    case DeviceCmd::ShipMode:
+        // 与 Qfctp ShipMode→关机 对齐：Req 0xFC + 0x01
+        sendSystemControl(kSystemControlShutdown);
+        return;
+    case DeviceCmd::DevReset:
+        sendSystemControl(kSystemControlReboot);
+        return;
+    case DeviceCmd::RootEnterOta:
+        sendSystemControl(kSystemControlOta);
+        return;
     case DeviceCmd::FactoryReset:
         sendPacket(Notify, FactoryReset, QByteArray(1, static_cast<char>(kFactoryResetParam)));
         return;
     case DeviceCmd::RootSystemControl:
-        sendPacket(Req, FactoryReset,
-                   QByteArray(1, static_cast<char>(parseSystemControlCommand(data, kSystemControlShutdown))));
+        // 兼容旧步骤 ini（Param_command=1~4）；新配置请改用上面拆分命令
+        sendSystemControl(parseSystemControlCommand(data, kSystemControlShutdown));
         return;
     default:
         qWarning() << "[Qroot] unsupported set cmd" << static_cast<int>(cmd);
@@ -684,7 +945,6 @@ void Qroot::set(DeviceCmd cmd, const QVariant& data) {
 }
 
 void Qroot::get(DeviceCmd cmd, const QVariant& param) {
-    Q_UNUSED(param);
     switch (cmd) {
     case DeviceCmd::SoftVersionRead:
     case DeviceCmd::BaseInfo:
@@ -702,6 +962,9 @@ void Qroot::get(DeviceCmd cmd, const QVariant& param) {
     case DeviceCmd::RootFlangeQuery:
         sendQuery(FlangeStatus);
         return;
+    case DeviceCmd::RootPumpStallCurrentQuery:
+        sendPacket(Req, PumpStallCurrent, {});
+        return;
     case DeviceCmd::RootNtcQuery:
         sendQuery(NtcStatus);
         return;
@@ -711,6 +974,20 @@ void Qroot::get(DeviceCmd cmd, const QVariant& param) {
     case DeviceCmd::RootVibStatusQuery:
         sendQuery(VibStatus);
         return;
+    case DeviceCmd::TupleRead:
+        sendPacket(Req, TupleRead, {});
+        return;
+    case DeviceCmd::Sn: {
+        const auto which = static_cast<FacDevInfoType>(param.toInt());
+        // 读 productKey/deviceName 无独立 CID，兼容走三元组 F7
+        if (which == FacDevInfoType_SUB_PID || which == FacDevInfoType_SKUID) {
+            sendPacket(Req, TupleRead, {});
+            return;
+        }
+        pendingSnType_ = (which == FacDevInfoType_BOARD_SN) ? ProtocolSnType::BoardSn : ProtocolSnType::TailSn;
+        sendPacket(Req, DeviceSnRead, {});
+        return;
+    }
     case DeviceCmd::ButtonState:
         sendKeyNotifySwitch(parseOnOffParam(param, 1));
         return;

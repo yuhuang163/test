@@ -263,7 +263,10 @@ class test_base : public QWidget {
     virtual void refreshPictureSendOver(ProtocolPictureSendOverData) {}
     virtual void refreshAgingStatus(ProtocolAgingStatusData) {}
     virtual void refreshRootBatteryTemp(quint8) {}
+    virtual void refreshRootHeatTemp(quint8) {}
     virtual void refreshResultCode(ProtocolResultData) {}
+    virtual void refreshFlangeStatus(ProtocolTypeData) {}
+    virtual void refreshPumpStallCurrent(ProtocolPumpStallCurrentData) {}
     virtual void refreshTypeStatus(ProtocolTypeData) {}
     virtual void refreshAmmeterData(QString) {}
     virtual void refreshDongleUartState(int) {}

@@ -161,6 +161,8 @@ struct ProtocolTypeData {
 
 typedef ProtocolTypeData ProtocolLcdControlData;
 typedef ProtocolTypeData ProtocolBatteryTempData;
+typedef ProtocolTypeData ProtocolFlangeData;
+typedef ProtocolTypeData ProtocolHeatTempData;
 
 struct ProtocolPressSampleData {
     int timeStamp = 0;
@@ -232,7 +234,9 @@ struct ProtocolSdInfoData {
 struct ProtocolTupleData {
     QString productId;
     QString deviceId;
-    QString key;
+    QString key;           // 明文密钥或（qroot 解密后）密钥后 8 位明文
+    QString keyCipherHex;  // qroot 0xF7 线上 KeyTail 密文 hex；非 qroot 为空
+    bool keyDecrypted = false;
 };
 
 struct ProtocolAgingStatusData {
@@ -253,6 +257,11 @@ struct ProtocolKeyCapData {
 
 struct ProtocolChargeCurrentData {
     uint32_t currentMa = 0;
+};
+
+/** qroot 0x82 泵堵电流：堵转 ADC（last_adc_value，大端）。 */
+struct ProtocolPumpStallCurrentData {
+    int adcValue = 0;
 };
 
 struct ProtocolTrimData {
@@ -402,7 +411,7 @@ enum class DeviceCmd {
     FacResult,             // 【统一入口】产测结果/完成标识；Qpb: set_fac_result(int)，Qfctp: FactoryDoneWrite(done)
     ScreenColor,           // 【Qpb】屏幕纯色/显示测试（int，set_screen_color）
     LedColor,              // 【Qpb】LED 颜色两参数（QVariantList{区/路, 色值}，set_led_color）
-    ShipMode,              // 【Qpb】船运模式（int，set_ship_mode）；【Qfctp】复用枚举名→关机 TLV（与 Qpb 语义不同）
+    ShipMode,              // 【Qpb】船运模式（int，set_ship_mode）；【Qfctp/Qroot】关机（无参）
     MotorAdcSwitch,        // 【Qpb】电机 ADC 采样开关（int，set_motor_adc_switch）
     MotorParam,            // 【Qpb】电机运行参数（QVariantList{频率 uint, 占空比 float}，set_motor_param）
     MotorState,            // 【Qpb】电机工作状态（int，set_motor_state）
@@ -419,7 +428,7 @@ enum class DeviceCmd {
     CameraLightState,      // 【Qpb】相机补光状态（int，set_camera_light_state）
     CameraSupportState,    // 【Qpb】相机能力/支持项状态（int，set_camera_support_state）
     CameraExposureTime,    // 【Qpb】曝光时间（uint，set_camera_exposure_time）
-    DevReset,              // 【Qpb】设备复位（无参/可空 QVariant，set_dev_reset）
+    DevReset,              // 【Qpb】设备复位（无参/可空 QVariant，set_dev_reset）；【Qroot】Req 0xFC+0x02 重启
     BrushReset,            // 【Qpb】使用相关复位（无参，set_brush_reset）
     PressCaliResult,       // 【Qpb】压力标定结果下发（press_calib_data_t，set_press_cali_result）；get 见 GetPressCaliResult
     ImuCaliResult,         // 【Qpb】IMU 标定结果下发（ImuCalData，set_imu_cali_result）；get 见 GetImuCaliResult
@@ -454,7 +463,7 @@ enum class DeviceCmd {
     MacWrite,              // 【Qfctp】写 MAC（QVariantMap，setCaseMacWrite）
     NightLightSet,         // 【Qfctp】夜灯亮度（QVariantMap，setCaseNightLightSet）
     LedTest,               // 【主入口】LED 测试开关（QVariantMap{on:0|1}）；Qfctp/Qroot/Qpb 均兼容
-    FactoryReset,          // 【Qfctp】恢复出厂（无参）；【Qroot】Notify 0xFC+0x04，应答 0xE0 返回 0x04
+    FactoryReset,          // 【Qfctp】恢复出厂（无参）；【Qroot】Notify 0xFC+0x04，应答 0xE0/0xFC 返回 0x04
 
     LcdBacklight,       // 【Qfctp】LCD 背光（QVariantMap，setCaseLcdBacklight）
     LightReportControl, // 【Qfctp】光感上报开关（QVariantMap，setCaseLightReportControl）
@@ -470,15 +479,19 @@ enum class DeviceCmd {
     RootVibStatusQuery,   // 0x99 振子状态查询
     RootPumpTestEnter,    // 0x9D 主机泵测试进入
     RootPumpTestExit,     // 0x9E 主机泵测试退出
-    RootSuctionTest,      // 0x81 吸力测试（REQ 3B：switch+mode+level）
-    RootPumpControl,      // 0xC0 吸奶器控制（REQ 10B，ACK 回显 controlType）
-    RootSystemControl,    // 0xFC 系统控制 REQ：1关机 2重启 3OTA 4恢复出厂(抹除用户设置)
+    RootSuctionTest,           // 0x81 吸力测试（REQ 3B：switch+mode+level）
+    RootPumpStallCurrentQuery, // 0x82 读取泵堵电流（Req 无参；Ack 2B 堵转 ADC 大端）
+    RootHeatLevelControl,      // 0x83 加热档位控制（REQ 2B：switch+level L1~L3）
+    RootPumpControl,           // 0xC0 吸奶器控制（REQ 10B，ACK 回显 controlType）
+    RootEnterOta,         // 【Qroot】Req 0xFC+0x03 进入 OTA
+    RootSystemControl,    // 【已拆分/兼容】旧「系统控制」聚合命令；新步骤请用 ShipMode/DevReset/RootEnterOta/FactoryReset
 
     // get commands
     NowMusicInfo,       // 【Qpb】当前播放音乐信息（无参/可空 param，get_now_music_info）
     SdCardInfo,         // 【Qpb】SD 卡信息（无参，get_sd_card_info）
     LightSensorInfo,    // 【主入口】传感类读取入口；Qpb 读光感，Qfctp 兼容映射充电电流
     GetBattery,         // 【Qpb】读电量（无参，get_battery）；【Qfctp】电量 TLV；【Qroot】Notify 0xE0 查询
+    SetBattery,         // 【Qpb】设置电池类型（FacBatteryType：0两节 1单节）
     ButtonState,        // 【主入口】按键状态/上报开关；Qpb 读按键，Qroot 9A 开关（param 0|1）
     GetPressCaliResult, // 【Qpb】读压力标定结果（无参，get_press_cali_result）
     GetImuCaliResult,   // 【Qpb】读 IMU 标定结果（无参，get_imu_cali_result）
@@ -545,6 +558,7 @@ Q_DECLARE_METATYPE(ProtocolAgingStatusData)
 Q_DECLARE_METATYPE(ProtocolDeviceExceptionData)
 Q_DECLARE_METATYPE(ProtocolKeyCapData)
 Q_DECLARE_METATYPE(ProtocolChargeCurrentData)
+Q_DECLARE_METATYPE(ProtocolPumpStallCurrentData)
 Q_DECLARE_METATYPE(ProtocolTrimData)
 Q_DECLARE_METATYPE(ProtocolLightCalibData)
 Q_DECLARE_METATYPE(ProtocolDongleBleStateData)

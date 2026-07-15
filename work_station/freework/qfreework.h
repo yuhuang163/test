@@ -348,7 +348,10 @@ class QFreeWork : public test_base {
     void refreshTupleData(ProtocolTupleData data) override;
     void refreshButton(ProtocolButtonStateData data) override;
     void refreshRootBatteryTemp(quint8 temp) override;
+    void refreshRootHeatTemp(quint8 temp) override;
     void refreshResultCode(ProtocolResultData data) override;
+    void refreshFlangeStatus(ProtocolTypeData data) override;
+    void refreshPumpStallCurrent(ProtocolPumpStallCurrentData data) override;
     void refreshTypeStatus(ProtocolTypeData data) override;
     void refreshAmmeterData(QString data) override;
     void refreshDongleSuctionData(ProtocolDongleSuctionData data) override;

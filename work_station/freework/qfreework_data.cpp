@@ -2,6 +2,7 @@
 
 #include <algorithm>
 
+#include "common_utils.h"
 #include "qproduct.h"
 #include "test_case.h"
 
@@ -704,7 +705,8 @@ bool QFreeWork::tryCompleteActiveTestCaseTupleCompare(const ProtocolTupleData& d
 
     const bool productKeyPass = data.productId.trimmed() == tupleData_.productKey.trimmed();
     const bool deviceNamePass = data.deviceId.trimmed() == tupleData_.deviceName.trimmed();
-    const bool deviceSecretPass = data.key.trimmed() == tupleData_.deviceSecret.trimmed();
+    const bool deviceSecretPass =
+        CommonUtils::matchTupleDeviceSecret(data.key, data.keyCipherHex, tupleData_.deviceSecret);
     const bool pass = productKeyPass && deviceNamePass && deviceSecretPass;
 
     markActiveTestCaseStepDone(pass, testData, ask);
@@ -733,7 +735,8 @@ void QFreeWork::refreshTupleData(ProtocolTupleData data) {
     stepRuntime_.done = true;
     const bool productKeyPass = data.productId.trimmed() == tupleData_.productKey.trimmed();
     const bool deviceNamePass = data.deviceId.trimmed() == tupleData_.deviceName.trimmed();
-    const bool deviceSecretPass = data.key.trimmed() == tupleData_.deviceSecret.trimmed();
+    const bool deviceSecretPass =
+        CommonUtils::matchTupleDeviceSecret(data.key, data.keyCipherHex, tupleData_.deviceSecret);
     const bool pass = tupleData_.success && productKeyPass && deviceNamePass && deviceSecretPass;
 
     stepRuntime_.pass = pass;
@@ -851,10 +854,51 @@ void QFreeWork::refreshRootBatteryTemp(quint8 temp) {
     showlog(QStringLiteral("电池温度：%1°C").arg(temp));
 }
 
+void QFreeWork::refreshRootHeatTemp(quint8 temp) {
+    ProtocolHeatTempData data;
+    data.type = temp;
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolHeatTempData"), QVariant::fromValue(data)))
+        return;
+
+    // Gate 关闭时：仅在本步为 RootHeatTempQuery 时回填
+    if (!testCaseStepActive_ || activeTestCase_.send.deviceCmd != QStringLiteral("RootHeatTempQuery"))
+        return;
+
+    const QString testData = QString::number(temp);
+    markActiveTestCaseStepDone(true, testData, QStringLiteral("[0,255]"));
+    showlog(QStringLiteral("加热温度：%1°C").arg(temp));
+}
+
 void QFreeWork::refreshResultCode(ProtocolResultData data) {
     if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolResultData"), QVariant::fromValue(data)))
         return;
     showlog(QStringLiteral("协议结果码：%1").arg(data.result));
+}
+
+void QFreeWork::refreshFlangeStatus(ProtocolTypeData data) {
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolFlangeData"), QVariant::fromValue(data)))
+        return;
+
+    // Gate 关闭时：仅在本步为 RootFlangeQuery 时回填
+    if (!testCaseStepActive_ || activeTestCase_.send.deviceCmd != QStringLiteral("RootFlangeQuery"))
+        return;
+
+    const QString testData = QString::number(data.type);
+    markActiveTestCaseStepDone(true, testData, QString());
+    showlog(QStringLiteral("法兰状态：0x%1").arg(data.type, 2, 16, QChar('0')));
+}
+
+void QFreeWork::refreshPumpStallCurrent(ProtocolPumpStallCurrentData data) {
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolPumpStallCurrentData"), QVariant::fromValue(data)))
+        return;
+
+    // Gate 关闭时：仅在本步为 RootPumpStallCurrentQuery 时回填
+    if (!testCaseStepActive_ || activeTestCase_.send.deviceCmd != QStringLiteral("RootPumpStallCurrentQuery"))
+        return;
+
+    const QString testData = QString::number(data.adcValue);
+    markActiveTestCaseStepDone(true, testData, QString());
+    showlog(QStringLiteral("泵堵电流 ADC：%1").arg(data.adcValue));
 }
 
 void QFreeWork::refreshTypeStatus(ProtocolTypeData data) {
