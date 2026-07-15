@@ -22,6 +22,12 @@ void DongleAtDevice::set(DongleCmd cmd, const QVariant& data) {
     case DongleCmd::BleScanConnect:
         sendAtLine(QStringLiteral("AT+MAC=%1\r\n").arg(data.toString()));
         break;
+    case DongleCmd::BleScanConnectByName:
+        // 按名连接由工站轮询扫描后改发 BleScanConnect，此处不下发
+        break;
+    case DongleCmd::BleDisconnect:
+        sendAtLine(QStringLiteral("AT+MAC=00:00:00:00:00:00\r\n"));
+        break;
     case DongleCmd::BleDirectConnect:
         sendAtLine(QStringLiteral("AT+DCON=%1\r\n").arg(data.toString()));
         break;
@@ -83,6 +89,10 @@ void DongleAtDevice::set(DongleCmd cmd, const QVariant& data) {
         sendAtLine(line);
         break;
     }
+    case DongleCmd::SampleSuctionDual:
+    case DongleCmd::SampleSuctionSingle:
+        // 由自由工站执行采样窗口，此处不下发 AT
+        break;
     }
 }
 
@@ -91,6 +101,12 @@ void DongleAtDevice::get(DongleCmd cmd, const QVariant& param) {
     switch (cmd) {
     case DongleCmd::GetGmac:
         sendAtLine(QStringLiteral("AT+GMAC\r\n"));
+        break;
+    case DongleCmd::SampleSuctionDual:
+    case DongleCmd::SampleSuctionSingle:
+        // 由自由工站执行采样窗口，此处不下发 AT
+        break;
+    default:
         break;
     }
 }
@@ -238,13 +254,13 @@ void DongleAtDevice::suction_data(const QString& p) {
     if (!okLeft || !okRight)
         return;
     ProtocolDongleSuctionData data;
-    data.leftKpa = left;
-    data.rightKpa = right;
+    data.ch1Kpa = left;
+    data.ch2Kpa = right;
     if (parts.size() >= 3) {
         bool okThird = false;
         const double third = parts.at(2).toDouble(&okThird);
         if (okThird)
-            data.thirdKpa = third;
+            data.ch3Kpa = third;
     }
     emitReport(QStringLiteral("ProtocolDongleSuctionData"), QVariant::fromValue(data));
 }

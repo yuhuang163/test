@@ -7,6 +7,7 @@
 #include "asd9026a_cmd_manifest.h"
 #include "xwd_ble_fixture_cmd_manifest.h"
 #include "xwd_suction_fixture_cmd_manifest.h"
+#include "jieli_bt_box_cmd_manifest.h"
 #include "product_serial_cmd_manifest.h"
 #include "modbus_cmd_manifest.h"
 #include "scpi_cmd_manifest.h"
@@ -765,6 +766,9 @@ void loadMultiGatesFromIni(QSettings& ini, TestCaseDefinition& out) {
             g.expected = ini.value(QStringLiteral("Expected")).toString().trimmed();
             g.low = ini.value(QStringLiteral("Low"), g.expected.toDouble()).toDouble();
             g.high = ini.value(QStringLiteral("High"), g.low).toDouble();
+            g.lowSettingsKey = ini.value(QStringLiteral("LowSettingsKey")).toString();
+            g.highSettingsKey = ini.value(QStringLiteral("HighSettingsKey")).toString();
+            g.expectedSettingsKey = ini.value(QStringLiteral("ExpectedSettingsKey")).toString();
             ini.endGroup();
             if (!g.field.isEmpty())
                 out.gates.append(g);
@@ -787,6 +791,9 @@ void loadMultiGatesFromIni(QSettings& ini, TestCaseDefinition& out) {
             g.expected = ini.value(QStringLiteral("Expected")).toString().trimmed();
             g.low = ini.value(QStringLiteral("Low"), g.expected.toDouble()).toDouble();
             g.high = ini.value(QStringLiteral("High"), g.low).toDouble();
+            g.lowSettingsKey = ini.value(QStringLiteral("LowSettingsKey")).toString();
+            g.highSettingsKey = ini.value(QStringLiteral("HighSettingsKey")).toString();
+            g.expectedSettingsKey = ini.value(QStringLiteral("ExpectedSettingsKey")).toString();
             ini.endGroup();
             out.gates.append(g);
         }
@@ -999,6 +1006,8 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
         FixturePcbaCmd inferFixturePcba;
         Asd9026aCmd inferAsd9026a;
         XwdBleFixtureCmd inferXwdBle;
+        XwdSuctionFixtureCmd inferXwdSuction;
+        JieliBtBoxCmd inferJieliBtBox;
         ProductSerialCmd inferSerial;
         TupleCmd inferTuple;
         DongleCmd inferDongle;
@@ -1008,6 +1017,12 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
         } else if (XwdBleFixtureCmdCatalog::xwdBleFixtureCmdFromName(out.send.deviceCmd, inferXwdBle)) {
             out.send.channel = TestCaseSendChannel::Fixture;
             out.send.fixtureProtocol = TestCaseFixtureProtocol::XwdBle;
+        } else if (XwdSuctionFixtureCmdCatalog::xwdSuctionFixtureCmdFromName(out.send.deviceCmd, inferXwdSuction)) {
+            out.send.channel = TestCaseSendChannel::Fixture;
+            out.send.fixtureProtocol = TestCaseFixtureProtocol::XwdSuction;
+        } else if (JieliBtBoxCmdCatalog::jieliBtBoxCmdFromName(out.send.deviceCmd, inferJieliBtBox)) {
+            out.send.channel = TestCaseSendChannel::Fixture;
+            out.send.fixtureProtocol = TestCaseFixtureProtocol::JieliBtBox;
         } else if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(out.send.deviceCmd, inferFixturePcba)) {
             out.send.channel = TestCaseSendChannel::Fixture;
         } else if (ProductSerialCmdCatalog::productSerialCmdFromName(out.send.deviceCmd, inferSerial)) {
@@ -1061,6 +1076,13 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
                 if (!XwdSuctionFixtureCmdCatalog::isCmdForAction(xwdCmd, out.send.action))
                     out.send.action = XwdSuctionFixtureCmdCatalog::actionFor(xwdCmd);
                 XwdSuctionFixtureCmdCatalog::paramFromIniGroup(ini, xwdCmd, out.send.param);
+            }
+        } else if (out.send.fixtureProtocol == TestCaseFixtureProtocol::JieliBtBox) {
+            JieliBtBoxCmd jieliCmd;
+            if (JieliBtBoxCmdCatalog::jieliBtBoxCmdFromName(out.send.deviceCmd, jieliCmd)) {
+                if (!JieliBtBoxCmdCatalog::isCmdForAction(jieliCmd, out.send.action))
+                    out.send.action = JieliBtBoxCmdCatalog::actionFor(jieliCmd);
+                JieliBtBoxCmdCatalog::paramFromIniGroup(ini, jieliCmd, out.send.param);
             }
         } else {
             FixturePcbaCmd fixtureCmd;
@@ -1296,6 +1318,10 @@ void applyCaseIniOverlay(QSettings& overlay, TestCaseDefinition& def) {
                     XwdSuctionFixtureCmd xwdCmd;
                     if (XwdSuctionFixtureCmdCatalog::xwdSuctionFixtureCmdFromName(def.send.deviceCmd, xwdCmd))
                         XwdSuctionFixtureCmdCatalog::paramFromIniGroup(overlay, xwdCmd, def.send.param);
+                } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::JieliBtBox) {
+                    JieliBtBoxCmd jieliCmd;
+                    if (JieliBtBoxCmdCatalog::jieliBtBoxCmdFromName(def.send.deviceCmd, jieliCmd))
+                        JieliBtBoxCmdCatalog::paramFromIniGroup(overlay, jieliCmd, def.send.param);
                 } else {
                     FixturePcbaCmd fixtureCmd;
                     if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd))
@@ -1620,6 +1646,10 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
                 XwdSuctionFixtureCmd xwdCmd;
                 if (XwdSuctionFixtureCmdCatalog::xwdSuctionFixtureCmdFromName(def.send.deviceCmd, xwdCmd))
                     XwdSuctionFixtureCmdCatalog::paramToIniGroup(ini, xwdCmd, def.send.param);
+            } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::JieliBtBox) {
+                JieliBtBoxCmd jieliCmd;
+                if (JieliBtBoxCmdCatalog::jieliBtBoxCmdFromName(def.send.deviceCmd, jieliCmd))
+                    JieliBtBoxCmdCatalog::paramToIniGroup(ini, jieliCmd, def.send.param);
             } else {
                 FixturePcbaCmd fixtureCmd;
                 if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd))
@@ -1686,6 +1716,9 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
         } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::XwdSuction) {
             ini.setValue(QStringLiteral("Send/Device"),
                          def.send.device.isEmpty() ? QStringLiteral("XWD_SUCTION") : def.send.device);
+        } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::JieliBtBox) {
+            ini.setValue(QStringLiteral("Send/Device"),
+                         def.send.device.isEmpty() ? QStringLiteral("JIELI_BT_BOX") : def.send.device);
         }
     }
     ini.setValue(QStringLiteral("Send/DeviceCmd"), def.send.deviceCmd);
@@ -1710,6 +1743,10 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
             XwdSuctionFixtureCmd xwdCmd;
             if (XwdSuctionFixtureCmdCatalog::xwdSuctionFixtureCmdFromName(def.send.deviceCmd, xwdCmd))
                 XwdSuctionFixtureCmdCatalog::paramToIniGroup(ini, xwdCmd, def.send.param);
+        } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::JieliBtBox) {
+            JieliBtBoxCmd jieliCmd;
+            if (JieliBtBoxCmdCatalog::jieliBtBoxCmdFromName(def.send.deviceCmd, jieliCmd))
+                JieliBtBoxCmdCatalog::paramToIniGroup(ini, jieliCmd, def.send.param);
         } else {
             FixturePcbaCmd fixtureCmd;
             if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd))
@@ -2183,6 +2220,17 @@ bool TestCaseValidator::validateCase(const TestCaseDefinition& def, QStringList&
                 DeviceCmdParamSchema schema;
                 if (!XwdSuctionFixtureCmdCatalog::paramSchemaFor(xwdCmd, schema))
                     errors.append(QStringLiteral("该 XWD吸力治具指令尚未配置参数模板，请联系工程师"));
+            }
+        } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::JieliBtBox) {
+            JieliBtBoxCmd jieliCmd;
+            if (!JieliBtBoxCmdCatalog::jieliBtBoxCmdFromName(def.send.deviceCmd, jieliCmd)) {
+                errors.append(QStringLiteral("杰理蓝牙盒子指令无效"));
+            } else if (!JieliBtBoxCmdCatalog::isCmdForAction(jieliCmd, def.send.action)) {
+                errors.append(QStringLiteral("杰理蓝牙盒子指令与操作方式不匹配"));
+            } else {
+                DeviceCmdParamSchema schema;
+                if (!JieliBtBoxCmdCatalog::paramSchemaFor(jieliCmd, schema))
+                    errors.append(QStringLiteral("该杰理蓝牙盒子指令尚未配置参数模板，请联系工程师"));
             }
         } else if (def.send.fixtureProtocol != TestCaseFixtureProtocol::Pcba) {
             errors.append(QStringLiteral("治具协议类型无效"));
@@ -3100,6 +3148,93 @@ void XwdSuctionFixtureCmdCatalog::paramToIniGroup(QSettings& settings, XwdSuctio
     }
 }
 
+// ===================== JieliBtBoxCmdCatalog =====================
+
+QStringList JieliBtBoxCmdCatalog::allJieliBtBoxCmdNames(TestCaseSendAction action) {
+    QStringList names;
+    for (int i = 0; i < JieliBtBoxCmdManifest::rowCount(); ++i) {
+        const JieliBtBoxCmdManifest::Row& row = JieliBtBoxCmdManifest::rows()[i];
+        if (!TestCaseCmdManifest::matchesSendAction(row.sendActions, action))
+            continue;
+        names.append(QString::fromLatin1(row.enumName));
+    }
+    names.sort();
+    return names;
+}
+
+TestCaseSendAction JieliBtBoxCmdCatalog::actionFor(JieliBtBoxCmd cmd) {
+    if (const JieliBtBoxCmdManifest::Row* row = JieliBtBoxCmdManifest::findByCmd(cmd))
+        return TestCaseCmdManifest::defaultSendAction(row->sendActions);
+    return TestCaseSendAction::Get;
+}
+
+bool JieliBtBoxCmdCatalog::isCmdForAction(JieliBtBoxCmd cmd, TestCaseSendAction action) {
+    if (const JieliBtBoxCmdManifest::Row* row = JieliBtBoxCmdManifest::findByCmd(cmd))
+        return TestCaseCmdManifest::matchesSendAction(row->sendActions, action);
+    return false;
+}
+
+QString JieliBtBoxCmdCatalog::jieliBtBoxCmdUiLabel(const QString& enumName) {
+    if (const JieliBtBoxCmdManifest::Row* row = JieliBtBoxCmdManifest::findByEnumName(enumName)) {
+        if (row->uiLabel && row->uiLabel[0] != '\0')
+            return QString::fromUtf8(row->uiLabel);
+    }
+    return enumName;
+}
+
+bool JieliBtBoxCmdCatalog::jieliBtBoxCmdFromName(const QString& name, JieliBtBoxCmd& out) {
+    if (const JieliBtBoxCmdManifest::Row* row = JieliBtBoxCmdManifest::findByEnumName(name)) {
+        out = row->cmd;
+        return true;
+    }
+    return false;
+}
+
+QString JieliBtBoxCmdCatalog::jieliBtBoxCmdToName(JieliBtBoxCmd cmd) {
+    if (const JieliBtBoxCmdManifest::Row* row = JieliBtBoxCmdManifest::findByCmd(cmd))
+        return QString::fromLatin1(row->enumName);
+    return QString();
+}
+
+bool JieliBtBoxCmdCatalog::paramSchemaFor(JieliBtBoxCmd cmd, DeviceCmdParamSchema& out) {
+    if (const JieliBtBoxCmdManifest::Row* row = JieliBtBoxCmdManifest::findByCmd(cmd)) {
+        out.kind = row->paramKind;
+        out.hint = row->paramHint ? QString::fromUtf8(row->paramHint) : QString();
+        return true;
+    }
+    return false;
+}
+
+QString JieliBtBoxCmdCatalog::paramUiHint(const QString& enumName) {
+    if (const JieliBtBoxCmdManifest::Row* row = JieliBtBoxCmdManifest::findByEnumName(enumName)) {
+        if (row->paramHint && row->paramHint[0] != '\0')
+            return QString::fromUtf8(row->paramHint);
+    }
+    return QString();
+}
+
+bool JieliBtBoxCmdCatalog::paramFromIniGroup(const QSettings& settings, JieliBtBoxCmd cmd, QVariant& out) {
+    Q_UNUSED(settings);
+    DeviceCmdParamSchema schema;
+    if (!paramSchemaFor(cmd, schema))
+        return false;
+    switch (schema.kind) {
+    case DeviceCmdParamKind::None:
+        out = QVariant();
+        return true;
+    default:
+        return false;
+    }
+}
+
+void JieliBtBoxCmdCatalog::paramToIniGroup(QSettings& settings, JieliBtBoxCmd cmd, const QVariant& value) {
+    Q_UNUSED(value);
+    removeSendParamKeys(settings);
+    DeviceCmdParamSchema schema;
+    if (!paramSchemaFor(cmd, schema))
+        return;
+}
+
 // ===================== FixturePcbaCmdCatalog =====================
 
 QStringList FixturePcbaCmdCatalog::allFixturePcbaCmdNames(TestCaseSendAction action) {
@@ -3123,6 +3258,9 @@ TestCaseFixtureProtocol FixturePcbaCmdCatalog::fixtureProtocolFromIni(const QStr
     if (text.compare(QStringLiteral("XWD_SUCTION"), Qt::CaseInsensitive) == 0
         || text.compare(QStringLiteral("XwdSuction"), Qt::CaseInsensitive) == 0)
         return TestCaseFixtureProtocol::XwdSuction;
+    if (text.compare(QStringLiteral("JIELI_BT_BOX"), Qt::CaseInsensitive) == 0
+        || text.compare(QStringLiteral("JieliBtBox"), Qt::CaseInsensitive) == 0)
+        return TestCaseFixtureProtocol::JieliBtBox;
     if (text.compare(QStringLiteral("Pcba"), Qt::CaseInsensitive) == 0 || text.compare(QStringLiteral("PCBA"), Qt::CaseInsensitive) == 0)
         return TestCaseFixtureProtocol::Pcba;
     return TestCaseFixtureProtocol::Pcba;
@@ -3136,6 +3274,8 @@ QString FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol prot
         return QStringLiteral("XWD_BLE");
     case TestCaseFixtureProtocol::XwdSuction:
         return QStringLiteral("XWD_SUCTION");
+    case TestCaseFixtureProtocol::JieliBtBox:
+        return QStringLiteral("JIELI_BT_BOX");
     case TestCaseFixtureProtocol::Pcba:
     default:
         return QStringLiteral("Pcba");
@@ -3150,6 +3290,8 @@ QString FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol pr
         return QStringLiteral("XWD蓝牙治具");
     case TestCaseFixtureProtocol::XwdSuction:
         return QStringLiteral("XWD吸力治具");
+    case TestCaseFixtureProtocol::JieliBtBox:
+        return QStringLiteral("杰理蓝牙盒子");
     case TestCaseFixtureProtocol::Pcba:
     default:
         return QStringLiteral("PCBA测试协议");
@@ -3612,10 +3754,23 @@ const QVector<GateTypeDescriptor> kTypes = {
     {QStringLiteral("ProtocolMusicStateData"), QStringLiteral("音乐状态"), {{QStringLiteral("musicState"), QStringLiteral("音乐状态码")}}},
     {QStringLiteral("ProtocolResultData"), QStringLiteral("通用结果码"), {{QStringLiteral("result"), QStringLiteral("结果码")}}},
     {QStringLiteral("ProtocolFixturePcbaData"), QStringLiteral("PCBA治具数据包"), {{QStringLiteral("machineNumber"), QStringLiteral("机号")}, {QStringLiteral("staticCurrent"), QStringLiteral("静态电流(uA)")}, {QStringLiteral("workingCurrent"), QStringLiteral("工作电流(mA)")}, {QStringLiteral("chargingCurrent"), QStringLiteral("充电电流(mA)")}, {QStringLiteral("musicCurrent"), QStringLiteral("音频IC电流(mA)")}, {QStringLiteral("standbyCurrentUa"), QStringLiteral("待机电流(uA)")}, {QStringLiteral("pumpVoltageMv"), QStringLiteral("泵电压(mV)")}, {QStringLiteral("mcuVoltageMv"), QStringLiteral("MCU电压(mV)")}, {QStringLiteral("valveVoltageMv"), QStringLiteral("阀电压(mV)")}, {QStringLiteral("button1"), QStringLiteral("按键1")}, {QStringLiteral("button2"), QStringLiteral("按键2")}, {QStringLiteral("overVoltageLight"), QStringLiteral("过压灯")}, {QStringLiteral("fixerro"), QStringLiteral("治具错误码")}}},
+    {QStringLiteral("ProtocolJieliBtBoxData"), QStringLiteral("杰理蓝牙盒子RF"), {{QStringLiteral("rssi"), QStringLiteral("RSSI(dBm)")}, {QStringLiteral("freqOffset"), QStringLiteral("频偏")}}},
     {QStringLiteral("ProtocolMacData"), QStringLiteral("MAC地址"), {{QStringLiteral("mac"), QStringLiteral("MAC文本")}}},
     {QStringLiteral("ProtocolTypeData"), QStringLiteral("状态码"), {{QStringLiteral("type"), QStringLiteral("状态值")}}},
     {QStringLiteral("ProtocolMeasureData"), QStringLiteral("外设测量值"), {{QStringLiteral("value"), QStringLiteral("测量数值")}, {QStringLiteral("valueText"), QStringLiteral("测量文本值")}, {QStringLiteral("deviceName"), QStringLiteral("外设名称")}, {QStringLiteral("channel"), QStringLiteral("通道号")}, {QStringLiteral("type"), QStringLiteral("测量类型")}, {QStringLiteral("unit"), QStringLiteral("单位")}}},
-    {QStringLiteral("ProtocolDongleSuctionData"), QStringLiteral("Dongle吸力"), {{QStringLiteral("leftKpa"), QStringLiteral("左通道(kPa)")}, {QStringLiteral("rightKpa"), QStringLiteral("右通道(kPa)")}, {QStringLiteral("thirdKpa"), QStringLiteral("第三通道(kPa)")}}},
+    {QStringLiteral("ProtocolDongleSuctionData"),
+     QStringLiteral("Dongle吸力实时"),
+     {{QStringLiteral("ch1Kpa"), QStringLiteral("CH1(kPa)")},
+      {QStringLiteral("ch2Kpa"), QStringLiteral("CH2(kPa)")},
+      {QStringLiteral("ch3Kpa"), QStringLiteral("CH3(kPa)")}}},
+    {QStringLiteral("ProtocolDongleSuctionPeakData"),
+     QStringLiteral("Dongle吸力峰值"),
+     {{QStringLiteral("peakKpa"), QStringLiteral("单通道最强峰值(最低kPa)")},
+      {QStringLiteral("highKpa"), QStringLiteral("单通道最弱峰值(kPa)")},
+      {QStringLiteral("peakDiffKpa"), QStringLiteral("单通道峰值差(最大峰-最小峰)")},
+      {QStringLiteral("ch1PeakKpa"), QStringLiteral("CH1峰值(最低kPa)")},
+      {QStringLiteral("ch2PeakKpa"), QStringLiteral("CH2峰值(最低kPa)")},
+      {QStringLiteral("sideDiffKpa"), QStringLiteral("CH1-CH2峰差(kPa)")}}},
 };
 
 double fieldValueFromVariant(const QString& reportType, const QString& field, const QVariant& payload, bool& ok) {
@@ -3768,6 +3923,17 @@ double fieldValueFromVariant(const QString& reportType, const QString& field, co
             ok = true;
             return m.value(field).toDouble();
         }
+    } else if (reportType == QLatin1String("ProtocolJieliBtBoxData")) {
+        QVariantMap m = payload.toMap();
+        if (m.isEmpty() && payload.canConvert<ProtocolJieliBtBoxData>()) {
+            const auto d = payload.value<ProtocolJieliBtBoxData>();
+            m.insert(QStringLiteral("rssi"), d.rssi);
+            m.insert(QStringLiteral("freqOffset"), d.freqOffset);
+        }
+        if (m.contains(field)) {
+            ok = true;
+            return m.value(field).toDouble();
+        }
     } else if (reportType == QLatin1String("ProtocolMeasureData")) {
         const auto d = payload.value<ProtocolMeasureData>();
         if (field == QLatin1String("value")) {
@@ -3776,17 +3942,43 @@ double fieldValueFromVariant(const QString& reportType, const QString& field, co
         }
     } else if (reportType == QLatin1String("ProtocolDongleSuctionData")) {
         const auto d = payload.value<ProtocolDongleSuctionData>();
-        if (field == QLatin1String("leftKpa")) {
+        if (field == QLatin1String("ch1Kpa") || field == QLatin1String("leftKpa")) {
             ok = true;
-            return d.leftKpa;
+            return d.ch1Kpa;
         }
-        if (field == QLatin1String("rightKpa")) {
+        if (field == QLatin1String("ch2Kpa") || field == QLatin1String("rightKpa")) {
             ok = true;
-            return d.rightKpa;
+            return d.ch2Kpa;
         }
-        if (field == QLatin1String("thirdKpa")) {
+        if (field == QLatin1String("ch3Kpa") || field == QLatin1String("thirdKpa")) {
             ok = true;
-            return d.thirdKpa;
+            return d.ch3Kpa;
+        }
+    } else if (reportType == QLatin1String("ProtocolDongleSuctionPeakData")) {
+        const auto d = payload.value<ProtocolDongleSuctionPeakData>();
+        if (field == QLatin1String("peakKpa")) {
+            ok = true;
+            return d.peakKpa;
+        }
+        if (field == QLatin1String("highKpa")) {
+            ok = true;
+            return d.highKpa;
+        }
+        if (field == QLatin1String("peakDiffKpa")) {
+            ok = true;
+            return d.peakDiffKpa;
+        }
+        if (field == QLatin1String("ch1PeakKpa") || field == QLatin1String("leftPeakKpa")) {
+            ok = true;
+            return d.ch1PeakKpa;
+        }
+        if (field == QLatin1String("ch2PeakKpa") || field == QLatin1String("rightPeakKpa")) {
+            ok = true;
+            return d.ch2PeakKpa;
+        }
+        if (field == QLatin1String("sideDiffKpa") || field == QLatin1String("peakSpanKpa")) {
+            ok = true;
+            return d.sideDiffKpa;
         }
     }
     return 0.0;
@@ -3914,17 +4106,43 @@ QString fieldStringFromVariant(const QString& reportType, const QString& field, 
         }
     } else if (reportType == QLatin1String("ProtocolDongleSuctionData")) {
         const auto d = payload.value<ProtocolDongleSuctionData>();
-        if (field == QLatin1String("leftKpa")) {
+        if (field == QLatin1String("ch1Kpa") || field == QLatin1String("leftKpa")) {
             ok = true;
-            return QString::number(d.leftKpa, 'f', 2);
+            return QString::number(d.ch1Kpa, 'f', 2);
         }
-        if (field == QLatin1String("rightKpa")) {
+        if (field == QLatin1String("ch2Kpa") || field == QLatin1String("rightKpa")) {
             ok = true;
-            return QString::number(d.rightKpa, 'f', 2);
+            return QString::number(d.ch2Kpa, 'f', 2);
         }
-        if (field == QLatin1String("thirdKpa")) {
+        if (field == QLatin1String("ch3Kpa") || field == QLatin1String("thirdKpa")) {
             ok = true;
-            return QString::number(d.thirdKpa, 'f', 2);
+            return QString::number(d.ch3Kpa, 'f', 2);
+        }
+    } else if (reportType == QLatin1String("ProtocolDongleSuctionPeakData")) {
+        const auto d = payload.value<ProtocolDongleSuctionPeakData>();
+        if (field == QLatin1String("peakKpa")) {
+            ok = true;
+            return QString::number(d.peakKpa, 'f', 3);
+        }
+        if (field == QLatin1String("highKpa")) {
+            ok = true;
+            return QString::number(d.highKpa, 'f', 3);
+        }
+        if (field == QLatin1String("peakDiffKpa")) {
+            ok = true;
+            return QString::number(d.peakDiffKpa, 'f', 3);
+        }
+        if (field == QLatin1String("ch1PeakKpa") || field == QLatin1String("leftPeakKpa")) {
+            ok = true;
+            return QString::number(d.ch1PeakKpa, 'f', 3);
+        }
+        if (field == QLatin1String("ch2PeakKpa") || field == QLatin1String("rightPeakKpa")) {
+            ok = true;
+            return QString::number(d.ch2PeakKpa, 'f', 3);
+        }
+        if (field == QLatin1String("sideDiffKpa") || field == QLatin1String("peakSpanKpa")) {
+            ok = true;
+            return QString::number(d.sideDiffKpa, 'f', 3);
         }
     }
     return {};
@@ -4291,6 +4509,11 @@ bool TestCaseRunner::needAsyncDone(const TestCaseDefinition& def) {
         return true;
     if (def.send.channel == TestCaseSendChannel::Fixture)
         return true;
+    if (def.send.channel == TestCaseSendChannel::Dongle
+        && (def.send.deviceCmd == QStringLiteral("SampleSuctionDual")
+            || def.send.deviceCmd == QStringLiteral("SampleSuctionSingle")
+            || def.send.deviceCmd == QStringLiteral("BleDisconnect")))
+        return true;
     if (def.send.channel == TestCaseSendChannel::Modbus || def.send.channel == TestCaseSendChannel::Scpi) {
         if (def.send.action == TestCaseSendAction::Get || def.gate.enabled)
             return true;
@@ -4334,6 +4557,10 @@ bool TestCaseRunner::stepRequiresProductBle(const TestCaseDefinition& def) {
 int TestCaseRunner::commandTimeoutMs(const TestCaseDefinition& def) {
     if (def.timing.commandTimeoutMs > 0)
         return def.timing.commandTimeoutMs;
+    if (def.send.channel == TestCaseSendChannel::Dongle
+        && (def.send.deviceCmd == QStringLiteral("SampleSuctionDual")
+            || def.send.deviceCmd == QStringLiteral("SampleSuctionSingle")))
+        return 10000;
     if (def.send.channel == TestCaseSendChannel::Fixture)
         return def.gate.enabled ? 8000 : 5000;
     if (def.send.channel == TestCaseSendChannel::ProductSerial)

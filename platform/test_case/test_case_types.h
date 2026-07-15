@@ -35,7 +35,8 @@ enum class TestCaseProductProtocol { Qfctp,
 enum class TestCaseFixtureProtocol { Pcba,
                                      Asd9026a,
                                      XwdBle,
-                                     XwdSuction };
+                                     XwdSuction,
+                                     JieliBtBox };
 
 // --- Case 元数据 / 发送 / 时序 ---
 struct TestCaseMeta {

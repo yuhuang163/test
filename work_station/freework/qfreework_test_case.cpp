@@ -10,6 +10,7 @@
 #include "xwd_ble_fixture_device.h"
 #include "xwd_suction_fixture_device.h"
 #include "xwd_suction_uart_codec.h"
+#include "jieli_bt_box_device.h"
 #include "qprotocol_types.h"
 
 #include <QFile>
@@ -177,6 +178,42 @@ bool ensureXwdSuctionJigUartOpen(QFreeWork* ctx, QString* errorMessage) {
     if (!ctx->jigSerialPort || !ctx->jigSerialPort->isOpen()) {
         if (errorMessage)
             *errorMessage = QStringLiteral("治具串口打开失败：%1").arg(port);
+        return false;
+    }
+    return true;
+}
+
+bool ensureJieliBtBoxProductUartOpen(QFreeWork* ctx, QString* errorMessage) {
+    if (!ctx) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("工站上下文无效");
+        return false;
+    }
+    QComboBox* productCombo = ctx->getProductcomNameCombo();
+    if (!productCombo) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("当前工站未配置产品串口(仪器)");
+        return false;
+    }
+    const QString port = productCombo->currentText().trimmed();
+    if (port.isEmpty()) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("请在工位界面「产品串口(仪器)」下拉框选择 COM 口");
+        return false;
+    }
+
+    // 杰理盒子固定 460800（可用 SETTINGS 覆盖）
+    const int baudRate = SETTINGS.value(QStringLiteral("JieliBtBox/BaudRate"), 460800).toInt();
+    if (ctx->productBaudRate != baudRate) {
+        ctx->productBaudRate = baudRate;
+        if (ctx->productSerialPort && ctx->productSerialPort->isOpen())
+            ctx->closeProductSerialPort();
+    }
+    if (!ctx->productSerialPort || !ctx->productSerialPort->isOpen())
+        ctx->openProductSerialPort();
+    if (!ctx->productSerialPort || !ctx->productSerialPort->isOpen()) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("产品串口(仪器)打开失败：%1").arg(port);
         return false;
     }
     return true;
@@ -660,7 +697,11 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
     bool pass = true;
     QString detail;
     const bool multiFieldMode = gatesForEval.size() > 1;
-    const bool fixtureTableMode = reportType == QStringLiteral("ProtocolFixturePcbaData") && multiFieldMode;
+    const bool fixtureTableMode =
+        (reportType == QStringLiteral("ProtocolFixturePcbaData")
+         || reportType == QStringLiteral("ProtocolJieliBtBoxData")
+         || reportType == QStringLiteral("ProtocolDongleSuctionPeakData"))
+        && multiFieldMode;
     if (fixtureTableMode) {
         emitFixtureMultiGateTableRows(gatesForEval, reportType, payload, pass, detail);
     } else if (gatesForEval.size() > 1) {
@@ -727,6 +768,8 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             ctx->executeFixtureXwdBleCase(def);
         else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::XwdSuction)
             ctx->executeFixtureXwdSuctionCase(def);
+        else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::JieliBtBox)
+            ctx->executeFixtureJieliBtBoxCase(def);
         else
             ctx->executeFixturePcbaCase(def);
         return;
@@ -926,6 +969,46 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             ctx->showlog(QStringLiteral("未知 Dongle 指令：%1").arg(def.send.deviceCmd));
             ctx->markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
             return;
+        }
+
+        if (dongleCmd == DongleCmd::BleDisconnect) {
+            int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+            if (timeoutMs <= 0)
+                timeoutMs = 3000;
+            // 禁止 startTask 在后续步骤用 MAC 偷偷 AT+MAC=xxx 拉回连接
+            ctx->suppressProductBleAutoReconnect_ = true;
+            ctx->showlog(QStringLiteral("主动断开 dongle 与产品蓝牙（AT+MAC=00:00:00:00:00:00），本轮禁止自动重连"));
+            ctx->at->set(DongleCmd::BleDisconnect);
+            QElapsedTimer timer;
+            timer.start();
+            while (timer.elapsed() < timeoutMs) {
+                if (!ctx->at->getConnected()) {
+                    ctx->markActiveTestCaseStepDone(true, QStringLiteral("已断开"), QStringLiteral("通过"));
+                    ctx->showlog(QStringLiteral("蓝牙已断开（保持断开，不自动重连）"));
+                    return;
+                }
+                ctx->waitWork(50);
+            }
+            ctx->at->resetConnected();
+            ctx->markActiveTestCaseStepDone(true, QStringLiteral("已下发断开"), QStringLiteral("通过"));
+            ctx->showlog(QStringLiteral("已下发断开指令（等待 AT+DISCONNECT 超时，本地已清连接态，本轮禁止自动重连）"));
+            return;
+        }
+
+        if (dongleCmd == DongleCmd::SampleSuctionDual) {
+            ctx->runDongleSuctionSampleStep();
+            return;
+        }
+        if (dongleCmd == DongleCmd::SampleSuctionSingle) {
+            ctx->runDongleSuctionSampleSingleStep();
+            return;
+        }
+
+        // 流程里显式再连时，允许恢复自动重连辅助
+        if (dongleCmd == DongleCmd::BleScanConnect || dongleCmd == DongleCmd::BleDirectConnect
+            || dongleCmd == DongleCmd::BleScanConnectByName || dongleCmd == DongleCmd::BleOtaConnect
+            || dongleCmd == DongleCmd::BleAppConnect || dongleCmd == DongleCmd::BleMainConnect) {
+            ctx->suppressProductBleAutoReconnect_ = false;
         }
 
         if (dongleCmd == DongleCmd::BleScanConnectByName) {
@@ -1546,6 +1629,74 @@ void QFreeWork::executeFixtureXwdSuctionCase(const TestCaseDefinition& def) {
         return;
     }
     markActiveTestCaseStepDone(true, replyText, QStringLiteral("通过"));
+}
+
+void QFreeWork::executeFixtureJieliBtBoxCase(const TestCaseDefinition& def) {
+    if (def.send.fixtureProtocol != TestCaseFixtureProtocol::JieliBtBox) {
+        showlog(QStringLiteral("杰理蓝牙盒子协议类型不匹配，请检查 Send/Protocol"));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+
+    JieliBtBoxCmd cmd;
+    if (!JieliBtBoxCmdCatalog::jieliBtBoxCmdFromName(def.send.deviceCmd, cmd)) {
+        showlog(QStringLiteral("未知杰理蓝牙盒子指令：%1").arg(def.send.deviceCmd));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+    if (!JieliBtBoxCmdCatalog::isCmdForAction(cmd, def.send.action)) {
+        showlog(QStringLiteral("杰理蓝牙盒子指令与操作方式不匹配：%1").arg(def.send.deviceCmd));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+
+    QString errStr;
+    if (!ensureJieliBtBoxProductUartOpen(this, &errStr)) {
+        showlog(errStr);
+        markActiveTestCaseStepDone(false, QStringLiteral("串口未连接"), QStringLiteral("失败"));
+        return;
+    }
+    if (!productSerialChannel_) {
+        showlog(QStringLiteral("产品串口(仪器)通道未初始化"));
+        markActiveTestCaseStepDone(false, QStringLiteral("串口未连接"), QStringLiteral("失败"));
+        return;
+    }
+
+    int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+    if (timeoutMs < 3000)
+        timeoutMs = 3000;
+
+    const QString portName = getProductcomNameCombo() ? getProductcomNameCombo()->currentText().trimmed() : QString();
+    showlog(QStringLiteral("等待杰理蓝牙盒子频偏/RSSI（产品串口 %1，超时 %2ms）")
+                .arg(portName.isEmpty() ? QStringLiteral("-") : portName)
+                .arg(timeoutMs));
+    JieliBtBoxRfInfo info;
+    if (!JieliBtBoxDevice::waitForRfInfo(productSerialChannel_, timeoutMs, &info, &errStr)) {
+        showlog(QStringLiteral("杰理蓝牙盒子读取失败：%1").arg(errStr));
+        markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
+        return;
+    }
+
+    const QString macText = QString::fromLatin1(info.mac.toHex(':')).toUpper();
+    const QString detail = QStringLiteral("频偏=%1 RSSI=%2%3")
+                               .arg(info.freqOffset)
+                               .arg(info.rssi)
+                               .arg(macText.isEmpty() ? QString() : QStringLiteral(" MAC=%1").arg(macText));
+    showlog(QStringLiteral("杰理蓝牙盒子：%1").arg(detail));
+
+    // 同步到工站 RSSI 显示（与产品 BLE RSSI 共用上限下限卡控时可叠加 Gate）
+    BLE_RSSI = QString::number(info.rssi);
+    if (ui && ui->BLE_RSSI)
+        ui->BLE_RSSI->setText(QStringLiteral("BLE的RSSI:") + BLE_RSSI);
+
+    ProtocolJieliBtBoxData report;
+    report.freqOffset = info.freqOffset;
+    report.rssi = info.rssi;
+    report.mac = macText;
+    const QVariant payload = QVariant::fromValue(report);
+    if (def.gate.enabled && evaluateActiveTestCaseGate(QStringLiteral("ProtocolJieliBtBoxData"), payload))
+        return;
+    markActiveTestCaseStepDone(true, detail, QStringLiteral("通过"));
 }
 
 void QFreeWork::executeProductSerialCase(const TestCaseDefinition& def) {

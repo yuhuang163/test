@@ -213,6 +213,25 @@ class XwdSuctionFixtureCmdCatalog {
     static void paramToIniGroup(QSettings& settings, XwdSuctionFixtureCmd cmd, const QVariant& value);
 };
 
+/** 杰理蓝牙盒子：串口 TLV 上报频偏/RSSI（Send/Channel=Fixture 且 Protocol=JieliBtBox）。 */
+enum class JieliBtBoxCmd {
+    WaitRfInfo,
+};
+
+class JieliBtBoxCmdCatalog {
+  public:
+    static QStringList allJieliBtBoxCmdNames(TestCaseSendAction action);
+    static TestCaseSendAction actionFor(JieliBtBoxCmd cmd);
+    static bool isCmdForAction(JieliBtBoxCmd cmd, TestCaseSendAction action);
+    static QString jieliBtBoxCmdUiLabel(const QString& enumName);
+    static bool jieliBtBoxCmdFromName(const QString& name, JieliBtBoxCmd& out);
+    static QString jieliBtBoxCmdToName(JieliBtBoxCmd cmd);
+    static bool paramSchemaFor(JieliBtBoxCmd cmd, DeviceCmdParamSchema& out);
+    static QString paramUiHint(const QString& enumName);
+    static bool paramFromIniGroup(const QSettings& settings, JieliBtBoxCmd cmd, QVariant& out);
+    static void paramToIniGroup(QSettings& settings, JieliBtBoxCmd cmd, const QVariant& value);
+};
+
 /** PCBA 治具 0x55 协议指令（Send/Channel=Fixture 且 Send/Protocol=Pcba）。 */
 enum class FixturePcbaCmd {
     StartTest,

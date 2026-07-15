@@ -80,6 +80,8 @@ void fillFixtureProtocolCombo(QComboBox* box) {
                  FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::XwdBle));
     box->addItem(FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol::XwdSuction),
                  FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::XwdSuction));
+    box->addItem(FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol::JieliBtBox),
+                 FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::JieliBtBox));
 }
 
 void fillProtocolComboForChannel(QComboBox* box, TestCaseSendChannel channel) {
@@ -140,6 +142,10 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
             items.reserve(XwdSuctionFixtureCmdCatalog::allXwdSuctionFixtureCmdNames(action).size());
             for (const QString& name : XwdSuctionFixtureCmdCatalog::allXwdSuctionFixtureCmdNames(action))
                 items.append({XwdSuctionFixtureCmdCatalog::xwdSuctionFixtureCmdUiLabel(name), name});
+        } else if (proto == TestCaseFixtureProtocol::JieliBtBox) {
+            items.reserve(JieliBtBoxCmdCatalog::allJieliBtBoxCmdNames(action).size());
+            for (const QString& name : JieliBtBoxCmdCatalog::allJieliBtBoxCmdNames(action))
+                items.append({JieliBtBoxCmdCatalog::jieliBtBoxCmdUiLabel(name), name});
         } else {
             items.reserve(FixturePcbaCmdCatalog::allFixturePcbaCmdNames(action).size());
             for (const QString& name : FixturePcbaCmdCatalog::allFixturePcbaCmdNames(action))
@@ -328,6 +334,18 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
             }
             return out;
         }
+        if (proto == TestCaseFixtureProtocol::JieliBtBox) {
+            JieliBtBoxCmd jieliCmd;
+            if (JieliBtBoxCmdCatalog::jieliBtBoxCmdFromName(name, jieliCmd)) {
+                DeviceCmdParamSchema schema;
+                if (JieliBtBoxCmdCatalog::paramSchemaFor(jieliCmd, schema)) {
+                    out.valid = true;
+                    out.hint = JieliBtBoxCmdCatalog::paramUiHint(name);
+                    out.kind = sendParamUiKindFromSchema(schema.kind);
+                }
+            }
+            return out;
+        }
         FixturePcbaCmd fixtureCmd;
         if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(name, fixtureCmd)) {
             DeviceCmdParamSchema schema;
@@ -487,7 +505,9 @@ QVariant readSendParamFromUi(const SendCmdParamUi& uiSchema, QSpinBox* spinBox, 
         if (doc.isObject())
             map = doc.object().toVariantMap();
         else {
-            for (const QString& line : text.split(QLatin1Char('\n'), Qt::SkipEmptyParts)) {
+            for (QString line : text.split(QLatin1Char('\r\n'), Qt::SkipEmptyParts)) {
+                if (line.endsWith(QLatin1Char('\r\n')))
+                    line.chop(1);
                 const int eq = line.indexOf(QLatin1Char('='));
                 if (eq > 0)
                     map.insert(line.left(eq).trimmed(), line.mid(eq + 1).trimmed());
@@ -564,9 +584,9 @@ void initPeriphGateTable(QTableWidget* table) {
     }
 }
 
-void initFixturePcbaGateTable(QTableWidget* table) {
+void initRangeMultiGateTable(QTableWidget* table, const QString& reportType) {
     GateTypeDescriptor desc;
-    if (!GateRegistry::descriptorFor(QStringLiteral("ProtocolFixturePcbaData"), desc))
+    if (!GateRegistry::descriptorFor(reportType, desc))
         return;
     table->clear();
     table->setColumnCount(6);
@@ -579,9 +599,10 @@ void initFixturePcbaGateTable(QTableWidget* table) {
     table->setSelectionMode(QAbstractItemView::NoSelection);
     for (int i = 0; i < desc.fields.size(); ++i) {
         auto* enableItem = new QTableWidgetItem();
-        enableItem->setFlags(Qt::ItemIsUserCheckable | Qt::ItemIsEnabled);
+        enableItem->setFlags((enableItem->flags() | Qt::ItemIsUserCheckable) & ~Qt::ItemIsEditable);
         enableItem->setCheckState(Qt::Unchecked);
         table->setItem(i, 0, enableItem);
+        // read/writeMultiGates 从「判定项」列 UserRole 取字段名；须与这里一致
         auto* nameItem = new QTableWidgetItem(desc.fields.at(i).displayName);
         nameItem->setFlags(nameItem->flags() & ~Qt::ItemIsEditable);
         nameItem->setData(Qt::UserRole, desc.fields.at(i).field);
@@ -591,6 +612,10 @@ void initFixturePcbaGateTable(QTableWidget* table) {
         table->setItem(i, 4, new QTableWidgetItem(QStringLiteral("0")));
         table->setItem(i, 5, new QTableWidgetItem());
     }
+}
+
+void initFixturePcbaGateTable(QTableWidget* table) {
+    initRangeMultiGateTable(table, QStringLiteral("ProtocolFixturePcbaData"));
 }
 
 void fillGateOpCombo(QComboBox* box) {
@@ -609,8 +634,8 @@ const QHash<QString, QString>& hookDisplayNameMap() {
         {QStringLiteral("JIG_CURRENT_READ"), QStringLiteral("读取治具电流测量值")},
         {QStringLiteral("DONGLE_SUCTION_ENABLE"), QStringLiteral("开启 dongle 吸力读取")},
         {QStringLiteral("DONGLE_SUCTION_DISABLE"), QStringLiteral("关闭 dongle 吸力读取")},
-        {QStringLiteral("DONGLE_SUCTION_SAMPLE"), QStringLiteral("采集双通道吸力")},
-        {QStringLiteral("DONGLE_SUCTION_SAMPLE_SINGLE"), QStringLiteral("采集单通道吸力")},
+        {QStringLiteral("DONGLE_SUCTION_SAMPLE"), QStringLiteral("采集双通道吸力(旧Hook，请改用Dongle指令)")},
+        {QStringLiteral("DONGLE_SUCTION_SAMPLE_SINGLE"), QStringLiteral("采集单通道吸力(旧Hook，请改用Dongle指令)")},
         {QStringLiteral("SN_WRITE_TAIL"), QStringLiteral("写入 SN 码")},
         {QStringLiteral("PLC_MODBUS_CONN"), QStringLiteral("PLC Modbus 连接")},
         {QStringLiteral("PLC_V3_SWITCH_RIGHT_WHOLE"), QStringLiteral("PLC+V3 旋钮整步右旋")},
@@ -667,36 +692,6 @@ void fillHookCombo(QComboBox* box) {
     });
     for (const auto& item : items)
         box->addItem(item.first, item.second);
-}
-
-bool isSuctionSampleHookId(const QString& hookId) {
-    return hookId == QLatin1String("DONGLE_SUCTION_SAMPLE")
-           || hookId == QLatin1String("DONGLE_SUCTION_SAMPLE_SINGLE");
-}
-
-SendCmdParamUi suctionSampleHookParamUi(const QString& hookId = QString()) {
-    SendCmdParamUi out;
-    out.valid = true;
-    out.kind = SendCmdParamKind::JsonMap;
-    if (hookId == QLatin1String("DONGLE_SUCTION_SAMPLE_SINGLE")) {
-        out.hint = QStringLiteral(
-            "单通道吸力卡控（写入本工站 profiles/<工站>/steps/步骤.ini）：\n"
-            "sampleDurationMs=10000   采样时长(ms)\n"
-            "sampleIntervalMs=20      采样间隔(ms)\n"
-            "channel=left             通道：left/0/左 或 right/1/右\n"
-            "peakTargetKpa=-36        目标峰值(kPa，取采样最低值)\n"
-            "peakToleranceKpa=2.6     峰值允许偏差(kPa)\n"
-            "peakDiffMaxKpa=2.6       大小峰值差上限=同口最高-最低(kPa)");
-    } else {
-        out.hint = QStringLiteral(
-            "双通道吸力卡控（写入本工站 profiles/<工站>/steps/步骤.ini，不读上位机设置.ini）：\n"
-            "sampleDurationMs=10000   采样时长(ms)\n"
-            "sampleIntervalMs=20      采样间隔(ms)\n"
-            "peakTargetKpa=-36        目标峰值(kPa)\n"
-            "peakToleranceKpa=2.6     允许偏差(kPa)\n"
-            "peakDiffMaxKpa=2.6       左右峰差上限(kPa)");
-    }
-    return out;
 }
 
 } // namespace
@@ -760,7 +755,10 @@ TestCaseEditDialog::~TestCaseEditDialog() {
 }
 
 bool TestCaseEditDialog::isFixturePcbaMultiGateMode() const {
-    return ui->checkBox_gateEnabled->isChecked() && comboData(ui->comboBox_gateReportType) == QLatin1String("ProtocolFixturePcbaData");
+    return ui->checkBox_gateEnabled->isChecked()
+           && (comboData(ui->comboBox_gateReportType) == QLatin1String("ProtocolFixturePcbaData")
+               || comboData(ui->comboBox_gateReportType) == QLatin1String("ProtocolJieliBtBoxData")
+               || comboData(ui->comboBox_gateReportType) == QLatin1String("ProtocolDongleSuctionPeakData"));
 }
 
 bool TestCaseEditDialog::isPeriphMultiGateMode() const {
@@ -774,9 +772,10 @@ bool TestCaseEditDialog::isMultiGateTableMode() const {
 void TestCaseEditDialog::rebuildMultiGateTable() {
     if (!tableWidget_multiGates_)
         return;
-    if (isFixturePcbaMultiGateMode())
-        initFixturePcbaGateTable(tableWidget_multiGates_);
-    else if (isPeriphMultiGateMode())
+    if (isFixturePcbaMultiGateMode()) {
+        const QString reportType = comboData(ui->comboBox_gateReportType);
+        initRangeMultiGateTable(tableWidget_multiGates_, reportType);
+    } else if (isPeriphMultiGateMode())
         initPeriphGateTable(tableWidget_multiGates_);
 }
 
@@ -812,7 +811,11 @@ void TestCaseEditDialog::writeMultiGatesToTable(const QVector<TestCaseGate>& gat
             QTableWidgetItem* nameItem = tableWidget_multiGates_->item(row, 1);
             if (!nameItem)
                 continue;
-            const QString field = nameItem->data(Qt::UserRole).toString();
+            QString field = nameItem->data(Qt::UserRole).toString();
+            if (field.isEmpty()) {
+                if (QTableWidgetItem* enableItem = tableWidget_multiGates_->item(row, 0))
+                    field = enableItem->data(Qt::UserRole).toString();
+            }
             TestCaseGate matched;
             bool found = false;
             for (const TestCaseGate& g : gates) {
@@ -878,7 +881,9 @@ QVector<TestCaseGate> TestCaseEditDialog::readMultiGatesFromTable() const {
             if (!nameItem)
                 continue;
             const bool rowEnabled = enableItem && enableItem->checkState() == Qt::Checked;
-            const QString field = nameItem->data(Qt::UserRole).toString();
+            QString field = nameItem->data(Qt::UserRole).toString();
+            if (field.isEmpty() && enableItem)
+                field = enableItem->data(Qt::UserRole).toString();
             auto cellText = [&](int col) -> QString {
                 if (QTableWidgetItem* item = tableWidget_multiGates_->item(row, col))
                     return item->text().trimmed();
@@ -943,24 +948,17 @@ void TestCaseEditDialog::updatePromptFieldsEnabled() {
 
 void TestCaseEditDialog::updateHookFieldsEnabled() {
     const bool on = ui->checkBox_hookEnabled->isChecked();
-    const QString hookId = on ? comboData(ui->comboBox_hookId) : QString();
-    const bool suctionHook = isSuctionSampleHookId(hookId);
     const bool promptOnly =
         ui->checkBox_promptEnabled->isChecked() && ui->checkBox_promptOnly->isChecked();
     ui->label_hookId->setVisible(on);
     ui->comboBox_hookId->setVisible(on);
-    // Hook 或纯空白提醒时隐藏测试指令区
+    // Hook 或纯空白提醒时隐藏测试指令区（吸力采样请用 Dongle/SampleSuction* + Gate）
+    ui->groupBox_send->setTitle(QStringLiteral("测试指令"));
+    ui->label_param->setText(QStringLiteral("指令参数"));
     ui->groupBox_send->setVisible(!on && !promptOnly);
     if (!on) {
         updateProductProtocolRowVisible();
         onDeviceCmdChanged(ui->comboBox_deviceCmd->currentIndex());
-        return;
-    }
-    if (suctionHook) {
-        const SendCmdParamUi schema = suctionSampleHookParamUi(hookId);
-        updateSendParamVisibility(true);
-        applySendParamHintToUi(schema, true, ui->label_sendParamHint, ui->plainTextEdit_jsonParam, ui->spinBox_intParam);
-        ui->stackedWidget_param->setCurrentWidget(ui->page_paramJson);
         return;
     }
     updateSendParamVisibility(false);
@@ -1071,10 +1069,18 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     ui->lineEdit_gateLow->setText(QString::number(def.gate.low));
     ui->lineEdit_gateHigh->setText(QString::number(def.gate.high));
     ui->lineEdit_gateExpected->setText(def.gate.expected);
-    if ((def.gate.reportType == QLatin1String("ProtocolPeriphStateData") || def.gate.reportType == QLatin1String("ProtocolFixturePcbaData")) && !def.gates.isEmpty()) {
+    if ((def.gate.reportType == QLatin1String("ProtocolPeriphStateData")
+         || def.gate.reportType == QLatin1String("ProtocolFixturePcbaData")
+         || def.gate.reportType == QLatin1String("ProtocolJieliBtBoxData")
+         || def.gate.reportType == QLatin1String("ProtocolDongleSuctionPeakData"))
+        && !def.gates.isEmpty()) {
         rebuildMultiGateTable();
         writeMultiGatesToTable(def.gates);
-    } else if ((def.gate.reportType == QLatin1String("ProtocolPeriphStateData") || def.gate.reportType == QLatin1String("ProtocolFixturePcbaData")) && def.gate.enabled) {
+    } else if ((def.gate.reportType == QLatin1String("ProtocolPeriphStateData")
+                || def.gate.reportType == QLatin1String("ProtocolFixturePcbaData")
+                || def.gate.reportType == QLatin1String("ProtocolJieliBtBoxData")
+                || def.gate.reportType == QLatin1String("ProtocolDongleSuctionPeakData"))
+               && def.gate.enabled) {
         rebuildMultiGateTable();
         writeMultiGatesToTable({def.gate});
     }
@@ -1086,12 +1092,6 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     updateGateFieldsEnabled();
     updatePromptFieldsEnabled();
     updateHookFieldsEnabled();
-    if (def.hook.enabled && isSuctionSampleHookId(def.hook.hookId)) {
-        applySendParamToUi(suctionSampleHookParamUi(def.hook.hookId), def.send.param, ui->page_paramNone, ui->page_paramInt,
-                           ui->page_paramJson, ui->stackedWidget_param, ui->spinBox_intParam,
-                           ui->plainTextEdit_jsonParam);
-        ui->stackedWidget_param->setCurrentWidget(ui->page_paramJson);
-    }
 }
 
 TestCaseDefinition TestCaseEditDialog::definition() const {
@@ -1121,15 +1121,10 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
         sendParamProtocolContext(def.send.channel, comboData(ui->comboBox_productProtocol));
     const SendCmdParamUi uiSchema =
         sendCmdParamUiForName(def.send.deviceCmd, def.send.channel, protocolCtx);
-    if (def.hook.enabled && isSuctionSampleHookId(def.hook.hookId)) {
-        def.send.param =
-            readSendParamFromUi(suctionSampleHookParamUi(def.hook.hookId), ui->spinBox_intParam, ui->plainTextEdit_jsonParam);
-    } else {
-        def.send.param = readSendParamFromUi(uiSchema, ui->spinBox_intParam, ui->plainTextEdit_jsonParam);
-        if (def.send.channel == TestCaseSendChannel::Fixture && uiSchema.kind == SendCmdParamKind::Int
-            && ui->spinBox_intParam->value() == 0)
-            def.send.param = QStringLiteral("$INDEX");
-    }
+    def.send.param = readSendParamFromUi(uiSchema, ui->spinBox_intParam, ui->plainTextEdit_jsonParam);
+    if (def.send.channel == TestCaseSendChannel::Fixture && uiSchema.kind == SendCmdParamKind::Int
+        && ui->spinBox_intParam->value() == 0)
+        def.send.param = QStringLiteral("$INDEX");
 
     def.timing.delayBeforeMs = ui->spinBox_delayBefore->value();
     def.timing.delayAfterMs = ui->spinBox_delayAfter->value();
@@ -1250,7 +1245,7 @@ bool TestCaseEditDialog::saveValidated() {
     const TestCaseDefinition def = definition();
     QStringList errors;
     if (!TestCaseValidator::validateCase(def, errors)) {
-        QMessageBox::warning(this, QStringLiteral("保存失败"), errors.join(QLatin1Char('\n')));
+        QMessageBox::warning(this, QStringLiteral("保存失败"), errors.join(QLatin1Char('\r\n')));
         return false;
     }
     if (stationKey_.isEmpty()) {

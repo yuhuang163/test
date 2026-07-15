@@ -793,15 +793,17 @@ void QFreeWork::refreshAmmeterData(QString data) {
 }
 
 void QFreeWork::refreshDongleSuctionData(ProtocolDongleSuctionData data) {
-    dongleSuctionLastLeftKpa_ = data.leftKpa;
-    dongleSuctionLastRightKpa_ = data.rightKpa;
-    qDebug() << getIndex() << "Dongle吸力：左" << data.leftKpa << "kPa 右" << data.rightKpa << "kPa";
+    dongleSuctionLastCh1Kpa_ = data.ch1Kpa;
+    dongleSuctionLastCh2Kpa_ = data.ch2Kpa;
+    dongleSuctionLastCh3Kpa_ = data.ch3Kpa;
+    qDebug() << getIndex() << "Dongle吸力：CH1" << data.ch1Kpa << "CH2" << data.ch2Kpa << "CH3" << data.ch3Kpa << "kPa";
     if (dongleSuctionSampleActive_) {
-        dongleSuctionLeftSamples_.append(data.leftKpa);
-        dongleSuctionRightSamples_.append(data.rightKpa);
+        dongleSuctionCh1Samples_.append(data.ch1Kpa);
+        dongleSuctionCh2Samples_.append(data.ch2Kpa);
+        dongleSuctionCh3Samples_.append(data.ch3Kpa);
     }
     if (dongleSuctionReadEnabled_)
-        appendSuctionChartSample(data.leftKpa, data.rightKpa);
+        appendSuctionChartSample(data.ch1Kpa, data.ch2Kpa);
     if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolDongleSuctionData"), QVariant::fromValue(data)))
         return;
 }

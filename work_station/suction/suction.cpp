@@ -604,8 +604,8 @@ void suction::setDongleSuctionRead(bool enabled) {
 void suction::refreshDongleSuctionData(ProtocolDongleSuctionData data) {
     if (!suctionUseDongleSensor)
         return;
-    damLeftKpa_ = data.leftKpa;
-    damRightKpa_ = data.rightKpa;
+    damLeftKpa_ = data.ch1Kpa;
+    damRightKpa_ = data.ch2Kpa;
     measure_ammeter = damLeftKpa_;
     qDebug() << getIndex() << "Dongle吸力：左" << damLeftKpa_ << "kPa 右" << damRightKpa_ << "kPa";
 }
