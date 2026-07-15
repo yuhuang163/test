@@ -115,7 +115,9 @@ bool BLEClient::connect(BLEAddress address, esp_ble_addr_type_t type, uint32_t t
   BLEDevice::addPeerDevice(this, true, m_appId);
   m_semaphoreRegEvt.take("connect");
 
-  // clearServices(); // we dont need to delete services since every client is unique?
+  // Reused clients keep m_haveServices=true and stale m_servicesMap after disconnect;
+  // clear before connecting a (possibly different) peer so getService() re-discovers.
+  clearServices();
   esp_err_t errRc = ::esp_ble_gattc_app_register(m_appId);
   if (errRc != ESP_OK) {
     log_e("esp_ble_gattc_app_register: rc=%d %s", errRc, GeneralUtils::errorToString(errRc));

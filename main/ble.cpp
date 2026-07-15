@@ -1167,6 +1167,12 @@ bool connectTobleServer()
         AppWriteCharacteristic = nullptr;
         normolNotifyCharacteristic = nullptr;
         normolWriteCharacteristic = nullptr;
+        facRemoteService = nullptr;
+        appRemoteService = nullptr;
+        mainRemoteService = nullptr;
+        normolRemoteService = nullptr;
+        activeFactoryProfile = nullptr;
+        activeOtaProfile = nullptr;
     }
     else
     {
@@ -1237,6 +1243,15 @@ bool connectTobleServer()
         }
         if (pClient != nullptr)
         {
+            // 复用 pClient 时旧 peer 的服务缓存会残留（BLEClient::connect 未 clearServices），
+            // 必须强制重新搜索，否则 V3 断连后再连 Pump-E 会误匹配成 V3。
+            pClient->getServices();
+            if (!pClient->isConnected())
+            {
+                Serial.println("服务发现中连接已断开(getServices)");
+                return false;
+            }
+
             // 连接在服务发现过程中可能被对端断开，逐个检查避免阻塞卡住 loop。
             facRemoteService = findFactoryRemoteService();
             if (!pClient->isConnected())
