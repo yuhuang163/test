@@ -47,7 +47,7 @@ test_base::test_base(QWidget* parent) : QWidget(parent),
                                         usbSerialPort(usbSerialChannel_->port()),
                                         scpiUsbManager_(this),
                                         jigSerialPort(jigSerialChannel_->port()),
-                                        jig(new Qjig(jigSerialPort)),
+                                        jig(new XwdFixtureDevice(jigSerialPort)),
                                         productSerialPort(productSerialChannel_->port()),
                                         product(new Qproduct(productSerialPort, this)) {
     protocolManager.bindQpb(pb);
@@ -152,7 +152,7 @@ void test_base::signalAndslot() {
     connect(&scpiVisaManager_, &QScpiManager::programmablePowerVoltageRead, this, &test_base::onScpiVisaProgrammablePowerVoltageRead);
     connect(&scpiVisaManager_, &QScpiManager::programmablePowerCurrentRead, this, &test_base::onScpiVisaProgrammablePowerCurrentRead);
 
-    connect(jig, &Qjig::reportReceived, this, &test_base::onJigInstrumentReport);
+    connect(jig, &XwdFixtureDevice::reportReceived, this, &test_base::onJigInstrumentReport);
 
     connect(&protocolManager, SIGNAL(sendGetProductResponse(int)), this, SLOT(solveGetBrushResponse(int)));
     connect(at, SIGNAL(sendGetProductResponse(int)), this, SLOT(solveGetBrushResponse(int)));

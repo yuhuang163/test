@@ -6,10 +6,10 @@
 #include <QThread>
 #include <QtConcurrent>
 
-#include "fixture_pcba_device.h"
-#include "fixture_press_device.h"
-#include "fixture_imu_device.h"
-#include "fixture_camera_device.h"
+#include "camera_fixture_device.h"
+#include "imu_fixture_device.h"
+#include "hz_pcba_fixture_device.h"
+#include "press_fixture_device.h"
 #include "qlog.h"
 
 #if _MSC_VER >= 1600
@@ -20,10 +20,18 @@ QFixtureManager::QFixtureManager(QObject* parent)
     : QObject(parent),
       fixtureSerialPort_(new QSerialPort(this)),
       fixtureSerialPortTimer_(new QTimer(this)),
-      log_(new Qlog),
-      pressProtocol_(new FixturePressUartProtocol) {
+      log_(new Qlog) {
 
     qRegisterMetaType<FixturePacketData>("FixturePacketData");
+
+    const auto writeFn = [this](const QByteArray& data, bool logTx, bool startAction) {
+        writeFixturePort(data, logTx, startAction);
+    };
+
+    hzPcbaDevice_ = new HzPcbaFixtureDevice(writeFn);
+    pressDevice_ = new PressFixtureDevice(writeFn, [this](unsigned int msec) { delayMsec(msec); });
+    cameraDevice_ = new CameraFixtureDevice(writeFn);
+    imuDevice_ = new ImuFixtureDevice(writeFn);
 
     connect(fixtureSerialPort_, SIGNAL(error(QSerialPort::SerialPortError)), this,
             SLOT(handleError(QSerialPort::SerialPortError)));
@@ -33,9 +41,6 @@ QFixtureManager::QFixtureManager(QObject* parent)
         fixtureSerialPortBuf_.append(fixtureSerialPort_->readAll());
     });
 
-    fixRingBuf_ = new RingBuf(&p_fixRingBuffer_, fix_ring_buffer_, 1, sizeof(fix_ring_buffer_));
-    pcbaProtocol_ = new FixturePcbaUartProtocol(fixRingBuf_, &p_fixRingBuffer_, frame_buf_, sizeof(frame_buf_));
-
     running_.store(true);
     future_ = QtConcurrent::run([this]() {
         while (running_.load()) {
@@ -43,17 +48,16 @@ QFixtureManager::QFixtureManager(QObject* parent)
             QThread::msleep(10);
         }
     });
-
-    pressProtocol_->initCommands();
 }
 
 QFixtureManager::~QFixtureManager() {
     running_.store(false);
     future_.waitForFinished();
     close();
-    delete pcbaProtocol_;
-    delete pressProtocol_;
-    delete fixRingBuf_;
+    delete hzPcbaDevice_;
+    delete pressDevice_;
+    delete cameraDevice_;
+    delete imuDevice_;
     delete log_;
 }
 
@@ -104,21 +108,18 @@ void QFixtureManager::sendPcbaFrame(const QByteArray& frame) {
         qDebug() << "治具串口未打开，无法发送 PCBA 帧";
         return;
     }
-    writeFixturePort(frame, true, false);
+    hzPcbaDevice_->sendFrame(frame);
 }
 
 void QFixtureManager::writeFixturePort(const QByteArray& data, bool logTx, bool startAction) {
-    if (data.isEmpty()) {
+    if (data.isEmpty())
         return;
-    }
     qDebug().noquote() << "FIXTURE TX:" << QString::fromLatin1(data.toHex(' ').toUpper());
     fixtureSerialPort_->write(data);
-    if (logTx && log_) {
+    if (logTx && log_)
         log_->save_fixture_uart_log(1, data);
-    }
-    if (startAction) {
+    if (startAction)
         emit start_fix_action(1);
-    }
 }
 
 void QFixtureManager::readFixtureSerialPortData() {
@@ -128,40 +129,30 @@ void QFixtureManager::readFixtureSerialPortData() {
 
     qDebug().noquote() << "FIXTURE RX:" << QString::fromLatin1(dataTemp.toHex(' ').toUpper());
     qDebug() << "接收到治具数据" << dataTemp;
-
-    const int writeLen = fixRingBuf_->usmile_ring_buffer_write(
-        &p_fixRingBuffer_, reinterpret_cast<uint8_t*>(const_cast<char*>(dataTemp.data())), dataTemp.size());
-    if (writeLen < dataTemp.size()) {
-        qDebug() << "write_len:" << writeLen << "len:" << dataTemp.size();
-    }
     qDebug() << "开始处理" << dataTemp.size();
 
+    hzPcbaDevice_->onRx(dataTemp);
     dispatchTextProtocols(dataTemp);
-    if (log_) {
+    if (log_)
         log_->save_fixture_uart_log(0, dataTemp);
-    }
 }
 
 void QFixtureManager::dispatchTextProtocols(const QByteArray& data) {
-    const FixtureImuUartEvent imuEv = FixtureImuUartProtocol::parseReceived(data);
-    if (imuEv.ok) {
+    const FixtureImuUartEvent imuEv = imuDevice_->parseReceived(data);
+    if (imuEv.ok)
         emit send_data_to_mechine_imu(1);
-    }
-    if (imuEv.error) {
+    if (imuEv.error)
         emit send_data_to_mechine_imu(0);
-    }
 
-    const FixturePressUartEvent pressEv = FixturePressUartProtocol::parseReceived(data);
-    if (pressEv.pressNotifyState > 0) {
+    const FixturePressUartEvent pressEv = pressDevice_->parseReceived(data);
+    if (pressEv.pressNotifyState > 0)
         emit send_data_to_mechine_press(pressEv.pressNotifyState);
-    }
 }
 
 void QFixtureManager::solve_frame() {
-    if (!pcbaProtocol_) {
+    if (!hzPcbaDevice_)
         return;
-    }
-    pcbaProtocol_->pollFrames([this](const FixturePcbaUartEvent& ev) {
+    hzPcbaDevice_->pollFrames([this](const FixturePcbaUartEvent& ev) {
         switch (ev.type) {
         case FixturePcbaUartEvent::Type::ShortSleep:
             emit send_data_to_mechine_sleep(ev.packet);
@@ -183,8 +174,7 @@ void QFixtureManager::sendimuData(imuFixtureState fixstate) {
         qDebug() << "治具串口未打开，无法发送数据";
         return;
     }
-    const QByteArray dataToSend = FixtureImuUartProtocol::buildCommand(fixstate);
-    writeFixturePort(dataToSend, true, true);
+    imuDevice_->sendState(fixstate);
 }
 
 void QFixtureManager::set_camera_action(camreaFixtureState fixstate) {
@@ -192,8 +182,7 @@ void QFixtureManager::set_camera_action(camreaFixtureState fixstate) {
         qDebug() << "治具串口未打开，无法发送数据";
         return;
     }
-    const QByteArray dataToSend = FixtureCameraUartProtocol::buildCommand(fixstate);
-    writeFixturePort(dataToSend, true, true);
+    cameraDevice_->sendAction(fixstate);
 }
 
 void QFixtureManager::sendFixtureData(FixtureState fixstate) {
@@ -201,38 +190,31 @@ void QFixtureManager::sendFixtureData(FixtureState fixstate) {
         qDebug() << "未打开治具串口，无法发送数据";
         return;
     }
-    const QByteArray dataToSend = FixturePressUartProtocol::buildFixtureStateCommand(fixstate);
-    writeFixturePort(dataToSend, false, false);
+    pressDevice_->sendFixtureState(fixstate);
 }
 
 void QFixtureManager::send_start_command(int i) {
-    const QByteArray dataToSend = FixturePcbaUartProtocol::buildStartTestCommand(i);
-    if (!dataToSend.isEmpty()) {
-        writeFixturePort(dataToSend, true, false);
-        qDebug() << "已发送开始命令" << i;
-    } else {
-        qDebug() << "Invalid command index";
+    if (!isOpen()) {
+        qDebug() << "治具串口未打开，无法发送 PCBA 开始命令";
+        return;
     }
+    hzPcbaDevice_->sendStartTest(i);
 }
 
 void QFixtureManager::send_start_sleep_command(int i) {
-    const QByteArray dataToSend = FixturePcbaUartProtocol::buildSleepCommand(i);
-    if (!dataToSend.isEmpty()) {
-        writeFixturePort(dataToSend, true, false);
-        qDebug() << "已发送开始休眠命令" << i;
-    } else {
-        qDebug() << "Invalid command index";
+    if (!isOpen()) {
+        qDebug() << "治具串口未打开，无法发送 PCBA 休眠命令";
+        return;
     }
+    hzPcbaDevice_->sendSleep(i);
 }
 
 void QFixtureManager::send_start_white_modle_command(int i) {
-    const QByteArray dataToSend = FixturePcbaUartProtocol::buildWhiteModeCommand(i);
-    if (!dataToSend.isEmpty()) {
-        writeFixturePort(dataToSend, true, false);
-        qDebug() << "已发送已经进入亮白模式命令" << i;
-    } else {
-        qDebug() << "Invalid command index";
+    if (!isOpen()) {
+        qDebug() << "治具串口未打开，无法发送 PCBA 亮白模式命令";
+        return;
     }
+    hzPcbaDevice_->sendWhiteMode(i);
 }
 
 void QFixtureManager::handleError(QSerialPort::SerialPortError error) {
@@ -250,19 +232,21 @@ void QFixtureManager::delayMsec(unsigned int msec) {
 }
 
 qint64 QFixtureManager::lastCommidTimestamp() const {
-    return last_commid_timestamp_;
+    return pressDevice_ ? pressDevice_->lastCommidTimestamp() : 0;
 }
 
 void QFixtureManager::setLastCommidTimestamp(qint64 timestamp) {
-    last_commid_timestamp_ = timestamp;
+    if (pressDevice_)
+        pressDevice_->setLastCommidTimestamp(timestamp);
 }
 
 machine_command_id_e QFixtureManager::lastCommid() const {
-    return last_commid_;
+    return pressDevice_ ? pressDevice_->lastCommid() : COMMAND_ID_MAX;
 }
 
 void QFixtureManager::setLastCommid(machine_command_id_e commandId) {
-    last_commid_ = commandId;
+    if (pressDevice_)
+        pressDevice_->setLastCommid(commandId);
 }
 
 void QFixtureManager::send_command_to_machine(int command_id, int numb) {
@@ -270,28 +254,7 @@ void QFixtureManager::send_command_to_machine(int command_id, int numb) {
         qDebug() << "未打开串口，无法发送数据";
         return;
     }
-    if (!pressProtocol_->isValidCommand(command_id, numb)) {
-        qDebug() << "Invalid command parameters - command_id:" << command_id << "numb:" << numb;
-        return;
-    }
-
-    const qint64 current_timestamp = QDateTime::currentDateTime().toMSecsSinceEpoch();
-    qDebug() << "last" << last_sent_timestamp_ << "current" << current_timestamp;
-    if (current_timestamp - last_sent_timestamp_ < 100 && last_sent_timestamp_ != 0) {
-        qDebug() << "short time,current_time - last:" << current_timestamp - last_sent_timestamp_;
-        delayMsec(100);
-    }
-    last_sent_timestamp_ = QDateTime::currentDateTime().toMSecsSinceEpoch();
-    last_commid_timestamp_ = last_sent_timestamp_;
-
-    QByteArray dataToSend;
-    if (!pressProtocol_->commandBytes(command_id, numb, &dataToSend)) {
-        qDebug() << "Invalid command index";
-        return;
-    }
-    qDebug() << "command_id:" << command_id << "numb" << numb;
-    writeFixturePort(dataToSend, true, false);
-    qDebug() << "已发送命令" << dataToSend;
+    pressDevice_->sendCommand(command_id, numb);
 }
 
 #if _MSC_VER >= 1600

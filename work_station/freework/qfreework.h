@@ -15,6 +15,7 @@
 #include "qtupleservice.h"
 #include "test_base.h"
 #include "test_case_types.h"
+#include "asd9026a_device.h"
 #include "ui_qfreework.h"
 
 class QMessageBox;
@@ -91,6 +92,9 @@ class QFreeWork : public test_base {
     void executeCloudTupleCase(const TestCaseDefinition& def);
     void executeProductSerialCase(const TestCaseDefinition& def);
     void executeFixturePcbaCase(const TestCaseDefinition& def);
+    void executeFixtureAsd9026aCase(const TestCaseDefinition& def);
+    void executeFixtureXwdBleCase(const TestCaseDefinition& def);
+    void executeFixtureXwdSuctionCase(const TestCaseDefinition& def);
     int resolveFixtureMachineIndex(const QVariant& param) const;
     QVariantMap cachedHuilingVisaLink() const;
     void updateHuilingVisaLinkCache(const QVariantMap& link);
@@ -281,6 +285,8 @@ class QFreeWork : public test_base {
     /** 从工站步骤 send.param 加载吸力卡控（不读全局 SETTINGS）。 */
     void applySuctionGateFromStepParam(const QVariant& param);
     void runDongleSuctionSampleStep();
+    /** Dongle 单通道吸力：峰值范围 + 同通道最高与最低差（大小峰值差）卡控。 */
+    void runDongleSuctionSampleSingleStep();
     void setDongleSuctionReadEnabled(bool enabled);
     void initSuctionChart();
     void resetSuctionChart();
@@ -290,6 +296,8 @@ class QFreeWork : public test_base {
     double suctionPeakTargetKpa_ = -36.0;
     double suctionPeakToleranceKpa_ = 2.6;
     double suctionPeakDiffMaxKpa_ = 2.6;
+    /** 单通道采样口：0=左，1=右（步骤 Param_channel / Param_channelIndex）。 */
+    int suctionSingleChannelIndex_ = 0;
     int suctionSampleDurationMs_ = 10000;
     int suctionSampleIntervalMs_ = 20;
     bool dongleSuctionReadEnabled_ = false;
@@ -312,6 +320,7 @@ class QFreeWork : public test_base {
     double suctionRightPeakLow_ = 0.0;
     /** 本轮回放中已配置的会凌 VISA 连接（地址/电压/电流等），开关步骤可复用。 */
     QVariantMap huilingVisaLinkCache_;
+    Asd9026aDevice asd9026aDevice_;
 
   private slots:
     void initData();
@@ -365,6 +374,8 @@ class QFreeWork : public test_base {
     void on_disconnectButton_clicked();
     void on_jigConnectButton_clicked();
     void on_jigDisconnectButton_clicked();
+    void on_usbconnectButton_clicked();
+    void on_usbdisconnectButton_clicked();
     void on_productConnectButton_clicked();
     void on_productDisconnectButton_clicked();
     void on_pushButton_clicked();

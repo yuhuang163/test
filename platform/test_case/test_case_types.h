@@ -32,7 +32,10 @@ enum class TestCaseProductProtocol { Qfctp,
                                      Qpb,
                                      Qroot };
 
-enum class TestCaseFixtureProtocol { Pcba };
+enum class TestCaseFixtureProtocol { Pcba,
+                                     Asd9026a,
+                                     XwdBle,
+                                     XwdSuction };
 
 // --- Case 元数据 / 发送 / 时序 ---
 struct TestCaseMeta {
@@ -40,6 +43,8 @@ struct TestCaseMeta {
     QString displayName;
     QString mesTag;
     bool promptEnabled = false;
+    /** true=纯空白提醒（确认后不发 Send）；false=提示同时/仍可执行 Send 指令 */
+    bool promptOnly = false;
     QString promptText;
 };
 

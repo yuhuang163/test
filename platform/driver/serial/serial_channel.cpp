@@ -1,8 +1,10 @@
 #include "serial_channel.h"
 
 #include <QComboBox>
+#include <QEventLoop>
 #include <QSerialPortInfo>
 #include <QSet>
+#include <QTimer>
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
@@ -80,6 +82,76 @@ QString SerialChannel::portName() const {
 
 QString SerialChannel::errorString() const {
     return port_->errorString();
+}
+
+void SerialChannel::clearReceiveBuffer() {
+    readTimer_->stop();
+    rxBuffer_.clear();
+    if (port_->isOpen())
+        port_->clear(QSerialPort::Input);
+}
+
+bool SerialChannel::waitForFrame(QByteArray* outFrame, int timeoutMs) {
+    if (!outFrame)
+        return false;
+    outFrame->clear();
+    if (!port_->isOpen())
+        return false;
+
+    const int waitMs = qMax(1, timeoutMs);
+    QEventLoop loop;
+    QTimer timeout;
+    timeout.setSingleShot(true);
+    QByteArray captured;
+    const QMetaObject::Connection frameConn =
+        connect(this, &SerialChannel::frameReceived, &loop, [&](const QByteArray& frame) {
+            captured = frame;
+            loop.quit();
+        });
+    connect(&timeout, &QTimer::timeout, &loop, &QEventLoop::quit);
+    timeout.start(waitMs);
+    loop.exec();
+    disconnect(frameConn);
+    if (captured.isEmpty())
+        return false;
+    *outFrame = captured;
+    return true;
+}
+
+bool SerialChannel::exchange(const QByteArray& request, QByteArray* response, int timeoutMs) {
+    if (!response)
+        return false;
+    response->clear();
+    if (!port_->isOpen() || request.isEmpty())
+        return false;
+
+    clearReceiveBuffer();
+
+    const int waitMs = qMax(1, timeoutMs);
+    QEventLoop loop;
+    QTimer timeout;
+    timeout.setSingleShot(true);
+    QByteArray captured;
+    const QMetaObject::Connection frameConn =
+        connect(this, &SerialChannel::frameReceived, &loop, [&](const QByteArray& frame) {
+            captured = frame;
+            loop.quit();
+        });
+    connect(&timeout, &QTimer::timeout, &loop, &QEventLoop::quit);
+
+    if (write(request) != request.size()) {
+        disconnect(frameConn);
+        return false;
+    }
+    port_->waitForBytesWritten(qMin(2000, waitMs));
+
+    timeout.start(waitMs);
+    loop.exec();
+    disconnect(frameConn);
+    if (captured.isEmpty())
+        return false;
+    *response = captured;
+    return true;
 }
 
 QStringList SerialChannel::availablePortNames() {
