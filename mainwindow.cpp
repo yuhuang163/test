@@ -670,6 +670,9 @@ void MainWindow::refreshButtonState(ProtocolButtonStateData data) {
     case 3:
         showlog(QStringLiteral("按键上报：模式按键(9A03)"));
         break;
+    case 4:
+        showlog(QStringLiteral("按键上报：加热按键(9A04)"));
+        break;
     default:
         if (data.keyButtonId != 0)
             showlog(QStringLiteral("按键上报：ID=0x%1").arg(data.keyButtonId, 2, 16, QChar('0')));
