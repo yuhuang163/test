@@ -188,8 +188,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
         }
     });
 
-    QStringList productList = {"V3","V3 PRO", "Pump-E", "M8P","W1 Lite", "W1","W2",};
-    ui->name_range->addItems(productList);
+    ui->name_range->addItems(CommonUtils::dongleBroadcastFilterNames());
     ui->rssi_range_value->setText(QString("%1 dBm").arg(ui->rssi_range->value()));
     connect(ui->rssi_range, &QSlider::valueChanged, this, [=](int value) {
         ui->rssi_range_value->setText(QString("%1 dBm").arg(value));

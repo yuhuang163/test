@@ -20,10 +20,10 @@
    <string>上位机设置</string>
   </property>
   <layout class="QGridLayout" name="gridLayout_2">
-   <item row="0" column="0">
+   <item row="1" column="0">
     <widget class="QTabWidget" name="tabWidget">
      <property name="currentIndex">
-      <number>3</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="tab_key_setting">
       <attribute name="title">
@@ -252,26 +252,6 @@
             </item>
             <item>
              <widget class="QComboBox" name="comboBox_factory"/>
-            </item>
-           </layout>
-          </item>
-          <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_53">
-            <item>
-             <widget class="QLabel" name="label_57">
-              <property name="styleSheet">
-               <string notr="true">QWidget {
-  color: rgb(0, 0, 255);
-}
-</string>
-              </property>
-              <property name="text">
-               <string>产品名字</string>
-              </property>
-             </widget>
-            </item>
-            <item>
-             <widget class="QComboBox" name="comboBox_productName"/>
             </item>
            </layout>
           </item>
@@ -587,6 +567,26 @@
             <enum>QToolButton::InstantPopup</enum>
            </property>
           </widget>
+         </item>
+         <item>
+          <layout class="QHBoxLayout" name="horizontalLayout_53">
+           <item>
+            <widget class="QLabel" name="label_57">
+             <property name="styleSheet">
+              <string notr="true">QWidget {
+  color: rgb(0, 0, 255);
+}
+</string>
+             </property>
+             <property name="text">
+              <string>产品名字</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="comboBox_productName"/>
+           </item>
+          </layout>
          </item>
          <item>
           <widget class="QLabel" name="label_testFlowStation">
@@ -3357,7 +3357,15 @@
         </item>
        </layout>
       </widget>
-      <widget class="QWidget" name="">
+      <widget class="QWidget" name="layoutWidget">
+       <property name="geometry">
+        <rect>
+         <x>780</x>
+         <y>420</y>
+         <width>244</width>
+         <height>54</height>
+        </rect>
+       </property>
        <layout class="QVBoxLayout" name="verticalLayout">
         <item>
          <layout class="QHBoxLayout" name="horizontalLayout_11">

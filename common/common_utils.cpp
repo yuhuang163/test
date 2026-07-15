@@ -292,38 +292,145 @@ QString CommonUtils::formatList(const QStringList& items, const QString& separat
     return items.join(separator);
 }
 
+namespace {
+
+/**
+ * 产品目录唯一表：Mes 产品名 / 协议 / 设置页是否展示 / Dongle 广播匹配。
+ * donglePattern 为空表示仅目录项无广播映射；containsMatch=true 为大写 contains，false 为精确相等。
+ * 顺序敏感：更具体的 contains 规则须靠前（如 V3 PRO 先于 V3）。
+ */
+struct ProductEntry {
+    const char* productName;//产品名字
+    const char* protocol;//产品协议
+    bool inMesCombo;//是否要在mes产品列表中展示
+    const char* donglePattern; // 蓝牙广播名字（比如Pump-E）
+    bool containsMatch;//是否要进行蓝牙广播名字的contains匹配
+};
+
+// clang-format off
+static const ProductEntry kProductTable[] = {
+    {"V3Pro",    "qfctp", true,  "V3 PRO",   true},
+    {"V3",       "qfctp", true,  "V3",       true},
+    {"M8",       "qroot", true,  "Pump-E",   false},
+    {"M10 Lite", "qroot", true,  "M10 LITE", true},
+    {"W1 Lite",  "qroot", false, "W1 LITE",  true},
+    {"M8P",      "qaiot", false, "M8P",      false},
+};
+
+/** 主窗口 BLE 扫描过滤名补充项（无产品映射，仅作筛选提示）。 */
+static const char* kDongleFilterExtras[] = {"W1", "W2"};
+// clang-format on
+
+bool hasDonglePattern(const ProductEntry& entry) {
+    return entry.donglePattern && entry.donglePattern[0] != '\0';
+}
+
+const ProductEntry* findProductEntry(const QString& productName) {
+    const QString trimmed = productName.trimmed();
+    for (const ProductEntry& entry : kProductTable) {
+        if (trimmed == QLatin1String(entry.productName))
+            return &entry;
+    }
+    return nullptr;
+}
+
+/** 工站名（大写）是否以该产品名的前缀开头。 */
+bool stationUpperStartsWithProductPrefix(const QString& stationUpper, const QString& productName) {
+    const QString pu = productName.trimmed().toUpper();
+    if (pu.isEmpty())
+        return false;
+    if (stationUpper.startsWith(pu))
+        return true;
+    const QString puNoSpace = QString(pu).remove(QLatin1Char(' '));
+    if (puNoSpace != pu && stationUpper.startsWith(puNoSpace))
+        return true;
+    const int spaceIdx = pu.indexOf(QLatin1Char(' '));
+    if (spaceIdx > 0 && stationUpper.startsWith(pu.left(spaceIdx)))
+        return true;
+    return false;
+}
+
+int productNamePrefixLength(const QString& productName) {
+    const QString p = productName.trimmed().toUpper();
+    return p.isEmpty() ? 0 : p.length();
+}
+
+} // namespace
+
+QStringList CommonUtils::mesProductNames() {
+    QStringList names;
+    for (const ProductEntry& entry : kProductTable) {
+        if (entry.inMesCombo)
+            names.append(QString::fromUtf8(entry.productName));
+    }
+    return names;
+}
+
+QStringList CommonUtils::dongleBroadcastFilterNames() {
+    QStringList names;
+    for (const ProductEntry& entry : kProductTable) {
+        if (!hasDonglePattern(entry))
+            continue;
+        // 精确匹配类广播名保留原文（如 Pump-E）；contains 类用产品名
+        if (entry.containsMatch)
+            names.append(QString::fromUtf8(entry.productName));
+        else
+            names.append(QString::fromUtf8(entry.donglePattern));
+    }
+    for (const char* extra : kDongleFilterExtras)
+        names.append(QString::fromUtf8(extra));
+    names.removeDuplicates();
+    return names;
+}
+
+QString CommonUtils::protocolForProduct(const QString& productName) {
+    const ProductEntry* entry = findProductEntry(productName);
+    return entry ? QString::fromUtf8(entry->protocol) : QString();
+}
+
+bool CommonUtils::stationBelongsToProduct(const QString& stationDisplayName, const QString& productName) {
+    const QString station = stationDisplayName.trimmed();
+    if (station == QStringLiteral("自由工站") || station == QStringLiteral("默认工站"))
+        return true;
+
+    const QString product = productName.trimmed();
+    if (product.isEmpty())
+        return true;
+
+    const QString stationUpper = station.toUpper();
+    if (!stationUpperStartsWithProductPrefix(stationUpper, product))
+        return false;
+
+    // 工站名若同时符合更长产品名前缀（如 V3Pro），则短产品 V3 不匹配
+    const int productLen = productNamePrefixLength(product);
+    for (const ProductEntry& entry : kProductTable) {
+        const QString other = QString::fromUtf8(entry.productName).trimmed();
+        if (other.compare(product, Qt::CaseInsensitive) == 0)
+            continue;
+        if (productNamePrefixLength(other) <= productLen)
+            continue;
+        if (stationUpperStartsWithProductPrefix(stationUpper, other))
+            return false;
+    }
+    return true;
+}
+
 bool CommonUtils::resolveDongleDeviceMapping(const QString& dongleName, QString* productOut, QString* protocolOut) {
     if (dongleName.isEmpty())
         return false;
 
-    // containsMatch：对大写名做 contains；否则原文精确相等。
-    // 顺序敏感：更具体的 contains 规则须靠前（如 V3 PRO 先于 V3）。
-    struct Rule {
-        bool containsMatch;
-        const char* pattern;
-        const char* product;
-        const char* protocol;
-    };
-    // clang-format off
-    static const Rule kRules[] = {
-        {true,  "V3 PRO",  "V3Pro",   "qfctp"},
-        {true,  "V3",      "V3",      "qfctp"},
-        {false, "Pump-E",  "M8",      "qroot"},
-        {true,  "W1 LITE", "W1 Lite", "qroot"},
-        {false, "M8P",     "M8P",     "qaiot"},
-    };
-    // clang-format on
-
     const QString upper = dongleName.toUpper();
-    for (const Rule& rule : kRules) {
-        const bool hit = rule.containsMatch ? upper.contains(QString::fromLatin1(rule.pattern))
-                                            : (dongleName == QString::fromLatin1(rule.pattern));
+    for (const ProductEntry& entry : kProductTable) {
+        if (!hasDonglePattern(entry))
+            continue;
+        const bool hit = entry.containsMatch ? upper.contains(QString::fromLatin1(entry.donglePattern))
+                                             : (dongleName == QString::fromLatin1(entry.donglePattern));
         if (!hit)
             continue;
         if (productOut)
-            *productOut = QString::fromUtf8(rule.product);
+            *productOut = QString::fromUtf8(entry.productName);
         if (protocolOut)
-            *protocolOut = QString::fromUtf8(rule.protocol);
+            *protocolOut = QString::fromUtf8(entry.protocol);
         return true;
     }
     return false;

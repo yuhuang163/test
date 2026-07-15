@@ -69,6 +69,8 @@ class TestFlowEditor : public QObject {
                 QCheckBox* stopFlowOnTestFailCheck, QPushButton* btnSave, QPushButton* btnClear,
                 QPushButton* btnImport, QPushButton* btnAdd);
     void reloadCurrentStation();
+    /** 产品型号切换后，按 Mes/Product_Name 刷新工站下拉并切到可用工站。 */
+    void onProductNameChanged();
 
     /** 当前工站流程相对上次保存/加载是否有改动。 */
     bool hasUnsavedChanges() const;

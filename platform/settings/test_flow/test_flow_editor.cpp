@@ -439,7 +439,12 @@ void TestFlowEditor::refreshStationCombo(const QString& selectKey) {
     if (keyToSelect.isEmpty())
         keyToSelect = QStringLiteral("FREE_WORK");
 
-    const QVector<TestFlowStationEntry> stations = TestCaseStore::loadFlowStationCatalog();
+    // 按当前产品只展示对应工站（自由工站/默认工站始终保留）
+    QString productName = SETTINGS.value(QStringLiteral("Mes/Product_Name")).toString().trimmed();
+    if (productName.isEmpty())
+        productName = SETTINGS.value(QStringLiteral("MES/Product_Name")).toString().trimmed();
+    const QVector<TestFlowStationEntry> stations =
+        TestCaseStore::loadFlowStationCatalogForProduct(productName);
     QSignalBlocker blocker(stationCombo_);
     stationCombo_->clear();
     for (const TestFlowStationEntry& entry : stations)
@@ -448,10 +453,20 @@ void TestFlowEditor::refreshStationCombo(const QString& selectKey) {
     int idx = stationCombo_->findData(keyToSelect);
     if (idx < 0)
         idx = stationCombo_->findText(TestCaseStore::flowStationDisplayName(keyToSelect));
+    // 当前选中工站不属于本产品时，落到本产品下第一项
     if (idx < 0 && !stations.isEmpty())
         idx = 0;
     if (idx >= 0)
         stationCombo_->setCurrentIndex(idx);
+}
+
+void TestFlowEditor::onProductNameChanged() {
+    if (!uiBound_ || !stationCombo_)
+        return;
+    refreshStationCombo(QString());
+    persistSelectedStation(currentStationKey());
+    reloadCurrentStation();
+    stationComboPrevIndex_ = stationCombo_->currentIndex();
 }
 
 QMenu* TestFlowEditor::createFlowStationMenu(QWidget* parent, int hitComboIndex) {
@@ -489,7 +504,9 @@ void TestFlowEditor::setupStationComboContextMenu() {
     if (!stationCombo_)
         return;
 
-    stationCombo_->setToolTip(QStringLiteral("选择要编辑的测试工站；数据来自 test_case/总的测试流程.ini"));
+    stationCombo_->setToolTip(
+        QStringLiteral("选择要编辑的测试工站（随 Mes/Product_Name 产品型号过滤）；"
+                       "数据来自 test_case/总的测试流程.ini"));
 
     if (auto* manageBtn =
             stationCombo_->parentWidget()->findChild<QToolButton*>(QStringLiteral("toolButton_testFlowStationMenu"))) {
