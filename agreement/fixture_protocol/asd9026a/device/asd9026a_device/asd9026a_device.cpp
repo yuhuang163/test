@@ -14,18 +14,36 @@
 
 namespace {
 
-double scaleByUnit(quint32 raw, quint8 unitCode) {
+/** 协议单位码→基单位（V 或 A）：1=基单位 2=毫 3=微 4=纳；0/未知按微 */
+double scaleRawByUnit(quint32 raw, quint8 unitCode) {
     switch (unitCode) {
     case 1:
-        return raw;
+        return static_cast<double>(raw);
     case 2:
-        return raw / 1000.0;
+        return static_cast<double>(raw) / 1000.0;
+    case 0:
     case 3:
-        return raw / 1000000.0;
+        return static_cast<double>(raw) / 1000000.0;
     case 4:
-        return raw / 1000000000.0;
+        return static_cast<double>(raw) / 1000000000.0;
     default:
-        return raw;
+        return static_cast<double>(raw) / 1000000.0;
+    }
+}
+
+const char* unitCodeText(quint8 unitCode, bool isCurrent) {
+    switch (unitCode) {
+    case 1:
+        return isCurrent ? "A" : "V";
+    case 2:
+        return isCurrent ? "mA" : "mV";
+    case 0:
+    case 3:
+        return isCurrent ? "uA" : "uV";
+    case 4:
+        return isCurrent ? "nA" : "nV";
+    default:
+        return isCurrent ? "?" : "?";
     }
 }
 
@@ -230,29 +248,39 @@ bool Asd9026aDevice::readAnalogStatus(quint8 moduleAddr, Asd9026aAnalogStatus* o
     QByteArray body;
     if (!Asd9026aCodec::parseFrame(response, &addr, &func, &cmd, &body, errorMessage))
         return false;
+    // 协议标准：应答功能码 0x22，数据长度 0x0E
     if (addr != moduleAddr || func != Asd9026aCodec::kFuncAnalogReply || cmd != Asd9026aCodec::kCmdAnalogStatus) {
         if (errorMessage)
-            *errorMessage = QStringLiteral("ASD9026A 模拟电池状态应答不匹配");
+            *errorMessage = QStringLiteral("ASD9026A 模拟电池状态应答不匹配(func=0x%1 cmd=0x%2，标准应答功能码应为0x22)")
+                                .arg(func, 2, 16, QLatin1Char('0'))
+                                .arg(cmd, 2, 16, QLatin1Char('0'));
         return false;
     }
-    if (body.size() < 11) {
+    if (body.size() != 0x0E) {
         if (errorMessage)
-            *errorMessage = QStringLiteral("ASD9026A 模拟电池状态长度不足");
+            *errorMessage = QStringLiteral("ASD9026A 模拟电池状态长度不符(实际%1，标准应为0x0E)")
+                                .arg(body.size());
         return false;
     }
 
     if (out) {
         out->outputOn = static_cast<quint8>(body.at(0)) != 0;
-        const quint32 voltageRaw = Asd9026aCodec::readLe32(body, 1);
-        const quint8 voltageUnit = static_cast<quint8>(body.at(5));
-        const quint32 currentRaw = Asd9026aCodec::readLe32(body, 6);
-        const quint8 currentUnit = static_cast<quint8>(body.at(10));
-        out->voltage = scaleByUnit(voltageRaw, voltageUnit);
-        out->current = scaleByUnit(currentRaw, currentUnit);
-        if (body.size() > 12) {
-            const int tempRaw = static_cast<quint8>(body.at(12));
-            out->temperatureC = tempRaw == 0xFF ? 0 : tempRaw - 40;
-        }
+        // 状态帧电压/电流平均值为大端（例：00 00 00 0c + 单位1 → 12V；00 00 09 c0 + 单位2 → 2496mA）
+        out->voltageRaw = Asd9026aCodec::readBe32(body, 1);
+        out->voltageUnitCode = static_cast<quint8>(body.at(5));
+        out->currentRaw = Asd9026aCodec::readBe32(body, 6);
+        out->currentUnitCode = static_cast<quint8>(body.at(10));
+        out->voltage = scaleRawByUnit(out->voltageRaw, out->voltageUnitCode);
+        out->current = scaleRawByUnit(out->currentRaw, out->currentUnitCode);
+        const int tempRaw = static_cast<quint8>(body.at(12));
+        out->temperatureC = tempRaw == 0xFF ? 0 : tempRaw - 40;
+        qDebug().noquote() << QStringLiteral("ASD9026A 换算: V raw=%1 %2 → %3 V; I raw=%4 %5 → %6 A")
+                                  .arg(out->voltageRaw)
+                                  .arg(QLatin1String(unitCodeText(out->voltageUnitCode, false)))
+                                  .arg(out->voltage, 0, 'g', 10)
+                                  .arg(out->currentRaw)
+                                  .arg(QLatin1String(unitCodeText(out->currentUnitCode, true)))
+                                  .arg(out->current, 0, 'g', 10);
     }
     return true;
 }

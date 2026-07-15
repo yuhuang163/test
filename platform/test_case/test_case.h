@@ -66,7 +66,14 @@ class TestCaseStore {
     static QString cloudDisplayNameForItemKey(const QString& itemKey);
     static void invalidateCloudItemNameCache();
     static bool loadFlowMeta(TestFlowMeta& out);
+    /** @deprecated 工站选择请用 saveSelectedFlowStation；此方法不再写入总的测试流程.ini */
     static bool saveFlowMeta(const TestFlowMeta& meta);
+    /** 当前选中工站（仅存上位机设置.local.ini / TestOrderMeta） */
+    static QString loadSelectedFlowStationKey();
+    static QString loadSelectedFlowStationName();
+    static void saveSelectedFlowStation(const QString& stationKey, const QString& displayName);
+    /** 旧版总的测试流程.ini [Meta] 一次性迁入本地设置并清除 */
+    static void migrateLegacyFlowMetaToLocalSettings();
     static QStringList loadStationItems(const QString& stationKey);
     static bool saveStationItems(const QString& stationKey, const QStringList& items);
     static QVector<TestFlowItemEntry> loadStationFlowItems(const QString& stationKey);
@@ -185,6 +192,25 @@ class XwdBleFixtureCmdCatalog {
     static QString paramUiHint(const QString& enumName);
     static bool paramFromIniGroup(const QSettings& settings, XwdBleFixtureCmd cmd, QVariant& out);
     static void paramToIniGroup(QSettings& settings, XwdBleFixtureCmd cmd, const QVariant& value);
+};
+
+/** 欣旺达 xwd 吸力工站治具（Send/Channel=Fixture 且 Send/Protocol=XWD_SUCTION，治具串口原文下发）。 */
+enum class XwdSuctionFixtureCmd {
+    SendRaw,
+};
+
+class XwdSuctionFixtureCmdCatalog {
+  public:
+    static QStringList allXwdSuctionFixtureCmdNames(TestCaseSendAction action);
+    static TestCaseSendAction actionFor(XwdSuctionFixtureCmd cmd);
+    static bool isCmdForAction(XwdSuctionFixtureCmd cmd, TestCaseSendAction action);
+    static QString xwdSuctionFixtureCmdUiLabel(const QString& enumName);
+    static bool xwdSuctionFixtureCmdFromName(const QString& name, XwdSuctionFixtureCmd& out);
+    static QString xwdSuctionFixtureCmdToName(XwdSuctionFixtureCmd cmd);
+    static bool paramSchemaFor(XwdSuctionFixtureCmd cmd, DeviceCmdParamSchema& out);
+    static QString paramUiHint(const QString& enumName);
+    static bool paramFromIniGroup(const QSettings& settings, XwdSuctionFixtureCmd cmd, QVariant& out);
+    static void paramToIniGroup(QSettings& settings, XwdSuctionFixtureCmd cmd, const QVariant& value);
 };
 
 /** PCBA 治具 0x55 协议指令（Send/Channel=Fixture 且 Send/Protocol=Pcba）。 */

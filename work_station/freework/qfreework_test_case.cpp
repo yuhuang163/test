@@ -8,9 +8,12 @@
 #include "pcba_uart_codec.h"
 #include "asd9026a_device.h"
 #include "xwd_ble_fixture_device.h"
+#include "xwd_suction_fixture_device.h"
+#include "xwd_suction_uart_codec.h"
 #include "qprotocol_types.h"
 
 #include <QFile>
+#include <QRegularExpression>
 #include <QTimer>
 #include <QElapsedTimer>
 
@@ -27,6 +30,20 @@ namespace {
 bool isRuntimeMachineIndexPlaceholder(const QString& text) {
     const QString s = text.trimmed();
     return s.isEmpty() || s == QStringLiteral("$INDEX") || s == QStringLiteral("${INDEX}") || s == QStringLiteral("$SLOT") || s == QStringLiteral("${SLOT}") || s == QStringLiteral("{index}");
+}
+
+/** String 型发送参数：兼容叶子 QString 与 overlay 留下的 {string:xxx} 单键 map。 */
+QString sendParamAsRawText(const QVariant& resolved) {
+    if (resolved.userType() == QMetaType::QString)
+        return resolved.toString();
+    if (resolved.canConvert<QVariantMap>()) {
+        const QVariantMap map = resolved.toMap();
+        if (map.contains(QStringLiteral("string")))
+            return map.value(QStringLiteral("string")).toString();
+        if (map.size() == 1)
+            return map.constBegin().value().toString();
+    }
+    return resolved.toString();
 }
 
 int fixtureMachineIndexFromParam(const QVariant& param) {
@@ -88,7 +105,7 @@ bool ensureAsd9026aConnected(QFreeWork* ctx, Asd9026aDevice& dev, QString* error
         && ctx->usbSerialPort->portName().compare(port, Qt::CaseInsensitive) == 0) {
         ctx->closeUsbSerialPort();
     }
-    const int baudRate = SETTINGS.value(QStringLiteral("ASD9026A/BaudRate"), 115200).toInt();
+    const int baudRate = SETTINGS.value(QStringLiteral("ASD9026A/BaudRate"), 9600).toInt();
     if (!dev.open(port, baudRate, errorMessage))
         return false;
     ctx->showlog(QStringLiteral("ASD9026A 已连接万用表串口 %1 @ %2").arg(port).arg(baudRate));
@@ -115,6 +132,41 @@ bool ensureXwdBleJigUartOpen(QFreeWork* ctx, QString* errorMessage) {
     }
 
     const int baudRate = SETTINGS.value(QStringLiteral("XwdBleFixture/BaudRate"), 9600).toInt();
+    if (ctx->jigBaudRate != baudRate) {
+        ctx->jigBaudRate = baudRate;
+        if (ctx->jigSerialPort && ctx->jigSerialPort->isOpen())
+            ctx->closeJigSerialPort();
+    }
+    if (!ctx->jigSerialPort || !ctx->jigSerialPort->isOpen())
+        ctx->openJigSerialPort();
+    if (!ctx->jigSerialPort || !ctx->jigSerialPort->isOpen()) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("治具串口打开失败：%1").arg(port);
+        return false;
+    }
+    return true;
+}
+
+bool ensureXwdSuctionJigUartOpen(QFreeWork* ctx, QString* errorMessage) {
+    if (!ctx) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("工站上下文无效");
+        return false;
+    }
+    QComboBox* jigCombo = ctx->getJigcomNameCombo();
+    if (!jigCombo) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("当前工站未配置治具串口");
+        return false;
+    }
+    const QString port = jigCombo->currentText().trimmed();
+    if (port.isEmpty()) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("请在工位界面选择治具串口");
+        return false;
+    }
+
+    const int baudRate = SETTINGS.value(QStringLiteral("XwdSuctionFixture/BaudRate"), 9600).toInt();
     if (ctx->jigBaudRate != baudRate) {
         ctx->jigBaudRate = baudRate;
         if (ctx->jigSerialPort && ctx->jigSerialPort->isOpen())
@@ -488,10 +540,9 @@ QString QFreeWork::currentMacAddress() const {
 bool QFreeWork::useTestCaseFlow(const QString& stationKey) const {
     QString key = TestCaseStore::resolveFlowStationKey(stationKey.trimmed());
     if (key.isEmpty())
-        key = TestCaseStore::resolveFlowStationKey(SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString());
+        key = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationKey());
     if (TestCaseStore::loadStationItems(key).isEmpty()) {
-        const QString byName = TestCaseStore::resolveFlowStationKey(
-            SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStationName")).toString());
+        const QString byName = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationName());
         if (!byName.isEmpty())
             key = byName;
     }
@@ -505,10 +556,9 @@ bool QFreeWork::useTestCaseFlow(const QString& stationKey) const {
 QStringList QFreeWork::testCaseFlowItems(const QString& stationKey) const {
     QString key = TestCaseStore::resolveFlowStationKey(stationKey.trimmed());
     if (key.isEmpty())
-        key = TestCaseStore::resolveFlowStationKey(SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString());
+        key = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationKey());
     if (TestCaseStore::loadStationItems(key).isEmpty()) {
-        const QString byName = TestCaseStore::resolveFlowStationKey(
-            SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStationName")).toString());
+        const QString byName = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationName());
         if (!byName.isEmpty())
             key = byName;
     }
@@ -657,6 +707,12 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
         return;
     }
 
+    // 纯空白提醒：只等操作员点「是」，不执行 Send；未勾选 PromptOnly 时提示后仍发指令
+    if (def.meta.promptOnly && TestCaseRunner::stepWaitsForPromptAck(def)) {
+        ctx->showlog(QStringLiteral("本步为纯空白提醒，确认后继续（不发送指令）"));
+        return;
+    }
+
     if (def.send.channel == TestCaseSendChannel::Product && !ctx->at->getConnected() && !TestCaseRunner::stepRequiresProductBle(def)) {
         ctx->showlog(QStringLiteral("本步不要求蓝牙连接，已跳过产品协议，请点「是」或关闭弹窗后继续"));
         if (!TestCaseRunner::stepWaitsForPromptAck(def))
@@ -669,6 +725,8 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             ctx->executeFixtureAsd9026aCase(def);
         else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::XwdBle)
             ctx->executeFixtureXwdBleCase(def);
+        else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::XwdSuction)
+            ctx->executeFixtureXwdSuctionCase(def);
         else
             ctx->executeFixturePcbaCase(def);
         return;
@@ -1231,14 +1289,27 @@ void QFreeWork::executeFixtureAsd9026aCase(const TestCaseDefinition& def) {
         if (!ok)
             break;
         if (cmd == Asd9026aCmd::ReadProgrammableVoltage) {
+            // 不论回包是 V/mV/uV/nV，status.voltage 已统一为 V
             testData = QStringLiteral("%1 V").arg(status.voltage, 0, 'f', 4);
-            showlog(QStringLiteral("ASD9026A %1 电压：%2").arg(channelText, testData));
+            showlog(QStringLiteral("ASD9026A %1 电压：raw=%2 → %3")
+                        .arg(channelText)
+                        .arg(status.voltageRaw)
+                        .arg(testData));
             reportMeasure(QStringLiteral("Voltage"), status.voltage, QStringLiteral("V"), testData);
-            return;
+        } else {
+            // 不论回包是 A/mA/uA/nA，先统一为 A，再换算 mA 供卡控（与 VISA 一致）
+            const double currentMa = status.current * 1000.0;
+            testData = QStringLiteral("%1 mA").arg(currentMa, 0, 'f', 4);
+            showlog(QStringLiteral("ASD9026A %1 电流：raw=%2 → %3 A → %4")
+                        .arg(channelText)
+                        .arg(status.currentRaw)
+                        .arg(status.current, 0, 'g', 10)
+                        .arg(testData));
+            reportMeasure(QStringLiteral("Current"), currentMa, QStringLiteral("mA"), testData);
         }
-        testData = QStringLiteral("%1 A").arg(status.current, 0, 'f', 4);
-        showlog(QStringLiteral("ASD9026A %1 电流：%2").arg(channelText, testData));
-        reportMeasure(QStringLiteral("Current"), status.current, QStringLiteral("A"), testData);
+        // Gate 关闭时 report 不会收尾；必须显式结束，否则步骤永远 done=false 卡住
+        if (!def.gate.enabled)
+            markActiveTestCaseStepDone(true, testData, QStringLiteral("通过"));
         return;
     }
     default:
@@ -1282,7 +1353,7 @@ void QFreeWork::executeFixtureXwdBleCase(const TestCaseDefinition& def) {
         return;
     }
 
-    const QString rawText = resolveTestCaseSendParamTree(def.send.param).toString();
+    const QString rawText = sendParamAsRawText(resolveTestCaseSendParamTree(def.send.param));
     if (rawText.isEmpty()) {
         showlog(QStringLiteral("XWD蓝牙治具发送内容为空，请配置 Send/Param/string"));
         markActiveTestCaseStepDone(false, QStringLiteral("参数为空"), QStringLiteral("失败"));
@@ -1298,6 +1369,183 @@ void QFreeWork::executeFixtureXwdBleCase(const TestCaseDefinition& def) {
     showlog(QStringLiteral("XWD蓝牙治具已原文发送：%1").arg(rawText));
     if (!def.gate.enabled)
         markActiveTestCaseStepDone(true, rawText, QStringLiteral("通过"));
+}
+
+void QFreeWork::executeFixtureXwdSuctionCase(const TestCaseDefinition& def) {
+    if (def.send.fixtureProtocol != TestCaseFixtureProtocol::XwdSuction) {
+        showlog(QStringLiteral("XWD吸力治具协议类型不匹配，请检查 Send/Protocol"));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+
+    XwdSuctionFixtureCmd cmd;
+    if (!XwdSuctionFixtureCmdCatalog::xwdSuctionFixtureCmdFromName(def.send.deviceCmd, cmd)) {
+        showlog(QStringLiteral("未知 XWD吸力治具指令：%1").arg(def.send.deviceCmd));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+    if (!XwdSuctionFixtureCmdCatalog::isCmdForAction(cmd, def.send.action)) {
+        showlog(QStringLiteral("XWD吸力治具指令与操作方式不匹配：%1").arg(def.send.deviceCmd));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+
+    QString errStr;
+    if (!ensureXwdSuctionJigUartOpen(this, &errStr)) {
+        showlog(errStr);
+        markActiveTestCaseStepDone(false, QStringLiteral("串口未连接"), QStringLiteral("失败"));
+        return;
+    }
+
+    const QString rawText = sendParamAsRawText(resolveTestCaseSendParamTree(def.send.param));
+    if (rawText.isEmpty()) {
+        showlog(QStringLiteral("XWD吸力治具发送内容为空，请配置 Send/Param/string"));
+        markActiveTestCaseStepDone(false, QStringLiteral("参数为空"), QStringLiteral("失败"));
+        return;
+    }
+
+    bool parsedAsHex = false;
+    const QByteArray request = XwdSuctionUartCodec::encodeRawText(rawText, &parsedAsHex);
+    if (request.isEmpty()) {
+        showlog(QStringLiteral("XWD吸力治具发送内容编码为空"));
+        markActiveTestCaseStepDone(false, QStringLiteral("参数为空"), QStringLiteral("失败"));
+        return;
+    }
+
+    // 「设置」只下发；「读取」下发后等回包并解析
+    if (def.send.action != TestCaseSendAction::Get) {
+        if (!XwdSuctionFixtureDevice::sendRawText(jigSerialPort, rawText, &errStr)) {
+            showlog(QStringLiteral("XWD吸力治具指令 [%1] 发送失败: %2").arg(def.send.deviceCmd, errStr));
+            markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
+            return;
+        }
+        showlog(parsedAsHex ? QStringLiteral("XWD吸力治具已按十六进制发送：%1").arg(rawText)
+                            : QStringLiteral("XWD吸力治具已原文发送：%1").arg(rawText));
+        if (!def.gate.enabled)
+            markActiveTestCaseStepDone(true, rawText, QStringLiteral("通过"));
+        return;
+    }
+
+    if (parsedAsHex)
+        qDebug().noquote() << "XWD_SUCTION FIXTURE TX(十六进制):"
+                           << QString::fromLatin1(request.toHex(' ').toUpper());
+    else
+        qDebug().noquote() << "XWD_SUCTION FIXTURE TX(原文):" << rawText;
+    showlog(parsedAsHex ? QStringLiteral("XWD吸力治具读取下发（十六进制）：%1").arg(rawText)
+                        : QStringLiteral("XWD吸力治具读取下发（原文）：%1").arg(rawText));
+
+    int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+    // 该治具实测回包常 >300ms；过短超时会“设备已回、上位机已放弃”
+    if (timeoutMs < 2000)
+        timeoutMs = 2000;
+    // 一拖二（分窗≥2）时：工位1→CH1，工位2→CH2；一拖一只用 CH1
+    const int stationSlots = qMax(1, SETTINGS.value(QStringLiteral("User/formColumn"), 1).toInt()
+                                         * SETTINGS.value(QStringLiteral("User/formRow"), 1).toInt());
+    const bool dualFixture = stationSlots >= 2;
+    const int readChannel = (dualFixture && getIndex() >= 2) ? 2 : 1;
+    showlog(QStringLiteral("XWD吸力治具等待回包超时上限：%1ms，取通道 CH%2（%3）")
+                .arg(timeoutMs)
+                .arg(readChannel)
+                .arg(dualFixture ? QStringLiteral("一拖二") : QStringLiteral("一拖一")));
+    if (!jigSerialChannel_) {
+        showlog(QStringLiteral("XWD吸力治具串口通道未初始化"));
+        markActiveTestCaseStepDone(false, QStringLiteral("串口未连接"), QStringLiteral("失败"));
+        return;
+    }
+
+    // 回包为多行文本（CH1/CH2），防抖可能拆帧，需在超时内拼包至含目标通道 mA
+    jigSerialChannel_->clearReceiveBuffer();
+    if (jigSerialChannel_->write(request) != request.size()) {
+        showlog(QStringLiteral("XWD吸力治具串口写入失败"));
+        markActiveTestCaseStepDone(false, QStringLiteral("写入失败"), QStringLiteral("失败"));
+        return;
+    }
+    jigSerialPort->waitForBytesWritten(qMin(2000, qMax(1, timeoutMs)));
+
+    QByteArray reply;
+    QElapsedTimer waitTimer;
+    waitTimer.start();
+    while (waitTimer.elapsed() < timeoutMs) {
+        const int remainMs = timeoutMs - static_cast<int>(waitTimer.elapsed());
+        if (remainMs <= 0)
+            break;
+        QByteArray chunk;
+        const int sliceMs = reply.isEmpty() ? remainMs : qMin(remainMs, 100);
+        if (!jigSerialChannel_->waitForFrame(&chunk, sliceMs)) {
+            // 已有数据：安静结束；无数据：超时
+            break;
+        }
+        reply += chunk;
+        const bool hasMa = reply.contains("mA") || reply.contains("MA");
+        if (!hasMa)
+            continue;
+        // 一拖一只等 CH1；一拖二工位2要等 CH2 再结束
+        if (readChannel == 1 || reply.contains("CH2") || reply.contains("CH 2"))
+            break;
+    }
+    if (reply.isEmpty()) {
+        showlog(QStringLiteral("XWD吸力治具等待回包超时（%1ms）").arg(timeoutMs));
+        markActiveTestCaseStepDone(false, QStringLiteral("接收超时"), QStringLiteral("失败"));
+        return;
+    }
+    // 一拖二且要 CH2：再短暂收一下，避免只拿到 CH1
+    if (readChannel == 2 && !(reply.contains("CH2") || reply.contains("CH 2"))) {
+        const int remainMs = timeoutMs - static_cast<int>(waitTimer.elapsed());
+        if (remainMs > 0) {
+            QByteArray more;
+            if (jigSerialChannel_->waitForFrame(&more, qMin(remainMs, 80)))
+                reply += more;
+        }
+    }
+
+    const QString replyText = QString::fromUtf8(reply).trimmed();
+    qDebug().noquote() << "XWD_SUCTION FIXTURE RX(text):" << replyText;
+    showlog(QStringLiteral("XWD吸力治具已收到回包：%1").arg(replyText));
+
+    double ch1Ma = 0;
+    double ch2Ma = 0;
+    bool hasCh1 = false;
+    bool hasCh2 = false;
+    if (XwdSuctionUartCodec::parseReadOnceReply(replyText, &ch1Ma, &ch2Ma, &hasCh1, &hasCh2)) {
+        const bool channelOk = (readChannel == 2) ? hasCh2 : hasCh1;
+        const double valueMa = (readChannel == 2) ? ch2Ma : ch1Ma;
+        if (dualFixture)
+            showlog(QStringLiteral("XWD吸力治具电流：CH1=%1mA%2 CH2=%3mA%4，本工位取 CH%5")
+                        .arg(hasCh1 ? QString::number(ch1Ma, 'f', 2) : QStringLiteral("-"))
+                        .arg(hasCh1 ? QString() : QStringLiteral("(无)"))
+                        .arg(hasCh2 ? QString::number(ch2Ma, 'f', 2) : QStringLiteral("-"))
+                        .arg(hasCh2 ? QString() : QStringLiteral("(无)"))
+                        .arg(readChannel));
+        else
+            showlog(QStringLiteral("XWD吸力治具电流：CH1=%1mA").arg(ch1Ma, 0, 'f', 2));
+
+        if (!channelOk) {
+            showlog(QStringLiteral("XWD吸力治具回包缺少 CH%1 电流").arg(readChannel));
+            markActiveTestCaseStepDone(false, QStringLiteral("缺通道"), QStringLiteral("失败"));
+            return;
+        }
+
+        ProtocolMeasureData measureData;
+        measureData.deviceName = QStringLiteral("XWD_SUCTION");
+        measureData.channel = QStringLiteral("CH%1").arg(readChannel);
+        measureData.type = QStringLiteral("Current");
+        measureData.value = valueMa;
+        measureData.valueText = QString::number(valueMa, 'f', 2);
+        measureData.unit = QStringLiteral("mA");
+        measureData.isOk = true;
+        onUsbInstrumentReport(
+            ProtocolReport(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(measureData)));
+        if (!def.gate.enabled)
+            markActiveTestCaseStepDone(true, measureData.valueText + QStringLiteral("mA"), QStringLiteral("通过"));
+        return;
+    }
+
+    if (def.gate.enabled) {
+        showlog(QStringLiteral("XWD吸力治具回包无法解析电流(mA)：%1").arg(replyText));
+        markActiveTestCaseStepDone(false, replyText, QStringLiteral("失败"));
+        return;
+    }
+    markActiveTestCaseStepDone(true, replyText, QStringLiteral("通过"));
 }
 
 void QFreeWork::executeProductSerialCase(const TestCaseDefinition& def) {

@@ -18,7 +18,6 @@ class TestCaseSyncService {
     static SyncResult uploadToCloud();
     /** 从云端下载 bundle 覆盖本地 test_case */
     static SyncResult syncFromCloud();
-    static bool isEnabled();
     static void tryStartupSyncAsync();
 };
 

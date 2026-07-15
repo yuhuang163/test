@@ -154,6 +154,12 @@ QString CommonUtils::formatElapsedSeconds(int seconds, bool compact) {
     return QStringLiteral("%1 m %2 s").arg(minutes).arg(remain);
 }
 
+QString CommonUtils::formatElapsedSeconds(const QElapsedTimer& timer, int fractionDigits) {
+    const qint64 elapsedMs = timer.isValid() ? timer.elapsed() : 0;
+    const double seconds = static_cast<double>(elapsedMs) / 1000.0;
+    return QStringLiteral("%1 s").arg(seconds, 0, 'f', fractionDigits);
+}
+
 QString CommonUtils::formatElapsedTimer(const QElapsedTimer& timer, bool compact) {
     return formatElapsedMs(timer.elapsed(), compact);
 }

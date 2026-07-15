@@ -47,6 +47,13 @@ class SerialChannel : public QObject {
     QString portName() const;
     QString errorString() const;
 
+    /** 清空未吐出的收包缓冲（发前调用，避免旧数据误作本次应答）。 */
+    void clearReceiveBuffer();
+    /** 等待下一帧（防抖结束后的 frameReceived）；超时返回 false。 */
+    bool waitForFrame(QByteArray* outFrame, int timeoutMs);
+    /** 先清缓冲、写请求，再等回包（避免发送后、监听前应答已到导致丢包）。 */
+    bool exchange(const QByteArray& request, QByteArray* response, int timeoutMs);
+
     static QStringList availablePortNames();
     static void updateComboBoxPorts(QComboBox* comboBox);
 

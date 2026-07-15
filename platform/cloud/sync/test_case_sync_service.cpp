@@ -268,14 +268,7 @@ QString TestCaseSyncService::testCaseRoot() {
     return QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("test_case"));
 }
 
-bool TestCaseSyncService::isEnabled() {
-    return SETTINGS.value(QStringLiteral("FactoryCloud/Feature/TestCaseSync"), true).toBool();
-}
-
 void TestCaseSyncService::tryStartupSyncAsync() {
-    if (!isEnabled()) {
-        return;
-    }
     QtConcurrent::run([]() {
         const SyncResult result = syncFromCloud();
         if (!result.message.isEmpty()) {
@@ -286,10 +279,6 @@ void TestCaseSyncService::tryStartupSyncAsync() {
 
 TestCaseSyncService::SyncResult TestCaseSyncService::uploadToCloud() {
     SyncResult result;
-    if (!isEnabled()) {
-        result.message = QStringLiteral("测试用例云同步未启用");
-        return result;
-    }
     if (AuthService::isOfflineSession()) {
         result.message = QStringLiteral("离线测试模式，无法上传测试用例");
         return result;
@@ -346,10 +335,6 @@ TestCaseSyncService::SyncResult TestCaseSyncService::uploadToCloud() {
 
 TestCaseSyncService::SyncResult TestCaseSyncService::syncFromCloud() {
     SyncResult result;
-    if (!isEnabled()) {
-        result.message = QStringLiteral("测试用例云同步未启用");
-        return result;
-    }
     if (AuthService::isOfflineSession()) {
         result.message = QStringLiteral("离线测试模式，无法从云端同步测试用例");
         return result;

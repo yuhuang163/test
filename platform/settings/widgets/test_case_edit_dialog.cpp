@@ -78,6 +78,8 @@ void fillFixtureProtocolCombo(QComboBox* box) {
                  FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::Asd9026a));
     box->addItem(FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol::XwdBle),
                  FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::XwdBle));
+    box->addItem(FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol::XwdSuction),
+                 FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::XwdSuction));
 }
 
 void fillProtocolComboForChannel(QComboBox* box, TestCaseSendChannel channel) {
@@ -134,6 +136,10 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
             items.reserve(XwdBleFixtureCmdCatalog::allXwdBleFixtureCmdNames(action).size());
             for (const QString& name : XwdBleFixtureCmdCatalog::allXwdBleFixtureCmdNames(action))
                 items.append({XwdBleFixtureCmdCatalog::xwdBleFixtureCmdUiLabel(name), name});
+        } else if (proto == TestCaseFixtureProtocol::XwdSuction) {
+            items.reserve(XwdSuctionFixtureCmdCatalog::allXwdSuctionFixtureCmdNames(action).size());
+            for (const QString& name : XwdSuctionFixtureCmdCatalog::allXwdSuctionFixtureCmdNames(action))
+                items.append({XwdSuctionFixtureCmdCatalog::xwdSuctionFixtureCmdUiLabel(name), name});
         } else {
             items.reserve(FixturePcbaCmdCatalog::allFixturePcbaCmdNames(action).size());
             for (const QString& name : FixturePcbaCmdCatalog::allFixturePcbaCmdNames(action))
@@ -223,6 +229,29 @@ struct SendCmdParamUi {
     QString hint;
 };
 
+SendCmdParamKind sendParamUiKindFromSchema(DeviceCmdParamKind kind) {
+    switch (kind) {
+    case DeviceCmdParamKind::None:
+        return SendCmdParamKind::None;
+    case DeviceCmdParamKind::Int:
+        return SendCmdParamKind::Int;
+    case DeviceCmdParamKind::UInt:
+        return SendCmdParamKind::UInt;
+    case DeviceCmdParamKind::String:
+        return SendCmdParamKind::String;
+    case DeviceCmdParamKind::JsonMap:
+        return SendCmdParamKind::JsonMap;
+    }
+    return SendCmdParamKind::None;
+}
+
+QString sendParamProtocolContext(TestCaseSendChannel channel, const QString& protocolComboData) {
+    if (channel == TestCaseSendChannel::Fixture || channel == TestCaseSendChannel::Modbus
+        || channel == TestCaseSendChannel::Scpi)
+        return protocolComboData;
+    return QString();
+}
+
 SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel channel, const QString& device = QString()) {
     SendCmdParamUi out;
     if (channel == TestCaseSendChannel::Dongle) {
@@ -232,14 +261,7 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
             if (DongleCmdCatalog::paramSchemaFor(dongleCmd, schema)) {
                 out.valid = true;
                 out.hint = DongleCmdCatalog::paramUiHint(name);
-                if (schema.kind == DeviceCmdParamKind::None)
-                    out.kind = SendCmdParamKind::None;
-                else if (schema.kind == DeviceCmdParamKind::Int)
-                    out.kind = SendCmdParamKind::Int;
-                else if (schema.kind == DeviceCmdParamKind::String)
-                    out.kind = SendCmdParamKind::String;
-                else
-                    out.kind = SendCmdParamKind::JsonMap;
+                out.kind = sendParamUiKindFromSchema(schema.kind);
             }
         }
         return out;
@@ -251,14 +273,7 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
             if (TupleCmdCatalog::paramSchemaFor(tupleCmd, schema)) {
                 out.valid = true;
                 out.hint = TupleCmdCatalog::paramUiHint(name);
-                if (schema.kind == DeviceCmdParamKind::None)
-                    out.kind = SendCmdParamKind::None;
-                else if (schema.kind == DeviceCmdParamKind::Int)
-                    out.kind = SendCmdParamKind::Int;
-                else if (schema.kind == DeviceCmdParamKind::String)
-                    out.kind = SendCmdParamKind::String;
-                else
-                    out.kind = SendCmdParamKind::JsonMap;
+                out.kind = sendParamUiKindFromSchema(schema.kind);
             }
         }
         return out;
@@ -284,7 +299,7 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
                 if (Asd9026aCmdCatalog::paramSchemaFor(asdCmd, schema)) {
                     out.valid = true;
                     out.hint = Asd9026aCmdCatalog::paramUiHint(name);
-                    out.kind = schema.kind == DeviceCmdParamKind::JsonMap ? SendCmdParamKind::JsonMap : SendCmdParamKind::None;
+                    out.kind = sendParamUiKindFromSchema(schema.kind);
                 }
             }
             return out;
@@ -296,10 +311,19 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
                 if (XwdBleFixtureCmdCatalog::paramSchemaFor(xwdCmd, schema)) {
                     out.valid = true;
                     out.hint = XwdBleFixtureCmdCatalog::paramUiHint(name);
-                    if (schema.kind == DeviceCmdParamKind::String)
-                        out.kind = SendCmdParamKind::String;
-                    else
-                        out.kind = SendCmdParamKind::None;
+                    out.kind = sendParamUiKindFromSchema(schema.kind);
+                }
+            }
+            return out;
+        }
+        if (proto == TestCaseFixtureProtocol::XwdSuction) {
+            XwdSuctionFixtureCmd xwdCmd;
+            if (XwdSuctionFixtureCmdCatalog::xwdSuctionFixtureCmdFromName(name, xwdCmd)) {
+                DeviceCmdParamSchema schema;
+                if (XwdSuctionFixtureCmdCatalog::paramSchemaFor(xwdCmd, schema)) {
+                    out.valid = true;
+                    out.hint = XwdSuctionFixtureCmdCatalog::paramUiHint(name);
+                    out.kind = sendParamUiKindFromSchema(schema.kind);
                 }
             }
             return out;
@@ -310,12 +334,7 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
             if (FixturePcbaCmdCatalog::paramSchemaFor(fixtureCmd, schema)) {
                 out.valid = true;
                 out.hint = FixturePcbaCmdCatalog::paramUiHint(name);
-                if (schema.kind == DeviceCmdParamKind::None)
-                    out.kind = SendCmdParamKind::None;
-                else if (schema.kind == DeviceCmdParamKind::Int)
-                    out.kind = SendCmdParamKind::Int;
-                else
-                    out.kind = SendCmdParamKind::JsonMap;
+                out.kind = sendParamUiKindFromSchema(schema.kind);
             }
         }
         return out;
@@ -377,27 +396,18 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
         if (DeviceCmdCatalog::paramSchemaFor(cmd, schema)) {
             out.valid = true;
             out.hint = DeviceCmdCatalog::paramUiHint(name);
-            if (schema.kind == DeviceCmdParamKind::None)
-                out.kind = SendCmdParamKind::None;
-            else if (schema.kind == DeviceCmdParamKind::Int)
-                out.kind = SendCmdParamKind::Int;
-            else if (schema.kind == DeviceCmdParamKind::UInt)
-                out.kind = SendCmdParamKind::UInt;
-            else if (schema.kind == DeviceCmdParamKind::String)
-                out.kind = SendCmdParamKind::String;
-            else
-                out.kind = SendCmdParamKind::JsonMap;
+            out.kind = sendParamUiKindFromSchema(schema.kind);
         }
     }
     return out;
 }
 
-void applySendParamHintToUi(const SendCmdParamUi& uiSchema, QLabel* hintLabel, QPlainTextEdit* jsonEdit,
+void applySendParamHintToUi(const SendCmdParamUi& uiSchema, bool hasParam, QLabel* hintLabel, QPlainTextEdit* jsonEdit,
                             QSpinBox* spinBox) {
     if (!hintLabel)
         return;
     hintLabel->setText(uiSchema.hint);
-    hintLabel->setVisible(uiSchema.valid && !uiSchema.hint.isEmpty());
+    hintLabel->setVisible(hasParam && uiSchema.valid && !uiSchema.hint.isEmpty());
     hintLabel->setToolTip(uiSchema.hint.isEmpty() ? QString() : QStringLiteral("可选中文字后 Ctrl+C 复制"));
 
     if (jsonEdit) {
@@ -444,11 +454,23 @@ void applySendParamToUi(const SendCmdParamUi& uiSchema, const QVariant& param, Q
         return;
     }
     stack->setCurrentWidget(pageJson);
-    if (uiSchema.kind == SendCmdParamKind::String)
-        jsonEdit->setPlainText(param.toString());
-    else
+    if (uiSchema.kind == SendCmdParamKind::String) {
+        // overlay 可能把 Param_string 读成 {string:xxx}，直接 toString() 会是空
+        if (param.canConvert<QVariantMap>()) {
+            const QVariantMap map = param.toMap();
+            if (map.contains(QStringLiteral("string")))
+                jsonEdit->setPlainText(map.value(QStringLiteral("string")).toString());
+            else if (map.size() == 1)
+                jsonEdit->setPlainText(map.constBegin().value().toString());
+            else
+                jsonEdit->setPlainText(param.toString());
+        } else {
+            jsonEdit->setPlainText(param.toString());
+        }
+    } else {
         jsonEdit->setPlainText(
             QString::fromUtf8(QJsonDocument(QJsonObject::fromVariantMap(param.toMap())).toJson()));
+    }
 }
 
 QVariant readSendParamFromUi(const SendCmdParamUi& uiSchema, QSpinBox* spinBox, QPlainTextEdit* jsonEdit) {
@@ -588,6 +610,7 @@ const QHash<QString, QString>& hookDisplayNameMap() {
         {QStringLiteral("DONGLE_SUCTION_ENABLE"), QStringLiteral("开启 dongle 吸力读取")},
         {QStringLiteral("DONGLE_SUCTION_DISABLE"), QStringLiteral("关闭 dongle 吸力读取")},
         {QStringLiteral("DONGLE_SUCTION_SAMPLE"), QStringLiteral("采集双通道吸力")},
+        {QStringLiteral("DONGLE_SUCTION_SAMPLE_SINGLE"), QStringLiteral("采集单通道吸力")},
         {QStringLiteral("SN_WRITE_TAIL"), QStringLiteral("写入 SN 码")},
         {QStringLiteral("PLC_MODBUS_CONN"), QStringLiteral("PLC Modbus 连接")},
         {QStringLiteral("PLC_V3_SWITCH_RIGHT_WHOLE"), QStringLiteral("PLC+V3 旋钮整步右旋")},
@@ -647,20 +670,32 @@ void fillHookCombo(QComboBox* box) {
 }
 
 bool isSuctionSampleHookId(const QString& hookId) {
-    return hookId == QLatin1String("DONGLE_SUCTION_SAMPLE");
+    return hookId == QLatin1String("DONGLE_SUCTION_SAMPLE")
+           || hookId == QLatin1String("DONGLE_SUCTION_SAMPLE_SINGLE");
 }
 
-SendCmdParamUi suctionSampleHookParamUi() {
+SendCmdParamUi suctionSampleHookParamUi(const QString& hookId = QString()) {
     SendCmdParamUi out;
     out.valid = true;
     out.kind = SendCmdParamKind::JsonMap;
-    out.hint = QStringLiteral(
-        "吸力卡控（写入本工站 profiles/<工站>/steps/步骤.ini，不读上位机设置.ini）：\n"
-        "sampleDurationMs=10000   采样时长(ms)\n"
-        "sampleIntervalMs=20      采样间隔(ms)\n"
-        "peakTargetKpa=-36        目标峰值(kPa)\n"
-        "peakToleranceKpa=2.6     允许偏差(kPa)\n"
-        "peakDiffMaxKpa=2.6       左右峰差上限(kPa)");
+    if (hookId == QLatin1String("DONGLE_SUCTION_SAMPLE_SINGLE")) {
+        out.hint = QStringLiteral(
+            "单通道吸力卡控（写入本工站 profiles/<工站>/steps/步骤.ini）：\n"
+            "sampleDurationMs=10000   采样时长(ms)\n"
+            "sampleIntervalMs=20      采样间隔(ms)\n"
+            "channel=left             通道：left/0/左 或 right/1/右\n"
+            "peakTargetKpa=-36        目标峰值(kPa，取采样最低值)\n"
+            "peakToleranceKpa=2.6     峰值允许偏差(kPa)\n"
+            "peakDiffMaxKpa=2.6       大小峰值差上限=同口最高-最低(kPa)");
+    } else {
+        out.hint = QStringLiteral(
+            "双通道吸力卡控（写入本工站 profiles/<工站>/steps/步骤.ini，不读上位机设置.ini）：\n"
+            "sampleDurationMs=10000   采样时长(ms)\n"
+            "sampleIntervalMs=20      采样间隔(ms)\n"
+            "peakTargetKpa=-36        目标峰值(kPa)\n"
+            "peakToleranceKpa=2.6     允许偏差(kPa)\n"
+            "peakDiffMaxKpa=2.6       左右峰差上限(kPa)");
+    }
     return out;
 }
 
@@ -698,6 +733,7 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
             &TestCaseEditDialog::onGateReportTypeChanged);
     connect(ui->checkBox_gateEnabled, &QCheckBox::toggled, this, &TestCaseEditDialog::updateGateFieldsEnabled);
     connect(ui->checkBox_promptEnabled, &QCheckBox::toggled, this, &TestCaseEditDialog::updatePromptFieldsEnabled);
+    connect(ui->checkBox_promptOnly, &QCheckBox::toggled, this, &TestCaseEditDialog::updatePromptFieldsEnabled);
     connect(ui->checkBox_hookEnabled, &QCheckBox::toggled, this, &TestCaseEditDialog::updateHookFieldsEnabled);
     connect(ui->comboBox_hookId, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
             &TestCaseEditDialog::onHookIdChanged);
@@ -895,26 +931,35 @@ void TestCaseEditDialog::updateGateFieldsEnabled() {
 
 void TestCaseEditDialog::updatePromptFieldsEnabled() {
     const bool on = ui->checkBox_promptEnabled->isChecked();
+    ui->checkBox_promptOnly->setVisible(on);
     ui->label_promptText->setVisible(on);
     ui->plainTextEdit_promptText->setVisible(on);
+    if (!on)
+        ui->checkBox_promptOnly->setChecked(false);
+    // 纯空白提醒时隐藏测试指令区；Hook 本身也会隐藏，二者互不覆盖
+    if (!ui->checkBox_hookEnabled->isChecked())
+        ui->groupBox_send->setVisible(!on || !ui->checkBox_promptOnly->isChecked());
 }
 
 void TestCaseEditDialog::updateHookFieldsEnabled() {
     const bool on = ui->checkBox_hookEnabled->isChecked();
     const QString hookId = on ? comboData(ui->comboBox_hookId) : QString();
     const bool suctionHook = isSuctionSampleHookId(hookId);
+    const bool promptOnly =
+        ui->checkBox_promptEnabled->isChecked() && ui->checkBox_promptOnly->isChecked();
     ui->label_hookId->setVisible(on);
     ui->comboBox_hookId->setVisible(on);
-    ui->groupBox_send->setVisible(!on);
+    // Hook 或纯空白提醒时隐藏测试指令区
+    ui->groupBox_send->setVisible(!on && !promptOnly);
     if (!on) {
         updateProductProtocolRowVisible();
         onDeviceCmdChanged(ui->comboBox_deviceCmd->currentIndex());
         return;
     }
     if (suctionHook) {
-        const SendCmdParamUi schema = suctionSampleHookParamUi();
+        const SendCmdParamUi schema = suctionSampleHookParamUi(hookId);
         updateSendParamVisibility(true);
-        applySendParamHintToUi(schema, ui->label_sendParamHint, ui->plainTextEdit_jsonParam, ui->spinBox_intParam);
+        applySendParamHintToUi(schema, true, ui->label_sendParamHint, ui->plainTextEdit_jsonParam, ui->spinBox_intParam);
         ui->stackedWidget_param->setCurrentWidget(ui->page_paramJson);
         return;
     }
@@ -945,6 +990,7 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     ui->lineEdit_caseName->setText(def.meta.name);
     ui->lineEdit_mesTag->setText(def.meta.mesTag);
     ui->checkBox_promptEnabled->setChecked(def.meta.promptEnabled);
+    ui->checkBox_promptOnly->setChecked(def.meta.promptOnly);
     ui->plainTextEdit_promptText->setPlainText(def.meta.promptText);
 
     const TestCaseSendAction action = def.send.action;
@@ -987,7 +1033,8 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     ui->comboBox_deviceCmd->blockSignals(false);
     onDeviceCmdChanged(cmdIdx);
 
-    const SendCmdParamUi uiSchema = sendCmdParamUiForName(def.send.deviceCmd, channel, def.send.device);
+    const QString protocolCtx = sendParamProtocolContext(channel, comboData(ui->comboBox_productProtocol));
+    const SendCmdParamUi uiSchema = sendCmdParamUiForName(def.send.deviceCmd, channel, protocolCtx);
     QVariant paramForUi = def.send.param;
     if (channel == TestCaseSendChannel::Fixture && uiSchema.kind == SendCmdParamKind::Int && isFixtureMachineIndexPlaceholder(def.send.param))
         paramForUi = 0;
@@ -1040,7 +1087,7 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     updatePromptFieldsEnabled();
     updateHookFieldsEnabled();
     if (def.hook.enabled && isSuctionSampleHookId(def.hook.hookId)) {
-        applySendParamToUi(suctionSampleHookParamUi(), def.send.param, ui->page_paramNone, ui->page_paramInt,
+        applySendParamToUi(suctionSampleHookParamUi(def.hook.hookId), def.send.param, ui->page_paramNone, ui->page_paramInt,
                            ui->page_paramJson, ui->stackedWidget_param, ui->spinBox_intParam,
                            ui->plainTextEdit_jsonParam);
         ui->stackedWidget_param->setCurrentWidget(ui->page_paramJson);
@@ -1053,6 +1100,7 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
     def.meta.displayName = def.meta.name;
     def.meta.mesTag = ui->lineEdit_mesTag->text().trimmed();
     def.meta.promptEnabled = ui->checkBox_promptEnabled->isChecked();
+    def.meta.promptOnly = def.meta.promptEnabled && ui->checkBox_promptOnly->isChecked();
     def.meta.promptText = ui->plainTextEdit_promptText->toPlainText();
 
     def.send.action = comboData(ui->comboBox_action) == QLatin1String("Get") ? TestCaseSendAction::Get
@@ -1069,11 +1117,14 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
     def.send.deviceCmd = comboData(ui->comboBox_deviceCmd);
     def.hook.enabled = ui->checkBox_hookEnabled->isChecked();
     def.hook.hookId = comboData(ui->comboBox_hookId);
+    const QString protocolCtx =
+        sendParamProtocolContext(def.send.channel, comboData(ui->comboBox_productProtocol));
+    const SendCmdParamUi uiSchema =
+        sendCmdParamUiForName(def.send.deviceCmd, def.send.channel, protocolCtx);
     if (def.hook.enabled && isSuctionSampleHookId(def.hook.hookId)) {
         def.send.param =
-            readSendParamFromUi(suctionSampleHookParamUi(), ui->spinBox_intParam, ui->plainTextEdit_jsonParam);
+            readSendParamFromUi(suctionSampleHookParamUi(def.hook.hookId), ui->spinBox_intParam, ui->plainTextEdit_jsonParam);
     } else {
-        const SendCmdParamUi uiSchema = sendCmdParamUiForName(def.send.deviceCmd, def.send.channel, def.send.device);
         def.send.param = readSendParamFromUi(uiSchema, ui->spinBox_intParam, ui->plainTextEdit_jsonParam);
         if (def.send.channel == TestCaseSendChannel::Fixture && uiSchema.kind == SendCmdParamKind::Int
             && ui->spinBox_intParam->value() == 0)
@@ -1172,11 +1223,9 @@ void TestCaseEditDialog::onDeviceCmdChanged(int) {
     const SendCmdParamUi uiSchema = sendCmdParamUiForName(cmdName, channel, device);
     const bool hasParam = uiSchema.valid && uiSchema.kind != SendCmdParamKind::None;
     updateSendParamVisibility(hasParam);
-    applySendParamHintToUi(uiSchema, ui->label_sendParamHint, ui->plainTextEdit_jsonParam, ui->spinBox_intParam);
+    applySendParamHintToUi(uiSchema, hasParam, ui->label_sendParamHint, ui->plainTextEdit_jsonParam, ui->spinBox_intParam);
     if (!uiSchema.valid) {
         ui->stackedWidget_param->setCurrentWidget(ui->page_paramNone);
-        ui->label_sendParamHint->setText(uiSchema.hint);
-        ui->label_sendParamHint->setVisible(!uiSchema.hint.isEmpty());
         return;
     }
     if (uiSchema.kind == SendCmdParamKind::None) {

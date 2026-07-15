@@ -189,6 +189,8 @@ class test_base : public QWidget {
     void solveGetBrushResponse(int data);
     void solveMesSucess(const int mechines);
     void solveMesData(const int mechines, QString msg);
+    /** 测试开始前统一开启会话日志（各工站勿直接调 Qlog::beginSession） */
+    void onTestSessionStarting(const QString& sn, const QString& mac = {});
     void showlog(QString msg);
 
     // --- 串口打开 / 关闭 / 扫描 ---
@@ -284,6 +286,10 @@ class test_base : public QWidget {
     void finishCommandRetryWait(bool success, const QString& logMessage);
     /** 测试结束：本地入库 + 云端上报；useMes 为真时再触发 MES 过站 */
     void finishTestRecord(const MesPacketData& pack, bool useMes);
+
+    QString sessionSnForLog();
+    QString sessionMacForLog();
+    void abortTestSessionAndUpload();
     void closeEvent(QCloseEvent* event) override;
     void resetVisaBackend();
 

@@ -2,6 +2,7 @@
 #define FIXTURE_UART_CODEC_H
 
 #include <QByteArray>
+#include <QString>
 
 class QSerialPort;
 class Qlog;
@@ -15,6 +16,13 @@ namespace FixtureUartCodec {
 
 void writeFrame(QSerialPort* serialPort, Qlog& log, const QByteArray& dataToSend);
 QByteArray amplitudeQueryCommand();
+
+/**
+ * 原始下发内容解析：
+ * - 形如 "11 11 22" / "111122" / "11:11:22" → 十六进制字节（parsedAsHex=true）
+ * - 否则按 UTF-8 原文（parsedAsHex=false，如 readonce）
+ */
+QByteArray encodeRawOrHexText(const QString& text, bool* parsedAsHex = nullptr);
 
 } // namespace FixtureUartCodec
 

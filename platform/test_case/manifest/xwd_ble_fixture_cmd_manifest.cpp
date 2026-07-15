@@ -7,8 +7,8 @@ using XwdBleFixtureCmdManifest::Row;
 constexpr uint8_t kSet = TestCaseCmdManifest::kSendActionSet;
 
 const Row kRows[] = {
-    {XwdBleFixtureCmd::SendRaw, "SendRaw", u8"原文发送", DeviceCmdParamKind::String,
-     u8"按 UTF-8 原文下发至治具串口（含 \\r\\n 需自行写入）", kSet},
+    {XwdBleFixtureCmd::SendRaw, "SendRaw", u8"原始字节发送", DeviceCmdParamKind::String,
+     u8"十六进制原始字节，例：11 11 22 或 111122\n非 hex 内容按 UTF-8 原文下发", kSet},
 };
 
 } // namespace

@@ -9,7 +9,6 @@
 #include <QLineEdit>
 #include <QFileDialog>
 #include <QFileInfo>
-#include <QMessageBox>
 #include <QSignalBlocker>
 #include <QString>
 #include <QTabWidget>
@@ -17,13 +16,7 @@
 #include "ui_qsetting.h"
 #include "test_flow/test_flow_editor.h"
 #include "bydmes.h"
-#include "log_upload_service.h"
-#include "test_case_sync_service.h"
-#include "host_ota_service.h"
-#include "factory_cloud_client.h"
 #include "factory_cloud_env.h"
-
-#include <QtConcurrent>
 
 struct FreeWorkTestCatalogItem {
     int id;
@@ -155,12 +148,17 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     ui->tabWidget->setCurrentIndex(0); // 设置当前页为第一页
 
     ui->groupBox_SubPIDSettings->hide();
+    // 「无用项目」页保留控件与 ini 绑定，界面不再展示（改阈值改 ini 或恢复该 Tab）
+    const int tabUnused = ui->tabWidget->indexOf(ui->tab);
+    if (tabUnused >= 0) {
+        ui->tabWidget->setTabVisible(tabUnused, false);
+    }
 }
 
 void qsetting::initSettingTooltips() {
     setToolTip(QStringLiteral(
         "上位机全局参数；修改工站类型后需重启程序生效。\n"
-        "串口、窗口大小、当前工站、WIFI/Name*、FactoryCloud（BaseUrl/HostOtaCheckUrl/环境/登录态/工站 Key）→「上位机设置.local.ini」（不入库）；\n"
+        "串口、窗口大小、当前工站、WIFI/Name*、FactoryCloud（BaseUrl/登录态等）→「上位机设置.local.ini」（不入库）；\n"
         "其余参数 →「上位机设置.ini」。"));
     // const int tabFixture = ui->tabWidget->indexOf(ui->tab_fixture_setting);
     const int tabKey = ui->tabWidget->indexOf(ui->tab_key_setting);
@@ -887,50 +885,6 @@ void qsetting::on_pushButton_mesConfigFileBrowse_clicked() {
     }
 }
 
-void qsetting::on_pushButton_factoryCloudUploadLogs_clicked() {
-    saveConfig();
-    startLogUpload();
-}
-
-void qsetting::startLogUpload() {
-    if (ui->pushButton_factoryCloudUploadLogs && !ui->pushButton_factoryCloudUploadLogs->isEnabled()) {
-        return;
-    }
-    if (!LogUploadService::isUploadEnabled()) {
-        QMessageBox::information(this, QStringLiteral("日志上传"),
-                                 QStringLiteral("已在云平台设置中关闭「日志」功能开关"));
-        return;
-    }
-
-    QString configError;
-    LogUploadService::UploadConfig cfg;
-    if (!LogUploadService::configFromSettings(&cfg, &configError)) {
-        QMessageBox::warning(this, QStringLiteral("日志上传"), configError);
-        return;
-    }
-
-    ui->pushButton_factoryCloudUploadLogs->setEnabled(false);
-    ui->label_factoryCloudStatus->setText(QStringLiteral("正在后台打包并上传 所有log，请稍候…"));
-
-    auto* watcher = new QFutureWatcher<QPair<bool, QString>>(this);
-    connect(watcher, &QFutureWatcher<QPair<bool, QString>>::finished, this, [this, watcher]() {
-        const QPair<bool, QString> result = watcher->result();
-        ui->label_factoryCloudStatus->setText(result.second);
-        ui->pushButton_factoryCloudUploadLogs->setEnabled(true);
-        if (result.first) {
-            QMessageBox::information(this, QStringLiteral("日志上传"), result.second);
-        } else {
-            QMessageBox::warning(this, QStringLiteral("日志上传"), result.second);
-        }
-        watcher->deleteLater();
-    });
-    watcher->setFuture(QtConcurrent::run([cfg]() {
-        QString message;
-        const bool ok = LogUploadService::packAndUpload(cfg, &message);
-        return qMakePair(ok, message);
-    }));
-}
-
 void qsetting::initTestFlowEditorUi() {
     testFlowEditor_ = new TestFlowEditor(this);
     testFlowEditor_->bindUi(this, ui->comboBox_testFlowStation, ui->scrollArea_testFlow,
@@ -959,44 +913,6 @@ void qsetting::initTestFlowEditorUi() {
 void qsetting::syncFactoryCloudDerivedUrls() {
     const QString baseUrl = SETTINGS.value(QStringLiteral("FactoryCloud/BaseUrl")).toString().trimmed();
     FactoryCloudEnv::syncDerivedUrlsFromBaseUrl(baseUrl);
-}
-
-void qsetting::on_pushButton_uploadTestCase_clicked() {
-    saveConfig();
-    if (!TestCaseSyncService::isEnabled()) {
-        QMessageBox::information(this, QStringLiteral("用例上传"), QStringLiteral("测试用例云同步未启用"));
-        return;
-    }
-    const auto answer =
-        QMessageBox::question(this, QStringLiteral("上传用例"),
-                              QStringLiteral("将打包本地 test_case 目录（不含 .backup）上传至云端并发布新版本，其他产线机可「下载用例」拉取。\n\n确认上传？"));
-    if (answer != QMessageBox::Yes) {
-        return;
-    }
-    ui->label_factoryCloudStatus->setText(QStringLiteral("正在打包并上传测试用例…"));
-    const TestCaseSyncService::SyncResult result = TestCaseSyncService::uploadToCloud();
-    ui->label_factoryCloudStatus->setText(result.message);
-    if (result.ok) {
-        QMessageBox::information(this, QStringLiteral("用例上传"), result.message);
-    } else {
-        QMessageBox::warning(this, QStringLiteral("用例上传"), result.message);
-    }
-}
-
-void qsetting::on_pushButton_syncTestCase_clicked() {
-    saveConfig();
-    if (!TestCaseSyncService::isEnabled()) {
-        QMessageBox::information(this, QStringLiteral("用例下载"), QStringLiteral("测试用例云同步未启用"));
-        return;
-    }
-    ui->label_factoryCloudStatus->setText(QStringLiteral("正在从云端下载测试用例…"));
-    const TestCaseSyncService::SyncResult result = TestCaseSyncService::syncFromCloud();
-    ui->label_factoryCloudStatus->setText(result.message);
-    if (result.ok) {
-        QMessageBox::information(this, QStringLiteral("用例下载"), result.message);
-    } else {
-        QMessageBox::warning(this, QStringLiteral("用例下载"), result.message);
-    }
 }
 
 

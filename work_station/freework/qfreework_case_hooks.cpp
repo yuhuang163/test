@@ -65,6 +65,10 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         fw->runDongleSuctionSampleStep();
         return;
     }
+    if (hookId == QStringLiteral("DONGLE_SUCTION_SAMPLE_SINGLE")) {
+        fw->runDongleSuctionSampleSingleStep();
+        return;
+    }
     if (hookId == QStringLiteral("SN_WRITE_TAIL")) {
         const QByteArray tailSn = fw->resolvedTailSnToWrite();
         if (tailSn.isEmpty()) {
@@ -273,6 +277,7 @@ void QFreeWorkTestCaseHookRegistrar::registerAll() {
     registerHook(QStringLiteral("DONGLE_SUCTION_ENABLE"));
     registerHook(QStringLiteral("DONGLE_SUCTION_DISABLE"));
     registerHook(QStringLiteral("DONGLE_SUCTION_SAMPLE"));
+    registerHook(QStringLiteral("DONGLE_SUCTION_SAMPLE_SINGLE"));
     registerHook(QStringLiteral("SN_WRITE_TAIL"));
     registerHook(QStringLiteral("MAC_WRITE_ROOT"));
     registerHook(QStringLiteral("BLE_CONNECT_BY_NAME"));

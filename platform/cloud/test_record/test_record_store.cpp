@@ -267,6 +267,15 @@ QVector<TestRecordStore::ParsedItem> TestRecordStore::parseItemValue(const MesPa
             item.unit = parts.at(5).trimmed();
             if (parts.size() >= 7) {
                 item.result = parts.at(6).trimmed();
+                // 兼容旧版自由工站：RESULT 误写成 FAIL;实测值
+                if (item.value.isEmpty() && item.result.contains(QLatin1Char(';'))) {
+                    const int semi = item.result.indexOf(QLatin1Char(';'));
+                    const QString prefix = item.result.left(semi).trimmed();
+                    if (prefix.compare(QStringLiteral("FAIL"), Qt::CaseInsensitive) == 0) {
+                        item.value = item.result.mid(semi + 1).trimmed();
+                        item.result = QStringLiteral("FAIL");
+                    }
+                }
             }
         } else if (parts.size() == 2) {
             item.name = parts.at(0).trimmed();

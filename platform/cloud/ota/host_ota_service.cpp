@@ -141,7 +141,7 @@ HostOtaService::CheckResult HostOtaService::checkUpdate() {
     if (result.hasUpdate) {
         result.message = QStringLiteral("发现新版本 %1 (buildId=%2)").arg(result.appVersion, result.buildId);
     } else if (result.hostNewer) {
-        result.message = QStringLiteral("本地版本比服务器新，正在上传…");
+        result.message = QStringLiteral("本地版本比服务器新");
     } else {
         result.message = QStringLiteral("当前已是最新版本");
     }
@@ -376,8 +376,7 @@ bool HostOtaService::tryInteractiveUpdate(QWidget* parent,
                                           const std::function<void(const QString&)>& logFn) {
     const QString baseUrl = FactoryCloudClient::baseUrl();
     qDebug() << "[OTA] tryInteractiveUpdate baseUrl=" << baseUrl;
-    if (baseUrl.isEmpty() ||
-        !SETTINGS.value(QStringLiteral("FactoryCloud/Feature/HostOtaCheck"), true).toBool()) {
+    if (baseUrl.isEmpty()) {
         qDebug() << "[OTA] OTA 未配置，跳过";
         return false;
     }
@@ -398,23 +397,42 @@ bool HostOtaService::tryInteractiveUpdate(QWidget* parent,
         return false;
     }
 
-    if (check.hostNewer) {
-        log(QStringLiteral("[OTA] hostNewer=true，尝试上传当前版本"));
-        QString uploadMsg;
-        const bool uploaded = uploadCurrentExe(&uploadMsg);
-        if (parent) {
-            if (uploaded) {
-                QMessageBox::information(parent, QStringLiteral("检查更新"),
-                                         QStringLiteral("已将本地版本上传至服务器"));
-            } else {
-                QMessageBox::warning(parent, QStringLiteral("检查更新"),
-                                     QStringLiteral("上传失败：") + uploadMsg);
-            }
-        }
-        log(QStringLiteral("[OTA] 上传结果: ") + uploadMsg);
-        return true;
+    if (check.hasUpdate) {
+        log(QStringLiteral("[OTA] 发现服务器有新版本，弹出版本选择列表"));
+        return showVersionPicker(parent, logFn);
     }
 
-    log(QStringLiteral("[OTA] hostNewer=false，弹出版本选择列表"));
-    return showVersionPicker(parent, logFn);
+    // 已是最新 或 本地更新：弹窗确认是否上传当前 exe
+    const QString localVer = FactoryCloudClient::appVersion();
+    const QString localBid = FactoryCloudClient::buildId();
+    const QString askText =
+        check.hostNewer
+            ? QStringLiteral("本地版本（%1，buildId=%2）比服务器新。\n\n是否将目前版本上传到服务器？")
+                  .arg(localVer, localBid)
+            : QStringLiteral("当前已是最新版本（%1，buildId=%2）。\n\n是否将目前版本上传到服务器？")
+                  .arg(localVer, localBid);
+    log(QStringLiteral("[OTA] ") + check.message + QStringLiteral("，询问是否上传"));
+    if (parent) {
+        const auto answer =
+            QMessageBox::question(parent, QStringLiteral("检查更新"), askText,
+                                  QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+        if (answer != QMessageBox::Yes) {
+            log(QStringLiteral("[OTA] 用户取消上传"));
+            return true;
+        }
+    }
+
+    QString uploadMsg;
+    const bool uploaded = uploadCurrentExe(&uploadMsg);
+    if (parent) {
+        if (uploaded) {
+            QMessageBox::information(parent, QStringLiteral("检查更新"),
+                                     QStringLiteral("已将目前版本上传至服务器：\n") + uploadMsg);
+        } else {
+            QMessageBox::warning(parent, QStringLiteral("检查更新"),
+                                 QStringLiteral("上传失败：") + uploadMsg);
+        }
+    }
+    log(QStringLiteral("[OTA] 上传结果: ") + uploadMsg);
+    return true;
 }

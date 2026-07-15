@@ -8,7 +8,7 @@
 #pragma execution_character_set(push, "utf-8")
 #endif
 
-/** 欣旺达 xwd 蓝牙工站治具：原文组帧（不做转义或追加换行）。 */
+/** 欣旺达 xwd 蓝牙工站治具：原始下发（十六进制字节优先，否则 UTF-8 原文）。 */
 namespace XwdBleUartCodec {
 
 QByteArray encodeRawText(const QString& text);

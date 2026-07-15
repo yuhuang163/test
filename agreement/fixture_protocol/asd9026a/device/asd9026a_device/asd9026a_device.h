@@ -11,8 +11,14 @@
 
 struct Asd9026aAnalogStatus {
     bool outputOn = false;
+    /** 已按回包单位换算后的基单位：电压=V，电流=A */
     double voltage = 0.0;
     double current = 0.0;
+    quint32 voltageRaw = 0;
+    quint32 currentRaw = 0;
+    /** 协议单位码：1=V/A 2=m 3=u 4=n（0 按 u） */
+    quint8 voltageUnitCode = 0;
+    quint8 currentUnitCode = 0;
     int temperatureC = 0;
 };
 

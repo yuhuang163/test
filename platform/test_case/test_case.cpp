@@ -6,6 +6,7 @@
 #include "fixture_pcba_cmd_manifest.h"
 #include "asd9026a_cmd_manifest.h"
 #include "xwd_ble_fixture_cmd_manifest.h"
+#include "xwd_suction_fixture_cmd_manifest.h"
 #include "product_serial_cmd_manifest.h"
 #include "modbus_cmd_manifest.h"
 #include "scpi_cmd_manifest.h"
@@ -254,6 +255,16 @@ QString resolveStationKeyForProfileFolder(const QString& folderName, const QStri
     return stationKey;
 }
 
+void stripLegacyFlowMetaFromFlowIniFile() {
+    const QString flowPath = TestCasePaths::flowIniPath();
+    QSettings ini(flowPath, QSettings::IniFormat);
+    applyTestCaseIniCodec(ini);
+    ini.beginGroup(QStringLiteral("Meta"));
+    ini.remove(QString());
+    ini.endGroup();
+    syncTestCaseIni(ini, flowPath);
+}
+
 void migrateFlowStationIniData(const QString& oldKey, const QString& newKey, const QString& displayName) {
     if (oldKey.isEmpty() || newKey.isEmpty() || oldKey.compare(newKey, Qt::CaseInsensitive) == 0)
         return;
@@ -298,7 +309,7 @@ void migrateFlowStationIniData(const QString& oldKey, const QString& newKey, con
         metaChanged = true;
     }
     if (metaChanged)
-        TestCaseStore::saveFlowMeta(meta);
+        TestCaseStore::saveSelectedFlowStation(meta.selectedStation, meta.selectedStationName);
 
     syncTestCaseIni(ini, flowPath);
 }
@@ -847,6 +858,31 @@ bool overlayHasSendParamKeys(const QSettings& overlay) {
     return false;
 }
 
+void applySendChannelIniText(const QString& channelIni, TestCaseDefinition& def) {
+    if (channelIni.compare(QStringLiteral("Dongle"), Qt::CaseInsensitive) == 0) {
+        def.send.channel = TestCaseSendChannel::Dongle;
+    } else if (channelIni.compare(QStringLiteral("Cloud"), Qt::CaseInsensitive) == 0) {
+        def.send.channel = TestCaseSendChannel::Cloud;
+    } else if (channelIni.compare(QStringLiteral("ProductSerial"), Qt::CaseInsensitive) == 0) {
+        def.send.channel = TestCaseSendChannel::ProductSerial;
+    } else if (channelIni.compare(QStringLiteral("Product"), Qt::CaseInsensitive) == 0) {
+        def.send.channel = TestCaseSendChannel::Product;
+    } else if (channelIni.compare(QStringLiteral("Fixture"), Qt::CaseInsensitive) == 0) {
+        def.send.channel = TestCaseSendChannel::Fixture;
+    } else if (channelIni.compare(QStringLiteral("Modbus"), Qt::CaseInsensitive) == 0) {
+        def.send.channel = TestCaseSendChannel::Modbus;
+    } else if (channelIni.compare(QStringLiteral("Scpi"), Qt::CaseInsensitive) == 0) {
+        def.send.channel = TestCaseSendChannel::Scpi;
+    }
+}
+
+void applySendProtocolIniText(const QString& protocolIni, TestCaseDefinition& def) {
+    if (def.send.channel == TestCaseSendChannel::Fixture)
+        def.send.fixtureProtocol = FixturePcbaCmdCatalog::fixtureProtocolFromIni(protocolIni);
+    else
+        def.send.productProtocol = DeviceCmdCatalog::productProtocolFromIni(protocolIni);
+}
+
 bool stepIniHasMeaningfulContent(const QString& path) {
     if (!QFile::exists(path))
         return false;
@@ -930,6 +966,7 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
     out.meta.displayName = out.meta.name;
     out.meta.mesTag = ini.value(QStringLiteral("Meta/MesTag")).toString().trimmed();
     out.meta.promptEnabled = ini.value(QStringLiteral("Meta/PromptEnabled"), false).toBool();
+    out.meta.promptOnly = ini.value(QStringLiteral("Meta/PromptOnly"), false).toBool();
     out.meta.promptText = ini.value(QStringLiteral("Meta/PromptText")).toString();
 
     const QString action = ini.value(QStringLiteral("Send/Action"), QStringLiteral("Set")).toString();
@@ -1017,6 +1054,13 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
                 if (!XwdBleFixtureCmdCatalog::isCmdForAction(xwdCmd, out.send.action))
                     out.send.action = XwdBleFixtureCmdCatalog::actionFor(xwdCmd);
                 XwdBleFixtureCmdCatalog::paramFromIniGroup(ini, xwdCmd, out.send.param);
+            }
+        } else if (out.send.fixtureProtocol == TestCaseFixtureProtocol::XwdSuction) {
+            XwdSuctionFixtureCmd xwdCmd;
+            if (XwdSuctionFixtureCmdCatalog::xwdSuctionFixtureCmdFromName(out.send.deviceCmd, xwdCmd)) {
+                if (!XwdSuctionFixtureCmdCatalog::isCmdForAction(xwdCmd, out.send.action))
+                    out.send.action = XwdSuctionFixtureCmdCatalog::actionFor(xwdCmd);
+                XwdSuctionFixtureCmdCatalog::paramFromIniGroup(ini, xwdCmd, out.send.param);
             }
         } else {
             FixturePcbaCmd fixtureCmd;
@@ -1165,15 +1209,19 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
 }
 
 void applyCaseIniOverlay(QSettings& overlay, TestCaseDefinition& def) {
+    // 工站 profiles/.../steps/ 中已存在的键覆盖步骤库占位；未写入的键保留 def（来自步骤库）默认值
     if (overlay.contains(QStringLiteral("Meta/MesTag")))
         def.meta.mesTag = overlay.value(QStringLiteral("Meta/MesTag")).toString().trimmed();
     if (overlay.contains(QStringLiteral("Meta/PromptEnabled")))
         def.meta.promptEnabled = overlay.value(QStringLiteral("Meta/PromptEnabled")).toBool();
+    if (overlay.contains(QStringLiteral("Meta/PromptOnly")))
+        def.meta.promptOnly = overlay.value(QStringLiteral("Meta/PromptOnly")).toBool();
     if (overlay.contains(QStringLiteral("Meta/PromptText")))
         def.meta.promptText = overlay.value(QStringLiteral("Meta/PromptText")).toString();
 
     const bool hasSendOverlay = overlay.allKeys().contains(QStringLiteral("Send/Action"))
         || overlay.allKeys().contains(QStringLiteral("Send/Channel"))
+        || overlay.allKeys().contains(QStringLiteral("Send/Protocol"))
         || overlay.allKeys().contains(QStringLiteral("Send/DeviceCmd"))
         || overlay.allKeys().contains(QStringLiteral("Send/Device"))
         || !readSendParamMap(overlay).isEmpty()
@@ -1184,6 +1232,10 @@ void applyCaseIniOverlay(QSettings& overlay, TestCaseDefinition& def) {
             def.send.action = action.compare(QLatin1String("Get"), Qt::CaseInsensitive) == 0 ? TestCaseSendAction::Get
                                                                                              : TestCaseSendAction::Set;
         }
+        if (overlay.contains(QStringLiteral("Send/Channel")))
+            applySendChannelIniText(overlay.value(QStringLiteral("Send/Channel")).toString().trimmed(), def);
+        if (overlay.contains(QStringLiteral("Send/Protocol")))
+            applySendProtocolIniText(overlay.value(QStringLiteral("Send/Protocol")).toString(), def);
         if (overlay.contains(QStringLiteral("Send/Device")))
             def.send.device = overlay.value(QStringLiteral("Send/Device")).toString().trimmed();
         if (overlay.contains(QStringLiteral("Send/DeviceCmd")))
@@ -1201,12 +1253,24 @@ void applyCaseIniOverlay(QSettings& overlay, TestCaseDefinition& def) {
                 def.send.param = normalizeScpiModbusParamFromMap(merged);
             } else if (def.send.channel == TestCaseSendChannel::Product) {
                 DeviceCmd cmd;
-                if (DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd))
-                    def.send.param = DeviceCmdCatalog::normalizeSendParam(cmd, paramMap);
-                else
+                if (DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd)) {
+                    QVariantMap merged;
+                    if (def.send.param.canConvert<QVariantMap>())
+                        merged = def.send.param.toMap();
+                    for (auto it = paramMap.constBegin(); it != paramMap.constEnd(); ++it)
+                        merged.insert(it.key(), it.value());
+                    def.send.param = DeviceCmdCatalog::normalizeSendParam(cmd, merged);
+                } else {
                     def.send.param = paramMap;
+                }
+            } else if (!def.send.param.canConvert<QVariantMap>()) {
+                // Param_string 等叶子读成单键 map；若不解开，String 型执行时 .toString() 会得到空串
+                def.send.param = normalizeScpiModbusParamFromMap(paramMap);
             } else {
-                def.send.param = paramMap;
+                QVariantMap merged = def.send.param.toMap();
+                for (auto it = paramMap.constBegin(); it != paramMap.constEnd(); ++it)
+                    merged.insert(it.key(), it.value());
+                def.send.param = normalizeScpiModbusParamFromMap(merged);
             }
         } else if (overlay.contains(QStringLiteral("Send/Param"))) {
             def.send.param = overlay.value(QStringLiteral("Send/Param"));
@@ -1228,6 +1292,10 @@ void applyCaseIniOverlay(QSettings& overlay, TestCaseDefinition& def) {
                     XwdBleFixtureCmd xwdCmd;
                     if (XwdBleFixtureCmdCatalog::xwdBleFixtureCmdFromName(def.send.deviceCmd, xwdCmd))
                         XwdBleFixtureCmdCatalog::paramFromIniGroup(overlay, xwdCmd, def.send.param);
+                } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::XwdSuction) {
+                    XwdSuctionFixtureCmd xwdCmd;
+                    if (XwdSuctionFixtureCmdCatalog::xwdSuctionFixtureCmdFromName(def.send.deviceCmd, xwdCmd))
+                        XwdSuctionFixtureCmdCatalog::paramFromIniGroup(overlay, xwdCmd, def.send.param);
                 } else {
                     FixturePcbaCmd fixtureCmd;
                     if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd))
@@ -1548,6 +1616,10 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
                 XwdBleFixtureCmd xwdCmd;
                 if (XwdBleFixtureCmdCatalog::xwdBleFixtureCmdFromName(def.send.deviceCmd, xwdCmd))
                     XwdBleFixtureCmdCatalog::paramToIniGroup(ini, xwdCmd, def.send.param);
+            } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::XwdSuction) {
+                XwdSuctionFixtureCmd xwdCmd;
+                if (XwdSuctionFixtureCmdCatalog::xwdSuctionFixtureCmdFromName(def.send.deviceCmd, xwdCmd))
+                    XwdSuctionFixtureCmdCatalog::paramToIniGroup(ini, xwdCmd, def.send.param);
             } else {
                 FixturePcbaCmd fixtureCmd;
                 if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd))
@@ -1583,6 +1655,7 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
     ini.setValue(QStringLiteral("Meta/DisplayName"), def.meta.name);
     ini.setValue(QStringLiteral("Meta/MesTag"), def.meta.mesTag);
     ini.setValue(QStringLiteral("Meta/PromptEnabled"), def.meta.promptEnabled);
+    ini.setValue(QStringLiteral("Meta/PromptOnly"), def.meta.promptOnly);
     ini.setValue(QStringLiteral("Meta/PromptText"), def.meta.promptText);
 
     ini.setValue(QStringLiteral("Send/Action"), def.send.action == TestCaseSendAction::Get ? QStringLiteral("Get") : QStringLiteral("Set"));
@@ -1610,6 +1683,9 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
         } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::XwdBle) {
             ini.setValue(QStringLiteral("Send/Device"),
                          def.send.device.isEmpty() ? QStringLiteral("XWD_BLE") : def.send.device);
+        } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::XwdSuction) {
+            ini.setValue(QStringLiteral("Send/Device"),
+                         def.send.device.isEmpty() ? QStringLiteral("XWD_SUCTION") : def.send.device);
         }
     }
     ini.setValue(QStringLiteral("Send/DeviceCmd"), def.send.deviceCmd);
@@ -1630,6 +1706,10 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
             XwdBleFixtureCmd xwdCmd;
             if (XwdBleFixtureCmdCatalog::xwdBleFixtureCmdFromName(def.send.deviceCmd, xwdCmd))
                 XwdBleFixtureCmdCatalog::paramToIniGroup(ini, xwdCmd, def.send.param);
+        } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::XwdSuction) {
+            XwdSuctionFixtureCmd xwdCmd;
+            if (XwdSuctionFixtureCmdCatalog::xwdSuctionFixtureCmdFromName(def.send.deviceCmd, xwdCmd))
+                XwdSuctionFixtureCmdCatalog::paramToIniGroup(ini, xwdCmd, def.send.param);
         } else {
             FixturePcbaCmd fixtureCmd;
             if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd))
@@ -1690,6 +1770,7 @@ bool TestCaseStore::loadCaseForStation(const QString& stationKey, const QString&
     const QString profileStepPath =
         key.isEmpty() ? QString() : TestCasePaths::profileStepOverridePath(key, id);
 
+    // 步骤库/legacy 为占位默认；工站 steps 仅覆盖其中已配置的字段
     bool loaded = loadCaseDefinitionFromIniFile(libraryPath, id, out);
     if (!loaded)
         loaded = loadCaseDefinitionFromIniFile(legacyPath, id, out);
@@ -1855,25 +1936,66 @@ void TestCaseStore::invalidateCloudItemNameCache() {
     cloudItemNameMapLoaded() = false;
 }
 
-bool TestCaseStore::loadFlowMeta(TestFlowMeta& out) {
+void TestCaseStore::migrateLegacyFlowMetaToLocalSettings() {
+    if (!SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString().trimmed().isEmpty())
+        return;
     TestCasePaths::ensureRootDir();
-    QSettings ini(TestCasePaths::flowIniPath(), QSettings::IniFormat);
+    const QString flowPath = TestCasePaths::flowIniPath();
+    if (!QFile::exists(flowPath))
+        return;
+    QSettings ini(flowPath, QSettings::IniFormat);
     applyTestCaseIniCodec(ini);
-    out.version = ini.value(QStringLiteral("Meta/Version"), 1).toInt();
-    out.selectedStation = ini.value(QStringLiteral("Meta/SelectedStation")).toString().trimmed();
-    out.selectedStationName = ini.value(QStringLiteral("Meta/SelectedStationName")).toString().trimmed();
+    const QString legacyKey = ini.value(QStringLiteral("Meta/SelectedStation")).toString().trimmed();
+    const QString legacyName = ini.value(QStringLiteral("Meta/SelectedStationName")).toString().trimmed();
+    if (legacyKey.isEmpty() && legacyName.isEmpty())
+        return;
+    if (!legacyKey.isEmpty())
+        SETTINGS.setValue(QStringLiteral("TestOrderMeta/SelectedStation"), legacyKey);
+    const QString name = legacyName.isEmpty() ? flowStationDisplayName(legacyKey) : legacyName;
+    if (!name.isEmpty())
+        SETTINGS.setValue(QStringLiteral("TestOrderMeta/SelectedStationName"), name);
+    stripLegacyFlowMetaFromFlowIniFile();
+}
+
+QString TestCaseStore::loadSelectedFlowStationKey() {
+    migrateLegacyFlowMetaToLocalSettings();
+    return SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString().trimmed();
+}
+
+QString TestCaseStore::loadSelectedFlowStationName() {
+    migrateLegacyFlowMetaToLocalSettings();
+    QString name = SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStationName")).toString().trimmed();
+    if (name.isEmpty()) {
+        const QString key = loadSelectedFlowStationKey();
+        if (!key.isEmpty())
+            name = flowStationDisplayName(key);
+    }
+    return name;
+}
+
+void TestCaseStore::saveSelectedFlowStation(const QString& stationKey, const QString& displayName) {
+    const QString key = stationKey.trimmed();
+    if (key.isEmpty())
+        return;
+    QString name = displayName.trimmed();
+    if (name.isEmpty())
+        name = flowStationDisplayName(key);
+    SETTINGS.setValue(QStringLiteral("TestOrderMeta/SelectedStation"), key);
+    SETTINGS.setValue(QStringLiteral("TestOrderMeta/SelectedStationName"), name);
+}
+
+bool TestCaseStore::loadFlowMeta(TestFlowMeta& out) {
+    migrateLegacyFlowMetaToLocalSettings();
+    out.version = 1;
+    out.selectedStation = loadSelectedFlowStationKey();
+    out.selectedStationName = loadSelectedFlowStationName();
     return true;
 }
 
 bool TestCaseStore::saveFlowMeta(const TestFlowMeta& meta) {
-    TestCasePaths::ensureRootDir();
-    const QString flowPath = TestCasePaths::flowIniPath();
-    QSettings ini(flowPath, QSettings::IniFormat);
-    applyTestCaseIniCodec(ini);
-    ini.setValue(QStringLiteral("Meta/Version"), meta.version);
-    ini.setValue(QStringLiteral("Meta/SelectedStation"), meta.selectedStation);
-    ini.setValue(QStringLiteral("Meta/SelectedStationName"), meta.selectedStationName);
-    syncTestCaseIni(ini, flowPath);
+    Q_UNUSED(meta);
+    saveSelectedFlowStation(meta.selectedStation, meta.selectedStationName);
+    stripLegacyFlowMetaFromFlowIniFile();
     return true;
 }
 
@@ -1994,7 +2116,10 @@ bool TestCaseValidator::validateCase(const TestCaseDefinition& def, QStringList&
     if (!TestCasePaths::isValidCaseFileName(def.meta.name, &nameErr))
         errors.append(nameErr);
 
-    if (def.send.deviceCmd.isEmpty()) {
+    const bool promptOnlyStep = def.meta.promptEnabled && def.meta.promptOnly && !def.hook.enabled;
+    if (promptOnlyStep) {
+        // 纯空白提醒：不校验 / 不要求测试指令
+    } else if (def.send.deviceCmd.isEmpty()) {
         errors.append(QStringLiteral("请选择测试指令"));
     } else if (def.send.channel == TestCaseSendChannel::Dongle) {
         DongleCmd dongleCmd;
@@ -2047,6 +2172,17 @@ bool TestCaseValidator::validateCase(const TestCaseDefinition& def, QStringList&
                 DeviceCmdParamSchema schema;
                 if (!XwdBleFixtureCmdCatalog::paramSchemaFor(xwdCmd, schema))
                     errors.append(QStringLiteral("该 XWD蓝牙治具指令尚未配置参数模板，请联系工程师"));
+            }
+        } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::XwdSuction) {
+            XwdSuctionFixtureCmd xwdCmd;
+            if (!XwdSuctionFixtureCmdCatalog::xwdSuctionFixtureCmdFromName(def.send.deviceCmd, xwdCmd)) {
+                errors.append(QStringLiteral("XWD吸力治具指令无效"));
+            } else if (!XwdSuctionFixtureCmdCatalog::isCmdForAction(xwdCmd, def.send.action)) {
+                errors.append(QStringLiteral("XWD吸力治具指令与操作方式不匹配"));
+            } else {
+                DeviceCmdParamSchema schema;
+                if (!XwdSuctionFixtureCmdCatalog::paramSchemaFor(xwdCmd, schema))
+                    errors.append(QStringLiteral("该 XWD吸力治具指令尚未配置参数模板，请联系工程师"));
             }
         } else if (def.send.fixtureProtocol != TestCaseFixtureProtocol::Pcba) {
             errors.append(QStringLiteral("治具协议类型无效"));
@@ -2532,7 +2668,19 @@ void DeviceCmdCatalog::paramToIniGroup(QSettings& settings, DeviceCmd cmd, const
     if (!paramSchemaFor(cmd, schema))
         return;
     const QString prefix = sendParamIniPrefix();
-    if (schema.kind == DeviceCmdParamKind::JsonMap) {
+    switch (schema.kind) {
+    case DeviceCmdParamKind::None:
+        break;
+    case DeviceCmdParamKind::Int:
+        writeSendParamLeaf(settings, QStringLiteral("int"), value.toInt());
+        break;
+    case DeviceCmdParamKind::UInt:
+        writeSendParamLeaf(settings, QStringLiteral("uint"), value.toUInt());
+        break;
+    case DeviceCmdParamKind::String:
+        writeSendParamLeaf(settings, QStringLiteral("string"), value.toString());
+        break;
+    case DeviceCmdParamKind::JsonMap:
         if (value.canConvert<QVariantMap>()) {
             writeJsonMap(settings, prefix, value);
         } else if (value.type() == QVariant::String) {
@@ -2540,7 +2688,7 @@ void DeviceCmdCatalog::paramToIniGroup(QSettings& settings, DeviceCmd cmd, const
         } else {
             writeSendParamLeaf(settings, QStringLiteral("value"), value.toInt());
         }
-        return;
+        break;
     }
 }
 
@@ -2855,6 +3003,103 @@ void XwdBleFixtureCmdCatalog::paramToIniGroup(QSettings& settings, XwdBleFixture
     }
 }
 
+// ===================== XwdSuctionFixtureCmdCatalog =====================
+
+QStringList XwdSuctionFixtureCmdCatalog::allXwdSuctionFixtureCmdNames(TestCaseSendAction action) {
+    QStringList names;
+    for (int i = 0; i < XwdSuctionFixtureCmdManifest::rowCount(); ++i) {
+        const XwdSuctionFixtureCmdManifest::Row& row = XwdSuctionFixtureCmdManifest::rows()[i];
+        if (!TestCaseCmdManifest::matchesSendAction(row.sendActions, action))
+            continue;
+        names.append(QString::fromLatin1(row.enumName));
+    }
+    names.sort();
+    return names;
+}
+
+TestCaseSendAction XwdSuctionFixtureCmdCatalog::actionFor(XwdSuctionFixtureCmd cmd) {
+    if (const XwdSuctionFixtureCmdManifest::Row* row = XwdSuctionFixtureCmdManifest::findByCmd(cmd))
+        return TestCaseCmdManifest::defaultSendAction(row->sendActions);
+    return TestCaseSendAction::Set;
+}
+
+bool XwdSuctionFixtureCmdCatalog::isCmdForAction(XwdSuctionFixtureCmd cmd, TestCaseSendAction action) {
+    if (const XwdSuctionFixtureCmdManifest::Row* row = XwdSuctionFixtureCmdManifest::findByCmd(cmd))
+        return TestCaseCmdManifest::matchesSendAction(row->sendActions, action);
+    return false;
+}
+
+QString XwdSuctionFixtureCmdCatalog::xwdSuctionFixtureCmdUiLabel(const QString& enumName) {
+    if (const XwdSuctionFixtureCmdManifest::Row* row = XwdSuctionFixtureCmdManifest::findByEnumName(enumName)) {
+        if (row->uiLabel && row->uiLabel[0] != '\0')
+            return QString::fromUtf8(row->uiLabel);
+    }
+    return enumName;
+}
+
+bool XwdSuctionFixtureCmdCatalog::xwdSuctionFixtureCmdFromName(const QString& name, XwdSuctionFixtureCmd& out) {
+    if (const XwdSuctionFixtureCmdManifest::Row* row = XwdSuctionFixtureCmdManifest::findByEnumName(name)) {
+        out = row->cmd;
+        return true;
+    }
+    return false;
+}
+
+QString XwdSuctionFixtureCmdCatalog::xwdSuctionFixtureCmdToName(XwdSuctionFixtureCmd cmd) {
+    if (const XwdSuctionFixtureCmdManifest::Row* row = XwdSuctionFixtureCmdManifest::findByCmd(cmd))
+        return QString::fromLatin1(row->enumName);
+    return QString();
+}
+
+bool XwdSuctionFixtureCmdCatalog::paramSchemaFor(XwdSuctionFixtureCmd cmd, DeviceCmdParamSchema& out) {
+    if (const XwdSuctionFixtureCmdManifest::Row* row = XwdSuctionFixtureCmdManifest::findByCmd(cmd)) {
+        out.kind = row->paramKind;
+        out.hint = row->paramHint ? QString::fromUtf8(row->paramHint) : QString();
+        return true;
+    }
+    return false;
+}
+
+QString XwdSuctionFixtureCmdCatalog::paramUiHint(const QString& enumName) {
+    if (const XwdSuctionFixtureCmdManifest::Row* row = XwdSuctionFixtureCmdManifest::findByEnumName(enumName)) {
+        if (row->paramHint && row->paramHint[0] != '\0')
+            return QString::fromUtf8(row->paramHint);
+    }
+    return QString();
+}
+
+bool XwdSuctionFixtureCmdCatalog::paramFromIniGroup(const QSettings& settings, XwdSuctionFixtureCmd cmd, QVariant& out) {
+    DeviceCmdParamSchema schema;
+    if (!paramSchemaFor(cmd, schema))
+        return false;
+    switch (schema.kind) {
+    case DeviceCmdParamKind::None:
+        out = QVariant();
+        return true;
+    case DeviceCmdParamKind::String:
+        out = readSendScopedParam(settings, QStringLiteral("string"), QString()).toString();
+        return true;
+    default:
+        return false;
+    }
+}
+
+void XwdSuctionFixtureCmdCatalog::paramToIniGroup(QSettings& settings, XwdSuctionFixtureCmd cmd, const QVariant& value) {
+    removeSendParamKeys(settings);
+    DeviceCmdParamSchema schema;
+    if (!paramSchemaFor(cmd, schema))
+        return;
+    switch (schema.kind) {
+    case DeviceCmdParamKind::None:
+        break;
+    case DeviceCmdParamKind::String:
+        writeSendParamLeaf(settings, QStringLiteral("string"), value.toString());
+        break;
+    default:
+        break;
+    }
+}
+
 // ===================== FixturePcbaCmdCatalog =====================
 
 QStringList FixturePcbaCmdCatalog::allFixturePcbaCmdNames(TestCaseSendAction action) {
@@ -2875,6 +3120,9 @@ TestCaseFixtureProtocol FixturePcbaCmdCatalog::fixtureProtocolFromIni(const QStr
     if (text.compare(QStringLiteral("XWD_BLE"), Qt::CaseInsensitive) == 0
         || text.compare(QStringLiteral("XwdBle"), Qt::CaseInsensitive) == 0)
         return TestCaseFixtureProtocol::XwdBle;
+    if (text.compare(QStringLiteral("XWD_SUCTION"), Qt::CaseInsensitive) == 0
+        || text.compare(QStringLiteral("XwdSuction"), Qt::CaseInsensitive) == 0)
+        return TestCaseFixtureProtocol::XwdSuction;
     if (text.compare(QStringLiteral("Pcba"), Qt::CaseInsensitive) == 0 || text.compare(QStringLiteral("PCBA"), Qt::CaseInsensitive) == 0)
         return TestCaseFixtureProtocol::Pcba;
     return TestCaseFixtureProtocol::Pcba;
@@ -2886,6 +3134,8 @@ QString FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol prot
         return QStringLiteral("ASD9026A");
     case TestCaseFixtureProtocol::XwdBle:
         return QStringLiteral("XWD_BLE");
+    case TestCaseFixtureProtocol::XwdSuction:
+        return QStringLiteral("XWD_SUCTION");
     case TestCaseFixtureProtocol::Pcba:
     default:
         return QStringLiteral("Pcba");
@@ -2898,6 +3148,8 @@ QString FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol pr
         return QStringLiteral("ASD9026A模拟电池");
     case TestCaseFixtureProtocol::XwdBle:
         return QStringLiteral("XWD蓝牙治具");
+    case TestCaseFixtureProtocol::XwdSuction:
+        return QStringLiteral("XWD吸力治具");
     case TestCaseFixtureProtocol::Pcba:
     default:
         return QStringLiteral("PCBA测试协议");
@@ -4065,8 +4317,12 @@ bool TestCaseRunner::stepRequiresProductBle(const TestCaseDefinition& def) {
         return false;
     if (def.send.channel != TestCaseSendChannel::Product)
         return false;
-    // 仅弹窗提示、无卡控：不依赖 BLE，流程可继续（如「弹窗提示开机」）
-    if (def.meta.promptEnabled && !def.gate.enabled)
+    // 纯空白提醒（PromptOnly）：不依赖 BLE
+    if (def.meta.promptEnabled && def.meta.promptOnly && !def.gate.enabled)
+        return false;
+    // 兼容旧弹窗提示（未写 PromptOnly）：无卡控时也不强绑 BLE
+    if (def.meta.promptEnabled && !def.meta.promptOnly && !def.gate.enabled
+        && (def.send.deviceCmd.isEmpty() || def.send.deviceCmd == QStringLiteral("CompensationSet")))
         return false;
     if (def.send.action == TestCaseSendAction::Get)
         return true;

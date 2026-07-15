@@ -2,6 +2,7 @@
 #define QLOG_H
 
 #include <QByteArray>
+#include <QDateTime>
 #include <QPlainTextEdit>
 #include <QString>
 #include <QTextStream>
@@ -17,26 +18,55 @@ struct TestItem {
     QString ask;
 };
 
-/** 上位机日志统一入口：文件落盘、UI 文本框、Qt 消息与崩溃记录 */
+/** 测试结束后供上传模块读取的会话信息 */
+struct QlogSessionInfo {
+    int slot = 0;
+    QString sn;
+    QString mac;
+    QString traceCode;
+    QString result;
+    QString station;
+    QDateTime startedAt;
+    QDateTime endedAt;
+    QString sessionAbsolutePath;
+    QString sessionRelativePath;
+    QString dongleDailyAbsolutePath;
+    QString dongleDailyRelativePath;
+    qint64 dongleOffsetStart = 0;
+    qint64 dongleOffsetEnd = 0;
+    QString processBackgroundDailyAbsolutePath;
+    QString processBackgroundDailyRelativePath;
+    qint64 processBackgroundOffsetStart = 0;
+    qint64 processBackgroundOffsetEnd = 0;
+    bool valid = false;
+};
+
+/** 上位机日志统一入口：会话落盘、UI 文本框、Qt 消息与崩溃记录 */
 class Qlog {
   public:
+    static constexpr int kMainWindowLogSlot = -1;
+
     Qlog() = default;
 
-    /** main：安装 qInstallMessageHandler → 所有log/上位机log */
     static void installQtMessageHandler();
 
 #ifdef Q_OS_WIN
-    /** main：SetUnhandledExceptionFilter，写入 所有log/*.dmp 与 *_闪退堆栈.log */
     static void installWindowsCrashHandler();
-    /** 启动后写入工站/路径等，会出现在闪退堆栈.log（仅主线程调用一次即可） */
     static void setCrashReportExtraInfo(const QString& info);
 #endif
 
-    /** UI + qDebug；machineIndex 仅用于调试前缀，可为工位号 */
+    static void beginSession(int slot, const QString& sn, const QString& mac, const QString& station = {});
+    static void endSession(int slot, const QString& result);
+    static bool hasActiveSession(int slot);
+    static QString sessionLogPath(int slot);
+    static QlogSessionInfo lastSessionInfo(int slot);
+
+    static void logUi(int slot, const QString& msg);
+    static void logBackend(int slot, const QString& msg, const char* category = "DBG");
+
     static void showlog(const QString& msg, int machineIndex = 0, QPlainTextEdit* msgEdit = nullptr);
 
     static void saveDongleUartLog(int machineIndex, const QString& data);
-    /** 主窗口 dongle 日志（无工位号，单文件按日） */
     static void saveDongleUartLogMain(const QString& data);
     static void saveBlackboxLog(const QByteArray& data);
     static void saveOtaStressLog(const QString& msg);
@@ -50,6 +80,10 @@ class Qlog {
     static void writeRow(QTextStream& stream, const QStringList& rowData);
 
     static void handleQtMessage(QtMsgType type, const QMessageLogContext& context, const QString& msg);
+
+    static QString logRootAbsolute();
+    static QString exportDongleSessionSlice(const QlogSessionInfo& info, QString* error);
+    static QString exportProcessBackgroundSessionSlice(const QlogSessionInfo& info, QString* error);
 };
 
 #endif // QLOG_H

@@ -373,12 +373,8 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
                                            "也可选中块后点「上移」「下移」。调整完须点「保存流程」。"));
     }
 
-    TestFlowMeta meta;
-    TestCaseStore::loadFlowMeta(meta);
     QString initialKey = TestCaseStore::resolveFlowStationKey(
-        SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString().trimmed());
-    if (initialKey.isEmpty())
-        initialKey = TestCaseStore::resolveFlowStationKey(meta.selectedStation.trimmed());
+        TestCaseStore::loadSelectedFlowStationKey());
     if (initialKey.isEmpty())
         initialKey = QStringLiteral("FREE_WORK");
     refreshStationCombo(initialKey);
@@ -438,11 +434,8 @@ void TestFlowEditor::refreshStationCombo(const QString& selectKey) {
     QString keyToSelect = selectKey.trimmed();
     if (keyToSelect.isEmpty())
         keyToSelect = currentStationKey();
-    if (keyToSelect.isEmpty()) {
-        TestFlowMeta meta;
-        TestCaseStore::loadFlowMeta(meta);
-        keyToSelect = meta.selectedStation.trimmed();
-    }
+    if (keyToSelect.isEmpty())
+        keyToSelect = TestCaseStore::loadSelectedFlowStationKey();
     if (keyToSelect.isEmpty())
         keyToSelect = QStringLiteral("FREE_WORK");
 
@@ -786,13 +779,7 @@ void TestFlowEditor::persistSelectedStation(const QString& key) {
         return;
 
     const QString displayName = TestCaseStore::flowStationDisplayName(resolved);
-    TestFlowMeta meta;
-    TestCaseStore::loadFlowMeta(meta);
-    meta.selectedStation = resolved;
-    meta.selectedStationName = displayName;
-    TestCaseStore::saveFlowMeta(meta);
-    SETTINGS.setValue(QStringLiteral("TestOrderMeta/SelectedStation"), resolved);
-    SETTINGS.setValue(QStringLiteral("TestOrderMeta/SelectedStationName"), displayName);
+    TestCaseStore::saveSelectedFlowStation(resolved, displayName);
 }
 
 bool TestFlowEditor::saveStationFlow(const QString& stationKey) {

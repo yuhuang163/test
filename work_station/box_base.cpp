@@ -1,6 +1,7 @@
 #include "box_base.h"
 
 #include <QMessageBox>
+#include <QMenu>
 #include <QRegularExpression>
 #include <QTimer>
 #include <QtGlobal>
@@ -11,8 +12,8 @@
 #include "qstatusbar.h"
 #include "test_base.h"
 #include "host_ota_service.h"
+#include "app_help_menu.h"
 #include "platform/cloud/auth/auth_service.h"
-#include "platform/cloud/auth/login_dialog.h"
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
@@ -416,22 +417,16 @@ void box_base::ShowData(QMainWindow* parent) {
     connect(setting, &QAction::triggered, [=]() { setting_ui(); });
     refreshSettingsMenuVisibility();
 
-    QAction* updata = parent->menuBar()->addAction("检查更新");
-    connect(updata, &QAction::triggered, [=]() { checkAndUpdateFile(); });
-    if (!SETTINGS.value("SYSTEM/ShowUpperComputerOTAFunc").toBool()) {
-        updata->setVisible(false);
-           qWarning() << "ss222222222ss";
-    }
-
-    QAction* switchAccount = parent->menuBar()->addAction("切换账号");
-    connect(switchAccount, &QAction::triggered, [this]() {
-        LoginDialog loginDialog(this);
-        loginDialog.setWindowModality(Qt::ApplicationModal);
-        // 取消或叉掉对话框时保持原登录态，勿先 logout
-        if (loginDialog.exec() == QDialog::Accepted) {
-            refreshCloudLoginState();
-            refreshSettingsMenuVisibility();
-        }
+    // 切换账号 / 用例上传 / 日志上传 / 检查更新 统一进「帮助」；工站还会再加菜单项，推迟到最右侧
+    AppHelpMenu::HostCallbacks helpCb;
+    helpCb.onAccountSwitched = [this]() {
+        refreshCloudLoginState();
+        refreshSettingsMenuVisibility();
+    };
+    helpCb.onCheckUpdate = [this]() { checkAndUpdateFile(); };
+    QMenu* helpMenu = AppHelpMenu::install(parent->menuBar(), this, helpCb);
+    QTimer::singleShot(0, parent, [parent, helpMenu]() {
+        AppHelpMenu::ensureRightmost(parent->menuBar(), helpMenu);
     });
 }
 

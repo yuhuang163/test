@@ -32,6 +32,8 @@ bool parseFrame(const QByteArray& raw, quint8* moduleAddr, quint8* funcCode, qui
 
 QByteArray appendLe32(quint32 value);
 quint32 readLe32(const QByteArray& data, int offset);
+/** 状态回包中的电压/电流平均值按大端；配置下发仍用 appendLe32。 */
+quint32 readBe32(const QByteArray& data, int offset);
 
 } // namespace Asd9026aCodec
 

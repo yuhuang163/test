@@ -21,6 +21,46 @@ QByteArray amplitudeQueryCommand() {
     return QByteArray("Test1\r\n");
 }
 
+QByteArray encodeRawOrHexText(const QString& text, bool* parsedAsHex) {
+    if (parsedAsHex)
+        *parsedAsHex = false;
+
+    const QString trimmed = text.trimmed();
+    if (trimmed.isEmpty())
+        return {};
+
+    QString compact = trimmed;
+    compact.remove(QLatin1Char(' '));
+    compact.remove(QLatin1Char('\t'));
+    compact.remove(QLatin1Char('\r'));
+    compact.remove(QLatin1Char('\n'));
+    compact.remove(QLatin1Char(':'));
+    compact.remove(QLatin1Char('-'));
+    compact.remove(QLatin1Char(','));
+    compact.replace(QStringLiteral("0x"), QString(), Qt::CaseInsensitive);
+
+    if (!compact.isEmpty() && (compact.size() % 2) == 0) {
+        bool allHex = true;
+        for (const QChar c : compact) {
+            const ushort u = c.unicode();
+            const bool isHexDigit = (u >= '0' && u <= '9') || (u >= 'a' && u <= 'f') || (u >= 'A' && u <= 'F');
+            if (!isHexDigit) {
+                allHex = false;
+                break;
+            }
+        }
+        if (allHex) {
+            const QByteArray bytes = QByteArray::fromHex(compact.toLatin1());
+            if (bytes.size() * 2 == compact.size()) {
+                if (parsedAsHex)
+                    *parsedAsHex = true;
+                return bytes;
+            }
+        }
+    }
+    return trimmed.toUtf8();
+}
+
 } // namespace FixtureUartCodec
 
 #if _MSC_VER >= 1600

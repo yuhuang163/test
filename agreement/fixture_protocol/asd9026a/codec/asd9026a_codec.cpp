@@ -87,6 +87,15 @@ quint32 readLe32(const QByteArray& data, int offset) {
            | (static_cast<quint8>(data.at(offset + 2)) << 16) | (static_cast<quint8>(data.at(offset + 3)) << 24);
 }
 
+quint32 readBe32(const QByteArray& data, int offset) {
+    if (offset + 4 > data.size())
+        return 0;
+    return (static_cast<quint32>(static_cast<quint8>(data.at(offset))) << 24)
+           | (static_cast<quint32>(static_cast<quint8>(data.at(offset + 1))) << 16)
+           | (static_cast<quint32>(static_cast<quint8>(data.at(offset + 2))) << 8)
+           | static_cast<quint32>(static_cast<quint8>(data.at(offset + 3)));
+}
+
 } // namespace Asd9026aCodec
 
 #if _MSC_VER >= 1600

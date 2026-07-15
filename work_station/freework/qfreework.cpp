@@ -1,5 +1,6 @@
 #include "qfreework.h"
 
+#include "common_utils.h"
 #include "huiling_wfp60h_scpi_types.h"
 #include "test_case.h"
 
@@ -11,6 +12,7 @@
 #include <QComboBox>
 #include <QCoreApplication>
 #include <QFile>
+#include <QDateTime>
 #include <QElapsedTimer>
 #include <QEventLoop>
 #include <QTimer>
@@ -146,13 +148,15 @@ void QFreeWork::onTestCaseStepMarkedDone(bool pass, const QString& testData, con
     stepRuntime_.testData = testData;
     if (!ask.isEmpty())
         stepRuntime_.ask = ask;
+    // 同步收尾步骤（如 ASD9026A Get）不再走 sendCommandWithRetry，须放开 canGoNext 才能推进
+    canGoNext = true;
 }
 
 void QFreeWork::appendTestCaseMes(const TestCaseDefinition& def, bool pass, const QString& testData) {
     const QString tag = def.meta.mesTag.trimmed().isEmpty() ? def.meta.name.trimmed() : def.meta.mesTag.trimmed();
     const bool hasData = !testData.trimmed().isEmpty() && testData != QStringLiteral("-");
-    const QString value = pass && hasData ? testData : QString();
-    const QString resultVal = pass ? QStringLiteral("PASS") : (hasData ? QStringLiteral("FAIL;") + testData : QStringLiteral("FAIL"));
+    const QString value = hasData ? testData : QString();
+    const QString resultVal = pass ? QStringLiteral("PASS") : QStringLiteral("FAIL");
 
     QString maxVal, minVal, stdVal;
     if (def.gate.enabled) {
@@ -247,14 +251,8 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     showlog("line=" + pack.line);
     showlog("action=" + pack.action);
 
-    if (pack.factory == "lx" || pack.factory == "jj") {
-        usbBaudRate = 9600;
-    } else {
-        usbBaudRate = 115200;
-        // ui->usbdisconnectButton->setDisabled(true);
-        // ui->usbconnectButton->setDisabled(true);
-        // ui->usbcomNameCombo->setDisabled(true);
-    }
+    // 万用表/ASD9026A 复用该口，默认 9600（可被 ASD9026A/BaudRate 覆盖）
+    usbBaudRate = SETTINGS.value(QStringLiteral("ASD9026A/BaudRate"), 9600).toInt();
     if (pack.factory == "hq" || pack.factory == "jj") {
         ui->jigComNameCombo->setEnabled(false);
         ui->jigConnectButton->setEnabled(false);
@@ -269,7 +267,7 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     ui->tabWidget->setCurrentIndex(0); // 设置当前页为第一页
 }
 void QFreeWork::refreshOrderedTestIndexes() {
-    const QString stationName = SETTINGS.value("TestOrderMeta/SelectedStationName").toString().trimmed();
+    const QString stationName = TestCaseStore::loadSelectedFlowStationName();
     const QString tabName = stationName.isEmpty() ? "自由工站" : stationName;
     ui->tabWidget->setTabText(0, tabName);
     setupFreeWorkTabBar(ui->tabWidget);
@@ -278,11 +276,9 @@ void QFreeWork::refreshOrderedTestIndexes() {
     orderedTestCaseNames_.clear();
     stopFlowOnTestFail_ = true;
 
-    QString stationKey = TestCaseStore::resolveFlowStationKey(
-        SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString());
+    QString stationKey = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationKey());
     if (TestCaseStore::loadStationFlowItems(stationKey).isEmpty()) {
-        const QString byName = TestCaseStore::resolveFlowStationKey(
-            SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStationName")).toString());
+        const QString byName = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationName());
         if (!byName.isEmpty())
             stationKey = byName;
     }
@@ -352,13 +348,12 @@ bool QFreeWork::isBydFactory() const {
 }
 
 bool QFreeWork::isFreeWorkXwdKeyStation() const {
-    const QString stationName = SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStationName")).toString().trimmed();
+    const QString stationName = TestCaseStore::loadSelectedFlowStationName();
     if (stationName.contains(QStringLiteral("xwd"), Qt::CaseInsensitive))
         return true;
     if (pack.factory.trimmed().compare(QStringLiteral("xwd"), Qt::CaseInsensitive) == 0)
         return true;
-    QString stationKey = TestCaseStore::resolveFlowStationKey(
-        SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString());
+    QString stationKey = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationKey());
     if (stationKey.isEmpty()) {
         stationKey = TestCaseStore::resolveFlowStationKey(stationName);
     }
@@ -418,6 +413,11 @@ QByteArray QFreeWork::resolvedTailSnToWrite() const {
 }
 
 void QFreeWork::runTestFlowBootstrap() {
+    const QString sn = ui->getMac->text().trimmed();
+    const QString mac = ui->macInput->text().trimmed();
+    if (!sn.isEmpty() || !mac.isEmpty()) {
+        onTestSessionStarting(sn, mac);
+    }
     showlog(QStringLiteral("开始测试"));
     initData();
     // 每次开始测试都重新读取配置，避免设置页调整后本页仍使用旧队列。
@@ -462,7 +462,8 @@ bool QFreeWork::tickOrderedTestStepLoop() {
             break;
         }
 
-        if (!canGoNext) {
+        // 本步已 done 时不要再卡 canGoNext（避免异步重试标志残留导致永远不收尾）
+        if (!canGoNext && !stepRuntime_.done) {
             break;
         }
 
@@ -561,7 +562,8 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     const QString mesItemValue = joinFreeWorkMesItemvalue(freeWorkMesSegments_, TestResult, failValue);
     showlog(QStringLiteral("mesItemValue======") + mesItemValue);
     pack.itemvalue = mesItemValue;
-    pack.sn = ui->getMac->text();
+    pack.sn = ui->getMac->text().trimmed();
+    pack.mac = ui->macInput->text().trimmed();
     pack.product = SETTINGS.value("Mes/Product_Name").toString();
     pack.instruct_num = QStringLiteral("079");
     if (TestResult == failValue) {
@@ -583,6 +585,7 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     qDebug() << "测试结束";
     teststate = -1;
     stepRuntime_.reset();
+    ui->test_time->setText(CommonUtils::formatElapsedSeconds(TestTime));
     ui->macInput->clear();
     ui->snInput->clear();
     ui->macInput->setDisabled(0);
@@ -599,12 +602,32 @@ void QFreeWork::startTask() {
         return;
     }
 
-    ui->test_time->display(static_cast<double>(TestTime.elapsed()) / 1000.0);
     if (teststate == -1) {
         runTestFlowBootstrap();
     }
+    if (teststate >= 0) {
+        ui->test_time->setText(CommonUtils::formatElapsedSeconds(TestTime));
+    }
     if (canRunOrderedTestStepLoop()) {
         tickOrderedTestStepLoop();
+    } else if (teststate >= 0 && teststate < orderedTestCaseNames_.count() && !at->getConnected()) {
+        // 流程里下一步要蓝牙，但当前未连接且没有扫描连接步骤时会静默停住
+        TestCaseDefinition nextDef;
+        if (TestCaseRunner::loadCaseForStation(activeFlowStationKey_, orderedTestCaseNames_.at(teststate), nextDef)
+            && TestCaseRunner::stepRequiresProductBle(nextDef) && !stepRuntime_.started) {
+            static qint64 s_lastBleWaitLogMs = 0;
+            const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+            if (nowMs - s_lastBleWaitLogMs > 3000) {
+                s_lastBleWaitLogMs = nowMs;
+                showlog(QStringLiteral("等待蓝牙连接后再执行：%1（流程需含「扫描连接蓝牙」或先手动连上）")
+                            .arg(TestCaseRunner::stepLabel(nextDef)));
+                const QString mac = currentMacAddress();
+                if (!mac.isEmpty() && mac != QStringLiteral("没有mac地址") && at && dongleSerialPort
+                    && dongleSerialPort->isOpen()) {
+                    at->set(DongleCmd::BleScanConnect, mac);
+                }
+            }
+        }
     }
     finalizeTestFlowIfComplete();
 }
@@ -651,13 +674,12 @@ void QFreeWork::refreshDongleUartState(int state) {
     }
 }
 void QFreeWork::refreshUsbUartState(int state) {
-    if (state)
-        showlog("usb串口连接成功");
-    else {
-        showlog("usb串口连接断开");
-
-        ui->usbconnectButton->setDisabled(true);
-        ui->usbcomNameCombo->setDisabled(true);
+    if (state) {
+        showlog(QStringLiteral("万用表串口连接成功"));
+    } else {
+        ui->usbcomNameCombo->setEnabled(true);
+        ui->usbconnectButton->setEnabled(true);
+        showlog(QStringLiteral("万用表串口连接断开"));
     }
 }
 
@@ -961,19 +983,19 @@ void QFreeWork::on_toggleExtraTabsButton_clicked() {
 }
 
 void QFreeWork::loadSuctionGateSettings() {
-    // 仅作未执行「采集双通道吸力」前的界面缺省；实际卡控以工站 steps/*.ini 中步骤参数为准。
+    // 仅作未执行吸力采样前的界面缺省；实际卡控以工站 steps/*.ini 中步骤参数为准。
     suctionSampleDurationMs_ = 10000;
     suctionSampleIntervalMs_ = 20;
     suctionPeakTargetKpa_ = -36.0;
     suctionPeakToleranceKpa_ = 2.6;
     suctionPeakDiffMaxKpa_ = 2.6;
+    suctionSingleChannelIndex_ = 0;
 }
 
 void QFreeWork::applySuctionGateFromStepParam(const QVariant& param) {
-    if (!param.canConvert<QVariantMap>()) {
-        loadSuctionGateSettings();
+    loadSuctionGateSettings();
+    if (!param.canConvert<QVariantMap>())
         return;
-    }
     const QVariantMap map = param.toMap();
     if (map.contains(QStringLiteral("sampleDurationMs")))
         suctionSampleDurationMs_ = map.value(QStringLiteral("sampleDurationMs")).toInt();
@@ -985,6 +1007,16 @@ void QFreeWork::applySuctionGateFromStepParam(const QVariant& param) {
         suctionPeakToleranceKpa_ = map.value(QStringLiteral("peakToleranceKpa")).toDouble();
     if (map.contains(QStringLiteral("peakDiffMaxKpa")))
         suctionPeakDiffMaxKpa_ = map.value(QStringLiteral("peakDiffMaxKpa")).toDouble();
+    if (map.contains(QStringLiteral("channelIndex"))) {
+        suctionSingleChannelIndex_ = map.value(QStringLiteral("channelIndex")).toInt() == 1 ? 1 : 0;
+    } else if (map.contains(QStringLiteral("channel"))) {
+        const QString ch = map.value(QStringLiteral("channel")).toString().trimmed().toLower();
+        if (ch == QStringLiteral("1") || ch == QStringLiteral("right") || ch == QStringLiteral("r")
+            || ch == QStringLiteral("右") || ch == QStringLiteral("右口"))
+            suctionSingleChannelIndex_ = 1;
+        else
+            suctionSingleChannelIndex_ = 0;
+    }
 }
 
 void QFreeWork::initSuctionChart() {
@@ -1267,6 +1299,128 @@ void QFreeWork::runDongleSuctionSampleStep() {
     markActiveTestCaseStepDone(pass, stepRuntime_.testData, stepRuntime_.ask);
 }
 
+void QFreeWork::runDongleSuctionSampleSingleStep() {
+    applySuctionGateFromStepParam(activeTestCase_.send.param);
+
+    if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
+        stepRuntime_.done = true;
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = QStringLiteral("Dongle串口未连接");
+        TestResult = failValue;
+        showlog(QStringLiteral("采集单通道吸力失败：Dongle 串口未连接"));
+        return;
+    }
+
+    const int durationMs = qMax(1000, suctionSampleDurationMs_);
+    const int intervalMs = qMax(20, suctionSampleIntervalMs_);
+    const bool restoreOff = !dongleSuctionReadEnabled_;
+    const bool useRight = suctionSingleChannelIndex_ == 1;
+    const QString channelName = useRight ? QStringLiteral("右") : QStringLiteral("左");
+
+    showlog(QStringLiteral("单通道吸力(Dongle/%1口)：采样 %2ms，间隔 %3ms，目标峰值 %4±%5kPa，大小峰差≤%6kPa")
+                .arg(channelName)
+                .arg(durationMs)
+                .arg(intervalMs)
+                .arg(suctionPeakTargetKpa_, 0, 'f', 2)
+                .arg(suctionPeakToleranceKpa_, 0, 'f', 2)
+                .arg(suctionPeakDiffMaxKpa_, 0, 'f', 2));
+
+    dongleSuctionLeftSamples_.clear();
+    dongleSuctionRightSamples_.clear();
+    dongleSuctionLastLeftKpa_ = 0.0;
+    dongleSuctionLastRightKpa_ = 0.0;
+    resetSuctionChart();
+    setDongleSuctionReadEnabled(true);
+
+    dongleSuctionSampleActive_ = true;
+    QElapsedTimer sampleTimer;
+    sampleTimer.start();
+    int lastLoggedCount = 0;
+    while (sampleTimer.elapsed() < durationMs) {
+        if (!isTestContinue) {
+            dongleSuctionSampleActive_ = false;
+            if (restoreOff)
+                setDongleSuctionReadEnabled(false);
+            stepRuntime_.done = true;
+            stepRuntime_.pass = false;
+            stepRuntime_.testData = QStringLiteral("测试中止");
+            TestResult = failValue;
+            showlog(QStringLiteral("采集单通道吸力已中止"));
+            return;
+        }
+        const QVector<double>& live =
+            useRight ? dongleSuctionRightSamples_ : dongleSuctionLeftSamples_;
+        const int sampleCount = live.size();
+        if (sampleCount > 0 && sampleCount % 10 == 0 && sampleCount != lastLoggedCount) {
+            lastLoggedCount = sampleCount;
+            const double liveKpa = useRight ? dongleSuctionLastRightKpa_ : dongleSuctionLastLeftKpa_;
+            showlog(QStringLiteral("[%1] %2口: %3Kpa").arg(sampleCount).arg(channelName).arg(liveKpa, 0, 'f', 2));
+        }
+        waitWork(qMin(intervalMs, durationMs - static_cast<int>(sampleTimer.elapsed())));
+    }
+    dongleSuctionSampleActive_ = false;
+    if (restoreOff)
+        setDongleSuctionReadEnabled(false);
+
+    const QVector<double>& samples =
+        useRight ? dongleSuctionRightSamples_ : dongleSuctionLeftSamples_;
+    if (samples.isEmpty()) {
+        stepRuntime_.done = true;
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = QStringLiteral("无吸力采样点");
+        stepRuntime_.ask =
+            QStringLiteral("%1±%2").arg(suctionPeakTargetKpa_, 0, 'f', 2).arg(suctionPeakToleranceKpa_, 0, 'f', 2);
+        TestResult = failValue;
+        showlog(QStringLiteral("采集单通道吸力失败：采样窗口内未收到 %1口 AT+SUCTION_DATA").arg(channelName));
+        markActiveTestCaseStepDone(false, stepRuntime_.testData, stepRuntime_.ask);
+        return;
+    }
+
+    const double peakLow = *std::min_element(samples.cbegin(), samples.cend());
+    const double peakHigh = *std::max_element(samples.cbegin(), samples.cend());
+    const double peakDiff = peakHigh - peakLow;
+    const double lowerBound = suctionPeakTargetKpa_ - suctionPeakToleranceKpa_;
+    const double upperBound = suctionPeakTargetKpa_ + suctionPeakToleranceKpa_;
+    // 峰值=窗口最低气压（吸力最大）；大小峰值差=同口最高与最低之差
+    const bool peakPass = peakLow >= lowerBound && peakLow <= upperBound;
+    const bool diffPass = peakDiff <= suctionPeakDiffMaxKpa_;
+    const bool pass = peakPass && diffPass;
+
+    showlog(QStringLiteral("采样完成：有效点 %1 个").arg(samples.size()));
+
+    stepRuntime_.done = true;
+    stepRuntime_.pass = pass;
+    stepRuntime_.testData = QStringLiteral("%1口 peak=%2,high=%3,diff=%4")
+                                .arg(channelName)
+                                .arg(peakLow, 0, 'f', 3)
+                                .arg(peakHigh, 0, 'f', 3)
+                                .arg(peakDiff, 0, 'f', 3);
+    stepRuntime_.ask =
+        QStringLiteral("%1±%2,diff<=%3")
+            .arg(suctionPeakTargetKpa_, 0, 'f', 2)
+            .arg(suctionPeakToleranceKpa_, 0, 'f', 2)
+            .arg(suctionPeakDiffMaxKpa_, 0, 'f', 2);
+    if (!pass) {
+        TestResult = failValue;
+        showlog(QStringLiteral("吸力卡控失败：%1口峰值=%2kPa 最高=%3kPa 大小峰差=%4kPa，"
+                               "峰值允许 [%5,%6]kPa，大小峰差上限 %7kPa")
+                    .arg(channelName)
+                    .arg(peakLow, 0, 'f', 3)
+                    .arg(peakHigh, 0, 'f', 3)
+                    .arg(peakDiff, 0, 'f', 3)
+                    .arg(lowerBound, 0, 'f', 2)
+                    .arg(upperBound, 0, 'f', 2)
+                    .arg(suctionPeakDiffMaxKpa_, 0, 'f', 2));
+    } else {
+        showlog(QStringLiteral("吸力卡控通过：%1口峰值=%2kPa 最高=%3kPa 大小峰差=%4kPa")
+                    .arg(channelName)
+                    .arg(peakLow, 0, 'f', 3)
+                    .arg(peakHigh, 0, 'f', 3)
+                    .arg(peakDiff, 0, 'f', 3));
+    }
+    markActiveTestCaseStepDone(pass, stepRuntime_.testData, stepRuntime_.ask);
+}
+
 void QFreeWork::initData() {
     ui->product_sn->setText("芯片存储的整机sn:");
     ui->bleStatusLabel->setText("蓝牙连接：");
@@ -1325,6 +1479,7 @@ void QFreeWork::initData() {
     tupleData_ = TupleApplyResult{};
     QTupleService::clearSharedSession();
     freeWorkMesSegments_.clear();
+    ui->test_time->setText(QStringLiteral("0.0 s"));
     TestTime.start();
 }
 
@@ -1504,6 +1659,7 @@ void QFreeWork::on_macInput_returnPressed() {
 
         isTestContinue = true;
         teststate = -1;
+        ui->test_time->setText(QStringLiteral("0.0 s"));
 
         emit send_go_next_focus();
         ui->getMac->setDisabled(1);
@@ -1904,6 +2060,36 @@ void QFreeWork::on_jigDisconnectButton_clicked() {
     closeJigSerialPort();
     ui->jigComNameCombo->setEnabled(true);
     ui->jigConnectButton->setEnabled(true);
+}
+
+void QFreeWork::on_usbconnectButton_clicked() {
+    const QString port = ui->usbcomNameCombo->currentText().trimmed();
+    if (port.isEmpty()) {
+        showlog(QStringLiteral("请先选择万用表串口"));
+        return;
+    }
+    // 与 ASD9026A 步骤同一波特率；若 ASD 已占该口，先关掉再由 test_base 通道打开
+    usbBaudRate = SETTINGS.value(QStringLiteral("ASD9026A/BaudRate"), 9600).toInt();
+    if (asd9026aDevice_.isOpen()
+        && asd9026aDevice_.portName().compare(port, Qt::CaseInsensitive) == 0) {
+        asd9026aDevice_.close();
+    }
+    openUsbSerialPort();
+    if (!usbSerialPort || !usbSerialPort->isOpen()) {
+        showlog(QStringLiteral("万用表串口打开失败：%1 @ %2").arg(port).arg(usbBaudRate));
+        return;
+    }
+    ui->usbcomNameCombo->setEnabled(false);
+    ui->usbconnectButton->setEnabled(false);
+    showlog(QStringLiteral("万用表串口已打开：%1 @ %2").arg(port).arg(usbBaudRate));
+}
+
+void QFreeWork::on_usbdisconnectButton_clicked() {
+    if (asd9026aDevice_.isOpen())
+        asd9026aDevice_.close();
+    closeUsbSerialPort();
+    ui->usbcomNameCombo->setEnabled(true);
+    ui->usbconnectButton->setEnabled(true);
 }
 
 void QFreeWork::on_productConnectButton_clicked() {

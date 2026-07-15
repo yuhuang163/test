@@ -106,6 +106,7 @@ INCLUDEPATH += agreement/fixture_protocol/xwd_fixture/access
 INCLUDEPATH += agreement/fixture_protocol/xwd_fixture/codec
 INCLUDEPATH += agreement/fixture_protocol/xwd_fixture/device/xwd_fixture_device
 INCLUDEPATH += agreement/fixture_protocol/xwd_fixture/device/xwd_ble_fixture_device
+INCLUDEPATH += agreement/fixture_protocol/xwd_fixture/device/xwd_suction_fixture_device
 INCLUDEPATH += agreement/fixture_protocol/asd9026a/codec
 INCLUDEPATH += agreement/fixture_protocol/asd9026a/device/asd9026a_device
 INCLUDEPATH += agreement/qbrush
@@ -163,6 +164,7 @@ INCLUDEPATH += platform/driver/process
 
 SOURCES += \
     common/common_utils.cpp \
+    common/app_help_menu.cpp \
     platform/driver/serial/serial_channel.cpp \
     advance/demo/usmile_ring_buffer.cpp \
     advance/imagewindow/draggablecheckbox.cpp \
@@ -210,8 +212,10 @@ SOURCES += \
     agreement/fixture_protocol/xwd_fixture/codec/xwd_line_hex_codec.cpp \
     agreement/fixture_protocol/xwd_fixture/codec/xwd_amplitude_codec.cpp \
     agreement/fixture_protocol/xwd_fixture/codec/xwd_ble_uart_codec.cpp \
+    agreement/fixture_protocol/xwd_fixture/codec/xwd_suction_uart_codec.cpp \
     agreement/fixture_protocol/xwd_fixture/device/xwd_fixture_device/xwd_fixture_device.cpp \
     agreement/fixture_protocol/xwd_fixture/device/xwd_ble_fixture_device/xwd_ble_fixture_device.cpp \
+    agreement/fixture_protocol/xwd_fixture/device/xwd_suction_fixture_device/xwd_suction_fixture_device.cpp \
     agreement/mes_protocol/device/byd_mes/bydmes.cpp \
     agreement/mes_protocol/device/hq_mes/hqmes.cpp \
     agreement/mes_protocol/device/hz_mes/hzmes.cpp \
@@ -238,6 +242,7 @@ SOURCES += \
     platform/test_case/manifest/fixture_pcba_cmd_manifest.cpp \
     platform/test_case/manifest/asd9026a_cmd_manifest.cpp \
     platform/test_case/manifest/xwd_ble_fixture_cmd_manifest.cpp \
+    platform/test_case/manifest/xwd_suction_fixture_cmd_manifest.cpp \
     platform/test_case/manifest/product_serial_cmd_manifest.cpp \
     platform/test_case/manifest/modbus_cmd_manifest.cpp \
     platform/test_case/manifest/scpi_cmd_manifest.cpp \
@@ -318,6 +323,7 @@ SOURCES += \
 
 HEADERS += \
     common/common_utils.h \
+    common/app_help_menu.h \
     platform/driver/serial/serial_channel.h \
     advance/demo/usmile_ring_buffer.h \
     advance/imagewindow/draggablecheckbox.h \
@@ -374,8 +380,10 @@ HEADERS += \
     agreement/fixture_protocol/xwd_fixture/codec/xwd_line_hex_codec.h \
     agreement/fixture_protocol/xwd_fixture/codec/xwd_amplitude_codec.h \
     agreement/fixture_protocol/xwd_fixture/codec/xwd_ble_uart_codec.h \
+    agreement/fixture_protocol/xwd_fixture/codec/xwd_suction_uart_codec.h \
     agreement/fixture_protocol/xwd_fixture/device/xwd_fixture_device/xwd_fixture_device.h \
     agreement/fixture_protocol/xwd_fixture/device/xwd_ble_fixture_device/xwd_ble_fixture_device.h \
+    agreement/fixture_protocol/xwd_fixture/device/xwd_suction_fixture_device/xwd_suction_fixture_device.h \
     agreement/mes_protocol/device/byd_mes/bydmes.h \
     agreement/mes_protocol/device/hq_mes/hqmes.h \
     agreement/mes_protocol/device/hz_mes/hzmes.h \
@@ -404,6 +412,7 @@ HEADERS += \
     platform/test_case/manifest/fixture_pcba_cmd_manifest.h \
     platform/test_case/manifest/asd9026a_cmd_manifest.h \
     platform/test_case/manifest/xwd_ble_fixture_cmd_manifest.h \
+    platform/test_case/manifest/xwd_suction_fixture_cmd_manifest.h \
     platform/test_case/manifest/modbus_cmd_manifest.h \
     platform/test_case/manifest/scpi_cmd_manifest.h \
     platform/test_case/manifest/product_serial_cmd_manifest.h \
