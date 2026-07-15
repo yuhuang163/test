@@ -150,6 +150,18 @@ void Qpb::set(DeviceCmd cmd, const QVariant& data) {
     case DeviceCmd::MotorAdcSwitch:
         set_motor_adc_switch(data.toInt());
         break;
+    case DeviceCmd::SetBattery: {
+        int type = data.toInt();
+        if (data.canConvert<QVariantMap>()) {
+            const QVariantMap map = data.toMap();
+            if (map.contains(QStringLiteral("value")))
+                type = map.value(QStringLiteral("value")).toInt();
+            else if (map.contains(QStringLiteral("type")))
+                type = map.value(QStringLiteral("type")).toInt();
+        }
+        set_battery(static_cast<FacBatteryType>(type));
+        break;
+    }
     case DeviceCmd::MotorState:
         set_motor_state(data.toInt());
         break;

@@ -6,6 +6,7 @@
 #include <QRegExp>
 #include <QSerialPort>
 #include <QThread>
+#include "common_utils.h"
 #include "qproduct.h"
 #include "qdebug.h"
 #include "qserialportinfo.h"
@@ -358,7 +359,8 @@ void wifibletest::refreshTupleData(ProtocolTupleData data) {
     tupleReadDone_ = true;
     const bool productKeyPass = data.productId == tupleData_.productKey;
     const bool deviceNamePass = data.deviceId == tupleData_.deviceName;
-    const bool deviceSecretPass = data.key == tupleData_.deviceSecret;
+    const bool deviceSecretPass =
+        CommonUtils::matchTupleDeviceSecret(data.key, data.keyCipherHex, tupleData_.deviceSecret);
     tupleReadPass_ = tupleData_.success && productKeyPass && deviceNamePass && deviceSecretPass;
     tupleReadData_ = QStringLiteral("productKey:%1 deviceName:%2 deviceSecret:%3").arg(data.productId, data.deviceId, data.key);
     tupleReadAsk_ = QStringLiteral("productKey:%1 deviceName:%2 deviceSecret:%3")

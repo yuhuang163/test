@@ -32,14 +32,13 @@ class Qroot : public qProtocol {
 
     enum CommandId : quint8 {
         BatteryTemp = 0x80,
-        BatteryInfo = 0xE0,
-        AgingEnter = 0xAF,
+        SuctionTest = 0x81,
+        PumpStallCurrent = 0x82,
+        HeatLevelControl = 0x83,
         TestMode = 0x90,
         SoftVersion = 0x91,
-        MacRead = 0xA2,
         LedTest = 0x93,
         Vibration = 0x94,
-        MacWrite = 0xA3,
         FlangeStatus = 0x96,
         NtcStatus = 0x97,
         HeatTemp = 0x98,
@@ -48,8 +47,17 @@ class Qroot : public qProtocol {
         ToggleKeyNotify = 0x9B,
         PumpTestEnter = 0x9D,
         PumpTestExit = 0x9E,
-        SuctionTest = 0x81,
+        DeviceSnRead = 0xA0,
+        DeviceSnWrite = 0xA1,
+        MacRead = 0xA2,
+        MacWrite = 0xA3,
+        AgingEnter = 0xAF,
         PumpControl = 0xC0,
+        BatteryInfo = 0xE0,
+        TupleRead = 0xF7,
+        ProductIdWrite = 0xF8,
+        DeviceIdWrite = 0xF9,
+        EncryptionKeyWrite = 0xFA,
         FactoryReset = 0xFC,
     };
 
@@ -58,14 +66,15 @@ class Qroot : public qProtocol {
     static constexpr quint8 kSystemControlOta = 0x03;
     static constexpr quint8 kFactoryResetParam = 0x04;
 
-    static quint8 parseSystemControlCommand(const QVariant& data, quint8 defaultValue);
-
     static quint8 checksum8(const QByteArray& data);
     static QByteArray buildPacket(quint8 ct, quint8 cid, const QByteArray& body);
     static QString formatMacFromWire(const QByteArray& mac6);
     static QString formatSoftVersion(const QByteArray& body);
     static QByteArray parseMacToWire(const QVariant& data);
     static quint8 parseOnOffParam(const QVariant& data, quint8 defaultValue = 1);
+    static quint8 parseSystemControlCommand(const QVariant& data, quint8 defaultValue);
+
+    bool sendSystemControl(quint8 ctrl);
 
     enum PhyParseState : quint8 {
         PhyIdle = 0,
@@ -94,6 +103,15 @@ class Qroot : public qProtocol {
     /** Req 0x81：body 3B = 开关(0关1开)+模式(00按摩/01吸乳/02混合)+强度。 */
     void sendSuctionTest(const QByteArray& body3);
     static QByteArray buildSuctionTestBody(const QVariant& data);
+    /** Req 0x83：body 2B = 开关(0关1开)+加热档位(0=L1/1=L2/2=L3)。 */
+    void sendHeatLevelControl(const QByteArray& body2);
+    static QByteArray buildHeatLevelControlBody(const QVariant& data);
+    static QByteArray truncateUtf8Bytes(const QVariant& data, int maxLen, const QString& valueKey = QStringLiteral("value"));
+    void sendDeviceSnWrite(const QByteArray& sn);
+    void sendProductIdWrite(const QByteArray& productId);
+    void sendDeviceIdWrite(const QByteArray& deviceId);
+    void sendEncryptionKeyWrite(const QByteArray& key);
+    bool setSn(const QVariant& data);
 
     static QString formatKeyNotifyLabel(quint8 keyId);
     void emitKeyNotifyReport(quint8 keyId);
@@ -106,6 +124,10 @@ class Qroot : public qProtocol {
     bool hasPending_ = false;
     /** 已发 0x9A 开/关上报，下一条 KeyNotify Ack 为指令应答而非按键按下 */
     bool keyNotifySwitchPending_ = false;
+    /** get(Sn) 时记录 which，Ack 0xA0 回填对应 ProtocolSnType */
+    ProtocolSnType pendingSnType_ = ProtocolSnType::TailSn;
+    /** 最近一次写入的 EncryptionKey，用于 0xF7 KeyTail RC4 解密校验 */
+    QByteArray lastEncryptionKey_;
 
     PhyParseState phyState_ = PhyIdle;
     int phyHeaderHits_ = 0;

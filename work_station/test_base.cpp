@@ -623,6 +623,13 @@ void test_base::onProtocolReport(const ProtocolReport& report) {
         refreshAgingStatus(payload.value<ProtocolAgingStatusData>());
     } else if (reportType == QLatin1String("ProtocolBatteryTempData") && payload.canConvert<ProtocolTypeData>()) {
         refreshRootBatteryTemp(static_cast<quint8>(payload.value<ProtocolTypeData>().type));
+    } else if (reportType == QLatin1String("ProtocolHeatTempData") && payload.canConvert<ProtocolTypeData>()) {
+        refreshRootHeatTemp(static_cast<quint8>(payload.value<ProtocolTypeData>().type));
+    } else if (reportType == QLatin1String("ProtocolFlangeData") && payload.canConvert<ProtocolTypeData>()) {
+        refreshFlangeStatus(payload.value<ProtocolTypeData>());
+    } else if (reportType == QLatin1String("ProtocolPumpStallCurrentData")
+               && payload.canConvert<ProtocolPumpStallCurrentData>()) {
+        refreshPumpStallCurrent(payload.value<ProtocolPumpStallCurrentData>());
     } else if (reportType == QLatin1String("ProtocolResultData") && payload.canConvert<ProtocolResultData>()) {
         refreshResultCode(payload.value<ProtocolResultData>());
     } else if (reportType == QLatin1String("ProtocolTypeData") && payload.canConvert<ProtocolTypeData>()) {

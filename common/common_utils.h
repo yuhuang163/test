@@ -21,6 +21,24 @@ class CommonUtils {
     static QString toHexUpperSpaced(const QByteArray& data);
     static QByteArray fromHexString(const QString& hex, bool* ok = nullptr);
 
+    /** RC4 流密码（加密与解密同算法），就地处理 data；与设备端 rc4(key,keyLen,data,dataLen) 一致。 */
+    static void rc4Crypt(const QByteArray& key, QByteArray& data);
+    /** 规范化为 16 字节 EncryptionKey（超长截断，不足补 0）。 */
+    static QByteArray normalizeRootEncryptionKey(const QByteArray& key);
+    /**
+     * qroot 0xF7 KeyTail 解密：密文 8B 为「密钥后 8 字节」经 RC4(完整 16B key) 的结果。
+     * 返回解密后的 8 字节明文；cipher8 长度不对时返回空。
+     */
+    static QByteArray decryptRootTupleKeyTail(const QByteArray& encryptionKey, const QByteArray& cipher8);
+    /** 校验：RC4 解密 cipher8 后是否等于 encryptionKey[8..15]。 */
+    static bool matchRootTupleKeyTail(const QByteArray& encryptionKey, const QByteArray& cipher8);
+    /**
+     * 三元组 deviceSecret 比对：keyCipherHex 非空时按 qroot RC4 KeyTail 校验；
+     * 否则走明文全串相等（Qpb/FCTP）。
+     */
+    static bool matchTupleDeviceSecret(const QString& deviceKeyField, const QString& keyCipherHex,
+                                       const QString& expectedSecret);
+
     /** IEEE 802.3 CRC32（OTA 镜像等） */
     static quint32 crc32(const QByteArray& data);
     static quint32 crc32Update(quint32 crc, const char* data, int length);
