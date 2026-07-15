@@ -176,7 +176,7 @@
   "password": "******",
   "hostName": "DESKTOP-PC01",
   "deviceId": "DESKTOP-PC01",
-  "stationKey": "m8板厂测试工站"
+  "stationKey": "M8板厂测试工站"
 }
 ```
 
