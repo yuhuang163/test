@@ -1,5 +1,5 @@
-#ifndef XWD_SUCTION_FIXTURE_DEVICE_H
-#define XWD_SUCTION_FIXTURE_DEVICE_H
+#ifndef XWD_RAW_FIXTURE_DEVICE_H
+#define XWD_RAW_FIXTURE_DEVICE_H
 
 #include <QSerialPort>
 #include <QString>
@@ -8,8 +8,8 @@
 #pragma execution_character_set(push, "utf-8")
 #endif
 
-/** 欣旺达 xwd 吸力工站治具：治具串口原文下发（协议待定，步骤配置什么发什么）。 */
-class XwdSuctionFixtureDevice {
+/** 欣旺达 XWD 治具：治具串口原文/十六进制下发（蓝牙盒与吸力等共用同一物理层）。 */
+class XwdRawFixtureDevice {
   public:
     static bool sendRawText(QSerialPort* port, const QString& text, QString* errorMessage = nullptr);
 };
@@ -18,4 +18,4 @@ class XwdSuctionFixtureDevice {
 #pragma execution_character_set(pop)
 #endif
 
-#endif // XWD_SUCTION_FIXTURE_DEVICE_H
+#endif // XWD_RAW_FIXTURE_DEVICE_H

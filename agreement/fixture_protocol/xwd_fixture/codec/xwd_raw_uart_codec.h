@@ -1,5 +1,5 @@
-#ifndef XWD_SUCTION_UART_CODEC_H
-#define XWD_SUCTION_UART_CODEC_H
+#ifndef XWD_RAW_UART_CODEC_H
+#define XWD_RAW_UART_CODEC_H
 
 #include <QByteArray>
 #include <QString>
@@ -8,8 +8,8 @@
 #pragma execution_character_set(push, "utf-8")
 #endif
 
-/** 欣旺达 xwd 吸力工站治具：纯 hex 按十六进制字节下发，否则 UTF-8 原文。 */
-namespace XwdSuctionUartCodec {
+/** 欣旺达 XWD 治具（蓝牙盒/吸力等同物理层）：hex 或 UTF-8 原文；读电流解析。 */
+namespace XwdRawUartCodec {
 
 QByteArray encodeRawText(const QString& text, bool* parsedAsHex = nullptr);
 
@@ -21,10 +21,10 @@ QByteArray encodeRawText(const QString& text, bool* parsedAsHex = nullptr);
 bool parseReadOnceReply(const QString& text, double* ch1Ma, double* ch2Ma, bool* hasCh1 = nullptr,
                         bool* hasCh2 = nullptr);
 
-} // namespace XwdSuctionUartCodec
+} // namespace XwdRawUartCodec
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(pop)
 #endif
 
-#endif // XWD_SUCTION_UART_CODEC_H
+#endif // XWD_RAW_UART_CODEC_H

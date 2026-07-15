@@ -1,13 +1,13 @@
-#include "xwd_ble_fixture_device.h"
+#include "xwd_raw_fixture_device.h"
 
 #include "qdebug.h"
-#include "xwd_ble_uart_codec.h"
+#include "xwd_raw_uart_codec.h"
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
 #endif
 
-bool XwdBleFixtureDevice::sendRawText(QSerialPort* port, const QString& text, QString* errorMessage) {
+bool XwdRawFixtureDevice::sendRawText(QSerialPort* port, const QString& text, QString* errorMessage) {
     if (!port) {
         if (errorMessage)
             *errorMessage = QStringLiteral("治具串口未初始化");
@@ -19,15 +19,20 @@ bool XwdBleFixtureDevice::sendRawText(QSerialPort* port, const QString& text, QS
         return false;
     }
 
-    const QByteArray frame = XwdBleUartCodec::encodeRawText(text);
+    bool parsedAsHex = false;
+    const QByteArray frame = XwdRawUartCodec::encodeRawText(text, &parsedAsHex);
     if (frame.isEmpty()) {
         if (errorMessage)
             *errorMessage = QStringLiteral("发送内容为空");
         return false;
     }
 
-    qDebug().noquote() << "XWD_BLE FIXTURE TX:" << QString::fromLatin1(frame.toHex(' ').toUpper());
-    qDebug().noquote() << "XWD_BLE FIXTURE TX(text):" << text;
+    // 原文：只打配置字符串；十六进制：打解出来的字节
+    if (parsedAsHex)
+        qDebug().noquote() << "XWD FIXTURE TX(十六进制):" << QString::fromLatin1(frame.toHex(' ').toUpper());
+    else
+        qDebug().noquote() << "XWD FIXTURE TX(原文):" << text.trimmed();
+
     const qint64 written = port->write(frame);
     if (written != frame.size()) {
         if (errorMessage)

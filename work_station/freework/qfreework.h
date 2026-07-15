@@ -93,8 +93,7 @@ class QFreeWork : public test_base {
     void executeProductSerialCase(const TestCaseDefinition& def);
     void executeFixturePcbaCase(const TestCaseDefinition& def);
     void executeFixtureAsd9026aCase(const TestCaseDefinition& def);
-    void executeFixtureXwdBleCase(const TestCaseDefinition& def);
-    void executeFixtureXwdSuctionCase(const TestCaseDefinition& def);
+    void executeFixtureXwdCase(const TestCaseDefinition& def);
     void executeFixtureJieliBtBoxCase(const TestCaseDefinition& def);
     int resolveFixtureMachineIndex(const QVariant& param) const;
     QVariantMap cachedHuilingVisaLink() const;

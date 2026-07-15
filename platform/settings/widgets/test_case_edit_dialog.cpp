@@ -76,10 +76,8 @@ void fillFixtureProtocolCombo(QComboBox* box) {
                  FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::Pcba));
     box->addItem(FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol::Asd9026a),
                  FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::Asd9026a));
-    box->addItem(FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol::XwdBle),
-                 FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::XwdBle));
-    box->addItem(FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol::XwdSuction),
-                 FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::XwdSuction));
+    box->addItem(FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol::Xwd),
+                 FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::Xwd));
     box->addItem(FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol::JieliBtBox),
                  FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::JieliBtBox));
 }
@@ -134,14 +132,10 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
             items.reserve(Asd9026aCmdCatalog::allAsd9026aCmdNames(action).size());
             for (const QString& name : Asd9026aCmdCatalog::allAsd9026aCmdNames(action))
                 items.append({Asd9026aCmdCatalog::asd9026aCmdUiLabel(name), name});
-        } else if (proto == TestCaseFixtureProtocol::XwdBle) {
-            items.reserve(XwdBleFixtureCmdCatalog::allXwdBleFixtureCmdNames(action).size());
-            for (const QString& name : XwdBleFixtureCmdCatalog::allXwdBleFixtureCmdNames(action))
-                items.append({XwdBleFixtureCmdCatalog::xwdBleFixtureCmdUiLabel(name), name});
-        } else if (proto == TestCaseFixtureProtocol::XwdSuction) {
-            items.reserve(XwdSuctionFixtureCmdCatalog::allXwdSuctionFixtureCmdNames(action).size());
-            for (const QString& name : XwdSuctionFixtureCmdCatalog::allXwdSuctionFixtureCmdNames(action))
-                items.append({XwdSuctionFixtureCmdCatalog::xwdSuctionFixtureCmdUiLabel(name), name});
+        } else if (proto == TestCaseFixtureProtocol::Xwd) {
+            items.reserve(XwdRawFixtureCmdCatalog::allXwdRawFixtureCmdNames(action).size());
+            for (const QString& name : XwdRawFixtureCmdCatalog::allXwdRawFixtureCmdNames(action))
+                items.append({XwdRawFixtureCmdCatalog::xwdRawFixtureCmdUiLabel(name), name});
         } else if (proto == TestCaseFixtureProtocol::JieliBtBox) {
             items.reserve(JieliBtBoxCmdCatalog::allJieliBtBoxCmdNames(action).size());
             for (const QString& name : JieliBtBoxCmdCatalog::allJieliBtBoxCmdNames(action))
@@ -310,25 +304,13 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
             }
             return out;
         }
-        if (proto == TestCaseFixtureProtocol::XwdBle) {
-            XwdBleFixtureCmd xwdCmd;
-            if (XwdBleFixtureCmdCatalog::xwdBleFixtureCmdFromName(name, xwdCmd)) {
+        if (proto == TestCaseFixtureProtocol::Xwd) {
+            XwdRawFixtureCmd xwdCmd;
+            if (XwdRawFixtureCmdCatalog::xwdRawFixtureCmdFromName(name, xwdCmd)) {
                 DeviceCmdParamSchema schema;
-                if (XwdBleFixtureCmdCatalog::paramSchemaFor(xwdCmd, schema)) {
+                if (XwdRawFixtureCmdCatalog::paramSchemaFor(xwdCmd, schema)) {
                     out.valid = true;
-                    out.hint = XwdBleFixtureCmdCatalog::paramUiHint(name);
-                    out.kind = sendParamUiKindFromSchema(schema.kind);
-                }
-            }
-            return out;
-        }
-        if (proto == TestCaseFixtureProtocol::XwdSuction) {
-            XwdSuctionFixtureCmd xwdCmd;
-            if (XwdSuctionFixtureCmdCatalog::xwdSuctionFixtureCmdFromName(name, xwdCmd)) {
-                DeviceCmdParamSchema schema;
-                if (XwdSuctionFixtureCmdCatalog::paramSchemaFor(xwdCmd, schema)) {
-                    out.valid = true;
-                    out.hint = XwdSuctionFixtureCmdCatalog::paramUiHint(name);
+                    out.hint = XwdRawFixtureCmdCatalog::paramUiHint(name);
                     out.kind = sendParamUiKindFromSchema(schema.kind);
                 }
             }

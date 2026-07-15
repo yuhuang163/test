@@ -1,19 +1,20 @@
-#include "xwd_ble_fixture_cmd_manifest.h"
+#include "xwd_fixture_cmd_manifest.h"
 
 namespace {
 
-using XwdBleFixtureCmdManifest::Row;
+using XwdRawFixtureCmdManifest::Row;
 
-constexpr uint8_t kSet = TestCaseCmdManifest::kSendActionSet;
+constexpr uint8_t kBoth = TestCaseCmdManifest::kSendActionBoth;
 
 const Row kRows[] = {
-    {XwdBleFixtureCmd::SendRaw, "SendRaw", u8"原始字节发送", DeviceCmdParamKind::String,
-     u8"十六进制原始字节，例：11 11 22 或 111122\n非 hex 内容按 UTF-8 原文下发", kSet},
+    {XwdRawFixtureCmd::SendRaw, "SendRaw", u8"原文/十六进制收发", DeviceCmdParamKind::String,
+     u8"设置：只下发；读取：下发后等回包。\r\n纯十六进制例：11 11 22 → 发三字节；含字母例：readonce → 原文 UTF-8",
+     kBoth},
 };
 
 } // namespace
 
-namespace XwdBleFixtureCmdManifest {
+namespace XwdRawFixtureCmdManifest {
 
 const Row* rows() {
     return kRows;
@@ -23,7 +24,7 @@ int rowCount() {
     return static_cast<int>(sizeof(kRows) / sizeof(kRows[0]));
 }
 
-const Row* findByCmd(XwdBleFixtureCmd cmd) {
+const Row* findByCmd(XwdRawFixtureCmd cmd) {
     for (const Row& row : kRows) {
         if (row.cmd == cmd)
             return &row;
@@ -40,4 +41,4 @@ const Row* findByEnumName(const QString& enumName) {
     return nullptr;
 }
 
-} // namespace XwdBleFixtureCmdManifest
+} // namespace XwdRawFixtureCmdManifest

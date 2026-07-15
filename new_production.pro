@@ -105,8 +105,7 @@ INCLUDEPATH += agreement/fixture_protocol/hz_fixture/device/hz_pcba_fixture_devi
 INCLUDEPATH += agreement/fixture_protocol/xwd_fixture/access
 INCLUDEPATH += agreement/fixture_protocol/xwd_fixture/codec
 INCLUDEPATH += agreement/fixture_protocol/xwd_fixture/device/xwd_fixture_device
-INCLUDEPATH += agreement/fixture_protocol/xwd_fixture/device/xwd_ble_fixture_device
-INCLUDEPATH += agreement/fixture_protocol/xwd_fixture/device/xwd_suction_fixture_device
+INCLUDEPATH += agreement/fixture_protocol/xwd_fixture/device/xwd_raw_fixture_device
 INCLUDEPATH += agreement/fixture_protocol/jieli_bt_box/codec
 INCLUDEPATH += agreement/fixture_protocol/jieli_bt_box/device/jieli_bt_box_device
 INCLUDEPATH += agreement/fixture_protocol/asd9026a/codec
@@ -213,13 +212,11 @@ SOURCES += \
     agreement/fixture_protocol/xwd_fixture/codec/xwd_line_text_codec.cpp \
     agreement/fixture_protocol/xwd_fixture/codec/xwd_line_hex_codec.cpp \
     agreement/fixture_protocol/xwd_fixture/codec/xwd_amplitude_codec.cpp \
-    agreement/fixture_protocol/xwd_fixture/codec/xwd_ble_uart_codec.cpp \
-    agreement/fixture_protocol/xwd_fixture/codec/xwd_suction_uart_codec.cpp \
+    agreement/fixture_protocol/xwd_fixture/codec/xwd_raw_uart_codec.cpp \
     agreement/fixture_protocol/jieli_bt_box/codec/jieli_bt_box_codec.cpp \
     agreement/fixture_protocol/jieli_bt_box/device/jieli_bt_box_device/jieli_bt_box_device.cpp \
     agreement/fixture_protocol/xwd_fixture/device/xwd_fixture_device/xwd_fixture_device.cpp \
-    agreement/fixture_protocol/xwd_fixture/device/xwd_ble_fixture_device/xwd_ble_fixture_device.cpp \
-    agreement/fixture_protocol/xwd_fixture/device/xwd_suction_fixture_device/xwd_suction_fixture_device.cpp \
+    agreement/fixture_protocol/xwd_fixture/device/xwd_raw_fixture_device/xwd_raw_fixture_device.cpp \
     agreement/mes_protocol/device/byd_mes/bydmes.cpp \
     agreement/mes_protocol/device/hq_mes/hqmes.cpp \
     agreement/mes_protocol/device/hz_mes/hzmes.cpp \
@@ -245,8 +242,7 @@ SOURCES += \
     platform/test_case/manifest/dongle_cmd_manifest.cpp \
     platform/test_case/manifest/fixture_pcba_cmd_manifest.cpp \
     platform/test_case/manifest/asd9026a_cmd_manifest.cpp \
-    platform/test_case/manifest/xwd_ble_fixture_cmd_manifest.cpp \
-    platform/test_case/manifest/xwd_suction_fixture_cmd_manifest.cpp \
+    platform/test_case/manifest/xwd_fixture_cmd_manifest.cpp \
     platform/test_case/manifest/jieli_bt_box_cmd_manifest.cpp \
     platform/test_case/manifest/product_serial_cmd_manifest.cpp \
     platform/test_case/manifest/modbus_cmd_manifest.cpp \
@@ -384,13 +380,11 @@ HEADERS += \
     agreement/fixture_protocol/xwd_fixture/codec/xwd_line_text_codec.h \
     agreement/fixture_protocol/xwd_fixture/codec/xwd_line_hex_codec.h \
     agreement/fixture_protocol/xwd_fixture/codec/xwd_amplitude_codec.h \
-    agreement/fixture_protocol/xwd_fixture/codec/xwd_ble_uart_codec.h \
-    agreement/fixture_protocol/xwd_fixture/codec/xwd_suction_uart_codec.h \
+    agreement/fixture_protocol/xwd_fixture/codec/xwd_raw_uart_codec.h \
     agreement/fixture_protocol/jieli_bt_box/codec/jieli_bt_box_codec.h \
     agreement/fixture_protocol/jieli_bt_box/device/jieli_bt_box_device/jieli_bt_box_device.h \
     agreement/fixture_protocol/xwd_fixture/device/xwd_fixture_device/xwd_fixture_device.h \
-    agreement/fixture_protocol/xwd_fixture/device/xwd_ble_fixture_device/xwd_ble_fixture_device.h \
-    agreement/fixture_protocol/xwd_fixture/device/xwd_suction_fixture_device/xwd_suction_fixture_device.h \
+    agreement/fixture_protocol/xwd_fixture/device/xwd_raw_fixture_device/xwd_raw_fixture_device.h \
     agreement/fixture_protocol/jieli_bt_box/device/jieli_bt_box_device/jieli_bt_box_device.h \
     agreement/mes_protocol/device/byd_mes/bydmes.h \
     agreement/mes_protocol/device/hq_mes/hqmes.h \
@@ -419,8 +413,7 @@ HEADERS += \
     platform/test_case/manifest/dongle_cmd_manifest.h \
     platform/test_case/manifest/fixture_pcba_cmd_manifest.h \
     platform/test_case/manifest/asd9026a_cmd_manifest.h \
-    platform/test_case/manifest/xwd_ble_fixture_cmd_manifest.h \
-    platform/test_case/manifest/xwd_suction_fixture_cmd_manifest.h \
+    platform/test_case/manifest/xwd_fixture_cmd_manifest.h \
     platform/test_case/manifest/jieli_bt_box_cmd_manifest.h \
     platform/test_case/manifest/modbus_cmd_manifest.h \
     platform/test_case/manifest/scpi_cmd_manifest.h \

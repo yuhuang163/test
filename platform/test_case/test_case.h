@@ -175,42 +175,23 @@ class Asd9026aCmdCatalog {
     static void paramToIniGroup(QSettings& settings, Asd9026aCmd cmd, const QVariant& value);
 };
 
-/** 欣旺达 xwd 蓝牙工站治具（Send/Channel=Fixture 且 Send/Protocol=XWD_BLE，治具串口原文下发）。 */
-enum class XwdBleFixtureCmd {
+/** 欣旺达 XWD raw 治具（与气缸 XwdFixtureCmd 区分；Protocol=XWD，兼容 XWD_BLE/XWD_SUCTION）。 */
+enum class XwdRawFixtureCmd {
     SendRaw,
 };
 
-class XwdBleFixtureCmdCatalog {
+class XwdRawFixtureCmdCatalog {
   public:
-    static QStringList allXwdBleFixtureCmdNames(TestCaseSendAction action);
-    static TestCaseSendAction actionFor(XwdBleFixtureCmd cmd);
-    static bool isCmdForAction(XwdBleFixtureCmd cmd, TestCaseSendAction action);
-    static QString xwdBleFixtureCmdUiLabel(const QString& enumName);
-    static bool xwdBleFixtureCmdFromName(const QString& name, XwdBleFixtureCmd& out);
-    static QString xwdBleFixtureCmdToName(XwdBleFixtureCmd cmd);
-    static bool paramSchemaFor(XwdBleFixtureCmd cmd, DeviceCmdParamSchema& out);
+    static QStringList allXwdRawFixtureCmdNames(TestCaseSendAction action);
+    static TestCaseSendAction actionFor(XwdRawFixtureCmd cmd);
+    static bool isCmdForAction(XwdRawFixtureCmd cmd, TestCaseSendAction action);
+    static QString xwdRawFixtureCmdUiLabel(const QString& enumName);
+    static bool xwdRawFixtureCmdFromName(const QString& name, XwdRawFixtureCmd& out);
+    static QString xwdRawFixtureCmdToName(XwdRawFixtureCmd cmd);
+    static bool paramSchemaFor(XwdRawFixtureCmd cmd, DeviceCmdParamSchema& out);
     static QString paramUiHint(const QString& enumName);
-    static bool paramFromIniGroup(const QSettings& settings, XwdBleFixtureCmd cmd, QVariant& out);
-    static void paramToIniGroup(QSettings& settings, XwdBleFixtureCmd cmd, const QVariant& value);
-};
-
-/** 欣旺达 xwd 吸力工站治具（Send/Channel=Fixture 且 Send/Protocol=XWD_SUCTION，治具串口原文下发）。 */
-enum class XwdSuctionFixtureCmd {
-    SendRaw,
-};
-
-class XwdSuctionFixtureCmdCatalog {
-  public:
-    static QStringList allXwdSuctionFixtureCmdNames(TestCaseSendAction action);
-    static TestCaseSendAction actionFor(XwdSuctionFixtureCmd cmd);
-    static bool isCmdForAction(XwdSuctionFixtureCmd cmd, TestCaseSendAction action);
-    static QString xwdSuctionFixtureCmdUiLabel(const QString& enumName);
-    static bool xwdSuctionFixtureCmdFromName(const QString& name, XwdSuctionFixtureCmd& out);
-    static QString xwdSuctionFixtureCmdToName(XwdSuctionFixtureCmd cmd);
-    static bool paramSchemaFor(XwdSuctionFixtureCmd cmd, DeviceCmdParamSchema& out);
-    static QString paramUiHint(const QString& enumName);
-    static bool paramFromIniGroup(const QSettings& settings, XwdSuctionFixtureCmd cmd, QVariant& out);
-    static void paramToIniGroup(QSettings& settings, XwdSuctionFixtureCmd cmd, const QVariant& value);
+    static bool paramFromIniGroup(const QSettings& settings, XwdRawFixtureCmd cmd, QVariant& out);
+    static void paramToIniGroup(QSettings& settings, XwdRawFixtureCmd cmd, const QVariant& value);
 };
 
 /** 杰理蓝牙盒子：串口 TLV 上报频偏/RSSI（Send/Channel=Fixture 且 Protocol=JieliBtBox）。 */

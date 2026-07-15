@@ -1,4 +1,4 @@
-#include "xwd_suction_uart_codec.h"
+#include "xwd_raw_uart_codec.h"
 
 #include "fixture_uart_codec.h"
 
@@ -8,7 +8,7 @@
 #pragma execution_character_set(push, "utf-8")
 #endif
 
-namespace XwdSuctionUartCodec {
+namespace XwdRawUartCodec {
 
 QByteArray encodeRawText(const QString& text, bool* parsedAsHex) {
     // 纯十六进制（如 11 11 22）→ hex 字节；含非 hex 字母（如 readonce）→ UTF-8 原文
@@ -56,7 +56,7 @@ bool parseReadOnceReply(const QString& text, double* ch1Ma, double* ch2Ma, bool*
     return any;
 }
 
-} // namespace XwdSuctionUartCodec
+} // namespace XwdRawUartCodec
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(pop)
