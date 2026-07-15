@@ -385,6 +385,23 @@ QVector<TestFlowStationEntry> TestCaseStore::defaultFlowStationPresets() {
     return builtinFlowStationPresets();
 }
 
+bool TestCaseStore::stationBelongsToProduct(const QString& stationDisplayName, const QString& productName) {
+    return CommonUtils::stationBelongsToProduct(stationDisplayName, productName);
+}
+
+QVector<TestFlowStationEntry> TestCaseStore::loadFlowStationCatalogForProduct(const QString& productName) {
+    const QVector<TestFlowStationEntry> all = loadFlowStationCatalog();
+    if (productName.trimmed().isEmpty())
+        return all;
+    QVector<TestFlowStationEntry> filtered;
+    filtered.reserve(all.size());
+    for (const TestFlowStationEntry& entry : all) {
+        if (stationBelongsToProduct(entry.displayName, productName))
+            filtered.append(entry);
+    }
+    return filtered;
+}
+
 QVector<TestFlowStationEntry> TestCaseStore::loadFlowStationCatalog() {
     TestCasePaths::ensureRootDir();
     QHash<QString, QString> nameByKey;

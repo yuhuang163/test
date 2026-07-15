@@ -1,5 +1,6 @@
 #include "qsetting.h"
 
+#include "common_utils.h"
 #include "qsetting_bindings.h"
 #include "qevent.h"
 #include <QApplication>
@@ -104,8 +105,7 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     StationGroup->addButton(findChild<QRadioButton*>("radioButtonSuctionTest"), 12);
 
     // 如果需要从某个数据源添加项，可以使用循环来添加
-    QStringList productList = {"V3", "V3Pro", "M8"};
-    ui->comboBox_productName->addItems(productList);
+    ui->comboBox_productName->addItems(CommonUtils::mesProductNames());
 
     QStringList pressFunctionSwitch = {"无效选项", "单校准", "单测试", "校准加测试"};
     ui->comboBox_pressFunctionSwitch->addItems(pressFunctionSwitch);
@@ -866,6 +866,12 @@ void qsetting::on_comboBox_productName_textActivated(const QString& arg1) {
     } else if (arg1 == QStringLiteral("V3Pro")) {
         ui->snLineEdit->setText(QStringLiteral("^[0-9a-zA-Z]{15}$"));
     }
+    // 先落盘产品型号，再按产品过滤工站下拉
+    SETTINGS.setValue(QStringLiteral("Mes/Product_Name"), arg1);
+    SETTINGS.setValue(QStringLiteral("MES/Product_Name"), arg1);
+    SETTINGS.sync();
+    if (testFlowEditor_)
+        testFlowEditor_->onProductNameChanged();
 }
 
 void qsetting::on_comboBox_factory_textActivated(const QString& arg1) {

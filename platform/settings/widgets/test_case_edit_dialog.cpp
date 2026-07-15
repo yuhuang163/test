@@ -628,6 +628,7 @@ const QHash<QString, QString>& hookDisplayNameMap() {
         {QStringLiteral("KEY_M8_PLUS"), QStringLiteral("M8 加挡位键（9A01）")},
         {QStringLiteral("KEY_M8_MINUS"), QStringLiteral("M8 减挡位键（9A02）")},
         {QStringLiteral("KEY_M8_MODE"), QStringLiteral("M8 模式键（9A03）")},
+        {QStringLiteral("KEY_M8_HEAT"), QStringLiteral("M8 加热键（9A04）")},
         {QStringLiteral("KEY_SPEED"), QStringLiteral("速度键测试")},
         {QStringLiteral("KEY_PROGRAM"), QStringLiteral("程序键测试")},
         {QStringLiteral("KEY_LEFT"), QStringLiteral("左键测试")},

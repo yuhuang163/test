@@ -188,8 +188,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
         }
     });
 
-    QStringList productList = {"V3","V3 PRO", "Pump-E", "M8P","W1 Lite", "W1","W2",};
-    ui->name_range->addItems(productList);
+    ui->name_range->addItems(CommonUtils::dongleBroadcastFilterNames());
     ui->rssi_range_value->setText(QString("%1 dBm").arg(ui->rssi_range->value()));
     connect(ui->rssi_range, &QSlider::valueChanged, this, [=](int value) {
         ui->rssi_range_value->setText(QString("%1 dBm").arg(value));
@@ -553,37 +552,18 @@ void MainWindow::refreshDongleDeviceName(const QString& name)
     }
 
     QString targetProduct;
-    QString targetProtocol;   // ✅ 改这里
-
-    QString upperName = name.toUpper();
-
-    if (upperName.contains("V3 PRO")) {
-        targetProduct = "V3Pro";
-        targetProtocol = "qfctp";
-    } else if (upperName.contains("V3")) {
-        targetProduct = "V3";
-        targetProtocol = "qfctp";
-    } else if (name == "Pump-E") {
-        targetProduct = "M8";
-        targetProtocol = "qroot";
-    } else if (name == "M8P") {
-        targetProduct = "M8P";
-        targetProtocol = "qaiot";
-    } else {
+    QString targetProtocol;
+    if (!CommonUtils::resolveDongleDeviceMapping(name, &targetProduct, &targetProtocol)) {
         qDebug() << "未知设备名称，不切换:" << name;
         return;
     }
 
     SETTINGS.setValue("Mes/Product_Name", targetProduct);
-
     SETTINGS.setValue("SYSTEM/ProtocolType", targetProtocol);
     SETTINGS.sync();
-    
-    auto selectedType =
-        QProtocolManager::protocolTypeFromString(
-            targetProtocol.toStdString()
-            );
 
+    auto selectedType =
+        QProtocolManager::protocolTypeFromString(targetProtocol.toStdString());
     protocolManager.setCurrentProtocolType(selectedType);
 
     showlog(QString("根据Dongle设备名称切换 - 产品型号: %1 -> %2, 协议类型: %3")
@@ -689,6 +669,9 @@ void MainWindow::refreshButtonState(ProtocolButtonStateData data) {
         break;
     case 3:
         showlog(QStringLiteral("按键上报：模式按键(9A03)"));
+        break;
+    case 4:
+        showlog(QStringLiteral("按键上报：加热按键(9A04)"));
         break;
     default:
         if (data.keyButtonId != 0)

@@ -87,6 +87,13 @@ class TestCaseStore {
     static QVector<TestFlowStationEntry> defaultFlowStationPresets();
     /** 从 总的测试流程.ini [FlowStations] 读取；无记录时写入预设并返回 */
     static QVector<TestFlowStationEntry> loadFlowStationCatalog();
+    /**
+     * 工站显示名是否属于指定产品（Mes/Product_Name）。
+     * 自由工站/默认工站通用；其余按工站名是否以产品名开头（见 CommonUtils::stationBelongsToProduct）。
+     */
+    static bool stationBelongsToProduct(const QString& stationDisplayName, const QString& productName);
+    /** 按产品过滤工站目录；productName 空则不过滤。 */
+    static QVector<TestFlowStationEntry> loadFlowStationCatalogForProduct(const QString& productName);
     static bool saveFlowStationCatalog(const QVector<TestFlowStationEntry>& entries);
     static QString flowStationDisplayName(const QString& stationKey);
     /** 显示名或已有键 → 流程 ini 使用的工站键（预设如 自由工站→FREE_WORK） */

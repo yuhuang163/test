@@ -159,7 +159,7 @@ QString FactoryCloudClient::deviceId() {
 }
 
 QString FactoryCloudClient::stationKey() {
-    // 与上位机设置.local.ini TestOrderMeta/SelectedStationName 同源（如 m8烧录工站）
+    // 与上位机设置.local.ini TestOrderMeta/SelectedStationName 同源（如 M8烧录工站）
     QString key = TestCaseStore::loadSelectedFlowStationName();
     if (key.isEmpty()) {
         key = SETTINGS.value(QStringLiteral("SYSTEM/station")).toString().trimmed();

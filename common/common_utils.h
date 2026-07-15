@@ -71,6 +71,17 @@ class CommonUtils {
     static QString trimmed(const QString& text);
     static bool equalsIgnoreCase(const QString& left, const QString& right);
     static QString formatList(const QStringList& items, const QString& separator = QStringLiteral(", "));
+
+    /**
+     * 产品目录（common_utils.cpp 内 kProductTable 唯一维护）。
+     * mesProductNames：设置页；resolveDongleDeviceMapping：Dongle 广播名→产品/协议。
+     */
+    static QStringList mesProductNames();
+    static QStringList dongleBroadcastFilterNames();
+    static QString protocolForProduct(const QString& productName);
+    /** 工站显示名是否属于指定产品：自由/默认工站通用，其余按工站名前缀匹配产品名。 */
+    static bool stationBelongsToProduct(const QString& stationDisplayName, const QString& productName);
+    static bool resolveDongleDeviceMapping(const QString& dongleName, QString* productOut, QString* protocolOut);
 };
 
 #endif // COMMON_UTILS_H
