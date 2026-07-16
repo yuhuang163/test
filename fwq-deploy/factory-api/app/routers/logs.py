@@ -177,9 +177,18 @@ def log_file_preview(
     if raw is None:
         fail(400, "该文件不支持在线预览", 400)
     text = raw.decode("utf-8", errors="replace")
-    if offset or len(text) > limit:
-        text = text[offset : offset + limit]
-    return PlainTextResponse(text, media_type="text/plain; charset=utf-8")
+    total_len = len(text)
+    chunk = text[offset : offset + limit]
+    has_more = offset + len(chunk) < total_len
+    return PlainTextResponse(
+        chunk,
+        media_type="text/plain; charset=utf-8",
+        headers={
+            "X-Preview-Total-Length": str(total_len),
+            "X-Preview-Offset": str(offset),
+            "X-Preview-Has-More": "true" if has_more else "false",
+        },
+    )
 
 
 @router.get("/{log_id}/download")

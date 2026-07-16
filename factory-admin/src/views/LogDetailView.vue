@@ -42,6 +42,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '../api/http'
+import { fetchLogPreviewText } from '../api/logs'
 import { formatTime, formatSize } from '../utils/format'
 
 const route = useRoute()
@@ -120,15 +121,10 @@ async function onFileClick(node) {
   }
   currentFile.value = node.path
   try {
-    const res = await fetch(
-      `/api/factory-tool/logs/${route.params.id}/files/${encodeURIComponent(node.path)}`,
-      { headers: { Authorization: `Bearer ${localStorage.getItem('fc_token')}` } }
-    )
-    if (!res.ok) {
-      throw new Error('预览失败')
-    }
-    previewText.value = await res.text()
+    previewText.value = '加载中…'
+    previewText.value = await fetchLogPreviewText(route.params.id, node.path)
   } catch (e) {
+    previewText.value = '预览失败'
     ElMessage.error(e.message)
   }
 }

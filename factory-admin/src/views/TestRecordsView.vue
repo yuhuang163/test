@@ -154,6 +154,7 @@ import { ElMessage } from 'element-plus'
 import { formatTime, formatSize, isTestFailResult } from '../utils/format'
 import { useFactoryScope } from '../composables/useFactoryScope'
 import http from '../api/http'
+import { fetchLogPreviewText } from '../api/logs'
 
 const router = useRouter()
 const { isFactoryScoped, scopedFactoryLabel, applyScopedFactoryFilter } = useFactoryScope()
@@ -225,14 +226,8 @@ function pickDefaultLogFile(files) {
 
 async function previewLogFile(logId, relativePath) {
   currentLogFile.value = relativePath
-  const res = await fetch(
-    `/api/factory-tool/logs/${logId}/files/${encodeURIComponent(relativePath)}`,
-    { headers: { Authorization: `Bearer ${localStorage.getItem('fc_token')}` } }
-  )
-  if (!res.ok) {
-    throw new Error('预览失败')
-  }
-  logPreviewText.value = await res.text()
+  logPreviewText.value = '加载中…'
+  logPreviewText.value = await fetchLogPreviewText(logId, relativePath)
 }
 
 async function loadFactories() {
