@@ -8,6 +8,12 @@ factory-admin/dist/
 # 生产部署 zip（本机打包脚本生成）
 fwq-deploy-*.zip
 
+# 部署包运行时产物（目录本身入库，venv/数据/env 不入库）
+fwq-deploy-test/factory-api/.venv/
+fwq-deploy-test/factory-api/data/
+fwq-deploy-test/factory-api/.env
+fwq-deploy-test/factory-api/*.db
+
 # 本地数据与密钥
 factory-api/data/
 factory-api/.env

@@ -1,0 +1,46 @@
+路特产线管理平台 - 测试环境部署（IIS + fctp-test.luteos.site）
+
+适用：与生产 fwq-deploy 同机部署，API 端口 8801，数据与生产隔离。
+
+一、目录（与生产并列，勿放桌面）
+  推荐：
+    C:\inetpub\lute-factory-test\factory-api\          Python API（start-api-test.bat）
+    C:\inetpub\lute-factory-test\factory-admin\dist\   IIS 测试站网站根目录（web.config 反代 8801）
+  生产环境仍在：
+    C:\inetpub\lute-factory\                           （API 8800，域名 fctp.luteos.com）
+
+二、DNS（luteos.site 域，与生产 luteos.com 分开解析）
+  记录类型 A
+  主机记录 fctp-test
+  记录值   120.25.211.50（与生产同 ECS 公网 IP）
+  生效后：fctp-test.luteos.site -> 本服务器
+
+三、启动测试 API
+  1. Python 3.10+，进入 fwq-deploy-test 目录，双击 start-api-test.bat
+  2. 首次运行自动从 .env.test.example 生成 .env，请修改 SECRET_KEY
+  3. 本机验证：http://127.0.0.1:8801/docs
+  4. 停止：stop-api-test.bat
+
+四、IIS 测试站
+  1. 安装 URL Rewrite、ARR（启用 Proxy），与生产站相同
+  2. 新建网站（勿与生产站混用同一物理路径）：
+     - 物理路径：...\fwq-deploy-test\factory-admin\dist
+     - 绑定：http 80 + https 443，主机名 fctp-test.luteos.site（HTTPS 证书由管理员配置）
+  3. dist\web.config 已将 /api、/docs 等反代到 http://127.0.0.1:8801
+  4. 访问：https://fctp-test.luteos.site/  登录 admin / admin123
+
+五、与生产环境区别
+  | 项目     | 生产 fwq-deploy      | 测试 fwq-deploy-test        |
+  |----------|----------------------|-----------------------------|
+  | API 端口 | 8800                 | 8801                        |
+  | 数据库   | data/factory.db      | data/factory-test.db        |
+  | 文件存储 | data/storage         | data/storage-test           |
+  | 域名示例 | fctp.luteos.com      | fctp-test.luteos.site        |
+
+六、上位机 FactoryCloud（连测试服）
+  - BaseUrl：https://fctp-test.luteos.site
+  - 设置页环境可选手动填写测试域名；接口前缀仍为 /api/factory-tool/
+
+七、更新
+  - 本机 打包部署.bat 生成 fwq-deploy-test -> 覆盖服务器对应目录 -> stop/start-api-test.bat
+  - 覆盖 factory-admin\dist 后 IIS 无需重启；仅改 API 代码时需重启测试 API

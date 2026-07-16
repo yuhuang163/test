@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+  <system.webServer>
+
+    <security>
+      <requestFiltering>
+        <requestLimits maxAllowedContentLength="524288000" />
+      </requestFiltering>
+    </security>
+
+    <rewrite>
+      <rules>
+        <rule name="API Proxy" stopProcessing="true">
+          <match url="^api/(.*)" />
+          <action type="Rewrite" url="http://127.0.0.1:8801/api/{R:1}" />
+        </rule>
+
+        <rule name="API Docs" stopProcessing="true">
+          <match url="^docs(.*)" />
+          <action type="Rewrite" url="http://127.0.0.1:8801/docs{R:1}" />
+        </rule>
+        <rule name="OpenAPI JSON" stopProcessing="true">
+          <match url="^openapi\.json$" />
+          <action type="Rewrite" url="http://127.0.0.1:8801/openapi.json" />
+        </rule>
+        <rule name="API ReDoc" stopProcessing="true">
+          <match url="^redoc(.*)" />
+          <action type="Rewrite" url="http://127.0.0.1:8801/redoc{R:1}" />
+        </rule>
+        <rule name="API Health" stopProcessing="true">
+          <match url="^health$" />
+          <action type="Rewrite" url="http://127.0.0.1:8801/health" />
+        </rule>
+
+        <rule name="SPA" stopProcessing="true">
+          <match url=".*" />
+          <conditions logicalGrouping="MatchAll">
+            <add input="{REQUEST_FILENAME}" matchType="IsFile" negate="true" />
+            <add input="{REQUEST_FILENAME}" matchType="IsDirectory" negate="true" />
+          </conditions>
+          <action type="Rewrite" url="/index.html" />
+        </rule>
+      </rules>
+    </rewrite>
+
+    <staticContent>
+      <remove fileExtension=".json" />
+      <mimeMap fileExtension=".json" mimeType="application/json" />
+      <remove fileExtension=".woff2" />
+      <mimeMap fileExtension=".woff2" mimeType="font/woff2" />
+      <remove fileExtension=".ico" />
+      <mimeMap fileExtension=".ico" mimeType="image/x-icon" />
+    </staticContent>
+
+  </system.webServer>
+</configuration>
