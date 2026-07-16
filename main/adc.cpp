@@ -56,9 +56,9 @@ void ADCDriver::read_and_print()
         return;
     }
 
-    uint32_t raw = read_raw();
-    int mv_cal = read_mv();
-    int mv_raw = (int)(read_voltage_from_raw(raw) * 1000.0f);
+    // uint32_t raw = read_raw();
+    // int mv_cal = read_mv();
+    // int mv_raw = (int)(read_voltage_from_raw(raw) * 1000.0f);
     // Serial.printf("AT+LS_ADC_RAW=%lu\r\n", raw);
     // Serial.printf("AT+LS_CURRENT_DATA_MV=%d\r\n", mv_cal);
     // Serial.printf("AT+LS_CURRENT_DATA_MV_RAW=%d\r\n", mv_raw);
