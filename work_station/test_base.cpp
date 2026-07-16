@@ -1116,6 +1116,7 @@ bool test_base::applyAdaptiveV3ProductBySn(QLineEdit* snEdit) {
 }
 
 QString test_base::parseMacFromSn(const QString& snCode) {
+    // 通用：组装产整机 SN 解析 MAC（从 index 4 起取 12 位 hex）
     QString sn = snCode;
     sn.remove(QRegularExpression("\\s+"));
     if (sn.length() < 16) {

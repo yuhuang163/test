@@ -847,6 +847,9 @@ void saveMultiGatesToIni(QSettings& ini, const TestCaseDefinition& def) {
         ini.setValue(QStringLiteral("Expected"), g.expected);
         ini.setValue(QStringLiteral("Low"), g.low);
         ini.setValue(QStringLiteral("High"), g.high);
+        ini.setValue(QStringLiteral("LowSettingsKey"), g.lowSettingsKey);
+        ini.setValue(QStringLiteral("HighSettingsKey"), g.highSettingsKey);
+        ini.setValue(QStringLiteral("ExpectedSettingsKey"), g.expectedSettingsKey);
         ini.endGroup();
     }
 }
@@ -1279,17 +1282,13 @@ void applyCaseIniOverlay(QSettings& overlay, TestCaseDefinition& def) {
                 }
                 def.send.param = normalizeScpiModbusParamFromMap(merged);
             } else if (def.send.channel == TestCaseSendChannel::Product) {
-                DeviceCmd cmd;
-                if (DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd)) {
-                    QVariantMap merged;
-                    if (def.send.param.canConvert<QVariantMap>())
-                        merged = def.send.param.toMap();
-                    for (auto it = paramMap.constBegin(); it != paramMap.constEnd(); ++it)
-                        merged.insert(it.key(), it.value());
-                    def.send.param = DeviceCmdCatalog::normalizeSendParam(cmd, merged);
-                } else {
-                    def.send.param = paramMap;
-                }
+                // 编辑/存档侧保持 JsonMap；normalizeSendParam（如 Sn→DeviceSnPayload）仅在下发时做
+                QVariantMap merged;
+                if (def.send.param.canConvert<QVariantMap>())
+                    merged = def.send.param.toMap();
+                for (auto it = paramMap.constBegin(); it != paramMap.constEnd(); ++it)
+                    merged.insert(it.key(), it.value());
+                def.send.param = merged;
             } else if (!def.send.param.canConvert<QVariantMap>()) {
                 // Param_string 等叶子读成单键 map；若不解开，String 型执行时 .toString() 会得到空串
                 def.send.param = normalizeScpiModbusParamFromMap(paramMap);
@@ -1347,34 +1346,54 @@ void applyCaseIniOverlay(QSettings& overlay, TestCaseDefinition& def) {
 
     if (overlay.contains(QStringLiteral("Gate/Enabled")) || overlay.contains(QStringLiteral("Gate/ReportType"))
         || overlay.contains(QStringLiteral("Gate/Count"))) {
-        if (overlay.contains(QStringLiteral("Gate/Enabled")))
-            def.gate.enabled = overlay.value(QStringLiteral("Gate/Enabled")).toBool();
-        if (overlay.contains(QStringLiteral("Gate/ReportType")))
-            def.gate.reportType = overlay.value(QStringLiteral("Gate/ReportType")).toString().trimmed();
-        if (overlay.contains(QStringLiteral("Gate/Field")))
-            def.gate.field = overlay.value(QStringLiteral("Gate/Field")).toString().trimmed();
-        if (overlay.contains(QStringLiteral("Gate/Op")))
-            def.gate.op = gateOpFromString(overlay.value(QStringLiteral("Gate/Op")).toString());
-        if (overlay.contains(QStringLiteral("Gate/Low")))
-            def.gate.low = overlay.value(QStringLiteral("Gate/Low")).toDouble();
-        if (overlay.contains(QStringLiteral("Gate/High")))
-            def.gate.high = overlay.value(QStringLiteral("Gate/High")).toDouble();
-        if (overlay.contains(QStringLiteral("Gate/Expected")))
-            def.gate.expected = overlay.value(QStringLiteral("Gate/Expected")).toString();
-        if (overlay.contains(QStringLiteral("Gate/ExpectedSettingsKey")))
-            def.gate.expectedSettingsKey = overlay.value(QStringLiteral("Gate/ExpectedSettingsKey")).toString();
-        if (overlay.contains(QStringLiteral("Gate/LowSettingsKey")))
-            def.gate.lowSettingsKey = overlay.value(QStringLiteral("Gate/LowSettingsKey")).toString();
-        if (overlay.contains(QStringLiteral("Gate/HighSettingsKey")))
-            def.gate.highSettingsKey = overlay.value(QStringLiteral("Gate/HighSettingsKey")).toString();
-        loadMultiGatesFromIni(overlay, def);
+        // 仅「多字段」卡控：覆盖层无 Gate/Count、Gate/1 时不冲掉步骤库明细。
+        // 单字段（如读取版本号 Expected）必须合并，否则工站覆盖层写了也不生效。
+        const bool overlayHasMulti = overlay.value(QStringLiteral("Gate/Count"), 0).toInt() > 0
+            || !overlay.value(QStringLiteral("Gate/1/Field")).toString().trimmed().isEmpty();
+        const bool libraryHasMultiGates = def.gates.size() > 1
+            || def.gate.field.compare(QLatin1String("multi"), Qt::CaseInsensitive) == 0;
+        if (!overlayHasMulti && libraryHasMultiGates) {
+            if (overlay.contains(QStringLiteral("Gate/Enabled")))
+                def.gate.enabled = overlay.value(QStringLiteral("Gate/Enabled")).toBool();
+        } else {
+            if (overlay.contains(QStringLiteral("Gate/Enabled")))
+                def.gate.enabled = overlay.value(QStringLiteral("Gate/Enabled")).toBool();
+            if (overlay.contains(QStringLiteral("Gate/ReportType")))
+                def.gate.reportType = overlay.value(QStringLiteral("Gate/ReportType")).toString().trimmed();
+            if (overlay.contains(QStringLiteral("Gate/Field")))
+                def.gate.field = overlay.value(QStringLiteral("Gate/Field")).toString().trimmed();
+            if (overlay.contains(QStringLiteral("Gate/Op")))
+                def.gate.op = gateOpFromString(overlay.value(QStringLiteral("Gate/Op")).toString());
+            if (overlay.contains(QStringLiteral("Gate/Low")))
+                def.gate.low = overlay.value(QStringLiteral("Gate/Low")).toDouble();
+            if (overlay.contains(QStringLiteral("Gate/High")))
+                def.gate.high = overlay.value(QStringLiteral("Gate/High")).toDouble();
+            if (overlay.contains(QStringLiteral("Gate/Expected")))
+                def.gate.expected = overlay.value(QStringLiteral("Gate/Expected")).toString();
+            if (overlay.contains(QStringLiteral("Gate/ExpectedSettingsKey")))
+                def.gate.expectedSettingsKey = overlay.value(QStringLiteral("Gate/ExpectedSettingsKey")).toString();
+            if (overlay.contains(QStringLiteral("Gate/LowSettingsKey")))
+                def.gate.lowSettingsKey = overlay.value(QStringLiteral("Gate/LowSettingsKey")).toString();
+            if (overlay.contains(QStringLiteral("Gate/HighSettingsKey")))
+                def.gate.highSettingsKey = overlay.value(QStringLiteral("Gate/HighSettingsKey")).toString();
+            loadMultiGatesFromIni(overlay, def);
+        }
     }
 
     if (overlay.contains(QStringLiteral("Hook/Enabled")) || overlay.contains(QStringLiteral("Hook/HookId"))) {
-        if (overlay.contains(QStringLiteral("Hook/Enabled")))
+        // 覆盖层未写 HookId（或写空）时保留步骤库钩子，避免残缺 profile 把 KEY_M8_* 冲成空/错项
+        const QString overlayHookId = overlay.contains(QStringLiteral("Hook/HookId"))
+            ? overlay.value(QStringLiteral("Hook/HookId")).toString().trimmed()
+            : QString();
+        if (!overlayHookId.isEmpty()) {
+            def.hook.hookId = overlayHookId;
+            if (overlay.contains(QStringLiteral("Hook/Enabled")))
+                def.hook.enabled = overlay.value(QStringLiteral("Hook/Enabled")).toBool();
+            else
+                def.hook.enabled = true;
+        } else if (overlay.contains(QStringLiteral("Hook/Enabled")) && def.hook.hookId.isEmpty()) {
             def.hook.enabled = overlay.value(QStringLiteral("Hook/Enabled")).toBool();
-        if (overlay.contains(QStringLiteral("Hook/HookId")))
-            def.hook.hookId = overlay.value(QStringLiteral("Hook/HookId")).toString().trimmed();
+        }
     }
 }
 
@@ -1797,21 +1816,18 @@ bool TestCaseStore::loadCaseForStation(const QString& stationKey, const QString&
     const QString profileStepPath =
         key.isEmpty() ? QString() : TestCasePaths::profileStepOverridePath(key, id);
 
-    // 步骤库/legacy 为占位默认；工站 steps 仅覆盖其中已配置的字段
-    bool loaded = loadCaseDefinitionFromIniFile(libraryPath, id, out);
-    if (!loaded)
-        loaded = loadCaseDefinitionFromIniFile(legacyPath, id, out);
-    if (!loaded && !profileStepPath.isEmpty())
+    // 不做运行时「步骤库+工站」字段覆盖：工站 steps 有完整文件则只读工站；
+    // 缺项应事先把步骤库内容补进工站文件（保存/补全），避免每次加载用库盖工站。
+    bool loaded = false;
+    if (!profileStepPath.isEmpty() && stepIniHasMeaningfulContent(profileStepPath)) {
         loaded = loadCaseDefinitionFromIniFile(profileStepPath, id, out);
-    if (!loaded)
-        return false;
-
-    if (!profileStepPath.isEmpty() && QFile::exists(profileStepPath)) {
-        QSettings overlayIni(profileStepPath, QSettings::IniFormat);
-        applyTestCaseIniCodec(overlayIni);
-        applyCaseIniOverlay(overlayIni, out);
     }
-    return true;
+    if (!loaded) {
+        loaded = loadCaseDefinitionFromIniFile(libraryPath, id, out);
+        if (!loaded)
+            loaded = loadCaseDefinitionFromIniFile(legacyPath, id, out);
+    }
+    return loaded;
 }
 
 bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, QString* errorOut) {
@@ -2710,7 +2726,14 @@ void DeviceCmdCatalog::paramToIniGroup(QSettings& settings, DeviceCmd cmd, const
         writeSendParamLeaf(settings, QStringLiteral("string"), value.toString());
         break;
     case DeviceCmdParamKind::JsonMap:
-        if (value.canConvert<QVariantMap>()) {
+        if (value.canConvert<DeviceSnPayload>()) {
+            // 兼容旧加载路径把 Sn 归一成 payload 后写回 ini
+            const DeviceSnPayload payload = value.value<DeviceSnPayload>();
+            QVariantMap map;
+            map.insert(QStringLiteral("which_sn"), static_cast<int>(payload.which_sn));
+            map.insert(QStringLiteral("sn"), QString::fromUtf8(payload.sn));
+            writeJsonMap(settings, prefix, map);
+        } else if (value.canConvert<QVariantMap>()) {
             writeJsonMap(settings, prefix, value);
         } else if (value.type() == QVariant::String) {
             writeSendParamLeaf(settings, QStringLiteral("value"), value.toString());

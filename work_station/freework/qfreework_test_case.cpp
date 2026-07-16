@@ -220,6 +220,10 @@ TuplePlaceholderKind tuplePlaceholderKind(const QString& text) {
 bool paramTreeReferencesTuplePlaceholder(const QVariant& param) {
     if (param.userType() == QMetaType::QString)
         return tuplePlaceholderKind(param.toString()) != TuplePlaceholderKind::None;
+    if (param.canConvert<DeviceSnPayload>()) {
+        return tuplePlaceholderKind(QString::fromUtf8(param.value<DeviceSnPayload>().sn))
+            != TuplePlaceholderKind::None;
+    }
     if (param.canConvert<QVariantMap>()) {
         const QVariantMap map = param.toMap();
         for (auto it = map.cbegin(); it != map.cend(); ++it) {
@@ -495,6 +499,12 @@ QString QFreeWork::resolveTestCaseSendPlaceholder(const QString& text) const {
 QVariant QFreeWork::resolveTestCaseSendParamTree(const QVariant& param) const {
     if (param.userType() == QMetaType::QString)
         return resolveTestCaseSendPlaceholder(param.toString());
+    // 加载期曾把 Sn 归一成 DeviceSnPayload，此处仍要对 sn 字段做 $TUPLE_* 展开
+    if (param.canConvert<DeviceSnPayload>()) {
+        DeviceSnPayload payload = param.value<DeviceSnPayload>();
+        payload.sn = resolveTestCaseSendPlaceholder(QString::fromUtf8(payload.sn)).toUtf8();
+        return QVariant::fromValue(payload);
+    }
     if (param.canConvert<QVariantMap>()) {
         QVariantMap map = param.toMap();
         for (auto it = map.begin(); it != map.end(); ++it)
@@ -527,8 +537,10 @@ bool QFreeWork::prepareTupleProductWriteForTestCase(const TestCaseDefinition& de
         writeText = QString::fromUtf8(wireParam.toMap().value(QStringLiteral("value")).toByteArray());
     }
 
-    if (writeText.trimmed().isEmpty()) {
-        failTupleWriteIfNoValidField(stepName, false, QStringLiteral("三元组字段为空"));
+    if (writeText.trimmed().isEmpty() || tuplePlaceholderKind(writeText) != TuplePlaceholderKind::None) {
+        failTupleWriteIfNoValidField(stepName, false,
+                                     writeText.trimmed().isEmpty() ? QStringLiteral("三元组字段为空")
+                                                                   : QStringLiteral("三元组占位符未展开"));
         return false;
     }
     stepRuntime_.testData = writeText;

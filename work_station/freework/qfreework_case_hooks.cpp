@@ -4,6 +4,13 @@
 
 #include "qprotocol_types.h"
 
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QLabel>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QVBoxLayout>
+
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
 #endif
@@ -85,6 +92,40 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
             fw->protocolManager.set(DeviceCmd::Sn,
                                     QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, tailSn}));
         });
+        return;
+    }
+    if (hookId == QStringLiteral("QR_SN_CONSISTENCY_CHECK")) {
+        const QString expectedSn = fw->resolvedExpectedTailSnText().trimmed();
+        if (expectedSn.isEmpty()) {
+            fw->markActiveTestCaseStepDone(false, QStringLiteral("开局SN为空"), QStringLiteral("失败"));
+            fw->showlog(QStringLiteral("二维码一致性校验失败：开局整机SN为空，请先扫入SN再测试"));
+            return;
+        }
+        QDialog dlg(fw);
+        dlg.setWindowTitle(QStringLiteral("二维码一致性校验"));
+        dlg.setModal(true);
+        auto* layout = new QVBoxLayout(&dlg);
+        layout->addWidget(new QLabel(QStringLiteral("请扫入/填入待校验二维码（将与开局SN比对）："), &dlg));
+        auto* edit = new QLineEdit(&dlg);
+        layout->addWidget(edit);
+        // 仅保留确定，扫码枪回车也会触发 accept
+        auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok, &dlg);
+        buttons->button(QDialogButtonBox::Ok)->setText(QStringLiteral("确定"));
+        layout->addWidget(buttons);
+        QObject::connect(buttons, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+        QObject::connect(edit, &QLineEdit::returnPressed, &dlg, &QDialog::accept);
+        edit->setFocus();
+        dlg.exec();
+        const QString scanned = edit->text().trimmed();
+        if (scanned.isEmpty()) {
+            fw->markActiveTestCaseStepDone(false, QStringLiteral("输入为空"), expectedSn);
+            fw->showlog(QStringLiteral("二维码一致性校验失败：输入为空，期望SN=%1").arg(expectedSn));
+            return;
+        }
+        const bool pass = fw->compareVersions(expectedSn, scanned);
+        fw->markActiveTestCaseStepDone(pass, scanned, expectedSn);
+        fw->showlog(pass ? QStringLiteral("二维码一致性校验通过：扫描=%1，开局SN=%2").arg(scanned, expectedSn)
+                         : QStringLiteral("二维码一致性校验失败：扫描=%1，开局SN=%2").arg(scanned, expectedSn));
         return;
     }
 
@@ -284,6 +325,7 @@ void QFreeWorkTestCaseHookRegistrar::registerAll() {
     registerHook(QStringLiteral("DONGLE_SUCTION_SAMPLE"));
     registerHook(QStringLiteral("DONGLE_SUCTION_SAMPLE_SINGLE"));
     registerHook(QStringLiteral("SN_WRITE_TAIL"));
+    registerHook(QStringLiteral("QR_SN_CONSISTENCY_CHECK"));
     registerHook(QStringLiteral("MAC_WRITE_ROOT"));
     registerHook(QStringLiteral("BLE_CONNECT_BY_NAME"));
     registerHook(QStringLiteral("PLC_MODBUS_CONN"));

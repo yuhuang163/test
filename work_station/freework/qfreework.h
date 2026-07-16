@@ -204,6 +204,7 @@ class QFreeWork : public test_base {
     bool isCurrentStep(const QString& functionName) const;
     bool isCurrentInstrumentStep(const QString& stepName) const;
     bool isBydFactory() const;
+    bool isFreeWorkM8BoardFactoryStation() const;
     QString resolvedExpectedTailSnText() const;
     QByteArray resolvedTailSnToWrite() const;
 

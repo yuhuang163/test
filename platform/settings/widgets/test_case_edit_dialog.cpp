@@ -4,6 +4,7 @@
 #include "test_case.h"
 #include "manifest/modbus_cmd_manifest.h"
 #include "manifest/scpi_cmd_manifest.h"
+#include "qprotocol_types.h"
 
 #include <QFile>
 #include <QJsonDocument>
@@ -23,6 +24,24 @@
 
 namespace {
 
+QVariantMap sendParamAsJsonMap(const QVariant& param) {
+    // DeviceSnPayload 必须先于 canConvert/toMap：payload 的 toMap() 恒为空，UI 会显示成 {}
+    if (param.canConvert<DeviceSnPayload>()) {
+        const DeviceSnPayload payload = param.value<DeviceSnPayload>();
+        QVariantMap map;
+        map.insert(QStringLiteral("which_sn"), static_cast<int>(payload.which_sn));
+        map.insert(QStringLiteral("sn"), QString::fromUtf8(payload.sn));
+        return map;
+    }
+    if (param.type() == QVariant::Map || param.type() == QVariant::Hash)
+        return param.toMap();
+    if (param.canConvert<QVariantMap>()) {
+        const QVariantMap map = param.toMap();
+        if (!map.isEmpty())
+            return map;
+    }
+    return {};
+}
 bool isFixtureMachineIndexPlaceholder(const QVariant& param) {
     if (param.userType() == QMetaType::QString) {
         const QString s = param.toString().trimmed();
@@ -469,7 +488,7 @@ void applySendParamToUi(const SendCmdParamUi& uiSchema, const QVariant& param, Q
         }
     } else {
         jsonEdit->setPlainText(
-            QString::fromUtf8(QJsonDocument(QJsonObject::fromVariantMap(param.toMap())).toJson()));
+            QString::fromUtf8(QJsonDocument(QJsonObject::fromVariantMap(sendParamAsJsonMap(param))).toJson()));
     }
 }
 
@@ -483,17 +502,22 @@ QVariant readSendParamFromUi(const SendCmdParamUi& uiSchema, QSpinBox* spinBox, 
     case SendCmdParamKind::JsonMap: {
         QVariantMap map;
         const QString text = jsonEdit->toPlainText().trimmed();
+        if (text.isEmpty())
+            return map;
         const QJsonDocument doc = QJsonDocument::fromJson(text.toUtf8());
         if (doc.isObject())
-            map = doc.object().toVariantMap();
-        else {
-            for (QString line : text.split(QLatin1Char('\r\n'), Qt::SkipEmptyParts)) {
-                if (line.endsWith(QLatin1Char('\r\n')))
-                    line.chop(1);
-                const int eq = line.indexOf(QLatin1Char('='));
-                if (eq > 0)
-                    map.insert(line.left(eq).trimmed(), line.mid(eq + 1).trimmed());
-            }
+            return doc.object().toVariantMap();
+        // name=value 兜底：按行拆分（勿用 QLatin1Char("\r\n")，那是非法多字符常量）
+        QString normalized = text;
+        normalized.replace(QStringLiteral("\r\n"), QStringLiteral("\n"));
+        normalized.replace(QLatin1Char('\r'), QLatin1Char('\n'));
+        for (const QString& rawLine : normalized.split(QLatin1Char('\n'), Qt::SkipEmptyParts)) {
+            const QString line = rawLine.trimmed();
+            if (line.isEmpty() || line.startsWith(QLatin1Char('#')))
+                continue;
+            const int eq = line.indexOf(QLatin1Char('='));
+            if (eq > 0)
+                map.insert(line.left(eq).trimmed(), line.mid(eq + 1).trimmed());
         }
         return map;
     }
@@ -619,6 +643,7 @@ const QHash<QString, QString>& hookDisplayNameMap() {
         {QStringLiteral("DONGLE_SUCTION_SAMPLE"), QStringLiteral("采集双通道吸力(旧Hook，请改用Dongle指令)")},
         {QStringLiteral("DONGLE_SUCTION_SAMPLE_SINGLE"), QStringLiteral("采集单通道吸力(旧Hook，请改用Dongle指令)")},
         {QStringLiteral("SN_WRITE_TAIL"), QStringLiteral("写入 SN 码")},
+        {QStringLiteral("QR_SN_CONSISTENCY_CHECK"), QStringLiteral("二维码一致性校验（与开局SN比对）")},
         {QStringLiteral("PLC_MODBUS_CONN"), QStringLiteral("PLC Modbus 连接")},
         {QStringLiteral("PLC_V3_SWITCH_RIGHT_WHOLE"), QStringLiteral("PLC+V3 旋钮整步右旋")},
         {QStringLiteral("PLC_V3_SWITCH_DONE_RESET_M"), QStringLiteral("PLC+V3 旋钮测试完成 M 复位")},
@@ -810,6 +835,10 @@ void TestCaseEditDialog::writeMultiGatesToTable(const QVector<TestCaseGate>& gat
             }
             if (QTableWidgetItem* enableItem = tableWidget_multiGates_->item(row, 0)) {
                 enableItem->setCheckState(found && matched.enabled ? Qt::Checked : Qt::Unchecked);
+                // 保存时回写 SettingsKey，避免 UI 往返丢掉 BLE/LowRssi 等绑定
+                enableItem->setData(Qt::UserRole + 1, found ? matched.lowSettingsKey : QString());
+                enableItem->setData(Qt::UserRole + 2, found ? matched.highSettingsKey : QString());
+                enableItem->setData(Qt::UserRole + 3, found ? matched.expectedSettingsKey : QString());
             }
             if (!found)
                 continue;
@@ -820,8 +849,12 @@ void TestCaseEditDialog::writeMultiGatesToTable(const QVector<TestCaseGate>& gat
                     tableWidget_multiGates_->setItem(row, col, new QTableWidgetItem(text));
             };
             setCell(2, gateOpToTableText(matched.op));
-            setCell(3, QString::number(matched.low));
-            setCell(4, QString::number(matched.high));
+            // 有 LowSettingsKey/HighSettingsKey 时显示 SETTINGS 解析后的实际卡控范围
+            double lowShow = matched.low;
+            double highShow = matched.high;
+            GateRegistry::resolveRangeBounds(matched, lowShow, highShow);
+            setCell(3, QString::number(lowShow));
+            setCell(4, QString::number(highShow));
             setCell(5, matched.expected);
         }
         return;
@@ -884,10 +917,16 @@ QVector<TestCaseGate> TestCaseEditDialog::readMultiGatesFromTable() const {
             g.low = lowText.toDouble();
             g.high = highText.toDouble();
             g.expected = expectedText;
+            if (enableItem) {
+                g.lowSettingsKey = enableItem->data(Qt::UserRole + 1).toString();
+                g.highSettingsKey = enableItem->data(Qt::UserRole + 2).toString();
+                g.expectedSettingsKey = enableItem->data(Qt::UserRole + 3).toString();
+            }
             if (g.op == TestCaseGateOp::Eq && g.expected.isEmpty())
                 g.expected = QString::number(static_cast<int>(g.low));
             const bool unusedDefault =
-                (g.op == TestCaseGateOp::Range && g.expected.isEmpty() && qFuzzyIsNull(g.low) && qFuzzyIsNull(g.high));
+                (g.op == TestCaseGateOp::Range && g.expected.isEmpty() && qFuzzyIsNull(g.low) && qFuzzyIsNull(g.high)
+                 && g.lowSettingsKey.isEmpty() && g.highSettingsKey.isEmpty());
             if (!rowEnabled || unusedDefault)
                 continue;
             gates.append(g);
@@ -1226,9 +1265,29 @@ void TestCaseEditDialog::onDeviceCmdChanged(int) {
 
 bool TestCaseEditDialog::saveValidated() {
     const TestCaseDefinition def = definition();
+    {
+        // 编辑框有内容却解析成空 map：避免静默写成 {} 冲掉 ini 里的 Param_*
+        const TestCaseSendChannel channel = def.send.channel;
+        const QString protocolCtx =
+            sendParamProtocolContext(channel, comboData(ui->comboBox_productProtocol));
+        const SendCmdParamUi uiSchema =
+            sendCmdParamUiForName(def.send.deviceCmd, channel, protocolCtx);
+        if (uiSchema.kind == SendCmdParamKind::JsonMap) {
+            const QString text = ui->plainTextEdit_jsonParam->toPlainText().trimmed();
+            const bool textLooksEmpty = text.isEmpty() || text == QStringLiteral("{}");
+            if (!textLooksEmpty && (!def.send.param.canConvert<QVariantMap>() || def.send.param.toMap().isEmpty())) {
+                QMessageBox::warning(
+                    this, QStringLiteral("保存失败"),
+                    QStringLiteral("参数 JSON 无法解析，请使用对象格式，例如：\n"
+                                   "{\"which_sn\":7,\"sn\":\"$TUPLE_PRODUCT_KEY\"}\n"
+                                   "或每行 name=value。"));
+                return false;
+            }
+        }
+    }
     QStringList errors;
     if (!TestCaseValidator::validateCase(def, errors)) {
-        QMessageBox::warning(this, QStringLiteral("保存失败"), errors.join(QLatin1Char('\r\n')));
+        QMessageBox::warning(this, QStringLiteral("保存失败"), errors.join(QStringLiteral("\n")));
         return false;
     }
     if (stationKey_.isEmpty()) {

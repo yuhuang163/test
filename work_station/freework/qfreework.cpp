@@ -347,17 +347,18 @@ bool QFreeWork::isBydFactory() const {
     return pack.factory.trimmed().compare(QStringLiteral("byd"), Qt::CaseInsensitive) == 0;
 }
 
-bool QFreeWork::isFreeWorkXwdKeyStation() const {
+bool QFreeWork::isFreeWorkM8BoardFactoryStation() const {
+    // 仅 M8 板厂工站用 PCBA SN 解 MAC；组装/烧录等工站走通用整机 SN 规则
+    const auto containsBoardFactory = [](const QString& text) {
+        return text.contains(QStringLiteral("板厂"), Qt::CaseInsensitive);
+    };
     const QString stationName = TestCaseStore::loadSelectedFlowStationName();
-    if (stationName.contains(QStringLiteral("xwd"), Qt::CaseInsensitive))
-        return true;
-    if (pack.factory.trimmed().compare(QStringLiteral("xwd"), Qt::CaseInsensitive) == 0)
+    if (containsBoardFactory(stationName))
         return true;
     QString stationKey = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationKey());
-    if (stationKey.isEmpty()) {
+    if (stationKey.isEmpty())
         stationKey = TestCaseStore::resolveFlowStationKey(stationName);
-    }
-    return stationKey.contains(QStringLiteral("xwd"), Qt::CaseInsensitive);
+    return containsBoardFactory(stationKey);
 }
 
 namespace {
@@ -371,27 +372,53 @@ QString formatMacFrom12Hex(const QString& macRawUpper) {
 QString parseMacFromSnXwdRule(const QString& snCode) {
     QString sn = snCode;
     sn.remove(QRegularExpression(QStringLiteral("\\s+")));
-    // 示例 M800BBBBAAAB808070c2d210F66V1N10003 → 从 index 11 取 12 位十六进制 B808070c2d21 → b8:08:07:0c:2d:21
-    constexpr int kXwdMacOffset = 11;
+    // 欣旺达板厂 PCBA SN → MAC（仅 M8 板厂工站）；组装整机 SN 请走 test_base::parseMacFromSn
+    // ≤28：优先 offset=4 取 12 位 hex；失败再试 offset=11
+    // >28：优先 offset=11；失败再试 offset=4（长 PCBA 条码）
+    // 例（长 PCBA）：M800BBBBAAAB808070c2d210F66V1N10003 → b808070c2d21
     constexpr int kMacHexLen = 12;
-    if (sn.length() < kXwdMacOffset + kMacHexLen) {
+    constexpr int kOffsetShort = 4;
+    constexpr int kOffsetLong = 11;
+    if (sn.length() < kOffsetShort + kMacHexLen) {
         qDebug() << "[parseMacFromSn/xwd] 长度太短 trimLen=" << sn.length();
         return QStringLiteral("长度太短");
     }
-    const QString macRaw = sn.mid(kXwdMacOffset, kMacHexLen).toUpper();
-    if (!QRegularExpression(QStringLiteral("^[0-9A-F]{12}$")).match(macRaw).hasMatch()) {
-        qDebug() << "[parseMacFromSn/xwd] 不符合规则 macRaw=" << macRaw;
+
+    const auto tryOffset = [&](int offset) -> QString {
+        if (sn.length() < offset + kMacHexLen)
+            return {};
+        const QString raw = sn.mid(offset, kMacHexLen).toUpper();
+        if (!QRegularExpression(QStringLiteral("^[0-9A-F]{12}$")).match(raw).hasMatch())
+            return {};
+        return raw;
+    };
+
+    QString macRaw;
+    if (sn.length() <= 28) {
+        macRaw = tryOffset(kOffsetShort);
+        if (macRaw.isEmpty())
+            macRaw = tryOffset(kOffsetLong);
+    } else {
+        macRaw = tryOffset(kOffsetLong);
+        if (macRaw.isEmpty())
+            macRaw = tryOffset(kOffsetShort);
+    }
+    if (macRaw.isEmpty()) {
+        // 日志保留失败窗口，便于对照扫码内容
+        const int failOffset = sn.length() <= 28 ? kOffsetShort : kOffsetLong;
+        qDebug() << "[parseMacFromSn/xwd] 不符合规则 macRaw=" << sn.mid(failOffset, kMacHexLen).toUpper()
+                 << "snLen=" << sn.length();
         return QStringLiteral("不符合规则");
     }
     const QString mac = formatMacFrom12Hex(macRaw);
-    qDebug() << "[parseMacFromSn/xwd] ok" << mac;
+    qDebug() << "[parseMacFromSn/xwd] ok" << mac << "snLen=" << sn.length();
     return mac;
 }
 
 } // namespace
 
 QString QFreeWork::parseMacFromSn(const QString& snCode) {
-    if (isFreeWorkXwdKeyStation())
+    if (isFreeWorkM8BoardFactoryStation())
         return parseMacFromSnXwdRule(snCode);
     return test_base::parseMacFromSn(snCode);
 }
@@ -1446,8 +1473,7 @@ void QFreeWork::runDongleSuctionSampleSingleStep() {
             cycleMinInit = true;
         }
     }
-    if (phase == PeakPhase::InCycle && cycleMinInit && cycleMinKpa <= dipStart)
-        cyclePeaks.append(cycleMinKpa);
+    // 采样结束仍停在吸气途中（未回基线）的半截周期不计入峰值，避免把下行中的点当成完整峰
 
     if (cyclePeaks.isEmpty()) {
         showlog(QStringLiteral("采集单通道吸力失败：%1 未识别到有效吸气峰值（基线≥%2，入峰<%3）")
