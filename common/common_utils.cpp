@@ -1,8 +1,10 @@
 #include "common_utils.h"
 
+#include <QComboBox>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QRegularExpression>
 
 #include <chrono>
 #include <ctime>
@@ -433,4 +435,86 @@ bool CommonUtils::resolveDongleDeviceMapping(const QString& dongleName, QString*
         return true;
     }
     return false;
+}
+
+struct SnPatternPreset {
+    const char* label;
+    const char* pattern;
+};
+
+// clang-format off
+const SnPatternPreset kSnPatternPresets[] = {
+    {"不卡控", ""},
+    {"字母数字（不限长度）", "^[0-9a-zA-Z]+$"},
+    {"非空即可", "^.+$"},
+    {"V3 固定12位", "^[0-9a-zA-Z]{12}$"},
+    {"V3Pro 固定15位", "^[0-9a-zA-Z]{15}$"},
+    {"固定18位", "^[0-9a-zA-Z]{18}$"},
+    {"固定28位", "^[0-9a-zA-Z]{28}$"},
+};
+// clang-format on
+
+bool CommonUtils::isSnPatternEnabled(const QString& pattern) {
+    return !pattern.trimmed().isEmpty();
+}
+
+bool CommonUtils::matchSnPattern(const QString& sn, const QString& pattern) {
+    const QString rule = pattern.trimmed();
+    if (rule.isEmpty()) {
+        return true;
+    }
+    const QRegularExpression re(rule);
+    if (!re.isValid()) {
+        return true;
+    }
+    return re.match(sn).hasMatch();
+}
+
+void CommonUtils::initSnPatternComboBox(QComboBox* combo) {
+    if (!combo) {
+        return;
+    }
+    combo->clear();
+    for (const SnPatternPreset& preset : kSnPatternPresets) {
+        combo->addItem(QString::fromUtf8(preset.label), QString::fromUtf8(preset.pattern));
+    }
+}
+
+void CommonUtils::selectSnPatternComboBox(QComboBox* combo, const QString& pattern) {
+    if (!combo) {
+        return;
+    }
+    const QString rule = pattern.trimmed();
+    for (int i = 0; i < combo->count(); ++i) {
+        if (combo->itemData(i).toString() == rule) {
+            combo->setCurrentIndex(i);
+            return;
+        }
+    }
+    if (!rule.isEmpty()) {
+        combo->addItem(QStringLiteral("自定义（%1）").arg(rule), rule);
+        combo->setCurrentIndex(combo->count() - 1);
+        return;
+    }
+    combo->setCurrentIndex(0);
+}
+
+QString CommonUtils::snPatternFromComboBox(const QComboBox* combo) {
+    if (!combo || combo->currentIndex() < 0) {
+        return {};
+    }
+    return combo->currentData().toString().trimmed();
+}
+
+QString CommonUtils::snPatternDisplayText(const QString& pattern) {
+    const QString rule = pattern.trimmed();
+    if (rule.isEmpty()) {
+        return QStringLiteral("不卡控");
+    }
+    for (const SnPatternPreset& preset : kSnPatternPresets) {
+        if (rule == QString::fromUtf8(preset.pattern)) {
+            return QString::fromUtf8(preset.label);
+        }
+    }
+    return rule;
 }

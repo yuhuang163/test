@@ -691,15 +691,9 @@ void suction::on_snInput_returnPressed() {
     applyAdaptiveV3ProductBySn(ui->snInput);
 
     const QString entered = ui->snInput->text().trimmed();
-    // 检查是否是序列号格式
-    QRegularExpression snRegex(snPattern);
-    // 使用正则表达式匹配
-    if (!snRegex.match(ui->snInput->text()).hasMatch()) {
+    if (!validateSnFormat(ui->snInput->text())) {
         ui->snInput->setDisabled(0);
         ui->macInput->setDisabled(0);
-        showlog("序列号错误");
-        showlog("实际长度为" + QString::number(ui->snInput->text().length()));
-        showlog("要求格式为" + snPattern);
         ui->snInput->clear();
         ui->snInput->setFocus();
         return;

@@ -104,6 +104,8 @@ class test_base : public QWidget {
     QString parseMacFromSn(const QString& snCode);
     QString generateDateCode();
     bool applyAdaptiveV3ProductBySn(QLineEdit* snEdit);
+    /** SN 格式校验：规则为空（不卡控）时恒通过 */
+    bool validateSnFormat(const QString& sn);
     void appendStationResult(QVector<TestItem>& testItems, const QString& item, const QString& data, const QString& result);
     void LockProductUI();
     void getMac(QString sn_to_search);

@@ -1175,14 +1175,9 @@ void key_test::on_snInput_returnPressed() {
     // 与按键测试工站保持一致：仅使用公司SN规则校验（字母数字且长度>12）
 
     // 检查是否是序列号格式
-    QRegularExpression snRegex(snPattern);
-    // 使用正则表达式匹配
-    if (!snRegex.match(ui->snInput->text()).hasMatch()) {
+    if (!validateSnFormat(ui->snInput->text())) {
         ui->snInput->setDisabled(0);
         ui->macInput->setDisabled(0);
-        showlog("序列号错误");
-        showlog("实际长度为" + QString::number(ui->snInput->text().length()));
-        showlog("要求格式为" + snPattern);
         ui->snInput->clear();
         ui->snInput->setFocus();
         return;

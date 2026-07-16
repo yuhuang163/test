@@ -1055,13 +1055,11 @@ void MainWindow::on_lcdTestButton_clicked() {
 void MainWindow::on_snInput_returnPressed() {
     // 检查是否是序列号格式
 
-    QString snPattern = SETTINGS.value("Regex/SNPattern", "^[0-9a-zA-Z]{18}$").toString();
-    QRegularExpression snRegex(snPattern);
-    // 使用正则表达式匹配
-    if (!snRegex.match(ui->snInput->text()).hasMatch()) {
+    QString snPattern = SETTINGS.value("Regex/SNPattern").toString().trimmed();
+    if (!CommonUtils::matchSnPattern(ui->snInput->text(), snPattern)) {
         showlog("序列号错误");
         showlog("实际长度为" + QString::number(ui->snInput->text().length()));
-        showlog("要求格式为" + snPattern);
+        showlog("要求格式为" + CommonUtils::snPatternDisplayText(snPattern));
 
         ui->snInput->clear();
         return;

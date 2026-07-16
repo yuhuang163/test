@@ -139,7 +139,7 @@ void test_base::initData() {
     pack.error = "NULL";
 
     isBrushLogGet = SETTINGS.value("SYSTEM/SaveToothbrushLog", 0).toBool();
-    snPattern = SETTINGS.value("Regex/SNPattern", "^[0-9a-zA-Z]{18}$").toString();
+    snPattern = SETTINGS.value("Regex/SNPattern").toString().trimmed();
 }
 void test_base::signalAndslot() {
     connect(&protocolManager, &QProtocolManager::reportReceived, this, &test_base::onProtocolReport);
@@ -1111,8 +1111,19 @@ bool test_base::applyAdaptiveV3ProductBySn(QLineEdit* snEdit) {
 
     pack.product = targetProduct;
     snPattern = targetRegex;
-    showlog(QStringLiteral("识别产品型号：%1，SN校验规则切换为%2").arg(targetProduct, snPattern));
+    showlog(QStringLiteral("识别产品型号：%1，SN校验规则切换为%2")
+                .arg(targetProduct, CommonUtils::snPatternDisplayText(targetRegex)));
     return true;
+}
+
+bool test_base::validateSnFormat(const QString& sn) {
+    if (CommonUtils::matchSnPattern(sn, snPattern)) {
+        return true;
+    }
+    showlog(QStringLiteral("序列号错误"));
+    showlog(QStringLiteral("实际长度为") + QString::number(sn.length()));
+    showlog(QStringLiteral("要求格式为") + CommonUtils::snPatternDisplayText(snPattern));
+    return false;
 }
 
 QString test_base::parseMacFromSn(const QString& snCode) {

@@ -8,6 +8,8 @@
 #include <QStringList>
 #include <QtGlobal>
 
+class QComboBox;
+
 /** 工程公共工具：字节序/十六进制/CRC、时间、文件、字符串 */
 class CommonUtils {
   public:
@@ -82,6 +84,14 @@ class CommonUtils {
     /** 工站显示名是否属于指定产品：自由/默认工站通用，其余按工站名前缀匹配产品名。 */
     static bool stationBelongsToProduct(const QString& stationDisplayName, const QString& productName);
     static bool resolveDongleDeviceMapping(const QString& dongleName, QString* productOut, QString* protocolOut);
+
+    /** SN 校验：pattern 为空表示不卡控 */
+    static bool isSnPatternEnabled(const QString& pattern);
+    static bool matchSnPattern(const QString& sn, const QString& pattern);
+    static void initSnPatternComboBox(QComboBox* combo);
+    static void selectSnPatternComboBox(QComboBox* combo, const QString& pattern);
+    static QString snPatternFromComboBox(const QComboBox* combo);
+    static QString snPatternDisplayText(const QString& pattern);
 };
 
 #endif // COMMON_UTILS_H

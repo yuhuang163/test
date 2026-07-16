@@ -200,16 +200,12 @@
          <item>
           <widget class="QLabel" name="label_5">
            <property name="text">
-            <string>sn检查条件设置</string>
+            <string>SN校验规则</string>
            </property>
           </widget>
          </item>
          <item>
-          <widget class="QLineEdit" name="snLineEdit">
-           <property name="text">
-            <string/>
-           </property>
-          </widget>
+          <widget class="QComboBox" name="comboBox_snPattern"/>
          </item>
         </layout>
        </item>

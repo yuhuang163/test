@@ -74,7 +74,6 @@ static const Row kSettings[] = {
     CB("checkBox_mesRetest", "Mes/RETEST", "false"),
 
     LE("lineEdit_CurrentMechine", "SYSTEM/CurrentMechine", nullptr),
-    LE("snLineEdit", "Regex/SNPattern", nullptr),
     LE("wifiAccountLineEdit", "WIFI/Name", nullptr),
     LE("wifiPasswordLineEdit", "WIFI/Password", nullptr),
     LE("wifiUpperLimitLineEdit", "WIFI/HighRssi", nullptr),
@@ -296,6 +295,7 @@ static const Row kSettings[] = {
     TIP("comboBox_factory", "MES 工厂代码（lx 立讯精密/xwd 欣旺达/hq 华勤技术/wks 伟克森/ydm 亚达明/byd 比亚迪/hz 华庄等）；切换后下方联动显示对应配置项。"),
     TIP("checkBox_mesRetest", "华庄 Mes/RETEST：站前检查 checkRoute 的 retest 参数。"),
     TIP("comboBox_productName", "产品型号 MES/Product_Name（来源 CommonUtils 产品目录）；切换恢复默认差异化。"),
+    TIP("comboBox_snPattern", "Regex/SNPattern：SN 扫码校验规则；默认不卡控。"),
     TIP("lineEdit_mesUrl", "MES 服务根地址（Mes/NET）；xwd、lx、wks、华庄等工厂使用。"),
     TIP("lineEdit_station", "过站工站号（Mes/machineNo）；xwd 用于 groupTest、wipTest。"),
     TIP("lineEdit_macStation", "Sunwinon getTestData 工序代码（MES/xwdWpCode）。"),

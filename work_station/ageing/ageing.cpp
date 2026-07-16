@@ -666,14 +666,9 @@ void ageing::on_getMac_returnPressed() {
     applyAdaptiveV3ProductBySn(ui->getMac);
 
     // 检查是否是序列号格式
-    QRegularExpression snRegex(snPattern);
-    // 使用正则表达式匹配
-    if (!snRegex.match(ui->getMac->text()).hasMatch()) {
+    if (!validateSnFormat(ui->getMac->text())) {
         ui->getMac->setDisabled(0);
         ui->macInput->setDisabled(0);
-        showlog("序列号错误");
-        showlog("实际长度为" + QString::number(ui->getMac->text().length()));
-        showlog("要求格式为" + snPattern);
         ui->getMac->clear();
         ui->getMac->setFocus();
         return;
@@ -764,12 +759,7 @@ void ageing::processGetMesTestValue() {
 void ageing::on_snInput_returnPressed() {
     applyAdaptiveV3ProductBySn(ui->snInput);
     // 检查是否是序列号格式
-    QRegularExpression snRegex(snPattern);
-    // 使用正则表达式匹配
-    if (!snRegex.match(ui->snInput->text()).hasMatch()) {
-        showlog("序列号错误");
-        showlog("实际长度为" + QString::number(ui->getMac->text().length()));
-        showlog("要求格式为" + snPattern);
+    if (!validateSnFormat(ui->snInput->text())) {
         ui->snInput->clear();
         return;
     }

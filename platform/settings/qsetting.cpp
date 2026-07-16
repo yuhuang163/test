@@ -123,6 +123,7 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
             [this](int) { RestoreFacDefaultSetting(); });
 
     initTupleEnvironmentCombo();
+    CommonUtils::initSnPatternComboBox(ui->comboBox_snPattern);
     loadConfig();
     originalStation_ = SETTINGS.value("SYSTEM/station").toString();
     connect(StationGroup, QOverload<int>::of(&QButtonGroup::buttonClicked), this, [this](int) {
@@ -295,6 +296,8 @@ void qsetting::loadConfig() {
     }
 
     loadQSettingTableBindings(this);
+    CommonUtils::selectSnPatternComboBox(ui->comboBox_snPattern,
+                                         SETTINGS.value(QStringLiteral("Regex/SNPattern")).toString());
     readSubPIDAndFilter();
 
     if (ui->comboBox_systemProtocolType->count() == 0) {
@@ -446,6 +449,14 @@ void qsetting::saveConfig() {
                                                                                                                                                : "MAIN_TEST");
 
     saveQSettingTableBindings(this);
+    {
+        const QString snPattern = CommonUtils::snPatternFromComboBox(ui->comboBox_snPattern);
+        if (snPattern.isEmpty()) {
+            SETTINGS.remove(QStringLiteral("Regex/SNPattern"));
+        } else {
+            SETTINGS.setValue(QStringLiteral("Regex/SNPattern"), snPattern);
+        }
+    }
     syncFactoryCloudDerivedUrls();
     saveSubPIDAndFilter();
 
@@ -862,9 +873,9 @@ void qsetting::on_comboBox_productName_textActivated(const QString& arg1) {
     qDebug() << "选择的产品" << arg1;
     RestoreProductDefaultSetting();
     if (arg1 == QStringLiteral("V3")) {
-        ui->snLineEdit->setText(QStringLiteral("^[0-9a-zA-Z]{12}$"));
+        CommonUtils::selectSnPatternComboBox(ui->comboBox_snPattern, QStringLiteral("^[0-9a-zA-Z]{12}$"));
     } else if (arg1 == QStringLiteral("V3Pro")) {
-        ui->snLineEdit->setText(QStringLiteral("^[0-9a-zA-Z]{15}$"));
+        CommonUtils::selectSnPatternComboBox(ui->comboBox_snPattern, QStringLiteral("^[0-9a-zA-Z]{15}$"));
     }
     // 先落盘产品型号，再按产品过滤工站下拉
     SETTINGS.setValue(QStringLiteral("Mes/Product_Name"), arg1);
