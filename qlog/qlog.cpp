@@ -181,39 +181,49 @@ QString exportDailyLogSessionSlice(const QString& dailyAbsolutePath, const QStri
         return {};
     }
     QFile inFile(dailyAbsolutePath);
-    if (!inFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    if (!inFile.open(QIODevice::ReadOnly)) {
         if (error) {
             *error = QStringLiteral("无法读取日志：") + dailyAbsolutePath;
         }
         return {};
     }
 
-    static const QRegularExpression tsRe(
-        QStringLiteral(R"((\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}))"));
     const QByteArray all = inFile.readAll();
     inFile.close();
 
-    const QStringList lines = QString::fromUtf8(all).split(QRegularExpression(QStringLiteral("\r?\n")),
-                                                         Qt::KeepEmptyParts);
-    QStringList kept;
-    qint64 pos = 0;
-    for (const QString& line : lines) {
-        const qint64 lineBytes = line.toUtf8().size() + 1;
-        const QRegularExpressionMatch m = tsRe.match(line);
-        if (m.hasMatch()) {
+    QByteArray payload;
+    // 会话起止字节偏移可靠时直接切片，避免按行拆分丢失 dongle 二进制续行
+    if (offsetEnd > offsetStart) {
+        const qint64 start = qBound<qint64>(0, offsetStart, all.size());
+        const qint64 end = qBound<qint64>(start, offsetEnd, all.size());
+        payload = all.mid(static_cast<int>(start), static_cast<int>(end - start));
+    } else {
+        static const QRegularExpression tsRe(
+            QStringLiteral(R"((\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}))"));
+        const QStringList lines = QString::fromUtf8(all).split(QRegularExpression(QStringLiteral("\r?\n")),
+                                                               Qt::KeepEmptyParts);
+        QStringList kept;
+        for (const QString& line : lines) {
+            const QRegularExpressionMatch m = tsRe.match(line);
+            if (!m.hasMatch()) {
+                continue;
+            }
             const QDateTime ts = QDateTime::fromString(m.captured(1), QStringLiteral("yyyy-MM-dd hh:mm:ss.zzz"));
             if (ts.isValid() && ts >= info.startedAt && ts <= info.endedAt) {
                 kept.append(line);
             }
-        } else if (pos >= offsetStart && pos < offsetEnd) {
-            kept.append(line);
         }
-        pos += lineBytes;
+        if (kept.isEmpty()) {
+            return {};
+        }
+        payload = kept.join(QStringLiteral("\r\n")).toUtf8();
+        if (!payload.isEmpty()) {
+            payload.append("\r\n");
+        }
     }
-    if (kept.isEmpty() && offsetEnd > offsetStart) {
-        const QByteArray slice =
-            all.mid(static_cast<int>(offsetStart), static_cast<int>(offsetEnd - offsetStart));
-        kept = QString::fromUtf8(slice).split(QRegularExpression(QStringLiteral("\r?\n")), Qt::KeepEmptyParts);
+
+    if (payload.isEmpty()) {
+        return {};
     }
 
     const QString outAbs = QDir(QCoreApplication::applicationDirPath()).filePath(outputRelPath);
@@ -227,17 +237,17 @@ QString exportDailyLogSessionSlice(const QString& dailyAbsolutePath, const QStri
         }
     }
     QFile outFile(outAbs);
-    if (!outFile.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+    if (!outFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         if (error) {
             *error = QStringLiteral("无法写入会话切片");
         }
         return {};
     }
-    QTextStream out(&outFile);
-    out.setCodec("UTF-8");
-    out.setGenerateByteOrderMark(true);
-    for (const QString& line : kept) {
-        out << line << QStringLiteral("\r\n");
+    if (outFile.write(payload) != payload.size()) {
+        if (error) {
+            *error = QStringLiteral("无法写入会话切片");
+        }
+        return {};
     }
     outFile.close();
     QString rel = outputRelPath;
