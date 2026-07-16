@@ -173,3 +173,14 @@ body,
 .layout .aside .el-menu .el-sub-menu .el-menu-item.is-active {
   color: var(--admin-sidebar-text-active);
 }
+
+/* 测试结果：通过绿色、失败红色 */
+.result-pass {
+  color: var(--admin-success);
+  font-weight: 600;
+}
+
+.result-fail {
+  color: var(--admin-danger);
+  font-weight: 600;
+}

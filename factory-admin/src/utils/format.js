@@ -34,3 +34,18 @@ export function isTestFailResult(v) {
   const u = s.toUpperCase()
   return u === 'NG' || u === 'FAIL' || s === '失败'
 }
+
+/** 整机/分项结果是否为通过（PASS、OK、通过等） */
+export function isTestPassResult(v) {
+  if (v == null || v === '') return false
+  const s = String(v).trim()
+  const u = s.toUpperCase()
+  return u === 'PASS' || u === 'OK' || s === '通过'
+}
+
+/** 结果列样式：通过绿色、失败红色 */
+export function testResultClass(v) {
+  if (isTestFailResult(v)) return 'result-fail'
+  if (isTestPassResult(v)) return 'result-pass'
+  return ''
+}

@@ -76,8 +76,16 @@
         <el-table-column prop="minValue" label="下限" width="80" />
         <el-table-column prop="standardValue" label="标准值" width="80" />
         <el-table-column prop="unit" label="单位" width="60" />
-        <el-table-column prop="result" label="单项结果" width="90" />
-        <el-table-column prop="testResult" label="整机结果" width="90" />
+        <el-table-column label="单项结果" width="90">
+          <template #default="{ row }">
+            <span :class="testResultClass(row.result)">{{ row.result || '-' }}</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="整机结果" width="90">
+          <template #default="{ row }">
+            <span :class="testResultClass(row.testResult)">{{ row.testResult || '-' }}</span>
+          </template>
+        </el-table-column>
       </el-table>
     </el-card>
   </div>
@@ -86,7 +94,7 @@
 <script setup>
 import { onMounted, reactive, ref, watch, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
-import { formatTime } from '../utils/format'
+import { formatTime, testResultClass } from '../utils/format'
 import { DATE_RANGE_SHORTCUTS, defaultDateRange, toApiTimeRange } from '../utils/dateRange'
 import * as api from '../api/analytics'
 import { useFactoryScope } from '../composables/useFactoryScope'

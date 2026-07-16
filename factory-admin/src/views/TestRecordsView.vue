@@ -49,7 +49,7 @@
       <el-table-column prop="mac" label="MAC" width="150" show-overflow-tooltip />
       <el-table-column label="结果" width="80">
         <template #default="{ row }">
-          <span :class="{ 'result-fail': isTestFailResult(row.testResult) }">
+          <span :class="testResultClass(row.testResult)">
             {{ row.testResult || '-' }}
           </span>
         </template>
@@ -82,7 +82,7 @@
           <el-descriptions-item label="SN">{{ detail.sn || '-' }}</el-descriptions-item>
           <el-descriptions-item label="MAC">{{ detail.mac || '-' }}</el-descriptions-item>
           <el-descriptions-item label="结果">
-            <span :class="{ 'result-fail': isTestFailResult(detail.testResult) }">
+            <span :class="testResultClass(detail.testResult)">
               {{ detail.testResult || '-' }}
             </span>
           </el-descriptions-item>
@@ -104,7 +104,7 @@
               <el-table-column prop="unit" label="单位" width="60" />
               <el-table-column label="结果" width="80">
                 <template #default="{ row }">
-                  <span :class="{ 'result-fail': isTestFailResult(row.result) }">
+                  <span :class="testResultClass(row.result)">
                     {{ row.result || '-' }}
                   </span>
                 </template>
@@ -151,7 +151,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { formatTime, formatSize, isTestFailResult } from '../utils/format'
+import { formatTime, formatSize, testResultClass } from '../utils/format'
 import { useFactoryScope } from '../composables/useFactoryScope'
 import http from '../api/http'
 import { fetchLogPreviewText } from '../api/logs'
@@ -352,7 +352,6 @@ onMounted(async () => {
 .filter { margin-bottom: 16px; }
 .pager { margin-top: 16px; justify-content: flex-end; }
 .mb { margin-bottom: 16px; }
-.result-fail { color: #f56c6c; font-weight: 600; }
 .log-actions { display: flex; gap: 8px; }
 .preview {
   margin: 0;

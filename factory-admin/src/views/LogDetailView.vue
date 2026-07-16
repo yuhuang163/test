@@ -9,7 +9,11 @@
       <el-descriptions-item label="上传时间">{{ formatTime(detail.createdAt) }}</el-descriptions-item>
       <el-descriptions-item label="SN">{{ detail.sn || '-' }}</el-descriptions-item>
       <el-descriptions-item label="MAC">{{ detail.mac || '-' }}</el-descriptions-item>
-      <el-descriptions-item label="结果">{{ detail.testResult || '-' }}</el-descriptions-item>
+      <el-descriptions-item label="结果">
+        <span :class="testResultClass(detail.testResult)">
+          {{ detail.testResult || '-' }}
+        </span>
+      </el-descriptions-item>
       <el-descriptions-item label="版本">{{ detail.clientVersion || '-' }}</el-descriptions-item>
       <el-descriptions-item label="操作">
         <el-button size="small" @click="downloadZip">下载完整 zip</el-button>
@@ -43,7 +47,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '../api/http'
 import { fetchLogPreviewText } from '../api/logs'
-import { formatTime, formatSize } from '../utils/format'
+import { formatTime, formatSize, testResultClass } from '../utils/format'
 
 const route = useRoute()
 const router = useRouter()

@@ -47,7 +47,13 @@
       </el-table-column>
       <el-table-column prop="sn" label="SN" width="140" show-overflow-tooltip />
       <el-table-column prop="mac" label="MAC" width="150" show-overflow-tooltip />
-      <el-table-column prop="testResult" label="结果" width="80" />
+      <el-table-column label="结果" width="80">
+        <template #default="{ row }">
+          <span :class="testResultClass(row.testResult)">
+            {{ row.testResult || '-' }}
+          </span>
+        </template>
+      </el-table-column>
       <el-table-column label="大小" width="100">
         <template #default="{ row }">{{ formatSize(row.size) }}</template>
       </el-table-column>
@@ -76,7 +82,7 @@
 import { onMounted, reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { formatTime, formatSize } from '../utils/format'
+import { formatTime, formatSize, testResultClass } from '../utils/format'
 import { useFactoryScope } from '../composables/useFactoryScope'
 import http from '../api/http'
 
