@@ -69,7 +69,7 @@ FactoryCloudClient::ApiResult parseEnvelope(const QByteArray& body, int httpStat
         if (httpStatus == 404) {
             result.message =
                 QStringLiteral("接口不存在（HTTP 404）。请确认 BaseUrl 正确且服务器已部署 factory-tool API；"
-                               "本地联调请填 http://127.0.0.1:8800 并先运行「启动管理平台.bat」");
+                               "测试环境请填 http://fctp-test.luteos.site");
         } else {
             result.message = QStringLiteral("响应不是 JSON（HTTP %1）：%2").arg(httpStatus).arg(qtError);
         }
@@ -89,7 +89,7 @@ FactoryCloudClient::ApiResult parseEnvelope(const QByteArray& body, int httpStat
     if (!result.ok && result.message.isEmpty()) {
         if (httpStatus == 404) {
             result.message =
-                QStringLiteral("接口不存在（HTTP 404）。本地联调 BaseUrl 请填 http://127.0.0.1:8800");
+                QStringLiteral("接口不存在（HTTP 404）。测试环境 BaseUrl 请填 http://fctp-test.luteos.site");
         } else {
             result.message = QStringLiteral("请求失败 HTTP %1").arg(httpStatus);
         }
