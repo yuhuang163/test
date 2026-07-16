@@ -5260,7 +5260,7 @@ void MainWindow::appendDongleSuctionChartSample(double ch1Kpa, double ch2Kpa, do
 void MainWindow::refreshDongleSuctionData(const ProtocolDongleSuctionData& data) {
     if (!dongleSuctionReadEnabled_)
         return;
-    appendDongleSuctionChartSample(data.leftKpa, data.rightKpa, data.thirdKpa);
+    appendDongleSuctionChartSample(data.ch1Kpa, data.ch2Kpa, data.ch3Kpa);
 }
 
 void MainWindow::on_dongle_suction_open_clicked() {

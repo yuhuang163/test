@@ -316,11 +316,21 @@ struct ProtocolDongleScanResultData {
     QString deviceRssi;
 };
 
-/** Dongle AT+SUCTION=1 后上报：AT+SUCTION_DATA=左,右,第三路,...（前两路为左右吸力口） */
+/** Dongle AT+SUCTION=1 后上报：AT+SUCTION_DATA=CH1,CH2,CH3,... */
 struct ProtocolDongleSuctionData {
-    double leftKpa = 0.0;
-    double rightKpa = 0.0;
-    double thirdKpa = 0.0;
+    double ch1Kpa = 0.0;
+    double ch2Kpa = 0.0;
+    double ch3Kpa = 0.0;
+};
+
+/** Dongle 吸力采样窗口汇总（SampleSuctionDual/Single），供 Gate 卡控 */
+struct ProtocolDongleSuctionPeakData {
+    double peakKpa = 0.0;     // 单通道：各周期峰值中最强（数值最小）
+    double highKpa = 0.0;     // 单通道：各周期峰值中最弱（数值最大，勿与采样窗口绝对值最高混淆）
+    double peakDiffKpa = 0.0; // 单通道：峰值差=各周期峰值中最大-最小
+    double ch1PeakKpa = 0.0;  // 双通道 CH1 窗口最低（原左口）
+    double ch2PeakKpa = 0.0;  // 双通道 CH2 窗口最低（原右口）
+    double sideDiffKpa = 0.0; // 双通道：|CH1峰值-CH2峰值|（原左右峰差）
 };
 
 /** USB 电流表 / 治具振幅仪上行 */
@@ -338,6 +348,13 @@ struct ProtocolFactoryDoneData {
 
 struct ProtocolRssiData {
     int dbm = 0;
+};
+
+/** 杰理蓝牙盒子 TLV 上报（T=7 频偏、T=8 RSSI，小端 int32） */
+struct ProtocolJieliBtBoxData {
+    qint32 freqOffset = 0;
+    qint32 rssi = 0;
+    QString mac;
 };
 
 struct ProtocolMacData {
@@ -554,10 +571,12 @@ Q_DECLARE_METATYPE(ProtocolDongleWifiStateData)
 Q_DECLARE_METATYPE(ProtocolDongleWifiIpData)
 Q_DECLARE_METATYPE(ProtocolDongleScanResultData)
 Q_DECLARE_METATYPE(ProtocolDongleSuctionData)
+Q_DECLARE_METATYPE(ProtocolDongleSuctionPeakData)
 Q_DECLARE_METATYPE(ProtocolAmmeterReadingData)
 Q_DECLARE_METATYPE(ProtocolJigAmplitudeData)
 Q_DECLARE_METATYPE(ProtocolFactoryDoneData)
 Q_DECLARE_METATYPE(ProtocolRssiData)
+Q_DECLARE_METATYPE(ProtocolJieliBtBoxData)
 Q_DECLARE_METATYPE(ProtocolMacData)
 Q_DECLARE_METATYPE(ProtocolAckData)
 Q_DECLARE_METATYPE(ProtocolMeasureData)

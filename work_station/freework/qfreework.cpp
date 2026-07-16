@@ -347,17 +347,18 @@ bool QFreeWork::isBydFactory() const {
     return pack.factory.trimmed().compare(QStringLiteral("byd"), Qt::CaseInsensitive) == 0;
 }
 
-bool QFreeWork::isFreeWorkXwdKeyStation() const {
+bool QFreeWork::isFreeWorkM8BoardFactoryStation() const {
+    // 仅 M8 板厂工站用 PCBA SN 解 MAC；组装/烧录等工站走通用整机 SN 规则
+    const auto containsBoardFactory = [](const QString& text) {
+        return text.contains(QStringLiteral("板厂"), Qt::CaseInsensitive);
+    };
     const QString stationName = TestCaseStore::loadSelectedFlowStationName();
-    if (stationName.contains(QStringLiteral("xwd"), Qt::CaseInsensitive))
-        return true;
-    if (pack.factory.trimmed().compare(QStringLiteral("xwd"), Qt::CaseInsensitive) == 0)
+    if (containsBoardFactory(stationName))
         return true;
     QString stationKey = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationKey());
-    if (stationKey.isEmpty()) {
+    if (stationKey.isEmpty())
         stationKey = TestCaseStore::resolveFlowStationKey(stationName);
-    }
-    return stationKey.contains(QStringLiteral("xwd"), Qt::CaseInsensitive);
+    return containsBoardFactory(stationKey);
 }
 
 namespace {
@@ -371,27 +372,53 @@ QString formatMacFrom12Hex(const QString& macRawUpper) {
 QString parseMacFromSnXwdRule(const QString& snCode) {
     QString sn = snCode;
     sn.remove(QRegularExpression(QStringLiteral("\\s+")));
-    // 示例 M800BBBBAAAB808070c2d210F66V1N10003 → 从 index 11 取 12 位十六进制 B808070c2d21 → b8:08:07:0c:2d:21
-    constexpr int kXwdMacOffset = 11;
+    // 欣旺达板厂 PCBA SN → MAC（仅 M8 板厂工站）；组装整机 SN 请走 test_base::parseMacFromSn
+    // ≤28：优先 offset=4 取 12 位 hex；失败再试 offset=11
+    // >28：优先 offset=11；失败再试 offset=4（长 PCBA 条码）
+    // 例（长 PCBA）：M800BBBBAAAB808070c2d210F66V1N10003 → b808070c2d21
     constexpr int kMacHexLen = 12;
-    if (sn.length() < kXwdMacOffset + kMacHexLen) {
+    constexpr int kOffsetShort = 4;
+    constexpr int kOffsetLong = 11;
+    if (sn.length() < kOffsetShort + kMacHexLen) {
         qDebug() << "[parseMacFromSn/xwd] 长度太短 trimLen=" << sn.length();
         return QStringLiteral("长度太短");
     }
-    const QString macRaw = sn.mid(kXwdMacOffset, kMacHexLen).toUpper();
-    if (!QRegularExpression(QStringLiteral("^[0-9A-F]{12}$")).match(macRaw).hasMatch()) {
-        qDebug() << "[parseMacFromSn/xwd] 不符合规则 macRaw=" << macRaw;
+
+    const auto tryOffset = [&](int offset) -> QString {
+        if (sn.length() < offset + kMacHexLen)
+            return {};
+        const QString raw = sn.mid(offset, kMacHexLen).toUpper();
+        if (!QRegularExpression(QStringLiteral("^[0-9A-F]{12}$")).match(raw).hasMatch())
+            return {};
+        return raw;
+    };
+
+    QString macRaw;
+    if (sn.length() <= 28) {
+        macRaw = tryOffset(kOffsetShort);
+        if (macRaw.isEmpty())
+            macRaw = tryOffset(kOffsetLong);
+    } else {
+        macRaw = tryOffset(kOffsetLong);
+        if (macRaw.isEmpty())
+            macRaw = tryOffset(kOffsetShort);
+    }
+    if (macRaw.isEmpty()) {
+        // 日志保留失败窗口，便于对照扫码内容
+        const int failOffset = sn.length() <= 28 ? kOffsetShort : kOffsetLong;
+        qDebug() << "[parseMacFromSn/xwd] 不符合规则 macRaw=" << sn.mid(failOffset, kMacHexLen).toUpper()
+                 << "snLen=" << sn.length();
         return QStringLiteral("不符合规则");
     }
     const QString mac = formatMacFrom12Hex(macRaw);
-    qDebug() << "[parseMacFromSn/xwd] ok" << mac;
+    qDebug() << "[parseMacFromSn/xwd] ok" << mac << "snLen=" << sn.length();
     return mac;
 }
 
 } // namespace
 
 QString QFreeWork::parseMacFromSn(const QString& snCode) {
-    if (isFreeWorkXwdKeyStation())
+    if (isFreeWorkM8BoardFactoryStation())
         return parseMacFromSnXwdRule(snCode);
     return test_base::parseMacFromSn(snCode);
 }
@@ -420,6 +447,7 @@ void QFreeWork::runTestFlowBootstrap() {
     }
     showlog(QStringLiteral("开始测试"));
     initData();
+    suppressProductBleAutoReconnect_ = false;
     // 每次开始测试都重新读取配置，避免设置页调整后本页仍使用旧队列。
     refreshOrderedTestIndexes();
     waitWork(1000);
@@ -619,12 +647,17 @@ void QFreeWork::startTask() {
             const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
             if (nowMs - s_lastBleWaitLogMs > 3000) {
                 s_lastBleWaitLogMs = nowMs;
-                showlog(QStringLiteral("等待蓝牙连接后再执行：%1（流程需含「扫描连接蓝牙」或先手动连上）")
-                            .arg(TestCaseRunner::stepLabel(nextDef)));
-                const QString mac = currentMacAddress();
-                if (!mac.isEmpty() && mac != QStringLiteral("没有mac地址") && at && dongleSerialPort
-                    && dongleSerialPort->isOpen()) {
-                    at->set(DongleCmd::BleScanConnect, mac);
+                if (suppressProductBleAutoReconnect_) {
+                    showlog(QStringLiteral("已主动断开蓝牙，禁止自动重连；当前步骤「%1」需要 BLE，请在流程中加入「扫描连接蓝牙」或去掉不需要的产品协议步")
+                                .arg(TestCaseRunner::stepLabel(nextDef)));
+                } else {
+                    showlog(QStringLiteral("等待蓝牙连接后再执行：%1（流程需含「扫描连接蓝牙」或先手动连上）")
+                                .arg(TestCaseRunner::stepLabel(nextDef)));
+                    const QString mac = currentMacAddress();
+                    if (!mac.isEmpty() && mac != QStringLiteral("没有mac地址") && at && dongleSerialPort
+                        && dongleSerialPort->isOpen()) {
+                        at->set(DongleCmd::BleScanConnect, mac);
+                    }
                 }
             }
         }
@@ -990,6 +1023,8 @@ void QFreeWork::loadSuctionGateSettings() {
     suctionPeakToleranceKpa_ = 2.6;
     suctionPeakDiffMaxKpa_ = 2.6;
     suctionSingleChannelIndex_ = 0;
+    suctionPeakBaselineKpa_ = -8.0;
+    suctionPeakDipStartKpa_ = -10.0;
 }
 
 void QFreeWork::applySuctionGateFromStepParam(const QVariant& param) {
@@ -1001,21 +1036,39 @@ void QFreeWork::applySuctionGateFromStepParam(const QVariant& param) {
         suctionSampleDurationMs_ = map.value(QStringLiteral("sampleDurationMs")).toInt();
     if (map.contains(QStringLiteral("sampleIntervalMs")))
         suctionSampleIntervalMs_ = map.value(QStringLiteral("sampleIntervalMs")).toInt();
-    if (map.contains(QStringLiteral("peakTargetKpa")))
-        suctionPeakTargetKpa_ = map.value(QStringLiteral("peakTargetKpa")).toDouble();
-    if (map.contains(QStringLiteral("peakToleranceKpa")))
-        suctionPeakToleranceKpa_ = map.value(QStringLiteral("peakToleranceKpa")).toDouble();
+    // 优先用步骤内显式范围；否则兼容旧的 target±tolerance
+    if (map.contains(QStringLiteral("peakLowKpa")) && map.contains(QStringLiteral("peakHighKpa"))) {
+        const double low = map.value(QStringLiteral("peakLowKpa")).toDouble();
+        const double high = map.value(QStringLiteral("peakHighKpa")).toDouble();
+        suctionPeakTargetKpa_ = (low + high) / 2.0;
+        suctionPeakToleranceKpa_ = qAbs(high - low) / 2.0;
+    } else {
+        if (map.contains(QStringLiteral("peakTargetKpa")))
+            suctionPeakTargetKpa_ = map.value(QStringLiteral("peakTargetKpa")).toDouble();
+        if (map.contains(QStringLiteral("peakToleranceKpa")))
+            suctionPeakToleranceKpa_ = map.value(QStringLiteral("peakToleranceKpa")).toDouble();
+    }
     if (map.contains(QStringLiteral("peakDiffMaxKpa")))
         suctionPeakDiffMaxKpa_ = map.value(QStringLiteral("peakDiffMaxKpa")).toDouble();
+    if (map.contains(QStringLiteral("peakBaselineKpa")))
+        suctionPeakBaselineKpa_ = map.value(QStringLiteral("peakBaselineKpa")).toDouble();
+    if (map.contains(QStringLiteral("peakDipStartKpa")))
+        suctionPeakDipStartKpa_ = map.value(QStringLiteral("peakDipStartKpa")).toDouble();
+    // channel：1/2/3（兼容旧 left/right → CH1/CH2）
+    auto parseChannelIndex = [](const QString& raw) -> int {
+        const QString ch = raw.trimmed().toLower();
+        if (ch == QStringLiteral("2") || ch == QStringLiteral("ch2") || ch == QStringLiteral("right")
+            || ch == QStringLiteral("r") || ch == QStringLiteral("右") || ch == QStringLiteral("右口"))
+            return 1;
+        if (ch == QStringLiteral("3") || ch == QStringLiteral("ch3") || ch == QStringLiteral("third"))
+            return 2;
+        return 0;
+    };
     if (map.contains(QStringLiteral("channelIndex"))) {
-        suctionSingleChannelIndex_ = map.value(QStringLiteral("channelIndex")).toInt() == 1 ? 1 : 0;
+        const int idx = map.value(QStringLiteral("channelIndex")).toInt();
+        suctionSingleChannelIndex_ = (idx >= 1 && idx <= 3) ? (idx - 1) : qBound(0, idx, 2);
     } else if (map.contains(QStringLiteral("channel"))) {
-        const QString ch = map.value(QStringLiteral("channel")).toString().trimmed().toLower();
-        if (ch == QStringLiteral("1") || ch == QStringLiteral("right") || ch == QStringLiteral("r")
-            || ch == QStringLiteral("右") || ch == QStringLiteral("右口"))
-            suctionSingleChannelIndex_ = 1;
-        else
-            suctionSingleChannelIndex_ = 0;
+        suctionSingleChannelIndex_ = parseChannelIndex(map.value(QStringLiteral("channel")).toString());
     }
 }
 
@@ -1032,9 +1085,9 @@ void QFreeWork::initSuctionChart() {
     suctionPlot_->addGraph();
     suctionPlot_->addGraph();
     suctionPlot_->graph(0)->setPen(QPen(QColor(30, 120, 220), 2));
-    suctionPlot_->graph(0)->setName(QStringLiteral("左通道"));
+    suctionPlot_->graph(0)->setName(QStringLiteral("CH1"));
     suctionPlot_->graph(1)->setPen(QPen(QColor(220, 80, 50), 2));
-    suctionPlot_->graph(1)->setName(QStringLiteral("右通道"));
+    suctionPlot_->graph(1)->setName(QStringLiteral("CH2"));
     suctionPlot_->xAxis->setLabel(QStringLiteral("时间(s)"));
     suctionPlot_->yAxis->setLabel(QStringLiteral("吸力(kPa)"));
     suctionPlot_->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
@@ -1056,19 +1109,19 @@ void QFreeWork::resetSuctionChart() {
     suctionRightPeakLow_ = 0.0;
 
     if (ui->suctionLiveLeftLabel)
-        ui->suctionLiveLeftLabel->setText(QStringLiteral("左口实时：--"));
+        ui->suctionLiveLeftLabel->setText(QStringLiteral("CH1实时：--"));
     if (ui->suctionLiveRightLabel)
-        ui->suctionLiveRightLabel->setText(QStringLiteral("右口实时：--"));
+        ui->suctionLiveRightLabel->setText(QStringLiteral("CH2实时：--"));
     if (ui->suctionLeftPeakHighLabel)
-        ui->suctionLeftPeakHighLabel->setText(QStringLiteral("左口最高：--"));
+        ui->suctionLeftPeakHighLabel->setText(QStringLiteral("CH1最高：--"));
     if (ui->suctionLeftPeakLowLabel)
-        ui->suctionLeftPeakLowLabel->setText(QStringLiteral("左口最低：--"));
+        ui->suctionLeftPeakLowLabel->setText(QStringLiteral("CH1最低：--"));
     if (ui->suctionRightPeakHighLabel)
-        ui->suctionRightPeakHighLabel->setText(QStringLiteral("右口最高：--"));
+        ui->suctionRightPeakHighLabel->setText(QStringLiteral("CH2最高：--"));
     if (ui->suctionRightPeakLowLabel)
-        ui->suctionRightPeakLowLabel->setText(QStringLiteral("右口最低：--"));
+        ui->suctionRightPeakLowLabel->setText(QStringLiteral("CH2最低：--"));
     if (ui->suctionPeakDiffLabel)
-        ui->suctionPeakDiffLabel->setText(QStringLiteral("左右峰差(最低)：--"));
+        ui->suctionPeakDiffLabel->setText(QStringLiteral("通道峰差：--"));
 
     if (suctionPlot_) {
         suctionPlot_->graph(0)->data()->clear();
@@ -1080,33 +1133,33 @@ void QFreeWork::resetSuctionChart() {
 }
 
 void QFreeWork::updateSuctionPeakLabels() {
-    // 采样窗口内：最高=数值最大，最低=数值最小；峰差=左右最低值之差的绝对值（产测峰值对比）
+    // 采样窗口内：最高=数值最大，最低=数值最小；峰差=CH1/CH2最低值之差的绝对值
     if (ui->suctionLeftPeakHighLabel) {
         ui->suctionLeftPeakHighLabel->setText(suctionLeftPeakInit_
-                                                  ? QStringLiteral("左口最高：%1 kPa").arg(suctionLeftPeakHigh_, 0, 'f', 3)
-                                                  : QStringLiteral("左口最高：--"));
+                                                  ? QStringLiteral("CH1最高：%1 kPa").arg(suctionLeftPeakHigh_, 0, 'f', 3)
+                                                  : QStringLiteral("CH1最高：--"));
     }
     if (ui->suctionLeftPeakLowLabel) {
         ui->suctionLeftPeakLowLabel->setText(suctionLeftPeakInit_
-                                                 ? QStringLiteral("左口最低：%1 kPa").arg(suctionLeftPeakLow_, 0, 'f', 3)
-                                                 : QStringLiteral("左口最低：--"));
+                                                 ? QStringLiteral("CH1最低：%1 kPa").arg(suctionLeftPeakLow_, 0, 'f', 3)
+                                                 : QStringLiteral("CH1最低：--"));
     }
     if (ui->suctionRightPeakHighLabel) {
         ui->suctionRightPeakHighLabel->setText(suctionRightPeakInit_
-                                                   ? QStringLiteral("右口最高：%1 kPa").arg(suctionRightPeakHigh_, 0, 'f', 3)
-                                                   : QStringLiteral("右口最高：--"));
+                                                   ? QStringLiteral("CH2最高：%1 kPa").arg(suctionRightPeakHigh_, 0, 'f', 3)
+                                                   : QStringLiteral("CH2最高：--"));
     }
     if (ui->suctionRightPeakLowLabel) {
         ui->suctionRightPeakLowLabel->setText(suctionRightPeakInit_
-                                                  ? QStringLiteral("右口最低：%1 kPa").arg(suctionRightPeakLow_, 0, 'f', 3)
-                                                  : QStringLiteral("右口最低：--"));
+                                                  ? QStringLiteral("CH2最低：%1 kPa").arg(suctionRightPeakLow_, 0, 'f', 3)
+                                                  : QStringLiteral("CH2最低：--"));
     }
     if (ui->suctionPeakDiffLabel) {
         if (suctionLeftPeakInit_ && suctionRightPeakInit_) {
             const double peakDiff = qAbs(suctionLeftPeakLow_ - suctionRightPeakLow_);
-            ui->suctionPeakDiffLabel->setText(QStringLiteral("左右峰差(最低)：%1 kPa").arg(peakDiff, 0, 'f', 3));
+            ui->suctionPeakDiffLabel->setText(QStringLiteral("CH1-CH2峰差：%1 kPa").arg(peakDiff, 0, 'f', 3));
         } else {
-            ui->suctionPeakDiffLabel->setText(QStringLiteral("左右峰差(最低)：--"));
+            ui->suctionPeakDiffLabel->setText(QStringLiteral("通道峰差：--"));
         }
     }
 }
@@ -1139,9 +1192,9 @@ void QFreeWork::appendSuctionChartSample(double leftKpa, double rightKpa) {
     }
 
     if (ui->suctionLiveLeftLabel)
-        ui->suctionLiveLeftLabel->setText(QStringLiteral("左口实时：%1 kPa").arg(leftKpa, 0, 'f', 3));
+        ui->suctionLiveLeftLabel->setText(QStringLiteral("CH1实时：%1 kPa").arg(leftKpa, 0, 'f', 3));
     if (ui->suctionLiveRightLabel)
-        ui->suctionLiveRightLabel->setText(QStringLiteral("右口实时：%1 kPa").arg(rightKpa, 0, 'f', 3));
+        ui->suctionLiveRightLabel->setText(QStringLiteral("CH2实时：%1 kPa").arg(rightKpa, 0, 'f', 3));
     updateSuctionPeakLabels();
 
     if (!suctionPlot_)
@@ -1190,23 +1243,28 @@ void QFreeWork::runDongleSuctionSampleStep() {
         stepRuntime_.testData = QStringLiteral("Dongle串口未连接");
         TestResult = failValue;
         showlog(QStringLiteral("采集双通道吸力失败：Dongle 串口未连接"));
+        markActiveTestCaseStepDone(false, stepRuntime_.testData, QStringLiteral("失败"));
         return;
     }
 
-    const int durationMs = qMax(1000, suctionSampleDurationMs_);
+    int durationMs = suctionSampleDurationMs_;
+    if (durationMs <= 0 && activeTestCase_.timing.commandTimeoutMs > 0)
+        durationMs = activeTestCase_.timing.commandTimeoutMs;
+    durationMs = qMax(1000, durationMs);
     const int intervalMs = qMax(20, suctionSampleIntervalMs_);
     const bool restoreOff = !dongleSuctionReadEnabled_;
 
-    showlog(QStringLiteral("双通道吸力(Dongle)：采样 %1ms，间隔 %2ms，目标 %3±%4kPa")
+    // 与 BYD suction 工站一致：两口采样最低值为峰值，卡控范围 + |峰差|
+    showlog(QStringLiteral("双通道吸力(Dongle)：采样 %1ms，间隔 %2ms（CH1/CH2 峰值与峰差用 Gate，逻辑同 BYD）")
                 .arg(durationMs)
-                .arg(intervalMs)
-                .arg(suctionPeakTargetKpa_, 0, 'f', 2)
-                .arg(suctionPeakToleranceKpa_, 0, 'f', 2));
+                .arg(intervalMs));
 
-    dongleSuctionLeftSamples_.clear();
-    dongleSuctionRightSamples_.clear();
-    dongleSuctionLastLeftKpa_ = 0.0;
-    dongleSuctionLastRightKpa_ = 0.0;
+    dongleSuctionCh1Samples_.clear();
+    dongleSuctionCh2Samples_.clear();
+    dongleSuctionCh3Samples_.clear();
+    dongleSuctionLastCh1Kpa_ = 0.0;
+    dongleSuctionLastCh2Kpa_ = 0.0;
+    dongleSuctionLastCh3Kpa_ = 0.0;
     resetSuctionChart();
     setDongleSuctionReadEnabled(true);
 
@@ -1224,15 +1282,16 @@ void QFreeWork::runDongleSuctionSampleStep() {
             stepRuntime_.testData = QStringLiteral("测试中止");
             TestResult = failValue;
             showlog(QStringLiteral("采集双通道吸力已中止"));
+            markActiveTestCaseStepDone(false, stepRuntime_.testData, QStringLiteral("失败"));
             return;
         }
-        const int sampleCount = dongleSuctionLeftSamples_.size();
+        const int sampleCount = dongleSuctionCh1Samples_.size();
         if (sampleCount > 0 && sampleCount % 10 == 0 && sampleCount != lastLoggedCount) {
             lastLoggedCount = sampleCount;
-            showlog(QStringLiteral("[%1] 左: %2Kpa | 右: %3Kpa")
+            showlog(QStringLiteral("[%1] CH1: %2Kpa | CH2: %3Kpa")
                         .arg(sampleCount)
-                        .arg(dongleSuctionLastLeftKpa_, 0, 'f', 2)
-                        .arg(dongleSuctionLastRightKpa_, 0, 'f', 2));
+                        .arg(dongleSuctionLastCh1Kpa_, 0, 'f', 2)
+                        .arg(dongleSuctionLastCh2Kpa_, 0, 'f', 2));
         }
         waitWork(qMin(intervalMs, durationMs - static_cast<int>(sampleTimer.elapsed())));
     }
@@ -1240,63 +1299,60 @@ void QFreeWork::runDongleSuctionSampleStep() {
     if (restoreOff)
         setDongleSuctionReadEnabled(false);
 
-    const QVector<double>& leftSamples = dongleSuctionLeftSamples_;
-    const QVector<double>& rightSamples = dongleSuctionRightSamples_;
-    if (leftSamples.isEmpty() || rightSamples.isEmpty()) {
-        stepRuntime_.done = true;
-        stepRuntime_.pass = false;
-        stepRuntime_.testData = QStringLiteral("无吸力采样点");
-        stepRuntime_.ask =
-            QStringLiteral("%1±%2").arg(suctionPeakTargetKpa_, 0, 'f', 2).arg(suctionPeakToleranceKpa_, 0, 'f', 2);
-        TestResult = failValue;
-        showlog(QStringLiteral("采集双通道吸力失败：采样窗口内未收到 AT+SUCTION_DATA"));
-        markActiveTestCaseStepDone(false, stepRuntime_.testData, stepRuntime_.ask);
+    if (dongleSuctionCh1Samples_.isEmpty() || dongleSuctionCh2Samples_.isEmpty()) {
+        showlog(QStringLiteral("采集双通道吸力失败：采样窗口内未收到 CH1/CH2 AT+SUCTION_DATA"));
+        markActiveTestCaseStepDone(false, QStringLiteral("无吸力采样点"), QStringLiteral("失败"));
         return;
     }
 
-    double leftPeak = 0.0;
-    double rightPeak = 0.0;
-    double sideDiff = 0.0;
-    bool pass = false;
+    ProtocolDongleSuctionPeakData peak;
+    peak.ch1PeakKpa = *std::min_element(dongleSuctionCh1Samples_.cbegin(), dongleSuctionCh1Samples_.cend());
+    peak.ch2PeakKpa = *std::min_element(dongleSuctionCh2Samples_.cbegin(), dongleSuctionCh2Samples_.cend());
+    const double ch1High = *std::max_element(dongleSuctionCh1Samples_.cbegin(), dongleSuctionCh1Samples_.cend());
+    const double ch2High = *std::max_element(dongleSuctionCh2Samples_.cbegin(), dongleSuctionCh2Samples_.cend());
+    peak.sideDiffKpa = qAbs(peak.ch1PeakKpa - peak.ch2PeakKpa);
+    peak.peakKpa = peak.ch1PeakKpa;
+    peak.highKpa = ch1High;
+    peak.peakDiffKpa = peak.sideDiffKpa;
+    showlog(QStringLiteral("采样完成：有效点 %1，CH1最高=%2 最低=%3，CH2最高=%4 最低=%5，峰差=%6")
+                .arg(dongleSuctionCh1Samples_.size())
+                .arg(ch1High, 0, 'f', 3)
+                .arg(peak.ch1PeakKpa, 0, 'f', 3)
+                .arg(ch2High, 0, 'f', 3)
+                .arg(peak.ch2PeakKpa, 0, 'f', 3)
+                .arg(peak.sideDiffKpa, 0, 'f', 3));
+
+    const QVariant payload = QVariant::fromValue(peak);
+    if (activeTestCase_.gate.enabled
+        && evaluateActiveTestCaseGate(QStringLiteral("ProtocolDongleSuctionPeakData"), payload))
+        return;
+
+    // 旧 Hook / 未开 Gate：沿用步骤 Param 内联卡控（同 BYD）
     const double lowerBound = suctionPeakTargetKpa_ - suctionPeakToleranceKpa_;
     const double upperBound = suctionPeakTargetKpa_ + suctionPeakToleranceKpa_;
-
-    auto recomputePass = [&](double left, double right) {
-        leftPeak = left;
-        rightPeak = right;
-        sideDiff = qAbs(leftPeak - rightPeak);
-        const bool leftPass = leftPeak >= lowerBound && leftPeak <= upperBound;
-        const bool rightPass = rightPeak >= lowerBound && rightPeak <= upperBound;
-        const bool diffPass = sideDiff <= suctionPeakDiffMaxKpa_;
-        pass = leftPass && rightPass && diffPass;
-    };
-
-    recomputePass(*std::min_element(leftSamples.cbegin(), leftSamples.cend()),
-                  *std::min_element(rightSamples.cbegin(), rightSamples.cend()));
-    showlog(QStringLiteral("采样完成：有效点 %1 个").arg(leftSamples.size()));
-
-    stepRuntime_.done = true;
-    stepRuntime_.pass = pass;
-    stepRuntime_.testData =
-        QStringLiteral("L=%1,R=%2,diff=%3").arg(leftPeak, 0, 'f', 3).arg(rightPeak, 0, 'f', 3).arg(sideDiff, 0, 'f', 3);
-    stepRuntime_.ask =
-        QStringLiteral("%1±%2").arg(suctionPeakTargetKpa_, 0, 'f', 2).arg(suctionPeakToleranceKpa_, 0, 'f', 2);
+    const bool ch1Pass = peak.ch1PeakKpa >= lowerBound && peak.ch1PeakKpa <= upperBound;
+    const bool ch2Pass = peak.ch2PeakKpa >= lowerBound && peak.ch2PeakKpa <= upperBound;
+    const bool diffPass = peak.sideDiffKpa <= suctionPeakDiffMaxKpa_;
+    const bool pass = ch1Pass && ch2Pass && diffPass;
+    const QString testData = QStringLiteral("CH1=%1,CH2=%2,diff=%3")
+                                 .arg(peak.ch1PeakKpa, 0, 'f', 3)
+                                 .arg(peak.ch2PeakKpa, 0, 'f', 3)
+                                 .arg(peak.sideDiffKpa, 0, 'f', 3);
     if (!pass) {
         TestResult = failValue;
-        showlog(QStringLiteral("吸力卡控失败：左=%1kPa 右=%2kPa 差=%3kPa，允许范围 [%4,%5]kPa，最大差 %6kPa")
-                    .arg(leftPeak, 0, 'f', 3)
-                    .arg(rightPeak, 0, 'f', 3)
-                    .arg(sideDiff, 0, 'f', 3)
+        showlog(QStringLiteral("吸力卡控失败：CH1=%1 CH2=%2 差=%3，允许 [%4,%5] 差≤%6")
+                    .arg(peak.ch1PeakKpa, 0, 'f', 3)
+                    .arg(peak.ch2PeakKpa, 0, 'f', 3)
+                    .arg(peak.sideDiffKpa, 0, 'f', 3)
                     .arg(lowerBound, 0, 'f', 2)
                     .arg(upperBound, 0, 'f', 2)
                     .arg(suctionPeakDiffMaxKpa_, 0, 'f', 2));
     } else {
-        showlog(QStringLiteral("吸力卡控通过：左=%1kPa 右=%2kPa 差=%3kPa")
-                    .arg(leftPeak, 0, 'f', 3)
-                    .arg(rightPeak, 0, 'f', 3)
-                    .arg(sideDiff, 0, 'f', 3));
+        showlog(QStringLiteral("吸力卡控通过：%1").arg(testData));
     }
-    markActiveTestCaseStepDone(pass, stepRuntime_.testData, stepRuntime_.ask);
+    markActiveTestCaseStepDone(pass, testData, QStringLiteral("%1±%2")
+                                                   .arg(suctionPeakTargetKpa_, 0, 'f', 2)
+                                                   .arg(suctionPeakToleranceKpa_, 0, 'f', 2));
 }
 
 void QFreeWork::runDongleSuctionSampleSingleStep() {
@@ -1308,27 +1364,30 @@ void QFreeWork::runDongleSuctionSampleSingleStep() {
         stepRuntime_.testData = QStringLiteral("Dongle串口未连接");
         TestResult = failValue;
         showlog(QStringLiteral("采集单通道吸力失败：Dongle 串口未连接"));
+        markActiveTestCaseStepDone(false, stepRuntime_.testData, QStringLiteral("失败"));
         return;
     }
 
-    const int durationMs = qMax(1000, suctionSampleDurationMs_);
+    int durationMs = suctionSampleDurationMs_;
+    if (durationMs <= 0 && activeTestCase_.timing.commandTimeoutMs > 0)
+        durationMs = activeTestCase_.timing.commandTimeoutMs;
+    durationMs = qMax(1000, durationMs);
     const int intervalMs = qMax(20, suctionSampleIntervalMs_);
     const bool restoreOff = !dongleSuctionReadEnabled_;
-    const bool useRight = suctionSingleChannelIndex_ == 1;
-    const QString channelName = useRight ? QStringLiteral("右") : QStringLiteral("左");
+    const int chIndex = qBound(0, suctionSingleChannelIndex_, 2);
+    const QString channelName = QStringLiteral("CH%1").arg(chIndex + 1);
 
-    showlog(QStringLiteral("单通道吸力(Dongle/%1口)：采样 %2ms，间隔 %3ms，目标峰值 %4±%5kPa，大小峰差≤%6kPa")
+    showlog(QStringLiteral("单通道吸力(Dongle/%1)：采样 %2ms，间隔 %3ms（峰值/大小峰差请用 Gate 配置）")
                 .arg(channelName)
                 .arg(durationMs)
-                .arg(intervalMs)
-                .arg(suctionPeakTargetKpa_, 0, 'f', 2)
-                .arg(suctionPeakToleranceKpa_, 0, 'f', 2)
-                .arg(suctionPeakDiffMaxKpa_, 0, 'f', 2));
+                .arg(intervalMs));
 
-    dongleSuctionLeftSamples_.clear();
-    dongleSuctionRightSamples_.clear();
-    dongleSuctionLastLeftKpa_ = 0.0;
-    dongleSuctionLastRightKpa_ = 0.0;
+    dongleSuctionCh1Samples_.clear();
+    dongleSuctionCh2Samples_.clear();
+    dongleSuctionCh3Samples_.clear();
+    dongleSuctionLastCh1Kpa_ = 0.0;
+    dongleSuctionLastCh2Kpa_ = 0.0;
+    dongleSuctionLastCh3Kpa_ = 0.0;
     resetSuctionChart();
     setDongleSuctionReadEnabled(true);
 
@@ -1346,15 +1405,22 @@ void QFreeWork::runDongleSuctionSampleSingleStep() {
             stepRuntime_.testData = QStringLiteral("测试中止");
             TestResult = failValue;
             showlog(QStringLiteral("采集单通道吸力已中止"));
+            markActiveTestCaseStepDone(false, stepRuntime_.testData, QStringLiteral("失败"));
             return;
         }
-        const QVector<double>& live =
-            useRight ? dongleSuctionRightSamples_ : dongleSuctionLeftSamples_;
-        const int sampleCount = live.size();
+        const QVector<double>* live = &dongleSuctionCh1Samples_;
+        double liveKpa = dongleSuctionLastCh1Kpa_;
+        if (chIndex == 1) {
+            live = &dongleSuctionCh2Samples_;
+            liveKpa = dongleSuctionLastCh2Kpa_;
+        } else if (chIndex == 2) {
+            live = &dongleSuctionCh3Samples_;
+            liveKpa = dongleSuctionLastCh3Kpa_;
+        }
+        const int sampleCount = live->size();
         if (sampleCount > 0 && sampleCount % 10 == 0 && sampleCount != lastLoggedCount) {
             lastLoggedCount = sampleCount;
-            const double liveKpa = useRight ? dongleSuctionLastRightKpa_ : dongleSuctionLastLeftKpa_;
-            showlog(QStringLiteral("[%1] %2口: %3Kpa").arg(sampleCount).arg(channelName).arg(liveKpa, 0, 'f', 2));
+            showlog(QStringLiteral("[%1] %2: %3Kpa").arg(sampleCount).arg(channelName).arg(liveKpa, 0, 'f', 2));
         }
         waitWork(qMin(intervalMs, durationMs - static_cast<int>(sampleTimer.elapsed())));
     }
@@ -1362,63 +1428,126 @@ void QFreeWork::runDongleSuctionSampleSingleStep() {
     if (restoreOff)
         setDongleSuctionReadEnabled(false);
 
-    const QVector<double>& samples =
-        useRight ? dongleSuctionRightSamples_ : dongleSuctionLeftSamples_;
+    const QVector<double>* samplesPtr = &dongleSuctionCh1Samples_;
+    if (chIndex == 1)
+        samplesPtr = &dongleSuctionCh2Samples_;
+    else if (chIndex == 2)
+        samplesPtr = &dongleSuctionCh3Samples_;
+    const QVector<double>& samples = *samplesPtr;
     if (samples.isEmpty()) {
-        stepRuntime_.done = true;
-        stepRuntime_.pass = false;
-        stepRuntime_.testData = QStringLiteral("无吸力采样点");
-        stepRuntime_.ask =
-            QStringLiteral("%1±%2").arg(suctionPeakTargetKpa_, 0, 'f', 2).arg(suctionPeakToleranceKpa_, 0, 'f', 2);
-        TestResult = failValue;
-        showlog(QStringLiteral("采集单通道吸力失败：采样窗口内未收到 %1口 AT+SUCTION_DATA").arg(channelName));
-        markActiveTestCaseStepDone(false, stepRuntime_.testData, stepRuntime_.ask);
+        showlog(QStringLiteral("采集单通道吸力失败：采样窗口内未收到 %1 AT+SUCTION_DATA").arg(channelName));
+        markActiveTestCaseStepDone(false, QStringLiteral("无吸力采样点"), QStringLiteral("失败"));
         return;
     }
 
-    const double peakLow = *std::min_element(samples.cbegin(), samples.cend());
-    const double peakHigh = *std::max_element(samples.cbegin(), samples.cend());
-    const double peakDiff = peakHigh - peakLow;
-    const double lowerBound = suctionPeakTargetKpa_ - suctionPeakToleranceKpa_;
-    const double upperBound = suctionPeakTargetKpa_ + suctionPeakToleranceKpa_;
-    // 峰值=窗口最低气压（吸力最大）；大小峰值差=同口最高与最低之差
-    const bool peakPass = peakLow >= lowerBound && peakLow <= upperBound;
-    const bool diffPass = peakDiff <= suctionPeakDiffMaxKpa_;
-    const bool pass = peakPass && diffPass;
+    // 周期峰值：吸气回基线后取本周期最低点（真正的吸力峰）；峰值差=各峰中最大-最小，
+    // 切勿用窗口绝对值最高-最低（会把基线≈0 算进去，diff≈40+）
+    QVector<double> cyclePeaks;
+    enum class PeakPhase { AtBaseline, InCycle };
+    PeakPhase phase = PeakPhase::AtBaseline;
+    bool cycleMinInit = false;
+    double cycleMinKpa = 0.0;
+    const double baseline = suctionPeakBaselineKpa_;
+    const double dipStart = suctionPeakDipStartKpa_;
+    for (double kpa : samples) {
+        if (kpa >= baseline) {
+            if (phase == PeakPhase::InCycle && cycleMinInit && cycleMinKpa <= dipStart)
+                cyclePeaks.append(cycleMinKpa);
+            phase = PeakPhase::AtBaseline;
+            cycleMinInit = false;
+            continue;
+        }
+        if (kpa < dipStart) {
+            if (phase == PeakPhase::AtBaseline) {
+                phase = PeakPhase::InCycle;
+                cycleMinKpa = kpa;
+                cycleMinInit = true;
+            } else if (!cycleMinInit || kpa < cycleMinKpa) {
+                cycleMinKpa = kpa;
+                cycleMinInit = true;
+            }
+            continue;
+        }
+        if (phase == PeakPhase::InCycle && (!cycleMinInit || kpa < cycleMinKpa)) {
+            cycleMinKpa = kpa;
+            cycleMinInit = true;
+        }
+    }
+    // 采样结束仍停在吸气途中（未回基线）的半截周期不计入峰值，避免把下行中的点当成完整峰
 
-    showlog(QStringLiteral("采样完成：有效点 %1 个").arg(samples.size()));
+    if (cyclePeaks.isEmpty()) {
+        showlog(QStringLiteral("采集单通道吸力失败：%1 未识别到有效吸气峰值（基线≥%2，入峰<%3）")
+                    .arg(channelName)
+                    .arg(baseline, 0, 'f', 1)
+                    .arg(dipStart, 0, 'f', 1));
+        markActiveTestCaseStepDone(false, QStringLiteral("无有效峰值"), QStringLiteral("失败"));
+        return;
+    }
 
-    stepRuntime_.done = true;
-    stepRuntime_.pass = pass;
-    stepRuntime_.testData = QStringLiteral("%1口 peak=%2,high=%3,diff=%4")
-                                .arg(channelName)
-                                .arg(peakLow, 0, 'f', 3)
-                                .arg(peakHigh, 0, 'f', 3)
-                                .arg(peakDiff, 0, 'f', 3);
-    stepRuntime_.ask =
-        QStringLiteral("%1±%2,diff<=%3")
-            .arg(suctionPeakTargetKpa_, 0, 'f', 2)
-            .arg(suctionPeakToleranceKpa_, 0, 'f', 2)
-            .arg(suctionPeakDiffMaxKpa_, 0, 'f', 2);
+    ProtocolDongleSuctionPeakData peak;
+    peak.peakKpa = *std::min_element(cyclePeaks.cbegin(), cyclePeaks.cend()); // 最强峰
+    peak.highKpa = *std::max_element(cyclePeaks.cbegin(), cyclePeaks.cend()); // 最弱峰
+    peak.peakDiffKpa = peak.highKpa - peak.peakKpa;
+    peak.ch1PeakKpa = (chIndex == 0) ? peak.peakKpa : 0.0;
+    peak.ch2PeakKpa = (chIndex == 1) ? peak.peakKpa : 0.0;
+    peak.sideDiffKpa = peak.peakDiffKpa;
+
+    // 峰值允许范围：优先 Gate 中 peakKpa 分项，否则用步骤 Param 目标±容差
+    double peakLo = suctionPeakTargetKpa_ - suctionPeakToleranceKpa_;
+    double peakHi = suctionPeakTargetKpa_ + suctionPeakToleranceKpa_;
+    for (const TestCaseGate& g : TestCaseStore::activeGatesForEvaluation(activeTestCase_)) {
+        if (g.field == QLatin1String("peakKpa") && g.op == TestCaseGateOp::Range) {
+            peakLo = g.low;
+            peakHi = g.high;
+            break;
+        }
+    }
+    QStringList outOfRange;
+    for (int i = 0; i < cyclePeaks.size(); ++i) {
+        const double p = cyclePeaks.at(i);
+        if (p < peakLo || p > peakHi)
+            outOfRange.append(QStringLiteral("#%1=%2").arg(i + 1).arg(p, 0, 'f', 3));
+    }
+    showlog(QStringLiteral("采样完成：点 %1，有效峰 %2 个，最强=%3 最弱=%4 峰值差=%5")
+                .arg(samples.size())
+                .arg(cyclePeaks.size())
+                .arg(peak.peakKpa, 0, 'f', 3)
+                .arg(peak.highKpa, 0, 'f', 3)
+                .arg(peak.peakDiffKpa, 0, 'f', 3));
+    if (!outOfRange.isEmpty()) {
+        TestResult = failValue;
+        const QString detail = QStringLiteral("峰值超范围：%1，允许[%2,%3]")
+                                   .arg(outOfRange.join(QLatin1Char(',')))
+                                   .arg(peakLo, 0, 'f', 2)
+                                   .arg(peakHi, 0, 'f', 2);
+        showlog(QStringLiteral("吸力卡控失败：%1").arg(detail));
+        markActiveTestCaseStepDone(false, detail, QStringLiteral("[%1,%2]").arg(peakLo, 0, 'f', 2).arg(peakHi, 0, 'f', 2));
+        return;
+    }
+
+    const QVariant payload = QVariant::fromValue(peak);
+    if (activeTestCase_.gate.enabled
+        && evaluateActiveTestCaseGate(QStringLiteral("ProtocolDongleSuctionPeakData"), payload))
+        return;
+
+    const bool diffPass = peak.peakDiffKpa <= suctionPeakDiffMaxKpa_;
+    const bool pass = diffPass;
+    const QString testData = QStringLiteral("%1 peaks=%2,min=%3,max=%4,diff=%5")
+                                 .arg(channelName)
+                                 .arg(cyclePeaks.size())
+                                 .arg(peak.peakKpa, 0, 'f', 3)
+                                 .arg(peak.highKpa, 0, 'f', 3)
+                                 .arg(peak.peakDiffKpa, 0, 'f', 3);
     if (!pass) {
         TestResult = failValue;
-        showlog(QStringLiteral("吸力卡控失败：%1口峰值=%2kPa 最高=%3kPa 大小峰差=%4kPa，"
-                               "峰值允许 [%5,%6]kPa，大小峰差上限 %7kPa")
-                    .arg(channelName)
-                    .arg(peakLow, 0, 'f', 3)
-                    .arg(peakHigh, 0, 'f', 3)
-                    .arg(peakDiff, 0, 'f', 3)
-                    .arg(lowerBound, 0, 'f', 2)
-                    .arg(upperBound, 0, 'f', 2)
+        showlog(QStringLiteral("吸力卡控失败：峰值差=%1，允许≤%2")
+                    .arg(peak.peakDiffKpa, 0, 'f', 3)
                     .arg(suctionPeakDiffMaxKpa_, 0, 'f', 2));
     } else {
-        showlog(QStringLiteral("吸力卡控通过：%1口峰值=%2kPa 最高=%3kPa 大小峰差=%4kPa")
-                    .arg(channelName)
-                    .arg(peakLow, 0, 'f', 3)
-                    .arg(peakHigh, 0, 'f', 3)
-                    .arg(peakDiff, 0, 'f', 3));
+        showlog(QStringLiteral("吸力卡控通过：%1").arg(testData));
     }
-    markActiveTestCaseStepDone(pass, stepRuntime_.testData, stepRuntime_.ask);
+    markActiveTestCaseStepDone(pass, testData,
+                               QStringLiteral("peakDiff<=%1").arg(suctionPeakDiffMaxKpa_, 0, 'f', 2));
 }
 
 void QFreeWork::initData() {
@@ -1432,10 +1561,11 @@ void QFreeWork::initData() {
     dongleOutTime = 10;
     canGoNext = 1;
     stepRuntime_.reset();
+    suppressProductBleAutoReconnect_ = false;
     isovertime = 0;
     dongleSuctionSampleActive_ = false;
-    dongleSuctionLeftSamples_.clear();
-    dongleSuctionRightSamples_.clear();
+    dongleSuctionCh1Samples_.clear();
+    dongleSuctionCh2Samples_.clear();
     resetSuctionChart();
     setDongleSuctionReadEnabled(false);
     huilingVisaLinkCache_.clear();
@@ -1909,7 +2039,7 @@ void QFreeWork::bindingMacSn(QString bindingMac, QString bindingSn) {
         file.resize(0);
         QTextStream out(&file);
         for (const QString& line : lines) {
-            out << line << '\n';
+            out << line << '\r\n';
         }
         file.close(); // 关闭文件
         showlog("保存mac_sn文件成功");

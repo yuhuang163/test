@@ -336,12 +336,14 @@ void Qroot::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
     }
 
     // 设备按键主动上报：实测 CT=Ack(0x01)；文档亦允许 Notify(0x03)
-    if (body.size() >= 1 && (ct == Notify || ct == Ack)) {
-        if (cid == KeyNotify) {
-            const quint8 keyId = static_cast<quint8>(body.at(0));
-            // 开/关上报 Ack：body=0xFF 表示已接收，须完成 sendCommandWithRetry
-            if (ct == Ack && keyNotifySwitchPending_ &&
-                (keyId == kKeyNotifySwitchAck || keyId == 0x00)) {
+    if (cid == KeyNotify && (ct == Notify || ct == Ack)) {
+        // 开/关上报应答：body=0xFF/0x00（或空 body）；须完成 sendCommandWithRetry
+        if (keyNotifySwitchPending_) {
+            const bool ackBodyOk = body.isEmpty()
+                || (body.size() >= 1
+                    && (static_cast<quint8>(body.at(0)) == kKeyNotifySwitchAck
+                        || static_cast<quint8>(body.at(0)) == 0x00));
+            if (ackBodyOk) {
                 keyNotifySwitchPending_ = false;
                 ProtocolResultData result;
                 result.result = 1;
@@ -350,6 +352,19 @@ void Qroot::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
                 hasPending_ = false;
                 return;
             }
+            // 等待开关应答期间迟到的按键上报：忽略，避免冲掉 pending
+            if (body.size() >= 1) {
+                const quint8 keyId = static_cast<quint8>(body.at(0));
+                if (keyId != 0x00 && keyId != kKeyNotifySwitchAck) {
+                    qDebug().noquote() << "[Qroot] KeyNotify ignored while switch pending:"
+                                       << formatKeyNotifyLabel(keyId);
+                    return;
+                }
+            }
+            return;
+        }
+        if (body.size() >= 1) {
+            const quint8 keyId = static_cast<quint8>(body.at(0));
             // 按键按下：1加挡/2减挡/3模式/4加热；其它非应答 body 仍上报 ID
             if (keyId != 0x00 && keyId != kKeyNotifySwitchAck) {
                 emitKeyNotifyReport(keyId);
@@ -357,6 +372,8 @@ void Qroot::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
             }
             return;
         }
+    }
+    if (body.size() >= 1 && (ct == Notify || ct == Ack)) {
         if (cid == ToggleKeyNotify) {
             emitToggleKeyNotifyReport(static_cast<quint8>(body.at(0)));
             return;

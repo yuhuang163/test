@@ -5,8 +5,8 @@
 #include "dongle_cmd_manifest.h"
 #include "fixture_pcba_cmd_manifest.h"
 #include "asd9026a_cmd_manifest.h"
-#include "xwd_ble_fixture_cmd_manifest.h"
-#include "xwd_suction_fixture_cmd_manifest.h"
+#include "xwd_fixture_cmd_manifest.h"
+#include "jieli_bt_box_cmd_manifest.h"
 #include "product_serial_cmd_manifest.h"
 #include "modbus_cmd_manifest.h"
 #include "scpi_cmd_manifest.h"
@@ -782,6 +782,9 @@ void loadMultiGatesFromIni(QSettings& ini, TestCaseDefinition& out) {
             g.expected = ini.value(QStringLiteral("Expected")).toString().trimmed();
             g.low = ini.value(QStringLiteral("Low"), g.expected.toDouble()).toDouble();
             g.high = ini.value(QStringLiteral("High"), g.low).toDouble();
+            g.lowSettingsKey = ini.value(QStringLiteral("LowSettingsKey")).toString();
+            g.highSettingsKey = ini.value(QStringLiteral("HighSettingsKey")).toString();
+            g.expectedSettingsKey = ini.value(QStringLiteral("ExpectedSettingsKey")).toString();
             ini.endGroup();
             if (!g.field.isEmpty())
                 out.gates.append(g);
@@ -804,6 +807,9 @@ void loadMultiGatesFromIni(QSettings& ini, TestCaseDefinition& out) {
             g.expected = ini.value(QStringLiteral("Expected")).toString().trimmed();
             g.low = ini.value(QStringLiteral("Low"), g.expected.toDouble()).toDouble();
             g.high = ini.value(QStringLiteral("High"), g.low).toDouble();
+            g.lowSettingsKey = ini.value(QStringLiteral("LowSettingsKey")).toString();
+            g.highSettingsKey = ini.value(QStringLiteral("HighSettingsKey")).toString();
+            g.expectedSettingsKey = ini.value(QStringLiteral("ExpectedSettingsKey")).toString();
             ini.endGroup();
             out.gates.append(g);
         }
@@ -841,6 +847,9 @@ void saveMultiGatesToIni(QSettings& ini, const TestCaseDefinition& def) {
         ini.setValue(QStringLiteral("Expected"), g.expected);
         ini.setValue(QStringLiteral("Low"), g.low);
         ini.setValue(QStringLiteral("High"), g.high);
+        ini.setValue(QStringLiteral("LowSettingsKey"), g.lowSettingsKey);
+        ini.setValue(QStringLiteral("HighSettingsKey"), g.highSettingsKey);
+        ini.setValue(QStringLiteral("ExpectedSettingsKey"), g.expectedSettingsKey);
         ini.endGroup();
     }
 }
@@ -1015,16 +1024,20 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
     } else {
         FixturePcbaCmd inferFixturePcba;
         Asd9026aCmd inferAsd9026a;
-        XwdBleFixtureCmd inferXwdBle;
+        XwdRawFixtureCmd inferXwd;
+        JieliBtBoxCmd inferJieliBtBox;
         ProductSerialCmd inferSerial;
         TupleCmd inferTuple;
         DongleCmd inferDongle;
         if (Asd9026aCmdCatalog::asd9026aCmdFromName(out.send.deviceCmd, inferAsd9026a)) {
             out.send.channel = TestCaseSendChannel::Fixture;
             out.send.fixtureProtocol = TestCaseFixtureProtocol::Asd9026a;
-        } else if (XwdBleFixtureCmdCatalog::xwdBleFixtureCmdFromName(out.send.deviceCmd, inferXwdBle)) {
+        } else if (XwdRawFixtureCmdCatalog::xwdRawFixtureCmdFromName(out.send.deviceCmd, inferXwd)) {
             out.send.channel = TestCaseSendChannel::Fixture;
-            out.send.fixtureProtocol = TestCaseFixtureProtocol::XwdBle;
+            out.send.fixtureProtocol = TestCaseFixtureProtocol::Xwd;
+        } else if (JieliBtBoxCmdCatalog::jieliBtBoxCmdFromName(out.send.deviceCmd, inferJieliBtBox)) {
+            out.send.channel = TestCaseSendChannel::Fixture;
+            out.send.fixtureProtocol = TestCaseFixtureProtocol::JieliBtBox;
         } else if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(out.send.deviceCmd, inferFixturePcba)) {
             out.send.channel = TestCaseSendChannel::Fixture;
         } else if (ProductSerialCmdCatalog::productSerialCmdFromName(out.send.deviceCmd, inferSerial)) {
@@ -1065,19 +1078,19 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
                     out.send.action = Asd9026aCmdCatalog::actionFor(asdCmd);
                 Asd9026aCmdCatalog::paramFromIniGroup(ini, asdCmd, out.send.param);
             }
-        } else if (out.send.fixtureProtocol == TestCaseFixtureProtocol::XwdBle) {
-            XwdBleFixtureCmd xwdCmd;
-            if (XwdBleFixtureCmdCatalog::xwdBleFixtureCmdFromName(out.send.deviceCmd, xwdCmd)) {
-                if (!XwdBleFixtureCmdCatalog::isCmdForAction(xwdCmd, out.send.action))
-                    out.send.action = XwdBleFixtureCmdCatalog::actionFor(xwdCmd);
-                XwdBleFixtureCmdCatalog::paramFromIniGroup(ini, xwdCmd, out.send.param);
+        } else if (out.send.fixtureProtocol == TestCaseFixtureProtocol::Xwd) {
+            XwdRawFixtureCmd xwdCmd;
+            if (XwdRawFixtureCmdCatalog::xwdRawFixtureCmdFromName(out.send.deviceCmd, xwdCmd)) {
+                if (!XwdRawFixtureCmdCatalog::isCmdForAction(xwdCmd, out.send.action))
+                    out.send.action = XwdRawFixtureCmdCatalog::actionFor(xwdCmd);
+                XwdRawFixtureCmdCatalog::paramFromIniGroup(ini, xwdCmd, out.send.param);
             }
-        } else if (out.send.fixtureProtocol == TestCaseFixtureProtocol::XwdSuction) {
-            XwdSuctionFixtureCmd xwdCmd;
-            if (XwdSuctionFixtureCmdCatalog::xwdSuctionFixtureCmdFromName(out.send.deviceCmd, xwdCmd)) {
-                if (!XwdSuctionFixtureCmdCatalog::isCmdForAction(xwdCmd, out.send.action))
-                    out.send.action = XwdSuctionFixtureCmdCatalog::actionFor(xwdCmd);
-                XwdSuctionFixtureCmdCatalog::paramFromIniGroup(ini, xwdCmd, out.send.param);
+        } else if (out.send.fixtureProtocol == TestCaseFixtureProtocol::JieliBtBox) {
+            JieliBtBoxCmd jieliCmd;
+            if (JieliBtBoxCmdCatalog::jieliBtBoxCmdFromName(out.send.deviceCmd, jieliCmd)) {
+                if (!JieliBtBoxCmdCatalog::isCmdForAction(jieliCmd, out.send.action))
+                    out.send.action = JieliBtBoxCmdCatalog::actionFor(jieliCmd);
+                JieliBtBoxCmdCatalog::paramFromIniGroup(ini, jieliCmd, out.send.param);
             }
         } else {
             FixturePcbaCmd fixtureCmd;
@@ -1269,17 +1282,13 @@ void applyCaseIniOverlay(QSettings& overlay, TestCaseDefinition& def) {
                 }
                 def.send.param = normalizeScpiModbusParamFromMap(merged);
             } else if (def.send.channel == TestCaseSendChannel::Product) {
-                DeviceCmd cmd;
-                if (DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd)) {
-                    QVariantMap merged;
-                    if (def.send.param.canConvert<QVariantMap>())
-                        merged = def.send.param.toMap();
-                    for (auto it = paramMap.constBegin(); it != paramMap.constEnd(); ++it)
-                        merged.insert(it.key(), it.value());
-                    def.send.param = DeviceCmdCatalog::normalizeSendParam(cmd, merged);
-                } else {
-                    def.send.param = paramMap;
-                }
+                // 编辑/存档侧保持 JsonMap；normalizeSendParam（如 Sn→DeviceSnPayload）仅在下发时做
+                QVariantMap merged;
+                if (def.send.param.canConvert<QVariantMap>())
+                    merged = def.send.param.toMap();
+                for (auto it = paramMap.constBegin(); it != paramMap.constEnd(); ++it)
+                    merged.insert(it.key(), it.value());
+                def.send.param = merged;
             } else if (!def.send.param.canConvert<QVariantMap>()) {
                 // Param_string 等叶子读成单键 map；若不解开，String 型执行时 .toString() 会得到空串
                 def.send.param = normalizeScpiModbusParamFromMap(paramMap);
@@ -1305,14 +1314,14 @@ void applyCaseIniOverlay(QSettings& overlay, TestCaseDefinition& def) {
                     Asd9026aCmd asdCmd;
                     if (Asd9026aCmdCatalog::asd9026aCmdFromName(def.send.deviceCmd, asdCmd))
                         Asd9026aCmdCatalog::paramFromIniGroup(overlay, asdCmd, def.send.param);
-                } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::XwdBle) {
-                    XwdBleFixtureCmd xwdCmd;
-                    if (XwdBleFixtureCmdCatalog::xwdBleFixtureCmdFromName(def.send.deviceCmd, xwdCmd))
-                        XwdBleFixtureCmdCatalog::paramFromIniGroup(overlay, xwdCmd, def.send.param);
-                } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::XwdSuction) {
-                    XwdSuctionFixtureCmd xwdCmd;
-                    if (XwdSuctionFixtureCmdCatalog::xwdSuctionFixtureCmdFromName(def.send.deviceCmd, xwdCmd))
-                        XwdSuctionFixtureCmdCatalog::paramFromIniGroup(overlay, xwdCmd, def.send.param);
+                } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::Xwd) {
+                    XwdRawFixtureCmd xwdCmd;
+                    if (XwdRawFixtureCmdCatalog::xwdRawFixtureCmdFromName(def.send.deviceCmd, xwdCmd))
+                        XwdRawFixtureCmdCatalog::paramFromIniGroup(overlay, xwdCmd, def.send.param);
+                } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::JieliBtBox) {
+                    JieliBtBoxCmd jieliCmd;
+                    if (JieliBtBoxCmdCatalog::jieliBtBoxCmdFromName(def.send.deviceCmd, jieliCmd))
+                        JieliBtBoxCmdCatalog::paramFromIniGroup(overlay, jieliCmd, def.send.param);
                 } else {
                     FixturePcbaCmd fixtureCmd;
                     if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd))
@@ -1337,34 +1346,54 @@ void applyCaseIniOverlay(QSettings& overlay, TestCaseDefinition& def) {
 
     if (overlay.contains(QStringLiteral("Gate/Enabled")) || overlay.contains(QStringLiteral("Gate/ReportType"))
         || overlay.contains(QStringLiteral("Gate/Count"))) {
-        if (overlay.contains(QStringLiteral("Gate/Enabled")))
-            def.gate.enabled = overlay.value(QStringLiteral("Gate/Enabled")).toBool();
-        if (overlay.contains(QStringLiteral("Gate/ReportType")))
-            def.gate.reportType = overlay.value(QStringLiteral("Gate/ReportType")).toString().trimmed();
-        if (overlay.contains(QStringLiteral("Gate/Field")))
-            def.gate.field = overlay.value(QStringLiteral("Gate/Field")).toString().trimmed();
-        if (overlay.contains(QStringLiteral("Gate/Op")))
-            def.gate.op = gateOpFromString(overlay.value(QStringLiteral("Gate/Op")).toString());
-        if (overlay.contains(QStringLiteral("Gate/Low")))
-            def.gate.low = overlay.value(QStringLiteral("Gate/Low")).toDouble();
-        if (overlay.contains(QStringLiteral("Gate/High")))
-            def.gate.high = overlay.value(QStringLiteral("Gate/High")).toDouble();
-        if (overlay.contains(QStringLiteral("Gate/Expected")))
-            def.gate.expected = overlay.value(QStringLiteral("Gate/Expected")).toString();
-        if (overlay.contains(QStringLiteral("Gate/ExpectedSettingsKey")))
-            def.gate.expectedSettingsKey = overlay.value(QStringLiteral("Gate/ExpectedSettingsKey")).toString();
-        if (overlay.contains(QStringLiteral("Gate/LowSettingsKey")))
-            def.gate.lowSettingsKey = overlay.value(QStringLiteral("Gate/LowSettingsKey")).toString();
-        if (overlay.contains(QStringLiteral("Gate/HighSettingsKey")))
-            def.gate.highSettingsKey = overlay.value(QStringLiteral("Gate/HighSettingsKey")).toString();
-        loadMultiGatesFromIni(overlay, def);
+        // 仅「多字段」卡控：覆盖层无 Gate/Count、Gate/1 时不冲掉步骤库明细。
+        // 单字段（如读取版本号 Expected）必须合并，否则工站覆盖层写了也不生效。
+        const bool overlayHasMulti = overlay.value(QStringLiteral("Gate/Count"), 0).toInt() > 0
+            || !overlay.value(QStringLiteral("Gate/1/Field")).toString().trimmed().isEmpty();
+        const bool libraryHasMultiGates = def.gates.size() > 1
+            || def.gate.field.compare(QLatin1String("multi"), Qt::CaseInsensitive) == 0;
+        if (!overlayHasMulti && libraryHasMultiGates) {
+            if (overlay.contains(QStringLiteral("Gate/Enabled")))
+                def.gate.enabled = overlay.value(QStringLiteral("Gate/Enabled")).toBool();
+        } else {
+            if (overlay.contains(QStringLiteral("Gate/Enabled")))
+                def.gate.enabled = overlay.value(QStringLiteral("Gate/Enabled")).toBool();
+            if (overlay.contains(QStringLiteral("Gate/ReportType")))
+                def.gate.reportType = overlay.value(QStringLiteral("Gate/ReportType")).toString().trimmed();
+            if (overlay.contains(QStringLiteral("Gate/Field")))
+                def.gate.field = overlay.value(QStringLiteral("Gate/Field")).toString().trimmed();
+            if (overlay.contains(QStringLiteral("Gate/Op")))
+                def.gate.op = gateOpFromString(overlay.value(QStringLiteral("Gate/Op")).toString());
+            if (overlay.contains(QStringLiteral("Gate/Low")))
+                def.gate.low = overlay.value(QStringLiteral("Gate/Low")).toDouble();
+            if (overlay.contains(QStringLiteral("Gate/High")))
+                def.gate.high = overlay.value(QStringLiteral("Gate/High")).toDouble();
+            if (overlay.contains(QStringLiteral("Gate/Expected")))
+                def.gate.expected = overlay.value(QStringLiteral("Gate/Expected")).toString();
+            if (overlay.contains(QStringLiteral("Gate/ExpectedSettingsKey")))
+                def.gate.expectedSettingsKey = overlay.value(QStringLiteral("Gate/ExpectedSettingsKey")).toString();
+            if (overlay.contains(QStringLiteral("Gate/LowSettingsKey")))
+                def.gate.lowSettingsKey = overlay.value(QStringLiteral("Gate/LowSettingsKey")).toString();
+            if (overlay.contains(QStringLiteral("Gate/HighSettingsKey")))
+                def.gate.highSettingsKey = overlay.value(QStringLiteral("Gate/HighSettingsKey")).toString();
+            loadMultiGatesFromIni(overlay, def);
+        }
     }
 
     if (overlay.contains(QStringLiteral("Hook/Enabled")) || overlay.contains(QStringLiteral("Hook/HookId"))) {
-        if (overlay.contains(QStringLiteral("Hook/Enabled")))
+        // 覆盖层未写 HookId（或写空）时保留步骤库钩子，避免残缺 profile 把 KEY_M8_* 冲成空/错项
+        const QString overlayHookId = overlay.contains(QStringLiteral("Hook/HookId"))
+            ? overlay.value(QStringLiteral("Hook/HookId")).toString().trimmed()
+            : QString();
+        if (!overlayHookId.isEmpty()) {
+            def.hook.hookId = overlayHookId;
+            if (overlay.contains(QStringLiteral("Hook/Enabled")))
+                def.hook.enabled = overlay.value(QStringLiteral("Hook/Enabled")).toBool();
+            else
+                def.hook.enabled = true;
+        } else if (overlay.contains(QStringLiteral("Hook/Enabled")) && def.hook.hookId.isEmpty()) {
             def.hook.enabled = overlay.value(QStringLiteral("Hook/Enabled")).toBool();
-        if (overlay.contains(QStringLiteral("Hook/HookId")))
-            def.hook.hookId = overlay.value(QStringLiteral("Hook/HookId")).toString().trimmed();
+        }
     }
 }
 
@@ -1629,14 +1658,14 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
                 Asd9026aCmd asdCmd;
                 if (Asd9026aCmdCatalog::asd9026aCmdFromName(def.send.deviceCmd, asdCmd))
                     Asd9026aCmdCatalog::paramToIniGroup(ini, asdCmd, def.send.param);
-            } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::XwdBle) {
-                XwdBleFixtureCmd xwdCmd;
-                if (XwdBleFixtureCmdCatalog::xwdBleFixtureCmdFromName(def.send.deviceCmd, xwdCmd))
-                    XwdBleFixtureCmdCatalog::paramToIniGroup(ini, xwdCmd, def.send.param);
-            } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::XwdSuction) {
-                XwdSuctionFixtureCmd xwdCmd;
-                if (XwdSuctionFixtureCmdCatalog::xwdSuctionFixtureCmdFromName(def.send.deviceCmd, xwdCmd))
-                    XwdSuctionFixtureCmdCatalog::paramToIniGroup(ini, xwdCmd, def.send.param);
+            } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::Xwd) {
+                XwdRawFixtureCmd xwdCmd;
+                if (XwdRawFixtureCmdCatalog::xwdRawFixtureCmdFromName(def.send.deviceCmd, xwdCmd))
+                    XwdRawFixtureCmdCatalog::paramToIniGroup(ini, xwdCmd, def.send.param);
+            } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::JieliBtBox) {
+                JieliBtBoxCmd jieliCmd;
+                if (JieliBtBoxCmdCatalog::jieliBtBoxCmdFromName(def.send.deviceCmd, jieliCmd))
+                    JieliBtBoxCmdCatalog::paramToIniGroup(ini, jieliCmd, def.send.param);
             } else {
                 FixturePcbaCmd fixtureCmd;
                 if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd))
@@ -1697,12 +1726,12 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
         if (def.send.fixtureProtocol == TestCaseFixtureProtocol::Asd9026a) {
             ini.setValue(QStringLiteral("Send/Device"),
                          def.send.device.isEmpty() ? QStringLiteral("ASD9026A") : def.send.device);
-        } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::XwdBle) {
+        } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::Xwd) {
             ini.setValue(QStringLiteral("Send/Device"),
-                         def.send.device.isEmpty() ? QStringLiteral("XWD_BLE") : def.send.device);
-        } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::XwdSuction) {
+                         def.send.device.isEmpty() ? QStringLiteral("XWD") : def.send.device);
+        } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::JieliBtBox) {
             ini.setValue(QStringLiteral("Send/Device"),
-                         def.send.device.isEmpty() ? QStringLiteral("XWD_SUCTION") : def.send.device);
+                         def.send.device.isEmpty() ? QStringLiteral("JIELI_BT_BOX") : def.send.device);
         }
     }
     ini.setValue(QStringLiteral("Send/DeviceCmd"), def.send.deviceCmd);
@@ -1719,14 +1748,14 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
             Asd9026aCmd asdCmd;
             if (Asd9026aCmdCatalog::asd9026aCmdFromName(def.send.deviceCmd, asdCmd))
                 Asd9026aCmdCatalog::paramToIniGroup(ini, asdCmd, def.send.param);
-        } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::XwdBle) {
-            XwdBleFixtureCmd xwdCmd;
-            if (XwdBleFixtureCmdCatalog::xwdBleFixtureCmdFromName(def.send.deviceCmd, xwdCmd))
-                XwdBleFixtureCmdCatalog::paramToIniGroup(ini, xwdCmd, def.send.param);
-        } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::XwdSuction) {
-            XwdSuctionFixtureCmd xwdCmd;
-            if (XwdSuctionFixtureCmdCatalog::xwdSuctionFixtureCmdFromName(def.send.deviceCmd, xwdCmd))
-                XwdSuctionFixtureCmdCatalog::paramToIniGroup(ini, xwdCmd, def.send.param);
+        } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::Xwd) {
+            XwdRawFixtureCmd xwdCmd;
+            if (XwdRawFixtureCmdCatalog::xwdRawFixtureCmdFromName(def.send.deviceCmd, xwdCmd))
+                XwdRawFixtureCmdCatalog::paramToIniGroup(ini, xwdCmd, def.send.param);
+        } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::JieliBtBox) {
+            JieliBtBoxCmd jieliCmd;
+            if (JieliBtBoxCmdCatalog::jieliBtBoxCmdFromName(def.send.deviceCmd, jieliCmd))
+                JieliBtBoxCmdCatalog::paramToIniGroup(ini, jieliCmd, def.send.param);
         } else {
             FixturePcbaCmd fixtureCmd;
             if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd))
@@ -1787,21 +1816,18 @@ bool TestCaseStore::loadCaseForStation(const QString& stationKey, const QString&
     const QString profileStepPath =
         key.isEmpty() ? QString() : TestCasePaths::profileStepOverridePath(key, id);
 
-    // 步骤库/legacy 为占位默认；工站 steps 仅覆盖其中已配置的字段
-    bool loaded = loadCaseDefinitionFromIniFile(libraryPath, id, out);
-    if (!loaded)
-        loaded = loadCaseDefinitionFromIniFile(legacyPath, id, out);
-    if (!loaded && !profileStepPath.isEmpty())
+    // 不做运行时「步骤库+工站」字段覆盖：工站 steps 有完整文件则只读工站；
+    // 缺项应事先把步骤库内容补进工站文件（保存/补全），避免每次加载用库盖工站。
+    bool loaded = false;
+    if (!profileStepPath.isEmpty() && stepIniHasMeaningfulContent(profileStepPath)) {
         loaded = loadCaseDefinitionFromIniFile(profileStepPath, id, out);
-    if (!loaded)
-        return false;
-
-    if (!profileStepPath.isEmpty() && QFile::exists(profileStepPath)) {
-        QSettings overlayIni(profileStepPath, QSettings::IniFormat);
-        applyTestCaseIniCodec(overlayIni);
-        applyCaseIniOverlay(overlayIni, out);
     }
-    return true;
+    if (!loaded) {
+        loaded = loadCaseDefinitionFromIniFile(libraryPath, id, out);
+        if (!loaded)
+            loaded = loadCaseDefinitionFromIniFile(legacyPath, id, out);
+    }
+    return loaded;
 }
 
 bool TestCaseStore::loadCase(const QString& caseName, TestCaseDefinition& out, QString* errorOut) {
@@ -2179,27 +2205,27 @@ bool TestCaseValidator::validateCase(const TestCaseDefinition& def, QStringList&
                 if (!Asd9026aCmdCatalog::paramSchemaFor(asdCmd, schema))
                     errors.append(QStringLiteral("该 ASD9026A 指令尚未配置参数模板，请联系工程师"));
             }
-        } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::XwdBle) {
-            XwdBleFixtureCmd xwdCmd;
-            if (!XwdBleFixtureCmdCatalog::xwdBleFixtureCmdFromName(def.send.deviceCmd, xwdCmd)) {
-                errors.append(QStringLiteral("XWD蓝牙治具指令无效"));
-            } else if (!XwdBleFixtureCmdCatalog::isCmdForAction(xwdCmd, def.send.action)) {
-                errors.append(QStringLiteral("XWD蓝牙治具指令与操作方式不匹配"));
+        } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::Xwd) {
+            XwdRawFixtureCmd xwdCmd;
+            if (!XwdRawFixtureCmdCatalog::xwdRawFixtureCmdFromName(def.send.deviceCmd, xwdCmd)) {
+                errors.append(QStringLiteral("XWD治具指令无效"));
+            } else if (!XwdRawFixtureCmdCatalog::isCmdForAction(xwdCmd, def.send.action)) {
+                errors.append(QStringLiteral("XWD治具指令与操作方式不匹配"));
             } else {
                 DeviceCmdParamSchema schema;
-                if (!XwdBleFixtureCmdCatalog::paramSchemaFor(xwdCmd, schema))
-                    errors.append(QStringLiteral("该 XWD蓝牙治具指令尚未配置参数模板，请联系工程师"));
+                if (!XwdRawFixtureCmdCatalog::paramSchemaFor(xwdCmd, schema))
+                    errors.append(QStringLiteral("该 XWD治具指令尚未配置参数模板，请联系工程师"));
             }
-        } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::XwdSuction) {
-            XwdSuctionFixtureCmd xwdCmd;
-            if (!XwdSuctionFixtureCmdCatalog::xwdSuctionFixtureCmdFromName(def.send.deviceCmd, xwdCmd)) {
-                errors.append(QStringLiteral("XWD吸力治具指令无效"));
-            } else if (!XwdSuctionFixtureCmdCatalog::isCmdForAction(xwdCmd, def.send.action)) {
-                errors.append(QStringLiteral("XWD吸力治具指令与操作方式不匹配"));
+        } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::JieliBtBox) {
+            JieliBtBoxCmd jieliCmd;
+            if (!JieliBtBoxCmdCatalog::jieliBtBoxCmdFromName(def.send.deviceCmd, jieliCmd)) {
+                errors.append(QStringLiteral("杰理蓝牙盒子指令无效"));
+            } else if (!JieliBtBoxCmdCatalog::isCmdForAction(jieliCmd, def.send.action)) {
+                errors.append(QStringLiteral("杰理蓝牙盒子指令与操作方式不匹配"));
             } else {
                 DeviceCmdParamSchema schema;
-                if (!XwdSuctionFixtureCmdCatalog::paramSchemaFor(xwdCmd, schema))
-                    errors.append(QStringLiteral("该 XWD吸力治具指令尚未配置参数模板，请联系工程师"));
+                if (!JieliBtBoxCmdCatalog::paramSchemaFor(jieliCmd, schema))
+                    errors.append(QStringLiteral("该杰理蓝牙盒子指令尚未配置参数模板，请联系工程师"));
             }
         } else if (def.send.fixtureProtocol != TestCaseFixtureProtocol::Pcba) {
             errors.append(QStringLiteral("治具协议类型无效"));
@@ -2700,7 +2726,14 @@ void DeviceCmdCatalog::paramToIniGroup(QSettings& settings, DeviceCmd cmd, const
         writeSendParamLeaf(settings, QStringLiteral("string"), value.toString());
         break;
     case DeviceCmdParamKind::JsonMap:
-        if (value.canConvert<QVariantMap>()) {
+        if (value.canConvert<DeviceSnPayload>()) {
+            // 兼容旧加载路径把 Sn 归一成 payload 后写回 ini
+            const DeviceSnPayload payload = value.value<DeviceSnPayload>();
+            QVariantMap map;
+            map.insert(QStringLiteral("which_sn"), static_cast<int>(payload.which_sn));
+            map.insert(QStringLiteral("sn"), QString::fromUtf8(payload.sn));
+            writeJsonMap(settings, prefix, map);
+        } else if (value.canConvert<QVariantMap>()) {
             writeJsonMap(settings, prefix, value);
         } else if (value.type() == QVariant::String) {
             writeSendParamLeaf(settings, QStringLiteral("value"), value.toString());
@@ -2925,12 +2958,12 @@ void Asd9026aCmdCatalog::paramToIniGroup(QSettings& settings, Asd9026aCmd cmd, c
     }
 }
 
-// ===================== XwdBleFixtureCmdCatalog =====================
+// ===================== XwdRawFixtureCmdCatalog =====================
 
-QStringList XwdBleFixtureCmdCatalog::allXwdBleFixtureCmdNames(TestCaseSendAction action) {
+QStringList XwdRawFixtureCmdCatalog::allXwdRawFixtureCmdNames(TestCaseSendAction action) {
     QStringList names;
-    for (int i = 0; i < XwdBleFixtureCmdManifest::rowCount(); ++i) {
-        const XwdBleFixtureCmdManifest::Row& row = XwdBleFixtureCmdManifest::rows()[i];
+    for (int i = 0; i < XwdRawFixtureCmdManifest::rowCount(); ++i) {
+        const XwdRawFixtureCmdManifest::Row& row = XwdRawFixtureCmdManifest::rows()[i];
         if (!TestCaseCmdManifest::matchesSendAction(row.sendActions, action))
             continue;
         names.append(QString::fromLatin1(row.enumName));
@@ -2939,42 +2972,42 @@ QStringList XwdBleFixtureCmdCatalog::allXwdBleFixtureCmdNames(TestCaseSendAction
     return names;
 }
 
-TestCaseSendAction XwdBleFixtureCmdCatalog::actionFor(XwdBleFixtureCmd cmd) {
-    if (const XwdBleFixtureCmdManifest::Row* row = XwdBleFixtureCmdManifest::findByCmd(cmd))
+TestCaseSendAction XwdRawFixtureCmdCatalog::actionFor(XwdRawFixtureCmd cmd) {
+    if (const XwdRawFixtureCmdManifest::Row* row = XwdRawFixtureCmdManifest::findByCmd(cmd))
         return TestCaseCmdManifest::defaultSendAction(row->sendActions);
     return TestCaseSendAction::Set;
 }
 
-bool XwdBleFixtureCmdCatalog::isCmdForAction(XwdBleFixtureCmd cmd, TestCaseSendAction action) {
-    if (const XwdBleFixtureCmdManifest::Row* row = XwdBleFixtureCmdManifest::findByCmd(cmd))
+bool XwdRawFixtureCmdCatalog::isCmdForAction(XwdRawFixtureCmd cmd, TestCaseSendAction action) {
+    if (const XwdRawFixtureCmdManifest::Row* row = XwdRawFixtureCmdManifest::findByCmd(cmd))
         return TestCaseCmdManifest::matchesSendAction(row->sendActions, action);
     return false;
 }
 
-QString XwdBleFixtureCmdCatalog::xwdBleFixtureCmdUiLabel(const QString& enumName) {
-    if (const XwdBleFixtureCmdManifest::Row* row = XwdBleFixtureCmdManifest::findByEnumName(enumName)) {
+QString XwdRawFixtureCmdCatalog::xwdRawFixtureCmdUiLabel(const QString& enumName) {
+    if (const XwdRawFixtureCmdManifest::Row* row = XwdRawFixtureCmdManifest::findByEnumName(enumName)) {
         if (row->uiLabel && row->uiLabel[0] != '\0')
             return QString::fromUtf8(row->uiLabel);
     }
     return enumName;
 }
 
-bool XwdBleFixtureCmdCatalog::xwdBleFixtureCmdFromName(const QString& name, XwdBleFixtureCmd& out) {
-    if (const XwdBleFixtureCmdManifest::Row* row = XwdBleFixtureCmdManifest::findByEnumName(name)) {
+bool XwdRawFixtureCmdCatalog::xwdRawFixtureCmdFromName(const QString& name, XwdRawFixtureCmd& out) {
+    if (const XwdRawFixtureCmdManifest::Row* row = XwdRawFixtureCmdManifest::findByEnumName(name)) {
         out = row->cmd;
         return true;
     }
     return false;
 }
 
-QString XwdBleFixtureCmdCatalog::xwdBleFixtureCmdToName(XwdBleFixtureCmd cmd) {
-    if (const XwdBleFixtureCmdManifest::Row* row = XwdBleFixtureCmdManifest::findByCmd(cmd))
+QString XwdRawFixtureCmdCatalog::xwdRawFixtureCmdToName(XwdRawFixtureCmd cmd) {
+    if (const XwdRawFixtureCmdManifest::Row* row = XwdRawFixtureCmdManifest::findByCmd(cmd))
         return QString::fromLatin1(row->enumName);
     return QString();
 }
 
-bool XwdBleFixtureCmdCatalog::paramSchemaFor(XwdBleFixtureCmd cmd, DeviceCmdParamSchema& out) {
-    if (const XwdBleFixtureCmdManifest::Row* row = XwdBleFixtureCmdManifest::findByCmd(cmd)) {
+bool XwdRawFixtureCmdCatalog::paramSchemaFor(XwdRawFixtureCmd cmd, DeviceCmdParamSchema& out) {
+    if (const XwdRawFixtureCmdManifest::Row* row = XwdRawFixtureCmdManifest::findByCmd(cmd)) {
         out.kind = row->paramKind;
         out.hint = row->paramHint ? QString::fromUtf8(row->paramHint) : QString();
         return true;
@@ -2982,15 +3015,15 @@ bool XwdBleFixtureCmdCatalog::paramSchemaFor(XwdBleFixtureCmd cmd, DeviceCmdPara
     return false;
 }
 
-QString XwdBleFixtureCmdCatalog::paramUiHint(const QString& enumName) {
-    if (const XwdBleFixtureCmdManifest::Row* row = XwdBleFixtureCmdManifest::findByEnumName(enumName)) {
+QString XwdRawFixtureCmdCatalog::paramUiHint(const QString& enumName) {
+    if (const XwdRawFixtureCmdManifest::Row* row = XwdRawFixtureCmdManifest::findByEnumName(enumName)) {
         if (row->paramHint && row->paramHint[0] != '\0')
             return QString::fromUtf8(row->paramHint);
     }
     return QString();
 }
 
-bool XwdBleFixtureCmdCatalog::paramFromIniGroup(const QSettings& settings, XwdBleFixtureCmd cmd, QVariant& out) {
+bool XwdRawFixtureCmdCatalog::paramFromIniGroup(const QSettings& settings, XwdRawFixtureCmd cmd, QVariant& out) {
     DeviceCmdParamSchema schema;
     if (!paramSchemaFor(cmd, schema))
         return false;
@@ -3006,7 +3039,7 @@ bool XwdBleFixtureCmdCatalog::paramFromIniGroup(const QSettings& settings, XwdBl
     }
 }
 
-void XwdBleFixtureCmdCatalog::paramToIniGroup(QSettings& settings, XwdBleFixtureCmd cmd, const QVariant& value) {
+void XwdRawFixtureCmdCatalog::paramToIniGroup(QSettings& settings, XwdRawFixtureCmd cmd, const QVariant& value) {
     removeSendParamKeys(settings);
     DeviceCmdParamSchema schema;
     if (!paramSchemaFor(cmd, schema))
@@ -3022,12 +3055,12 @@ void XwdBleFixtureCmdCatalog::paramToIniGroup(QSettings& settings, XwdBleFixture
     }
 }
 
-// ===================== XwdSuctionFixtureCmdCatalog =====================
+// ===================== JieliBtBoxCmdCatalog =====================
 
-QStringList XwdSuctionFixtureCmdCatalog::allXwdSuctionFixtureCmdNames(TestCaseSendAction action) {
+QStringList JieliBtBoxCmdCatalog::allJieliBtBoxCmdNames(TestCaseSendAction action) {
     QStringList names;
-    for (int i = 0; i < XwdSuctionFixtureCmdManifest::rowCount(); ++i) {
-        const XwdSuctionFixtureCmdManifest::Row& row = XwdSuctionFixtureCmdManifest::rows()[i];
+    for (int i = 0; i < JieliBtBoxCmdManifest::rowCount(); ++i) {
+        const JieliBtBoxCmdManifest::Row& row = JieliBtBoxCmdManifest::rows()[i];
         if (!TestCaseCmdManifest::matchesSendAction(row.sendActions, action))
             continue;
         names.append(QString::fromLatin1(row.enumName));
@@ -3036,42 +3069,42 @@ QStringList XwdSuctionFixtureCmdCatalog::allXwdSuctionFixtureCmdNames(TestCaseSe
     return names;
 }
 
-TestCaseSendAction XwdSuctionFixtureCmdCatalog::actionFor(XwdSuctionFixtureCmd cmd) {
-    if (const XwdSuctionFixtureCmdManifest::Row* row = XwdSuctionFixtureCmdManifest::findByCmd(cmd))
+TestCaseSendAction JieliBtBoxCmdCatalog::actionFor(JieliBtBoxCmd cmd) {
+    if (const JieliBtBoxCmdManifest::Row* row = JieliBtBoxCmdManifest::findByCmd(cmd))
         return TestCaseCmdManifest::defaultSendAction(row->sendActions);
-    return TestCaseSendAction::Set;
+    return TestCaseSendAction::Get;
 }
 
-bool XwdSuctionFixtureCmdCatalog::isCmdForAction(XwdSuctionFixtureCmd cmd, TestCaseSendAction action) {
-    if (const XwdSuctionFixtureCmdManifest::Row* row = XwdSuctionFixtureCmdManifest::findByCmd(cmd))
+bool JieliBtBoxCmdCatalog::isCmdForAction(JieliBtBoxCmd cmd, TestCaseSendAction action) {
+    if (const JieliBtBoxCmdManifest::Row* row = JieliBtBoxCmdManifest::findByCmd(cmd))
         return TestCaseCmdManifest::matchesSendAction(row->sendActions, action);
     return false;
 }
 
-QString XwdSuctionFixtureCmdCatalog::xwdSuctionFixtureCmdUiLabel(const QString& enumName) {
-    if (const XwdSuctionFixtureCmdManifest::Row* row = XwdSuctionFixtureCmdManifest::findByEnumName(enumName)) {
+QString JieliBtBoxCmdCatalog::jieliBtBoxCmdUiLabel(const QString& enumName) {
+    if (const JieliBtBoxCmdManifest::Row* row = JieliBtBoxCmdManifest::findByEnumName(enumName)) {
         if (row->uiLabel && row->uiLabel[0] != '\0')
             return QString::fromUtf8(row->uiLabel);
     }
     return enumName;
 }
 
-bool XwdSuctionFixtureCmdCatalog::xwdSuctionFixtureCmdFromName(const QString& name, XwdSuctionFixtureCmd& out) {
-    if (const XwdSuctionFixtureCmdManifest::Row* row = XwdSuctionFixtureCmdManifest::findByEnumName(name)) {
+bool JieliBtBoxCmdCatalog::jieliBtBoxCmdFromName(const QString& name, JieliBtBoxCmd& out) {
+    if (const JieliBtBoxCmdManifest::Row* row = JieliBtBoxCmdManifest::findByEnumName(name)) {
         out = row->cmd;
         return true;
     }
     return false;
 }
 
-QString XwdSuctionFixtureCmdCatalog::xwdSuctionFixtureCmdToName(XwdSuctionFixtureCmd cmd) {
-    if (const XwdSuctionFixtureCmdManifest::Row* row = XwdSuctionFixtureCmdManifest::findByCmd(cmd))
+QString JieliBtBoxCmdCatalog::jieliBtBoxCmdToName(JieliBtBoxCmd cmd) {
+    if (const JieliBtBoxCmdManifest::Row* row = JieliBtBoxCmdManifest::findByCmd(cmd))
         return QString::fromLatin1(row->enumName);
     return QString();
 }
 
-bool XwdSuctionFixtureCmdCatalog::paramSchemaFor(XwdSuctionFixtureCmd cmd, DeviceCmdParamSchema& out) {
-    if (const XwdSuctionFixtureCmdManifest::Row* row = XwdSuctionFixtureCmdManifest::findByCmd(cmd)) {
+bool JieliBtBoxCmdCatalog::paramSchemaFor(JieliBtBoxCmd cmd, DeviceCmdParamSchema& out) {
+    if (const JieliBtBoxCmdManifest::Row* row = JieliBtBoxCmdManifest::findByCmd(cmd)) {
         out.kind = row->paramKind;
         out.hint = row->paramHint ? QString::fromUtf8(row->paramHint) : QString();
         return true;
@@ -3079,15 +3112,16 @@ bool XwdSuctionFixtureCmdCatalog::paramSchemaFor(XwdSuctionFixtureCmd cmd, Devic
     return false;
 }
 
-QString XwdSuctionFixtureCmdCatalog::paramUiHint(const QString& enumName) {
-    if (const XwdSuctionFixtureCmdManifest::Row* row = XwdSuctionFixtureCmdManifest::findByEnumName(enumName)) {
+QString JieliBtBoxCmdCatalog::paramUiHint(const QString& enumName) {
+    if (const JieliBtBoxCmdManifest::Row* row = JieliBtBoxCmdManifest::findByEnumName(enumName)) {
         if (row->paramHint && row->paramHint[0] != '\0')
             return QString::fromUtf8(row->paramHint);
     }
     return QString();
 }
 
-bool XwdSuctionFixtureCmdCatalog::paramFromIniGroup(const QSettings& settings, XwdSuctionFixtureCmd cmd, QVariant& out) {
+bool JieliBtBoxCmdCatalog::paramFromIniGroup(const QSettings& settings, JieliBtBoxCmd cmd, QVariant& out) {
+    Q_UNUSED(settings);
     DeviceCmdParamSchema schema;
     if (!paramSchemaFor(cmd, schema))
         return false;
@@ -3095,28 +3129,17 @@ bool XwdSuctionFixtureCmdCatalog::paramFromIniGroup(const QSettings& settings, X
     case DeviceCmdParamKind::None:
         out = QVariant();
         return true;
-    case DeviceCmdParamKind::String:
-        out = readSendScopedParam(settings, QStringLiteral("string"), QString()).toString();
-        return true;
     default:
         return false;
     }
 }
 
-void XwdSuctionFixtureCmdCatalog::paramToIniGroup(QSettings& settings, XwdSuctionFixtureCmd cmd, const QVariant& value) {
+void JieliBtBoxCmdCatalog::paramToIniGroup(QSettings& settings, JieliBtBoxCmd cmd, const QVariant& value) {
+    Q_UNUSED(value);
     removeSendParamKeys(settings);
     DeviceCmdParamSchema schema;
     if (!paramSchemaFor(cmd, schema))
         return;
-    switch (schema.kind) {
-    case DeviceCmdParamKind::None:
-        break;
-    case DeviceCmdParamKind::String:
-        writeSendParamLeaf(settings, QStringLiteral("string"), value.toString());
-        break;
-    default:
-        break;
-    }
 }
 
 // ===================== FixturePcbaCmdCatalog =====================
@@ -3136,12 +3159,17 @@ QStringList FixturePcbaCmdCatalog::allFixturePcbaCmdNames(TestCaseSendAction act
 TestCaseFixtureProtocol FixturePcbaCmdCatalog::fixtureProtocolFromIni(const QString& text) {
     if (text.compare(QStringLiteral("ASD9026A"), Qt::CaseInsensitive) == 0)
         return TestCaseFixtureProtocol::Asd9026a;
-    if (text.compare(QStringLiteral("XWD_BLE"), Qt::CaseInsensitive) == 0
-        || text.compare(QStringLiteral("XwdBle"), Qt::CaseInsensitive) == 0)
-        return TestCaseFixtureProtocol::XwdBle;
-    if (text.compare(QStringLiteral("XWD_SUCTION"), Qt::CaseInsensitive) == 0
+    // 兼容旧步骤 ini：XWD_BLE / XWD_SUCTION 与统一后的 XWD 同协议
+    if (text.compare(QStringLiteral("XWD"), Qt::CaseInsensitive) == 0
+        || text.compare(QStringLiteral("Xwd"), Qt::CaseInsensitive) == 0
+        || text.compare(QStringLiteral("XWD_BLE"), Qt::CaseInsensitive) == 0
+        || text.compare(QStringLiteral("XwdBle"), Qt::CaseInsensitive) == 0
+        || text.compare(QStringLiteral("XWD_SUCTION"), Qt::CaseInsensitive) == 0
         || text.compare(QStringLiteral("XwdSuction"), Qt::CaseInsensitive) == 0)
-        return TestCaseFixtureProtocol::XwdSuction;
+        return TestCaseFixtureProtocol::Xwd;
+    if (text.compare(QStringLiteral("JIELI_BT_BOX"), Qt::CaseInsensitive) == 0
+        || text.compare(QStringLiteral("JieliBtBox"), Qt::CaseInsensitive) == 0)
+        return TestCaseFixtureProtocol::JieliBtBox;
     if (text.compare(QStringLiteral("Pcba"), Qt::CaseInsensitive) == 0 || text.compare(QStringLiteral("PCBA"), Qt::CaseInsensitive) == 0)
         return TestCaseFixtureProtocol::Pcba;
     return TestCaseFixtureProtocol::Pcba;
@@ -3151,10 +3179,10 @@ QString FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol prot
     switch (protocol) {
     case TestCaseFixtureProtocol::Asd9026a:
         return QStringLiteral("ASD9026A");
-    case TestCaseFixtureProtocol::XwdBle:
-        return QStringLiteral("XWD_BLE");
-    case TestCaseFixtureProtocol::XwdSuction:
-        return QStringLiteral("XWD_SUCTION");
+    case TestCaseFixtureProtocol::Xwd:
+        return QStringLiteral("XWD");
+    case TestCaseFixtureProtocol::JieliBtBox:
+        return QStringLiteral("JIELI_BT_BOX");
     case TestCaseFixtureProtocol::Pcba:
     default:
         return QStringLiteral("Pcba");
@@ -3165,10 +3193,10 @@ QString FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol pr
     switch (protocol) {
     case TestCaseFixtureProtocol::Asd9026a:
         return QStringLiteral("ASD9026A模拟电池");
-    case TestCaseFixtureProtocol::XwdBle:
-        return QStringLiteral("XWD蓝牙治具");
-    case TestCaseFixtureProtocol::XwdSuction:
-        return QStringLiteral("XWD吸力治具");
+    case TestCaseFixtureProtocol::Xwd:
+        return QStringLiteral("XWD治具");
+    case TestCaseFixtureProtocol::JieliBtBox:
+        return QStringLiteral("杰理蓝牙盒子");
     case TestCaseFixtureProtocol::Pcba:
     default:
         return QStringLiteral("PCBA测试协议");
@@ -3631,6 +3659,7 @@ const QVector<GateTypeDescriptor> kTypes = {
     {QStringLiteral("ProtocolMusicStateData"), QStringLiteral("音乐状态"), {{QStringLiteral("musicState"), QStringLiteral("音乐状态码")}}},
     {QStringLiteral("ProtocolResultData"), QStringLiteral("通用结果码"), {{QStringLiteral("result"), QStringLiteral("结果码")}}},
     {QStringLiteral("ProtocolFixturePcbaData"), QStringLiteral("PCBA治具数据包"), {{QStringLiteral("machineNumber"), QStringLiteral("机号")}, {QStringLiteral("staticCurrent"), QStringLiteral("静态电流(uA)")}, {QStringLiteral("workingCurrent"), QStringLiteral("工作电流(mA)")}, {QStringLiteral("chargingCurrent"), QStringLiteral("充电电流(mA)")}, {QStringLiteral("musicCurrent"), QStringLiteral("音频IC电流(mA)")}, {QStringLiteral("standbyCurrentUa"), QStringLiteral("待机电流(uA)")}, {QStringLiteral("pumpVoltageMv"), QStringLiteral("泵电压(mV)")}, {QStringLiteral("mcuVoltageMv"), QStringLiteral("MCU电压(mV)")}, {QStringLiteral("valveVoltageMv"), QStringLiteral("阀电压(mV)")}, {QStringLiteral("button1"), QStringLiteral("按键1")}, {QStringLiteral("button2"), QStringLiteral("按键2")}, {QStringLiteral("overVoltageLight"), QStringLiteral("过压灯")}, {QStringLiteral("fixerro"), QStringLiteral("治具错误码")}}},
+    {QStringLiteral("ProtocolJieliBtBoxData"), QStringLiteral("杰理蓝牙盒子RF"), {{QStringLiteral("rssi"), QStringLiteral("RSSI(dBm)")}, {QStringLiteral("freqOffset"), QStringLiteral("频偏")}}},
     {QStringLiteral("ProtocolMacData"), QStringLiteral("MAC地址"), {{QStringLiteral("mac"), QStringLiteral("MAC文本")}}},
     {QStringLiteral("ProtocolTypeData"), QStringLiteral("状态码"), {{QStringLiteral("type"), QStringLiteral("状态值")}}},
     {QStringLiteral("ProtocolFlangeData"), QStringLiteral("法兰状态"), {{QStringLiteral("type"), QStringLiteral("法兰类型")}}},
@@ -3638,7 +3667,19 @@ const QVector<GateTypeDescriptor> kTypes = {
     {QStringLiteral("ProtocolBatteryTempData"), QStringLiteral("电池温度"), {{QStringLiteral("type"), QStringLiteral("温度值")}}},
     {QStringLiteral("ProtocolHeatTempData"), QStringLiteral("加热温度"), {{QStringLiteral("type"), QStringLiteral("温度值")}}},
     {QStringLiteral("ProtocolMeasureData"), QStringLiteral("外设测量值"), {{QStringLiteral("value"), QStringLiteral("测量数值")}, {QStringLiteral("valueText"), QStringLiteral("测量文本值")}, {QStringLiteral("deviceName"), QStringLiteral("外设名称")}, {QStringLiteral("channel"), QStringLiteral("通道号")}, {QStringLiteral("type"), QStringLiteral("测量类型")}, {QStringLiteral("unit"), QStringLiteral("单位")}}},
-    {QStringLiteral("ProtocolDongleSuctionData"), QStringLiteral("Dongle吸力"), {{QStringLiteral("leftKpa"), QStringLiteral("左通道(kPa)")}, {QStringLiteral("rightKpa"), QStringLiteral("右通道(kPa)")}, {QStringLiteral("thirdKpa"), QStringLiteral("第三通道(kPa)")}}},
+    {QStringLiteral("ProtocolDongleSuctionData"),
+     QStringLiteral("Dongle吸力实时"),
+     {{QStringLiteral("ch1Kpa"), QStringLiteral("CH1(kPa)")},
+      {QStringLiteral("ch2Kpa"), QStringLiteral("CH2(kPa)")},
+      {QStringLiteral("ch3Kpa"), QStringLiteral("CH3(kPa)")}}},
+    {QStringLiteral("ProtocolDongleSuctionPeakData"),
+     QStringLiteral("Dongle吸力峰值"),
+     {{QStringLiteral("peakKpa"), QStringLiteral("单通道最强峰值(最低kPa)")},
+      {QStringLiteral("highKpa"), QStringLiteral("单通道最弱峰值(kPa)")},
+      {QStringLiteral("peakDiffKpa"), QStringLiteral("单通道峰值差(最大峰-最小峰)")},
+      {QStringLiteral("ch1PeakKpa"), QStringLiteral("CH1峰值(最低kPa)")},
+      {QStringLiteral("ch2PeakKpa"), QStringLiteral("CH2峰值(最低kPa)")},
+      {QStringLiteral("sideDiffKpa"), QStringLiteral("CH1-CH2峰差(kPa)")}}},
 };
 
 double fieldValueFromVariant(const QString& reportType, const QString& field, const QVariant& payload, bool& ok) {
@@ -3799,6 +3840,17 @@ double fieldValueFromVariant(const QString& reportType, const QString& field, co
             ok = true;
             return m.value(field).toDouble();
         }
+    } else if (reportType == QLatin1String("ProtocolJieliBtBoxData")) {
+        QVariantMap m = payload.toMap();
+        if (m.isEmpty() && payload.canConvert<ProtocolJieliBtBoxData>()) {
+            const auto d = payload.value<ProtocolJieliBtBoxData>();
+            m.insert(QStringLiteral("rssi"), d.rssi);
+            m.insert(QStringLiteral("freqOffset"), d.freqOffset);
+        }
+        if (m.contains(field)) {
+            ok = true;
+            return m.value(field).toDouble();
+        }
     } else if (reportType == QLatin1String("ProtocolMeasureData")) {
         const auto d = payload.value<ProtocolMeasureData>();
         if (field == QLatin1String("value")) {
@@ -3807,17 +3859,43 @@ double fieldValueFromVariant(const QString& reportType, const QString& field, co
         }
     } else if (reportType == QLatin1String("ProtocolDongleSuctionData")) {
         const auto d = payload.value<ProtocolDongleSuctionData>();
-        if (field == QLatin1String("leftKpa")) {
+        if (field == QLatin1String("ch1Kpa") || field == QLatin1String("leftKpa")) {
             ok = true;
-            return d.leftKpa;
+            return d.ch1Kpa;
         }
-        if (field == QLatin1String("rightKpa")) {
+        if (field == QLatin1String("ch2Kpa") || field == QLatin1String("rightKpa")) {
             ok = true;
-            return d.rightKpa;
+            return d.ch2Kpa;
         }
-        if (field == QLatin1String("thirdKpa")) {
+        if (field == QLatin1String("ch3Kpa") || field == QLatin1String("thirdKpa")) {
             ok = true;
-            return d.thirdKpa;
+            return d.ch3Kpa;
+        }
+    } else if (reportType == QLatin1String("ProtocolDongleSuctionPeakData")) {
+        const auto d = payload.value<ProtocolDongleSuctionPeakData>();
+        if (field == QLatin1String("peakKpa")) {
+            ok = true;
+            return d.peakKpa;
+        }
+        if (field == QLatin1String("highKpa")) {
+            ok = true;
+            return d.highKpa;
+        }
+        if (field == QLatin1String("peakDiffKpa")) {
+            ok = true;
+            return d.peakDiffKpa;
+        }
+        if (field == QLatin1String("ch1PeakKpa") || field == QLatin1String("leftPeakKpa")) {
+            ok = true;
+            return d.ch1PeakKpa;
+        }
+        if (field == QLatin1String("ch2PeakKpa") || field == QLatin1String("rightPeakKpa")) {
+            ok = true;
+            return d.ch2PeakKpa;
+        }
+        if (field == QLatin1String("sideDiffKpa") || field == QLatin1String("peakSpanKpa")) {
+            ok = true;
+            return d.sideDiffKpa;
         }
     }
     return 0.0;
@@ -3953,17 +4031,43 @@ QString fieldStringFromVariant(const QString& reportType, const QString& field, 
         }
     } else if (reportType == QLatin1String("ProtocolDongleSuctionData")) {
         const auto d = payload.value<ProtocolDongleSuctionData>();
-        if (field == QLatin1String("leftKpa")) {
+        if (field == QLatin1String("ch1Kpa") || field == QLatin1String("leftKpa")) {
             ok = true;
-            return QString::number(d.leftKpa, 'f', 2);
+            return QString::number(d.ch1Kpa, 'f', 2);
         }
-        if (field == QLatin1String("rightKpa")) {
+        if (field == QLatin1String("ch2Kpa") || field == QLatin1String("rightKpa")) {
             ok = true;
-            return QString::number(d.rightKpa, 'f', 2);
+            return QString::number(d.ch2Kpa, 'f', 2);
         }
-        if (field == QLatin1String("thirdKpa")) {
+        if (field == QLatin1String("ch3Kpa") || field == QLatin1String("thirdKpa")) {
             ok = true;
-            return QString::number(d.thirdKpa, 'f', 2);
+            return QString::number(d.ch3Kpa, 'f', 2);
+        }
+    } else if (reportType == QLatin1String("ProtocolDongleSuctionPeakData")) {
+        const auto d = payload.value<ProtocolDongleSuctionPeakData>();
+        if (field == QLatin1String("peakKpa")) {
+            ok = true;
+            return QString::number(d.peakKpa, 'f', 3);
+        }
+        if (field == QLatin1String("highKpa")) {
+            ok = true;
+            return QString::number(d.highKpa, 'f', 3);
+        }
+        if (field == QLatin1String("peakDiffKpa")) {
+            ok = true;
+            return QString::number(d.peakDiffKpa, 'f', 3);
+        }
+        if (field == QLatin1String("ch1PeakKpa") || field == QLatin1String("leftPeakKpa")) {
+            ok = true;
+            return QString::number(d.ch1PeakKpa, 'f', 3);
+        }
+        if (field == QLatin1String("ch2PeakKpa") || field == QLatin1String("rightPeakKpa")) {
+            ok = true;
+            return QString::number(d.ch2PeakKpa, 'f', 3);
+        }
+        if (field == QLatin1String("sideDiffKpa") || field == QLatin1String("peakSpanKpa")) {
+            ok = true;
+            return QString::number(d.sideDiffKpa, 'f', 3);
         }
     }
     return {};
@@ -4330,6 +4434,11 @@ bool TestCaseRunner::needAsyncDone(const TestCaseDefinition& def) {
         return true;
     if (def.send.channel == TestCaseSendChannel::Fixture)
         return true;
+    if (def.send.channel == TestCaseSendChannel::Dongle
+        && (def.send.deviceCmd == QStringLiteral("SampleSuctionDual")
+            || def.send.deviceCmd == QStringLiteral("SampleSuctionSingle")
+            || def.send.deviceCmd == QStringLiteral("BleDisconnect")))
+        return true;
     if (def.send.channel == TestCaseSendChannel::Modbus || def.send.channel == TestCaseSendChannel::Scpi) {
         if (def.send.action == TestCaseSendAction::Get || def.gate.enabled)
             return true;
@@ -4373,6 +4482,10 @@ bool TestCaseRunner::stepRequiresProductBle(const TestCaseDefinition& def) {
 int TestCaseRunner::commandTimeoutMs(const TestCaseDefinition& def) {
     if (def.timing.commandTimeoutMs > 0)
         return def.timing.commandTimeoutMs;
+    if (def.send.channel == TestCaseSendChannel::Dongle
+        && (def.send.deviceCmd == QStringLiteral("SampleSuctionDual")
+            || def.send.deviceCmd == QStringLiteral("SampleSuctionSingle")))
+        return 10000;
     if (def.send.channel == TestCaseSendChannel::Fixture)
         return def.gate.enabled ? 8000 : 5000;
     if (def.send.channel == TestCaseSendChannel::ProductSerial)

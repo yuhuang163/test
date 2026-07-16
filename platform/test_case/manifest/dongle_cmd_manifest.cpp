@@ -18,6 +18,8 @@ constexpr const char kHintBomb[] =
 const Row kRows[] = {
     {DongleCmd::BleScanConnect, "BleScanConnect", u8"扫描连接蓝牙", DeviceCmdParamKind::String, kHintBleScan, kSet},
     {DongleCmd::BleScanConnectByName, "BleScanConnectByName", u8"按广播名自动连接", DeviceCmdParamKind::JsonMap, u8"填写包含 name 和 rssi 的 JSON\n示例: {\"name\":\"Pump-E\", \"rssi\":-50}", kSet},
+    {DongleCmd::BleDisconnect, "BleDisconnect", u8"断开蓝牙连接", DeviceCmdParamKind::None,
+     u8"下发 AT+MAC=00:00:00:00:00:00，主动断开 dongle 与产品 BLE", kSet},
     {DongleCmd::BleDirectConnect, "BleDirectConnect", u8"直连蓝牙", DeviceCmdParamKind::String, kHintBleScan, kSet},
     {DongleCmd::BleOtaConnect, "BleOtaConnect", u8"OTA 蓝牙连接", DeviceCmdParamKind::String, kHintBleScan, kSet},
     {DongleCmd::BleAppConnect, "BleAppConnect", u8"App 蓝牙连接", DeviceCmdParamKind::String, kHintBleScan, kSet},
@@ -29,6 +31,13 @@ const Row kRows[] = {
     {DongleCmd::BleLog, "BleLog", u8"BLE 日志开关", DeviceCmdParamKind::Int, u8"0=关 1=开", kSet},
     {DongleCmd::BleDeviceLog, "BleDeviceLog", u8"BLE 设备日志开关", DeviceCmdParamKind::Int, u8"0=关 1=开", kSet},
     {DongleCmd::GetSuction, "GetSuction", u8"吸力读取开关", DeviceCmdParamKind::Int, u8"0=关 1=开（AT+SUCTION）", kSet},
+    {DongleCmd::SampleSuctionDual, "SampleSuctionDual", u8"采集双通道吸力", DeviceCmdParamKind::JsonMap,
+     u8"可选：sampleDurationMs / sampleIntervalMs\nCH1/CH2 峰值与峰差请在 Gate（Dongle吸力峰值）中配置（同 BYD 双通道：两口最低值 + |差|）",
+     kGet},
+    {DongleCmd::SampleSuctionSingle, "SampleSuctionSingle", u8"采集单通道吸力", DeviceCmdParamKind::JsonMap,
+     u8"可选：channel=1|2|3、sampleDurationMs/IntervalMs；峰识别可选 peakBaselineKpa/peakDipStartKpa\n"
+     u8"Gate：peakKpa=各周期峰值均须在范围内；peakDiffKpa=最大峰值-最小峰值（不是窗口绝对最高-最低）",
+     kGet},
     {DongleCmd::AdcSwitch, "AdcSwitch", u8"ADC 上报开关", DeviceCmdParamKind::Int, u8"0=关 1=开（AT+ADC）", kSet},
     {DongleCmd::Bomb, "Bomb", u8"广播注入", DeviceCmdParamKind::JsonMap, kHintBomb, kSet},
     {DongleCmd::GetGmac, "GetGmac", u8"GMAC", DeviceCmdParamKind::None, u8"无需参数", kGet},

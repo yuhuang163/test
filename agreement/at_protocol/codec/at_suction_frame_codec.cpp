@@ -214,11 +214,11 @@ void AtSuctionFrameCodec::feed(const QByteArray& chunk, const FrameHandler& onFr
 
                 ProtocolDongleSuctionData data;
 
-                data.leftKpa = left;
+                data.ch1Kpa = left;
 
-                data.rightKpa = right;
+                data.ch2Kpa = right;
 
-                data.thirdKpa = third;
+                data.ch3Kpa = third;
 
                 onFrame(data);
 
@@ -258,11 +258,11 @@ void AtSuctionFrameCodec::feed(const QByteArray& chunk, const FrameHandler& onFr
 
             ProtocolDongleSuctionData data;
 
-            data.leftKpa = left;
+            data.ch1Kpa = left;
 
-            data.rightKpa = right;
+            data.ch2Kpa = right;
 
-            data.thirdKpa = third;
+            data.ch3Kpa = third;
 
             onFrame(data);
 

@@ -529,6 +529,31 @@ bool QTupleService::debugUpdateMacStatusImpl(const QString& mac, int status, con
     }
 
     qDebug().noquote() << "[Tuple] debugUpdateMacStatus response:" << QString::fromUtf8(response);
+
+    // HTTP 201/200 不等于业务成功；与领三元组一致：success 必须为 0
+    const QJsonDocument doc = QJsonDocument::fromJson(response);
+    if (!doc.isObject()) {
+        if (error)
+            *error = QStringLiteral("上报 MAC 状态响应不是 JSON：") + QString::fromUtf8(response.left(256));
+        return false;
+    }
+    const QJsonObject obj = doc.object();
+    const QJsonObject dataObj = obj.value(QStringLiteral("data")).isObject() ? obj.value(QStringLiteral("data")).toObject() : obj;
+    const int successCode =
+        dataObj.contains(QStringLiteral("success")) ? dataObj.value(QStringLiteral("success")).toInt(-1)
+                                                    : obj.value(QStringLiteral("success")).toInt(0);
+    const int code = obj.value(QStringLiteral("code")).toInt(200);
+    if (code != 200 || successCode != 0) {
+        const QString msg = obj.value(QStringLiteral("message"))
+                                .toString(obj.value(QStringLiteral("msg"))
+                                              .toString(QStringLiteral("上报 MAC 状态失败 success=%1")
+                                                            .arg(successCode)));
+        if (error)
+            *error = msg;
+        qDebug().noquote() << "[Tuple] debugUpdateMacStatus business fail:" << msg
+                           << "success=" << successCode << "code=" << code;
+        return false;
+    }
     return true;
 }
 
@@ -682,7 +707,8 @@ bool QTupleService::requestGet(const QString& path, const QString& query, QByteA
         for (const QSslError& sslError : sslErrors) {
             sslErrorTexts.append(sslError.errorString());
         }
-        qDebug().noquote() << "[Tuple] GET qt failed:"
+        // Qt 通道失败不等于业务失败：下面会 curl 兜底；仅当 curl 也失败才对外报错
+        qDebug().noquote() << "[Tuple] GET qt 通道失败(将尝试 curl 兜底):"
                            << "qtError=" << static_cast<int>(reply->error())
                            << "errorString=" << reply->errorString()
                            << "httpStatus=" << qtHttp
@@ -692,7 +718,7 @@ bool QTupleService::requestGet(const QString& path, const QString& query, QByteA
         QByteArray curlBody;
         QString curlErr;
         int curlStatus = 0;
-        qDebug().noquote() << "[Tuple] GET curl fallback url=" << url.toString(QUrl::FullyEncoded);
+        qDebug().noquote() << "[Tuple] GET curl 兜底 url=" << url.toString(QUrl::FullyEncoded);
         if (requestGetByCurl(url, authHeader_, &curlBody, &curlErr, &curlStatus)) {
             if (httpStatus) {
                 *httpStatus = curlStatus;
@@ -701,11 +727,11 @@ bool QTupleService::requestGet(const QString& path, const QString& query, QByteA
                 *response = curlBody;
             }
             reply->deleteLater();
-            qDebug().noquote() << "[Tuple] GET curl fallback ok httpStatus=" << curlStatus
+            qDebug().noquote() << "[Tuple] GET curl 兜底成功(以此次结果为准) httpStatus=" << curlStatus
                                << "responseBody=" << QString::fromUtf8(curlBody);
             return true;
         }
-        qDebug().noquote() << "[Tuple] GET curl fallback failed httpStatus=" << curlStatus << "error=" << curlErr
+        qDebug().noquote() << "[Tuple] GET curl 兜底失败 httpStatus=" << curlStatus << "error=" << curlErr
                            << "responseBody=" << QString::fromUtf8(curlBody);
         if (response) {
             *response = body;
@@ -763,7 +789,8 @@ bool QTupleService::requestPost(const QString& path, const QByteArray& body, QBy
         for (const QSslError& sslError : sslErrors) {
             sslErrorTexts.append(sslError.errorString());
         }
-        qDebug().noquote() << "[Tuple] POST qt failed:"
+        // Qt 通道失败不等于业务失败：下面会 curl 兜底；仅当 curl 也失败才对外报错
+        qDebug().noquote() << "[Tuple] POST qt 通道失败(将尝试 curl 兜底):"
                            << "qtError=" << static_cast<int>(reply->error())
                            << "errorString=" << reply->errorString()
                            << "httpStatus=" << reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt()
@@ -773,17 +800,17 @@ bool QTupleService::requestPost(const QString& path, const QByteArray& body, QBy
         QByteArray curlBody;
         QString curlErr;
         int curlStatus = 0;
-        qDebug().noquote() << "[Tuple] POST curl fallback url=" << url.toString(QUrl::FullyEncoded);
+        qDebug().noquote() << "[Tuple] POST curl 兜底 url=" << url.toString(QUrl::FullyEncoded);
         if (requestPostByCurl(url, authHeader_, body, &curlBody, &curlErr, &curlStatus)) {
             if (response) {
                 *response = curlBody;
             }
             reply->deleteLater();
-            qDebug().noquote() << "[Tuple] POST curl fallback ok httpStatus=" << curlStatus
+            qDebug().noquote() << "[Tuple] POST curl 兜底成功(以此次结果为准) httpStatus=" << curlStatus
                                << "responseBody=" << QString::fromUtf8(curlBody);
             return true;
         }
-        qDebug().noquote() << "[Tuple] POST curl fallback failed httpStatus=" << curlStatus << "error=" << curlErr
+        qDebug().noquote() << "[Tuple] POST curl 兜底失败 httpStatus=" << curlStatus << "error=" << curlErr
                            << "responseBody=" << QString::fromUtf8(curlBody);
         if (response) {
             *response = responseBody;

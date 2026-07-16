@@ -93,8 +93,8 @@ class QFreeWork : public test_base {
     void executeProductSerialCase(const TestCaseDefinition& def);
     void executeFixturePcbaCase(const TestCaseDefinition& def);
     void executeFixtureAsd9026aCase(const TestCaseDefinition& def);
-    void executeFixtureXwdBleCase(const TestCaseDefinition& def);
-    void executeFixtureXwdSuctionCase(const TestCaseDefinition& def);
+    void executeFixtureXwdCase(const TestCaseDefinition& def);
+    void executeFixtureJieliBtBoxCase(const TestCaseDefinition& def);
     int resolveFixtureMachineIndex(const QVariant& param) const;
     QVariantMap cachedHuilingVisaLink() const;
     void updateHuilingVisaLinkCache(const QVariantMap& link);
@@ -196,12 +196,15 @@ class QFreeWork : public test_base {
     } stepRuntime_;
     bool currentOrderedStepIsDongleBleConnect() const;
     bool canRunOrderedTestStepLoop() const;
+    /** 主动 BleDisconnect 后禁止 startTask 里用当前 MAC 自动重连，直到显式扫描/直连或新一轮测试 */
+    bool suppressProductBleAutoReconnect_ = false;
     void runTestFlowBootstrap();
     bool tickOrderedTestStepLoop();
     void finalizeTestFlowIfComplete();
     bool isCurrentStep(const QString& functionName) const;
     bool isCurrentInstrumentStep(const QString& stepName) const;
     bool isBydFactory() const;
+    bool isFreeWorkM8BoardFactoryStation() const;
     QString resolvedExpectedTailSnText() const;
     QByteArray resolvedTailSnToWrite() const;
 
@@ -282,10 +285,10 @@ class QFreeWork : public test_base {
     void applyFreeWorkExtraTabsVisible(bool visible);
     bool isFreeWorkXwdKeyStation() const;
     void loadSuctionGateSettings();
-    /** 从工站步骤 send.param 加载吸力卡控（不读全局 SETTINGS）。 */
+    /** 从步骤 send.param 读取采样时长/通道等（卡控范围以 Gate 为准；无 Gate 时回退 Param）。 */
     void applySuctionGateFromStepParam(const QVariant& param);
     void runDongleSuctionSampleStep();
-    /** Dongle 单通道吸力：峰值范围 + 同通道最高与最低差（大小峰值差）卡控。 */
+    /** Dongle 单通道吸力采样；判定走 ProtocolDongleSuctionPeakData Gate。 */
     void runDongleSuctionSampleSingleStep();
     void setDongleSuctionReadEnabled(bool enabled);
     void initSuctionChart();
@@ -296,16 +299,22 @@ class QFreeWork : public test_base {
     double suctionPeakTargetKpa_ = -36.0;
     double suctionPeakToleranceKpa_ = 2.6;
     double suctionPeakDiffMaxKpa_ = 2.6;
-    /** 单通道采样口：0=左，1=右（步骤 Param_channel / Param_channelIndex）。 */
+    /** 单通道采样口：0=CH1，1=CH2，2=CH3（Param_channel=1|2|3）。 */
     int suctionSingleChannelIndex_ = 0;
     int suctionSampleDurationMs_ = 10000;
     int suctionSampleIntervalMs_ = 20;
+    /** 单通道周期峰识别：回到该压力以上视为基线结束本周期（同主界面 Dongle 峰监视缺省）。 */
+    double suctionPeakBaselineKpa_ = -8.0;
+    /** 低于该压力才计入吸气周期，避免噪声误计为峰。 */
+    double suctionPeakDipStartKpa_ = -10.0;
     bool dongleSuctionReadEnabled_ = false;
     bool dongleSuctionSampleActive_ = false;
-    QVector<double> dongleSuctionLeftSamples_;
-    QVector<double> dongleSuctionRightSamples_;
-    double dongleSuctionLastLeftKpa_ = 0.0;
-    double dongleSuctionLastRightKpa_ = 0.0;
+    QVector<double> dongleSuctionCh1Samples_;
+    QVector<double> dongleSuctionCh2Samples_;
+    QVector<double> dongleSuctionCh3Samples_;
+    double dongleSuctionLastCh1Kpa_ = 0.0;
+    double dongleSuctionLastCh2Kpa_ = 0.0;
+    double dongleSuctionLastCh3Kpa_ = 0.0;
     QCustomPlot* suctionPlot_ = nullptr;
     QVector<double> suctionChartTimeSec_;
     QVector<double> suctionChartLeftKpa_;
