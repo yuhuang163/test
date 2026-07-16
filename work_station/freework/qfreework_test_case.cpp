@@ -371,6 +371,19 @@ QVariantMap huilingVisaLinkKeysFromMap(const QVariantMap& map) {
     return out;
 }
 
+/** 合并 link（visa/scpi 模板）与 command（电压电流等），供配置步落盘缓存与 load profile。 */
+QVariantMap mergeVisaPowerStepParamMap(const QVariantMap& linkMap, const QVariant& commandParam) {
+    QVariantMap merged = linkMap;
+    if (!commandParam.canConvert<QVariantMap>()) {
+        return merged;
+    }
+    const QVariantMap cmd = commandParam.toMap();
+    for (auto it = cmd.constBegin(); it != cmd.constEnd(); ++it) {
+        merged.insert(it.key(), it.value());
+    }
+    return merged;
+}
+
 struct HuilingScpiStepParams {
     QVariantMap linkMap;
     QVariant commandParam;
@@ -448,7 +461,7 @@ void QFreeWork::seedHuilingVisaLinkCacheFromFlowOrSettings() {
         if (map.value(QStringLiteral("visaAddress")).toString().trimmed().isEmpty()) {
             return false;
         }
-        updateHuilingVisaLinkCache(map);
+        updateHuilingVisaLinkCache(huilingVisaLinkKeysFromMap(map));
         return true;
     };
 
@@ -856,22 +869,29 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
         const QVariant resolvedParam = ctx->resolveTestCaseSendParamTree(def.send.param);
         QString errStr;
 
-        if (devRoute == ScpiDeviceRoute::HuilingWfp60h) {
+        if (devRoute == ScpiDeviceRoute::HuilingWfp60h || devRoute == ScpiDeviceRoute::Agilent66319d) {
             const HuilingScpiStepParams stepParams =
                 splitHuilingScpiStepParam(resolvedParam, def.send.deviceCmd);
             QVariantMap linkMap = stepParams.linkMap;
             if (linkMap.value(QStringLiteral("visaAddress")).toString().trimmed().isEmpty()) {
                 linkMap = ctx->cachedHuilingVisaLink();
             }
+            const QVariantMap loadMap = mergeVisaPowerStepParamMap(linkMap, stepParams.commandParam);
             const int visaTimeoutMs = TestCaseRunner::commandTimeoutMs(def);
-            const bool visaReady = ctx->scpiVisaManager()->loadHuilingVisaFromParamMap(linkMap, visaTimeoutMs);
+            const bool visaReady =
+                devRoute == ScpiDeviceRoute::Agilent66319d
+                    ? ctx->scpiVisaManager()->loadAgilent66319dVisaFromParamMap(loadMap, visaTimeoutMs)
+                    : ctx->scpiVisaManager()->loadHuilingVisaFromParamMap(loadMap, visaTimeoutMs);
             if (!visaReady) {
-                ctx->showlog(QStringLiteral("会凌程控电源：请在本工站步骤「配置Visa程控电源」或本步参数中填写 visaAddress"));
+                ctx->showlog(QStringLiteral("%1：请在本工站「配置Visa程控电源」步骤 ini 中填写 Param_visaAddress 等参数")
+                                 .arg(ScpiPeriphCmdCatalog::deviceUiLabel(devRoute)));
                 ctx->markActiveTestCaseStepDone(false, QStringLiteral("visaAddress缺失"), QStringLiteral("失败"));
                 return;
             }
-            if (!stepParams.linkMap.value(QStringLiteral("visaAddress")).toString().trimmed().isEmpty())
-                ctx->updateHuilingVisaLinkCache(stepParams.linkMap);
+            if (!stepParams.linkMap.value(QStringLiteral("visaAddress")).toString().trimmed().isEmpty()) {
+                ctx->updateHuilingVisaLinkCache(
+                    huilingVisaLinkKeysFromMap(mergeVisaPowerStepParamMap(stepParams.linkMap, stepParams.commandParam)));
+            }
             HuilingScpiCmd cmd = huilingScpiCmdFromName(def.send.deviceCmd);
             bool ok = ctx->scpiVisaManager()->exec(cmd, stepParams.commandParam, &errStr);
             if (!ok) {
@@ -879,7 +899,8 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                 ok = ctx->scpiVisaManager()->exec(cmd, stepParams.commandParam, &errStr);
             }
             if (!ok) {
-                ctx->showlog(QStringLiteral("会凌电源指令 [%1] 执行失败: %2").arg(def.send.deviceCmd, errStr));
+                ctx->showlog(QStringLiteral("%1 指令 [%2] 执行失败: %3")
+                                 .arg(ScpiPeriphCmdCatalog::deviceUiLabel(devRoute), def.send.deviceCmd, errStr));
                 ctx->markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
             } else {
                 QString testData = QStringLiteral("-");

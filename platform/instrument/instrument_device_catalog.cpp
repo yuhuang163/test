@@ -27,6 +27,8 @@ struct PurposeRow {
 constexpr PurposeRow kPurposeRows[] = {
     {"*", InstrumentPurposeId::ProgrammablePower, u8"程控电源", RowProtocol::Scpi,
      static_cast<int>(ScpiDeviceRoute::HuilingWfp60h), "VisaPower/*"},
+    {"*", InstrumentPurposeId::ProgrammablePower, u8"程控电源(Agilent66319D)", RowProtocol::Scpi,
+     static_cast<int>(ScpiDeviceRoute::Agilent66319d), "工站步骤ini Send/Device=Agilent66319d"},
     {"byd", InstrumentPurposeId::ProgrammablePower, u8"程控电源", RowProtocol::Scpi,
      static_cast<int>(ScpiDeviceRoute::HuilingWfp60h), "VisaPower/*"},
 
@@ -50,6 +52,8 @@ QString scpiDeviceDir(ScpiDeviceRoute route) {
     switch (route) {
     case ScpiDeviceRoute::HuilingWfp60h:
         return QStringLiteral("huiling_wfp60h_scpi");
+    case ScpiDeviceRoute::Agilent66319d:
+        return QStringLiteral("agilent_66319d_scpi");
     case ScpiDeviceRoute::RsCmw100:
         return QStringLiteral("rs_cmw100_scpi");
     default:
@@ -60,6 +64,8 @@ QString scpiDeviceDir(ScpiDeviceRoute route) {
 QString scpiCmdEnumTypeName(ScpiDeviceRoute route) {
     switch (route) {
     case ScpiDeviceRoute::HuilingWfp60h:
+        return QStringLiteral("HuilingScpiCmd");
+    case ScpiDeviceRoute::Agilent66319d:
         return QStringLiteral("HuilingScpiCmd");
     case ScpiDeviceRoute::RsCmw100:
         return QStringLiteral("CmwScpiCmd");
@@ -72,6 +78,8 @@ QString scpiRouteKey(ScpiDeviceRoute route) {
     switch (route) {
     case ScpiDeviceRoute::HuilingWfp60h:
         return QStringLiteral("HuilingWfp60h");
+    case ScpiDeviceRoute::Agilent66319d:
+        return QStringLiteral("Agilent66319d");
     case ScpiDeviceRoute::RsCmw100:
         return QStringLiteral("RsCmw100");
     default:

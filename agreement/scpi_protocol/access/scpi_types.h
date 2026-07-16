@@ -18,6 +18,7 @@ enum class ScpiLinkKind {
 enum class ScpiDeviceRoute {
     None,
     HuilingWfp60h,
+    Agilent66319d,
     RsCmw100,
 };
 

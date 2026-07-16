@@ -387,7 +387,7 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
         if (row) {
             out.valid = true;
             out.hint = ScpiPeriphCmdCatalog::paramUiHint(devRoute, name);
-            if (devRoute == ScpiDeviceRoute::HuilingWfp60h
+            if ((devRoute == ScpiDeviceRoute::HuilingWfp60h || devRoute == ScpiDeviceRoute::Agilent66319d)
                 && (name == QLatin1String("ConfigureProgrammablePower")
                     || name == QLatin1String("ReadProgrammableVoltage")
                     || name == QLatin1String("ReadProgrammableCurrent")
