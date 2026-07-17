@@ -423,20 +423,35 @@ QString QFreeWork::parseMacFromSn(const QString& snCode) {
     return test_base::parseMacFromSn(snCode);
 }
 
-QString QFreeWork::resolvedExpectedTailSnText() const {
-    if (isBydFactory()) {
-        if (ui && ui->isformmes && ui->isformmes->checkState() == Qt::Checked) {
-            return QString::fromUtf8(expectedTailSnFromMes.trimmed());
-        }
-    }
+QString QFreeWork::resolvedPcbaSnText() const {
+    // 统一从界面 SN 框读取（MES / 三元组回填后也都写到此处）
     if (ui && ui->getMac) {
         return ui->getMac->text().trimmed();
     }
     return {};
 }
 
+QString QFreeWork::resolvedWholeMachineSnText() const {
+    return wholeMachineSn_.trimmed();
+}
+
+void QFreeWork::setWholeMachineSn(const QString& sn) {
+    wholeMachineSn_ = sn.trimmed();
+    // 三元组整机 SN 回填界面与 pack，后续写入/校验/上报统一用这份 SN
+    if (ui && ui->getMac) {
+        ui->getMac->setText(wholeMachineSn_);
+    }
+    if (!wholeMachineSn_.isEmpty()) {
+        pack.sn = wholeMachineSn_;
+    }
+}
+
+QString QFreeWork::resolvedExpectedTailSnText() const {
+    return resolvedPcbaSnText();
+}
+
 QByteArray QFreeWork::resolvedTailSnToWrite() const {
-    return resolvedExpectedTailSnText().toUtf8();
+    return resolvedPcbaSnText().toUtf8();
 }
 
 void QFreeWork::runTestFlowBootstrap() {
@@ -1606,6 +1621,7 @@ void QFreeWork::initData() {
     ui->battary_value->setText("电量为:");
     ui->battary_voltage->setText("电压为:");
     deviceTailSnFromDevice = "";
+    wholeMachineSn_.clear();
     tupleData_ = TupleApplyResult{};
     QTupleService::clearSharedSession();
     freeWorkMesSegments_.clear();
@@ -1821,9 +1837,6 @@ void QFreeWork::on_getMac_returnPressed() {
     if (!validateSnFormat(ui->getMac->text())) {
         ui->getMac->clear();
         return;
-    }
-    if (isBydFactory()) {
-        expectedTailSnFromMes.clear();
     }
     showlog("正在查询mac地址");
     processGetMesTestValue(); // mes获取
@@ -2132,7 +2145,9 @@ void QFreeWork::getTestValue(const int mechines, const QString value) {
             showlog(value);
             return;
         }
-        expectedTailSnFromMes = snFromMes.toUtf8();
+        // MES 返回 SN 回填界面，后续写入/校验统一读 ui->getMac
+        if (ui && ui->getMac)
+            ui->getMac->setText(snFromMes);
         ui->macInput->setText(mesmacAddress);
         showlog(QStringLiteral("MES SN 解析 MAC 成功: ") + mesmacAddress);
         // on_macInput_returnPressed();
@@ -2148,8 +2163,9 @@ void QFreeWork::getTestValue(const int mechines, const QString value) {
             showlog(value);
             return;
         }
-        // BYD 写入/读回 SN 均用 MES 返回的整机 SN（同 ageing writesn/stringsn）
-        expectedTailSnFromMes = snFromMes.toUtf8();
+        // MES 返回整机 SN 回填界面，后续写入/校验统一读 ui->getMac
+        if (ui && ui->getMac)
+            ui->getMac->setText(snFromMes);
         ui->macInput->setText(mesmacAddress);
         showlog(QStringLiteral("MES SN 解析 MAC 成功: ") + mesmacAddress);
         on_macInput_returnPressed();

@@ -83,7 +83,7 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
             fw->stepRuntime_.pass = false;
             fw->stepRuntime_.testData = QStringLiteral("整机SN为空");
             fw->TestResult = fw->failValue;
-            fw->showlog(QStringLiteral("写入SN码失败：请先在 SN 框扫入整机码(MES 或离线)，再扫 MAC 开始测试"));
+            fw->showlog(QStringLiteral("写入整机SN失败：界面SN为空，请先获取三元组或扫入整机SN"));
             return;
         }
         fw->stepRuntime_.testData = QString::fromUtf8(tailSn);
@@ -95,10 +95,10 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         return;
     }
     if (hookId == QStringLiteral("QR_SN_CONSISTENCY_CHECK")) {
-        const QString expectedSn = fw->resolvedExpectedTailSnText().trimmed();
+        const QString expectedSn = fw->resolvedPcbaSnText().trimmed();
         if (expectedSn.isEmpty()) {
-            fw->markActiveTestCaseStepDone(false, QStringLiteral("开局SN为空"), QStringLiteral("失败"));
-            fw->showlog(QStringLiteral("二维码一致性校验失败：开局整机SN为空，请先扫入SN再测试"));
+            fw->markActiveTestCaseStepDone(false, QStringLiteral("开局PCBA SN为空"), QStringLiteral("失败"));
+            fw->showlog(QStringLiteral("二维码一致性校验失败：开局PCBA SN为空，请先扫入PCBA SN再测试"));
             return;
         }
         QDialog dlg(fw);
@@ -131,7 +131,7 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
 
     if (hookId == QStringLiteral("MAC_WRITE_ROOT")) {
          fw->showlog(QStringLiteral("MAC_WRITE_ROOT"));
-        const QString snText = fw->resolvedExpectedTailSnText();
+        const QString snText = fw->resolvedPcbaSnText();
         const QString macText = fw->parseMacFromSn(snText);
         if (macText.isEmpty()) {
             fw->stepRuntime_.done = true;

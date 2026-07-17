@@ -86,9 +86,15 @@ class QFreeWork : public test_base {
     }
     QString currentMacAddress() const;
     QString parseMacFromSn(const QString& snCode);
+    /** 扫码框 / MES 下发的 PCBA SN（非整机 SN） */
+    QString resolvedPcbaSnText() const;
+    /** 本地整机 SN（三元组申请等写入，可扩展其它来源） */
+    QString resolvedWholeMachineSnText() const;
+    void setWholeMachineSn(const QString& sn);
     QString resolveTestCaseSendPlaceholder(const QString& text) const;
     QVariant resolveTestCaseSendParamTree(const QVariant& param) const;
     bool prepareTupleProductWriteForTestCase(const TestCaseDefinition& def, DeviceCmd cmd, const QVariant& wireParam);
+    bool prepareTailSnWriteForTestCase(const TestCaseDefinition& def, DeviceCmd cmd, const QVariant& wireParam);
     void executeCloudTupleCase(const TestCaseDefinition& def);
     void executeProductSerialCase(const TestCaseDefinition& def);
     void executeFixturePcbaCase(const TestCaseDefinition& def);
@@ -108,9 +114,8 @@ class QFreeWork : public test_base {
     QString receivedData = "";
     QString snBinding;
     QString deviceTailSnFromDevice = "";
-    QString tailsn = "";
+    QString wholeMachineSn_;
     QString macAddress = "没有mac地址";
-    QByteArray expectedTailSnFromMes;
 
     // --- RSSI / WiFi / 电量 / 电流 ---
     QString BT_RSSI = "";

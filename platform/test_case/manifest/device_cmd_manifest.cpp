@@ -16,7 +16,8 @@ constexpr const char kHintSn[] =
     u8"  1=整机SN(TAIL)  6=deviceName(SUB_PID)  7=productKey(SKUID)\r\n"
     u8"写 productKey：which_sn=7，sn=$TUPLE_PRODUCT_KEY\r\n"
     u8"写 deviceName：which_sn=6，sn=$TUPLE_DEVICE_NAME\r\n"
-    u8"写整机 SN：which_sn=1，sn=具体值或 $TAIL_SN\r\n"
+    u8"写整机 SN：which_sn=1，sn=$WHOLE_MACHINE_SN（本地整机SN）或具体值\r\n"
+    u8"  PCBA SN：$PCBA_SN / $SN（扫码/MES，解析 MAC 等，勿用于写整机）\r\n"
     u8"Qroot：读 0xA0 / 写 0xA1(≤40)；which_sn=7→0xF8；which_sn=6→0xF9；读 6/7 兼容 0xF7";
 constexpr const char kHintRootHeatLevelControl[] =
     u8"Qroot：Req 0x83，CAL=0x02，body：switch(0关1开)+level(0=L1/1=L2/2=L3)\r\n"

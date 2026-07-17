@@ -193,9 +193,28 @@ bool isRuntimeMacPlaceholder(const QString& text) {
     return s.isEmpty() || s == QStringLiteral("$MAC") || s == QStringLiteral("${MAC}") || s == QStringLiteral("{mac}");
 }
 
-bool isRuntimeSnPlaceholder(const QString& text) {
+bool isRuntimePcbaSnPlaceholder(const QString& text) {
     const QString s = text.trimmed();
-    return s == QStringLiteral("$SN") || s == QStringLiteral("${SN}") || s == QStringLiteral("{sn}");
+    return s == QStringLiteral("$SN") || s == QStringLiteral("${SN}") || s == QStringLiteral("{sn}")
+           || s.compare(QStringLiteral("$PCBA_SN"), Qt::CaseInsensitive) == 0
+           || s.compare(QStringLiteral("${PCBA_SN}"), Qt::CaseInsensitive) == 0;
+}
+
+bool isRuntimeWholeMachineSnPlaceholder(const QString& text) {
+    const QString s = text.trimmed();
+    return s.compare(QStringLiteral("$TAIL_SN"), Qt::CaseInsensitive) == 0
+           || s.compare(QStringLiteral("${TAIL_SN}"), Qt::CaseInsensitive) == 0
+           || s.compare(QStringLiteral("{tail_sn}"), Qt::CaseInsensitive) == 0
+           || s.compare(QStringLiteral("$WHOLE_MACHINE_SN"), Qt::CaseInsensitive) == 0
+           || s.compare(QStringLiteral("${WHOLE_MACHINE_SN}"), Qt::CaseInsensitive) == 0
+           || s.compare(QStringLiteral("$WHOLE_SN"), Qt::CaseInsensitive) == 0
+           || s.compare(QStringLiteral("${WHOLE_SN}"), Qt::CaseInsensitive) == 0
+           || s.compare(QStringLiteral("$TUPLE_SN"), Qt::CaseInsensitive) == 0
+           || s.compare(QStringLiteral("${TUPLE_SN}"), Qt::CaseInsensitive) == 0;
+}
+
+bool isRuntimeSnPlaceholder(const QString& text) {
+    return isRuntimePcbaSnPlaceholder(text) || isRuntimeWholeMachineSnPlaceholder(text);
 }
 
 
@@ -516,8 +535,10 @@ void QFreeWork::seedHuilingVisaLinkCacheFromFlowOrSettings() {
 QString QFreeWork::resolveTestCaseSendPlaceholder(const QString& text) const {
     if (isRuntimeMacPlaceholder(text))
         return currentMacAddress();
-    if (isRuntimeSnPlaceholder(text))
-        return resolvedExpectedTailSnText();
+    if (isRuntimePcbaSnPlaceholder(text))
+        return resolvedPcbaSnText();
+    if (isRuntimeWholeMachineSnPlaceholder(text))
+        return resolvedPcbaSnText();
     switch (tuplePlaceholderKind(text)) {
     case TuplePlaceholderKind::ProductKey:
         return tupleData_.productKey;
@@ -587,6 +608,37 @@ bool QFreeWork::prepareTupleProductWriteForTestCase(const TestCaseDefinition& de
     return true;
 }
 
+bool QFreeWork::prepareTailSnWriteForTestCase(const TestCaseDefinition& def, DeviceCmd cmd, const QVariant& wireParam) {
+    if (cmd != DeviceCmd::Sn || def.send.action != TestCaseSendAction::Set)
+        return true;
+
+    FacDevInfoType whichSn = FacDevInfoType_TAIL_SN;
+    QString snText;
+    if (wireParam.canConvert<DeviceSnPayload>()) {
+        const DeviceSnPayload payload = wireParam.value<DeviceSnPayload>();
+        whichSn = payload.which_sn;
+        snText = QString::fromUtf8(payload.sn).trimmed();
+    } else if (wireParam.canConvert<QVariantMap>()) {
+        const QVariantMap map = wireParam.toMap();
+        whichSn = static_cast<FacDevInfoType>(map.value(QStringLiteral("which_sn"), FacDevInfoType_TAIL_SN).toInt());
+        snText = map.value(QStringLiteral("sn")).toString().trimmed();
+    } else {
+        return true;
+    }
+    if (whichSn != FacDevInfoType_TAIL_SN)
+        return true;
+
+    const QString stepName = def.meta.displayName.trimmed().isEmpty() ? def.meta.name.trimmed()
+                                                                    : def.meta.displayName.trimmed();
+    if (snText.isEmpty()) {
+        stepRuntime_.testData = QStringLiteral("整机SN为空");
+        showlog(QStringLiteral("%1失败：界面SN为空，请先获取三元组或扫入整机SN").arg(stepName));
+        return false;
+    }
+    stepRuntime_.testData = snText;
+    return true;
+}
+
 QString QFreeWork::currentMacAddress() const {
     if (!macAddress.trimmed().isEmpty() && macAddress != QStringLiteral("没有mac地址"))
         return macAddress.trimmed();
@@ -650,7 +702,7 @@ void QFreeWork::clearActiveTestCase() {
 void QFreeWork::applyRuntimeSnGateExpected(QVector<TestCaseGate>& gates) {
     if (gates.size() != 1 || gates.first().field != QStringLiteral("value") || !gates.first().expected.trimmed().isEmpty())
         return;
-    gates[0].expected = resolvedExpectedTailSnText();
+    gates[0].expected = resolvedPcbaSnText();
 }
 
 void QFreeWork::emitFixtureMultiGateTableRows(const QVector<TestCaseGate>& gates, const QString& reportType,
@@ -1502,6 +1554,11 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
     const QVariant wireParam = DeviceCmdCatalog::normalizeSendParam(cmd, resolvedParam);
     if (def.send.action == TestCaseSendAction::Set && !ctx->prepareTupleProductWriteForTestCase(def, cmd, wireParam)) {
         ctx->markActiveTestCaseStepDone(false, ctx->activeTestCaseStepTestData(), QStringLiteral("失败"));
+        return;
+    }
+    if (def.send.action == TestCaseSendAction::Set && !ctx->prepareTailSnWriteForTestCase(def, cmd, wireParam)) {
+        ctx->markActiveTestCaseStepDone(false, ctx->activeTestCaseStepTestData(), QStringLiteral("失败"));
+        ctx->TestResult = ctx->failValue;
         return;
     }
 

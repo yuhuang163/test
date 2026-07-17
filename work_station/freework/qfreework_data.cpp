@@ -164,7 +164,7 @@ void QFreeWork::refreshWifiState(int state) {
 
 void QFreeWork::refreshSn(ProtocolSnData data) {
     deviceTailSnFromDevice = data.value.trimmed();
-    const QString expectedTailSnFromMesText = resolvedExpectedTailSnText();
+    const QString expectedWholeMachineSn = resolvedPcbaSnText();
     qDebug() << getIndex() << "dev_info" << data.value;
     qDebug() << getIndex() << "deviceTailSnFromDevice" << deviceTailSnFromDevice;
     ui->product_sn->setText("芯片存储的整机sn:" + deviceTailSnFromDevice);
@@ -178,14 +178,14 @@ void QFreeWork::refreshSn(ProtocolSnData data) {
     }
     QVector<TestItem> snItems;
     snItems.reserve(1);
-    bool snPass = !expectedTailSnFromMesText.isEmpty();
-    appendPeriphItem(snItems, snPass, "整机SN码", deviceTailSnFromDevice, expectedTailSnFromMesText, true);
+    bool snPass = !expectedWholeMachineSn.isEmpty();
+    appendPeriphItem(snItems, snPass, "整机SN码", deviceTailSnFromDevice, expectedWholeMachineSn, true);
     stepRuntime_.done = true;
     stepRuntime_.pass = snPass;
     stepRuntime_.testData = deviceTailSnFromDevice;
     if (!snPass) {
         TestResult = failValue;
-        showlog("整机SN校验失败，设备SN=" + deviceTailSnFromDevice + "，输入SN=" + expectedTailSnFromMesText);
+        showlog("整机SN校验失败，设备SN=" + deviceTailSnFromDevice + "，期望整机SN=" + expectedWholeMachineSn);
     } else {
         showlog("整机SN校验通过");
     }
@@ -399,7 +399,7 @@ void QFreeWork::reportBydSfcKey(const QString& dataName, const QVariant& dataVal
     p.mechines = getIndex();
     p.sn = pack.sn.trimmed();
     if (p.sn.isEmpty()) {
-        p.sn = ui->getMac->text().trimmed();
+        p.sn = resolvedPcbaSnText();
     }
     p.instruct_num = dataName.trimmed();
     p.itemvalue = valueText;
@@ -433,7 +433,7 @@ void QFreeWork::reportBydBluetoothMesKeyMaterials() {
         macVal = macVal.trimmed().toUpper();
     }
 
-    const QString snVal = tupleData_.sn.trimmed().isEmpty() ? ui->getMac->text().trimmed() : tupleData_.sn.trimmed();
+    const QString snVal = resolvedWholeMachineSnText().isEmpty() ? resolvedPcbaSnText() : resolvedWholeMachineSnText();
     reportBydSfcKey(QStringLiteral("SN"), snVal, 1);
     reportBydSfcKey(QStringLiteral("deviceName"), tupleData_.deviceName, 1);
     reportBydSfcKey(QStringLiteral("deviceSecret"), tupleData_.deviceSecret, 1);
@@ -516,6 +516,10 @@ void QFreeWork::applyTupleByMac() {
     }
     showlog(QStringLiteral("三元组获取成功：sn=%1 productKey=%2 deviceName=%3 deviceSecret=%4 mac=%5")
                 .arg(tupleData_.sn, tupleData_.productKey, tupleData_.deviceName, tupleData_.deviceSecret, tupleData_.mac));
+    if (!tupleData_.sn.trimmed().isEmpty()) {
+        setWholeMachineSn(tupleData_.sn);
+        showlog(QStringLiteral("已替换界面SN：%1").arg(resolvedPcbaSnText()));
+    }
     // 蓝牙测试关键物料：与 MES「蓝牙测试」工站 SFC 生命周期表一致，各发一条 AddSfcKey（QTY=1）
     reportBydBluetoothMesKeyMaterials();
 }
@@ -566,7 +570,7 @@ void QFreeWork::debugUpdateTupleMacStatus(const TestCaseDefinition& def) {
 
 void QFreeWork::reportTupleWriteRecord() {
     stepRuntime_.done = true;
-    const QString productSn = tupleData_.sn.trimmed().isEmpty() ? ui->getMac->text().trimmed() : tupleData_.sn.trimmed();
+    const QString productSn = resolvedWholeMachineSnText().isEmpty() ? resolvedPcbaSnText() : resolvedWholeMachineSnText();
     stepRuntime_.testData = productSn;
 
     if (!QTupleService::hasSharedSession()) {

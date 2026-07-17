@@ -7,59 +7,28 @@
 #include "qprotocol_types.h"
 
 #include <QFile>
-#include <QJsonDocument>
-#include <QJsonObject>
-#include <QJsonParseError>
 #include <QMessageBox>
-#include <QPlainTextEdit>
 #include <QPushButton>
+#include <QScrollArea>
+#include <QScreen>
+#include <QGuiApplication>
+#include <QShowEvent>
 #include <QTableWidget>
+#include <QTableWidgetItem>
 #include <QHeaderView>
+#include <QAbstractItemView>
+#include <QItemSelectionModel>
 
 #include <QHash>
 
 #include <algorithm>
+#include <functional>
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace {
-
-/** 解析步骤 JSON 参数：空串 / {} / 多行 {} 视为合法空对象；失败时返回 false。 */
-bool parseSendJsonParamText(const QString& text, QVariantMap* outMap) {
-    const QString trimmed = text.trimmed();
-    if (trimmed.isEmpty()) {
-        if (outMap)
-            *outMap = {};
-        return true;
-    }
-    QJsonParseError parseError;
-    const QJsonDocument doc = QJsonDocument::fromJson(trimmed.toUtf8(), &parseError);
-    if (doc.isObject()) {
-        if (outMap)
-            *outMap = doc.object().toVariantMap();
-        return true;
-    }
-    QVariantMap map;
-    QString normalized = trimmed;
-    normalized.replace(QStringLiteral("\r\n"), QStringLiteral("\n"));
-    normalized.replace(QLatin1Char('\r'), QLatin1Char('\n'));
-    for (const QString& rawLine : normalized.split(QLatin1Char('\n'), Qt::SkipEmptyParts)) {
-        const QString line = rawLine.trimmed();
-        if (line.isEmpty() || line.startsWith(QLatin1Char('#')))
-            continue;
-        const int eq = line.indexOf(QLatin1Char('='));
-        if (eq > 0)
-            map.insert(line.left(eq).trimmed(), line.mid(eq + 1).trimmed());
-    }
-    if (!map.isEmpty()) {
-        if (outMap)
-            *outMap = map;
-        return true;
-    }
-    return false;
-}
 
 QVariantMap sendParamAsJsonMap(const QVariant& param) {
     // DeviceSnPayload 必须先于 canConvert/toMap：payload 的 toMap() 恒为空，UI 会显示成 {}
@@ -80,80 +49,191 @@ QVariantMap sendParamAsJsonMap(const QVariant& param) {
     return {};
 }
 
-/** 多键参数用 name=value 展示，便于编辑 VISA SCPI 命令模板。 */
-QString formatParamMapAsNameValue(const QVariantMap& map) {
-    QStringList lines;
-    for (auto it = map.constBegin(); it != map.constEnd(); ++it)
-        lines.append(it.key() + QLatin1Char('=') + it.value().toString());
-    return lines.join(QLatin1Char('\n'));
+bool sendParamTableIsEmpty(const QTableWidget* table) {
+    if (!table || table->rowCount() <= 0)
+        return true;
+    for (int r = 0; r < table->rowCount(); ++r) {
+        for (int c = 0; c < table->columnCount(); ++c) {
+            const QTableWidgetItem* item = table->item(r, c);
+            if (item && !item->text().trimmed().isEmpty())
+                return false;
+        }
+    }
+    return true;
+}
+
+void configureSendParamTable(QTableWidget* table, bool namedKeys) {
+    if (!table)
+        return;
+    table->clear();
+    table->setRowCount(0);
+    if (namedKeys) {
+        table->setColumnCount(2);
+        table->setHorizontalHeaderLabels({QStringLiteral("参数名"), QStringLiteral("参数值")});
+    } else {
+        table->setColumnCount(1);
+        table->setHorizontalHeaderLabels({QStringLiteral("参数值")});
+    }
+    table->horizontalHeader()->setStretchLastSection(true);
+    table->verticalHeader()->setVisible(false);
+    table->setAlternatingRowColors(true);
+    table->setSelectionBehavior(QAbstractItemView::SelectRows);
+}
+
+void setSendParamTableFromMap(QTableWidget* table, const QVariantMap& map) {
+    configureSendParamTable(table, true);
+    QStringList keys = map.keys();
+    keys.sort(Qt::CaseInsensitive);
+    for (const QString& key : keys) {
+        const int r = table->rowCount();
+        table->insertRow(r);
+        table->setItem(r, 0, new QTableWidgetItem(key));
+        table->setItem(r, 1, new QTableWidgetItem(map.value(key).toString()));
+    }
+    if (table->rowCount() == 0) {
+        table->insertRow(0);
+        table->setItem(0, 0, new QTableWidgetItem());
+        table->setItem(0, 1, new QTableWidgetItem());
+    }
+}
+
+void setSendParamTableFromString(QTableWidget* table, const QString& value) {
+    configureSendParamTable(table, false);
+    table->insertRow(0);
+    table->setItem(0, 0, new QTableWidgetItem(value));
+}
+
+QVariantMap readSendParamMapFromTable(const QTableWidget* table) {
+    QVariantMap map;
+    if (!table || table->columnCount() < 2)
+        return map;
+    for (int r = 0; r < table->rowCount(); ++r) {
+        const QTableWidgetItem* nameItem = table->item(r, 0);
+        const QTableWidgetItem* valItem = table->item(r, 1);
+        const QString name = nameItem ? nameItem->text().trimmed() : QString();
+        if (name.isEmpty())
+            continue;
+        map.insert(name, valItem ? valItem->text() : QString());
+    }
+    return map;
+}
+
+QString readSendParamStringFromTable(const QTableWidget* table) {
+    if (!table || table->rowCount() <= 0)
+        return {};
+    const QTableWidgetItem* item = table->item(0, 0);
+    return item ? item->text().trimmed() : QString();
 }
 
 /** 配置程控电源：空参数时预填设备缺省 SCPI 模板，供步骤里直接改。 */
-QString defaultVisaConfigureParamText(ScpiDeviceRoute route) {
+QVariantMap defaultVisaConfigureParamMap(ScpiDeviceRoute route) {
+    QVariantMap map;
     if (route == ScpiDeviceRoute::Agilent66319d) {
-        return QStringLiteral(
-            "visaAddress=GPIB0::7::INSTR\n"
-            "voltage=5.0\n"
-            "current=3.0\n"
-            "currentRange=3\n"
-            "scpiSetVoltageCmd=VOLT %1\n"
-            "scpiSetCurrentCmd=CURR %1\n"
-            "scpiOutputOnCmd=OUTP ON\n"
-            "scpiOutputOffCmd=OUTP OFF\n"
-            "scpiReadVoltageCmd=MEAS:VOLT:DC?\n"
-            "scpiReadCurrentCmd=MEAS:CURR:DC?\n"
-            "scpiSetCurrentRangeCmd=SENS:CURR:RANG %1");
+        map.insert(QStringLiteral("visaAddress"), QStringLiteral("GPIB0::7::INSTR"));
+        map.insert(QStringLiteral("voltage"), QStringLiteral("5.0"));
+        map.insert(QStringLiteral("current"), QStringLiteral("3.0"));
+        map.insert(QStringLiteral("currentRange"), QStringLiteral("3"));
+        map.insert(QStringLiteral("scpiSetVoltageCmd"), QStringLiteral("VOLT %1"));
+        map.insert(QStringLiteral("scpiSetCurrentCmd"), QStringLiteral("CURR %1"));
+        map.insert(QStringLiteral("scpiOutputOnCmd"), QStringLiteral("OUTP ON"));
+        map.insert(QStringLiteral("scpiOutputOffCmd"), QStringLiteral("OUTP OFF"));
+        map.insert(QStringLiteral("scpiReadVoltageCmd"), QStringLiteral("MEAS:VOLT:DC?"));
+        map.insert(QStringLiteral("scpiReadCurrentCmd"), QStringLiteral("MEAS:CURR:DC?"));
+        map.insert(QStringLiteral("scpiSetCurrentRangeCmd"), QStringLiteral("SENS:CURR:RANG %1"));
+        return map;
     }
-    return QStringLiteral(
-        "visaAddress=TCPIP::localhost::5026::SOCKET\n"
-        "voltage=12.0\n"
-        "current=2.5\n"
-        "scpiSetVoltageCmd=SOURce1:VOLTage:LEVel:IMMediate:AMPLitude %1\n"
-        "scpiSetCurrentCmd=SOURce1:CURRent:LIMit:VALue %1\n"
-        "scpiOutputOnCmd=OUTPut1:STATe ON\n"
-        "scpiOutputOffCmd=OUTPut1:STATe OFF\n"
-        "scpiReadVoltageCmd=MEASure1:VOLTage:DC?\n"
-        "scpiReadCurrentCmd=MEASure1:CURRent:DC?");
+    map.insert(QStringLiteral("visaAddress"), QStringLiteral("TCPIP::localhost::5026::SOCKET"));
+    map.insert(QStringLiteral("voltage"), QStringLiteral("12.0"));
+    map.insert(QStringLiteral("current"), QStringLiteral("2.5"));
+    map.insert(QStringLiteral("scpiSetVoltageCmd"),
+               QStringLiteral("SOURce1:VOLTage:LEVel:IMMediate:AMPLitude %1"));
+    map.insert(QStringLiteral("scpiSetCurrentCmd"), QStringLiteral("SOURce1:CURRent:LIMit:VALue %1"));
+    map.insert(QStringLiteral("scpiOutputOnCmd"), QStringLiteral("OUTPut1:STATe ON"));
+    map.insert(QStringLiteral("scpiOutputOffCmd"), QStringLiteral("OUTPut1:STATe OFF"));
+    map.insert(QStringLiteral("scpiReadVoltageCmd"), QStringLiteral("MEASure1:VOLTage:DC?"));
+    map.insert(QStringLiteral("scpiReadCurrentCmd"), QStringLiteral("MEASure1:CURRent:DC?"));
+    return map;
 }
 
-/** 读程控电源电流：空参数时预填量程/采样/读命令，避免界面空白。 */
-QString defaultVisaReadCurrentParamText(ScpiDeviceRoute route) {
+QVariantMap defaultVisaReadCurrentParamMap(ScpiDeviceRoute route) {
+    QVariantMap map;
     if (route == ScpiDeviceRoute::Agilent66319d) {
-        return QStringLiteral(
-            "currentRange=3\n"
-            "scpiSetCurrentRangeCmd=SENS:CURR:RANG %1\n"
-            "scpiReadCurrentCmd=MEAS:CURR:DC?\n"
-            "sampleDurationMs=3000\n"
-            "sampleIntervalMs=200");
+        map.insert(QStringLiteral("currentRange"), QStringLiteral("3"));
+        map.insert(QStringLiteral("scpiSetCurrentRangeCmd"), QStringLiteral("SENS:CURR:RANG %1"));
+        map.insert(QStringLiteral("scpiReadCurrentCmd"), QStringLiteral("MEAS:CURR:DC?"));
+    } else {
+        map.insert(QStringLiteral("scpiReadCurrentCmd"), QStringLiteral("MEASure1:CURRent:DC?"));
     }
-    return QStringLiteral(
-        "scpiReadCurrentCmd=MEASure1:CURRent:DC?\n"
-        "sampleDurationMs=3000\n"
-        "sampleIntervalMs=200");
+    map.insert(QStringLiteral("sampleDurationMs"), QStringLiteral("3000"));
+    map.insert(QStringLiteral("sampleIntervalMs"), QStringLiteral("200"));
+    return map;
 }
 
-void maybeFillVisaConfigureDefaults(QPlainTextEdit* jsonEdit, TestCaseSendChannel channel, const QString& device,
+void maybeFillVisaConfigureDefaults(QTableWidget* table, TestCaseSendChannel channel, const QString& device,
                                     const QString& cmdName) {
-    if (!jsonEdit || channel != TestCaseSendChannel::Scpi)
+    if (!table || channel != TestCaseSendChannel::Scpi)
         return;
-    if (!jsonEdit->toPlainText().trimmed().isEmpty())
+    if (!sendParamTableIsEmpty(table))
         return;
     const ScpiDeviceRoute route = ScpiPeriphCmdCatalog::deviceFromIni(device);
     if (route != ScpiDeviceRoute::HuilingWfp60h && route != ScpiDeviceRoute::Agilent66319d)
         return;
     if (cmdName == QLatin1String("ConfigureProgrammablePower")) {
-        jsonEdit->setPlainText(defaultVisaConfigureParamText(route));
+        setSendParamTableFromMap(table, defaultVisaConfigureParamMap(route));
         return;
     }
     if (cmdName == QLatin1String("ReadProgrammableCurrent")) {
-        jsonEdit->setPlainText(defaultVisaReadCurrentParamText(route));
+        setSendParamTableFromMap(table, defaultVisaReadCurrentParamMap(route));
         return;
     }
     if (cmdName == QLatin1String("ReadProgrammableVoltage")) {
+        QVariantMap map;
         if (route == ScpiDeviceRoute::Agilent66319d)
-            jsonEdit->setPlainText(QStringLiteral("scpiReadVoltageCmd=MEAS:VOLT:DC?"));
+            map.insert(QStringLiteral("scpiReadVoltageCmd"), QStringLiteral("MEAS:VOLT:DC?"));
         else
-            jsonEdit->setPlainText(QStringLiteral("scpiReadVoltageCmd=MEASure1:VOLTage:DC?"));
+            map.insert(QStringLiteral("scpiReadVoltageCmd"), QStringLiteral("MEASure1:VOLTage:DC?"));
+        setSendParamTableFromMap(table, map);
+    }
+}
+
+void maybeFillProductCmdParamDefaults(QTableWidget* table, TestCaseSendChannel channel, const QString& cmdName) {
+    if (!table || channel != TestCaseSendChannel::Product)
+        return;
+    if (!sendParamTableIsEmpty(table))
+        return;
+    if (cmdName == QLatin1String("RootSuctionTest")) {
+        QVariantMap map;
+        map.insert(QStringLiteral("switch"), QStringLiteral("1"));
+        map.insert(QStringLiteral("mode"), QStringLiteral("1"));
+        map.insert(QStringLiteral("level"), QStringLiteral("8"));
+        setSendParamTableFromMap(table, map);
+        return;
+    }
+    if (cmdName == QLatin1String("SuctionMode")) {
+        QVariantMap map;
+        map.insert(QStringLiteral("enter"), QStringLiteral("1"));
+        setSendParamTableFromMap(table, map);
+    }
+}
+
+void maybeFillDongleCmdParamDefaults(QTableWidget* table, TestCaseSendChannel channel, const QString& cmdName) {
+    if (!table || channel != TestCaseSendChannel::Dongle)
+        return;
+    if (!sendParamTableIsEmpty(table))
+        return;
+    if (cmdName == QLatin1String("SampleSuctionSingle")) {
+        QVariantMap map;
+        map.insert(QStringLiteral("sampleDurationMs"), QStringLiteral("10000"));
+        map.insert(QStringLiteral("sampleIntervalMs"), QStringLiteral("20"));
+        map.insert(QStringLiteral("channel"), QStringLiteral("1"));
+        setSendParamTableFromMap(table, map);
+        return;
+    }
+    if (cmdName == QLatin1String("SampleSuctionDual")) {
+        QVariantMap map;
+        map.insert(QStringLiteral("sampleDurationMs"), QStringLiteral("10000"));
+        map.insert(QStringLiteral("sampleIntervalMs"), QStringLiteral("20"));
+        setSendParamTableFromMap(table, map);
     }
 }
 bool isFixtureMachineIndexPlaceholder(const QVariant& param) {
@@ -535,26 +615,26 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
     return out;
 }
 
-void applySendParamHintToUi(const SendCmdParamUi& uiSchema, bool hasParam, QLabel* hintLabel, QPlainTextEdit* jsonEdit,
-                            QSpinBox* spinBox) {
+void applySendParamHintToUi(const SendCmdParamUi& uiSchema, bool hasParam, QLabel* hintLabel, QTableWidget* paramTable,
+                            QSpinBox* spinBox, QWidget* addRowBtn, QWidget* removeRowBtn) {
     if (!hintLabel)
         return;
     hintLabel->setText(uiSchema.hint);
     hintLabel->setVisible(hasParam && uiSchema.valid && !uiSchema.hint.isEmpty());
-    hintLabel->setToolTip(uiSchema.hint.isEmpty() ? QString() : QStringLiteral("可选中文字后 Ctrl+C 复制"));
+    // 高度受限时完整说明放进 tooltip，避免再把对话框撑高
+    hintLabel->setToolTip(uiSchema.hint.isEmpty() ? QString() : uiSchema.hint);
 
-    if (jsonEdit) {
-        if (!uiSchema.valid || uiSchema.kind == SendCmdParamKind::None) {
-            jsonEdit->setPlaceholderText(QString());
-        } else if (uiSchema.kind == SendCmdParamKind::String) {
-            jsonEdit->setPlaceholderText(QStringLiteral("MAC 等文本，见下方说明"));
-        } else {
-            jsonEdit->setPlaceholderText(QStringLiteral("JSON 或每行 name=value"));
-        }
+    const bool namedMap = uiSchema.valid && uiSchema.kind == SendCmdParamKind::JsonMap;
+    if (addRowBtn)
+        addRowBtn->setVisible(namedMap);
+    if (removeRowBtn)
+        removeRowBtn->setVisible(namedMap);
+
+    if (paramTable) {
         if (uiSchema.valid && !uiSchema.hint.isEmpty())
-            jsonEdit->setToolTip(uiSchema.hint);
+            paramTable->setToolTip(uiSchema.hint);
         else
-            jsonEdit->setToolTip(QString());
+            paramTable->setToolTip(QString());
     }
     if (spinBox) {
         if (uiSchema.valid && uiSchema.kind == SendCmdParamKind::Int)
@@ -564,9 +644,8 @@ void applySendParamHintToUi(const SendCmdParamUi& uiSchema, bool hasParam, QLabe
     }
 }
 
-void applySendParamToUi(const SendCmdParamUi& uiSchema, const QVariant& param, QWidget* pageNone,
-                        QWidget* pageInt, QWidget* pageJson, QStackedWidget* stack, QSpinBox* spinBox,
-                        QPlainTextEdit* jsonEdit) {
+void applySendParamToUi(const SendCmdParamUi& uiSchema, const QVariant& param, QWidget* pageNone, QWidget* pageInt,
+                        QWidget* pageJson, QStackedWidget* stack, QSpinBox* spinBox, QTableWidget* paramTable) {
     if (!uiSchema.valid || uiSchema.kind == SendCmdParamKind::None) {
         stack->setCurrentWidget(pageNone);
         return;
@@ -589,41 +668,33 @@ void applySendParamToUi(const SendCmdParamUi& uiSchema, const QVariant& param, Q
     stack->setCurrentWidget(pageJson);
     if (uiSchema.kind == SendCmdParamKind::String) {
         // overlay 可能把 Param_string 读成 {string:xxx}，直接 toString() 会是空
+        QString text;
         if (param.canConvert<QVariantMap>()) {
             const QVariantMap map = param.toMap();
             if (map.contains(QStringLiteral("string")))
-                jsonEdit->setPlainText(map.value(QStringLiteral("string")).toString());
+                text = map.value(QStringLiteral("string")).toString();
             else if (map.size() == 1)
-                jsonEdit->setPlainText(map.constBegin().value().toString());
+                text = map.constBegin().value().toString();
             else
-                jsonEdit->setPlainText(param.toString());
+                text = param.toString();
         } else {
-            jsonEdit->setPlainText(param.toString());
+            text = param.toString();
         }
+        setSendParamTableFromString(paramTable, text);
     } else {
-        const QVariantMap map = sendParamAsJsonMap(param);
-        // 无参数步骤留空即可；避免默认写入 {} 导致保存时被误判为「有内容但解析失败」
-        if (map.isEmpty()) {
-            jsonEdit->clear();
-        } else {
-            // name=value 便于改 VISA SCPI 模板；解析侧仍同时支持 JSON
-            jsonEdit->setPlainText(formatParamMapAsNameValue(map));
-        }
+        setSendParamTableFromMap(paramTable, sendParamAsJsonMap(param));
     }
 }
 
-QVariant readSendParamFromUi(const SendCmdParamUi& uiSchema, QSpinBox* spinBox, QPlainTextEdit* jsonEdit) {
+QVariant readSendParamFromUi(const SendCmdParamUi& uiSchema, QSpinBox* spinBox, QTableWidget* paramTable) {
     switch (uiSchema.kind) {
     case SendCmdParamKind::Int:
     case SendCmdParamKind::UInt:
         return spinBox->value();
     case SendCmdParamKind::String:
-        return jsonEdit->toPlainText().trimmed();
-    case SendCmdParamKind::JsonMap: {
-        QVariantMap map;
-        parseSendJsonParamText(jsonEdit->toPlainText(), &map);
-        return map;
-    }
+        return readSendParamStringFromTable(paramTable);
+    case SendCmdParamKind::JsonMap:
+        return readSendParamMapFromTable(paramTable);
     default:
         return {};
     }
@@ -810,6 +881,26 @@ void fillHookCombo(QComboBox* box) {
 TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(new Ui::TestCaseEditDialog) {
     ui->setupUi(this);
 
+    // 主体可滚动，底部保存/取消始终可见，避免矮屏点不到按钮
+    auto* scroll = new QScrollArea(this);
+    scroll->setWidgetResizable(true);
+    scroll->setFrameShape(QFrame::NoFrame);
+    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    auto* scrollContent = new QWidget(scroll);
+    auto* scrollLayout = new QVBoxLayout(scrollContent);
+    scrollLayout->setContentsMargins(0, 0, 0, 0);
+    scrollLayout->setSpacing(ui->verticalLayout_root->spacing());
+    const QList<QWidget*> sections = {ui->groupBox_meta, ui->groupBox_send, ui->groupBox_timing, ui->groupBox_gate,
+                                      ui->groupBox_hook};
+    for (QWidget* section : sections) {
+        ui->verticalLayout_root->removeWidget(section);
+        scrollLayout->addWidget(section);
+    }
+    scrollLayout->addStretch(1);
+    scroll->setWidget(scrollContent);
+    ui->verticalLayout_root->insertWidget(0, scroll);
+    ui->verticalLayout_root->setStretch(0, 1);
+
     fillSendChannelCombo(ui->comboBox_sendChannel);
     fillProductProtocolCombo(ui->comboBox_productProtocol);
     fillActionCombo(ui->comboBox_action);
@@ -849,6 +940,33 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
     });
     connect(ui->buttonBox, &QDialogButtonBox::rejected, this, &QDialog::reject);
 
+    connect(ui->pushButton_addParamRow, &QPushButton::clicked, this, [this]() {
+        if (!ui->tableWidget_sendParam || ui->tableWidget_sendParam->columnCount() < 2)
+            return;
+        const int r = ui->tableWidget_sendParam->rowCount();
+        ui->tableWidget_sendParam->insertRow(r);
+        ui->tableWidget_sendParam->setItem(r, 0, new QTableWidgetItem());
+        ui->tableWidget_sendParam->setItem(r, 1, new QTableWidgetItem());
+        ui->tableWidget_sendParam->setCurrentCell(r, 0);
+        ui->tableWidget_sendParam->editItem(ui->tableWidget_sendParam->item(r, 0));
+    });
+    connect(ui->pushButton_removeParamRow, &QPushButton::clicked, this, [this]() {
+        if (!ui->tableWidget_sendParam)
+            return;
+        const auto ranges = ui->tableWidget_sendParam->selectionModel()->selectedRows();
+        QList<int> rows;
+        for (const QModelIndex& idx : ranges)
+            rows.append(idx.row());
+        std::sort(rows.begin(), rows.end(), std::greater<int>());
+        for (int r : rows)
+            ui->tableWidget_sendParam->removeRow(r);
+        if (ui->tableWidget_sendParam->columnCount() >= 2 && ui->tableWidget_sendParam->rowCount() == 0) {
+            ui->tableWidget_sendParam->insertRow(0);
+            ui->tableWidget_sendParam->setItem(0, 0, new QTableWidgetItem());
+            ui->tableWidget_sendParam->setItem(0, 1, new QTableWidgetItem());
+        }
+    });
+
     tableWidget_multiGates_ = new QTableWidget(ui->groupBox_gate);
     initPeriphGateTable(tableWidget_multiGates_);
     ui->formLayout_gate->addRow(tableWidget_multiGates_);
@@ -863,6 +981,34 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
 
 TestCaseEditDialog::~TestCaseEditDialog() {
     delete ui;
+}
+
+void TestCaseEditDialog::fitDialogToScreen() {
+    QScreen* scr = screen();
+    if (!scr && QGuiApplication::primaryScreen())
+        scr = QGuiApplication::primaryScreen();
+    if (!scr)
+        return;
+    const QRect avail = scr->availableGeometry();
+    const int maxH = qMax(420, avail.height() - 48);
+    const int maxW = qMax(480, avail.width() - 48);
+    if (height() > maxH || width() > maxW)
+        resize(qMin(width(), maxW), qMin(height(), maxH));
+    QRect geo = geometry();
+    if (geo.bottom() > avail.bottom())
+        geo.moveBottom(avail.bottom());
+    if (geo.top() < avail.top())
+        geo.moveTop(avail.top());
+    if (geo.right() > avail.right())
+        geo.moveRight(avail.right());
+    if (geo.left() < avail.left())
+        geo.moveLeft(avail.left());
+    setGeometry(geo);
+}
+
+void TestCaseEditDialog::showEvent(QShowEvent* event) {
+    QDialog::showEvent(event);
+    fitDialogToScreen();
 }
 
 bool TestCaseEditDialog::isFixturePcbaMultiGateMode() const {
@@ -1162,10 +1308,17 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     if (channel == TestCaseSendChannel::Fixture && uiSchema.kind == SendCmdParamKind::Int && isFixtureMachineIndexPlaceholder(def.send.param))
         paramForUi = 0;
     applySendParamToUi(uiSchema, paramForUi, ui->page_paramNone, ui->page_paramInt, ui->page_paramJson,
-                       ui->stackedWidget_param, ui->spinBox_intParam, ui->plainTextEdit_jsonParam);
-    // 工站 steps 若缺 Param_*，上面会清空编辑框；再预填 VISA 读电流/配置默认项便于改
-    maybeFillVisaConfigureDefaults(ui->plainTextEdit_jsonParam, channel, comboData(ui->comboBox_productProtocol),
+                       ui->stackedWidget_param, ui->spinBox_intParam, ui->tableWidget_sendParam);
+    // 工站 steps 若缺 Param_*，上面会清空编辑框；再预填常用默认项便于改
+    maybeFillVisaConfigureDefaults(ui->tableWidget_sendParam, channel, comboData(ui->comboBox_productProtocol),
                                    def.send.deviceCmd);
+    maybeFillProductCmdParamDefaults(ui->tableWidget_sendParam, channel, def.send.deviceCmd);
+    maybeFillDongleCmdParamDefaults(ui->tableWidget_sendParam, channel, def.send.deviceCmd);
+    applySendParamHintToUi(uiSchema, uiSchema.valid && uiSchema.kind != SendCmdParamKind::None,
+                           ui->label_sendParamHint, ui->tableWidget_sendParam, ui->spinBox_intParam,
+                           ui->pushButton_addParamRow, ui->pushButton_removeParamRow);
+    lastSendParamCmdKey_ = sendChannelComboData(channel) + QLatin1Char('|')
+        + comboData(ui->comboBox_productProtocol) + QLatin1Char('|') + def.send.deviceCmd;
 
     ui->spinBox_delayBefore->setValue(def.timing.delayBeforeMs);
     ui->spinBox_delayAfter->setValue(def.timing.delayAfterMs);
@@ -1249,7 +1402,7 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
         sendParamProtocolContext(def.send.channel, comboData(ui->comboBox_productProtocol));
     const SendCmdParamUi uiSchema =
         sendCmdParamUiForName(def.send.deviceCmd, def.send.channel, protocolCtx);
-    def.send.param = readSendParamFromUi(uiSchema, ui->spinBox_intParam, ui->plainTextEdit_jsonParam);
+    def.send.param = readSendParamFromUi(uiSchema, ui->spinBox_intParam, ui->tableWidget_sendParam);
     if (def.send.channel == TestCaseSendChannel::Fixture && uiSchema.kind == SendCmdParamKind::Int
         && ui->spinBox_intParam->value() == 0)
         def.send.param = QStringLiteral("$INDEX");
@@ -1346,7 +1499,8 @@ void TestCaseEditDialog::onDeviceCmdChanged(int) {
     const SendCmdParamUi uiSchema = sendCmdParamUiForName(cmdName, channel, device);
     const bool hasParam = uiSchema.valid && uiSchema.kind != SendCmdParamKind::None;
     updateSendParamVisibility(hasParam);
-    applySendParamHintToUi(uiSchema, hasParam, ui->label_sendParamHint, ui->plainTextEdit_jsonParam, ui->spinBox_intParam);
+    applySendParamHintToUi(uiSchema, hasParam, ui->label_sendParamHint, ui->tableWidget_sendParam, ui->spinBox_intParam,
+                           ui->pushButton_addParamRow, ui->pushButton_removeParamRow);
     if (!uiSchema.valid) {
         ui->stackedWidget_param->setCurrentWidget(ui->page_paramNone);
         return;
@@ -1363,35 +1517,32 @@ void TestCaseEditDialog::onDeviceCmdChanged(int) {
         } else {
             ui->spinBox_intParam->setSpecialValueText(QString());
         }
-    } else if (uiSchema.kind == SendCmdParamKind::JsonMap || uiSchema.kind == SendCmdParamKind::String) {
-        ui->stackedWidget_param->setCurrentWidget(ui->page_paramJson);
-        maybeFillVisaConfigureDefaults(ui->plainTextEdit_jsonParam, channel, device, cmdName);
-    } else
+        return;
+    }
+    if (uiSchema.kind != SendCmdParamKind::JsonMap && uiSchema.kind != SendCmdParamKind::String) {
         ui->stackedWidget_param->setCurrentWidget(ui->page_paramNone);
+        return;
+    }
+    ui->stackedWidget_param->setCurrentWidget(ui->page_paramJson);
+    const QString cmdKey =
+        sendChannelComboData(channel) + QLatin1Char('|') + device + QLatin1Char('|') + cmdName;
+    const bool cmdChanged = (cmdKey != lastSendParamCmdKey_);
+    lastSendParamCmdKey_ = cmdKey;
+    const int expectCols = (uiSchema.kind == SendCmdParamKind::String) ? 1 : 2;
+    // 指令切换时重置表格；同指令重复进入（如 setDefinition 后再调）则保留已填内容
+    if (cmdChanged || ui->tableWidget_sendParam->columnCount() != expectCols) {
+        if (uiSchema.kind == SendCmdParamKind::String)
+            setSendParamTableFromString(ui->tableWidget_sendParam, QString());
+        else
+            setSendParamTableFromMap(ui->tableWidget_sendParam, {});
+        maybeFillVisaConfigureDefaults(ui->tableWidget_sendParam, channel, device, cmdName);
+        maybeFillProductCmdParamDefaults(ui->tableWidget_sendParam, channel, cmdName);
+        maybeFillDongleCmdParamDefaults(ui->tableWidget_sendParam, channel, cmdName);
+    }
 }
 
 bool TestCaseEditDialog::saveValidated() {
     const TestCaseDefinition def = definition();
-    {
-        // 编辑框有内容却解析成空 map：避免静默写成 {} 冲掉 ini 里的 Param_*
-        const TestCaseSendChannel channel = def.send.channel;
-        const QString protocolCtx =
-            sendParamProtocolContext(channel, comboData(ui->comboBox_productProtocol));
-        const SendCmdParamUi uiSchema =
-            sendCmdParamUiForName(def.send.deviceCmd, channel, protocolCtx);
-        if (uiSchema.kind == SendCmdParamKind::JsonMap) {
-            QVariantMap parsed;
-            if (!parseSendJsonParamText(ui->plainTextEdit_jsonParam->toPlainText(), &parsed)) {
-                QMessageBox::warning(
-                    this, QStringLiteral("保存失败"),
-                    QStringLiteral("参数 JSON 无法解析，请使用对象格式，例如：\n"
-                                   "{\"which_sn\":7,\"sn\":\"$TUPLE_PRODUCT_KEY\"}\n"
-                                   "或每行 name=value。\n"
-                                   "无参数时可留空或写 {}。"));
-                return false;
-            }
-        }
-    }
     QStringList errors;
     if (!TestCaseValidator::validateCase(def, errors)) {
         QMessageBox::warning(this, QStringLiteral("保存失败"), errors.join(QStringLiteral("\n")));
