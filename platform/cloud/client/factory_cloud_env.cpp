@@ -19,7 +19,7 @@ struct FactoryCloudEnvPreset {
 };
 
 const QVector<FactoryCloudEnvPreset> kFactoryCloudEnvPresets = {
-    {QStringLiteral("local"), QStringLiteral("http://127.0.0.1:8800")},
+    {QStringLiteral("local"), QStringLiteral("http://fctp-test.luteos.site")},
     {QStringLiteral("prod"), QStringLiteral("https://fctp.luteos.com")},
 };
 
