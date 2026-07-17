@@ -11,8 +11,7 @@ using Agilent66319dScpiProfile = HuilingWfp60hScpiProfile;
 namespace Agilent66319dScpiProfileUtil {
 
 Agilent66319dScpiProfile defaults();
-/** 从 [VisaPower] 加载；缺省键使用 66319D 手册 SCPI（VOLT/CURR/OUTP/MEAS）。 */
-Agilent66319dScpiProfile fromVisaPowerSettings();
+/** 仅从工站步骤 Param map 加载；缺键用 defaults()，不读全局 [VisaPower]。 */
 Agilent66319dScpiProfile fromParamMap(const QVariantMap& map);
 
 } // namespace Agilent66319dScpiProfileUtil

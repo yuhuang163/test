@@ -116,16 +116,6 @@ void QScpiManager::loadHuilingVisaFromSettings() {
     setHuilingProfilePatch(HuilingWfp60hScpiProfile::fromVisaPowerSettings());
 }
 
-void QScpiManager::loadAgilent66319dVisaFromSettings() {
-    ScpiVisaLinkConfig link;
-    link.visaAddress =
-        SETTINGS.value(QStringLiteral("VisaPower/VisaAddress"), QStringLiteral("GPIB0::7::INSTR")).toString().trimmed();
-    link.timeoutMs = SETTINGS.value(QStringLiteral("VisaPower/TimeoutMs"), 3000).toInt();
-    setVisaConfig(link);
-    setDeviceRoute(ScpiDeviceRoute::Agilent66319d);
-    setHuilingProfilePatch(Agilent66319dScpiProfileUtil::fromVisaPowerSettings());
-}
-
 bool QScpiManager::loadAgilent66319dVisaFromParamMap(const QVariantMap& map, int timeoutMs) {
     const QString visaAddress = map.value(QStringLiteral("visaAddress")).toString().trimmed();
     if (visaAddress.isEmpty()) {

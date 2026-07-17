@@ -1,7 +1,5 @@
 #include "agilent_66319d_profile.h"
 
-#include "Abini.h"
-
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
 #endif
@@ -23,30 +21,6 @@ Agilent66319dScpiProfile defaults() {
     profile.scpiCurrentMode = QStringLiteral("DC");
     profile.scpiRange = QStringLiteral("3");
     profile.scpiSetCurrentRangeCmd = QStringLiteral("SENS:CURR:RANG %1");
-    return profile;
-}
-
-Agilent66319dScpiProfile fromVisaPowerSettings() {
-    Agilent66319dScpiProfile profile = defaults();
-    profile.scpiPowerVoltageV = SETTINGS.value(QStringLiteral("VisaPower/PowerVoltageV"), profile.scpiPowerVoltageV).toDouble();
-    profile.scpiPowerCurrentA =
-        SETTINGS.value(QStringLiteral("VisaPower/PowerCurrentLimitA"), profile.scpiPowerCurrentA).toDouble();
-    profile.scpiSetVoltageCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiSetVoltageCmd"), QStringLiteral("VOLT %1")).toString();
-    profile.scpiSetCurrentCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiSetCurrentCmd"), QStringLiteral("CURR %1")).toString();
-    profile.scpiOutputOnCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiOutputOnCmd"), QStringLiteral("OUTP ON")).toString();
-    profile.scpiOutputOffCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiOutputOffCmd"), QStringLiteral("OUTP OFF")).toString();
-    profile.scpiReadVoltageCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiReadVoltageCmd"), QStringLiteral("MEAS:VOLT:DC?")).toString();
-    profile.scpiReadCurrentCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiReadCurrentCmd"), QStringLiteral("MEAS:CURR:DC?")).toString();
-    profile.scpiSetCurrentRangeCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiSetCurrentRangeCmd"), QStringLiteral("SENS:CURR:RANG %1"))
-            .toString();
-    profile.scpiRange = SETTINGS.value(QStringLiteral("VisaPower/ScpiCurrentRange"), profile.scpiRange).toString();
     return profile;
 }
 
