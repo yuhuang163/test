@@ -121,6 +121,7 @@ INCLUDEPATH += agreement/modbus_protocol/device/hq_ammeter_rtu
 INCLUDEPATH += agreement/modbus_protocol/device/lx_ammeter_rtu
 INCLUDEPATH += agreement/scpi_protocol/codec
 INCLUDEPATH += agreement/scpi_protocol/device/huiling_wfp60h_scpi
+INCLUDEPATH += agreement/scpi_protocol/device/agilent_66319d_scpi
 INCLUDEPATH += agreement/scpi_protocol/device/rs_cmw100_scpi
 INCLUDEPATH += business/cmw_gprf
 INCLUDEPATH += advance/imagewindow
@@ -172,6 +173,7 @@ SOURCES += \
     advance/imagewindow/myopenglwidget.cpp \
     agreement/scpi_protocol/codec/scpi_line_codec.cpp \
     agreement/scpi_protocol/device/huiling_wfp60h_scpi/huiling_wfp60h_profile.cpp \
+    agreement/scpi_protocol/device/agilent_66319d_scpi/agilent_66319d_profile.cpp \
     agreement/modbus_protocol/access/modbus_device_catalog.cpp \
     agreement/modbus_protocol/manager/qmodbusmanager.cpp \
     agreement/modbus_protocol/codec/qmodbus_pdu.cpp \
@@ -474,6 +476,7 @@ HEADERS += \
     agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp_device.h \
     agreement/scpi_protocol/codec/scpi_line_codec.h \
     agreement/scpi_protocol/device/huiling_wfp60h_scpi/huiling_wfp60h_profile.h \
+    agreement/scpi_protocol/device/agilent_66319d_scpi/agilent_66319d_profile.h \
     business/plc_v3_fixture/plc_v3_touch.h \
     business/plc_v3_fixture/plc_v3_facade.h \
     business/plc_v3_fixture/plc_v3_fixture.h \

@@ -3454,13 +3454,15 @@ QString ModbusPeriphCmdCatalog::paramUiHint(ModbusDeviceRoute device, const QStr
 // ===================== ScpiPeriphCmdCatalog =====================
 
 QStringList ScpiPeriphCmdCatalog::allDeviceKeys() {
-    return {QStringLiteral("HuilingWfp60h"), QStringLiteral("RsCmw100")};
+    return {QStringLiteral("HuilingWfp60h"), QStringLiteral("Agilent66319d"), QStringLiteral("RsCmw100")};
 }
 
 QString ScpiPeriphCmdCatalog::deviceUiLabel(ScpiDeviceRoute device) {
     switch (device) {
     case ScpiDeviceRoute::HuilingWfp60h:
-        return QStringLiteral("会凌电源/万方模拟器");
+        return QStringLiteral("WFP60H 程控电源");
+    case ScpiDeviceRoute::Agilent66319d:
+        return QStringLiteral("66319D程控电源");
     case ScpiDeviceRoute::RsCmw100:
         return QStringLiteral("罗德与施瓦茨 CMW100");
     default:
@@ -3472,6 +3474,8 @@ ScpiDeviceRoute ScpiPeriphCmdCatalog::deviceFromIni(const QString& text) {
     const QString t = text.trimmed();
     if (t.compare(QStringLiteral("HuilingWfp60h"), Qt::CaseInsensitive) == 0)
         return ScpiDeviceRoute::HuilingWfp60h;
+    if (t.compare(QStringLiteral("Agilent66319d"), Qt::CaseInsensitive) == 0)
+        return ScpiDeviceRoute::Agilent66319d;
     if (t.compare(QStringLiteral("RsCmw100"), Qt::CaseInsensitive) == 0)
         return ScpiDeviceRoute::RsCmw100;
     return ScpiDeviceRoute::None;
@@ -3481,6 +3485,8 @@ QString ScpiPeriphCmdCatalog::deviceToIni(ScpiDeviceRoute device) {
     switch (device) {
     case ScpiDeviceRoute::HuilingWfp60h:
         return QStringLiteral("HuilingWfp60h");
+    case ScpiDeviceRoute::Agilent66319d:
+        return QStringLiteral("Agilent66319d");
     case ScpiDeviceRoute::RsCmw100:
         return QStringLiteral("RsCmw100");
     default:

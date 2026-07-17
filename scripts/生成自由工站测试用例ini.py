@@ -289,7 +289,7 @@ CASES = [
     proto("设置休眠状态", "SLEEP_CMD", "Set", "Sleep", {"Param_int": 1}),
     proto("进入工厂模式", "FAC_MODE_SET", "Set", "FacMode", {"Param_value": 1}),
     proto("退出工厂模式", "FAC_MODE_EXIT", "Set", "FacMode", {"Param_value": 0}),
-    # Sn 载荷由 Hook 从 MES expectedTailSnFromMes 填入；Param_int=1 即 FacDevInfoType_TAIL_SN
+    # Sn 载荷由 Hook 从界面 SN（ui->getMac）填入；Param_int=1 即 FacDevInfoType_TAIL_SN
     hook("写入SN码", "SN_WRITE_TAIL", send=("Set", "Sn", {"Param_int": 1})),
     proto("获取外围设备状态", "PERIPH_STATE", "Get", "PeriphState", gate=periph_gate()),
     proto("获取WiFi信息", "WIFI_INFO", "Get", "WifiInfo"),

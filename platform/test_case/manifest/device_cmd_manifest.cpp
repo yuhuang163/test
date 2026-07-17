@@ -16,7 +16,8 @@ constexpr const char kHintSn[] =
     u8"  1=整机SN(TAIL)  6=deviceName(SUB_PID)  7=productKey(SKUID)\r\n"
     u8"写 productKey：which_sn=7，sn=$TUPLE_PRODUCT_KEY\r\n"
     u8"写 deviceName：which_sn=6，sn=$TUPLE_DEVICE_NAME\r\n"
-    u8"写整机 SN：which_sn=1，sn=具体值或 $TAIL_SN\r\n"
+    u8"写整机 SN：which_sn=1，sn=$WHOLE_MACHINE_SN（本地整机SN）或具体值\r\n"
+    u8"  PCBA SN：$PCBA_SN / $SN（扫码/MES，解析 MAC 等，勿用于写整机）\r\n"
     u8"Qroot：读 0xA0 / 写 0xA1(≤40)；which_sn=7→0xF8；which_sn=6→0xF9；读 6/7 兼容 0xF7";
 constexpr const char kHintRootHeatLevelControl[] =
     u8"Qroot：Req 0x83，CAL=0x02，body：switch(0关1开)+level(0=L1/1=L2/2=L3)\r\n"
@@ -66,7 +67,8 @@ constexpr const char kHintButtonState[] =
 constexpr const char kHintRootSuctionTest[] =
     u8"Qroot：Req 0x81，CAL=0x03，body：switch(0关1开)+mode(00按摩/01吸乳/02混合)+level(强度)\r\n"
     u8"示例：Param_switch=1 Param_mode=1 Param_level=8 → 开吸乳强度8\r\n"
-    u8"卡控（可选）：ReportType=ProtocolResultData，Field=result，Expected=1";
+    u8"卡控（可选）：ReportType=ProtocolResultData，Field=result，Expected=1\r\n"
+    u8"注意：FCTP「进入/退出吸力测试模式」请改用「吸力模式(进/退)」+ Param_enter";
 constexpr const char kHintRootPumpControl[] =
     u8"Qroot：Req 0xC0 吸奶器控制，CAL=0x0A\r\n"
     u8"Param_status=0停止1运行；mode=吸奶模式1~7；level=档位1~15\r\n"
@@ -82,7 +84,8 @@ constexpr const char kHintBurningMode[] =
 constexpr const char kHintSleep[] = u8"休眠：switch=1 进入，0 退出\r\n示例：{\"switch\":1}";
 constexpr const char kHintFacMode[] = u8"工厂模式：value=1 进入，0 退出\r\n示例：{\"value\":1}";
 constexpr const char kHintSuctionMode[] =
-    u8"FCTP 吸力测试模式：enter=1 进入，0 退出\r\n示例：Param_enter=1 或 {\"enter\":1}";
+    u8"FCTP 吸力测试模式：enter=1 进入，0 退出\r\n示例：Param_enter=1 或 {\"enter\":1}\r\n"
+    u8"注意：Qroot 开泵档位请改用「吸力测试(档位)」+ switch/mode/level";
 constexpr const char kHintWifiConnect[] =
     u8"WiFi：name=SSID，password=密码\r\n示例：name=TestAP\r\npassword=12345678";
 constexpr const char kHintRssiRead[] = u8"RSSI：mode=0 读 BLE，mode=1 读 BT\r\n示例：{\"mode\":0}";
@@ -122,7 +125,8 @@ const Row kRows[] = {
     {DeviceCmd::RootVibStatusQuery, "RootVibStatusQuery", u8"振子状态", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::RootPumpTestEnter, "RootPumpTestEnter", u8"主机泵测试进入", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::RootPumpTestExit, "RootPumpTestExit", u8"主机泵测试退出", DeviceCmdParamKind::None, nullptr, kSet},
-    {DeviceCmd::RootSuctionTest, "RootSuctionTest", u8"吸力测试", DeviceCmdParamKind::JsonMap, kHintRootSuctionTest, kSet},
+    // 勿与 SuctionMode（FCTP 进/退吸力模式）混淆：本项为 Qroot 开泵+模式+档位
+    {DeviceCmd::RootSuctionTest, "RootSuctionTest", u8"吸力测试(档位)", DeviceCmdParamKind::JsonMap, kHintRootSuctionTest, kSet},
     {DeviceCmd::RootPumpStallCurrentQuery, "RootPumpStallCurrentQuery", u8"泵堵电流", DeviceCmdParamKind::None,
      u8"Ack 2B 堵转 ADC（大端 last_adc_value）\r\n卡控（可选）：ReportType=ProtocolPumpStallCurrentData，Field=adcValue",
      kGet},
@@ -170,7 +174,8 @@ const Row kRows[] = {
     {DeviceCmd::UploadRecordData, "UploadRecordData", u8"记录数据上传", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::NewWifiConnect, "NewWifiConnect", u8"无线网络（新协议）", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::SevorMotorParam, "SevorMotorParam", u8"舵机参数", DeviceCmdParamKind::None, nullptr, kSet},
-    {DeviceCmd::SuctionMode, "SuctionMode", u8"吸力模式", DeviceCmdParamKind::JsonMap, kHintSuctionMode, kSet},
+    // FCTP TLV 进/退吸力测试模式；「进入吸力测试模式」步骤应选本项 + Param_enter=1
+    {DeviceCmd::SuctionMode, "SuctionMode", u8"吸力模式(进/退)", DeviceCmdParamKind::JsonMap, kHintSuctionMode, kSet},
     {DeviceCmd::BtSignalMode, "BtSignalMode", u8"蓝牙信号模式", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::BtNoSignalMode, "BtNoSignalMode", u8"蓝牙无信号模式", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::BtFreqMode, "BtFreqMode", u8"蓝牙定频模式", DeviceCmdParamKind::None, nullptr, kSet},

@@ -5,6 +5,7 @@
 
 #include <QDialog>
 
+class QShowEvent;
 class QTableWidget;
 
 namespace Ui {
@@ -20,6 +21,9 @@ class TestCaseEditDialog : public QDialog {
     void setDefinition(const TestCaseDefinition& def, const QString& storageKey = QString());
     void setStationContext(const QString& stationKey);
     TestCaseDefinition definition() const;
+
+  protected:
+    void showEvent(QShowEvent* event) override;
 
   private slots:
     void onSendChannelChanged(int index);
@@ -45,6 +49,7 @@ class TestCaseEditDialog : public QDialog {
     void refreshDeviceCmdCombo();
     void updateProductProtocolRowVisible();
     void updateSendParamVisibility(bool hasParam);
+    void fitDialogToScreen();
 
     Ui::TestCaseEditDialog* ui = nullptr;
     /** 一项回包多项卡控（外设状态 / PCBA治具数据包） */
@@ -53,6 +58,8 @@ class TestCaseEditDialog : public QDialog {
     QString originalCaseName_;
     /** 当前工站 Profile 键；非空时保存工站参数覆盖 */
     QString stationKey_;
+    /** 避免 setDefinition 末尾再进 onDeviceCmdChanged 时冲掉已加载的参数表 */
+    QString lastSendParamCmdKey_;
 };
 
 #endif // TEST_CASE_EDIT_DIALOG_H

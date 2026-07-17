@@ -193,9 +193,28 @@ bool isRuntimeMacPlaceholder(const QString& text) {
     return s.isEmpty() || s == QStringLiteral("$MAC") || s == QStringLiteral("${MAC}") || s == QStringLiteral("{mac}");
 }
 
-bool isRuntimeSnPlaceholder(const QString& text) {
+bool isRuntimePcbaSnPlaceholder(const QString& text) {
     const QString s = text.trimmed();
-    return s == QStringLiteral("$SN") || s == QStringLiteral("${SN}") || s == QStringLiteral("{sn}");
+    return s == QStringLiteral("$SN") || s == QStringLiteral("${SN}") || s == QStringLiteral("{sn}")
+           || s.compare(QStringLiteral("$PCBA_SN"), Qt::CaseInsensitive) == 0
+           || s.compare(QStringLiteral("${PCBA_SN}"), Qt::CaseInsensitive) == 0;
+}
+
+bool isRuntimeWholeMachineSnPlaceholder(const QString& text) {
+    const QString s = text.trimmed();
+    return s.compare(QStringLiteral("$TAIL_SN"), Qt::CaseInsensitive) == 0
+           || s.compare(QStringLiteral("${TAIL_SN}"), Qt::CaseInsensitive) == 0
+           || s.compare(QStringLiteral("{tail_sn}"), Qt::CaseInsensitive) == 0
+           || s.compare(QStringLiteral("$WHOLE_MACHINE_SN"), Qt::CaseInsensitive) == 0
+           || s.compare(QStringLiteral("${WHOLE_MACHINE_SN}"), Qt::CaseInsensitive) == 0
+           || s.compare(QStringLiteral("$WHOLE_SN"), Qt::CaseInsensitive) == 0
+           || s.compare(QStringLiteral("${WHOLE_SN}"), Qt::CaseInsensitive) == 0
+           || s.compare(QStringLiteral("$TUPLE_SN"), Qt::CaseInsensitive) == 0
+           || s.compare(QStringLiteral("${TUPLE_SN}"), Qt::CaseInsensitive) == 0;
+}
+
+bool isRuntimeSnPlaceholder(const QString& text) {
+    return isRuntimePcbaSnPlaceholder(text) || isRuntimeWholeMachineSnPlaceholder(text);
 }
 
 
@@ -351,6 +370,24 @@ int paramMapSwitchValue(const QVariantMap& map) {
     return 0;
 }
 
+/** 读电流连续采样窗口：Param_sampleDurationMs > Timing/CommandTimeoutMs > 默认 3000ms */
+int currentSampleDurationMs(const TestCaseDefinition& def, const QVariantMap& map) {
+    if (map.contains(QStringLiteral("sampleDurationMs"))) {
+        const int v = map.value(QStringLiteral("sampleDurationMs")).toInt();
+        if (v > 0)
+            return v;
+    }
+    const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+    if (timeoutMs > 0)
+        return timeoutMs;
+    return 3000;
+}
+
+int currentSampleIntervalMs(const QVariantMap& map) {
+    const int v = map.value(QStringLiteral("sampleIntervalMs"), 200).toInt();
+    return qMax(50, v);
+}
+
 QVariantMap huilingVisaLinkKeysFromMap(const QVariantMap& map) {
     static const QStringList keys = {
         QStringLiteral("visaAddress"),
@@ -362,6 +399,8 @@ QVariantMap huilingVisaLinkKeysFromMap(const QVariantMap& map) {
         QStringLiteral("scpiOutputOffCmd"),
         QStringLiteral("scpiReadVoltageCmd"),
         QStringLiteral("scpiReadCurrentCmd"),
+        QStringLiteral("scpiSetCurrentRangeCmd"),
+        QStringLiteral("currentRange"),
     };
     QVariantMap out;
     for (const QString& key : keys) {
@@ -369,6 +408,19 @@ QVariantMap huilingVisaLinkKeysFromMap(const QVariantMap& map) {
             out.insert(key, map.value(key));
     }
     return out;
+}
+
+/** 合并 link（visa/scpi 模板）与 command（电压电流等），供配置步落盘缓存与 load profile。 */
+QVariantMap mergeVisaPowerStepParamMap(const QVariantMap& linkMap, const QVariant& commandParam) {
+    QVariantMap merged = linkMap;
+    if (!commandParam.canConvert<QVariantMap>()) {
+        return merged;
+    }
+    const QVariantMap cmd = commandParam.toMap();
+    for (auto it = cmd.constBegin(); it != cmd.constEnd(); ++it) {
+        merged.insert(it.key(), it.value());
+    }
+    return merged;
 }
 
 struct HuilingScpiStepParams {
@@ -392,7 +444,14 @@ HuilingScpiStepParams splitHuilingScpiStepParam(const QVariant& resolved, const 
             cmd.insert(QStringLiteral("voltage"), map.value(QStringLiteral("voltage")));
         if (map.contains(QStringLiteral("current")))
             cmd.insert(QStringLiteral("current"), map.value(QStringLiteral("current")));
+        if (map.contains(QStringLiteral("currentRange")))
+            cmd.insert(QStringLiteral("currentRange"), map.value(QStringLiteral("currentRange")));
         out.commandParam = cmd;
+    } else if (deviceCmd == QLatin1String("ReadProgrammableCurrent")) {
+        if (map.contains(QStringLiteral("currentRange"))) {
+            out.commandParam =
+                QVariantMap{{QStringLiteral("currentRange"), map.value(QStringLiteral("currentRange"))}};
+        }
     } else if (deviceCmd == QLatin1String("SendRawLine")) {
         if (map.contains(QStringLiteral("string")))
             out.commandParam = map.value(QStringLiteral("string"));
@@ -448,7 +507,7 @@ void QFreeWork::seedHuilingVisaLinkCacheFromFlowOrSettings() {
         if (map.value(QStringLiteral("visaAddress")).toString().trimmed().isEmpty()) {
             return false;
         }
-        updateHuilingVisaLinkCache(map);
+        updateHuilingVisaLinkCache(huilingVisaLinkKeysFromMap(map));
         return true;
     };
 
@@ -476,8 +535,10 @@ void QFreeWork::seedHuilingVisaLinkCacheFromFlowOrSettings() {
 QString QFreeWork::resolveTestCaseSendPlaceholder(const QString& text) const {
     if (isRuntimeMacPlaceholder(text))
         return currentMacAddress();
-    if (isRuntimeSnPlaceholder(text))
-        return resolvedExpectedTailSnText();
+    if (isRuntimePcbaSnPlaceholder(text))
+        return resolvedPcbaSnText();
+    if (isRuntimeWholeMachineSnPlaceholder(text))
+        return resolvedPcbaSnText();
     switch (tuplePlaceholderKind(text)) {
     case TuplePlaceholderKind::ProductKey:
         return tupleData_.productKey;
@@ -547,6 +608,37 @@ bool QFreeWork::prepareTupleProductWriteForTestCase(const TestCaseDefinition& de
     return true;
 }
 
+bool QFreeWork::prepareTailSnWriteForTestCase(const TestCaseDefinition& def, DeviceCmd cmd, const QVariant& wireParam) {
+    if (cmd != DeviceCmd::Sn || def.send.action != TestCaseSendAction::Set)
+        return true;
+
+    FacDevInfoType whichSn = FacDevInfoType_TAIL_SN;
+    QString snText;
+    if (wireParam.canConvert<DeviceSnPayload>()) {
+        const DeviceSnPayload payload = wireParam.value<DeviceSnPayload>();
+        whichSn = payload.which_sn;
+        snText = QString::fromUtf8(payload.sn).trimmed();
+    } else if (wireParam.canConvert<QVariantMap>()) {
+        const QVariantMap map = wireParam.toMap();
+        whichSn = static_cast<FacDevInfoType>(map.value(QStringLiteral("which_sn"), FacDevInfoType_TAIL_SN).toInt());
+        snText = map.value(QStringLiteral("sn")).toString().trimmed();
+    } else {
+        return true;
+    }
+    if (whichSn != FacDevInfoType_TAIL_SN)
+        return true;
+
+    const QString stepName = def.meta.displayName.trimmed().isEmpty() ? def.meta.name.trimmed()
+                                                                    : def.meta.displayName.trimmed();
+    if (snText.isEmpty()) {
+        stepRuntime_.testData = QStringLiteral("整机SN为空");
+        showlog(QStringLiteral("%1失败：界面SN为空，请先获取三元组或扫入整机SN").arg(stepName));
+        return false;
+    }
+    stepRuntime_.testData = snText;
+    return true;
+}
+
 QString QFreeWork::currentMacAddress() const {
     if (!macAddress.trimmed().isEmpty() && macAddress != QStringLiteral("没有mac地址"))
         return macAddress.trimmed();
@@ -591,6 +683,9 @@ void QFreeWork::setActiveTestCase(const TestCaseDefinition& def) {
     testCaseStepActive_ = true;
     testCaseStepResult_ = {};
     testCaseMultiGateTableEmitted_ = false;
+    currentSampleAnyMatchActive_ = false;
+    currentSampleCount_ = 0;
+    currentSampleLastValueText_.clear();
 }
 
 void QFreeWork::clearActiveTestCase() {
@@ -599,12 +694,15 @@ void QFreeWork::clearActiveTestCase() {
     testCaseStepActive_ = false;
     testCaseStepResult_ = {};
     testCaseMultiGateTableEmitted_ = false;
+    currentSampleAnyMatchActive_ = false;
+    currentSampleCount_ = 0;
+    currentSampleLastValueText_.clear();
 }
 
 void QFreeWork::applyRuntimeSnGateExpected(QVector<TestCaseGate>& gates) {
     if (gates.size() != 1 || gates.first().field != QStringLiteral("value") || !gates.first().expected.trimmed().isEmpty())
         return;
-    gates[0].expected = resolvedExpectedTailSnText();
+    gates[0].expected = resolvedPcbaSnText();
 }
 
 void QFreeWork::emitFixtureMultiGateTableRows(const QVector<TestCaseGate>& gates, const QString& reportType,
@@ -709,6 +807,342 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
     return true;
 }
 
+void QFreeWork::runScpiProgrammableCurrentSampleAnyMatch(const TestCaseDefinition& def, const QVariant& commandParam) {
+    QVariantMap map;
+    if (def.send.param.canConvert<QVariantMap>())
+        map = resolveTestCaseSendParamTree(def.send.param).toMap();
+    const int durationMs = currentSampleDurationMs(def, map);
+    const int intervalMs = currentSampleIntervalMs(map);
+
+    currentSampleAnyMatchActive_ = true;
+    currentSampleCount_ = 0;
+    currentSampleLastValueText_.clear();
+    showlog(QStringLiteral("读电流连续采样：窗口 %1ms，间隔 %2ms，期间任一值卡控合格即通过")
+                .arg(durationMs)
+                .arg(intervalMs));
+
+    QElapsedTimer sampleTimer;
+    sampleTimer.start();
+    while (sampleTimer.elapsed() < durationMs && !isActiveTestCaseStepDone()) {
+        if (!isTestContinue) {
+            currentSampleAnyMatchActive_ = false;
+            markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
+            showlog(QStringLiteral("读电流连续采样已中止"));
+            return;
+        }
+        QString errStr;
+        bool ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, commandParam, &errStr);
+        if (!ok) {
+            resetVisaBackend();
+            ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, commandParam, &errStr);
+        }
+        if (!ok) {
+            showlog(QStringLiteral("读电流采样失败（继续）：%1").arg(errStr));
+        }
+        if (isActiveTestCaseStepDone())
+            break;
+        const int remain = durationMs - static_cast<int>(sampleTimer.elapsed());
+        if (remain <= 0)
+            break;
+        waitWork(qMin(intervalMs, remain));
+    }
+
+    currentSampleAnyMatchActive_ = false;
+    if (isActiveTestCaseStepDone())
+        return;
+
+    const QString failData =
+        currentSampleLastValueText_.isEmpty() ? QStringLiteral("无有效读数") : currentSampleLastValueText_;
+    showlog(QStringLiteral("读电流采样结束：共 %1 次，无一值落入卡控范围，判定失败（末次 %2）")
+                .arg(currentSampleCount_)
+                .arg(failData));
+    markActiveTestCaseStepDone(false, failData, QStringLiteral("失败"));
+}
+
+void QFreeWork::runAsdProgrammableCurrentSampleAnyMatch(const TestCaseDefinition& def, quint8 moduleAddr,
+                                                        int channel) {
+    QVariantMap map;
+    if (def.send.param.canConvert<QVariantMap>())
+        map = resolveTestCaseSendParamTree(def.send.param).toMap();
+    const int durationMs = currentSampleDurationMs(def, map);
+    const int intervalMs = currentSampleIntervalMs(map);
+    const QString channelText = QStringLiteral("CH%1").arg(channel);
+
+    currentSampleAnyMatchActive_ = true;
+    currentSampleCount_ = 0;
+    currentSampleLastValueText_.clear();
+    showlog(QStringLiteral("ASD9026A 读电流连续采样：窗口 %1ms，间隔 %2ms，期间任一值卡控合格即通过")
+                .arg(durationMs)
+                .arg(intervalMs));
+
+    QElapsedTimer sampleTimer;
+    sampleTimer.start();
+    while (sampleTimer.elapsed() < durationMs && !isActiveTestCaseStepDone()) {
+        if (!isTestContinue) {
+            currentSampleAnyMatchActive_ = false;
+            markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
+            showlog(QStringLiteral("ASD9026A 读电流连续采样已中止"));
+            return;
+        }
+        Asd9026aAnalogStatus status;
+        QString errStr;
+        if (!asd9026aDevice_.readAnalogStatus(moduleAddr, &status, &errStr)) {
+            showlog(QStringLiteral("ASD9026A 读电流采样失败（继续）：%1").arg(errStr));
+        } else {
+            const double currentMa = status.current * 1000.0;
+            ProtocolMeasureData measureData;
+            measureData.deviceName = QStringLiteral("ASD9026A");
+            measureData.channel = channelText;
+            measureData.type = QStringLiteral("Current");
+            measureData.value = currentMa;
+            measureData.valueText = QStringLiteral("%1 mA").arg(currentMa, 0, 'f', 4);
+            measureData.unit = QStringLiteral("mA");
+            measureData.isOk = true;
+            onUsbInstrumentReport(
+                ProtocolReport(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(measureData)));
+        }
+        if (isActiveTestCaseStepDone())
+            break;
+        const int remain = durationMs - static_cast<int>(sampleTimer.elapsed());
+        if (remain <= 0)
+            break;
+        waitWork(qMin(intervalMs, remain));
+    }
+
+    currentSampleAnyMatchActive_ = false;
+    if (isActiveTestCaseStepDone())
+        return;
+
+    const QString failData =
+        currentSampleLastValueText_.isEmpty() ? QStringLiteral("无有效读数") : currentSampleLastValueText_;
+    showlog(QStringLiteral("ASD9026A 读电流采样结束：共 %1 次，无一值落入卡控范围，判定失败（末次 %2）")
+                .arg(currentSampleCount_)
+                .arg(failData));
+    markActiveTestCaseStepDone(false, failData, QStringLiteral("失败"));
+}
+
+void QFreeWork::runJigAmmeterCurrentSampleAnyMatch() {
+    QVariantMap map;
+    if (activeTestCase_.send.param.canConvert<QVariantMap>())
+        map = resolveTestCaseSendParamTree(activeTestCase_.send.param).toMap();
+    int durationMs = 0;
+    if (map.contains(QStringLiteral("sampleDurationMs")))
+        durationMs = map.value(QStringLiteral("sampleDurationMs")).toInt();
+    if (durationMs <= 0 && measure_wait_time > 0)
+        durationMs = measure_wait_time;
+    if (durationMs <= 0)
+        durationMs = currentSampleDurationMs(activeTestCase_, map);
+    // ini 里 CommandTimeoutMs=300 过短，至少 1s
+    durationMs = qMax(1000, durationMs);
+    const int intervalMs = currentSampleIntervalMs(map);
+
+    currentSampleAnyMatchActive_ = true;
+    currentSampleCount_ = 0;
+    currentSampleLastValueText_.clear();
+    showlog(QStringLiteral("治具电流连续采样：窗口 %1ms，间隔 %2ms，期间任一值卡控合格即通过")
+                .arg(durationMs)
+                .arg(intervalMs));
+
+    QElapsedTimer sampleTimer;
+    sampleTimer.start();
+    while (sampleTimer.elapsed() < durationMs && !stepRuntime_.done && !isActiveTestCaseStepDone()) {
+        if (!isTestContinue) {
+            currentSampleAnyMatchActive_ = false;
+            markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
+            showlog(QStringLiteral("治具电流连续采样已中止"));
+            return;
+        }
+        QString errStr;
+        if (!execAmmeterMeasure(&errStr))
+            showlog(QStringLiteral("治具电流采样下发失败（继续）：%1").arg(errStr));
+        const int remain = durationMs - static_cast<int>(sampleTimer.elapsed());
+        if (remain <= 0)
+            break;
+        waitWork(qMin(intervalMs, remain));
+    }
+
+    currentSampleAnyMatchActive_ = false;
+    if (stepRuntime_.done || isActiveTestCaseStepDone())
+        return;
+
+    const QString failData =
+        currentSampleLastValueText_.isEmpty() ? QStringLiteral("无有效读数") : currentSampleLastValueText_;
+    const QString ask =
+        QStringLiteral("[%1,%2]ma").arg(QString::number(LowCurrent), QString::number(HighCurrent));
+    showlog(QStringLiteral("治具电流采样结束：共 %1 次，无一值落入卡控范围，判定失败（末次 %2，范围 %3）")
+                .arg(currentSampleCount_)
+                .arg(failData, ask));
+    markActiveTestCaseStepDone(false, failData, ask);
+}
+
+void QFreeWork::runModbusAmmeterCurrentSampleAnyMatch(const TestCaseDefinition& def, ModbusDeviceRoute route) {
+    QVariantMap map;
+    if (def.send.param.canConvert<QVariantMap>())
+        map = resolveTestCaseSendParamTree(def.send.param).toMap();
+    const int durationMs = qMax(1000, currentSampleDurationMs(def, map));
+    const int intervalMs = currentSampleIntervalMs(map);
+
+    currentSampleAnyMatchActive_ = true;
+    currentSampleCount_ = 0;
+    currentSampleLastValueText_.clear();
+    showlog(QStringLiteral("Modbus 电流表连续采样：窗口 %1ms，间隔 %2ms，期间任一值卡控合格即通过")
+                .arg(durationMs)
+                .arg(intervalMs));
+
+    QElapsedTimer sampleTimer;
+    sampleTimer.start();
+    while (sampleTimer.elapsed() < durationMs && !isActiveTestCaseStepDone()) {
+        if (!isTestContinue) {
+            currentSampleAnyMatchActive_ = false;
+            markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
+            showlog(QStringLiteral("Modbus 电流表连续采样已中止"));
+            return;
+        }
+        QString errStr;
+        bool ok = false;
+        if (route == ModbusDeviceRoute::HqAmmeterRtu)
+            ok = modbusManager.exec(hqAmmeterRtuCmdFromName(def.send.deviceCmd), &errStr);
+        else
+            ok = modbusManager.exec(lxAmmeterRtuCmdFromName(def.send.deviceCmd), &errStr);
+        if (!ok)
+            showlog(QStringLiteral("Modbus 电流表采样下发失败（继续）：%1").arg(errStr));
+        if (isActiveTestCaseStepDone())
+            break;
+        const int remain = durationMs - static_cast<int>(sampleTimer.elapsed());
+        if (remain <= 0)
+            break;
+        waitWork(qMin(intervalMs, remain));
+    }
+
+    currentSampleAnyMatchActive_ = false;
+    if (isActiveTestCaseStepDone())
+        return;
+
+    const QString failData =
+        currentSampleLastValueText_.isEmpty() ? QStringLiteral("无有效读数") : currentSampleLastValueText_;
+    showlog(QStringLiteral("Modbus 电流表采样结束：共 %1 次，无一值落入卡控范围，判定失败（末次 %2）")
+                .arg(currentSampleCount_)
+                .arg(failData));
+    markActiveTestCaseStepDone(false, failData, QStringLiteral("失败"));
+}
+
+void QFreeWork::runXwdFixtureCurrentSampleAnyMatch(const TestCaseDefinition& def, const QByteArray& request,
+                                                   int readChannel, bool dualFixture, int perReadTimeoutMs) {
+    QVariantMap map;
+    if (def.send.param.canConvert<QVariantMap>())
+        map = resolveTestCaseSendParamTree(def.send.param).toMap();
+    const int durationMs = qMax(1000, currentSampleDurationMs(def, map));
+    const int intervalMs = currentSampleIntervalMs(map);
+    const int timeoutMs = qMax(2000, perReadTimeoutMs);
+
+    currentSampleAnyMatchActive_ = true;
+    currentSampleCount_ = 0;
+    currentSampleLastValueText_.clear();
+    showlog(QStringLiteral("XWD 治具读电流连续采样：窗口 %1ms，间隔 %2ms，单次超时 %3ms，期间任一值卡控合格即通过")
+                .arg(durationMs)
+                .arg(intervalMs)
+                .arg(timeoutMs));
+
+    QElapsedTimer sampleTimer;
+    sampleTimer.start();
+    while (sampleTimer.elapsed() < durationMs && !isActiveTestCaseStepDone()) {
+        if (!isTestContinue) {
+            currentSampleAnyMatchActive_ = false;
+            markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
+            showlog(QStringLiteral("XWD 治具读电流连续采样已中止"));
+            return;
+        }
+
+        jigSerialChannel_->clearReceiveBuffer();
+        if (jigSerialChannel_->write(request) != request.size()) {
+            showlog(QStringLiteral("XWD治具采样写入失败（继续）"));
+        } else {
+            jigSerialPort->waitForBytesWritten(qMin(2000, timeoutMs));
+            QByteArray reply;
+            QElapsedTimer waitTimer;
+            waitTimer.start();
+            while (waitTimer.elapsed() < timeoutMs) {
+                const int remainMs = timeoutMs - static_cast<int>(waitTimer.elapsed());
+                if (remainMs <= 0)
+                    break;
+                QByteArray chunk;
+                const int sliceMs = reply.isEmpty() ? remainMs : qMin(remainMs, 100);
+                if (!jigSerialChannel_->waitForFrame(&chunk, sliceMs))
+                    break;
+                reply += chunk;
+                const bool hasMa = reply.contains("mA") || reply.contains("MA");
+                if (!hasMa)
+                    continue;
+                if (readChannel == 1 || reply.contains("CH2") || reply.contains("CH 2"))
+                    break;
+            }
+            if (readChannel == 2 && !reply.isEmpty() && !(reply.contains("CH2") || reply.contains("CH 2"))) {
+                const int remainMs = timeoutMs - static_cast<int>(waitTimer.elapsed());
+                if (remainMs > 0) {
+                    QByteArray more;
+                    if (jigSerialChannel_->waitForFrame(&more, qMin(remainMs, 80)))
+                        reply += more;
+                }
+            }
+
+            if (reply.isEmpty()) {
+                showlog(QStringLiteral("XWD治具采样：本次无回包（继续）"));
+            } else {
+                const QString replyText = QString::fromUtf8(reply).trimmed();
+                double ch1Ma = 0;
+                double ch2Ma = 0;
+                bool hasCh1 = false;
+                bool hasCh2 = false;
+                if (XwdRawUartCodec::parseReadOnceReply(replyText, &ch1Ma, &ch2Ma, &hasCh1, &hasCh2)) {
+                    const bool channelOk = (readChannel == 2) ? hasCh2 : hasCh1;
+                    const double valueMa = (readChannel == 2) ? ch2Ma : ch1Ma;
+                    if (dualFixture)
+                        showlog(QStringLiteral("XWD治具电流：CH1=%1mA CH2=%2mA，本工位取 CH%3")
+                                    .arg(hasCh1 ? QString::number(ch1Ma, 'f', 2) : QStringLiteral("-"))
+                                    .arg(hasCh2 ? QString::number(ch2Ma, 'f', 2) : QStringLiteral("-"))
+                                    .arg(readChannel));
+                    else
+                        showlog(QStringLiteral("XWD治具电流：CH1=%1mA").arg(ch1Ma, 0, 'f', 2));
+                    if (channelOk) {
+                        ProtocolMeasureData measureData;
+                        measureData.deviceName = QStringLiteral("XWD");
+                        measureData.channel = QStringLiteral("CH%1").arg(readChannel);
+                        measureData.type = QStringLiteral("Current");
+                        measureData.value = valueMa;
+                        measureData.valueText = QString::number(valueMa, 'f', 2);
+                        measureData.unit = QStringLiteral("mA");
+                        measureData.isOk = true;
+                        onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolMeasureData"),
+                                                             QVariant::fromValue(measureData)));
+                    } else {
+                        showlog(QStringLiteral("XWD治具采样：缺 CH%1（继续）").arg(readChannel));
+                    }
+                } else {
+                    showlog(QStringLiteral("XWD治具采样：回包无法解析（继续）：%1").arg(replyText));
+                }
+            }
+        }
+
+        if (isActiveTestCaseStepDone())
+            break;
+        const int remain = durationMs - static_cast<int>(sampleTimer.elapsed());
+        if (remain <= 0)
+            break;
+        waitWork(qMin(intervalMs, remain));
+    }
+
+    currentSampleAnyMatchActive_ = false;
+    if (isActiveTestCaseStepDone())
+        return;
+
+    const QString failData =
+        currentSampleLastValueText_.isEmpty() ? QStringLiteral("无有效读数") : currentSampleLastValueText_;
+    showlog(QStringLiteral("XWD 治具读电流采样结束：共 %1 次，无一值落入卡控范围，判定失败（末次 %2）")
+                .arg(currentSampleCount_)
+                .arg(failData));
+    markActiveTestCaseStepDone(false, failData, QStringLiteral("失败"));
+}
+
 void QFreeWork::markActiveTestCaseStepDone(bool pass, const QString& testData, const QString& ask) {
     testCaseStepResult_.done = true;
     testCaseStepResult_.pass = pass;
@@ -806,6 +1240,10 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                 }
             }
         } else if (devRoute == ModbusDeviceRoute::HqAmmeterRtu) {
+            if (def.send.action == TestCaseSendAction::Get && def.gate.enabled) {
+                ctx->runModbusAmmeterCurrentSampleAnyMatch(def, devRoute);
+                return;
+            }
             HqAmmeterRtuCmd cmd = hqAmmeterRtuCmdFromName(def.send.deviceCmd);
             bool ok = ctx->modbusManager.exec(cmd, &errStr);
             if (!ok) {
@@ -824,6 +1262,10 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                 ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
             }
         } else if (devRoute == ModbusDeviceRoute::LxAmmeterRtu) {
+            if (def.send.action == TestCaseSendAction::Get && def.gate.enabled) {
+                ctx->runModbusAmmeterCurrentSampleAnyMatch(def, devRoute);
+                return;
+            }
             LxAmmeterRtuCmd cmd = lxAmmeterRtuCmdFromName(def.send.deviceCmd);
             bool ok = ctx->modbusManager.exec(cmd, &errStr);
             if (!ok) {
@@ -856,30 +1298,43 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
         const QVariant resolvedParam = ctx->resolveTestCaseSendParamTree(def.send.param);
         QString errStr;
 
-        if (devRoute == ScpiDeviceRoute::HuilingWfp60h) {
+        if (devRoute == ScpiDeviceRoute::HuilingWfp60h || devRoute == ScpiDeviceRoute::Agilent66319d) {
             const HuilingScpiStepParams stepParams =
                 splitHuilingScpiStepParam(resolvedParam, def.send.deviceCmd);
             QVariantMap linkMap = stepParams.linkMap;
             if (linkMap.value(QStringLiteral("visaAddress")).toString().trimmed().isEmpty()) {
                 linkMap = ctx->cachedHuilingVisaLink();
             }
+            const QVariantMap loadMap = mergeVisaPowerStepParamMap(linkMap, stepParams.commandParam);
             const int visaTimeoutMs = TestCaseRunner::commandTimeoutMs(def);
-            const bool visaReady = ctx->scpiVisaManager()->loadHuilingVisaFromParamMap(linkMap, visaTimeoutMs);
+            const bool visaReady =
+                devRoute == ScpiDeviceRoute::Agilent66319d
+                    ? ctx->scpiVisaManager()->loadAgilent66319dVisaFromParamMap(loadMap, visaTimeoutMs)
+                    : ctx->scpiVisaManager()->loadHuilingVisaFromParamMap(loadMap, visaTimeoutMs);
             if (!visaReady) {
-                ctx->showlog(QStringLiteral("会凌程控电源：请在本工站步骤「配置Visa程控电源」或本步参数中填写 visaAddress"));
+                ctx->showlog(QStringLiteral("%1：请在本工站「配置Visa程控电源」步骤 ini 中填写 Param_visaAddress 等参数")
+                                 .arg(ScpiPeriphCmdCatalog::deviceUiLabel(devRoute)));
                 ctx->markActiveTestCaseStepDone(false, QStringLiteral("visaAddress缺失"), QStringLiteral("失败"));
                 return;
             }
-            if (!stepParams.linkMap.value(QStringLiteral("visaAddress")).toString().trimmed().isEmpty())
-                ctx->updateHuilingVisaLinkCache(stepParams.linkMap);
+            if (!stepParams.linkMap.value(QStringLiteral("visaAddress")).toString().trimmed().isEmpty()) {
+                ctx->updateHuilingVisaLinkCache(
+                    huilingVisaLinkKeysFromMap(mergeVisaPowerStepParamMap(stepParams.linkMap, stepParams.commandParam)));
+            }
             HuilingScpiCmd cmd = huilingScpiCmdFromName(def.send.deviceCmd);
+            // 读电流+卡控：连续采样，期间任一合格即通过（不再单次读数立刻判失败）
+            if (cmd == HuilingScpiCmd::ReadProgrammableCurrent && def.gate.enabled) {
+                ctx->runScpiProgrammableCurrentSampleAnyMatch(def, stepParams.commandParam);
+                return;
+            }
             bool ok = ctx->scpiVisaManager()->exec(cmd, stepParams.commandParam, &errStr);
             if (!ok) {
                 ctx->resetVisaBackend();
                 ok = ctx->scpiVisaManager()->exec(cmd, stepParams.commandParam, &errStr);
             }
             if (!ok) {
-                ctx->showlog(QStringLiteral("会凌电源指令 [%1] 执行失败: %2").arg(def.send.deviceCmd, errStr));
+                ctx->showlog(QStringLiteral("%1 指令 [%2] 执行失败: %3")
+                                 .arg(ScpiPeriphCmdCatalog::deviceUiLabel(devRoute), def.send.deviceCmd, errStr));
                 ctx->markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
             } else {
                 QString testData = QStringLiteral("-");
@@ -1099,6 +1554,11 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
     const QVariant wireParam = DeviceCmdCatalog::normalizeSendParam(cmd, resolvedParam);
     if (def.send.action == TestCaseSendAction::Set && !ctx->prepareTupleProductWriteForTestCase(def, cmd, wireParam)) {
         ctx->markActiveTestCaseStepDone(false, ctx->activeTestCaseStepTestData(), QStringLiteral("失败"));
+        return;
+    }
+    if (def.send.action == TestCaseSendAction::Set && !ctx->prepareTailSnWriteForTestCase(def, cmd, wireParam)) {
+        ctx->markActiveTestCaseStepDone(false, ctx->activeTestCaseStepTestData(), QStringLiteral("失败"));
+        ctx->TestResult = ctx->failValue;
         return;
     }
 
@@ -1346,6 +1806,10 @@ void QFreeWork::executeFixtureAsd9026aCase(const TestCaseDefinition& def) {
     }
     case Asd9026aCmd::ReadProgrammableVoltage:
     case Asd9026aCmd::ReadProgrammableCurrent: {
+        if (cmd == Asd9026aCmd::ReadProgrammableCurrent && def.gate.enabled) {
+            runAsdProgrammableCurrentSampleAnyMatch(def, moduleAddr, channel);
+            return;
+        }
         Asd9026aAnalogStatus status;
         ok = asd9026aDevice_.readAnalogStatus(moduleAddr, &status, &errStr);
         if (!ok)
@@ -1467,6 +1931,11 @@ void QFreeWork::executeFixtureXwdCase(const TestCaseDefinition& def) {
     if (!jigSerialChannel_) {
         showlog(QStringLiteral("XWD治具串口通道未初始化"));
         markActiveTestCaseStepDone(false, QStringLiteral("串口未连接"), QStringLiteral("失败"));
+        return;
+    }
+
+    if (def.gate.enabled) {
+        runXwdFixtureCurrentSampleAnyMatch(def, request, readChannel, dualFixture, timeoutMs);
         return;
     }
 

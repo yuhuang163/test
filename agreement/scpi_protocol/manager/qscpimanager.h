@@ -49,10 +49,12 @@ class QScpiManager : public QObject {
     void clearHuilingProfilePatch();
     HuilingWfp60hScpiProfile huilingActiveProfile() const;
 
-    /** 从 SETTINGS 加载 VISA 会凌程控电源路由与 profile。 */
+    /** 从 SETTINGS [VisaPower] 加载会凌程控电源（吸力/电流等非 test_case 工站）。 */
     void loadHuilingVisaFromSettings();
-    /** 从测试步骤参数 map 加载 VISA 会凌程控电源（visaAddress 等），不读 SETTINGS。 */
+    /** 从测试步骤参数 map 加载会凌程控电源（visaAddress 等），不读 SETTINGS。 */
     bool loadHuilingVisaFromParamMap(const QVariantMap& map, int timeoutMs = 3000);
+    /** 从工站步骤 Param 加载 Agilent 66319D（仅步骤 ini，不读全局 VisaPower）。 */
+    bool loadAgilent66319dVisaFromParamMap(const QVariantMap& map, int timeoutMs = 3000);
     /** 从 SETTINGS 加载 VISA CMW100 路由。 */
     void loadCmwVisaFromSettings();
 

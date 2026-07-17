@@ -8,7 +8,8 @@ constexpr uint8_t kBoth = TestCaseCmdManifest::kSendActionBoth;
 
 const Row kRows[] = {
     {XwdRawFixtureCmd::SendRaw, "SendRaw", u8"原文/十六进制收发", DeviceCmdParamKind::String,
-     u8"设置：只下发；读取：下发后等回包。\r\n纯十六进制例：11 11 22 → 发三字节；含字母例：readonce → 原文 UTF-8",
+     u8"设置：只下发；读取：下发后等回包。\r\n纯十六进制例：11 11 22 → 发三字节；含字母例：readonce → 原文 UTF-8\r\n"
+     u8"开 Gate 读电流时连续采样：Param_sampleDurationMs / Param_sampleIntervalMs，期间任一值合格即通过",
      kBoth},
 };
 

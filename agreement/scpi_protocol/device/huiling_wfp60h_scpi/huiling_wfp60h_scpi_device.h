@@ -57,6 +57,7 @@ class HuilingWfp60hScpiDevice : public QObject, public IScpiDevice {
     bool queryProgrammablePower(const QString& queryLine, ProgrammablePowerReadPending pending);
     void registerCommand();
     void CONFigureFUNCtion(const QString& p);
+    bool writeCurrentRangeIfConfigured(const HuilingWfp60hScpiProfile& profile, const QVariant& data);
     void emitProgrammablePowerReadIfPending(const QString& scpiLine);
 
     ScpiTransport* transport_ = nullptr;

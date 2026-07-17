@@ -86,9 +86,15 @@ class QFreeWork : public test_base {
     }
     QString currentMacAddress() const;
     QString parseMacFromSn(const QString& snCode);
+    /** 扫码框 / MES 下发的 PCBA SN（非整机 SN） */
+    QString resolvedPcbaSnText() const;
+    /** 本地整机 SN（三元组申请等写入，可扩展其它来源） */
+    QString resolvedWholeMachineSnText() const;
+    void setWholeMachineSn(const QString& sn);
     QString resolveTestCaseSendPlaceholder(const QString& text) const;
     QVariant resolveTestCaseSendParamTree(const QVariant& param) const;
     bool prepareTupleProductWriteForTestCase(const TestCaseDefinition& def, DeviceCmd cmd, const QVariant& wireParam);
+    bool prepareTailSnWriteForTestCase(const TestCaseDefinition& def, DeviceCmd cmd, const QVariant& wireParam);
     void executeCloudTupleCase(const TestCaseDefinition& def);
     void executeProductSerialCase(const TestCaseDefinition& def);
     void executeFixturePcbaCase(const TestCaseDefinition& def);
@@ -108,9 +114,8 @@ class QFreeWork : public test_base {
     QString receivedData = "";
     QString snBinding;
     QString deviceTailSnFromDevice = "";
-    QString tailsn = "";
+    QString wholeMachineSn_;
     QString macAddress = "没有mac地址";
-    QByteArray expectedTailSnFromMes;
 
     // --- RSSI / WiFi / 电量 / 电流 ---
     QString BT_RSSI = "";
@@ -290,6 +295,19 @@ class QFreeWork : public test_base {
     void runDongleSuctionSampleStep();
     /** Dongle 单通道吸力采样；判定走 ProtocolDongleSuctionPeakData Gate。 */
     void runDongleSuctionSampleSingleStep();
+    /**
+     * 程控电源读电流：连续采样若干秒，期间任一值卡控合格即通过。
+     * 每次读数经 ProtocolMeasureData(Current) 上报后由 onUsbInstrumentReport 软判定。
+     */
+    void runScpiProgrammableCurrentSampleAnyMatch(const TestCaseDefinition& def, const QVariant& commandParam);
+    void runAsdProgrammableCurrentSampleAnyMatch(const TestCaseDefinition& def, quint8 moduleAddr, int channel);
+    /** 治具/USB 电流表 Hook「读取治具电流测量值」：连续采样，任一值落入 SETTINGS 电流卡控即通过。 */
+    void runJigAmmeterCurrentSampleAnyMatch();
+    /** XWD 治具读电流：连续下发/收包采样，Gate 任一合格即通过。 */
+    void runXwdFixtureCurrentSampleAnyMatch(const TestCaseDefinition& def, const QByteArray& request, int readChannel,
+                                            bool dualFixture, int perReadTimeoutMs);
+    /** HQ/LX Modbus 电流表：连续读数，Gate 任一合格即通过。 */
+    void runModbusAmmeterCurrentSampleAnyMatch(const TestCaseDefinition& def, ModbusDeviceRoute route);
     void setDongleSuctionReadEnabled(bool enabled);
     void initSuctionChart();
     void resetSuctionChart();
@@ -309,6 +327,10 @@ class QFreeWork : public test_base {
     double suctionPeakDipStartKpa_ = -10.0;
     bool dongleSuctionReadEnabled_ = false;
     bool dongleSuctionSampleActive_ = false;
+    /** 读电流连续采样：窗口内任一卡控合格即通过，不合格不立刻结束步骤。 */
+    bool currentSampleAnyMatchActive_ = false;
+    int currentSampleCount_ = 0;
+    QString currentSampleLastValueText_;
     QVector<double> dongleSuctionCh1Samples_;
     QVector<double> dongleSuctionCh2Samples_;
     QVector<double> dongleSuctionCh3Samples_;
