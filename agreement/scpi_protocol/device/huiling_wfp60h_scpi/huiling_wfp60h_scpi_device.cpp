@@ -77,6 +77,21 @@ void HuilingWfp60hScpiDevice::CONFigureFUNCtion(const QString& p) {
     qDebug() << "当前是电流模式";
 }
 
+bool HuilingWfp60hScpiDevice::writeCurrentRangeIfConfigured(const HuilingWfp60hScpiProfile& profile,
+                                                            const QVariant& data) {
+    QString range = profile.scpiRange;
+    if (data.canConvert<QVariantMap>()) {
+        const QString stepRange = data.toMap().value(QStringLiteral("currentRange")).toString().trimmed();
+        if (!stepRange.isEmpty())
+            range = stepRange;
+    }
+    const QString line = profile.buildSetCurrentRangeLine(range);
+    if (line.isEmpty())
+        return true;
+    qDebug().noquote() << "[Scpi] TX range:" << line;
+    return transport_->writeLine(line);
+}
+
 bool HuilingWfp60hScpiDevice::set(HuilingScpiCmd cmd, const QVariant& data) {
     if (!transport_ || !transport_->isOpen()) {
         return false;
@@ -97,6 +112,9 @@ bool HuilingWfp60hScpiDevice::set(HuilingScpiCmd cmd, const QVariant& data) {
         return transport_->writeLine(QStringLiteral("*RST"));
     case HuilingScpiCmd::ConfigureProgrammablePower: {
         const QVariantMap m = data.toMap();
+        if (!writeCurrentRangeIfConfigured(profile, data)) {
+            return false;
+        }
         const double voltageV = m.value(QStringLiteral("voltage"), profile.scpiPowerVoltageV).toDouble();
         const double currentA = m.value(QStringLiteral("current"), profile.scpiPowerCurrentA).toDouble();
         if (!transport_->writeLine(profile.scpiSetVoltageCmd.arg(QString::number(voltageV, 'f', 3)))) {
@@ -113,6 +131,9 @@ bool HuilingWfp60hScpiDevice::set(HuilingScpiCmd cmd, const QVariant& data) {
         pendingProgPowerRead_ = ProgrammablePowerReadPending::Voltage;
         return transport_->writeLine(profile.scpiReadVoltageCmd);
     case HuilingScpiCmd::ReadProgrammableCurrent:
+        if (!writeCurrentRangeIfConfigured(profile, data)) {
+            return false;
+        }
         if (visaSync) {
             return queryProgrammablePower(profile.scpiReadCurrentCmd, ProgrammablePowerReadPending::Current);
         }
@@ -133,7 +154,6 @@ bool HuilingWfp60hScpiDevice::set(HuilingScpiCmd cmd, const QVariant& data) {
 }
 
 bool HuilingWfp60hScpiDevice::get(HuilingScpiCmd cmd, const QVariant& param) {
-    Q_UNUSED(param);
     if (!transport_ || !transport_->isOpen()) {
         return false;
     }
@@ -147,7 +167,7 @@ bool HuilingWfp60hScpiDevice::get(HuilingScpiCmd cmd, const QVariant& param) {
     case HuilingScpiCmd::ReadProgrammableVoltage:
         return set(HuilingScpiCmd::ReadProgrammableVoltage);
     case HuilingScpiCmd::ReadProgrammableCurrent:
-        return set(HuilingScpiCmd::ReadProgrammableCurrent);
+        return set(HuilingScpiCmd::ReadProgrammableCurrent, param);
     case HuilingScpiCmd::InitializeProgrammablePower:
         return set(HuilingScpiCmd::InitializeProgrammablePower);
     default:

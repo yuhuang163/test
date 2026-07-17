@@ -17,6 +17,8 @@ struct HuilingWfp60hScpiProfile {
     QString scpiOutputOffCmd;
     QString scpiReadVoltageCmd;
     QString scpiReadCurrentCmd;
+    /** 66319D 电流量程：如 SENS:CURR:RANG %1；WFP60H 留空。 */
+    QString scpiSetCurrentRangeCmd;
 
     static HuilingWfp60hScpiProfile defaults();
     /** 暂与 defaults 相同（常量表）；后续若需再接入 SETTINGS。 */
@@ -29,6 +31,7 @@ struct HuilingWfp60hScpiProfile {
     QString buildConfigureMeasureLine() const;
     QString buildReadMeasureCurrentLine() const;
     QString buildReadMeasureConfigurationLine() const;
+    QString buildSetCurrentRangeLine(const QString& rangeValue) const;
 };
 
 #endif // HUILING_WFP60H_PROFILE_H

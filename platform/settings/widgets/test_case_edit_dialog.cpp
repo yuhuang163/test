@@ -9,7 +9,9 @@
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonParseError>
 #include <QMessageBox>
+#include <QPlainTextEdit>
 #include <QPushButton>
 #include <QTableWidget>
 #include <QHeaderView>
@@ -23,6 +25,41 @@
 #endif
 
 namespace {
+
+/** 解析步骤 JSON 参数：空串 / {} / 多行 {} 视为合法空对象；失败时返回 false。 */
+bool parseSendJsonParamText(const QString& text, QVariantMap* outMap) {
+    const QString trimmed = text.trimmed();
+    if (trimmed.isEmpty()) {
+        if (outMap)
+            *outMap = {};
+        return true;
+    }
+    QJsonParseError parseError;
+    const QJsonDocument doc = QJsonDocument::fromJson(trimmed.toUtf8(), &parseError);
+    if (doc.isObject()) {
+        if (outMap)
+            *outMap = doc.object().toVariantMap();
+        return true;
+    }
+    QVariantMap map;
+    QString normalized = trimmed;
+    normalized.replace(QStringLiteral("\r\n"), QStringLiteral("\n"));
+    normalized.replace(QLatin1Char('\r'), QLatin1Char('\n'));
+    for (const QString& rawLine : normalized.split(QLatin1Char('\n'), Qt::SkipEmptyParts)) {
+        const QString line = rawLine.trimmed();
+        if (line.isEmpty() || line.startsWith(QLatin1Char('#')))
+            continue;
+        const int eq = line.indexOf(QLatin1Char('='));
+        if (eq > 0)
+            map.insert(line.left(eq).trimmed(), line.mid(eq + 1).trimmed());
+    }
+    if (!map.isEmpty()) {
+        if (outMap)
+            *outMap = map;
+        return true;
+    }
+    return false;
+}
 
 QVariantMap sendParamAsJsonMap(const QVariant& param) {
     // DeviceSnPayload 必须先于 canConvert/toMap：payload 的 toMap() 恒为空，UI 会显示成 {}
@@ -41,6 +78,83 @@ QVariantMap sendParamAsJsonMap(const QVariant& param) {
             return map;
     }
     return {};
+}
+
+/** 多键参数用 name=value 展示，便于编辑 VISA SCPI 命令模板。 */
+QString formatParamMapAsNameValue(const QVariantMap& map) {
+    QStringList lines;
+    for (auto it = map.constBegin(); it != map.constEnd(); ++it)
+        lines.append(it.key() + QLatin1Char('=') + it.value().toString());
+    return lines.join(QLatin1Char('\n'));
+}
+
+/** 配置程控电源：空参数时预填设备缺省 SCPI 模板，供步骤里直接改。 */
+QString defaultVisaConfigureParamText(ScpiDeviceRoute route) {
+    if (route == ScpiDeviceRoute::Agilent66319d) {
+        return QStringLiteral(
+            "visaAddress=GPIB0::7::INSTR\n"
+            "voltage=5.0\n"
+            "current=3.0\n"
+            "currentRange=3\n"
+            "scpiSetVoltageCmd=VOLT %1\n"
+            "scpiSetCurrentCmd=CURR %1\n"
+            "scpiOutputOnCmd=OUTP ON\n"
+            "scpiOutputOffCmd=OUTP OFF\n"
+            "scpiReadVoltageCmd=MEAS:VOLT:DC?\n"
+            "scpiReadCurrentCmd=MEAS:CURR:DC?\n"
+            "scpiSetCurrentRangeCmd=SENS:CURR:RANG %1");
+    }
+    return QStringLiteral(
+        "visaAddress=TCPIP::localhost::5026::SOCKET\n"
+        "voltage=12.0\n"
+        "current=2.5\n"
+        "scpiSetVoltageCmd=SOURce1:VOLTage:LEVel:IMMediate:AMPLitude %1\n"
+        "scpiSetCurrentCmd=SOURce1:CURRent:LIMit:VALue %1\n"
+        "scpiOutputOnCmd=OUTPut1:STATe ON\n"
+        "scpiOutputOffCmd=OUTPut1:STATe OFF\n"
+        "scpiReadVoltageCmd=MEASure1:VOLTage:DC?\n"
+        "scpiReadCurrentCmd=MEASure1:CURRent:DC?");
+}
+
+/** 读程控电源电流：空参数时预填量程/采样/读命令，避免界面空白。 */
+QString defaultVisaReadCurrentParamText(ScpiDeviceRoute route) {
+    if (route == ScpiDeviceRoute::Agilent66319d) {
+        return QStringLiteral(
+            "currentRange=3\n"
+            "scpiSetCurrentRangeCmd=SENS:CURR:RANG %1\n"
+            "scpiReadCurrentCmd=MEAS:CURR:DC?\n"
+            "sampleDurationMs=3000\n"
+            "sampleIntervalMs=200");
+    }
+    return QStringLiteral(
+        "scpiReadCurrentCmd=MEASure1:CURRent:DC?\n"
+        "sampleDurationMs=3000\n"
+        "sampleIntervalMs=200");
+}
+
+void maybeFillVisaConfigureDefaults(QPlainTextEdit* jsonEdit, TestCaseSendChannel channel, const QString& device,
+                                    const QString& cmdName) {
+    if (!jsonEdit || channel != TestCaseSendChannel::Scpi)
+        return;
+    if (!jsonEdit->toPlainText().trimmed().isEmpty())
+        return;
+    const ScpiDeviceRoute route = ScpiPeriphCmdCatalog::deviceFromIni(device);
+    if (route != ScpiDeviceRoute::HuilingWfp60h && route != ScpiDeviceRoute::Agilent66319d)
+        return;
+    if (cmdName == QLatin1String("ConfigureProgrammablePower")) {
+        jsonEdit->setPlainText(defaultVisaConfigureParamText(route));
+        return;
+    }
+    if (cmdName == QLatin1String("ReadProgrammableCurrent")) {
+        jsonEdit->setPlainText(defaultVisaReadCurrentParamText(route));
+        return;
+    }
+    if (cmdName == QLatin1String("ReadProgrammableVoltage")) {
+        if (route == ScpiDeviceRoute::Agilent66319d)
+            jsonEdit->setPlainText(QStringLiteral("scpiReadVoltageCmd=MEAS:VOLT:DC?"));
+        else
+            jsonEdit->setPlainText(QStringLiteral("scpiReadVoltageCmd=MEASure1:VOLTage:DC?"));
+    }
 }
 bool isFixtureMachineIndexPlaceholder(const QVariant& param) {
     if (param.userType() == QMetaType::QString) {
@@ -487,8 +601,14 @@ void applySendParamToUi(const SendCmdParamUi& uiSchema, const QVariant& param, Q
             jsonEdit->setPlainText(param.toString());
         }
     } else {
-        jsonEdit->setPlainText(
-            QString::fromUtf8(QJsonDocument(QJsonObject::fromVariantMap(sendParamAsJsonMap(param))).toJson()));
+        const QVariantMap map = sendParamAsJsonMap(param);
+        // 无参数步骤留空即可；避免默认写入 {} 导致保存时被误判为「有内容但解析失败」
+        if (map.isEmpty()) {
+            jsonEdit->clear();
+        } else {
+            // name=value 便于改 VISA SCPI 模板；解析侧仍同时支持 JSON
+            jsonEdit->setPlainText(formatParamMapAsNameValue(map));
+        }
     }
 }
 
@@ -501,24 +621,7 @@ QVariant readSendParamFromUi(const SendCmdParamUi& uiSchema, QSpinBox* spinBox, 
         return jsonEdit->toPlainText().trimmed();
     case SendCmdParamKind::JsonMap: {
         QVariantMap map;
-        const QString text = jsonEdit->toPlainText().trimmed();
-        if (text.isEmpty())
-            return map;
-        const QJsonDocument doc = QJsonDocument::fromJson(text.toUtf8());
-        if (doc.isObject())
-            return doc.object().toVariantMap();
-        // name=value 兜底：按行拆分（勿用 QLatin1Char("\r\n")，那是非法多字符常量）
-        QString normalized = text;
-        normalized.replace(QStringLiteral("\r\n"), QStringLiteral("\n"));
-        normalized.replace(QLatin1Char('\r'), QLatin1Char('\n'));
-        for (const QString& rawLine : normalized.split(QLatin1Char('\n'), Qt::SkipEmptyParts)) {
-            const QString line = rawLine.trimmed();
-            if (line.isEmpty() || line.startsWith(QLatin1Char('#')))
-                continue;
-            const int eq = line.indexOf(QLatin1Char('='));
-            if (eq > 0)
-                map.insert(line.left(eq).trimmed(), line.mid(eq + 1).trimmed());
-        }
+        parseSendJsonParamText(jsonEdit->toPlainText(), &map);
         return map;
     }
     default:
@@ -1060,6 +1163,9 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
         paramForUi = 0;
     applySendParamToUi(uiSchema, paramForUi, ui->page_paramNone, ui->page_paramInt, ui->page_paramJson,
                        ui->stackedWidget_param, ui->spinBox_intParam, ui->plainTextEdit_jsonParam);
+    // 工站 steps 若缺 Param_*，上面会清空编辑框；再预填 VISA 读电流/配置默认项便于改
+    maybeFillVisaConfigureDefaults(ui->plainTextEdit_jsonParam, channel, comboData(ui->comboBox_productProtocol),
+                                   def.send.deviceCmd);
 
     ui->spinBox_delayBefore->setValue(def.timing.delayBeforeMs);
     ui->spinBox_delayAfter->setValue(def.timing.delayAfterMs);
@@ -1257,9 +1363,10 @@ void TestCaseEditDialog::onDeviceCmdChanged(int) {
         } else {
             ui->spinBox_intParam->setSpecialValueText(QString());
         }
-    } else if (uiSchema.kind == SendCmdParamKind::JsonMap || uiSchema.kind == SendCmdParamKind::String)
+    } else if (uiSchema.kind == SendCmdParamKind::JsonMap || uiSchema.kind == SendCmdParamKind::String) {
         ui->stackedWidget_param->setCurrentWidget(ui->page_paramJson);
-    else
+        maybeFillVisaConfigureDefaults(ui->plainTextEdit_jsonParam, channel, device, cmdName);
+    } else
         ui->stackedWidget_param->setCurrentWidget(ui->page_paramNone);
 }
 
@@ -1273,14 +1380,14 @@ bool TestCaseEditDialog::saveValidated() {
         const SendCmdParamUi uiSchema =
             sendCmdParamUiForName(def.send.deviceCmd, channel, protocolCtx);
         if (uiSchema.kind == SendCmdParamKind::JsonMap) {
-            const QString text = ui->plainTextEdit_jsonParam->toPlainText().trimmed();
-            const bool textLooksEmpty = text.isEmpty() || text == QStringLiteral("{}");
-            if (!textLooksEmpty && (!def.send.param.canConvert<QVariantMap>() || def.send.param.toMap().isEmpty())) {
+            QVariantMap parsed;
+            if (!parseSendJsonParamText(ui->plainTextEdit_jsonParam->toPlainText(), &parsed)) {
                 QMessageBox::warning(
                     this, QStringLiteral("保存失败"),
                     QStringLiteral("参数 JSON 无法解析，请使用对象格式，例如：\n"
                                    "{\"which_sn\":7,\"sn\":\"$TUPLE_PRODUCT_KEY\"}\n"
-                                   "或每行 name=value。"));
+                                   "或每行 name=value。\n"
+                                   "无参数时可留空或写 {}。"));
                 return false;
             }
         }

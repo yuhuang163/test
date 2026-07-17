@@ -765,6 +765,10 @@ void QFreeWork::refreshAmmeterData(QString data) {
         if (!isCurrentStep("读取治具电流测量值")) {
             return;
         }
+        if (currentSampleAnyMatchActive_) {
+            showlog(QStringLiteral("治具电流采样：本次解析失败，继续"));
+            return;
+        }
         stepRuntime_.done = true;
         stepRuntime_.pass = false;
         stepRuntime_.testData = "电流解析失败";
@@ -782,6 +786,31 @@ void QFreeWork::refreshAmmeterData(QString data) {
     if (!isCurrentStep("读取治具电流测量值")) {
         return;
     }
+
+    // 连续采样：Gate 开启时交给 ProtocolMeasureData 软判定；否则用 SETTINGS 电流上下限
+    if (currentSampleAnyMatchActive_) {
+        if (activeTestCase_.gate.enabled
+            && activeTestCase_.gate.reportType == QLatin1String("ProtocolMeasureData")) {
+            return;
+        }
+        ++currentSampleCount_;
+        currentSampleLastValueText_ = formattedValue + QStringLiteral("ma");
+        const QString ask =
+            QStringLiteral("[%1,%2]ma").arg(QString::number(LowCurrent), QString::number(HighCurrent));
+        const bool pass = (measure_ammeter >= LowCurrent && measure_ammeter <= HighCurrent);
+        showlog(QStringLiteral("治具电流采样#%1：%2 → %3")
+                    .arg(currentSampleCount_)
+                    .arg(currentSampleLastValueText_)
+                    .arg(pass ? QStringLiteral("卡控通过") : QStringLiteral("未达标(继续)")));
+        if (pass) {
+            currentSampleAnyMatchActive_ = false;
+            markActiveTestCaseStepDone(true, currentSampleLastValueText_, ask);
+            showlog(QStringLiteral("治具电流卡控通过（连续采样任一合格），当前=%1，范围=%2")
+                        .arg(currentSampleLastValueText_, ask));
+        }
+        return;
+    }
+
     const bool pass = (measure_ammeter >= LowCurrent && measure_ammeter <= HighCurrent);
     stepRuntime_.done = true;
     stepRuntime_.pass = pass;
@@ -1006,6 +1035,58 @@ void QFreeWork::onUsbInstrumentReport(const ProtocolReport& report) {
                             .arg(data.value, 0, 'f', 4)
                             .arg(data.unit.isEmpty() ? QStringLiteral("V") : data.unit));
             }
+
+            // 连续采样读电流：不合格不立刻结束，仅合格时收尾
+            if (currentSampleAnyMatchActive_ && data.type == QLatin1String("Current") && testCaseStepActive_
+                && activeTestCase_.gate.enabled
+                && activeTestCase_.gate.reportType == QLatin1String("ProtocolMeasureData")) {
+                if (!data.isOk) {
+                    showlog(QStringLiteral("读电流采样：本次无效，继续"));
+                    test_base::onUsbInstrumentReport(
+                        ProtocolReport(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(data)));
+                    return;
+                }
+                ++currentSampleCount_;
+                currentSampleLastValueText_ = QStringLiteral("%1 %2")
+                                                  .arg(data.value, 0, 'f', 4)
+                                                  .arg(data.unit.isEmpty() ? QStringLiteral("mA") : data.unit);
+
+                QVector<TestCaseGate> gatesForEval = TestCaseStore::activeGatesForEvaluation(activeTestCase_);
+                if (gatesForEval.isEmpty()) {
+                    currentSampleAnyMatchActive_ = false;
+                    markActiveTestCaseStepDone(false, QStringLiteral("-"), QStringLiteral("失败"));
+                    showlog(QStringLiteral("卡控失败：未启用任何判定项"));
+                    test_base::onUsbInstrumentReport(
+                        ProtocolReport(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(data)));
+                    return;
+                }
+                bool pass = false;
+                QString detail;
+                if (gatesForEval.size() > 1)
+                    GateRegistry::evaluateAll(gatesForEval, QStringLiteral("ProtocolMeasureData"),
+                                              QVariant::fromValue(data), pass, detail);
+                else
+                    GateRegistry::evaluate(gatesForEval.first(), QStringLiteral("ProtocolMeasureData"),
+                                           QVariant::fromValue(data), pass, detail);
+                showlog(QStringLiteral("读电流采样#%1：%2 → %3")
+                            .arg(currentSampleCount_)
+                            .arg(currentSampleLastValueText_)
+                            .arg(pass ? QStringLiteral("卡控通过") : QStringLiteral("未达标(继续)")));
+                if (pass) {
+                    currentSampleAnyMatchActive_ = false;
+                    GateStepDisplay display = GateRegistry::formatStepDisplay(
+                        gatesForEval.first(), gatesForEval, QStringLiteral("ProtocolMeasureData"),
+                        QVariant::fromValue(data), gatesForEval.size() > 1);
+                    if (display.testData.isEmpty())
+                        display.testData = detail;
+                    markActiveTestCaseStepDone(true, display.testData, display.ask);
+                    showlog(QStringLiteral("卡控通过（连续采样任一合格）：%1").arg(detail));
+                }
+                test_base::onUsbInstrumentReport(
+                    ProtocolReport(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(data)));
+                return;
+            }
+
             if (!data.isOk && testCaseStepActive_ && activeTestCase_.gate.enabled &&
                 activeTestCase_.gate.reportType == QLatin1String("ProtocolMeasureData")) {
                 markActiveTestCaseStepDone(false, QStringLiteral("读取失败"), QStringLiteral("失败"));

@@ -22,6 +22,7 @@ Agilent66319dScpiProfile defaults() {
     profile.scpiCurrentType = QStringLiteral("CURR");
     profile.scpiCurrentMode = QStringLiteral("DC");
     profile.scpiRange = QStringLiteral("3");
+    profile.scpiSetCurrentRangeCmd = QStringLiteral("SENS:CURR:RANG %1");
     return profile;
 }
 
@@ -42,6 +43,10 @@ Agilent66319dScpiProfile fromVisaPowerSettings() {
         SETTINGS.value(QStringLiteral("VisaPower/ScpiReadVoltageCmd"), QStringLiteral("MEAS:VOLT:DC?")).toString();
     profile.scpiReadCurrentCmd =
         SETTINGS.value(QStringLiteral("VisaPower/ScpiReadCurrentCmd"), QStringLiteral("MEAS:CURR:DC?")).toString();
+    profile.scpiSetCurrentRangeCmd =
+        SETTINGS.value(QStringLiteral("VisaPower/ScpiSetCurrentRangeCmd"), QStringLiteral("SENS:CURR:RANG %1"))
+            .toString();
+    profile.scpiRange = SETTINGS.value(QStringLiteral("VisaPower/ScpiCurrentRange"), profile.scpiRange).toString();
     return profile;
 }
 
@@ -51,6 +56,8 @@ Agilent66319dScpiProfile fromParamMap(const QVariantMap& map) {
         profile.scpiPowerVoltageV = map.value(QStringLiteral("voltage")).toDouble();
     if (map.contains(QStringLiteral("current")))
         profile.scpiPowerCurrentA = map.value(QStringLiteral("current")).toDouble();
+    if (map.contains(QStringLiteral("currentRange")))
+        profile.scpiRange = map.value(QStringLiteral("currentRange")).toString().trimmed();
     auto applyCmd = [&](const char* key, QString HuilingWfp60hScpiProfile::* member) {
         const QString text = map.value(QString::fromLatin1(key)).toString().trimmed();
         if (!text.isEmpty())
@@ -62,6 +69,7 @@ Agilent66319dScpiProfile fromParamMap(const QVariantMap& map) {
     applyCmd("scpiOutputOffCmd", &HuilingWfp60hScpiProfile::scpiOutputOffCmd);
     applyCmd("scpiReadVoltageCmd", &HuilingWfp60hScpiProfile::scpiReadVoltageCmd);
     applyCmd("scpiReadCurrentCmd", &HuilingWfp60hScpiProfile::scpiReadCurrentCmd);
+    applyCmd("scpiSetCurrentRangeCmd", &HuilingWfp60hScpiProfile::scpiSetCurrentRangeCmd);
     return profile;
 }
 

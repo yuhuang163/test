@@ -55,7 +55,7 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         return;
 
     if (hookId == QStringLiteral("JIG_CURRENT_READ")) {
-        fw->sendCommandWithRetry([&]() { fw->execAmmeterMeasure(); });
+        fw->runJigAmmeterCurrentSampleAnyMatch();
         return;
     }
     if (hookId == QStringLiteral("DONGLE_SUCTION_ENABLE")) {

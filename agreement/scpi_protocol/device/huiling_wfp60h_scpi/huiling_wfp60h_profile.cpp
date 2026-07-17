@@ -52,6 +52,8 @@ HuilingWfp60hScpiProfile HuilingWfp60hScpiProfile::fromParamMap(const QVariantMa
         profile.scpiPowerVoltageV = map.value(QStringLiteral("voltage")).toDouble();
     if (map.contains(QStringLiteral("current")))
         profile.scpiPowerCurrentA = map.value(QStringLiteral("current")).toDouble();
+    if (map.contains(QStringLiteral("currentRange")))
+        profile.scpiRange = map.value(QStringLiteral("currentRange")).toString().trimmed();
     auto applyCmd = [&](const char* key, QString HuilingWfp60hScpiProfile::* member) {
         const QString text = map.value(QString::fromLatin1(key)).toString().trimmed();
         if (!text.isEmpty())
@@ -63,6 +65,7 @@ HuilingWfp60hScpiProfile HuilingWfp60hScpiProfile::fromParamMap(const QVariantMa
     applyCmd("scpiOutputOffCmd", &HuilingWfp60hScpiProfile::scpiOutputOffCmd);
     applyCmd("scpiReadVoltageCmd", &HuilingWfp60hScpiProfile::scpiReadVoltageCmd);
     applyCmd("scpiReadCurrentCmd", &HuilingWfp60hScpiProfile::scpiReadCurrentCmd);
+    applyCmd("scpiSetCurrentRangeCmd", &HuilingWfp60hScpiProfile::scpiSetCurrentRangeCmd);
     return profile;
 }
 
@@ -77,4 +80,11 @@ QString HuilingWfp60hScpiProfile::buildReadMeasureCurrentLine() const {
 
 QString HuilingWfp60hScpiProfile::buildReadMeasureConfigurationLine() const {
     return QStringLiteral("CONFigure:FUNCtion?");
+}
+
+QString HuilingWfp60hScpiProfile::buildSetCurrentRangeLine(const QString& rangeValue) const {
+    const QString range = rangeValue.trimmed();
+    if (scpiSetCurrentRangeCmd.isEmpty() || range.isEmpty())
+        return {};
+    return scpiSetCurrentRangeCmd.arg(range);
 }
