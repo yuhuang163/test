@@ -10,7 +10,8 @@
 #include <QLineEdit>
 #include <QFileDialog>
 #include <QFileInfo>
-#include <QSignalBlocker>
+#include <QMessageBox>
+#include <QSpinBox>
 #include <QString>
 #include <QTabWidget>
 #include <QVector>
@@ -352,6 +353,8 @@ void qsetting::loadConfig() {
 
     syncFactoryCloudDerivedUrls();
 
+    loadLabelPrinterConfig();
+
     RestoreFacDefaultSetting();
 }
 void qsetting::updateMainStyle(QString style) {
@@ -490,6 +493,7 @@ void qsetting::saveConfig() {
     SETTINGS.setValue(QStringLiteral("KeyCap/ValueEndian"),
                       ui->comboBox_KeyCapValueEndian->currentIndex() == 1 ? QStringLiteral("little")
                                                                           : QStringLiteral("big"));
+    saveLabelPrinterConfig();
     if (ui->comboBox_factory->currentText() == QStringLiteral("byd")) {
         bydmes::loadExternalMesConfig(nullptr);
     }
@@ -932,4 +936,49 @@ void qsetting::syncFactoryCloudDerivedUrls() {
     FactoryCloudEnv::syncDerivedUrlsFromBaseUrl(baseUrl);
 }
 
+void qsetting::loadLabelPrinterConfig() {
+    const LabelPrintService::Config cfg = LabelPrintService::loadFromSettings();
+    LabelPrintService::populatePrinterCombo(ui->comboBox_labelPrinterName, cfg.printerName);
+    ui->spinBox_labelPrinterQrSize->setValue(cfg.qrModulePixels);
+}
+
+void qsetting::saveLabelPrinterConfig() {
+    LabelPrintService::Config cfg = LabelPrintService::loadFromSettings();
+    cfg.printerName = ui->comboBox_labelPrinterName->currentData().toString().trimmed();
+    if (cfg.printerName.isEmpty())
+        cfg.printerName = ui->comboBox_labelPrinterName->currentText().trimmed();
+    if (cfg.printerName == QStringLiteral("请选择打印机"))
+        cfg.printerName.clear();
+    cfg.qrModulePixels = ui->spinBox_labelPrinterQrSize->value();
+
+    bool pageWidthOk = false;
+    bool pageHeightOk = false;
+    const double pageWidthMm = ui->lineEdit_labelPrinterPageWidthMm->text().trimmed().toDouble(&pageWidthOk);
+    const double pageHeightMm = ui->lineEdit_labelPrinterPageHeightMm->text().trimmed().toDouble(&pageHeightOk);
+    if (pageWidthOk)
+        cfg.pageWidthMm = qBound(5.0, pageWidthMm, 200.0);
+    if (pageHeightOk)
+        cfg.pageHeightMm = qBound(5.0, pageHeightMm, 200.0);
+
+    cfg.marginPixels = -1;
+    LabelPrintService::saveToSettings(cfg);
+
+    if (pageWidthOk) {
+        ui->lineEdit_labelPrinterPageWidthMm->setText(QString::number(cfg.pageWidthMm, 'f', 1));
+    }
+    if (pageHeightOk) {
+        ui->lineEdit_labelPrinterPageHeightMm->setText(QString::number(cfg.pageHeightMm, 'f', 1));
+    }
+}
+
+void qsetting::on_pushButton_labelPrinterTestPrint_clicked() {
+    saveLabelPrinterConfig();
+    QString err;
+    if (LabelPrintService::printTestQr(&err)) {
+        QMessageBox::information(this, QStringLiteral("标签打印"), QStringLiteral("测试二维码已发送到打印机。"));
+    } else {
+        QMessageBox::warning(this, QStringLiteral("标签打印"),
+                             err.isEmpty() ? QStringLiteral("打印失败") : err);
+    }
+}
 

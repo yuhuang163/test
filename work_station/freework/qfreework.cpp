@@ -210,6 +210,7 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     ui->banding_result->setText("绑定:WAIT");
     ui->banding_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
                                       "padding: 10px; text-align: center; ");
+    resetTuplePositionHighlight();
 
     connect(waittime, &QTimer::timeout, [=]() {
         isovertime = 1;
@@ -1608,6 +1609,7 @@ void QFreeWork::initData() {
     wholeMachineSn_.clear();
     tupleData_ = TupleApplyResult{};
     QTupleService::clearSharedSession();
+    resetTuplePositionHighlight();
     freeWorkMesSegments_.clear();
     ui->test_time->setText(QStringLiteral("0.0 s"));
     TestTime.start();

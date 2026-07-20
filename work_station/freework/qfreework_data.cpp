@@ -6,6 +6,91 @@
 #include "qproduct.h"
 #include "test_case.h"
 
+namespace {
+
+enum class TuplePositionKind {
+    Unknown = -1,
+    Left = 0,
+    Right = 1,
+    Single = 2,
+    Unspecified = 3,
+};
+
+TuplePositionKind parseTuplePositionKind(const QString& raw) {
+    const QString position = raw.trimmed();
+    if (position.isEmpty()) {
+        return TuplePositionKind::Unspecified;
+    }
+    const QChar first = position.at(0).toUpper();
+    if (position == QStringLiteral("1") || first == QLatin1Char('L') || position.contains(QStringLiteral("左"))) {
+        return TuplePositionKind::Left;
+    }
+    if (position == QStringLiteral("2") || first == QLatin1Char('R') || position.contains(QStringLiteral("右"))) {
+        return TuplePositionKind::Right;
+    }
+    if (position == QStringLiteral("3") || first == QLatin1Char('S') || position.contains(QStringLiteral("单"))) {
+        return TuplePositionKind::Single;
+    }
+    if (first == QLatin1Char('F') || position.contains(QStringLiteral("未指定"))) {
+        return TuplePositionKind::Unspecified;
+    }
+    return TuplePositionKind::Unknown;
+}
+
+QString tuplePositionKindText(TuplePositionKind kind) {
+    switch (kind) {
+    case TuplePositionKind::Left:
+        return QStringLiteral("左");
+    case TuplePositionKind::Right:
+        return QStringLiteral("右");
+    case TuplePositionKind::Single:
+        return QStringLiteral("单只");
+    case TuplePositionKind::Unspecified:
+        return QStringLiteral("未指定");
+    default:
+        return QStringLiteral("未知");
+    }
+}
+
+constexpr char kTuplePosInactiveStyle[] =
+    "font-size: 18px; background-color: #808080; color: black; border-radius: 6px; padding: 4px 12px;";
+constexpr char kTuplePosActiveStyle[] =
+    "font-size: 18px; background-color: #00FF00; color: black; border: 2px solid black; border-radius: 6px; "
+    "padding: 4px 12px;";
+
+} // namespace
+
+void QFreeWork::resetTuplePositionHighlight() {
+    ui->label_tuplePosLeft->setStyleSheet(kTuplePosInactiveStyle);
+    ui->label_tuplePosRight->setStyleSheet(kTuplePosInactiveStyle);
+    ui->label_tuplePosSingle->setStyleSheet(kTuplePosInactiveStyle);
+    ui->label_tuplePosUnspecified->setStyleSheet(kTuplePosInactiveStyle);
+}
+
+void QFreeWork::updateTuplePositionHighlight(const QString& position) {
+    resetTuplePositionHighlight();
+    QLabel* target = nullptr;
+    switch (parseTuplePositionKind(position)) {
+    case TuplePositionKind::Left:
+        target = ui->label_tuplePosLeft;
+        break;
+    case TuplePositionKind::Right:
+        target = ui->label_tuplePosRight;
+        break;
+    case TuplePositionKind::Single:
+        target = ui->label_tuplePosSingle;
+        break;
+    case TuplePositionKind::Unspecified:
+        target = ui->label_tuplePosUnspecified;
+        break;
+    default:
+        break;
+    }
+    if (target) {
+        target->setStyleSheet(kTuplePosActiveStyle);
+    }
+}
+
 // 协议 / 治具 / dongle 回包：解析与条件判定（仍为 QFreeWork 成员，仅拆到本翻译单元）
 
 void QFreeWork::onProductInstrumentStopReceiveAckForPer(int recvPkts) {
@@ -464,6 +549,10 @@ void QFreeWork::applyTupleByMac() {
         sku = SETTINGS.value(QStringLiteral("Tuple/Sku"), QString()).toString().trimmed();
     if (position.isEmpty())
         position = SETTINGS.value(QStringLiteral("Tuple/Position"), QStringLiteral("L")).toString().trimmed();
+
+    updateTuplePositionHighlight(position);
+    showlog(QStringLiteral("三元组获取：当前位置=%1（%2）")
+                .arg(position, tuplePositionKindText(parseTuplePositionKind(position))));
 
     QString tupleMac = macFromParam;
     if (tupleMac.isEmpty())

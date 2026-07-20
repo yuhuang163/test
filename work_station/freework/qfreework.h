@@ -277,6 +277,8 @@ class QFreeWork : public test_base {
     void appendPeriphItem(QVector<TestItem>& periphTestItems, bool& pass, const QString& name, const QString& value,
                           const QString& expect, bool needCompare);
     void applyTupleByMac();
+    void resetTuplePositionHighlight();
+    void updateTuplePositionHighlight(const QString& position);
     void reportBydSfcKey(const QString& dataName, const QVariant& dataValue, int qty = 1);
     void reportBydBluetoothMesKeyMaterials();
     bool failTupleWriteIfNoValidField(const QString& stepName, bool fieldOk, const QString& emptyReason);

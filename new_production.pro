@@ -77,6 +77,8 @@ INCLUDEPATH += business/plc_v3_fixture
 INCLUDEPATH += platform/settings
 INCLUDEPATH += platform/settings/test_flow
 INCLUDEPATH += platform/settings/widgets
+INCLUDEPATH += platform/label_print
+INCLUDEPATH += lib/qrcodegen
 INCLUDEPATH += platform/test_case \
     platform/test_case/manifest
 INCLUDEPATH += platform/cloud/test_record
@@ -238,6 +240,8 @@ SOURCES += \
     agreement/factory_protocol/protocol/qpb/qpb.cpp \
     platform/settings/qsetting.cpp \
     platform/settings/qsetting_bindings.cpp \
+    platform/label_print/label_print_service.cpp \
+    lib/qrcodegen/qrcodegen.cpp \
     platform/settings/test_flow/test_flow_editor.cpp \
     platform/settings/widgets/test_case_edit_dialog.cpp \
     platform/test_case/manifest/device_cmd_manifest.cpp \
@@ -408,6 +412,8 @@ HEADERS += \
     agreement/factory_protocol/protocol/qpb/qpb.h \
     platform/settings/qsetting.h \
     platform/settings/qsetting_bindings.h \
+    platform/label_print/label_print_service.h \
+    lib/qrcodegen/qrcodegen.hpp \
     platform/settings/test_flow/test_flow_editor.h \
     platform/settings/widgets/test_case_edit_dialog.h \
     platform/test_case/manifest/cmd_manifest_common.h \

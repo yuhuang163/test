@@ -1,3 +1,5 @@
+#include "label_print_service.h"
+
 #include "qfreework.h"
 
 #include "test_case.h"
@@ -92,6 +94,25 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
             fw->protocolManager.set(DeviceCmd::Sn,
                                     QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, tailSn}));
         });
+        return;
+    }
+    if (hookId == QStringLiteral("PRINT_WHOLE_MACHINE_SN")) {
+        QString sn = fw->resolvedWholeMachineSnText();
+        if (sn.isEmpty())
+            sn = fw->resolvedPcbaSnText();
+        if (sn.isEmpty()) {
+            fw->showlog(QStringLiteral("打印整机SN失败：界面SN为空，请先获取三元组或扫入整机SN"));
+            fw->markActiveTestCaseStepDone(false, QStringLiteral("整机SN为空"), QStringLiteral("失败"));
+            return;
+        }
+        QString err;
+        if (!LabelPrintService::printQrText(sn, &err)) {
+            fw->showlog(QStringLiteral("打印整机SN失败：%1").arg(err));
+            fw->markActiveTestCaseStepDone(false, err, QStringLiteral("失败"));
+            return;
+        }
+        fw->showlog(QStringLiteral("已打印整机SN：%1").arg(sn));
+        fw->markActiveTestCaseStepDone(true, sn, QStringLiteral("通过"));
         return;
     }
     if (hookId == QStringLiteral("QR_SN_CONSISTENCY_CHECK")) {
@@ -325,6 +346,7 @@ void QFreeWorkTestCaseHookRegistrar::registerAll() {
     registerHook(QStringLiteral("DONGLE_SUCTION_SAMPLE"));
     registerHook(QStringLiteral("DONGLE_SUCTION_SAMPLE_SINGLE"));
     registerHook(QStringLiteral("SN_WRITE_TAIL"));
+    registerHook(QStringLiteral("PRINT_WHOLE_MACHINE_SN"));
     registerHook(QStringLiteral("QR_SN_CONSISTENCY_CHECK"));
     registerHook(QStringLiteral("MAC_WRITE_ROOT"));
     registerHook(QStringLiteral("BLE_CONNECT_BY_NAME"));
