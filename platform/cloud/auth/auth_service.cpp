@@ -225,6 +225,10 @@ bool AuthService::canOpenSettings() {
     if (!isLoggedIn()) {
         return false;
     }
+    // 离线测试为本地调试入口，需保留功能设置；云端上传/同步仍由 isOfflineSession 守卫
+    if (isOfflineSession()) {
+        return true;
+    }
     const QStringList roles = currentRoles();
     for (const QString& role : roles) {
         if (role == QLatin1String("admin") || role == QLatin1String("engineer")) {

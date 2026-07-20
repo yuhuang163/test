@@ -27,7 +27,7 @@ class AuthService {
     /** 会话过期时尝试记住密码自动登录，失败则弹窗要求重新登录 */
     static bool promptReLoginIfExpired(QWidget* parent);
     static QStringList currentRoles();
-    /** admin / engineer（工艺）且 SYSTEM/setting 开启时可打开功能设置 */
+    /** admin / engineer（工艺）或离线测试会话，且 SYSTEM/setting 开启时可打开功能设置 */
     static bool canOpenSettings();
     static void logout();
 };
