@@ -80,6 +80,51 @@ double asd9026aParamDouble(const QVariantMap& map, const QString& key, double fa
     return map.value(key).toDouble();
 }
 
+quint8 asd9026aCurrentRangeFromMap(const QVariantMap& map, quint8 fallback = 4) {
+    if (!map.contains(QStringLiteral("currentRange")))
+        return fallback;
+    return static_cast<quint8>(qBound(1, map.value(QStringLiteral("currentRange")).toInt(), 4));
+}
+
+QString asd9026aCurrentRangeText(quint8 rangeCode) {
+    switch (rangeCode) {
+    case 1:
+        return QStringLiteral("大档");
+    case 2:
+        return QStringLiteral("中档");
+    case 3:
+        return QStringLiteral("小档");
+    case 4:
+    default:
+        return QStringLiteral("自动");
+    }
+}
+
+/** 步骤 Param_txHex / Param_string：空格分隔十六进制整帧（含 CRC） */
+QString asd9026aTxHexFromParam(const QVariant& resolved, const QVariantMap& map) {
+    if (map.contains(QStringLiteral("txHex")))
+        return map.value(QStringLiteral("txHex")).toString().trimmed();
+    if (map.contains(QStringLiteral("string")))
+        return map.value(QStringLiteral("string")).toString().trimmed();
+    return sendParamAsRawText(resolved).trimmed();
+}
+
+bool asd9026aSendConfiguredTxHex(Asd9026aDevice& dev, const QString& txHex, QByteArray* response, QString* errorMessage) {
+    if (txHex.isEmpty()) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("txHex 为空");
+        return false;
+    }
+    bool parsedAsHex = false;
+    const QByteArray request = XwdRawUartCodec::encodeRawText(txHex, &parsedAsHex);
+    if (request.isEmpty() || !parsedAsHex) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("txHex 须为纯十六进制整帧（含CRC）");
+        return false;
+    }
+    return dev.sendRawFrame(request, response, errorMessage);
+}
+
 quint8 asd9026aModuleAddr(int channel) {
     const QString key =
         channel == 2 ? QStringLiteral("ASD9026A/ModuleAddrCh2") : QStringLiteral("ASD9026A/ModuleAddrCh1");
@@ -1764,10 +1809,12 @@ void QFreeWork::executeFixtureAsd9026aCase(const TestCaseDefinition& def) {
         return;
     }
 
-    const QVariantMap cmdMap = resolveTestCaseSendParamTree(def.send.param).toMap();
+    const QVariant resolvedParam = resolveTestCaseSendParamTree(def.send.param);
+    const QVariantMap cmdMap = resolvedParam.canConvert<QVariantMap>() ? resolvedParam.toMap() : QVariantMap{};
     const int channel = asd9026aChannelFromMap(cmdMap);
     const quint8 moduleAddr = asd9026aModuleAddr(channel);
     const QString channelText = QStringLiteral("CH%1").arg(channel);
+    const QString txHexOverride = asd9026aTxHexFromParam(resolvedParam, cmdMap);
 
     auto reportMeasure = [this, def, channelText](const QString& type, double value, const QString& unit,
                                                   const QString& valueText) {
@@ -1787,21 +1834,82 @@ void QFreeWork::executeFixtureAsd9026aCase(const TestCaseDefinition& def) {
     QString testData = QStringLiteral("-");
 
     switch (cmd) {
+    case Asd9026aCmd::SendRaw: {
+        const QString rawText = txHexOverride.isEmpty() ? sendParamAsRawText(resolvedParam).trimmed() : txHexOverride;
+        if (rawText.isEmpty()) {
+            showlog(QStringLiteral("ASD9026A SendRaw 内容为空，请配置 Param_string 或 Param_txHex"));
+            markActiveTestCaseStepDone(false, QStringLiteral("参数为空"), QStringLiteral("失败"));
+            return;
+        }
+        QByteArray response;
+        QByteArray* respPtr = (def.send.action == TestCaseSendAction::Get) ? &response : nullptr;
+        ok = asd9026aSendConfiguredTxHex(asd9026aDevice_, rawText, respPtr, &errStr);
+        testData = rawText;
+        if (ok) {
+            showlog(QStringLiteral("ASD9026A 已按十六进制发送：%1").arg(rawText));
+            if (def.send.action == TestCaseSendAction::Get) {
+                const QString rxHex = QString::fromLatin1(response.toHex(' ').toUpper());
+                showlog(QStringLiteral("ASD9026A 回包：%1").arg(rxHex));
+                testData = rxHex;
+            }
+        }
+        break;
+    }
     case Asd9026aCmd::ProgrammablePowerOutput: {
         const bool enable = cmdMap.value(QStringLiteral("enable"), 1).toInt() != 0;
-        ok = asd9026aDevice_.setOutputEnabled(moduleAddr, enable, &errStr);
-        testData = enable ? QStringLiteral("ON") : QStringLiteral("OFF");
-        if (ok)
-            showlog(QStringLiteral("ASD9026A %1 输出%2").arg(channelText, enable ? QStringLiteral("已打开") : QStringLiteral("已关闭")));
+        if (!txHexOverride.isEmpty()) {
+            ok = asd9026aSendConfiguredTxHex(asd9026aDevice_, txHexOverride, nullptr, &errStr);
+            testData = txHexOverride;
+            if (ok)
+                showlog(QStringLiteral("ASD9026A %1 输出%2（txHex）")
+                            .arg(channelText, enable ? QStringLiteral("已打开") : QStringLiteral("已关闭")));
+        } else {
+            ok = asd9026aDevice_.setOutputEnabled(moduleAddr, enable, &errStr);
+            testData = enable ? QStringLiteral("ON") : QStringLiteral("OFF");
+            if (ok)
+                showlog(QStringLiteral("ASD9026A %1 输出%2")
+                            .arg(channelText, enable ? QStringLiteral("已打开") : QStringLiteral("已关闭")));
+        }
         break;
     }
     case Asd9026aCmd::ConfigureProgrammablePower: {
-        const double voltageV = asd9026aParamDouble(cmdMap, QStringLiteral("voltage"), 4.2);
+        const double voltageV = asd9026aParamDouble(cmdMap, QStringLiteral("voltage"), 5.0);
         const double currentA = asd9026aParamDouble(cmdMap, QStringLiteral("current"), 2.0);
-        ok = asd9026aDevice_.configureConstantVoltage(moduleAddr, voltageV, currentA, &errStr);
-        testData = QStringLiteral("V=%1V,I=%2A").arg(voltageV, 0, 'f', 2).arg(currentA, 0, 'f', 3);
-        if (ok)
-            showlog(QStringLiteral("ASD9026A %1 已配置：%2 V，限流 %3 A").arg(channelText).arg(voltageV, 0, 'f', 2).arg(currentA, 0, 'f', 3));
+        const quint8 currentRange = asd9026aCurrentRangeFromMap(cmdMap, 1);
+        if (!txHexOverride.isEmpty()) {
+            ok = asd9026aSendConfiguredTxHex(asd9026aDevice_, txHexOverride, nullptr, &errStr);
+            testData = txHexOverride;
+            if (ok)
+                showlog(QStringLiteral("ASD9026A %1 已配置（txHex）：%2").arg(channelText, txHexOverride));
+        } else {
+            ok = asd9026aDevice_.configureConstantVoltage(moduleAddr, voltageV, currentA, currentRange, &errStr);
+            testData = QStringLiteral("V=%1V,I=%2A,量程=%3")
+                           .arg(voltageV, 0, 'f', 2)
+                           .arg(currentA, 0, 'f', 3)
+                           .arg(asd9026aCurrentRangeText(currentRange));
+            if (ok) {
+                showlog(QStringLiteral("ASD9026A %1 已配置：%2 V，限流 %3 A，电流测量量程 %4")
+                            .arg(channelText)
+                            .arg(voltageV, 0, 'f', 2)
+                            .arg(currentA, 0, 'f', 3)
+                            .arg(asd9026aCurrentRangeText(currentRange)));
+            }
+        }
+        break;
+    }
+    case Asd9026aCmd::ConfigureCurrentMeasureRange: {
+        const quint8 currentRange = asd9026aCurrentRangeFromMap(cmdMap, 3);
+        if (!txHexOverride.isEmpty()) {
+            ok = asd9026aSendConfiguredTxHex(asd9026aDevice_, txHexOverride, nullptr, &errStr);
+            testData = txHexOverride;
+            if (ok)
+                showlog(QStringLiteral("ASD9026A %1 量程切换（txHex）：%2").arg(channelText, txHexOverride));
+        } else {
+            ok = asd9026aDevice_.setCurrentMeasureRange(moduleAddr, currentRange, &errStr);
+            testData = asd9026aCurrentRangeText(currentRange);
+            if (ok)
+                showlog(QStringLiteral("ASD9026A %1 电流测量量程已切换为 %2").arg(channelText, testData));
+        }
         break;
     }
     case Asd9026aCmd::ReadProgrammableVoltage:
@@ -1811,11 +1919,19 @@ void QFreeWork::executeFixtureAsd9026aCase(const TestCaseDefinition& def) {
             return;
         }
         Asd9026aAnalogStatus status;
-        ok = asd9026aDevice_.readAnalogStatus(moduleAddr, &status, &errStr);
+        if (!txHexOverride.isEmpty()) {
+            QByteArray response;
+            ok = asd9026aSendConfiguredTxHex(asd9026aDevice_, txHexOverride, &response, &errStr);
+            if (ok)
+                ok = asd9026aDevice_.parseAnalogStatusResponse(moduleAddr, response, &status, &errStr);
+            if (ok)
+                showlog(QStringLiteral("ASD9026A %1 已按 txHex 读取：%2").arg(channelText, txHexOverride));
+        } else {
+            ok = asd9026aDevice_.readAnalogStatus(moduleAddr, &status, &errStr);
+        }
         if (!ok)
             break;
         if (cmd == Asd9026aCmd::ReadProgrammableVoltage) {
-            // 不论回包是 V/mV/uV/nV，status.voltage 已统一为 V
             testData = QStringLiteral("%1 V").arg(status.voltage, 0, 'f', 4);
             showlog(QStringLiteral("ASD9026A %1 电压：raw=%2 → %3")
                         .arg(channelText)
@@ -1823,7 +1939,6 @@ void QFreeWork::executeFixtureAsd9026aCase(const TestCaseDefinition& def) {
                         .arg(testData));
             reportMeasure(QStringLiteral("Voltage"), status.voltage, QStringLiteral("V"), testData);
         } else {
-            // 不论回包是 A/mA/uA/nA，先统一为 A，再换算 mA 供卡控（与 VISA 一致）
             const double currentMa = status.current * 1000.0;
             testData = QStringLiteral("%1 mA").arg(currentMa, 0, 'f', 4);
             showlog(QStringLiteral("ASD9026A %1 电流：raw=%2 → %3 A → %4")
@@ -1833,7 +1948,6 @@ void QFreeWork::executeFixtureAsd9026aCase(const TestCaseDefinition& def) {
                         .arg(testData));
             reportMeasure(QStringLiteral("Current"), currentMa, QStringLiteral("mA"), testData);
         }
-        // Gate 关闭时 report 不会收尾；必须显式结束，否则步骤永远 done=false 卡住
         if (!def.gate.enabled)
             markActiveTestCaseStepDone(true, testData, QStringLiteral("通过"));
         return;

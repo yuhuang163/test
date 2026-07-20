@@ -163,9 +163,11 @@ enum class ProductSerialCmd {
 /** ASD9026A 双通道模拟电池串口协议（Send/Channel=Fixture 且 Send/Protocol=ASD9026A）。 */
 enum class Asd9026aCmd {
     ConfigureProgrammablePower,
+    ConfigureCurrentMeasureRange,
     ProgrammablePowerOutput,
     ReadProgrammableVoltage,
     ReadProgrammableCurrent,
+    SendRaw,
 };
 
 class Asd9026aCmdCatalog {

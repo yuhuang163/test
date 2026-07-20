@@ -37,10 +37,17 @@ class Asd9026aDevice : public QObject {
     int baudRate() const;
 
     bool setOutputEnabled(quint8 moduleAddr, bool enabled, QString* errorMessage = nullptr);
+    /** currentMeasureRange：0=不变 1=大档 2=中档 3=小档 4=自动（默认） */
     bool configureConstantVoltage(quint8 moduleAddr, double voltageVolts, double currentLimitAmps,
-                                  QString* errorMessage = nullptr);
+                                  quint8 currentMeasureRange = 4, QString* errorMessage = nullptr);
+    bool setCurrentMeasureRange(quint8 moduleAddr, quint8 currentMeasureRange, QString* errorMessage = nullptr);
     bool readModuleStatus(quint8 moduleAddr, int* outputMilliVolts, int* outputMilliAmps, QString* errorMessage = nullptr);
     bool readAnalogStatus(quint8 moduleAddr, Asd9026aAnalogStatus* out, QString* errorMessage = nullptr);
+    /** 原文/十六进制下发（与治具 SendRaw 同类）；须含完整帧含 CRC */
+    bool sendRawFrame(const QByteArray& request, QByteArray* response = nullptr, QString* errorMessage = nullptr);
+    /** 解析模拟电池状态应答帧（功能码 0x22 / 命令 0x10） */
+    bool parseAnalogStatusResponse(quint8 moduleAddr, const QByteArray& response, Asd9026aAnalogStatus* out,
+                                   QString* errorMessage = nullptr);
 
   private:
     bool transact(const QByteArray& request, QByteArray* response, QString* errorMessage);

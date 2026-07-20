@@ -92,6 +92,8 @@ bool VisaChannel::write(const QByteArray& data) {
                 static_cast<ViUInt32>(data.size()), &writeCount);
     if (status < VI_SUCCESS) {
         qDebug() << "VisaChannel: 写入失败 status=" << status;
+        // 句柄可能已失效但仍非 NULL，不关闭则 ensureConnected 会一直误判已连接
+        close();
         return false;
     }
     return true;
@@ -116,6 +118,7 @@ bool VisaChannel::read(QByteArray* out, int maxBytes) {
         viRead(visaInst_, reinterpret_cast<ViBuf>(buffer.data()), static_cast<ViUInt32>(maxBytes - 1), &readCount);
     if (status < VI_SUCCESS) {
         qDebug() << "VisaChannel: 读取失败 status=" << status;
+        close();
         return false;
     }
     buffer.resize(static_cast<int>(readCount));

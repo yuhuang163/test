@@ -236,6 +236,60 @@ void maybeFillDongleCmdParamDefaults(QTableWidget* table, TestCaseSendChannel ch
         setSendParamTableFromMap(table, map);
     }
 }
+
+void maybeFillAsd9026aCmdParamDefaults(QTableWidget* table, TestCaseSendChannel channel, const QString& device,
+                                      const QString& cmdName) {
+    if (!table || channel != TestCaseSendChannel::Fixture)
+        return;
+    if (FixturePcbaCmdCatalog::fixtureProtocolFromIni(device) != TestCaseFixtureProtocol::Asd9026a)
+        return;
+    if (!sendParamTableIsEmpty(table))
+        return;
+
+    // 与治具一样：参数表可直接改报文；默认按 ModuleAddr=01、5V/2A、大档/小档
+    if (cmdName == QLatin1String("ConfigureProgrammablePower")) {
+        QVariantMap map;
+        map.insert(QStringLiteral("channel"), QStringLiteral("1"));
+        map.insert(QStringLiteral("voltage"), QStringLiteral("5.0"));
+        map.insert(QStringLiteral("current"), QStringLiteral("2.0"));
+        map.insert(QStringLiteral("currentRange"), QStringLiteral("1"));
+        map.insert(QStringLiteral("txHex"),
+                   QStringLiteral("01 21 0D 0D 00 40 4B 4C 00 D0 07 00 00 01 01 00 00 A0 F1"));
+        setSendParamTableFromMap(table, map);
+        return;
+    }
+    if (cmdName == QLatin1String("ConfigureCurrentMeasureRange")) {
+        QVariantMap map;
+        map.insert(QStringLiteral("channel"), QStringLiteral("1"));
+        map.insert(QStringLiteral("currentRange"), QStringLiteral("3"));
+        map.insert(QStringLiteral("txHex"),
+                   QStringLiteral("01 21 0D 0D 00 00 00 00 00 00 00 00 00 03 00 00 00 38 24"));
+        setSendParamTableFromMap(table, map);
+        return;
+    }
+    if (cmdName == QLatin1String("ProgrammablePowerOutput")) {
+        QVariantMap map;
+        map.insert(QStringLiteral("channel"), QStringLiteral("1"));
+        map.insert(QStringLiteral("enable"), QStringLiteral("1"));
+        map.insert(QStringLiteral("txHex"), QStringLiteral("01 11 04 03 01 00 00 A8 C5"));
+        setSendParamTableFromMap(table, map);
+        return;
+    }
+    if (cmdName == QLatin1String("ReadProgrammableVoltage") || cmdName == QLatin1String("ReadProgrammableCurrent")) {
+        QVariantMap map;
+        map.insert(QStringLiteral("channel"), QStringLiteral("1"));
+        map.insert(QStringLiteral("txHex"), QStringLiteral("01 20 10 00 0D D2"));
+        if (cmdName == QLatin1String("ReadProgrammableCurrent")) {
+            map.insert(QStringLiteral("sampleDurationMs"), QStringLiteral("3000"));
+            map.insert(QStringLiteral("sampleIntervalMs"), QStringLiteral("200"));
+        }
+        setSendParamTableFromMap(table, map);
+        return;
+    }
+    if (cmdName == QLatin1String("SendRaw")) {
+        setSendParamTableFromString(table, QStringLiteral("01 11 04 03 01 00 00 A8 C5"));
+    }
+}
 bool isFixtureMachineIndexPlaceholder(const QVariant& param) {
     if (param.userType() == QMetaType::QString) {
         const QString s = param.toString().trimmed();
@@ -1314,6 +1368,8 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
                                    def.send.deviceCmd);
     maybeFillProductCmdParamDefaults(ui->tableWidget_sendParam, channel, def.send.deviceCmd);
     maybeFillDongleCmdParamDefaults(ui->tableWidget_sendParam, channel, def.send.deviceCmd);
+    maybeFillAsd9026aCmdParamDefaults(ui->tableWidget_sendParam, channel, comboData(ui->comboBox_productProtocol),
+                                     def.send.deviceCmd);
     applySendParamHintToUi(uiSchema, uiSchema.valid && uiSchema.kind != SendCmdParamKind::None,
                            ui->label_sendParamHint, ui->tableWidget_sendParam, ui->spinBox_intParam,
                            ui->pushButton_addParamRow, ui->pushButton_removeParamRow);
@@ -1538,6 +1594,7 @@ void TestCaseEditDialog::onDeviceCmdChanged(int) {
         maybeFillVisaConfigureDefaults(ui->tableWidget_sendParam, channel, device, cmdName);
         maybeFillProductCmdParamDefaults(ui->tableWidget_sendParam, channel, cmdName);
         maybeFillDongleCmdParamDefaults(ui->tableWidget_sendParam, channel, cmdName);
+        maybeFillAsd9026aCmdParamDefaults(ui->tableWidget_sendParam, channel, device, cmdName);
     }
 }
 

@@ -143,6 +143,10 @@ bool Asd9026aDevice::transact(const QByteArray& request, QByteArray* response, Q
     return false;
 }
 
+bool Asd9026aDevice::sendRawFrame(const QByteArray& request, QByteArray* response, QString* errorMessage) {
+    return transact(request, response, errorMessage);
+}
+
 bool Asd9026aDevice::setOutputEnabled(quint8 moduleAddr, bool enabled, QString* errorMessage) {
     QByteArray payload;
     payload.append(enabled ? char(0x01) : char(0x00));
@@ -170,16 +174,17 @@ bool Asd9026aDevice::setOutputEnabled(quint8 moduleAddr, bool enabled, QString* 
 }
 
 bool Asd9026aDevice::configureConstantVoltage(quint8 moduleAddr, double voltageVolts, double currentLimitAmps,
-                                              QString* errorMessage) {
+                                              quint8 currentMeasureRange, QString* errorMessage) {
     const quint32 voltageUv = static_cast<quint32>(qMax(0.0, voltageVolts) * 1000000.0);
     const quint32 currentMa = static_cast<quint32>(qMax(0.0, currentLimitAmps) * 1000.0);
+    const quint8 rangeCode = static_cast<quint8>(qBound<quint8>(0, currentMeasureRange, 4));
 
     QByteArray payload;
-    payload.append(char(0x00)); // 恒压
+    payload.append(char(0x00)); // 输出状态：不变
     payload.append(Asd9026aCodec::appendLe32(voltageUv));
     payload.append(Asd9026aCodec::appendLe32(currentMa));
-    payload.append(char(0x04)); // 电流档位：自动
-    payload.append(char(0x01)); // 显示速度：快
+    payload.append(char(rangeCode)); // 电流测量档位：1=大 2=中 3=小 4=自动
+    payload.append(char(0x01));      // 显示速度：快
     payload.append(char(0x00));
     payload.append(char(0x00)); // 线阻 0
 
@@ -198,6 +203,38 @@ bool Asd9026aDevice::configureConstantVoltage(quint8 moduleAddr, double voltageV
     if (addr != moduleAddr || func != Asd9026aCodec::kFuncAnalogReply) {
         if (errorMessage)
             *errorMessage = QStringLiteral("ASD9026A 配置应答功能码异常");
+        return false;
+    }
+    return true;
+}
+
+bool Asd9026aDevice::setCurrentMeasureRange(quint8 moduleAddr, quint8 currentMeasureRange, QString* errorMessage) {
+    const quint8 rangeCode = static_cast<quint8>(qBound<quint8>(1, currentMeasureRange, 4));
+
+    QByteArray payload;
+    payload.append(char(0x00)); // 输出状态：不变
+    payload.append(Asd9026aCodec::appendLe32(0)); // 电压：不变
+    payload.append(Asd9026aCodec::appendLe32(0)); // 限流：不变
+    payload.append(char(rangeCode));
+    payload.append(char(0x00)); // 显示速度：不变
+    payload.append(char(0x00));
+    payload.append(char(0x00));
+
+    const QByteArray request =
+        Asd9026aCodec::buildFrame(moduleAddr, Asd9026aCodec::kFuncAnalogWrite, Asd9026aCodec::kCmdAnalogConfigure, payload);
+    QByteArray response;
+    if (!transact(request, &response, errorMessage))
+        return false;
+
+    quint8 addr = 0;
+    quint8 func = 0;
+    quint8 cmd = 0;
+    QByteArray body;
+    if (!Asd9026aCodec::parseFrame(response, &addr, &func, &cmd, &body, errorMessage))
+        return false;
+    if (addr != moduleAddr || func != Asd9026aCodec::kFuncAnalogReply) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("ASD9026A 量程切换应答功能码异常");
         return false;
     }
     return true;
@@ -241,7 +278,11 @@ bool Asd9026aDevice::readAnalogStatus(quint8 moduleAddr, Asd9026aAnalogStatus* o
     QByteArray response;
     if (!transact(request, &response, errorMessage))
         return false;
+    return parseAnalogStatusResponse(moduleAddr, response, out, errorMessage);
+}
 
+bool Asd9026aDevice::parseAnalogStatusResponse(quint8 moduleAddr, const QByteArray& response, Asd9026aAnalogStatus* out,
+                                               QString* errorMessage) {
     quint8 addr = 0;
     quint8 func = 0;
     quint8 cmd = 0;

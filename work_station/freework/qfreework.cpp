@@ -620,6 +620,8 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     ui->getMac->setDisabled(0);
     waitWork(50);
     on_disconnectButton_clicked();
+    // 关闭输出不等于释放 VISA；ASRL 串口不关会占住，测几次后需拔插才能再连
+    resetVisaBackend();
     emit send_end_test(getIndex());
     ui->getMac->clear();
     isTestContinue = false;
@@ -671,6 +673,8 @@ QFreeWork::~QFreeWork() {
         jigSerialPort->close();
         qDebug() << getIndex() << "已关闭jig串口";
     }
+    // ASRL 等 VISA 资源需显式释放，否则独占串口导致下次连不上
+    resetVisaBackend();
     delete ui;
 }
 
@@ -1568,6 +1572,8 @@ void QFreeWork::initData() {
     dongleSuctionCh2Samples_.clear();
     resetSuctionChart();
     setDongleSuctionReadEnabled(false);
+    // 新一轮测试前先释放上一轮可能残留的 VISA 会话
+    resetVisaBackend();
     huilingVisaLinkCache_.clear();
     seedHuilingVisaLinkCacheFromFlowOrSettings();
     BT_RSSI = "";
@@ -2452,6 +2458,7 @@ void QFreeWork::startProductInstrumentStopReceiveAndPer(QString stepNameIn) {
 void QFreeWork::on_stopTest_clicked() {
     clearProductInstrumentWatch();
     plcFacade_.disconnect();
+    resetVisaBackend();
     ui->macInput->setDisabled(0);
     ui->getMac->setDisabled(0);
 

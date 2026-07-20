@@ -2933,6 +2933,9 @@ bool Asd9026aCmdCatalog::paramFromIniGroup(const QSettings& settings, Asd9026aCm
     case DeviceCmdParamKind::None:
         out = QVariant();
         return true;
+    case DeviceCmdParamKind::String:
+        out = readSendScopedParam(settings, QStringLiteral("string"), QString()).toString();
+        return true;
     case DeviceCmdParamKind::JsonMap:
         out = readSendParamMap(settings);
         return true;
@@ -2949,6 +2952,9 @@ void Asd9026aCmdCatalog::paramToIniGroup(QSettings& settings, Asd9026aCmd cmd, c
     const QString prefix = sendParamIniPrefix();
     switch (schema.kind) {
     case DeviceCmdParamKind::None:
+        break;
+    case DeviceCmdParamKind::String:
+        settings.setValue(prefix + QStringLiteral("string"), value.toString());
         break;
     case DeviceCmdParamKind::JsonMap:
         writeJsonMap(settings, prefix, value);
