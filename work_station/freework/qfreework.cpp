@@ -347,20 +347,6 @@ bool QFreeWork::isBydFactory() const {
     return pack.factory.trimmed().compare(QStringLiteral("byd"), Qt::CaseInsensitive) == 0;
 }
 
-bool QFreeWork::isFreeWorkM8BoardFactoryStation() const {
-    // 仅 M8 板厂工站用 PCBA SN 解 MAC；组装/烧录等工站走通用整机 SN 规则
-    const auto containsBoardFactory = [](const QString& text) {
-        return text.contains(QStringLiteral("板厂"), Qt::CaseInsensitive);
-    };
-    const QString stationName = TestCaseStore::loadSelectedFlowStationName();
-    if (containsBoardFactory(stationName))
-        return true;
-    QString stationKey = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationKey());
-    if (stationKey.isEmpty())
-        stationKey = TestCaseStore::resolveFlowStationKey(stationName);
-    return containsBoardFactory(stationKey);
-}
-
 namespace {
 
 QString formatMacFrom12Hex(const QString& macRawUpper) {
@@ -372,14 +358,13 @@ QString formatMacFrom12Hex(const QString& macRawUpper) {
 QString parseMacFromSnXwdRule(const QString& snCode) {
     QString sn = snCode;
     sn.remove(QRegularExpression(QStringLiteral("\\s+")));
-    // 欣旺达板厂 PCBA SN → MAC（仅 M8 板厂工站）；组装整机 SN 请走 test_base::parseMacFromSn
-    // ≤28：优先 offset=4 取 12 位 hex；失败再试 offset=11
-    // >28：优先 offset=11；失败再试 offset=4（长 PCBA 条码）
-    // 例（长 PCBA）：M800BBBBAAAB808070c2d210F66V1N10003 → b808070c2d21
+    // 按长度选偏移（与 test_base 一致，并保留失败时另一偏移兜底）：
+    // - ≤28：PCBA SN，优先 offset=4；失败再试 11
+    // - 35 / >28：整机或长条码，优先 offset=11；失败再试 4
     constexpr int kMacHexLen = 12;
-    constexpr int kOffsetShort = 4;
-    constexpr int kOffsetLong = 11;
-    if (sn.length() < kOffsetShort + kMacHexLen) {
+    constexpr int kOffsetPcba = 4;
+    constexpr int kOffsetWhole = 11;
+    if (sn.length() < kOffsetPcba + kMacHexLen) {
         qDebug() << "[parseMacFromSn/xwd] 长度太短 trimLen=" << sn.length();
         return QStringLiteral("长度太短");
     }
@@ -395,17 +380,17 @@ QString parseMacFromSnXwdRule(const QString& snCode) {
 
     QString macRaw;
     if (sn.length() <= 28) {
-        macRaw = tryOffset(kOffsetShort);
+        macRaw = tryOffset(kOffsetPcba);
         if (macRaw.isEmpty())
-            macRaw = tryOffset(kOffsetLong);
+            macRaw = tryOffset(kOffsetWhole);
     } else {
-        macRaw = tryOffset(kOffsetLong);
+        // 含 35 位整机 SN：从下标 11 取 MAC
+        macRaw = tryOffset(kOffsetWhole);
         if (macRaw.isEmpty())
-            macRaw = tryOffset(kOffsetShort);
+            macRaw = tryOffset(kOffsetPcba);
     }
     if (macRaw.isEmpty()) {
-        // 日志保留失败窗口，便于对照扫码内容
-        const int failOffset = sn.length() <= 28 ? kOffsetShort : kOffsetLong;
+        const int failOffset = sn.length() <= 28 ? kOffsetPcba : kOffsetWhole;
         qDebug() << "[parseMacFromSn/xwd] 不符合规则 macRaw=" << sn.mid(failOffset, kMacHexLen).toUpper()
                  << "snLen=" << sn.length();
         return QStringLiteral("不符合规则");
@@ -418,9 +403,8 @@ QString parseMacFromSnXwdRule(const QString& snCode) {
 } // namespace
 
 QString QFreeWork::parseMacFromSn(const QString& snCode) {
-    if (isFreeWorkM8BoardFactoryStation())
-        return parseMacFromSnXwdRule(snCode);
-    return test_base::parseMacFromSn(snCode);
+    // 一律按 SN 长度解析：28=PCBA(offset4)，35=整机(offset11)；板厂长码保留双偏移兜底
+    return parseMacFromSnXwdRule(snCode);
 }
 
 QString QFreeWork::resolvedPcbaSnText() const {

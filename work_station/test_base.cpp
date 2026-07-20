@@ -1127,16 +1127,28 @@ bool test_base::validateSnFormat(const QString& sn) {
 }
 
 QString test_base::parseMacFromSn(const QString& snCode) {
-    // 通用：组装产整机 SN 解析 MAC（从 index 4 起取 12 位 hex）
+    // 按 SN 长度区分：
+    // - 28 位（及更短可解析段）：PCBA SN，从下标 4 取 12 位 hex
+    // - 35 位：整机 SN，从下标 11 取 12 位 hex
     QString sn = snCode;
     sn.remove(QRegularExpression("\\s+"));
-    if (sn.length() < 16) {
-        qDebug() << "[parseMacFromSn] 长度太短 trimLen=" << sn.length();
+    constexpr int kMacHexLen = 12;
+    constexpr int kPcbaOffset = 4;
+    constexpr int kWholeMachineOffset = 11;
+    constexpr int kWholeMachineSnLen = 35;
+
+    int offset = kPcbaOffset;
+    if (sn.length() == kWholeMachineSnLen) {
+        offset = kWholeMachineOffset;
+    }
+    if (sn.length() < offset + kMacHexLen) {
+        qDebug() << "[parseMacFromSn] 长度太短 trimLen=" << sn.length() << "offset=" << offset;
         return QString("长度太短");
     }
-    QString macRaw = sn.mid(4, 12).toUpper();
+    QString macRaw = sn.mid(offset, kMacHexLen).toUpper();
     if (!QRegularExpression("^[0-9A-F]{12}$").match(macRaw).hasMatch()) {
-        qDebug() << "[parseMacFromSn] 不符合规则 macRaw=" << macRaw;
+        qDebug() << "[parseMacFromSn] 不符合规则 macRaw=" << macRaw << "snLen=" << sn.length()
+                 << "offset=" << offset;
         return QString("不符合规则");
     }
     const QString mac = QString("%1:%2:%3:%4:%5:%6")
@@ -1146,7 +1158,7 @@ QString test_base::parseMacFromSn(const QString& snCode) {
                             .arg(macRaw.mid(6, 2))
                             .arg(macRaw.mid(8, 2))
                             .arg(macRaw.mid(10, 2));
-    qDebug() << "[parseMacFromSn] ok" << mac;
+    qDebug() << "[parseMacFromSn] ok" << mac << "snLen=" << sn.length() << "offset=" << offset;
     return mac;
 }
 
