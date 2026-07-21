@@ -119,6 +119,7 @@ INCLUDEPATH += agreement/modbus_protocol/access
 INCLUDEPATH += agreement/modbus_protocol/manager
 INCLUDEPATH += agreement/modbus_protocol/codec
 INCLUDEPATH += agreement/modbus_protocol/device/inovance_h5u_tcp
+INCLUDEPATH += agreement/modbus_protocol/device/gc_series_tcp
 INCLUDEPATH += agreement/modbus_protocol/device/hq_ammeter_rtu
 INCLUDEPATH += agreement/modbus_protocol/device/lx_ammeter_rtu
 INCLUDEPATH += agreement/scpi_protocol/codec
@@ -184,6 +185,7 @@ SOURCES += \
     agreement/modbus_protocol/device/hq_ammeter_rtu/hq_ammeter_rtu.cpp \
     agreement/modbus_protocol/device/lx_ammeter_rtu/lx_ammeter_rtu.cpp \
     agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp_device.cpp \
+    agreement/modbus_protocol/device/gc_series_tcp/gc_series_tcp_device.cpp \
     platform/driver/process/process_channel.cpp \
     agreement/factory_protocol/codec/fctp/comm_protocol_builder.cpp \
     agreement/factory_protocol/codec/fctp/comm_protocol_parser.cpp \
@@ -480,6 +482,8 @@ HEADERS += \
     agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp.h \
     agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp_types.h \
     agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp_device.h \
+    agreement/modbus_protocol/device/gc_series_tcp/gc_series_tcp_types.h \
+    agreement/modbus_protocol/device/gc_series_tcp/gc_series_tcp_device.h \
     agreement/scpi_protocol/codec/scpi_line_codec.h \
     agreement/scpi_protocol/device/huiling_wfp60h_scpi/huiling_wfp60h_profile.h \
     agreement/scpi_protocol/device/agilent_66319d_scpi/agilent_66319d_profile.h \

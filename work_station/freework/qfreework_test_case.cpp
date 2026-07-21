@@ -327,6 +327,18 @@ PlcCmd plcCmdFromName(const QString& name) {
     return PlcCmd::IsConnected;
 }
 
+GcPlcCmd gcPlcCmdFromName(const QString& name) {
+    if (name == QLatin1String("Connect"))
+        return GcPlcCmd::Connect;
+    if (name == QLatin1String("Disconnect"))
+        return GcPlcCmd::Disconnect;
+    if (name == QLatin1String("IsConnected"))
+        return GcPlcCmd::IsConnected;
+    if (name == QLatin1String("WriteCoil"))
+        return GcPlcCmd::WriteCoil;
+    return GcPlcCmd::IsConnected;
+}
+
 HqAmmeterRtuCmd hqAmmeterRtuCmdFromName(const QString& name) {
     if (name == QLatin1String("ReadMeasurement"))
         return HqAmmeterRtuCmd::ReadMeasurement;
@@ -1264,8 +1276,22 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
 
         if (devRoute == ModbusDeviceRoute::InovanceH5uTcp) {
             PlcCmd plcCmd = plcCmdFromName(def.send.deviceCmd);
+            // 1拖2：WriteCoil 可用 mLeft/mRight，按工位选一侧写入 m
+            QVariant plcParam = resolvedParam;
+            if (plcCmd == PlcCmd::WriteCoil && resolvedParam.canConvert<QVariantMap>()) {
+                QVariantMap map = resolvedParam.toMap();
+                if (map.contains(QStringLiteral("mLeft")) && map.contains(QStringLiteral("mRight"))) {
+                    const int m = (ctx->getIndex() <= 1) ? map.value(QStringLiteral("mLeft")).toInt()
+                                                        : map.value(QStringLiteral("mRight")).toInt();
+                    map.insert(QStringLiteral("m"), m);
+                    plcParam = map;
+                    ctx->showlog(QStringLiteral("PLC WriteCoil 工位%1 选用 M%2")
+                                     .arg(ctx->getIndex())
+                                     .arg(m));
+                }
+            }
             QVariant resultVal;
-            bool ok = ctx->modbusManager.exec(plcCmd, resolvedParam, &resultVal, &errStr);
+            bool ok = ctx->modbusManager.exec(plcCmd, plcParam, &resultVal, &errStr);
             if (!ok) {
                 ctx->showlog(QStringLiteral("PLC 指令 [%1] 执行失败: %2").arg(def.send.deviceCmd, errStr));
                 ctx->markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
@@ -1283,6 +1309,29 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                 } else {
                     ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
                 }
+            }
+        } else if (devRoute == ModbusDeviceRoute::GcSeriesTcp) {
+            GcPlcCmd gcCmd = gcPlcCmdFromName(def.send.deviceCmd);
+            QVariant gcParam = resolvedParam;
+            if (gcCmd == GcPlcCmd::WriteCoil && resolvedParam.canConvert<QVariantMap>()) {
+                QVariantMap map = resolvedParam.toMap();
+                if (map.contains(QStringLiteral("mLeft")) && map.contains(QStringLiteral("mRight"))) {
+                    const int m = (ctx->getIndex() <= 1) ? map.value(QStringLiteral("mLeft")).toInt()
+                                                        : map.value(QStringLiteral("mRight")).toInt();
+                    map.insert(QStringLiteral("m"), m);
+                    gcParam = map;
+                    ctx->showlog(QStringLiteral("GC WriteCoil 工位%1 选用 M%2")
+                                     .arg(ctx->getIndex())
+                                     .arg(m));
+                }
+            }
+            QVariant resultVal;
+            bool ok = ctx->modbusManager.exec(gcCmd, gcParam, &resultVal, &errStr);
+            if (!ok) {
+                ctx->showlog(QStringLiteral("GC PLC 指令 [%1] 执行失败: %2").arg(def.send.deviceCmd, errStr));
+                ctx->markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
+            } else {
+                ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
             }
         } else if (devRoute == ModbusDeviceRoute::HqAmmeterRtu) {
             if (def.send.action == TestCaseSendAction::Get && def.gate.enabled) {

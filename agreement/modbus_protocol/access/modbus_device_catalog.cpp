@@ -8,6 +8,7 @@ namespace {
 
 constexpr ModbusDeviceBinding kBindings[] = {
     {ModbusDeviceRoute::InovanceH5uTcp, ModbusLinkKind::Tcp, "inovance_h5u_tcp", "PlcCmd", u8"汇川 H5U PLC"},
+    {ModbusDeviceRoute::GcSeriesTcp, ModbusLinkKind::Tcp, "gc_series_tcp", "GcPlcCmd", u8"GC系列 PLC"},
     {ModbusDeviceRoute::HqAmmeterRtu, ModbusLinkKind::Rtu, "hq_ammeter_rtu", "HqAmmeterRtuCmd", u8"华勤 RTU 电流表"},
     {ModbusDeviceRoute::LxAmmeterRtu, ModbusLinkKind::Rtu, "lx_ammeter_rtu", "LxAmmeterRtuCmd", u8"立讯 RTU 电流表"},
 };
@@ -48,6 +49,8 @@ QString deviceRouteToIni(ModbusDeviceRoute route) {
     switch (route) {
     case ModbusDeviceRoute::InovanceH5uTcp:
         return QStringLiteral("InovanceH5uTcp");
+    case ModbusDeviceRoute::GcSeriesTcp:
+        return QStringLiteral("GcSeriesTcp");
     case ModbusDeviceRoute::HqAmmeterRtu:
         return QStringLiteral("HqAmmeterRtu");
     case ModbusDeviceRoute::LxAmmeterRtu:
@@ -61,6 +64,9 @@ ModbusDeviceRoute deviceRouteFromIni(const QString& text) {
     const QString t = text.trimmed();
     if (t.compare(QStringLiteral("InovanceH5uTcp"), Qt::CaseInsensitive) == 0) {
         return ModbusDeviceRoute::InovanceH5uTcp;
+    }
+    if (t.compare(QStringLiteral("GcSeriesTcp"), Qt::CaseInsensitive) == 0) {
+        return ModbusDeviceRoute::GcSeriesTcp;
     }
     if (t.compare(QStringLiteral("HqAmmeterRtu"), Qt::CaseInsensitive) == 0) {
         return ModbusDeviceRoute::HqAmmeterRtu;

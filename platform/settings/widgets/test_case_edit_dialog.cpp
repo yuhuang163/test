@@ -612,13 +612,14 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
         if (row) {
             out.valid = true;
             out.hint = ModbusPeriphCmdCatalog::paramUiHint(devRoute, name);
-            if (devRoute == ModbusDeviceRoute::InovanceH5uTcp) {
+            if (devRoute == ModbusDeviceRoute::InovanceH5uTcp || devRoute == ModbusDeviceRoute::GcSeriesTcp) {
                 if (name == QLatin1String("ReadCoil")) {
                     out.kind = SendCmdParamKind::Int;
                 } else if (name == QLatin1String("WriteCoil") ||
                            name == QLatin1String("ReadCoils") ||
                            name == QLatin1String("WaitCoilTrue") ||
-                           name == QLatin1String("WaitCoilFalse")) {
+                           name == QLatin1String("WaitCoilFalse") ||
+                           name == QLatin1String("Connect")) {
                     out.kind = SendCmdParamKind::JsonMap;
                 } else {
                     out.kind = SendCmdParamKind::None;

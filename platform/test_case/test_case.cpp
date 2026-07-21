@@ -3491,6 +3491,7 @@ int ProductSerialCmdCatalog::brushProfileForCmd(ProductSerialCmd cmd) {
 
 QStringList ModbusPeriphCmdCatalog::allDeviceKeys() {
     return {ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::InovanceH5uTcp),
+            ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::GcSeriesTcp),
             ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::HqAmmeterRtu),
             ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::LxAmmeterRtu)};
 }

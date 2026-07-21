@@ -13,6 +13,8 @@
 #include "imodbus_rtu_device.h"
 #include "inovance_h5u_tcp.h"
 #include "inovance_h5u_tcp_device.h"
+#include "gc_series_tcp_device.h"
+#include "gc_series_tcp_types.h"
 #include "lx_ammeter_rtu.h"
 #include "lx_ammeter_rtu_types.h"
 #include "modbus_types.h"
@@ -24,8 +26,8 @@
 #include "serial_channel.h"
 #include <QVariant>
 /**
- * Modbus domain entry: H5U TCP PLC + HQ/LX RTU ammeters.
- * RTU: IModbusRtuDevice + template exec; PLC: InovanceH5uTcpDevice set/get.
+ * Modbus domain entry: H5U TCP PLC + GC 系列 TCP PLC + HQ/LX RTU ammeters.
+ * RTU: IModbusRtuDevice + template exec；汇川/GC 各自独立 TCP 会话与配置键。
  */
 class QModbusManager : public QObject {
     Q_OBJECT
@@ -47,7 +49,11 @@ class QModbusManager : public QObject {
     InovanceH5uTcpDevice* h5uDevice();
     const InovanceH5uTcpDevice* h5uDevice() const;
 
+    InovanceH5uModbusTcp* gcTcp();
+    GcSeriesTcpDevice* gcDevice();
+
     bool exec(PlcCmd cmd, const QVariant& param = {}, QVariant* result = nullptr, QString* errorMessage = nullptr);
+    bool exec(GcPlcCmd cmd, const QVariant& param = {}, QVariant* result = nullptr, QString* errorMessage = nullptr);
 
     bool connectPlc(QString* errorMessage = nullptr);
     void disconnectPlc();
@@ -122,11 +128,14 @@ class QModbusManager : public QObject {
   private:
     PlcModbusSession makeSession() const;
     void syncH5uDeviceBindings();
+    void syncGcDeviceBindings();
     void syncRtuDeviceBindings();
 
     int stationIndex_ = 1;
     InovanceH5uModbusTcp h5uTcp_;
     InovanceH5uTcpDevice h5uDevice_;
+    InovanceH5uModbusTcp gcTcp_;
+    GcSeriesTcpDevice gcDevice_;
     HqAmmeterModbusRtu hqAmmeterRtu_;
     LxAmmeterModbusRtu lxAmmeterRtu_;
     LogFn log_;

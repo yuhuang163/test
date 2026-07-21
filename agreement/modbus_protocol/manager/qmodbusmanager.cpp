@@ -10,8 +10,9 @@
 #pragma execution_character_set(push, "utf-8")
 #endif
 
-QModbusManager::QModbusManager(QObject* parent) : QObject(parent), h5uDevice_(this) {
+QModbusManager::QModbusManager(QObject* parent) : QObject(parent), h5uDevice_(this), gcDevice_(this) {
     syncH5uDeviceBindings();
+    syncGcDeviceBindings();
     syncRtuDeviceBindings();
 }
 
@@ -22,6 +23,12 @@ void QModbusManager::syncH5uDeviceBindings() {
     h5uDevice_.setIsContinueFn(isContinue_);
 }
 
+void QModbusManager::syncGcDeviceBindings() {
+    gcDevice_.setTcp(&gcTcp_);
+    gcDevice_.setStationIndex(stationIndex_);
+    gcDevice_.setLogFn(log_);
+}
+
 void QModbusManager::syncRtuDeviceBindings() {
     lxAmmeterRtu_.setMachineId(luxshareMachineId_);
 }
@@ -29,6 +36,7 @@ void QModbusManager::syncRtuDeviceBindings() {
 void QModbusManager::setStationIndex(int stationIndex) {
     stationIndex_ = qMax(1, stationIndex);
     syncH5uDeviceBindings();
+    syncGcDeviceBindings();
 }
 
 int QModbusManager::stationIndex() const {
@@ -38,6 +46,7 @@ int QModbusManager::stationIndex() const {
 void QModbusManager::setLogFn(LogFn fn) {
     log_ = std::move(fn);
     syncH5uDeviceBindings();
+    syncGcDeviceBindings();
 }
 
 void QModbusManager::setIsContinueFn(IsContinueFn fn) {
@@ -61,6 +70,14 @@ const InovanceH5uTcpDevice* QModbusManager::h5uDevice() const {
     return &h5uDevice_;
 }
 
+InovanceH5uModbusTcp* QModbusManager::gcTcp() {
+    return &gcTcp_;
+}
+
+GcSeriesTcpDevice* QModbusManager::gcDevice() {
+    return &gcDevice_;
+}
+
 PlcModbusSession QModbusManager::makeSession() const {
     return PlcModbusSession(const_cast<InovanceH5uModbusTcp*>(&h5uTcp_), PlcStationConfig::fromSettings(stationIndex_),
                             log_, isContinue_);
@@ -71,6 +88,13 @@ bool QModbusManager::exec(PlcCmd cmd, const QVariant& param, QVariant* result, Q
         return h5uDevice_.get(cmd, param, result, errorMessage);
     }
     return h5uDevice_.set(cmd, param, errorMessage);
+}
+
+bool QModbusManager::exec(GcPlcCmd cmd, const QVariant& param, QVariant* result, QString* errorMessage) {
+    if (GcSeriesTcpDevice::isQueryCmd(cmd)) {
+        return gcDevice_.get(cmd, param, result, errorMessage);
+    }
+    return gcDevice_.set(cmd, param, errorMessage);
 }
 
 bool QModbusManager::connectPlc(QString* errorMessage) {
