@@ -21,10 +21,44 @@ QByteArray amplitudeQueryCommand() {
     return QByteArray("Test1\r\n");
 }
 
+/** 配置里的字面量 \\r \\n \\t \\\\ → 真实控制符；未写则不加换行 */
+QString unescapeParamEscapes(const QString& text) {
+    QString out;
+    out.reserve(text.size());
+    for (int i = 0; i < text.size(); ++i) {
+        if (text.at(i) == QLatin1Char('\\') && i + 1 < text.size()) {
+            const QChar next = text.at(i + 1);
+            if (next == QLatin1Char('r')) {
+                out.append(QLatin1Char('\r'));
+                ++i;
+                continue;
+            }
+            if (next == QLatin1Char('n')) {
+                out.append(QLatin1Char('\n'));
+                ++i;
+                continue;
+            }
+            if (next == QLatin1Char('t')) {
+                out.append(QLatin1Char('\t'));
+                ++i;
+                continue;
+            }
+            if (next == QLatin1Char('\\')) {
+                out.append(QLatin1Char('\\'));
+                ++i;
+                continue;
+            }
+        }
+        out.append(text.at(i));
+    }
+    return out;
+}
+
 QByteArray encodeRawOrHexText(const QString& text, bool* parsedAsHex) {
     if (parsedAsHex)
         *parsedAsHex = false;
 
+    // 先 trim 空白，再解析 \\r\\n（避免真实换行被 trim 掉后无法配置）
     const QString trimmed = text.trimmed();
     if (trimmed.isEmpty())
         return {};
@@ -58,7 +92,8 @@ QByteArray encodeRawOrHexText(const QString& text, bool* parsedAsHex) {
             }
         }
     }
-    return trimmed.toUtf8();
+    // 原文：配置写 readonce\\r\\n 才带换行；只写 readonce 则不加
+    return unescapeParamEscapes(trimmed).toUtf8();
 }
 
 } // namespace FixtureUartCodec
