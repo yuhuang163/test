@@ -180,6 +180,8 @@ void TestCaseBlock::contextMenuEvent(QContextMenuEvent* event) {
     emit blockSelected(this);
     QMenu menu(this);
     menu.addAction(QStringLiteral("打开设置"), this, [this]() { emit editRequested(this); });
+    QAction* copyAct = menu.addAction(QStringLiteral("复制"), this, [this]() { emit copyRequested(this); });
+    copyAct->setEnabled(!isBlank());
     menu.addAction(QStringLiteral("从流程移除"), this, [this]() { emit removeFromFlowRequested(this); });
     menu.exec(event->globalPos());
 }
@@ -749,15 +751,16 @@ void TestFlowEditor::clearBlocks() {
     }
 }
 
-void TestFlowEditor::appendBlock(const QString& caseName, bool enabled) {
+TestCaseBlock* TestFlowEditor::createBlock(const QString& caseName, bool enabled) {
     if (!scroll_ || !flowLayout_)
-        return;
+        return nullptr;
     QWidget* container = scroll_->widget();
     if (!container)
-        return;
+        return nullptr;
     auto* block = new TestCaseBlock(caseName, container);
     block->setChecked(enabled);
     connect(block, &TestCaseBlock::editRequested, this, &TestFlowEditor::openEditDialog);
+    connect(block, &TestCaseBlock::copyRequested, this, &TestFlowEditor::copyBlock);
     connect(block, &TestCaseBlock::removeFromFlowRequested, this, [this](TestCaseBlock* b) {
         if (selectedBlock_ == b)
             setSelectedBlock(nullptr);
@@ -765,8 +768,105 @@ void TestFlowEditor::appendBlock(const QString& caseName, bool enabled) {
         b->deleteLater();
     });
     connect(block, &TestCaseBlock::blockSelected, this, [this](TestCaseBlock* b) { setSelectedBlock(b); });
+    return block;
+}
+
+void TestFlowEditor::appendBlock(const QString& caseName, bool enabled) {
+    TestCaseBlock* block = createBlock(caseName, enabled);
+    if (!block || !flowLayout_)
+        return;
     flowLayout_->addWidget(block);
     setSelectedBlock(block);
+}
+
+void TestFlowEditor::insertBlockAfter(TestCaseBlock* after, const QString& caseName, bool enabled) {
+    TestCaseBlock* block = createBlock(caseName, enabled);
+    if (!block || !flowLayout_)
+        return;
+    const int idx = after ? flowLayout_->indexOf(after) : -1;
+    if (idx < 0)
+        flowLayout_->addWidget(block);
+    else
+        flowLayout_->insertWidget(idx + 1, block);
+    setSelectedBlock(block);
+}
+
+void TestFlowEditor::copyBlock(TestCaseBlock* src) {
+    if (!src || !dialogParent_)
+        return;
+    if (src->isBlank()) {
+        QMessageBox::warning(dialogParent_, QStringLiteral("无法复制"),
+                             QStringLiteral("空白块无法复制，请先打开设置并保存步骤。"));
+        return;
+    }
+    const QString stationKey = currentStationKey();
+    if (stationKey.isEmpty()) {
+        QMessageBox::warning(dialogParent_, QStringLiteral("无法复制"), QStringLiteral("请先选择工站"));
+        return;
+    }
+
+    TestCaseDefinition def;
+    if (!TestCaseStore::loadCaseForStation(stationKey, src->caseName(), def)) {
+        QMessageBox::warning(dialogParent_, QStringLiteral("无法复制"),
+                             QStringLiteral("无法读取步骤「%1」配置").arg(src->caseName()));
+        return;
+    }
+
+    const QString baseName = def.meta.name.trimmed().isEmpty() ? src->caseName() : def.meta.name.trimmed();
+    QSet<QString> usedNames;
+    for (const TestFlowItemEntry& entry : currentFlowEntries())
+        usedNames.insert(entry.caseName.trimmed());
+    for (const QString& name : TestCaseStore::listCaseIniNames())
+        usedNames.insert(name.trimmed());
+
+    QString newName = baseName + QStringLiteral(" 副本");
+    for (int n = 2; usedNames.contains(newName) || TestCasePaths::stepIniExistsForStation(stationKey, newName);
+         ++n) {
+        if (n > 999) {
+            QMessageBox::warning(dialogParent_, QStringLiteral("无法复制"),
+                                 QStringLiteral("无法生成可用的副本名称"));
+            return;
+        }
+        newName = baseName + QStringLiteral(" 副本%1").arg(n);
+    }
+
+    QSet<QString> usedMesTags;
+    for (const TestFlowItemEntry& entry : currentFlowEntries()) {
+        TestCaseDefinition other;
+        if (!TestCaseStore::loadCaseForStation(stationKey, entry.caseName, other))
+            continue;
+        const QString tag = other.meta.mesTag.trimmed();
+        if (!tag.isEmpty())
+            usedMesTags.insert(tag);
+    }
+    QString baseTag = def.meta.mesTag.trimmed();
+    if (baseTag.isEmpty())
+        baseTag = QStringLiteral("STEP");
+    QString newTag = baseTag + QStringLiteral("_COPY");
+    for (int n = 2; usedMesTags.contains(newTag); ++n) {
+        if (n > 999) {
+            QMessageBox::warning(dialogParent_, QStringLiteral("无法复制"),
+                                 QStringLiteral("无法生成可用的上报MES字段"));
+            return;
+        }
+        newTag = baseTag + QStringLiteral("_COPY%1").arg(n);
+    }
+
+    def.meta.name = newName;
+    def.meta.displayName = newName;
+    def.meta.mesTag = newTag;
+
+    QStringList errors;
+    if (!TestCaseValidator::validateCase(def, errors)) {
+        QMessageBox::warning(dialogParent_, QStringLiteral("无法复制"), errors.join(QStringLiteral("\n")));
+        return;
+    }
+    if (!TestCaseStore::saveCaseForStation(stationKey, def)) {
+        QMessageBox::warning(dialogParent_, QStringLiteral("无法复制"), QStringLiteral("写入步骤配置失败"));
+        return;
+    }
+
+    insertBlockAfter(src, newName, src->isChecked());
 }
 
 QString TestFlowEditor::currentStationKey() const {

@@ -39,6 +39,7 @@ class TestCaseBlock : public QCheckBox {
 
   signals:
     void editRequested(TestCaseBlock* block);
+    void copyRequested(TestCaseBlock* block);
     void removeFromFlowRequested(TestCaseBlock* block);
     void blockSelected(TestCaseBlock* block);
 
@@ -88,6 +89,9 @@ class TestFlowEditor : public QObject {
     bool activateStationComboIndex(int index);
     void clearBlocks();
     void appendBlock(const QString& caseName, bool enabled = true);
+    TestCaseBlock* createBlock(const QString& caseName, bool enabled);
+    void insertBlockAfter(TestCaseBlock* after, const QString& caseName, bool enabled = true);
+    void copyBlock(TestCaseBlock* src);
     void setSelectedBlock(TestCaseBlock* block);
     QString currentStationKey() const;
     QVector<TestFlowItemEntry> currentFlowEntries() const;
