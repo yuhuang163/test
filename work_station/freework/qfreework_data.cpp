@@ -67,6 +67,26 @@ void QFreeWork::resetTuplePositionHighlight() {
     ui->label_tuplePosUnspecified->setStyleSheet(kTuplePosInactiveStyle);
 }
 
+void QFreeWork::updateTuplePositionUiVisible() {
+    bool show = false;
+    for (const QString& caseName : orderedTestCaseNames_) {
+        TestCaseDefinition def;
+        if (!TestCaseRunner::loadCaseForStation(activeFlowStationKey_, caseName, def))
+            continue;
+        if (def.send.deviceCmd == QStringLiteral("ApplyTupleByMac")) {
+            show = true;
+            break;
+        }
+    }
+    ui->label_tuplePositionCaption->setVisible(show);
+    ui->label_tuplePosLeft->setVisible(show);
+    ui->label_tuplePosRight->setVisible(show);
+    ui->label_tuplePosSingle->setVisible(show);
+    ui->label_tuplePosUnspecified->setVisible(show);
+    if (!show)
+        resetTuplePositionHighlight();
+}
+
 void QFreeWork::updateTuplePositionHighlight(const QString& position) {
     resetTuplePositionHighlight();
     QLabel* target = nullptr;

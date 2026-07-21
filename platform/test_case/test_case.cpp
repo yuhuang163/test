@@ -2381,6 +2381,7 @@ bool TestCaseValidator::validateFlowMesTags(const QString& stationKey, const QVe
         steps.append(info);
     }
 
+    QHash<QString, QSet<QString>> tagToDistinctNames;
     QHash<QString, QStringList> tagToStepLabels;
     for (const StepMesInfo& info : steps) {
         const QString stepLabel =
@@ -2389,13 +2390,15 @@ bool TestCaseValidator::validateFlowMesTags(const QString& stationKey, const QVe
             errors.append(QStringLiteral("%1：未填写「上报MES的字段」").arg(stepLabel));
             continue;
         }
+        // 同名步骤在流程中重复出现（如多频点 RX）允许共用同一 MesTag
+        tagToDistinctNames[info.mesTag].insert(info.stepName);
         tagToStepLabels[info.mesTag].append(stepLabel);
     }
-    for (auto it = tagToStepLabels.constBegin(); it != tagToStepLabels.constEnd(); ++it) {
+    for (auto it = tagToDistinctNames.constBegin(); it != tagToDistinctNames.constEnd(); ++it) {
         if (it.value().size() < 2)
             continue;
         errors.append(QStringLiteral("「上报MES的字段」重复为「%1」，冲突步骤：%2")
-                          .arg(it.key(), it.value().join(QStringLiteral("、"))));
+                          .arg(it.key(), tagToStepLabels.value(it.key()).join(QStringLiteral("、"))));
     }
     return errors.isEmpty();
 }

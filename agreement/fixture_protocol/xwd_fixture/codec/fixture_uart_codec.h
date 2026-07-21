@@ -20,7 +20,8 @@ QByteArray amplitudeQueryCommand();
 /**
  * 原始下发内容解析：
  * - 形如 "11 11 22" / "111122" / "11:11:22" → 十六进制字节（parsedAsHex=true）
- * - 否则按 UTF-8 原文（parsedAsHex=false，如 readonce）
+ * - 否则按 UTF-8 原文（parsedAsHex=false）；配置中的 \\r \\n \\t \\\\ 会转成控制符
+ *   （例：readonce\\r\\n 带换行；readonce 不带）
  */
 QByteArray encodeRawOrHexText(const QString& text, bool* parsedAsHex = nullptr);
 

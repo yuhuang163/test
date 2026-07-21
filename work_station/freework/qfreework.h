@@ -285,6 +285,8 @@ class QFreeWork : public test_base {
     void applyTupleByMac();
     void resetTuplePositionHighlight();
     void updateTuplePositionHighlight(const QString& position);
+    /** 当前流程含「获取云端三元组」(ApplyTupleByMac) 时才显示三元组位置行 */
+    void updateTuplePositionUiVisible();
     void reportBydSfcKey(const QString& dataName, const QVariant& dataValue, int qty = 1);
     void reportBydBluetoothMesKeyMaterials();
     bool failTupleWriteIfNoValidField(const QString& stepName, bool fieldOk, const QString& emptyReason);

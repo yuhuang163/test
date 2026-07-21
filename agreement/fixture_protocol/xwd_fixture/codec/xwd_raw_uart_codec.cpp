@@ -11,7 +11,7 @@
 namespace XwdRawUartCodec {
 
 QByteArray encodeRawText(const QString& text, bool* parsedAsHex) {
-    // 纯十六进制（如 11 11 22）→ hex 字节；含非 hex 字母（如 readonce）→ UTF-8 原文
+    // 纯十六进制（如 11 11 22）→ hex 字节；含非 hex 字母（如 readonce / readonce\r\n）→ UTF-8 原文
     return FixtureUartCodec::encodeRawOrHexText(text, parsedAsHex);
 }
 
