@@ -252,8 +252,8 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     showlog("line=" + pack.line);
     showlog("action=" + pack.action);
 
-    // 万用表/ASD9026A 复用该口，默认 9600（可被 ASD9026A/BaudRate 覆盖）
-    usbBaudRate = SETTINGS.value(QStringLiteral("ASD9026A/BaudRate"), 9600).toInt();
+    // 万用表/ASD9026A 复用该口，默认 115200（可被 ASD9026A/BaudRate 覆盖）
+    usbBaudRate = SETTINGS.value(QStringLiteral("ASD9026A/BaudRate"), 115200).toInt();
     if (pack.factory == "hq" || pack.factory == "jj") {
         ui->jigComNameCombo->setEnabled(false);
         ui->jigConnectButton->setEnabled(false);
@@ -2270,7 +2270,7 @@ void QFreeWork::on_usbconnectButton_clicked() {
         return;
     }
     // 与 ASD9026A 步骤同一波特率；若 ASD 已占该口，先关掉再由 test_base 通道打开
-    usbBaudRate = SETTINGS.value(QStringLiteral("ASD9026A/BaudRate"), 9600).toInt();
+    usbBaudRate = SETTINGS.value(QStringLiteral("ASD9026A/BaudRate"), 115200).toInt();
     if (asd9026aDevice_.isOpen()
         && asd9026aDevice_.portName().compare(port, Qt::CaseInsensitive) == 0) {
         asd9026aDevice_.close();

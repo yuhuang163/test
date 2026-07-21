@@ -80,6 +80,15 @@ QByteArray appendLe32(quint32 value) {
     return out;
 }
 
+QByteArray appendBe32(quint32 value) {
+    QByteArray out;
+    out.append(static_cast<char>((value >> 24) & 0xFF));
+    out.append(static_cast<char>((value >> 16) & 0xFF));
+    out.append(static_cast<char>((value >> 8) & 0xFF));
+    out.append(static_cast<char>(value & 0xFF));
+    return out;
+}
+
 quint32 readLe32(const QByteArray& data, int offset) {
     if (offset + 4 > data.size())
         return 0;

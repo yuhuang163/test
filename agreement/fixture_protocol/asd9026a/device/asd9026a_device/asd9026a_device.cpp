@@ -181,8 +181,9 @@ bool Asd9026aDevice::configureConstantVoltage(quint8 moduleAddr, double voltageV
 
     QByteArray payload;
     payload.append(char(0x00)); // 输出状态：不变
-    payload.append(Asd9026aCodec::appendLe32(voltageUv));
-    payload.append(Asd9026aCodec::appendLe32(currentMa));
+    // 协议明确要求高位在前，例如 4V/2A 编码为 00 3D 09 00 / 00 00 07 D0
+    payload.append(Asd9026aCodec::appendBe32(voltageUv));
+    payload.append(Asd9026aCodec::appendBe32(currentMa));
     payload.append(char(rangeCode)); // 电流测量档位：1=大 2=中 3=小 4=自动
     payload.append(char(0x01));      // 显示速度：快
     payload.append(char(0x00));
@@ -200,9 +201,10 @@ bool Asd9026aDevice::configureConstantVoltage(quint8 moduleAddr, double voltageV
     QByteArray body;
     if (!Asd9026aCodec::parseFrame(response, &addr, &func, &cmd, &body, errorMessage))
         return false;
-    if (addr != moduleAddr || func != Asd9026aCodec::kFuncAnalogReply) {
+    if (addr != moduleAddr || func != Asd9026aCodec::kFuncReadReply || cmd != 0xFF || body.size() != 3
+        || static_cast<quint8>(body.at(2)) != Asd9026aCodec::kCmdAnalogConfigure) {
         if (errorMessage)
-            *errorMessage = QStringLiteral("ASD9026A 配置应答功能码异常");
+            *errorMessage = QStringLiteral("ASD9026A 配置校验应答异常");
         return false;
     }
     return true;
@@ -213,8 +215,8 @@ bool Asd9026aDevice::setCurrentMeasureRange(quint8 moduleAddr, quint8 currentMea
 
     QByteArray payload;
     payload.append(char(0x00)); // 输出状态：不变
-    payload.append(Asd9026aCodec::appendLe32(0)); // 电压：不变
-    payload.append(Asd9026aCodec::appendLe32(0)); // 限流：不变
+    payload.append(Asd9026aCodec::appendBe32(0)); // 电压：不变
+    payload.append(Asd9026aCodec::appendBe32(0)); // 限流：不变
     payload.append(char(rangeCode));
     payload.append(char(0x00)); // 显示速度：不变
     payload.append(char(0x00));
@@ -232,9 +234,10 @@ bool Asd9026aDevice::setCurrentMeasureRange(quint8 moduleAddr, quint8 currentMea
     QByteArray body;
     if (!Asd9026aCodec::parseFrame(response, &addr, &func, &cmd, &body, errorMessage))
         return false;
-    if (addr != moduleAddr || func != Asd9026aCodec::kFuncAnalogReply) {
+    if (addr != moduleAddr || func != Asd9026aCodec::kFuncReadReply || cmd != 0xFF || body.size() != 3
+        || static_cast<quint8>(body.at(2)) != Asd9026aCodec::kCmdAnalogConfigure) {
         if (errorMessage)
-            *errorMessage = QStringLiteral("ASD9026A 量程切换应答功能码异常");
+            *errorMessage = QStringLiteral("ASD9026A 量程切换校验应答异常");
         return false;
     }
     return true;
