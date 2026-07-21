@@ -15,7 +15,6 @@
 #include "qtupleservice.h"
 #include "test_base.h"
 #include "test_case_types.h"
-#include "asd9026a_device.h"
 #include "ui_qfreework.h"
 
 class QMessageBox;
@@ -361,7 +360,6 @@ class QFreeWork : public test_base {
     double suctionRightPeakLow_ = 0.0;
     /** 本轮回放中已配置的会凌 VISA 连接（地址/电压/电流等），开关步骤可复用。 */
     QVariantMap huilingVisaLinkCache_;
-    Asd9026aDevice asd9026aDevice_;
 
   private slots:
     void initData();

@@ -6,6 +6,7 @@
 #include "qfreeworkbox.h"
 #include "fixture_uart.h"
 #include "pcba_uart_codec.h"
+#include "asd9026a_codec.h"
 #include "asd9026a_device.h"
 #include "xwd_raw_fixture_device.h"
 #include "xwd_raw_uart_codec.h"
@@ -70,10 +71,6 @@ int fixtureMachineIndexFromParam(const QVariant& param) {
     return idx;
 }
 
-int asd9026aChannelFromMap(const QVariantMap& map) {
-    return qBound(1, map.value(QStringLiteral("channel"), 1).toInt(), 2);
-}
-
 double asd9026aParamDouble(const QVariantMap& map, const QString& key, double fallback) {
     if (!map.contains(key))
         return fallback;
@@ -109,51 +106,58 @@ QString asd9026aTxHexFromParam(const QVariant& resolved, const QVariantMap& map)
     return sendParamAsRawText(resolved).trimmed();
 }
 
-bool asd9026aSendConfiguredTxHex(Asd9026aDevice& dev, const QString& txHex, QByteArray* response, QString* errorMessage) {
+bool asd9026aSendConfiguredTxHex(Asd9026aDevice& dev, quint8 moduleAddr, const QString& txHex,
+                                 QByteArray* response, QString* actualTxHex, QString* errorMessage) {
     if (txHex.isEmpty()) {
         if (errorMessage)
             *errorMessage = QStringLiteral("txHex 为空");
         return false;
     }
     bool parsedAsHex = false;
-    const QByteArray request = XwdRawUartCodec::encodeRawText(txHex, &parsedAsHex);
+    QByteArray request = XwdRawUartCodec::encodeRawText(txHex, &parsedAsHex);
     if (request.isEmpty() || !parsedAsHex) {
         if (errorMessage)
             *errorMessage = QStringLiteral("txHex 须为纯十六进制整帧（含CRC）");
         return false;
     }
+    if (request.size() < 6) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("txHex 帧长度不足");
+        return false;
+    }
+    // 一拖多共用同一份步骤配置：地址按工位 index 改写，并同步重算 CRC。
+    request[0] = static_cast<char>(moduleAddr);
+    const quint16 crc = Asd9026aCodec::crc16Modbus(request.left(request.size() - 2));
+    request[request.size() - 2] = static_cast<char>(crc & 0xFF);
+    request[request.size() - 1] = static_cast<char>((crc >> 8) & 0xFF);
+    if (actualTxHex)
+        *actualTxHex = QString::fromLatin1(request.toHex(' ').toUpper());
     return dev.sendRawFrame(request, response, errorMessage);
 }
 
 quint8 asd9026aModuleAddr(int channel) {
-    const QString key =
-        channel == 2 ? QStringLiteral("ASD9026A/ModuleAddrCh2") : QStringLiteral("ASD9026A/ModuleAddrCh1");
-    const int fallback = channel == 2 ? 2 : 1;
-    return static_cast<quint8>(qBound(1, SETTINGS.value(key, fallback).toInt(), 255));
+    return static_cast<quint8>(channel);
 }
 
 bool ensureAsd9026aConnected(QFreeWork* ctx, Asd9026aDevice& dev, QString* errorMessage) {
     if (dev.isOpen())
         return true;
-    QString port = SETTINGS.value(QStringLiteral("ASD9026A/ComPort")).toString().trimmed();
-    if (port.isEmpty()) {
-        if (QComboBox* usbCombo = ctx->getUsbcomNameCombo())
-            port = usbCombo->currentText().trimmed();
-    }
+    auto* box = qobject_cast<QFreeWorkBox*>(ctx->window());
+    const QString port = box ? box->selectedFixtureComName(ctx->getIndex()) : QString();
     if (port.isEmpty()) {
         if (errorMessage)
-            *errorMessage = QStringLiteral("ASD9026A 万用表串口未选择，请在工位界面选择万用表串口");
+            *errorMessage = QStringLiteral("ASD9026A 串口未选择，请在顶部“连接治具串口”窗口选择端口");
         return false;
     }
-    // ASD9026A 与万用表复用同一物理串口，先释放 test_base 已占用的 USB 通道
-    if (ctx->usbSerialPort && ctx->usbSerialPort->isOpen()
-        && ctx->usbSerialPort->portName().compare(port, Qt::CaseInsensitive) == 0) {
-        ctx->closeUsbSerialPort();
+    // 顶部治具窗口只提供 ASD 端口选择；若已按普通治具协议打开，先释放占用再交给 ASD 驱动。
+    if (Fixture_uart* fixtureUart = box->fixtureUartWidget();
+        fixtureUart && fixtureUart->isFixtureSerialOpen()) {
+        fixtureUart->closeSerialPort();
     }
     const int baudRate = SETTINGS.value(QStringLiteral("ASD9026A/BaudRate"), 115200).toInt();
     if (!dev.open(port, baudRate, errorMessage))
         return false;
-    ctx->showlog(QStringLiteral("ASD9026A 已连接万用表串口 %1 @ %2").arg(port).arg(baudRate));
+    ctx->showlog(QStringLiteral("ASD9026A 已连接顶部治具串口 %1 @ %2").arg(port).arg(baudRate));
     return true;
 }
 
@@ -924,6 +928,13 @@ void QFreeWork::runAsdProgrammableCurrentSampleAnyMatch(const TestCaseDefinition
     const int durationMs = currentSampleDurationMs(def, map);
     const int intervalMs = currentSampleIntervalMs(map);
     const QString channelText = QStringLiteral("CH%1").arg(channel);
+    auto* box = qobject_cast<QFreeWorkBox*>(window());
+    Asd9026aDevice* asdDevice = box ? box->sharedAsd9026aDevice() : nullptr;
+    if (!asdDevice) {
+        markActiveTestCaseStepDone(false, QStringLiteral("共享设备不存在"), QStringLiteral("失败"));
+        showlog(QStringLiteral("ASD9026A 共享设备对象不存在"));
+        return;
+    }
 
     currentSampleAnyMatchActive_ = true;
     currentSampleCount_ = 0;
@@ -943,7 +954,7 @@ void QFreeWork::runAsdProgrammableCurrentSampleAnyMatch(const TestCaseDefinition
         }
         Asd9026aAnalogStatus status;
         QString errStr;
-        if (!asd9026aDevice_.readAnalogStatus(moduleAddr, &status, &errStr)) {
+        if (!asdDevice->readAnalogStatus(moduleAddr, &status, &errStr)) {
             showlog(QStringLiteral("ASD9026A 读电流采样失败（继续）：%1").arg(errStr));
         } else {
             const double currentMa = status.current * 1000.0;
@@ -1851,8 +1862,16 @@ void QFreeWork::executeFixtureAsd9026aCase(const TestCaseDefinition& def) {
         return;
     }
 
+    auto* box = qobject_cast<QFreeWorkBox*>(window());
+    Asd9026aDevice* asdDevice = box ? box->sharedAsd9026aDevice() : nullptr;
+    if (!asdDevice) {
+        showlog(QStringLiteral("ASD9026A 共享设备对象不存在"));
+        markActiveTestCaseStepDone(false, QStringLiteral("共享设备不存在"), QStringLiteral("失败"));
+        return;
+    }
+
     QString errStr;
-    if (!ensureAsd9026aConnected(this, asd9026aDevice_, &errStr)) {
+    if (!ensureAsd9026aConnected(this, *asdDevice, &errStr)) {
         showlog(errStr);
         markActiveTestCaseStepDone(false, QStringLiteral("串口未连接"), QStringLiteral("失败"));
         return;
@@ -1860,7 +1879,13 @@ void QFreeWork::executeFixtureAsd9026aCase(const TestCaseDefinition& def) {
 
     const QVariant resolvedParam = resolveTestCaseSendParamTree(def.send.param);
     const QVariantMap cmdMap = resolvedParam.canConvert<QVariantMap>() ? resolvedParam.toMap() : QVariantMap{};
-    const int channel = asd9026aChannelFromMap(cmdMap);
+    const int channel = getIndex();
+    if (channel < 1 || channel > 2) {
+        const QString message = QStringLiteral("ASD9026A 仅支持通道1/2，当前工位 index=%1").arg(channel);
+        showlog(message);
+        markActiveTestCaseStepDone(false, message, QStringLiteral("失败"));
+        return;
+    }
     const quint8 moduleAddr = asd9026aModuleAddr(channel);
     const QString channelText = QStringLiteral("CH%1").arg(channel);
     const QString txHexOverride = asd9026aTxHexFromParam(resolvedParam, cmdMap);
@@ -1881,6 +1906,7 @@ void QFreeWork::executeFixtureAsd9026aCase(const TestCaseDefinition& def) {
 
     bool ok = false;
     QString testData = QStringLiteral("-");
+    QString actualTxHex;
 
     switch (cmd) {
     case Asd9026aCmd::SendRaw: {
@@ -1892,10 +1918,10 @@ void QFreeWork::executeFixtureAsd9026aCase(const TestCaseDefinition& def) {
         }
         QByteArray response;
         QByteArray* respPtr = (def.send.action == TestCaseSendAction::Get) ? &response : nullptr;
-        ok = asd9026aSendConfiguredTxHex(asd9026aDevice_, rawText, respPtr, &errStr);
-        testData = rawText;
+        ok = asd9026aSendConfiguredTxHex(*asdDevice, moduleAddr, rawText, respPtr, &actualTxHex, &errStr);
+        testData = actualTxHex;
         if (ok) {
-            showlog(QStringLiteral("ASD9026A 已按十六进制发送：%1").arg(rawText));
+            showlog(QStringLiteral("ASD9026A %1 已按十六进制发送：%2").arg(channelText, actualTxHex));
             if (def.send.action == TestCaseSendAction::Get) {
                 const QString rxHex = QString::fromLatin1(response.toHex(' ').toUpper());
                 showlog(QStringLiteral("ASD9026A 回包：%1").arg(rxHex));
@@ -1907,13 +1933,13 @@ void QFreeWork::executeFixtureAsd9026aCase(const TestCaseDefinition& def) {
     case Asd9026aCmd::ProgrammablePowerOutput: {
         const bool enable = cmdMap.value(QStringLiteral("enable"), 1).toInt() != 0;
         if (!txHexOverride.isEmpty()) {
-            ok = asd9026aSendConfiguredTxHex(asd9026aDevice_, txHexOverride, nullptr, &errStr);
-            testData = txHexOverride;
+            ok = asd9026aSendConfiguredTxHex(*asdDevice, moduleAddr, txHexOverride, nullptr, &actualTxHex, &errStr);
+            testData = actualTxHex;
             if (ok)
                 showlog(QStringLiteral("ASD9026A %1 输出%2（txHex）")
                             .arg(channelText, enable ? QStringLiteral("已打开") : QStringLiteral("已关闭")));
         } else {
-            ok = asd9026aDevice_.setOutputEnabled(moduleAddr, enable, &errStr);
+            ok = asdDevice->setOutputEnabled(moduleAddr, enable, &errStr);
             testData = enable ? QStringLiteral("ON") : QStringLiteral("OFF");
             if (ok)
                 showlog(QStringLiteral("ASD9026A %1 输出%2")
@@ -1926,12 +1952,12 @@ void QFreeWork::executeFixtureAsd9026aCase(const TestCaseDefinition& def) {
         const double currentA = asd9026aParamDouble(cmdMap, QStringLiteral("current"), 2.0);
         const quint8 currentRange = asd9026aCurrentRangeFromMap(cmdMap, 4);
         if (!txHexOverride.isEmpty()) {
-            ok = asd9026aSendConfiguredTxHex(asd9026aDevice_, txHexOverride, nullptr, &errStr);
-            testData = txHexOverride;
+            ok = asd9026aSendConfiguredTxHex(*asdDevice, moduleAddr, txHexOverride, nullptr, &actualTxHex, &errStr);
+            testData = actualTxHex;
             if (ok)
-                showlog(QStringLiteral("ASD9026A %1 已配置（txHex）：%2").arg(channelText, txHexOverride));
+                showlog(QStringLiteral("ASD9026A %1 已配置（txHex）：%2").arg(channelText, actualTxHex));
         } else {
-            ok = asd9026aDevice_.configureConstantVoltage(moduleAddr, voltageV, currentA, currentRange, &errStr);
+            ok = asdDevice->configureConstantVoltage(moduleAddr, voltageV, currentA, currentRange, &errStr);
             testData = QStringLiteral("V=%1V,I=%2A,量程=%3")
                            .arg(voltageV, 0, 'f', 2)
                            .arg(currentA, 0, 'f', 3)
@@ -1949,12 +1975,12 @@ void QFreeWork::executeFixtureAsd9026aCase(const TestCaseDefinition& def) {
     case Asd9026aCmd::ConfigureCurrentMeasureRange: {
         const quint8 currentRange = asd9026aCurrentRangeFromMap(cmdMap, 4);
         if (!txHexOverride.isEmpty()) {
-            ok = asd9026aSendConfiguredTxHex(asd9026aDevice_, txHexOverride, nullptr, &errStr);
-            testData = txHexOverride;
+            ok = asd9026aSendConfiguredTxHex(*asdDevice, moduleAddr, txHexOverride, nullptr, &actualTxHex, &errStr);
+            testData = actualTxHex;
             if (ok)
-                showlog(QStringLiteral("ASD9026A %1 量程切换（txHex）：%2").arg(channelText, txHexOverride));
+                showlog(QStringLiteral("ASD9026A %1 量程切换（txHex）：%2").arg(channelText, actualTxHex));
         } else {
-            ok = asd9026aDevice_.setCurrentMeasureRange(moduleAddr, currentRange, &errStr);
+            ok = asdDevice->setCurrentMeasureRange(moduleAddr, currentRange, &errStr);
             testData = asd9026aCurrentRangeText(currentRange);
             if (ok)
                 showlog(QStringLiteral("ASD9026A %1 电流测量量程已切换为 %2").arg(channelText, testData));
@@ -1970,13 +1996,13 @@ void QFreeWork::executeFixtureAsd9026aCase(const TestCaseDefinition& def) {
         Asd9026aAnalogStatus status;
         if (!txHexOverride.isEmpty()) {
             QByteArray response;
-            ok = asd9026aSendConfiguredTxHex(asd9026aDevice_, txHexOverride, &response, &errStr);
+            ok = asd9026aSendConfiguredTxHex(*asdDevice, moduleAddr, txHexOverride, &response, &actualTxHex, &errStr);
             if (ok)
-                ok = asd9026aDevice_.parseAnalogStatusResponse(moduleAddr, response, &status, &errStr);
+                ok = asdDevice->parseAnalogStatusResponse(moduleAddr, response, &status, &errStr);
             if (ok)
-                showlog(QStringLiteral("ASD9026A %1 已按 txHex 读取：%2").arg(channelText, txHexOverride));
+                showlog(QStringLiteral("ASD9026A %1 已按 txHex 读取：%2").arg(channelText, actualTxHex));
         } else {
-            ok = asd9026aDevice_.readAnalogStatus(moduleAddr, &status, &errStr);
+            ok = asdDevice->readAnalogStatus(moduleAddr, &status, &errStr);
         }
         if (!ok)
             break;

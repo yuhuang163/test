@@ -2,6 +2,7 @@
 
 #include "common_utils.h"
 #include "huiling_wfp60h_scpi_types.h"
+#include "qfreeworkbox.h"
 #include "test_case.h"
 
 #include <QMessageBox>
@@ -195,6 +196,10 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     plcFacade_.setModbusManager(&modbusManager);
 
     ui->setupUi(this);
+    ui->disconnectButton->setEnabled(false);
+    ui->jigDisconnectButton->setEnabled(false);
+    ui->usbdisconnectButton->setEnabled(false);
+    ui->productDisconnectButton->setEnabled(false);
     updateMainStyle("Ubuntu.qss");
     applyFreeWorkExtraTabsVisible(false);
     setupFreeWorkTabBar(ui->tabWidget);
@@ -252,8 +257,6 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     showlog("line=" + pack.line);
     showlog("action=" + pack.action);
 
-    // 万用表/ASD9026A 复用该口，默认 115200（可被 ASD9026A/BaudRate 覆盖）
-    usbBaudRate = SETTINGS.value(QStringLiteral("ASD9026A/BaudRate"), 115200).toInt();
     if (pack.factory == "hq" || pack.factory == "jj") {
         ui->jigComNameCombo->setEnabled(false);
         ui->jigConnectButton->setEnabled(false);
@@ -687,13 +690,16 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     ui->snInput->clear();
     ui->macInput->setDisabled(0);
     ui->getMac->setDisabled(0);
+    // 先退出本工位测试态；最后一个工位结束时才能安全释放共享 ASD 串口。
+    isTestContinue = false;
     waitWork(50);
     on_disconnectButton_clicked();
     // 关闭输出不等于释放 VISA；ASRL 串口不关会占住，测几次后需拔插才能再连
     resetVisaBackend();
+    if (auto* box = qobject_cast<QFreeWorkBox*>(window()))
+        box->releaseSharedAsd9026aIfIdle();
     emit send_end_test(getIndex());
     ui->getMac->clear();
-    isTestContinue = false;
 }
 
 void QFreeWork::startTask() {
@@ -771,40 +777,46 @@ void QFreeWork::refreshBleState(int state) {
 }
 
 void QFreeWork::refreshDongleUartState(int state) {
-    if (state)
+    const bool connected = state != 0;
+    ui->comNameCombo->setEnabled(!connected);
+    ui->connectButton->setEnabled(!connected);
+    ui->disconnectButton->setEnabled(connected);
+    if (connected)
         showlog("dongle串口连接成功");
-    else {
-        ui->comNameCombo->setEnabled(true);
-        ui->connectButton->setEnabled(true);
+    else
         showlog("dongle串口连接断开");
-    }
 }
 void QFreeWork::refreshUsbUartState(int state) {
-    if (state) {
+    const bool connected = state != 0;
+    ui->usbcomNameCombo->setEnabled(!connected);
+    ui->usbconnectButton->setEnabled(!connected);
+    ui->usbdisconnectButton->setEnabled(connected);
+    if (connected) {
         showlog(QStringLiteral("万用表串口连接成功"));
     } else {
-        ui->usbcomNameCombo->setEnabled(true);
-        ui->usbconnectButton->setEnabled(true);
         showlog(QStringLiteral("万用表串口连接断开"));
     }
 }
 
 void QFreeWork::refreshJigUartState(int state) {
-    if (state)
+    const bool connected = state != 0;
+    ui->jigComNameCombo->setEnabled(!connected);
+    ui->jigConnectButton->setEnabled(!connected);
+    ui->jigDisconnectButton->setEnabled(connected);
+    if (connected)
         showlog("治具串口连接成功");
-    else {
-        ui->jigComNameCombo->setEnabled(true);
-        ui->jigConnectButton->setEnabled(true);
+    else
         showlog("治具串口连接断开");
-    }
 }
 
 void QFreeWork::refreshProductUartState(int state) {
-    if (state) {
+    const bool connected = state != 0;
+    ui->productComNameCombo->setEnabled(!connected);
+    ui->productConnectButton->setEnabled(!connected);
+    ui->productDisconnectButton->setEnabled(connected);
+    if (connected) {
         showlog(QStringLiteral("产品串口(仪器)连接成功"));
     } else {
-        ui->productComNameCombo->setEnabled(true);
-        ui->productConnectButton->setEnabled(true);
         showlog(QStringLiteral("产品串口(仪器)连接断开"));
     }
 }
@@ -2240,27 +2252,23 @@ void QFreeWork::getTestValue(const int mechines, const QString value) {
 }
 
 void QFreeWork::on_connectButton_clicked() {
-    ui->comNameCombo->setEnabled(false);
-    ui->connectButton->setEnabled(false);
     openDongleSerialPort();
+    if (!dongleSerialPort || !dongleSerialPort->isOpen())
+        refreshDongleUartState(0);
 }
 
 void QFreeWork::on_disconnectButton_clicked() {
-    ui->comNameCombo->setEnabled(true);
-    ui->connectButton->setEnabled(true);
     closeDongleSerialPort();
 }
 
 void QFreeWork::on_jigConnectButton_clicked() {
     openJigSerialPort();
-    ui->jigComNameCombo->setEnabled(false);
-    ui->jigConnectButton->setEnabled(false);
+    if (!jigSerialPort || !jigSerialPort->isOpen())
+        refreshJigUartState(0);
 }
 
 void QFreeWork::on_jigDisconnectButton_clicked() {
     closeJigSerialPort();
-    ui->jigComNameCombo->setEnabled(true);
-    ui->jigConnectButton->setEnabled(true);
 }
 
 void QFreeWork::on_usbconnectButton_clicked() {
@@ -2269,40 +2277,27 @@ void QFreeWork::on_usbconnectButton_clicked() {
         showlog(QStringLiteral("请先选择万用表串口"));
         return;
     }
-    // 与 ASD9026A 步骤同一波特率；若 ASD 已占该口，先关掉再由 test_base 通道打开
-    usbBaudRate = SETTINGS.value(QStringLiteral("ASD9026A/BaudRate"), 115200).toInt();
-    if (asd9026aDevice_.isOpen()
-        && asd9026aDevice_.portName().compare(port, Qt::CaseInsensitive) == 0) {
-        asd9026aDevice_.close();
-    }
     openUsbSerialPort();
     if (!usbSerialPort || !usbSerialPort->isOpen()) {
+        refreshUsbUartState(0);
         showlog(QStringLiteral("万用表串口打开失败：%1 @ %2").arg(port).arg(usbBaudRate));
         return;
     }
-    ui->usbcomNameCombo->setEnabled(false);
-    ui->usbconnectButton->setEnabled(false);
     showlog(QStringLiteral("万用表串口已打开：%1 @ %2").arg(port).arg(usbBaudRate));
 }
 
 void QFreeWork::on_usbdisconnectButton_clicked() {
-    if (asd9026aDevice_.isOpen())
-        asd9026aDevice_.close();
     closeUsbSerialPort();
-    ui->usbcomNameCombo->setEnabled(true);
-    ui->usbconnectButton->setEnabled(true);
 }
 
 void QFreeWork::on_productConnectButton_clicked() {
     openProductSerialPort();
-    ui->productComNameCombo->setEnabled(false);
-    ui->productConnectButton->setEnabled(false);
+    if (!productSerialPort || !productSerialPort->isOpen())
+        refreshProductUartState(0);
 }
 
 void QFreeWork::on_productDisconnectButton_clicked() {
     closeProductSerialPort();
-    ui->productComNameCombo->setEnabled(true);
-    ui->productConnectButton->setEnabled(true);
 }
 
 void QFreeWork::clearProductInstrumentWatch() {
@@ -2528,6 +2523,9 @@ void QFreeWork::on_stopTest_clicked() {
     clearProductInstrumentWatch();
     plcFacade_.disconnect();
     resetVisaBackend();
+    isTestContinue = false;
+    if (auto* box = qobject_cast<QFreeWorkBox*>(window()))
+        box->releaseSharedAsd9026aIfIdle();
     ui->macInput->setDisabled(0);
     ui->getMac->setDisabled(0);
 
