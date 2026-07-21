@@ -618,8 +618,20 @@ bool QFreeWork::tickOrderedTestStepLoop() {
 
         ++teststate;
         if (stopFlowOnTestFail_ && !stepRuntime_.pass) {
-            showlog(QStringLiteral("测试失败，按流程设置结束后续步骤"));
-            teststate = orderedTestCaseNames_.count();
+            const QString cleanupStep = QStringLiteral("GC_气缸抬起");
+            const QString m8SuctionStation = QStringLiteral("M8组装吸力测试工站");
+            const bool isM8SuctionStation =
+                TestCaseStore::loadSelectedFlowStationName() == m8SuctionStation
+                || TestCaseStore::flowStationDisplayName(activeFlowStationKey_) == m8SuctionStation;
+            const int cleanupIndex =
+                isM8SuctionStation ? orderedTestCaseNames_.indexOf(cleanupStep, teststate) : -1;
+            if (cleanupIndex >= 0) {
+                showlog(QStringLiteral("测试失败，跳过后续测试项并执行安全收尾：%1").arg(cleanupStep));
+                teststate = cleanupIndex;
+            } else {
+                showlog(QStringLiteral("测试失败，按流程设置结束后续步骤"));
+                teststate = orderedTestCaseNames_.count();
+            }
         }
         stepRuntime_.reset();
 

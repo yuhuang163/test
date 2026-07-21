@@ -17,6 +17,7 @@
 #include <QRegularExpression>
 #include <QTimer>
 #include <QElapsedTimer>
+#include <QEventLoop>
 
 #include <memory>
 
@@ -198,6 +199,43 @@ bool ensureXwdJigUartOpen(QFreeWork* ctx, QString* errorMessage) {
             *errorMessage = QStringLiteral("治具串口打开失败：%1").arg(port);
         return false;
     }
+    return true;
+}
+
+bool sendAndCollectXwdReadOnceReply(SerialChannel* channel, QSerialPort* port, const QByteArray& request,
+                                    int readChannel, int timeoutMs, QByteArray* reply, QString* errorMessage) {
+    if (!channel || !port || !port->isOpen() || !reply)
+        return false;
+
+    reply->clear();
+    channel->clearReceiveBuffer();
+
+    QEventLoop loop;
+    QTimer timeout;
+    timeout.setSingleShot(true);
+    const QMetaObject::Connection frameConnection =
+        QObject::connect(channel, &SerialChannel::frameReceived, &loop, [&](const QByteArray& frame) {
+            reply->append(frame);
+            double ch1Ma = 0;
+            double ch2Ma = 0;
+            bool hasCh1 = false;
+            bool hasCh2 = false;
+            XwdRawUartCodec::parseReadOnceReply(QString::fromUtf8(*reply), &ch1Ma, &ch2Ma, &hasCh1, &hasCh2);
+            if ((readChannel == 2 && hasCh2) || (readChannel != 2 && hasCh1))
+                loop.quit();
+        });
+    QObject::connect(&timeout, &QTimer::timeout, &loop, &QEventLoop::quit);
+
+    if (channel->write(request) != request.size()) {
+        QObject::disconnect(frameConnection);
+        if (errorMessage)
+            *errorMessage = QStringLiteral("XWD治具串口写入失败");
+        return false;
+    }
+    // 直接进入事件循环再等待回包，避免 waitForBytesWritten 内先收到 CH1 并提前触发 loop.quit()。
+    timeout.start(qMax(1, timeoutMs));
+    loop.exec();
+    QObject::disconnect(frameConnection);
     return true;
 }
 
@@ -1121,38 +1159,12 @@ void QFreeWork::runXwdFixtureCurrentSampleAnyMatch(const TestCaseDefinition& def
             return;
         }
 
-        jigSerialChannel_->clearReceiveBuffer();
-        if (jigSerialChannel_->write(request) != request.size()) {
-            showlog(QStringLiteral("XWD治具采样写入失败（继续）"));
+        QByteArray reply;
+        QString receiveError;
+        if (!sendAndCollectXwdReadOnceReply(jigSerialChannel_, jigSerialPort, request, readChannel, timeoutMs,
+                                            &reply, &receiveError)) {
+            showlog(receiveError + QStringLiteral("（继续）"));
         } else {
-            jigSerialPort->waitForBytesWritten(qMin(2000, timeoutMs));
-            QByteArray reply;
-            QElapsedTimer waitTimer;
-            waitTimer.start();
-            while (waitTimer.elapsed() < timeoutMs) {
-                const int remainMs = timeoutMs - static_cast<int>(waitTimer.elapsed());
-                if (remainMs <= 0)
-                    break;
-                QByteArray chunk;
-                const int sliceMs = reply.isEmpty() ? remainMs : qMin(remainMs, 100);
-                if (!jigSerialChannel_->waitForFrame(&chunk, sliceMs))
-                    break;
-                reply += chunk;
-                const bool hasMa = reply.contains("mA") || reply.contains("MA");
-                if (!hasMa)
-                    continue;
-                if (readChannel == 1 || reply.contains("CH2") || reply.contains("CH 2"))
-                    break;
-            }
-            if (readChannel == 2 && !reply.isEmpty() && !(reply.contains("CH2") || reply.contains("CH 2"))) {
-                const int remainMs = timeoutMs - static_cast<int>(waitTimer.elapsed());
-                if (remainMs > 0) {
-                    QByteArray more;
-                    if (jigSerialChannel_->waitForFrame(&more, qMin(remainMs, 80)))
-                        reply += more;
-                }
-            }
-
             if (reply.isEmpty()) {
                 showlog(QStringLiteral("XWD治具采样：本次无回包（继续）"));
             } else {
@@ -2108,15 +2120,22 @@ void QFreeWork::executeFixtureXwdCase(const TestCaseDefinition& def) {
     // 该治具实测回包常 >300ms；过短超时会“设备已回、上位机已放弃”
     if (timeoutMs < 2000)
         timeoutMs = 2000;
-    // 一拖二（分窗≥2）时：工位1→CH1，工位2→CH2；一拖一只用 CH1
+    // 可由步骤指定读取通道；未指定时，一拖二按工位号取通道，一拖一取 CH1。
     const int stationSlots = qMax(1, SETTINGS.value(QStringLiteral("User/formColumn"), 1).toInt()
                                          * SETTINGS.value(QStringLiteral("User/formRow"), 1).toInt());
     const bool dualFixture = stationSlots >= 2;
-    const int readChannel = (dualFixture && getIndex() >= 2) ? 2 : 1;
+    const QVariant resolvedParam = resolveTestCaseSendParamTree(def.send.param);
+    const QVariantMap paramMap = resolvedParam.canConvert<QVariantMap>() ? resolvedParam.toMap() : QVariantMap{};
+    const int configuredReadChannel = paramMap.value(QStringLiteral("readChannel"), 0).toInt();
+    const int readChannel = (configuredReadChannel == 1 || configuredReadChannel == 2)
+                                ? configuredReadChannel
+                                : ((dualFixture && getIndex() >= 2) ? 2 : 1);
     showlog(QStringLiteral("XWD治具等待回包超时上限：%1ms，取通道 CH%2（%3）")
                 .arg(timeoutMs)
                 .arg(readChannel)
-                .arg(dualFixture ? QStringLiteral("一拖二") : QStringLiteral("一拖一")));
+                .arg(configuredReadChannel == readChannel
+                         ? QStringLiteral("步骤配置")
+                         : (dualFixture ? QStringLiteral("一拖二") : QStringLiteral("一拖一"))));
     if (!jigSerialChannel_) {
         showlog(QStringLiteral("XWD治具串口通道未初始化"));
         markActiveTestCaseStepDone(false, QStringLiteral("串口未连接"), QStringLiteral("失败"));
@@ -2128,49 +2147,19 @@ void QFreeWork::executeFixtureXwdCase(const TestCaseDefinition& def) {
         return;
     }
 
-    // 回包为多行文本（CH1/CH2），防抖可能拆帧，需在超时内拼包至含目标通道 mA
-    jigSerialChannel_->clearReceiveBuffer();
-    if (jigSerialChannel_->write(request) != request.size()) {
-        showlog(QStringLiteral("XWD治具串口写入失败"));
+    // 回包为逐行文本；发送前持续监听，避免 CH1 与下一行 CH2 之间切换监听造成丢帧。
+    QByteArray reply;
+    QString receiveError;
+    if (!sendAndCollectXwdReadOnceReply(jigSerialChannel_, jigSerialPort, request, readChannel, timeoutMs,
+                                        &reply, &receiveError)) {
+        showlog(receiveError);
         markActiveTestCaseStepDone(false, QStringLiteral("写入失败"), QStringLiteral("失败"));
         return;
-    }
-    jigSerialPort->waitForBytesWritten(qMin(2000, qMax(1, timeoutMs)));
-
-    QByteArray reply;
-    QElapsedTimer waitTimer;
-    waitTimer.start();
-    while (waitTimer.elapsed() < timeoutMs) {
-        const int remainMs = timeoutMs - static_cast<int>(waitTimer.elapsed());
-        if (remainMs <= 0)
-            break;
-        QByteArray chunk;
-        const int sliceMs = reply.isEmpty() ? remainMs : qMin(remainMs, 100);
-        if (!jigSerialChannel_->waitForFrame(&chunk, sliceMs)) {
-            // 已有数据：安静结束；无数据：超时
-            break;
-        }
-        reply += chunk;
-        const bool hasMa = reply.contains("mA") || reply.contains("MA");
-        if (!hasMa)
-            continue;
-        // 一拖一只等 CH1；一拖二工位2要等 CH2 再结束
-        if (readChannel == 1 || reply.contains("CH2") || reply.contains("CH 2"))
-            break;
     }
     if (reply.isEmpty()) {
         showlog(QStringLiteral("XWD治具等待回包超时（%1ms）").arg(timeoutMs));
         markActiveTestCaseStepDone(false, QStringLiteral("接收超时"), QStringLiteral("失败"));
         return;
-    }
-    // 一拖二且要 CH2：再短暂收一下，避免只拿到 CH1
-    if (readChannel == 2 && !(reply.contains("CH2") || reply.contains("CH 2"))) {
-        const int remainMs = timeoutMs - static_cast<int>(waitTimer.elapsed());
-        if (remainMs > 0) {
-            QByteArray more;
-            if (jigSerialChannel_->waitForFrame(&more, qMin(remainMs, 80)))
-                reply += more;
-        }
     }
 
     const QString replyText = QString::fromUtf8(reply).trimmed();
