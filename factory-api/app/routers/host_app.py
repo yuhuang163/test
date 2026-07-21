@@ -40,6 +40,28 @@ def _parse_version(v: str) -> tuple[int, ...]:
     return tuple(nums)
 
 
+def _parse_build_id(build_id: str) -> tuple[str, int]:
+    """buildId：yyyyMMdd 视为序号 0；yyyyMMdd-N 为同日第 N 次构建。"""
+    bid = (build_id or "").strip()
+    if not bid:
+        return ("", -1)
+    m = re.match(r"^(\d{8})(?:-(\d+))?$", bid)
+    if m:
+        return (m.group(1), int(m.group(2)) if m.group(2) else 0)
+    return (bid, 0)
+
+
+def _compare_build_id(a: str, b: str) -> int:
+    """返回 -1/0/1，表示 a 相对于 b 的新旧（先比日期再比 -N 序号）。"""
+    da, sa = _parse_build_id(a)
+    db, sb = _parse_build_id(b)
+    if da != db:
+        return -1 if da < db else 1
+    if sa != sb:
+        return -1 if sa < sb else 1
+    return 0
+
+
 @router.get("/check")
 def check(
     packageName: str,
@@ -59,7 +81,7 @@ def check(
         host_has = current_ver or current_build
         return ok({"hasUpdate": False, "hostNewer": bool(host_has), "latest": None})
 
-    latest = pkg_versions[0]
+    latest = max(pkg_versions, key=lambda v: _parse_build_id(v.get("buildId") or ""))
     latest_ver = latest.get("appVersion") or ""
     latest_build = latest.get("buildId") or ""
 
@@ -80,17 +102,11 @@ def check(
     }
 
     server_newer = _parse_version(current_ver) < _parse_version(compare_app_version) if (current_ver and compare_app_version) else False
-    server_newer = server_newer or (current_build < latest_info["buildId"] if (current_build and latest_info["buildId"]) else False)
+    build_cmp = _compare_build_id(current_build, latest_info["buildId"]) if (current_build and latest_info["buildId"]) else 0
+    server_newer = server_newer or build_cmp < 0
 
     host_newer = _parse_version(current_ver) > _parse_version(compare_app_version) if (current_ver and compare_app_version) else False
-    host_newer = host_newer or (current_build > latest_info["buildId"] if (current_build and latest_info["buildId"]) else False)
-    # 版本相同但 buildId 不同（同一版本的新构建），也触发上传
-    host_newer = host_newer or (
-        current_ver and compare_app_version
-        and _parse_version(current_ver) == _parse_version(compare_app_version)
-        and current_build and latest_info["buildId"]
-        and current_build != latest_info["buildId"]
-    )
+    host_newer = host_newer or build_cmp > 0
 
     return ok(
         {
