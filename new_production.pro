@@ -547,11 +547,18 @@ CONFIG += AbIni
 PRECOMPILED_HEADER += $$PWD/my_set/AbIni.h
 
 RC_ICONS = ./stytle/picture/lute.ico
-# 获取当前时间（Windows）
-current_time = $$system(powershell -command "(Get-Date).ToString('yyyyMMdd')")
-
-# 设置TARGET名称
-TARGET = new_production_$$current_time
+# TARGET：new_production_yyyyMMdd，同日重复编译自动 -1/-2/…（优先环境变量，否则脚本扫描 bin）
+BUILD_TARGET = $$(NEW_PRODUCT_BUILD_TARGET)
+isEmpty(BUILD_TARGET) {
+    BUILD_BIN = $$OUT_PWD/bin
+    BUILD_TARGET = $$system(powershell -NoProfile -ExecutionPolicy Bypass -File \"$$PWD/scripts/resolve_build_target.ps1\" \"$$BUILD_BIN\")
+}
+isEmpty(BUILD_TARGET) {
+    build_day = $$system(powershell -NoProfile -Command "(Get-Date).ToString('yyyyMMdd')")
+    TARGET = new_production_$$build_day
+} else {
+    TARGET = $$BUILD_TARGET
+}
 
 # 将可执行文件放在项目目录的bin文件夹中
 DESTDIR = ./bin

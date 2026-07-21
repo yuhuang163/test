@@ -69,12 +69,17 @@ if (-not (Test-Path $Jom)) { throw "Missing jom: $Jom (set NEW_PRODUCT_JOM)" }
 $VcVars = Find-VcVars64
 New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
 
+$binDir = Join-Path $BuildDir "bin"
+New-Item -ItemType Directory -Force -Path $binDir | Out-Null
+$env:NEW_PRODUCT_BUILD_TARGET = & (Join-Path $PSScriptRoot "resolve_build_target.ps1") -BinDir $binDir
+
 $LogDir = Join-Path $RepoRoot "build\logs"
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 $LogFile = Join-Path $LogDir ("build_{0:yyyyMMdd_HHmmss}.log" -f (Get-Date))
 
 Write-Host "repo:  $RepoRoot"
 Write-Host "build: $BuildDir"
+Write-Host "target: $env:NEW_PRODUCT_BUILD_TARGET"
 Write-Host "qt:    $QtDir"
 Write-Host "log:   $LogFile"
 Write-Host ""

@@ -29,8 +29,8 @@ class HostOtaService {
     static CheckResult checkUpdate();
     static bool downloadAndApply(const CheckResult& info, QWidget* parent, QString* message);
 
-    /** 将当前运行中的 exe 上传至服务器（用于首次注册版本）。*/
-    static bool uploadCurrentExe(QString* message = nullptr);
+    /** 将当前运行中的 exe 上传至服务器（用于首次注册版本）。releaseNotes 为本次修改说明。 */
+    static bool uploadCurrentExe(QString* message = nullptr, const QString& releaseNotes = QString());
 
     /** 弹出版本选择对话框，让用户选择要升级的版本。*/
     static bool showVersionPicker(QWidget* parent,

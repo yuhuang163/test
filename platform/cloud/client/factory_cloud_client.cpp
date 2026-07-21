@@ -54,7 +54,8 @@ QString parseVersionFromMacro() {
 
 QString parseBuildIdFromExe() {
     const QString exe = QFileInfo(QCoreApplication::applicationFilePath()).fileName();
-    const QRegularExpression re(QStringLiteral("new_production_(\\d{8})"));
+    // yyyyMMdd 或 yyyyMMdd-N（同日多次编译，不改 appVersion）
+    const QRegularExpression re(QStringLiteral("new_production_(\\d{8}(?:-\\d+)?)"));
     const QRegularExpressionMatch m = re.match(exe);
     if (m.hasMatch()) {
         return m.captured(1);
@@ -94,7 +95,6 @@ FactoryCloudClient::ApiResult parseEnvelope(const QByteArray& body, int httpStat
             result.message = QStringLiteral("请求失败 HTTP %1").arg(httpStatus);
         }
     }
-    qDebug() << "自己服务器上传完成";
     return result;
 }
 

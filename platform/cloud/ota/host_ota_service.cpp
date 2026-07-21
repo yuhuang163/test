@@ -15,6 +15,7 @@
 #include <QJsonObject>
 #include <QMessageBox>
 #include <QProcess>
+#include <QPushButton>
 #include <QTextStream>
 #include <QTimer>
 #include <functional>
@@ -90,7 +91,9 @@ HostOtaService::CheckResult HostOtaService::checkUpdate() {
     const QString pkg = FactoryCloudClient::packageName();
     const QString bid = FactoryCloudClient::buildId();
     const QString ver = FactoryCloudClient::appVersion();
-    qDebug() << "[OTA] 检查更新 发送: packageName=" << pkg << "buildId=" << bid << "appVersion=" << ver;
+    const QString exePath = QCoreApplication::applicationFilePath();
+    qDebug() << "[OTA] 检查更新 当前exe=" << exePath << "packageName=" << pkg << "buildId=" << bid
+             << "appVersion=" << ver;
 
     QUrlQuery query;
     query.addQueryItem(QStringLiteral("packageName"), pkg);
@@ -219,7 +222,38 @@ bool HostOtaService::downloadAndApply(const CheckResult& info, QWidget* parent, 
     return true;
 }
 
-bool HostOtaService::uploadCurrentExe(QString* message) {
+static QString promptUploadReleaseNotes(QWidget* parent) {
+    for (;;) {
+        bool ok = false;
+        const QString notes = QInputDialog::getMultiLineText(
+            parent, QStringLiteral("上传上位机"), QStringLiteral("请填写本次修改内容："), QString(), &ok);
+        if (!ok) {
+            return QString();
+        }
+        const QString trimmed = notes.trimmed();
+        if (!trimmed.isEmpty()) {
+            return trimmed;
+        }
+        if (parent) {
+            QMessageBox::warning(parent, QStringLiteral("上传上位机"), QStringLiteral("修改内容不能为空，请填写后再上传。"));
+        }
+    }
+}
+
+static bool confirmDownloadWithReleaseNotes(QWidget* parent, const HostOtaService::CheckResult& info) {
+    if (!parent) {
+        return true;
+    }
+    const QString notes = info.releaseNotes.trimmed();
+    const QString notesText =
+        notes.isEmpty() ? QStringLiteral("（上传时未填写修改说明）") : notes;
+    const QString text = QStringLiteral("版本：%1\nbuildId：%2\n\n修改内容：\n%3\n\n是否下载并安装？")
+                             .arg(info.appVersion, info.buildId, notesText);
+    return QMessageBox::question(parent, QStringLiteral("下载上位机"), text, QMessageBox::Yes | QMessageBox::No,
+                                 QMessageBox::No) == QMessageBox::Yes;
+}
+
+bool HostOtaService::uploadCurrentExe(QString* message, const QString& releaseNotes) {
     if (AuthService::isOfflineSession()) {
         if (message) {
             *message = QStringLiteral("离线测试模式，无法上传 exe");
@@ -250,12 +284,14 @@ bool HostOtaService::uploadCurrentExe(QString* message) {
     const QString appVer = FactoryCloudClient::appVersion();
     const QString bid = FactoryCloudClient::buildId();
     const QString pkg = FactoryCloudClient::packageName();
-    qDebug() << "[OTA] 上传 exe:" << exePath << "appVersion=" << appVer << "buildId=" << bid << "packageName=" << pkg;
+    qDebug() << "[OTA] 上传 exe:" << exePath << "appVersion=" << appVer << "buildId=" << bid << "packageName=" << pkg
+             << "releaseNotes=" << releaseNotes.trimmed();
 
     QList<QPair<QString, QString>> fields;
     fields.append({QStringLiteral("appVersion"), appVer});
     fields.append({QStringLiteral("buildId"), bid});
     fields.append({QStringLiteral("packageName"), pkg});
+    fields.append({QStringLiteral("releaseNotes"), releaseNotes.trimmed()});
     if (!sha256.isEmpty()) {
         fields.append({QStringLiteral("sha256"), sha256});
     }
@@ -329,11 +365,10 @@ bool HostOtaService::showVersionPicker(QWidget* parent,
         const QJsonObject v = val.toObject();
         const QString ver = v.value(QStringLiteral("appVersion")).toString();
         const QString bid = v.value(QStringLiteral("buildId")).toString();
-        const QString notes = v.value(QStringLiteral("releaseNotes")).toString();
         const QString time = v.value(QStringLiteral("uploadedAt")).toString();
         QString label = QStringLiteral("%1 (buildId=%2)").arg(ver, bid);
-        if (!notes.isEmpty()) {
-            label += QStringLiteral(" - %1").arg(notes);
+        if (!time.isEmpty()) {
+            label += QStringLiteral("  %1").arg(time);
         }
         displayItems.append(label);
         versionObjects.append(v);
@@ -342,7 +377,7 @@ bool HostOtaService::showVersionPicker(QWidget* parent,
     // 弹出版本选择对话框
     bool ok = false;
     const QString selected = QInputDialog::getItem(parent, QStringLiteral("选择版本"),
-                                                    QStringLiteral("请选择要升级的版本："),
+                                                    QStringLiteral("请选择要升级的版本（选定后将显示修改内容）："),
                                                     displayItems, 0, false, &ok);
     if (!ok || selected.isEmpty()) {
         return true;
@@ -363,6 +398,11 @@ bool HostOtaService::showVersionPicker(QWidget* parent,
     info.releaseNotes = chosen.value(QStringLiteral("releaseNotes")).toString();
     info.packageName = chosen.value(QStringLiteral("packageName")).toString();
     info.uploadedAt = chosen.value(QStringLiteral("uploadedAt")).toString();
+
+    if (!confirmDownloadWithReleaseNotes(parent, info)) {
+        log(QStringLiteral("[OTA] 用户取消下载"));
+        return true;
+    }
 
     QString message;
     downloadAndApply(info, parent, &message);
@@ -402,28 +442,46 @@ bool HostOtaService::tryInteractiveUpdate(QWidget* parent,
         return showVersionPicker(parent, logFn);
     }
 
-    // 已是最新 或 本地更新：弹窗确认是否上传当前 exe
+    // 已是最新或本地更新：可上传当前包，也可从服务器选择任意历史版本下载（含降级）
     const QString localVer = FactoryCloudClient::appVersion();
     const QString localBid = FactoryCloudClient::buildId();
-    const QString askText =
+    const QString statusText =
         check.hostNewer
-            ? QStringLiteral("本地版本（%1，buildId=%2）比服务器新。\n\n是否将目前版本上传到服务器？")
-                  .arg(localVer, localBid)
-            : QStringLiteral("当前已是最新版本（%1，buildId=%2）。\n\n是否将目前版本上传到服务器？")
-                  .arg(localVer, localBid);
-    log(QStringLiteral("[OTA] ") + check.message + QStringLiteral("，询问是否上传"));
+            ? QStringLiteral("本地版本（%1，buildId=%2）比服务器新。").arg(localVer, localBid)
+            : QStringLiteral("当前已是最新版本（%1，buildId=%2）。").arg(localVer, localBid);
+    log(QStringLiteral("[OTA] ") + check.message);
+
     if (parent) {
-        const auto answer =
-            QMessageBox::question(parent, QStringLiteral("检查更新"), askText,
-                                  QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
-        if (answer != QMessageBox::Yes) {
-            log(QStringLiteral("[OTA] 用户取消上传"));
+        QMessageBox box(parent);
+        box.setWindowTitle(QStringLiteral("检查更新"));
+        box.setText(statusText + QStringLiteral("\n\n请选择操作："));
+        QPushButton* uploadBtn = box.addButton(QStringLiteral("上传当前版本"), QMessageBox::ActionRole);
+        QPushButton* downloadBtn = box.addButton(QStringLiteral("下载其他版本"), QMessageBox::ActionRole);
+        QPushButton* cancelBtn = box.addButton(QStringLiteral("取消"), QMessageBox::RejectRole);
+        box.setDefaultButton(cancelBtn);
+        box.exec();
+
+        if (box.clickedButton() == cancelBtn || box.clickedButton() == nullptr) {
+            log(QStringLiteral("[OTA] 用户取消"));
             return true;
         }
+        if (box.clickedButton() == downloadBtn) {
+            log(QStringLiteral("[OTA] 用户选择下载其他版本"));
+            return showVersionPicker(parent, logFn);
+        }
+    } else {
+        log(QStringLiteral("[OTA] 无界面，跳过上传"));
+        return true;
+    }
+
+    const QString releaseNotes = promptUploadReleaseNotes(parent);
+    if (releaseNotes.isEmpty()) {
+        log(QStringLiteral("[OTA] 用户取消上传或未填写修改内容"));
+        return true;
     }
 
     QString uploadMsg;
-    const bool uploaded = uploadCurrentExe(&uploadMsg);
+    const bool uploaded = uploadCurrentExe(&uploadMsg, releaseNotes);
     if (parent) {
         if (uploaded) {
             QMessageBox::information(parent, QStringLiteral("检查更新"),
