@@ -813,6 +813,11 @@ bool TestFlowEditor::saveStationFlow(const QString& stationKey) {
             return false;
         }
     }
+    QStringList mesErrors;
+    if (!TestCaseValidator::validateFlowMesTags(key, entries, mesErrors)) {
+        QMessageBox::warning(dialogParent_, QStringLiteral("保存失败"), mesErrors.join(QStringLiteral("\n")));
+        return false;
+    }
     const bool stopFlowOnTestFail =
         stopFlowOnTestFailCheck_ ? stopFlowOnTestFailCheck_->isChecked() : true;
     TestCaseStore::saveStationFlowItems(key, entries, stopFlowOnTestFail);
@@ -907,6 +912,7 @@ void TestFlowEditor::openEditDialog(TestCaseBlock* block) {
     dlg->setWindowModality(Qt::NonModal);
     dlg->setWindowFlag(Qt::Window, true);
     dlg->setStationContext(stationKey);
+    dlg->setFlowContext(currentFlowEntries());
 
     if (!block->isBlank()) {
         TestCaseDefinition def;

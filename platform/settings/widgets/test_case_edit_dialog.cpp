@@ -1308,6 +1308,10 @@ void TestCaseEditDialog::setStationContext(const QString& stationKey) {
     stationKey_ = stationKey.trimmed();
 }
 
+void TestCaseEditDialog::setFlowContext(const QVector<TestFlowItemEntry>& entries) {
+    flowEntries_ = entries;
+}
+
 void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QString& storageKey) {
     originalCaseName_ = storageKey.trimmed().isEmpty() ? def.meta.name.trimmed() : storageKey.trimmed();
     ui->lineEdit_caseName->setText(def.meta.name);
@@ -1608,6 +1612,14 @@ bool TestCaseEditDialog::saveValidated() {
     if (stationKey_.isEmpty()) {
         QMessageBox::warning(this, QStringLiteral("保存失败"),
                              QStringLiteral("请先在「测试流程编排」顶部选择工站，再保存步骤参数到该工站 profiles/.../steps/ 目录。"));
+        return false;
+    }
+    QVector<TestFlowItemEntry> flowEntries = flowEntries_;
+    if (flowEntries.isEmpty())
+        flowEntries = TestCaseStore::loadStationFlowItems(stationKey_);
+    QStringList flowErrors;
+    if (!TestCaseValidator::validateFlowMesTags(stationKey_, flowEntries, flowErrors, originalCaseName_, &def)) {
+        QMessageBox::warning(this, QStringLiteral("保存失败"), flowErrors.join(QStringLiteral("\n")));
         return false;
     }
     if (!TestCaseStore::saveCaseForStation(stationKey_, def)) {

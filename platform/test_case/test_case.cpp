@@ -2158,6 +2158,8 @@ bool TestCaseValidator::validateCase(const TestCaseDefinition& def, QStringList&
     QString nameErr;
     if (!TestCasePaths::isValidCaseFileName(def.meta.name, &nameErr))
         errors.append(nameErr);
+    if (def.meta.mesTag.trimmed().isEmpty())
+        errors.append(QStringLiteral("「上报MES的字段」不能为空（测试项信息）"));
 
     const bool promptOnlyStep = def.meta.promptEnabled && def.meta.promptOnly && !def.hook.enabled;
     if (promptOnlyStep) {
@@ -2315,6 +2317,86 @@ bool TestCaseValidator::validateCase(const TestCaseDefinition& def, QStringList&
         Q_UNUSED(existing);
     }
 
+    return errors.isEmpty();
+}
+
+bool TestCaseValidator::validateFlowMesTags(const QString& stationKey, const QVector<TestFlowItemEntry>& entries,
+                                            QStringList& errors, const QString& overrideOriginalCaseName,
+                                            const TestCaseDefinition* overrideDef) {
+    errors.clear();
+    const QString key = stationKey.trimmed();
+    if (key.isEmpty()) {
+        errors.append(QStringLiteral("工站无效，无法校验上报MES的字段"));
+        return false;
+    }
+
+    struct StepMesInfo {
+        int stepNo = 0;
+        QString stepName;
+        QString mesTag;
+    };
+    QVector<StepMesInfo> steps;
+    steps.reserve(entries.size() + 1);
+    bool overrideConsumed = false;
+    const QString overrideOrig = overrideOriginalCaseName.trimmed();
+
+    for (int i = 0; i < entries.size(); ++i) {
+        const TestFlowItemEntry& entry = entries.at(i);
+        const QString caseName = entry.caseName.trimmed();
+        if (caseName.isEmpty())
+            continue;
+
+        StepMesInfo info;
+        info.stepNo = i + 1;
+        const bool useOverride =
+            overrideDef
+            && (( !overrideOrig.isEmpty() && caseName == overrideOrig)
+                || caseName == overrideDef->meta.name.trimmed());
+        if (useOverride) {
+            info.stepName = overrideDef->meta.name.trimmed().isEmpty() ? caseName : overrideDef->meta.name.trimmed();
+            info.mesTag = overrideDef->meta.mesTag.trimmed();
+            overrideConsumed = true;
+        } else {
+            TestCaseDefinition def;
+            if (!TestCaseStore::loadCaseForStation(key, caseName, def)) {
+                errors.append(QStringLiteral("第%1步「%2」：无法读取步骤配置，请先保存该步骤")
+                                  .arg(info.stepNo)
+                                  .arg(caseName));
+                continue;
+            }
+            info.stepName = def.meta.name.trimmed().isEmpty() ? caseName : def.meta.name.trimmed();
+            info.mesTag = def.meta.mesTag.trimmed();
+        }
+        steps.append(info);
+    }
+
+    // 新步骤尚未写入流程列表时，仍纳入本次校验
+    if (overrideDef && !overrideConsumed) {
+        StepMesInfo info;
+        info.stepNo = steps.size() + 1;
+        info.stepName = overrideDef->meta.name.trimmed();
+        if (info.stepName.isEmpty())
+            info.stepName = QStringLiteral("新步骤");
+        info.mesTag = overrideDef->meta.mesTag.trimmed();
+        steps.append(info);
+    }
+
+    QHash<QString, QStringList> tagToStepLabels;
+    for (const StepMesInfo& info : steps) {
+        const QString stepLabel =
+            QStringLiteral("第%1步「%2」").arg(info.stepNo).arg(info.stepName);
+        if (info.mesTag.isEmpty()) {
+            errors.append(QStringLiteral("%1：未填写「上报MES的字段」").arg(stepLabel));
+            continue;
+        }
+        tagToStepLabels[info.mesTag].append(stepLabel);
+    }
+    for (auto it = tagToStepLabels.constBegin(); it != tagToStepLabels.constEnd(); ++it) {
+        if (it.value().size() < 2)
+            continue;
+        errors.append(QStringLiteral("「上报MES的字段」重复为「%1」，冲突步骤：%2")
+                          .arg(it.key(), it.value().join(QStringLiteral("、"))));
+    }
     return errors.isEmpty();
 }
 

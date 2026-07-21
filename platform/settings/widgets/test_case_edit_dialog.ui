@@ -40,7 +40,7 @@
       <item row="1" column="0">
        <widget class="QLabel" name="label_mesTag">
         <property name="toolTip">
-         <string>勾选MES后，本步结果在系统中的英文项名；需与MES约定一致</string>
+         <string>必填；勾选MES后本步结果在系统中的英文项名，须与MES约定一致，且同一测试流程内不可重复</string>
         </property>
         <property name="text">
          <string>上报MES的字段</string>
@@ -50,7 +50,7 @@
       <item row="1" column="1">
        <widget class="QLineEdit" name="lineEdit_mesTag">
         <property name="placeholderText">
-         <string>例如：BATTERY_INFO</string>
+         <string>必填，例如：BATTERY_INFO</string>
         </property>
        </widget>
       </item>

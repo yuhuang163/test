@@ -20,6 +20,8 @@ class TestCaseEditDialog : public QDialog {
     ~TestCaseEditDialog() override;
     void setDefinition(const TestCaseDefinition& def, const QString& storageKey = QString());
     void setStationContext(const QString& stationKey);
+    /** 当前编排区流程（用于校验「上报MES的字段」在流程内不重复） */
+    void setFlowContext(const QVector<TestFlowItemEntry>& entries);
     TestCaseDefinition definition() const;
 
   protected:
@@ -58,6 +60,8 @@ class TestCaseEditDialog : public QDialog {
     QString originalCaseName_;
     /** 当前工站 Profile 键；非空时保存工站参数覆盖 */
     QString stationKey_;
+    /** 打开对话框时编排区中的流程项（含本步），用于 MesTag 重复校验 */
+    QVector<TestFlowItemEntry> flowEntries_;
     /** 避免 setDefinition 末尾再进 onDeviceCmdChanged 时冲掉已加载的参数表 */
     QString lastSendParamCmdKey_;
 };
