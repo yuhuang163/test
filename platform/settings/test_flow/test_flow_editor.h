@@ -36,10 +36,16 @@ class TestCaseBlock : public QCheckBox {
         return caseName_.isEmpty();
     }
     void setSelected(bool selected);
+    /** 自由工站设置页才显示右键「运行」 */
+    void setRunMenuVisible(bool visible);
+    bool isRunMenuVisible() const {
+        return runMenuVisible_;
+    }
 
   signals:
     void editRequested(TestCaseBlock* block);
     void copyRequested(TestCaseBlock* block);
+    void runRequested(TestCaseBlock* block);
     void removeFromFlowRequested(TestCaseBlock* block);
     void blockSelected(TestCaseBlock* block);
 
@@ -58,6 +64,7 @@ class TestCaseBlock : public QCheckBox {
     QString caseName_;
     QPoint startPos_;
     bool selected_ = false;
+    bool runMenuVisible_ = false;
 };
 
 class TestFlowEditor : public QObject {
@@ -77,6 +84,15 @@ class TestFlowEditor : public QObject {
     bool hasUnsavedChanges() const;
     /** 有未保存改动时弹窗：保存 / 不保存 / 取消。返回 true 表示可离开。 */
     bool confirmDiscardOrSaveOnLeave();
+    /** 仅自由工站为 true 时，功能块右键显示「运行」 */
+    void setSingleStepRunEnabled(bool enabled);
+    bool isSingleStepRunEnabled() const {
+        return singleStepRunEnabled_;
+    }
+
+  signals:
+    /** 功能块右键「运行」：请求自由工站单步执行 */
+    void runStepRequested(const QString& stationKey, const QString& caseName);
 
   private:
     void refreshStationCombo(const QString& selectKey = QString());
@@ -92,6 +108,7 @@ class TestFlowEditor : public QObject {
     TestCaseBlock* createBlock(const QString& caseName, bool enabled);
     void insertBlockAfter(TestCaseBlock* after, const QString& caseName, bool enabled = true);
     void copyBlock(TestCaseBlock* src);
+    void runBlock(TestCaseBlock* src);
     void setSelectedBlock(TestCaseBlock* block);
     QString currentStationKey() const;
     QVector<TestFlowItemEntry> currentFlowEntries() const;
@@ -111,6 +128,7 @@ class TestFlowEditor : public QObject {
     TestCaseBlock* selectedBlock_ = nullptr;
     QWidget* flowContainer_ = nullptr;
     bool uiBound_ = false;
+    bool singleStepRunEnabled_ = false;
     bool suppressStationChange_ = false;
     int stationComboPrevIndex_ = 0;
     QString lastLoadedStationKey_;

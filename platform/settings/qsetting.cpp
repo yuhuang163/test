@@ -906,12 +906,19 @@ void qsetting::on_pushButton_mesConfigFileBrowse_clicked() {
     }
 }
 
+void qsetting::setTestCaseSingleStepRunEnabled(bool enabled) {
+    if (testFlowEditor_)
+        testFlowEditor_->setSingleStepRunEnabled(enabled);
+}
+
 void qsetting::initTestFlowEditorUi() {
     testFlowEditor_ = new TestFlowEditor(this);
     testFlowEditor_->bindUi(this, ui->comboBox_testFlowStation, ui->scrollArea_testFlow,
                             ui->verticalLayout_testFlowBlocks, ui->checkBox_testFlowStopOnTestFail,
                             ui->pushButton_testFlowSave, ui->pushButton_testFlowClear, ui->pushButton_testFlowImport,
                             ui->pushButton_testFlowAdd);
+    connect(testFlowEditor_, &TestFlowEditor::runStepRequested, this, &qsetting::runTestCaseStepRequested);
+    testFlowEditor_->setSingleStepRunEnabled(false);
     const int tabIdx = ui->tabWidget->indexOf(ui->tab_test_flow);
     if (tabIdx >= 0) {
         ui->tabWidget->setTabToolTip(tabIdx,

@@ -1079,6 +1079,7 @@ QString test_base::generateDateCode() {
 }
 
 bool test_base::applyAdaptiveV3ProductBySn(QLineEdit* snEdit) {
+    // 产品型号 / SN 规则（如「V3 固定12位」）仅允许设置页手动修改，扫码不再自动切换
     if (!snEdit) {
         return false;
     }
@@ -1088,32 +1089,7 @@ bool test_base::applyAdaptiveV3ProductBySn(QLineEdit* snEdit) {
         return false;
     }
     snEdit->setText(snText);
-
-    const QString upperSn = snText.toUpper();
-    QString targetProduct;
-    int targetLen = 0;
-
-    if (upperSn.contains(QStringLiteral("V3PRO")) || snText.length() == 15) {
-        targetProduct = QStringLiteral("V3Pro");
-        targetLen = 15;
-    } else if (upperSn.contains(QStringLiteral("V3")) || snText.length() == 12) {
-        targetProduct = QStringLiteral("V3");
-        targetLen = 12;
-    } else {
-        return false;
-    }
-
-    const QString targetRegex = QStringLiteral("^[0-9a-zA-Z]{%1}$").arg(targetLen);
-    SETTINGS.setValue(QStringLiteral("Mes/Product_Name"), targetProduct);
-    SETTINGS.setValue(QStringLiteral("MES/Product_Name"), targetProduct);
-    SETTINGS.setValue(QStringLiteral("Regex/SNPattern"), targetRegex);
-    SETTINGS.sync();
-
-    pack.product = targetProduct;
-    snPattern = targetRegex;
-    showlog(QStringLiteral("识别产品型号：%1，SN校验规则切换为%2")
-                .arg(targetProduct, CommonUtils::snPatternDisplayText(targetRegex)));
-    return true;
+    return false;
 }
 
 bool test_base::validateSnFormat(const QString& sn) {

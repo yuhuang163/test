@@ -1,5 +1,6 @@
 #include "box_base.h"
 
+#include <QApplication>
 #include <QMessageBox>
 #include <QMenu>
 #include <QRegularExpression>
@@ -11,6 +12,8 @@
 #include "qmenubar.h"
 #include "qstatusbar.h"
 #include "test_base.h"
+#include "qfreework.h"
+#include "qfreeworkbox.h"
 #include "host_ota_service.h"
 #include "app_help_menu.h"
 #include "platform/cloud/auth/auth_service.h"
@@ -457,13 +460,55 @@ void box_base::setting_ui() {
     }
     if (qsetting_ui == nullptr) {
         qsetting_ui = new qsetting;
+        // 仅自由工站：功能块右键「运行」
+        if (qobject_cast<QFreeWorkBox*>(this)) {
+            qsetting_ui->setTestCaseSingleStepRunEnabled(true);
+            connect(qsetting_ui, &qsetting::runTestCaseStepRequested, this,
+                    [this](const QString& stationKey, const QString& caseName) {
+                        QString err;
+                        if (!tryRunSingleTestCaseStepOnAnyFreeWork(stationKey, caseName, &err)) {
+                            QMessageBox::warning(qsetting_ui, QStringLiteral("无法运行"), err);
+                        }
+                    });
+        }
     } else {
         // 如果窗口已存在，重新加载配置以确保显示最新设置
         qsetting_ui->loadConfig();
+        qsetting_ui->setTestCaseSingleStepRunEnabled(qobject_cast<QFreeWorkBox*>(this) != nullptr);
     }
     qsetting_ui->raise();
     qsetting_ui->show();
     qsetting_ui->activateWindow();
+}
+
+bool box_base::tryRunSingleTestCaseStepOnAnyFreeWork(const QString& stationKey, const QString& caseName,
+                                                    QString* errorOut) {
+    QString lastError = QStringLiteral("未找到已打开的自由工站窗口，请先打开自由工站后再运行");
+    for (QWidget* w : QApplication::topLevelWidgets()) {
+        auto* box = qobject_cast<box_base*>(w);
+        if (!box)
+            continue;
+        for (test_base* t : box->testList) {
+            auto* fw = qobject_cast<QFreeWork*>(t);
+            if (!fw)
+                continue;
+            QString err;
+            if (fw->runSingleTestCaseStep(stationKey, caseName, &err)) {
+                box->raise();
+                box->activateWindow();
+                fw->raise();
+                fw->activateWindow();
+                return true;
+            }
+            lastError = err.isEmpty() ? QStringLiteral("单步运行失败") : err;
+            if (errorOut)
+                *errorOut = lastError;
+            return false;
+        }
+    }
+    if (errorOut)
+        *errorOut = lastError;
+    return false;
 }
 
 void box_base::loginMes() {

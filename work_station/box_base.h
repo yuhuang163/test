@@ -51,6 +51,9 @@ class box_base : public QMainWindow {
     void signalAndslot();
     void recoverCustom();
     void waitWork(int ms);
+    /** 在已打开的自由工站窗口上单步运行功能块；找不到窗口时返回 false */
+    static bool tryRunSingleTestCaseStepOnAnyFreeWork(const QString& stationKey, const QString& caseName,
+                                                      QString* errorOut = nullptr);
 
     QList<test_base*> testList;
     MesPacketData pack;

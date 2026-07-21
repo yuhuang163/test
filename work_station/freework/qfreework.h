@@ -46,6 +46,11 @@ class QFreeWork : public test_base {
     explicit QFreeWork(int index, QWidget* parent = nullptr);
     ~QFreeWork();
     void startTask() override;
+    /**
+     * 设置页功能块右键「运行」：只执行指定步骤（不过站、结束后不断开连接）。
+     * @return false 时 errorOut 为原因（如正在测试中、步骤不存在）
+     */
+    bool runSingleTestCaseStep(const QString& stationKey, const QString& caseName, QString* errorOut = nullptr);
 
     Ui::QFreeWork* ui;
 
@@ -165,6 +170,8 @@ class QFreeWork : public test_base {
 
     // --- test_case 运行态 ---
     bool stopFlowOnTestFail_ = true;
+    /** 设置页单步调试：结束后跳过 MES 过站与断连 */
+    bool singleStepDebugRun_ = false;
     QString activeFlowStationKey_;
     QStringList orderedTestCaseNames_;
     TestCaseDefinition activeTestCase_;

@@ -112,6 +112,10 @@ void TestCaseBlock::setSelected(bool selected) {
     updateBlockStyle();
 }
 
+void TestCaseBlock::setRunMenuVisible(bool visible) {
+    runMenuVisible_ = visible;
+}
+
 void TestCaseBlock::updateBlockStyle() {
     setStyleSheet(QString::fromUtf8(selected_ ? kBlockStyleSelected : kBlockStyleNormal));
 }
@@ -180,6 +184,10 @@ void TestCaseBlock::contextMenuEvent(QContextMenuEvent* event) {
     emit blockSelected(this);
     QMenu menu(this);
     menu.addAction(QStringLiteral("打开设置"), this, [this]() { emit editRequested(this); });
+    if (runMenuVisible_) {
+        QAction* runAct = menu.addAction(QStringLiteral("运行"), this, [this]() { emit runRequested(this); });
+        runAct->setEnabled(!isBlank());
+    }
     QAction* copyAct = menu.addAction(QStringLiteral("复制"), this, [this]() { emit copyRequested(this); });
     copyAct->setEnabled(!isBlank());
     menu.addAction(QStringLiteral("从流程移除"), this, [this]() { emit removeFromFlowRequested(this); });
@@ -759,8 +767,10 @@ TestCaseBlock* TestFlowEditor::createBlock(const QString& caseName, bool enabled
         return nullptr;
     auto* block = new TestCaseBlock(caseName, container);
     block->setChecked(enabled);
+    block->setRunMenuVisible(singleStepRunEnabled_);
     connect(block, &TestCaseBlock::editRequested, this, &TestFlowEditor::openEditDialog);
     connect(block, &TestCaseBlock::copyRequested, this, &TestFlowEditor::copyBlock);
+    connect(block, &TestCaseBlock::runRequested, this, &TestFlowEditor::runBlock);
     connect(block, &TestCaseBlock::removeFromFlowRequested, this, [this](TestCaseBlock* b) {
         if (selectedBlock_ == b)
             setSelectedBlock(nullptr);
@@ -867,6 +877,37 @@ void TestFlowEditor::copyBlock(TestCaseBlock* src) {
     }
 
     insertBlockAfter(src, newName, src->isChecked());
+}
+
+void TestFlowEditor::setSingleStepRunEnabled(bool enabled) {
+    singleStepRunEnabled_ = enabled;
+    if (!flowLayout_)
+        return;
+    for (int i = 0; i < flowLayout_->count(); ++i) {
+        if (auto* block = qobject_cast<TestCaseBlock*>(flowLayout_->itemAt(i)->widget()))
+            block->setRunMenuVisible(enabled);
+    }
+}
+
+void TestFlowEditor::runBlock(TestCaseBlock* src) {
+    if (!src || !dialogParent_ || !singleStepRunEnabled_)
+        return;
+    if (src->isBlank()) {
+        QMessageBox::warning(dialogParent_, QStringLiteral("无法运行"),
+                             QStringLiteral("空白块无法运行，请先打开设置并保存步骤。"));
+        return;
+    }
+    const QString stationKey = currentStationKey();
+    if (stationKey.isEmpty()) {
+        QMessageBox::warning(dialogParent_, QStringLiteral("无法运行"), QStringLiteral("请先选择工站"));
+        return;
+    }
+    if (!TestCasePaths::stepIniExistsForStation(stationKey, src->caseName())) {
+        QMessageBox::warning(dialogParent_, QStringLiteral("无法运行"),
+                             QStringLiteral("步骤「%1」配置不存在，请先保存。").arg(src->caseName()));
+        return;
+    }
+    emit runStepRequested(stationKey, src->caseName());
 }
 
 QString TestFlowEditor::currentStationKey() const {

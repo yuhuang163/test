@@ -447,12 +447,55 @@ void QFreeWork::runTestFlowBootstrap() {
     }
     showlog(QStringLiteral("开始测试"));
     initData();
+    singleStepDebugRun_ = false;
     suppressProductBleAutoReconnect_ = false;
     // 每次开始测试都重新读取配置，避免设置页调整后本页仍使用旧队列。
     refreshOrderedTestIndexes();
     waitWork(1000);
     showlog(QStringLiteral("MAC地址为：") + ui->macInput->text());
     teststate = 0;
+}
+
+bool QFreeWork::runSingleTestCaseStep(const QString& stationKey, const QString& caseName, QString* errorOut) {
+    if (isTestContinue) {
+        if (errorOut)
+            *errorOut = QStringLiteral("当前工位正在测试中，请先点「停止」后再单步运行");
+        return false;
+    }
+    const QString key = TestCaseStore::resolveFlowStationKey(stationKey.trimmed());
+    const QString stepId = caseName.trimmed();
+    if (key.isEmpty() || stepId.isEmpty()) {
+        if (errorOut)
+            *errorOut = QStringLiteral("工站或步骤无效");
+        return false;
+    }
+    TestCaseDefinition def;
+    if (!TestCaseRunner::loadCaseForStation(key, stepId, def)) {
+        if (errorOut)
+            *errorOut = QStringLiteral("无法加载步骤「%1」").arg(stepId);
+        return false;
+    }
+
+    showlog(QStringLiteral("单步运行：%1（工站 %2）").arg(TestCaseRunner::stepLabel(def), key));
+    singleStepDebugRun_ = true;
+    activeFlowStationKey_ = key;
+    orderedTestCaseNames_ = QStringList{stepId};
+    stopFlowOnTestFail_ = true;
+    freeWorkMesSegments_.clear();
+    testResultTableInit();
+    stepRuntime_.reset();
+    clearActiveTestCase();
+    canGoNext = true;
+    TestResult = passValue;
+    ui->test_result->setText(QStringLiteral("WAIT"));
+    ui->test_result->setStyleSheet(
+        "font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
+        "padding: 10px; text-align: center; ");
+    TestTime.start();
+    ui->test_time->setText(QStringLiteral("0.0 s"));
+    teststate = 0;
+    isTestContinue = true;
+    return true;
 }
 
 bool QFreeWork::tickOrderedTestStepLoop() {
@@ -583,6 +626,30 @@ bool QFreeWork::tickOrderedTestStepLoop() {
 void QFreeWork::finalizeTestFlowIfComplete() {
     const int flowStepCount = orderedTestCaseNames_.count();
     if (teststate != flowStepCount || teststate == 0) {
+        return;
+    }
+
+    // 设置页单步调试：只展示结果，不过站、不断开设备连接，便于连续点「运行」
+    if (singleStepDebugRun_) {
+        singleStepDebugRun_ = false;
+        if (TestResult == failValue) {
+            ui->test_result->setText(QStringLiteral("FAIL"));
+            ui->test_result->setStyleSheet(
+                "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
+                "border-radius: 10px; padding: 10px; text-align: center; ");
+        } else {
+            ui->test_result->setText(QStringLiteral("PASS"));
+            ui->test_result->setStyleSheet(
+                "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
+                "border-radius: 10px; padding: 10px; text-align: center;");
+        }
+        showlog(QStringLiteral("单步运行结束（不过站、保持连接）"));
+        teststate = -1;
+        stepRuntime_.reset();
+        clearActiveTestCase();
+        ui->test_time->setText(CommonUtils::formatElapsedSeconds(TestTime));
+        isTestContinue = false;
+        refreshOrderedTestIndexes();
         return;
     }
 
