@@ -322,9 +322,11 @@ void test_base::handleDongleSerialPortError(QSerialPort::SerialPortError error, 
         return;
     qWarning() << "DongleSerialPort串口异常"
                << "port=" << dongleSerialChannel_->portName() << "code=" << error << "detail=" << message;
-    if (error == QSerialPort::PermissionError) {
+    if (error == QSerialPort::PermissionError || error == QSerialPort::ResourceError
+        || error == QSerialPort::DeviceNotFoundError) {
         closeDongleSerialPort();
-        msgEdit()->appendPlainText(QStringLiteral("串口权限问题"));
+        if (error == QSerialPort::PermissionError)
+            msgEdit()->appendPlainText(QStringLiteral("串口权限问题"));
     }
 }
 
@@ -365,7 +367,8 @@ void test_base::onUsbSerialFrame(const QByteArray& dataTemp) {
 void test_base::handleUsbSerialPortError(QSerialPort::SerialPortError error, const QString& message) {
     Q_UNUSED(message);
     qDebug() << "UsbSerialPort串口问题" << error;
-    if (error == QSerialPort::PermissionError)
+    if (error == QSerialPort::PermissionError || error == QSerialPort::ResourceError
+        || error == QSerialPort::DeviceNotFoundError)
         closeUsbSerialPort();
 }
 
@@ -393,7 +396,8 @@ void test_base::onJigSerialFrame(const QByteArray& dataTemp) {
 void test_base::handleJigSerialPortError(QSerialPort::SerialPortError error, const QString& message) {
     Q_UNUSED(message);
     qDebug() << "JigSerialPort串口问题" << error;
-    if (error == QSerialPort::PermissionError)
+    if (error == QSerialPort::PermissionError || error == QSerialPort::ResourceError
+        || error == QSerialPort::DeviceNotFoundError)
         closeJigSerialPort();
 }
 
@@ -426,7 +430,8 @@ void test_base::onProductSerialFrame(const QByteArray& dataTemp) {
 void test_base::handleProductSerialPortError(QSerialPort::SerialPortError error, const QString& message) {
     Q_UNUSED(message);
     qDebug() << "ProductSerialPort串口问题" << error;
-    if (error == QSerialPort::PermissionError)
+    if (error == QSerialPort::PermissionError || error == QSerialPort::ResourceError
+        || error == QSerialPort::DeviceNotFoundError)
         closeProductSerialPort();
 }
 

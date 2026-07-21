@@ -3,11 +3,13 @@
 #include <QAction>
 
 #include "Abini.h"
+#include "asd9026a_device.h"
 #include "qfreework.h"
 #include "ui_qfreeworkbox.h"
 
 QFreeWorkBox::QFreeWorkBox(QWidget* parent) : box_base(parent), ui(new Ui::QFreeWorkBox) {
     ui->setupUi(this);
+    asd9026aDevice_ = new Asd9026aDevice(this);
     CreatWindow<QFreeWork>(this);
     signalAndslot();
     recoverCustom();
@@ -53,6 +55,15 @@ QString QFreeWorkBox::resolvedFixtureComName(int stationIndex) {
     if (!port.isEmpty())
         return port;
     return readPort(QStringLiteral("mechine/masterFixturecomName"));
+}
+
+QString QFreeWorkBox::selectedFixtureComName(int stationIndex) const {
+    if (Fixture_uart_ui && Fixture_uart_ui->ui) {
+        const QString selectedPort = Fixture_uart_ui->ui->FixturecomNameCombo->currentText().trimmed();
+        if (!selectedPort.isEmpty())
+            return selectedPort;
+    }
+    return resolvedFixtureComName(stationIndex);
 }
 
 Fixture_uart* QFreeWorkBox::ensureFixtureUartConnected(int stationIndex, QString* detailOut,

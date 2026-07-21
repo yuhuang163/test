@@ -246,10 +246,9 @@ void maybeFillAsd9026aCmdParamDefaults(QTableWidget* table, TestCaseSendChannel 
     if (!sendParamTableIsEmpty(table))
         return;
 
-    // 与治具一样：参数表可直接改报文；默认使用通道2（ModuleAddr=02）
+    // 与治具一样可直接改报文；ASD 地址和 CRC 在发送前按工位 index 自动改写。
     if (cmdName == QLatin1String("ConfigureProgrammablePower")) {
         QVariantMap map;
-        map.insert(QStringLiteral("channel"), QStringLiteral("2"));
         map.insert(QStringLiteral("voltage"), QStringLiteral("4.0"));
         map.insert(QStringLiteral("current"), QStringLiteral("2.0"));
         map.insert(QStringLiteral("currentRange"), QStringLiteral("4"));
@@ -260,7 +259,6 @@ void maybeFillAsd9026aCmdParamDefaults(QTableWidget* table, TestCaseSendChannel 
     }
     if (cmdName == QLatin1String("ConfigureCurrentMeasureRange")) {
         QVariantMap map;
-        map.insert(QStringLiteral("channel"), QStringLiteral("2"));
         map.insert(QStringLiteral("currentRange"), QStringLiteral("4"));
         map.insert(QStringLiteral("txHex"),
                    QStringLiteral("02 21 10 0D 00 00 00 00 00 00 00 00 00 04 00 00 00 14 A9"));
@@ -269,7 +267,6 @@ void maybeFillAsd9026aCmdParamDefaults(QTableWidget* table, TestCaseSendChannel 
     }
     if (cmdName == QLatin1String("ProgrammablePowerOutput")) {
         QVariantMap map;
-        map.insert(QStringLiteral("channel"), QStringLiteral("2"));
         map.insert(QStringLiteral("enable"), QStringLiteral("1"));
         map.insert(QStringLiteral("txHex"), QStringLiteral("02 11 04 03 01 00 00 9B C5"));
         setSendParamTableFromMap(table, map);
@@ -277,7 +274,6 @@ void maybeFillAsd9026aCmdParamDefaults(QTableWidget* table, TestCaseSendChannel 
     }
     if (cmdName == QLatin1String("ReadProgrammableVoltage") || cmdName == QLatin1String("ReadProgrammableCurrent")) {
         QVariantMap map;
-        map.insert(QStringLiteral("channel"), QStringLiteral("2"));
         map.insert(QStringLiteral("txHex"), QStringLiteral("02 20 10 00 0D 96"));
         if (cmdName == QLatin1String("ReadProgrammableCurrent")) {
             map.insert(QStringLiteral("sampleDurationMs"), QStringLiteral("3000"));

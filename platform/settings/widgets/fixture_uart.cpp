@@ -94,6 +94,10 @@ bool Fixture_uart::tryOpenSerialPort(const QString& portName, bool autoConnect) 
     return fixtureManager_->open(portName, fixBaudRate);
 }
 
+void Fixture_uart::closeSerialPort() {
+    fixtureManager_->close();
+}
+
 void Fixture_uart::sendPcbaFrame(const QByteArray& frame) {
     fixtureManager_->sendPcbaFrame(frame);
 }
