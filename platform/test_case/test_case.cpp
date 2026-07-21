@@ -4453,6 +4453,13 @@ GateStepDisplay GateRegistry::formatStepDisplay(const TestCaseGate& primaryGate,
         out.testData = fixturePacketSummary(payload.value<FixturePacketData>());
     } else if (reportType == QLatin1String("ProtocolPeriphStateData") && payload.canConvert<ProtocolPeriphStateData>()) {
         out.testData = periphStateSummary(payload.value<ProtocolPeriphStateData>());
+    } else if (reportType == QLatin1String("ProtocolMeasureData")
+               && primaryGate.field == QLatin1String("value")
+               && payload.canConvert<ProtocolMeasureData>()) {
+        const ProtocolMeasureData data = payload.value<ProtocolMeasureData>();
+        out.testData = QString::number(data.value);
+        if (!data.unit.trimmed().isEmpty())
+            out.testData += QStringLiteral(" ") + data.unit.trimmed();
     } else {
         out.testData = primaryFieldTestData(primaryGate, reportType, payload);
     }

@@ -66,6 +66,18 @@ QString QFreeWorkBox::selectedFixtureComName(int stationIndex) const {
     return resolvedFixtureComName(stationIndex);
 }
 
+void QFreeWorkBox::releaseSharedAsd9026aIfIdle() {
+    if (!asd9026aDevice_ || !asd9026aDevice_->isOpen())
+        return;
+    for (test_base* station : testList) {
+        if (station && station->isTestContinue)
+            return;
+    }
+    const QString port = asd9026aDevice_->portName();
+    asd9026aDevice_->close();
+    emit sendBoxLog(QStringLiteral("ASD9026A 共享串口已释放：%1").arg(port));
+}
+
 Fixture_uart* QFreeWorkBox::ensureFixtureUartConnected(int stationIndex, QString* detailOut,
                                                        bool* autoConnectedOut) {
     if (autoConnectedOut)

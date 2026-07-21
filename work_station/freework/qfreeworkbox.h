@@ -32,6 +32,8 @@ class QFreeWorkBox : public box_base {
     Asd9026aDevice* sharedAsd9026aDevice() const {
         return asd9026aDevice_;
     }
+    /** 所有子工位均已停止时释放共享 ASD9026A 串口。 */
+    void releaseSharedAsd9026aIfIdle();
 
   private:
     static QString resolvedFixtureComName(int stationIndex);

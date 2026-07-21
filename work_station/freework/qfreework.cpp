@@ -2,6 +2,7 @@
 
 #include "common_utils.h"
 #include "huiling_wfp60h_scpi_types.h"
+#include "qfreeworkbox.h"
 #include "test_case.h"
 
 #include <QMessageBox>
@@ -689,13 +690,16 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     ui->snInput->clear();
     ui->macInput->setDisabled(0);
     ui->getMac->setDisabled(0);
+    // 先退出本工位测试态；最后一个工位结束时才能安全释放共享 ASD 串口。
+    isTestContinue = false;
     waitWork(50);
     on_disconnectButton_clicked();
     // 关闭输出不等于释放 VISA；ASRL 串口不关会占住，测几次后需拔插才能再连
     resetVisaBackend();
+    if (auto* box = qobject_cast<QFreeWorkBox*>(window()))
+        box->releaseSharedAsd9026aIfIdle();
     emit send_end_test(getIndex());
     ui->getMac->clear();
-    isTestContinue = false;
 }
 
 void QFreeWork::startTask() {
@@ -2519,6 +2523,9 @@ void QFreeWork::on_stopTest_clicked() {
     clearProductInstrumentWatch();
     plcFacade_.disconnect();
     resetVisaBackend();
+    isTestContinue = false;
+    if (auto* box = qobject_cast<QFreeWorkBox*>(window()))
+        box->releaseSharedAsd9026aIfIdle();
     ui->macInput->setDisabled(0);
     ui->getMac->setDisabled(0);
 
