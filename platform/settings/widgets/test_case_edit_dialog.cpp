@@ -246,39 +246,39 @@ void maybeFillAsd9026aCmdParamDefaults(QTableWidget* table, TestCaseSendChannel 
     if (!sendParamTableIsEmpty(table))
         return;
 
-    // 与治具一样：参数表可直接改报文；默认按 ModuleAddr=01、5V/2A、大档/小档
+    // 与治具一样：参数表可直接改报文；默认使用通道2（ModuleAddr=02）
     if (cmdName == QLatin1String("ConfigureProgrammablePower")) {
         QVariantMap map;
-        map.insert(QStringLiteral("channel"), QStringLiteral("1"));
-        map.insert(QStringLiteral("voltage"), QStringLiteral("5.0"));
+        map.insert(QStringLiteral("channel"), QStringLiteral("2"));
+        map.insert(QStringLiteral("voltage"), QStringLiteral("4.0"));
         map.insert(QStringLiteral("current"), QStringLiteral("2.0"));
-        map.insert(QStringLiteral("currentRange"), QStringLiteral("1"));
+        map.insert(QStringLiteral("currentRange"), QStringLiteral("4"));
         map.insert(QStringLiteral("txHex"),
-                   QStringLiteral("01 21 0D 0D 00 40 4B 4C 00 D0 07 00 00 01 01 00 00 A0 F1"));
+                   QStringLiteral("02 21 10 0D 00 00 3D 09 00 00 00 07 D0 04 01 00 00 91 8F"));
         setSendParamTableFromMap(table, map);
         return;
     }
     if (cmdName == QLatin1String("ConfigureCurrentMeasureRange")) {
         QVariantMap map;
-        map.insert(QStringLiteral("channel"), QStringLiteral("1"));
-        map.insert(QStringLiteral("currentRange"), QStringLiteral("3"));
+        map.insert(QStringLiteral("channel"), QStringLiteral("2"));
+        map.insert(QStringLiteral("currentRange"), QStringLiteral("4"));
         map.insert(QStringLiteral("txHex"),
-                   QStringLiteral("01 21 0D 0D 00 00 00 00 00 00 00 00 00 03 00 00 00 38 24"));
+                   QStringLiteral("02 21 10 0D 00 00 00 00 00 00 00 00 00 04 00 00 00 14 A9"));
         setSendParamTableFromMap(table, map);
         return;
     }
     if (cmdName == QLatin1String("ProgrammablePowerOutput")) {
         QVariantMap map;
-        map.insert(QStringLiteral("channel"), QStringLiteral("1"));
+        map.insert(QStringLiteral("channel"), QStringLiteral("2"));
         map.insert(QStringLiteral("enable"), QStringLiteral("1"));
-        map.insert(QStringLiteral("txHex"), QStringLiteral("01 11 04 03 01 00 00 A8 C5"));
+        map.insert(QStringLiteral("txHex"), QStringLiteral("02 11 04 03 01 00 00 9B C5"));
         setSendParamTableFromMap(table, map);
         return;
     }
     if (cmdName == QLatin1String("ReadProgrammableVoltage") || cmdName == QLatin1String("ReadProgrammableCurrent")) {
         QVariantMap map;
-        map.insert(QStringLiteral("channel"), QStringLiteral("1"));
-        map.insert(QStringLiteral("txHex"), QStringLiteral("01 20 10 00 0D D2"));
+        map.insert(QStringLiteral("channel"), QStringLiteral("2"));
+        map.insert(QStringLiteral("txHex"), QStringLiteral("02 20 10 00 0D 96"));
         if (cmdName == QLatin1String("ReadProgrammableCurrent")) {
             map.insert(QStringLiteral("sampleDurationMs"), QStringLiteral("3000"));
             map.insert(QStringLiteral("sampleIntervalMs"), QStringLiteral("200"));
@@ -287,7 +287,7 @@ void maybeFillAsd9026aCmdParamDefaults(QTableWidget* table, TestCaseSendChannel 
         return;
     }
     if (cmdName == QLatin1String("SendRaw")) {
-        setSendParamTableFromString(table, QStringLiteral("01 11 04 03 01 00 00 A8 C5"));
+        setSendParamTableFromString(table, QStringLiteral("02 11 04 03 01 00 00 9B C5"));
     }
 }
 bool isFixtureMachineIndexPlaceholder(const QVariant& param) {

@@ -20,7 +20,7 @@ constexpr quint8 kFuncAnalogReply = 0x22;
 constexpr quint8 kCmdQueryModuleInfo = 0x01;
 constexpr quint8 kCmdQueryModuleStatus = 0x02;
 constexpr quint8 kCmdOutputSwitch = 0x04;
-constexpr quint8 kCmdAnalogConfigure = 0x0D;
+constexpr quint8 kCmdAnalogConfigure = 0x10;
 constexpr quint8 kCmdAnalogStatus = 0x10;
 
 quint16 crc16Modbus(const QByteArray& data);
@@ -31,8 +31,9 @@ bool parseFrame(const QByteArray& raw, quint8* moduleAddr, quint8* funcCode, qui
                 QString* errorMessage = nullptr);
 
 QByteArray appendLe32(quint32 value);
+QByteArray appendBe32(quint32 value);
 quint32 readLe32(const QByteArray& data, int offset);
-/** 状态回包中的电压/电流平均值按大端；配置下发仍用 appendLe32。 */
+/** 模拟电池配置和状态数据中的电压/电流均按大端。 */
 quint32 readBe32(const QByteArray& data, int offset);
 
 } // namespace Asd9026aCodec

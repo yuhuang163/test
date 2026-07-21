@@ -150,7 +150,7 @@ bool ensureAsd9026aConnected(QFreeWork* ctx, Asd9026aDevice& dev, QString* error
         && ctx->usbSerialPort->portName().compare(port, Qt::CaseInsensitive) == 0) {
         ctx->closeUsbSerialPort();
     }
-    const int baudRate = SETTINGS.value(QStringLiteral("ASD9026A/BaudRate"), 9600).toInt();
+    const int baudRate = SETTINGS.value(QStringLiteral("ASD9026A/BaudRate"), 115200).toInt();
     if (!dev.open(port, baudRate, errorMessage))
         return false;
     ctx->showlog(QStringLiteral("ASD9026A 已连接万用表串口 %1 @ %2").arg(port).arg(baudRate));
@@ -1873,9 +1873,9 @@ void QFreeWork::executeFixtureAsd9026aCase(const TestCaseDefinition& def) {
         break;
     }
     case Asd9026aCmd::ConfigureProgrammablePower: {
-        const double voltageV = asd9026aParamDouble(cmdMap, QStringLiteral("voltage"), 5.0);
+        const double voltageV = asd9026aParamDouble(cmdMap, QStringLiteral("voltage"), 4.0);
         const double currentA = asd9026aParamDouble(cmdMap, QStringLiteral("current"), 2.0);
-        const quint8 currentRange = asd9026aCurrentRangeFromMap(cmdMap, 1);
+        const quint8 currentRange = asd9026aCurrentRangeFromMap(cmdMap, 4);
         if (!txHexOverride.isEmpty()) {
             ok = asd9026aSendConfiguredTxHex(asd9026aDevice_, txHexOverride, nullptr, &errStr);
             testData = txHexOverride;
@@ -1898,7 +1898,7 @@ void QFreeWork::executeFixtureAsd9026aCase(const TestCaseDefinition& def) {
         break;
     }
     case Asd9026aCmd::ConfigureCurrentMeasureRange: {
-        const quint8 currentRange = asd9026aCurrentRangeFromMap(cmdMap, 3);
+        const quint8 currentRange = asd9026aCurrentRangeFromMap(cmdMap, 4);
         if (!txHexOverride.isEmpty()) {
             ok = asd9026aSendConfiguredTxHex(asd9026aDevice_, txHexOverride, nullptr, &errStr);
             testData = txHexOverride;
