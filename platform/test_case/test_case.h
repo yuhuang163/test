@@ -77,10 +77,14 @@ class TestCaseStore {
     static QStringList loadStationItems(const QString& stationKey);
     static bool saveStationItems(const QString& stationKey, const QStringList& items);
     static QVector<TestFlowItemEntry> loadStationFlowItems(const QString& stationKey);
-    /** 工站级：任一步测试失败是否结束整单流程（默认 true） */
+    /** 测试失败执行区域步骤（FailItems） */
+    static QVector<TestFlowItemEntry> loadStationFailFlowItems(const QString& stationKey);
+    /** 工站级：任一步测试失败是否结束整单流程（默认 true）；为 true 时会接着跑 FailItems */
     static bool loadStationStopFlowOnTestFail(const QString& stationKey, bool defaultValue = true);
     static bool saveStationFlowItems(const QString& stationKey, const QVector<TestFlowItemEntry>& items,
                                      bool stopFlowOnTestFail = true);
+    static bool saveStationFlowItems(const QString& stationKey, const QVector<TestFlowItemEntry>& items,
+                                     const QVector<TestFlowItemEntry>& failItems, bool stopFlowOnTestFail);
     static QStringList listStationKeysFromFlow();
 
     /** 内置工站（与测试流程编排页预设一致，并含 default / FREE_WORK） */

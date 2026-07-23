@@ -1397,6 +1397,51 @@ void applyCaseIniOverlay(QSettings& overlay, TestCaseDefinition& def) {
     }
 }
 
+void writeNamedFlowItemList(QSettings& ini, const QString& itemsKey, const QString& disabledKey,
+                            const QVector<TestFlowItemEntry>& items) {
+    QStringList names;
+    QStringList disabledNames;
+    for (const TestFlowItemEntry& entry : items) {
+        const QString name = entry.caseName.trimmed();
+        if (name.isEmpty())
+            continue;
+        names.append(name);
+        if (!entry.enabled)
+            disabledNames.append(name);
+    }
+    ini.setValue(itemsKey, names.join(QLatin1Char(',')));
+    if (disabledNames.isEmpty()) {
+        ini.remove(disabledKey);
+    } else {
+        ini.setValue(disabledKey, disabledNames.join(QLatin1Char(',')));
+    }
+}
+
+QVector<TestFlowItemEntry> parseNamedFlowItemList(QSettings& ini, const QString& itemsKey,
+                                                  const QString& disabledKey) {
+    const QString rawItems = ini.value(itemsKey).toString();
+    const QString rawDisabled = ini.value(disabledKey).toString();
+
+    QSet<QString> disabledNames;
+    for (const QString& part : rawDisabled.split(QLatin1Char(','), Qt::SkipEmptyParts)) {
+        const QString name = part.trimmed();
+        if (!name.isEmpty())
+            disabledNames.insert(name);
+    }
+
+    QVector<TestFlowItemEntry> entries;
+    for (const QString& part : rawItems.split(QLatin1Char(','), Qt::SkipEmptyParts)) {
+        const QString name = part.trimmed();
+        if (name.isEmpty())
+            continue;
+        TestFlowItemEntry entry;
+        entry.caseName = name;
+        entry.enabled = !disabledNames.contains(name);
+        entries.append(entry);
+    }
+    return entries;
+}
+
 QVector<TestFlowItemEntry> parseFlowItemsFromSettingsGroup(QSettings& ini) {
     const QString rawItems = ini.value(QStringLiteral("Items")).toString();
     const QString rawDisabled = ini.value(QStringLiteral("DisabledItems")).toString();
@@ -1433,23 +1478,10 @@ QVector<TestFlowItemEntry> parseFlowItemsFromSettingsGroup(QSettings& ini) {
     return entries;
 }
 
-void writeFlowItemsToSettingsGroup(QSettings& ini, const QVector<TestFlowItemEntry>& items, bool stopFlowOnTestFail) {
-    QStringList names;
-    QStringList disabledNames;
-    for (const TestFlowItemEntry& entry : items) {
-        const QString name = entry.caseName.trimmed();
-        if (name.isEmpty())
-            continue;
-        names.append(name);
-        if (!entry.enabled)
-            disabledNames.append(name);
-    }
-    ini.setValue(QStringLiteral("Items"), names.join(QLatin1Char(',')));
-    if (disabledNames.isEmpty()) {
-        ini.remove(QStringLiteral("DisabledItems"));
-    } else {
-        ini.setValue(QStringLiteral("DisabledItems"), disabledNames.join(QLatin1Char(',')));
-    }
+void writeFlowItemsToSettingsGroup(QSettings& ini, const QVector<TestFlowItemEntry>& items,
+                                   const QVector<TestFlowItemEntry>& failItems, bool stopFlowOnTestFail) {
+    writeNamedFlowItemList(ini, QStringLiteral("Items"), QStringLiteral("DisabledItems"), items);
+    writeNamedFlowItemList(ini, QStringLiteral("FailItems"), QStringLiteral("FailDisabledItems"), failItems);
     ini.remove(QStringLiteral("ItemEnabled"));
     ini.setValue(QStringLiteral("StopFlowOnTestFail"), stopFlowOnTestFail);
     ini.remove(QStringLiteral("StopOnGateFail"));
@@ -1491,7 +1523,7 @@ void syncProfileFlowFromLegacyIni(const QString& stationKey) {
     QSettings profileIni(profileFlow, QSettings::IniFormat);
     applyTestCaseIniCodec(profileIni);
     profileIni.beginGroup(QStringLiteral("Flow"));
-    writeFlowItemsToSettingsGroup(profileIni, items, stopFlow);
+    writeFlowItemsToSettingsGroup(profileIni, items, {}, stopFlow);
     profileIni.endGroup();
     syncTestCaseIni(profileIni, profileFlow);
 }
@@ -2121,8 +2153,38 @@ QVector<TestFlowItemEntry> TestCaseStore::loadStationFlowItems(const QString& st
     return entries;
 }
 
+QVector<TestFlowItemEntry> TestCaseStore::loadStationFailFlowItems(const QString& stationKey) {
+    TestCasePaths::ensureRootDir();
+    ensureFilesystemLayout();
+    const QString key = stationKey.trimmed();
+
+    const QString profileFlow = TestCasePaths::profileFlowPath(key);
+    if (QFile::exists(profileFlow)) {
+        QSettings profileIni(profileFlow, QSettings::IniFormat);
+        applyTestCaseIniCodec(profileIni);
+        profileIni.beginGroup(QStringLiteral("Flow"));
+        const QVector<TestFlowItemEntry> entries =
+            parseNamedFlowItemList(profileIni, QStringLiteral("FailItems"), QStringLiteral("FailDisabledItems"));
+        profileIni.endGroup();
+        return entries;
+    }
+
+    QSettings ini(TestCasePaths::flowIniPath(), QSettings::IniFormat);
+    applyTestCaseIniCodec(ini);
+    ini.beginGroup(stationGroup(key));
+    const QVector<TestFlowItemEntry> entries =
+        parseNamedFlowItemList(ini, QStringLiteral("FailItems"), QStringLiteral("FailDisabledItems"));
+    ini.endGroup();
+    return entries;
+}
+
 bool TestCaseStore::saveStationFlowItems(const QString& stationKey, const QVector<TestFlowItemEntry>& items,
                                          bool stopFlowOnTestFail) {
+    return saveStationFlowItems(stationKey, items, loadStationFailFlowItems(stationKey), stopFlowOnTestFail);
+}
+
+bool TestCaseStore::saveStationFlowItems(const QString& stationKey, const QVector<TestFlowItemEntry>& items,
+                                         const QVector<TestFlowItemEntry>& failItems, bool stopFlowOnTestFail) {
     TestCasePaths::ensureRootDir();
     const QString key = stationKey.trimmed();
     ensureProfileDirectory(key, flowStationDisplayName(key), QString());
@@ -2131,7 +2193,7 @@ bool TestCaseStore::saveStationFlowItems(const QString& stationKey, const QVecto
     QSettings profileIni(profileFlow, QSettings::IniFormat);
     applyTestCaseIniCodec(profileIni);
     profileIni.beginGroup(QStringLiteral("Flow"));
-    writeFlowItemsToSettingsGroup(profileIni, items, stopFlowOnTestFail);
+    writeFlowItemsToSettingsGroup(profileIni, items, failItems, stopFlowOnTestFail);
     profileIni.endGroup();
     syncTestCaseIni(profileIni, profileFlow);
     return true;

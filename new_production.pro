@@ -589,16 +589,11 @@ PRECOMPILED_HEADER += $$PWD/my_set/AbIni.h
 QMAKE_PCH_OUTPUT_BASE = new_production
 
 RC_ICONS = ./stytle/picture/lute.ico
-# TARGET：new_production_yyyyMMdd，同日重复编译自动 -1/-2/…（OTA 按 exe 名区分）
-# 也可设环境变量 NEW_PRODUCT_BUILD_TARGET 覆盖
+# TARGET 固定为 new_production.exe（OTA 版本见 my_set/host_ota_version.h，勿靠 exe 名区分）
+# 调试临时改名可设环境变量 NEW_PRODUCT_BUILD_TARGET 覆盖
 BUILD_TARGET = $$(NEW_PRODUCT_BUILD_TARGET)
 isEmpty(BUILD_TARGET) {
-    BUILD_BIN = $$OUT_PWD/bin
-    BUILD_TARGET = $$system(powershell -NoProfile -ExecutionPolicy Bypass -File \"$$PWD/scripts/resolve_build_target.ps1\" \"$$BUILD_BIN\")
-}
-isEmpty(BUILD_TARGET) {
-    build_day = $$system(powershell -NoProfile -Command "(Get-Date).ToString('yyyyMMdd')")
-    TARGET = new_production_$$build_day
+    TARGET = new_production
 } else {
     TARGET = $$BUILD_TARGET
 }
