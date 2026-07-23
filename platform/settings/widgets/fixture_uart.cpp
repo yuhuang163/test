@@ -1,9 +1,10 @@
 #include "fixture_uart.h"
 
 #include <QMessageBox>
+#include <QTimer>
 
 #include "qdebug.h"
-#include "qserialportinfo.h"
+#include "serial_channel.h"
 #include "ui_fixture_uart.h"
 #include "qfixturemanager.h"
 
@@ -16,9 +17,10 @@ Fixture_uart::Fixture_uart(QWidget* parent) : QWidget(parent), ui(new Ui::Fixtur
     qRegisterMetaType<FixturePacketData>("FixturePacketData");
     ui->setupUi(this);
     ui->FixturecomNameCombo->clear();
-    foreach (const QSerialPortInfo& info, QSerialPortInfo::availablePorts()) {
-        ui->FixturecomNameCombo->addItem(info.portName());
-    }
+    scanSerialPorts();
+    scanSerialPortsTimer_ = new QTimer(this);
+    connect(scanSerialPortsTimer_, &QTimer::timeout, this, &Fixture_uart::scanSerialPorts);
+    scanSerialPortsTimer_->start(1000);
 
     connect(fixtureManager_, &QFixtureManager::connected, this, &Fixture_uart::onManagerConnected);
     connect(fixtureManager_, &QFixtureManager::disconnected, this, &Fixture_uart::onManagerDisconnected);
@@ -52,22 +54,17 @@ void Fixture_uart::on_FixturedisconnectButton_clicked() {
     fixtureManager_->close();
 }
 
-void Fixture_uart::on_FixturerefreshCom_clicked() {
-    ui->FixturecomNameCombo->clear();
-    foreach (const QSerialPortInfo& info, QSerialPortInfo::availablePorts()) {
-        ui->FixturecomNameCombo->addItem(info.portName());
-    }
+void Fixture_uart::scanSerialPorts() {
+    SerialChannel::updateComboBoxPorts(ui->FixturecomNameCombo);
 }
 
 void Fixture_uart::onManagerConnected() {
     ui->Fixtureuartstate->setText("治具串口连接：<font color='green'>成功</font>");
-    ui->FixturerefreshCom->setEnabled(false);
     ui->FixturecomNameCombo->setEnabled(false);
     ui->FixtureconnectButton->setEnabled(false);
 }
 
 void Fixture_uart::onManagerDisconnected() {
-    ui->FixturerefreshCom->setEnabled(true);
     ui->FixturecomNameCombo->setEnabled(true);
     ui->FixtureconnectButton->setEnabled(true);
     ui->Fixtureuartstate->setText("治具串口连接：<font color='red'>失败</font>");
@@ -77,7 +74,6 @@ void Fixture_uart::onManagerError(int error, const QString& message) {
     qDebug() << "串口问题" << message;
     if (error == QSerialPort::PermissionError) {
         fixtureManager_->close();
-        ui->FixturerefreshCom->setEnabled(true);
         ui->FixturecomNameCombo->setEnabled(true);
         ui->FixtureconnectButton->setEnabled(true);
         QMessageBox::warning(NULL, "警告", " 治具串口被拔出！\t\r\n");

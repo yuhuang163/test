@@ -770,7 +770,7 @@
          <item>
           <widget class="QCheckBox" name="checkBox_testFlowStopOnTestFail">
            <property name="toolTip">
-            <string>本工站任一步测试失败（含卡控、超时、钩子等）即不再执行后续步骤</string>
+            <string>勾选后主流程失败即停后续主步骤，并执行下方「测试失败执行区域」；失败区为空则直接结束</string>
            </property>
            <property name="text">
             <string>测试失败时结束测试流程</string>
@@ -810,10 +810,116 @@
             <x>0</x>
             <y>0</y>
             <width>1170</width>
-            <height>718</height>
+            <height>340</height>
            </rect>
           </property>
           <layout class="QVBoxLayout" name="verticalLayout_testFlowBlocks"/>
+         </widget>
+        </widget>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayout_testFlowFailToolbar">
+         <item>
+          <widget class="QLabel" name="label_testFlowFailRegion">
+           <property name="toolTip">
+            <string>勾选「测试失败时结束测试流程」后，主流程任一步失败将停止后续主步骤，并按本区顺序执行（如抬气缸、断电等收尾）。</string>
+           </property>
+           <property name="styleSheet">
+            <string notr="true">font-weight: bold; color: rgb(180, 60, 0);</string>
+           </property>
+           <property name="text">
+            <string>测试失败执行区域（运行失败时调用）</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer_testFlowFail">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pushButton_testFlowFailImport">
+           <property name="toolTip">
+            <string>向失败执行区域添加已有功能块</string>
+           </property>
+           <property name="text">
+            <string>添加已有块</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pushButton_testFlowFailAdd">
+           <property name="toolTip">
+            <string>在失败执行区域末尾新建空白块</string>
+           </property>
+           <property name="text">
+            <string>新建空白块</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pushButton_testFlowFailClear">
+           <property name="toolTip">
+            <string>清空失败执行区域（不删磁盘 ini）</string>
+           </property>
+           <property name="text">
+            <string>清空失败区</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <widget class="QScrollArea" name="scrollArea_testFlowFail">
+         <property name="minimumSize">
+          <size>
+           <width>0</width>
+           <height>120</height>
+          </size>
+         </property>
+         <property name="toolTip">
+          <string>失败收尾步骤列表，可与上方主流程互相拖拽。</string>
+         </property>
+         <property name="horizontalScrollBarPolicy">
+          <enum>Qt::ScrollBarAlwaysOff</enum>
+         </property>
+         <property name="widgetResizable">
+          <bool>true</bool>
+         </property>
+         <widget class="QWidget" name="scrollAreaWidgetContents_testFlowFail">
+          <property name="geometry">
+           <rect>
+            <x>0</x>
+            <y>0</y>
+            <width>1170</width>
+            <height>339</height>
+           </rect>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_testFlowFailBlocks">
+           <property name="spacing">
+            <number>4</number>
+           </property>
+           <property name="leftMargin">
+            <number>4</number>
+           </property>
+           <property name="topMargin">
+            <number>4</number>
+           </property>
+           <property name="rightMargin">
+            <number>4</number>
+           </property>
+           <property name="bottomMargin">
+            <number>4</number>
+           </property>
+          </layout>
          </widget>
         </widget>
        </item>

@@ -7,6 +7,7 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QCoreApplication>
+#include <QDesktopWidget>
 #include <QLineEdit>
 #include <QFileDialog>
 #include <QFileInfo>
@@ -104,6 +105,21 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     StationGroup->addButton(findChild<QRadioButton*>("radioButtonFreeWorkstation"), 10);
     StationGroup->addButton(findChild<QRadioButton*>("radioButtonKeyTest"), 11);
     StationGroup->addButton(findChild<QRadioButton*>("radioButtonSuctionTest"), 12);
+
+    // AbIni 工站宏：屏蔽的工站不在设置页展示
+    auto setStationRadioVisible = [](QRadioButton* btn, bool enabled) {
+        if (!btn)
+            return;
+        btn->setVisible(enabled);
+        btn->setEnabled(enabled);
+    };
+    setStationRadioVisible(ui->radioButtonMotorCalibration, ENABLE_STATION_MOTOR_TEST != 0);
+    setStationRadioVisible(ui->radioButtonImuCalibration, ENABLE_STATION_IMU_CALI != 0);
+    setStationRadioVisible(ui->radioButtonScreenTest, ENABLE_STATION_SCREEN_TEST != 0);
+    setStationRadioVisible(ui->radioButtonCameraTest, ENABLE_STATION_CAMERA_TEST != 0);
+    setStationRadioVisible(ui->radioButtonSignalTest, ENABLE_STATION_WIFIBLE_TEST != 0);
+    setStationRadioVisible(ui->radioButtonPressTest, ENABLE_STATION_PRESS_TEST != 0);
+    setStationRadioVisible(ui->radioButtonBoardFactoryTest, ENABLE_STATION_PCBA_TEST != 0);
 
     // 如果需要从某个数据源添加项，可以使用循环来添加
     ui->comboBox_productName->addItems(CommonUtils::mesProductNames());
@@ -291,9 +307,13 @@ void qsetting::loadConfig() {
         button->setChecked(false);
     }
 
-    // 根据 station 的值设置对应的 QRadioButton 为选中状态
-    if (stationMap.contains(station)) {
+    // 根据 station 的值设置对应的 QRadioButton；已屏蔽工站回退到自由工站
+    if (!isStationEnabled(station))
+        station = QStringLiteral("FREE_WORK");
+    if (stationMap.contains(station) && stationMap[station]->isEnabled()) {
         stationMap[station]->setChecked(true);
+    } else {
+        ui->radioButtonFreeWorkstation->setChecked(true);
     }
 
     loadQSettingTableBindings(this);
@@ -916,7 +936,9 @@ void qsetting::initTestFlowEditorUi() {
     testFlowEditor_->bindUi(this, ui->comboBox_testFlowStation, ui->scrollArea_testFlow,
                             ui->verticalLayout_testFlowBlocks, ui->checkBox_testFlowStopOnTestFail,
                             ui->pushButton_testFlowSave, ui->pushButton_testFlowClear, ui->pushButton_testFlowImport,
-                            ui->pushButton_testFlowAdd);
+                            ui->pushButton_testFlowAdd, ui->scrollArea_testFlowFail, ui->verticalLayout_testFlowFailBlocks,
+                            ui->pushButton_testFlowFailImport, ui->pushButton_testFlowFailAdd,
+                            ui->pushButton_testFlowFailClear);
     connect(testFlowEditor_, &TestFlowEditor::runStepRequested, this, &qsetting::runTestCaseStepRequested);
     testFlowEditor_->setSingleStepRunEnabled(false);
     const int tabIdx = ui->tabWidget->indexOf(ui->tab_test_flow);

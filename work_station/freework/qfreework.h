@@ -173,6 +173,10 @@ class QFreeWork : public test_base {
     bool singleStepDebugRun_ = false;
     QString activeFlowStationKey_;
     QStringList orderedTestCaseNames_;
+    /** 测试失败执行区域（StopFlowOnTestFail 触发后按序执行） */
+    QStringList orderedFailCaseNames_;
+    /** false=主流程，true=失败执行区 */
+    bool runningFailFlow_ = false;
     TestCaseDefinition activeTestCase_;
     QString activeTestCaseStepLabel_;
     bool testCaseStepActive_ = false;
@@ -212,6 +216,8 @@ class QFreeWork : public test_base {
     void runTestFlowBootstrap();
     bool tickOrderedTestStepLoop();
     void finalizeTestFlowIfComplete();
+    const QStringList& activeOrderedCaseNames() const;
+    QStringList& activeOrderedCaseNames();
     bool isCurrentStep(const QString& functionName) const;
     bool isCurrentInstrumentStep(const QString& stepName) const;
     bool isBydFactory() const;
