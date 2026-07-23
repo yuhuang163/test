@@ -1,10 +1,16 @@
 #include "serial_channel.h"
 
 #include <QComboBox>
+#include <QElapsedTimer>
 #include <QEventLoop>
+#include <QMutex>
 #include <QSerialPortInfo>
 #include <QSet>
 #include <QTimer>
+
+#ifdef Q_OS_WIN
+#include <windows.h>
+#endif
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
@@ -154,11 +160,51 @@ bool SerialChannel::exchange(const QByteArray& request, QByteArray* response, in
     return true;
 }
 
+bool SerialChannel::isHiddenSystemPort(const QString& portName) {
+    // 电脑主板串口，产测/dongle/治具不会用到，避免误选
+    return portName.compare(QStringLiteral("COM1"), Qt::CaseInsensitive) == 0;
+}
+
+bool SerialChannel::isPortPresent(const QString& portName) {
+    const QString name = portName.trimmed();
+    if (name.isEmpty())
+        return false;
+#ifdef Q_OS_WIN
+    // 仅查注册表/SetupAPI 时，已卸载的 USB 口常仍占 COM 号；用 CreateFile 区分幽灵口与占用口
+    const QString path = QStringLiteral("\\\\.\\%1").arg(name);
+    HANDLE handle = CreateFileW(reinterpret_cast<LPCWSTR>(path.utf16()), GENERIC_READ | GENERIC_WRITE, 0, nullptr,
+                                OPEN_EXISTING, 0, nullptr);
+    if (handle != INVALID_HANDLE_VALUE) {
+        CloseHandle(handle);
+        return true;
+    }
+    const DWORD err = GetLastError();
+    return err == ERROR_ACCESS_DENIED || err == ERROR_SHARING_VIOLATION || err == ERROR_BUSY;
+#else
+    Q_UNUSED(name);
+    return true;
+#endif
+}
+
 QStringList SerialChannel::availablePortNames() {
+    // 多工位每秒刷新多个下拉时复用短缓存，避免对同一批口反复 CreateFile
+    static QMutex mutex;
+    static QStringList cachedNames;
+    static QElapsedTimer cacheTimer;
+    QMutexLocker locker(&mutex);
+    if (cacheTimer.isValid() && cacheTimer.elapsed() < 500 && !cachedNames.isEmpty())
+        return cachedNames;
+
     QStringList names;
     const QList<QSerialPortInfo> ports = QSerialPortInfo::availablePorts();
-    for (const QSerialPortInfo& info : ports)
-        names.append(info.portName());
+    for (const QSerialPortInfo& info : ports) {
+        const QString name = info.portName();
+        if (isHiddenSystemPort(name) || !isPortPresent(name))
+            continue;
+        names.append(name);
+    }
+    cachedNames = names;
+    cacheTimer.restart();
     return names;
 }
 
@@ -166,17 +212,18 @@ void SerialChannel::updateComboBoxPorts(QComboBox* comboBox) {
     if (!comboBox)
         return;
 
-    const QList<QSerialPortInfo> ports = QSerialPortInfo::availablePorts();
+    const QStringList ports = availablePortNames();
     QSet<QString> currentItems;
     for (int i = 0; i < comboBox->count(); ++i)
         currentItems.insert(comboBox->itemText(i));
 
-    for (const QSerialPortInfo& info : ports) {
-        if (!currentItems.contains(info.portName()))
-            comboBox->addItem(info.portName());
-        currentItems.remove(info.portName());
+    for (const QString& name : ports) {
+        if (!currentItems.contains(name))
+            comboBox->addItem(name);
+        currentItems.remove(name);
     }
 
+    // 系统口、幽灵口、已拔掉的口一并从下拉移除
     for (const QString& item : currentItems) {
         const int index = comboBox->findText(item);
         if (index != -1)
