@@ -1,6 +1,7 @@
 #include "box_base.h"
 
 #include <QApplication>
+#include <QAuthenticator>
 #include <QMessageBox>
 #include <QMenu>
 #include <QRegularExpression>

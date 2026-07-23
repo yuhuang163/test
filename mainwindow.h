@@ -55,6 +55,7 @@ class QAction;
 #include "serial_channel.h"
 
 class QCustomPlot;
+class qsetting;
 
 extern "C" {
 #include "md5.h" // 引入 tiny-AES-c 的头文件

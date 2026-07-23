@@ -1051,7 +1051,9 @@ void TestFlowEditor::openEditDialog(TestCaseBlock* block) {
     auto* dlg = new TestCaseEditDialog(dialogParent_);
     dlg->setAttribute(Qt::WA_DeleteOnClose, true);
     dlg->setWindowModality(Qt::NonModal);
-    dlg->setWindowFlag(Qt::Window, true);
+    // 独立窗口并带最大化按钮（纯 Dialog 默认往往没有）
+    dlg->setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::WindowSystemMenuHint | Qt::WindowMinMaxButtonsHint
+                        | Qt::WindowCloseButtonHint);
     dlg->setStationContext(stationKey);
     dlg->setFlowContext(currentFlowEntries());
 
