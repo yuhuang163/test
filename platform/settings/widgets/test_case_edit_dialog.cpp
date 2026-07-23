@@ -286,6 +286,31 @@ void maybeFillAsd9026aCmdParamDefaults(QTableWidget* table, TestCaseSendChannel 
         setSendParamTableFromString(table, QStringLiteral("02 11 04 03 01 00 00 9B C5"));
     }
 }
+
+void maybeFillMultiTempLoggerCmdParamDefaults(QTableWidget* table, TestCaseSendChannel channel, const QString& device,
+                                              const QString& cmdName) {
+    if (!table || channel != TestCaseSendChannel::Modbus)
+        return;
+    if (ModbusPeriphCmdCatalog::deviceFromIni(device) != ModbusDeviceRoute::MultiTempLoggerRtu)
+        return;
+    if (!sendParamTableIsEmpty(table))
+        return;
+
+    if (cmdName == QLatin1String("ReadChannelTemp")) {
+        QVariantMap map;
+        map.insert(QStringLiteral("channel"), QStringLiteral("1"));
+        map.insert(QStringLiteral("slaveAddr"), QStringLiteral("1"));
+        setSendParamTableFromMap(table, map);
+        return;
+    }
+    if (cmdName == QLatin1String("SendRaw")) {
+        QVariantMap map;
+        // 协议示例：读从站1通道1温度（寄存器 18~19）
+        map.insert(QStringLiteral("txHex"), QStringLiteral("01 03 00 12 00 02 64 0E"));
+        setSendParamTableFromMap(table, map);
+    }
+}
+
 bool isFixtureMachineIndexPlaceholder(const QVariant& param) {
     if (param.userType() == QMetaType::QString) {
         const QString s = param.toString().trimmed();
@@ -620,6 +645,9 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
                 } else {
                     out.kind = SendCmdParamKind::None;
                 }
+            } else if (devRoute == ModbusDeviceRoute::MultiTempLoggerRtu) {
+                // 开放报文与读温通道均走 Param_* map
+                out.kind = SendCmdParamKind::JsonMap;
             } else {
                 out.kind = SendCmdParamKind::None;
             }
@@ -1371,6 +1399,8 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     maybeFillDongleCmdParamDefaults(ui->tableWidget_sendParam, channel, def.send.deviceCmd);
     maybeFillAsd9026aCmdParamDefaults(ui->tableWidget_sendParam, channel, comboData(ui->comboBox_productProtocol),
                                      def.send.deviceCmd);
+    maybeFillMultiTempLoggerCmdParamDefaults(ui->tableWidget_sendParam, channel, comboData(ui->comboBox_productProtocol),
+                                             def.send.deviceCmd);
     applySendParamHintToUi(uiSchema, uiSchema.valid && uiSchema.kind != SendCmdParamKind::None,
                            ui->label_sendParamHint, ui->tableWidget_sendParam, ui->spinBox_intParam,
                            ui->pushButton_addParamRow, ui->pushButton_removeParamRow);
@@ -1596,6 +1626,7 @@ void TestCaseEditDialog::onDeviceCmdChanged(int) {
         maybeFillProductCmdParamDefaults(ui->tableWidget_sendParam, channel, cmdName);
         maybeFillDongleCmdParamDefaults(ui->tableWidget_sendParam, channel, cmdName);
         maybeFillAsd9026aCmdParamDefaults(ui->tableWidget_sendParam, channel, device, cmdName);
+        maybeFillMultiTempLoggerCmdParamDefaults(ui->tableWidget_sendParam, channel, device, cmdName);
     }
 }
 
@@ -1603,7 +1634,7 @@ bool TestCaseEditDialog::saveValidated() {
     const TestCaseDefinition def = definition();
     QStringList errors;
     if (!TestCaseValidator::validateCase(def, errors)) {
-        QMessageBox::warning(this, QStringLiteral("保存失败"), errors.join(QStringLiteral("\n")));
+        QMessageBox::warning(this, QStringLiteral("保存失败"), errors.join(QStringLiteral("\r\n")));
         return false;
     }
     if (stationKey_.isEmpty()) {
@@ -1616,25 +1647,18 @@ bool TestCaseEditDialog::saveValidated() {
         flowEntries = TestCaseStore::loadStationFlowItems(stationKey_);
     QStringList flowErrors;
     if (!TestCaseValidator::validateFlowMesTags(stationKey_, flowEntries, flowErrors, originalCaseName_, &def)) {
-        QMessageBox::warning(this, QStringLiteral("保存失败"), flowErrors.join(QStringLiteral("\n")));
+        QMessageBox::warning(this, QStringLiteral("保存失败"), flowErrors.join(QStringLiteral("\r\n")));
         return false;
     }
     if (!TestCaseStore::saveCaseForStation(stationKey_, def)) {
         QMessageBox::warning(this, QStringLiteral("保存失败"), QStringLiteral("无法写入配置文件"));
         return false;
     }
+    // 工站内改名：只清理本工站 profile 旧步骤文件，禁止删除总步骤库模板
     if (!originalCaseName_.isEmpty() && originalCaseName_ != def.meta.name) {
-        const QString oldLegacy = TestCasePaths::caseIniPath(originalCaseName_);
-        if (QFile::exists(oldLegacy))
-            QFile::remove(oldLegacy);
-        const QString oldLibrary = TestCasePaths::stepLibraryPath(originalCaseName_);
-        if (QFile::exists(oldLibrary))
-            QFile::remove(oldLibrary);
-        if (!stationKey_.isEmpty()) {
-            const QString oldOverride = TestCasePaths::profileStepOverridePath(stationKey_, originalCaseName_);
-            if (QFile::exists(oldOverride))
-                QFile::remove(oldOverride);
-        }
+        const QString oldOverride = TestCasePaths::profileStepOverridePath(stationKey_, originalCaseName_);
+        if (QFile::exists(oldOverride))
+            QFile::remove(oldOverride);
     }
     return true;
 }

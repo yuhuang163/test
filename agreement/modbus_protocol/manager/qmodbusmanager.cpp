@@ -144,7 +144,8 @@ void QModbusManager::loadDeviceRouteFromSettings() {
 }
 
 bool QModbusManager::isRtuAmmeterRoute() const {
-    return deviceRoute_ == ModbusDeviceRoute::HqAmmeterRtu || deviceRoute_ == ModbusDeviceRoute::LxAmmeterRtu;
+    return deviceRoute_ == ModbusDeviceRoute::HqAmmeterRtu || deviceRoute_ == ModbusDeviceRoute::LxAmmeterRtu
+           || deviceRoute_ == ModbusDeviceRoute::MultiTempLoggerRtu;
 }
 
 IModbusRtuDevice* QModbusManager::activeRtuDevice() {
@@ -153,6 +154,8 @@ IModbusRtuDevice* QModbusManager::activeRtuDevice() {
         return &hqAmmeterRtu_;
     case ModbusDeviceRoute::LxAmmeterRtu:
         return &lxAmmeterRtu_;
+    case ModbusDeviceRoute::MultiTempLoggerRtu:
+        return &multiTempLoggerRtu_;
     default:
         return nullptr;
     }
@@ -182,6 +185,16 @@ bool QModbusManager::exec(LxAmmeterRtuCmd cmd, QString* errorMessage) {
         return false;
     }
     return exec<LxAmmeterRtuCmd>(cmd, {}, errorMessage);
+}
+
+bool QModbusManager::exec(MultiTempLoggerRtuCmd cmd, const QVariant& param, QString* errorMessage) {
+    if (deviceRoute_ != ModbusDeviceRoute::MultiTempLoggerRtu) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("当前路由非多路温度记录仪 RTU");
+        }
+        return false;
+    }
+    return exec<MultiTempLoggerRtuCmd>(cmd, param, errorMessage);
 }
 
 bool QModbusManager::feedRtuRx(const QByteArray& chunk) {

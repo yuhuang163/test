@@ -1843,18 +1843,13 @@ bool TestCaseStore::saveCaseForStation(const QString& stationKey, const TestCase
 
     const QString key = stationKey.trimmed();
     if (!key.isEmpty()) {
+        // 工站上下文只写本工站 profile steps，绝不改动总步骤库模板
         ensureProfileDirectory(key, TestCaseStore::flowStationDisplayName(key), QString());
         QDir().mkpath(TestCasePaths::profileDir(key) + QStringLiteral("/steps"));
-        const QString libraryPath = TestCasePaths::stepLibraryPath(stepId);
-        const QString legacyPath = TestCasePaths::caseIniPath(stepId);
-        // 新步骤尚未入库时，先写入步骤库
-        if (!QFile::exists(libraryPath) && !QFile::exists(legacyPath)) {
-            if (!writeCaseIniFile(libraryPath, def, false))
-                return false;
-        }
         if (!writeCaseIniFile(TestCasePaths::profileStepOverridePath(key, stepId), def, false))
             return false;
     } else {
+        // stationKey 为空：仅总步骤库维护入口
         if (!writeCaseIniFile(TestCasePaths::stepLibraryPath(stepId), def, false))
             return false;
         writeCaseIniFile(TestCasePaths::caseIniPath(stepId), def, false);
@@ -3493,7 +3488,8 @@ QStringList ModbusPeriphCmdCatalog::allDeviceKeys() {
     return {ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::InovanceH5uTcp),
             ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::GcSeriesTcp),
             ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::HqAmmeterRtu),
-            ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::LxAmmeterRtu)};
+            ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::LxAmmeterRtu),
+            ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::MultiTempLoggerRtu)};
 }
 
 QString ModbusPeriphCmdCatalog::deviceUiLabel(ModbusDeviceRoute device) {

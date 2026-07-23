@@ -50,8 +50,12 @@ class TestCaseStore {
     /** 合并 steps 库 + profiles/{stationKey}/steps 覆盖；stationKey 为空则仅库/旧平铺 ini */
     static bool loadCaseForStation(const QString& stationKey, const QString& stepId, TestCaseDefinition& out,
                                    QString* errorOut = nullptr);
+    /** 仅写入总步骤库 test_case/steps/（旧平铺 ini 同步一份） */
     static bool saveCase(const TestCaseDefinition& def, QString* errorOut = nullptr);
-    /** 写入 steps 库；stationKey 非空时另存 profiles/{key}/steps 工站参数覆盖 */
+    /**
+     * stationKey 非空：只写入 profiles/{工站}/steps/，不改动总步骤库；
+     * stationKey 为空：等同 saveCase，写总步骤库。
+     */
     static bool saveCaseForStation(const QString& stationKey, const TestCaseDefinition& def,
                                    QString* errorOut = nullptr);
     /** 将旧平铺 ini 迁入 steps/，并为各工站生成 profiles 目录（幂等） */

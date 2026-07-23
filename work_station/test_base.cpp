@@ -100,6 +100,7 @@ void test_base::applyTestCaseProductProtocol(TestCaseProductProtocol protocol) {
 
 void test_base::setupModbusManager() {
     modbusManager.setStationIndex(getIndex());
+    modbusManager.attachSerialChannel(usbSerialChannel_);
     modbusManager.setLogFn([this](const QString& msg) {
         showlog(msg);
     });
@@ -1195,12 +1196,13 @@ void test_base::onModbusRtuAmmeterReadingReceived(const QString& value) {
     onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolAmmeterReadingData"),
                                          QVariant::fromValue(ProtocolAmmeterReadingData{value})));
 
+    const bool isTempLogger = modbusManager.deviceRoute() == ModbusDeviceRoute::MultiTempLoggerRtu;
     ProtocolMeasureData measureData;
-    measureData.deviceName = QStringLiteral("Modbus_Ammeter");
-    measureData.type = QStringLiteral("Current");
+    measureData.deviceName = isTempLogger ? QStringLiteral("MultiTempLogger") : QStringLiteral("Modbus_Ammeter");
+    measureData.type = isTempLogger ? QStringLiteral("Temperature") : QStringLiteral("Current");
     measureData.value = value.toDouble();
     measureData.valueText = value;
-    measureData.unit = QStringLiteral("mA");
+    measureData.unit = isTempLogger ? QStringLiteral("℃") : QStringLiteral("mA");
     measureData.isOk = true;
     onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolMeasureData"),
                                          QVariant::fromValue(measureData)));

@@ -17,6 +17,8 @@
 #include "gc_series_tcp_types.h"
 #include "lx_ammeter_rtu.h"
 #include "lx_ammeter_rtu_types.h"
+#include "multi_temp_logger_rtu.h"
+#include "multi_temp_logger_rtu_types.h"
 #include "modbus_types.h"
 #include "qmodbus_rtu_rx_buffer.h"
 
@@ -26,7 +28,7 @@
 #include "serial_channel.h"
 #include <QVariant>
 /**
- * Modbus domain entry: H5U TCP PLC + GC 系列 TCP PLC + HQ/LX RTU ammeters.
+ * Modbus domain entry: H5U TCP PLC + GC 系列 TCP PLC + HQ/LX RTU 电流表 + 多路温度记录仪。
  * RTU: IModbusRtuDevice + template exec；汇川/GC 各自独立 TCP 会话与配置键。
  */
 class QModbusManager : public QObject {
@@ -117,6 +119,7 @@ class QModbusManager : public QObject {
 
     bool exec(HqAmmeterRtuCmd cmd, QString* errorMessage = nullptr);
     bool exec(LxAmmeterRtuCmd cmd, QString* errorMessage = nullptr);
+    bool exec(MultiTempLoggerRtuCmd cmd, const QVariant& param = {}, QString* errorMessage = nullptr);
 
     bool feedRtuRx(const QByteArray& chunk);
 
@@ -138,6 +141,7 @@ class QModbusManager : public QObject {
     GcSeriesTcpDevice gcDevice_;
     HqAmmeterModbusRtu hqAmmeterRtu_;
     LxAmmeterModbusRtu lxAmmeterRtu_;
+    MultiTempLoggerModbusRtu multiTempLoggerRtu_;
     LogFn log_;
     IsContinueFn isContinue_;
 

@@ -9,10 +9,11 @@
 /** 工站/自由工站测试项配置：只选设备，再选该设备下的 Cmd。 */
 enum class ModbusDeviceRoute {
     None,
-    InovanceH5uTcp, // device/inovance_h5u_tcp → PlcCmd（汇川，PLC/*）
-    GcSeriesTcp,    // device/gc_series_tcp → GcPlcCmd（GC 系列，GC_PLC/*，M 偏移默认 4096）
-    HqAmmeterRtu,   // device/hq_ammeter_rtu → HqAmmeterRtuCmd
-    LxAmmeterRtu,   // device/lx_ammeter_rtu → LxAmmeterRtuCmd
+    InovanceH5uTcp,     // device/inovance_h5u_tcp → PlcCmd（汇川，PLC/*）
+    GcSeriesTcp,        // device/gc_series_tcp → GcPlcCmd（GC 系列，GC_PLC/*，M 偏移默认 4096）
+    HqAmmeterRtu,       // device/hq_ammeter_rtu → HqAmmeterRtuCmd
+    LxAmmeterRtu,       // device/lx_ammeter_rtu → LxAmmeterRtuCmd
+    MultiTempLoggerRtu, // device/multi_temp_logger_rtu → MultiTempLoggerRtuCmd
 };
 
 #endif // MODBUS_TYPES_H
