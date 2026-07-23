@@ -62,19 +62,6 @@ function Show-CompileErrors([string]$LogPath) {
     }
 }
 
-function Stop-RunningNewProduction {
-    # 避免 LNK1104：正在运行的 exe 占用导致链接失败
-    $procs = @(Get-Process -ErrorAction SilentlyContinue | Where-Object {
-        $_.ProcessName -like "new_production*"
-    })
-    if ($procs.Count -eq 0) { return }
-    foreach ($p in $procs) {
-        Write-Host "kill running: $($p.ProcessName) (pid $($p.Id))" -ForegroundColor Yellow
-        Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
-    }
-    Start-Sleep -Milliseconds 500
-}
-
 if (-not (Test-Path $ProFile)) { throw "Missing: $ProFile" }
 if (-not (Test-Path $Qmake)) { throw "Missing qmake: $Qmake (set NEW_PRODUCT_QT_DIR)" }
 if (-not (Test-Path $Jom)) { throw "Missing jom: $Jom (set NEW_PRODUCT_JOM)" }
@@ -84,10 +71,7 @@ New-Item -ItemType Directory -Force -Path $BuildDir | Out-Null
 
 $binDir = Join-Path $BuildDir "bin"
 New-Item -ItemType Directory -Force -Path $binDir | Out-Null
-# TARGET 固定；可用 NEW_PRODUCT_BUILD_TARGET 覆盖（一般无需）
-if (-not $env:NEW_PRODUCT_BUILD_TARGET) {
-    $env:NEW_PRODUCT_BUILD_TARGET = "new_production"
-}
+$env:NEW_PRODUCT_BUILD_TARGET = & (Join-Path $PSScriptRoot "resolve_build_target.ps1") -BinDir $binDir
 
 $LogDir = Join-Path $RepoRoot "build\logs"
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
@@ -99,7 +83,6 @@ Write-Host "target: $env:NEW_PRODUCT_BUILD_TARGET"
 Write-Host "qt:    $QtDir"
 Write-Host "log:   $LogFile"
 Write-Host ""
-Stop-RunningNewProduction
 Write-Host "========== Release build ==========" -ForegroundColor Cyan
 
 $batLines = New-Object System.Collections.Generic.List[string]
@@ -143,16 +126,14 @@ if ($exitCode -ne 0) {
 }
 
 $binDir = Join-Path $BuildDir "bin"
-$targetName = if ($env:NEW_PRODUCT_BUILD_TARGET) { $env:NEW_PRODUCT_BUILD_TARGET } else { "new_production" }
-$exePath = Join-Path $binDir ($targetName + ".exe")
-if (Test-Path -LiteralPath $exePath) {
-    $exe = Get-Item -LiteralPath $exePath
+$exes = @(Get-ChildItem -Path $binDir -Filter "new_production_*.exe" -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending)
+if ($exes.Count -gt 0) {
     Write-Host ""
-    Write-Host "BUILD OK: $($exe.FullName)" -ForegroundColor Green
-    Write-Host "time:   $($exe.LastWriteTime)"
+    Write-Host "BUILD OK: $($exes[0].FullName)" -ForegroundColor Green
+    Write-Host "time:   $($exes[0].LastWriteTime)"
 } else {
     Write-Host ""
-    Write-Host "BUILD OK but missing $exePath" -ForegroundColor Yellow
+    Write-Host "BUILD OK but no new_production_*.exe in bin" -ForegroundColor Yellow
 }
 
 exit 0

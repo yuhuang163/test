@@ -29,7 +29,6 @@
 #include <QMouseEvent>
 #include <QPushButton>
 #include <QScrollArea>
-#include <QSizePolicy>
 #include <QToolButton>
 #include <QSet>
 #include <QSignalBlocker>
@@ -52,17 +51,19 @@ QVBoxLayout* flowLayoutOfBlock(TestCaseBlock* block) {
     return qobject_cast<QVBoxLayout*>(block->parentWidget()->layout());
 }
 
-/** 将 src 插入到 layout 的 insertIndex 位置（支持跨主流程/失败区拖拽）。 */
+/** 将 src 插入到 layout 的 insertIndex 位置（先 remove 再 insert）。 */
 void moveBlockInFlowLayout(QVBoxLayout* layout, TestCaseBlock* src, int insertIndex) {
     if (!layout || !src)
         return;
-    QVBoxLayout* srcLayout = flowLayoutOfBlock(src);
-    if (srcLayout)
-        srcLayout->removeWidget(src);
-    QWidget* destParent = layout->parentWidget();
-    if (destParent && src->parentWidget() != destParent)
-        src->setParent(destParent);
+    const int from = layout->indexOf(src);
+    if (from < 0)
+        return;
     insertIndex = qBound(0, insertIndex, layout->count());
+    if (insertIndex == from)
+        return;
+    layout->removeWidget(src);
+    if (from < insertIndex)
+        --insertIndex;
     layout->insertWidget(insertIndex, src);
 }
 
@@ -200,8 +201,7 @@ TestFlowEditor::TestFlowEditor(QObject* parent) : QObject(parent) {
 
 void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScrollArea* scroll, QVBoxLayout* flowLayout,
                             QCheckBox* stopFlowOnTestFailCheck, QPushButton* btnSave, QPushButton* btnClear,
-                            QPushButton* btnImport, QPushButton* btnAdd, QScrollArea* failScroll, QVBoxLayout* failLayout,
-                            QPushButton* btnFailImport, QPushButton* btnFailAdd, QPushButton* btnFailClear) {
+                            QPushButton* btnImport, QPushButton* btnAdd) {
     if (uiBound_)
         return;
     uiBound_ = true;
@@ -210,8 +210,6 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
     stationCombo_ = stationCombo;
     scroll_ = scroll;
     flowLayout_ = flowLayout;
-    failScroll_ = failScroll;
-    failLayout_ = failLayout;
     stopFlowOnTestFailCheck_ = stopFlowOnTestFailCheck;
 
     if (!stationCombo_ || !scroll_ || !flowLayout_)
@@ -222,8 +220,6 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
         flowContainer_->setAcceptDrops(true);
         flowContainer_->installEventFilter(this);
     }
-
-    setupFailFlowRegionUi(btnFailImport, btnFailAdd, btnFailClear);
 
     if (auto* toolbar = stationCombo_->parentWidget()->findChild<QHBoxLayout*>(QStringLiteral("horizontalLayout_testFlowToolbar"))) {
         auto* btnUp = new QPushButton(QStringLiteral("上移"), stationCombo_->parentWidget());
@@ -256,70 +252,14 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
     connect(btnSave, &QPushButton::clicked, this, [this]() { saveCurrentFlow(); });
     connect(btnClear, &QPushButton::clicked, this, [this]() {
         if (QMessageBox::question(dialogParent_, QStringLiteral("确认"),
-                                  QStringLiteral("清空当前工站主流程编排区？不会删除磁盘 ini")) == QMessageBox::Yes) {
+                                  QStringLiteral("清空当前工站编排区？不会删除磁盘 ini")) == QMessageBox::Yes) {
             clearBlocks();
         }
     });
     connect(btnAdd, &QPushButton::clicked, this, [this]() { appendBlock(QString()); });
-    connect(btnImport, &QPushButton::clicked, this, [this]() { promptImportBlocks(false); });
-
-    if (stopFlowOnTestFailCheck_) {
-        stopFlowOnTestFailCheck_->setToolTip(
-            QStringLiteral("勾选后，本工站主流程任一步失败即停止后续主流程步骤，并按序执行下方「测试失败执行区域」；"
-                           "失败区为空则直接结束整单"));
-    }
-    if (scroll_) {
-        scroll_->setToolTip(QStringLiteral("主测试流程。拖拽功能块到目标位置：落在某块上半部=插到其前，下半部=插到其后；"
-                                           "也可选中块后点「上移」「下移」。可拖到下方失败区。调整完须点「保存流程」。"));
-    }
-
-    QString initialKey = TestCaseStore::resolveFlowStationKey(
-        TestCaseStore::loadSelectedFlowStationKey());
-    if (initialKey.isEmpty())
-        initialKey = QStringLiteral("FREE_WORK");
-    refreshStationCombo(initialKey);
-    persistSelectedStation(initialKey);
-    reloadCurrentStation();
-    stationComboPrevIndex_ = stationCombo_ ? stationCombo_->currentIndex() : 0;
-}
-
-void TestFlowEditor::setupFailFlowRegionUi(QPushButton* btnFailImport, QPushButton* btnFailAdd,
-                                           QPushButton* btnFailClear) {
-    if (!failScroll_ || !failLayout_)
-        return;
-
-    failContainer_ = failScroll_->widget();
-    if (failContainer_) {
-        failContainer_->setAcceptDrops(true);
-        failContainer_->installEventFilter(this);
-    }
-
-    if (auto* pageLayout = qobject_cast<QVBoxLayout*>(scroll_->parentWidget() ? scroll_->parentWidget()->layout() : nullptr)) {
-        const int mainIdx = pageLayout->indexOf(scroll_);
-        const int failIdx = pageLayout->indexOf(failScroll_);
-        if (mainIdx >= 0)
-            pageLayout->setStretch(mainIdx, 3);
-        if (failIdx >= 0)
-            pageLayout->setStretch(failIdx, 1);
-    }
-
-    if (btnFailImport)
-        connect(btnFailImport, &QPushButton::clicked, this, [this]() { promptImportBlocks(true); });
-    if (btnFailAdd)
-        connect(btnFailAdd, &QPushButton::clicked, this, [this]() { appendFailBlock(QString()); });
-    if (btnFailClear) {
-        connect(btnFailClear, &QPushButton::clicked, this, [this]() {
-            if (QMessageBox::question(dialogParent_, QStringLiteral("确认"),
-                                      QStringLiteral("清空测试失败执行区域？")) == QMessageBox::Yes) {
-                clearFailBlocks();
-            }
-        });
-    }
-}
-
-void TestFlowEditor::promptImportBlocks(bool toFailRegion) {
+    connect(btnImport, &QPushButton::clicked, this, [this]() {
         QDialog pickDlg(dialogParent_);
-        pickDlg.setWindowTitle(toFailRegion ? QStringLiteral("选择失败区功能块") : QStringLiteral("选择已有功能块"));
+        pickDlg.setWindowTitle(QStringLiteral("选择已有功能块"));
         pickDlg.setMinimumSize(420, 480);
 
         QStringList allNames = TestCaseStore::listCaseIniNames();
@@ -366,7 +306,7 @@ void TestFlowEditor::promptImportBlocks(bool toFailRegion) {
                 const QString preview = names.count() > 5 ? names.mid(0, 5).join(QStringLiteral("、")) + QStringLiteral(" 等 %1 项").arg(names.count())
                                                           : names.join(QStringLiteral("、"));
                 if (QMessageBox::question(dialogParent_, QStringLiteral("确认删除"),
-                                          QStringLiteral("将永久删除 test_case 下以下功能块 ini：\r\n%1\r\n\r\n"
+                                          QStringLiteral("将永久删除 test_case 下以下功能块 ini：\n%1\n\n"
                                                          "若当前编排区已引用，会同步移除对应块（须保存流程后生效）。")
                                               .arg(preview)) != QMessageBox::Yes) {
                     return;
@@ -396,23 +336,19 @@ void TestFlowEditor::promptImportBlocks(bool toFailRegion) {
                 if (deleted.isEmpty())
                     return;
 
-                auto removeDeletedFrom = [&](QVBoxLayout* layout) {
-                    if (!layout)
-                        return;
-                    for (int i = layout->count() - 1; i >= 0; --i) {
-                        auto* block = qobject_cast<TestCaseBlock*>(layout->itemAt(i)->widget());
+                if (flowLayout_) {
+                    for (int i = flowLayout_->count() - 1; i >= 0; --i) {
+                        auto* block = qobject_cast<TestCaseBlock*>(flowLayout_->itemAt(i)->widget());
                         if (!block || block->isBlank())
                             continue;
                         if (deleted.contains(block->caseName())) {
                             if (selectedBlock_ == block)
                                 setSelectedBlock(nullptr);
-                            layout->removeWidget(block);
+                            flowLayout_->removeWidget(block);
                             block->deleteLater();
                         }
                     }
-                };
-                removeDeletedFrom(flowLayout_);
-                removeDeletedFrom(failLayout_);
+                }
                 const QString key = searchEdit->text().trimmed();
                 list->clear();
                 for (const QString& name : allNames) {
@@ -434,37 +370,42 @@ void TestFlowEditor::promptImportBlocks(bool toFailRegion) {
         list->clearSelection();
         if (pickDlg.exec() != QDialog::Accepted)
             return;
-        for (QListWidgetItem* item : list->selectedItems()) {
-            if (toFailRegion)
-                appendFailBlock(item->text());
-            else
-                appendBlock(item->text());
-        }
+        for (QListWidgetItem* item : list->selectedItems())
+            appendBlock(item->text());
+    });
+
+    if (stopFlowOnTestFailCheck_) {
+        stopFlowOnTestFailCheck_->setToolTip(
+            QStringLiteral("勾选后，本工站任一步测试失败（含卡控、超时、钩子等）即结束整单，不再执行后续步骤"));
+    }
+    if (scroll_) {
+        scroll_->setToolTip(QStringLiteral("拖拽功能块到目标位置：落在某块上半部=插到其前，下半部=插到其后；"
+                                           "也可选中块后点「上移」「下移」。调整完须点「保存流程」。"));
+    }
+
+    QString initialKey = TestCaseStore::resolveFlowStationKey(
+        TestCaseStore::loadSelectedFlowStationKey());
+    if (initialKey.isEmpty())
+        initialKey = QStringLiteral("FREE_WORK");
+    refreshStationCombo(initialKey);
+    persistSelectedStation(initialKey);
+    reloadCurrentStation();
+    stationComboPrevIndex_ = stationCombo_ ? stationCombo_->currentIndex() : 0;
 }
 
 void TestFlowEditor::moveSelectedBlock(int delta) {
-    QVBoxLayout* layout = layoutOfSelectedBlock();
-    if (!layout || !selectedBlock_ || delta == 0)
+    if (!flowLayout_ || !selectedBlock_ || delta == 0)
         return;
-    const int from = layout->indexOf(selectedBlock_);
+    const int from = flowLayout_->indexOf(selectedBlock_);
     const int to = from + delta;
-    if (from < 0 || to < 0 || to >= layout->count())
+    if (from < 0 || to < 0 || to >= flowLayout_->count())
         return;
-    layout->removeWidget(selectedBlock_);
-    layout->insertWidget(to, selectedBlock_);
-}
-
-QVBoxLayout* TestFlowEditor::layoutOfSelectedBlock() const {
-    return flowLayoutOfBlock(selectedBlock_);
+    flowLayout_->removeWidget(selectedBlock_);
+    flowLayout_->insertWidget(to, selectedBlock_);
 }
 
 bool TestFlowEditor::eventFilter(QObject* watched, QEvent* event) {
-    QVBoxLayout* targetLayout = nullptr;
-    if (watched == flowContainer_)
-        targetLayout = flowLayout_;
-    else if (watched == failContainer_)
-        targetLayout = failLayout_;
-    if (targetLayout) {
+    if (watched == flowContainer_ && flowLayout_) {
         switch (event->type()) {
         case QEvent::DragEnter: {
             auto* e = static_cast<QDragEnterEvent*>(event);
@@ -484,7 +425,8 @@ bool TestFlowEditor::eventFilter(QObject* watched, QEvent* event) {
                 return true;
             auto* src = qobject_cast<TestCaseBlock*>(e->source());
             if (src) {
-                moveBlockInFlowLayout(targetLayout, src, targetLayout->count());
+                flowLayout_->removeWidget(src);
+                flowLayout_->addWidget(src);
                 e->acceptProposedAction();
             }
             return true;
@@ -748,7 +690,6 @@ void TestFlowEditor::promptCopyCurrentFlowStation() {
 
     const QString newName = editName->text().trimmed();
     const QVector<TestFlowItemEntry> entries = currentFlowEntries();
-    const QVector<TestFlowItemEntry> failEntries = currentFailFlowEntries();
     const bool stopFlow =
         stopFlowOnTestFailCheck_ ? stopFlowOnTestFailCheck_->isChecked() : true;
 
@@ -758,8 +699,6 @@ void TestFlowEditor::promptCopyCurrentFlowStation() {
         QMessageBox::warning(dialogParent_, QStringLiteral("无法复制"), err);
         return;
     }
-    // 复制目录后覆盖主流程；显式再写失败区，避免仅拷贝未含未保存编辑
-    TestCaseStore::saveStationFlowItems(newKey, entries, failEntries, stopFlow);
 
     lastLoadedStationKey_.clear();
     refreshStationCombo(newKey);
@@ -784,7 +723,7 @@ void TestFlowEditor::promptRemoveCurrentFlowStation() {
     }
     const QString label = stationCombo_->currentText();
     if (QMessageBox::question(dialogParent_, QStringLiteral("确认删除"),
-                              QStringLiteral("删除工站「%1」及其在 总的测试流程.ini 中的流程配置？\r\n"
+                              QStringLiteral("删除工站「%1」及其在 总的测试流程.ini 中的流程配置？\n"
                                              "不会删除 test_case 下的功能块 ini。")
                                   .arg(label)) != QMessageBox::Yes) {
         return;
@@ -809,30 +748,22 @@ void TestFlowEditor::setSelectedBlock(TestCaseBlock* block) {
         selectedBlock_->setSelected(true);
 }
 
-void TestFlowEditor::clearBlocksInLayout(QVBoxLayout* layout) {
-    if (!layout)
+void TestFlowEditor::clearBlocks() {
+    if (!flowLayout_)
         return;
-    while (QLayoutItem* item = layout->takeAt(0)) {
-        if (item->widget()) {
-            if (selectedBlock_ == item->widget())
-                selectedBlock_ = nullptr;
+    selectedBlock_ = nullptr;
+    while (QLayoutItem* item = flowLayout_->takeAt(0)) {
+        if (item->widget())
             item->widget()->deleteLater();
-        }
         delete item;
     }
 }
 
-void TestFlowEditor::clearBlocks() {
-    clearBlocksInLayout(flowLayout_);
-}
-
-void TestFlowEditor::clearFailBlocks() {
-    clearBlocksInLayout(failLayout_);
-}
-
-TestCaseBlock* TestFlowEditor::createBlock(QVBoxLayout* layout, QWidget* container, const QString& caseName,
-                                           bool enabled) {
-    if (!layout || !container)
+TestCaseBlock* TestFlowEditor::createBlock(const QString& caseName, bool enabled) {
+    if (!scroll_ || !flowLayout_)
+        return nullptr;
+    QWidget* container = scroll_->widget();
+    if (!container)
         return nullptr;
     auto* block = new TestCaseBlock(caseName, container);
     block->setChecked(enabled);
@@ -843,8 +774,7 @@ TestCaseBlock* TestFlowEditor::createBlock(QVBoxLayout* layout, QWidget* contain
     connect(block, &TestCaseBlock::removeFromFlowRequested, this, [this](TestCaseBlock* b) {
         if (selectedBlock_ == b)
             setSelectedBlock(nullptr);
-        if (QVBoxLayout* lay = flowLayoutOfBlock(b))
-            lay->removeWidget(b);
+        flowLayout_->removeWidget(b);
         b->deleteLater();
     });
     connect(block, &TestCaseBlock::blockSelected, this, [this](TestCaseBlock* b) { setSelectedBlock(b); });
@@ -852,32 +782,22 @@ TestCaseBlock* TestFlowEditor::createBlock(QVBoxLayout* layout, QWidget* contain
 }
 
 void TestFlowEditor::appendBlock(const QString& caseName, bool enabled) {
-    TestCaseBlock* block = createBlock(flowLayout_, flowContainer_, caseName, enabled);
+    TestCaseBlock* block = createBlock(caseName, enabled);
     if (!block || !flowLayout_)
         return;
     flowLayout_->addWidget(block);
     setSelectedBlock(block);
 }
 
-void TestFlowEditor::appendFailBlock(const QString& caseName, bool enabled) {
-    TestCaseBlock* block = createBlock(failLayout_, failContainer_, caseName, enabled);
-    if (!block || !failLayout_)
-        return;
-    failLayout_->addWidget(block);
-    setSelectedBlock(block);
-}
-
 void TestFlowEditor::insertBlockAfter(TestCaseBlock* after, const QString& caseName, bool enabled) {
-    QVBoxLayout* layout = after ? flowLayoutOfBlock(after) : flowLayout_;
-    QWidget* container = layout == failLayout_ ? failContainer_ : flowContainer_;
-    TestCaseBlock* block = createBlock(layout, container, caseName, enabled);
-    if (!block || !layout)
+    TestCaseBlock* block = createBlock(caseName, enabled);
+    if (!block || !flowLayout_)
         return;
-    const int idx = after ? layout->indexOf(after) : -1;
+    const int idx = after ? flowLayout_->indexOf(after) : -1;
     if (idx < 0)
-        layout->addWidget(block);
+        flowLayout_->addWidget(block);
     else
-        layout->insertWidget(idx + 1, block);
+        flowLayout_->insertWidget(idx + 1, block);
     setSelectedBlock(block);
 }
 
@@ -905,8 +825,6 @@ void TestFlowEditor::copyBlock(TestCaseBlock* src) {
     const QString baseName = def.meta.name.trimmed().isEmpty() ? src->caseName() : def.meta.name.trimmed();
     QSet<QString> usedNames;
     for (const TestFlowItemEntry& entry : currentFlowEntries())
-        usedNames.insert(entry.caseName.trimmed());
-    for (const TestFlowItemEntry& entry : currentFailFlowEntries())
         usedNames.insert(entry.caseName.trimmed());
     for (const QString& name : TestCaseStore::listCaseIniNames())
         usedNames.insert(name.trimmed());
@@ -950,7 +868,7 @@ void TestFlowEditor::copyBlock(TestCaseBlock* src) {
 
     QStringList errors;
     if (!TestCaseValidator::validateCase(def, errors)) {
-        QMessageBox::warning(dialogParent_, QStringLiteral("无法复制"), errors.join(QStringLiteral("\r\n")));
+        QMessageBox::warning(dialogParent_, QStringLiteral("无法复制"), errors.join(QStringLiteral("\n")));
         return;
     }
     if (!TestCaseStore::saveCaseForStation(stationKey, def)) {
@@ -963,16 +881,12 @@ void TestFlowEditor::copyBlock(TestCaseBlock* src) {
 
 void TestFlowEditor::setSingleStepRunEnabled(bool enabled) {
     singleStepRunEnabled_ = enabled;
-    auto apply = [enabled](QVBoxLayout* layout) {
-        if (!layout)
-            return;
-        for (int i = 0; i < layout->count(); ++i) {
-            if (auto* block = qobject_cast<TestCaseBlock*>(layout->itemAt(i)->widget()))
-                block->setRunMenuVisible(enabled);
-        }
-    };
-    apply(flowLayout_);
-    apply(failLayout_);
+    if (!flowLayout_)
+        return;
+    for (int i = 0; i < flowLayout_->count(); ++i) {
+        if (auto* block = qobject_cast<TestCaseBlock*>(flowLayout_->itemAt(i)->widget()))
+            block->setRunMenuVisible(enabled);
+    }
 }
 
 void TestFlowEditor::runBlock(TestCaseBlock* src) {
@@ -1000,12 +914,12 @@ QString TestFlowEditor::currentStationKey() const {
     return stationCombo_ ? stationCombo_->currentData().toString().trimmed() : QString();
 }
 
-QVector<TestFlowItemEntry> TestFlowEditor::entriesFromLayout(QVBoxLayout* layout) const {
+QVector<TestFlowItemEntry> TestFlowEditor::currentFlowEntries() const {
     QVector<TestFlowItemEntry> entries;
-    if (!layout)
+    if (!flowLayout_)
         return entries;
-    for (int i = 0; i < layout->count(); ++i) {
-        auto* w = layout->itemAt(i)->widget();
+    for (int i = 0; i < flowLayout_->count(); ++i) {
+        auto* w = flowLayout_->itemAt(i)->widget();
         auto* block = qobject_cast<TestCaseBlock*>(w);
         if (!block || block->isBlank())
             continue;
@@ -1015,14 +929,6 @@ QVector<TestFlowItemEntry> TestFlowEditor::entriesFromLayout(QVBoxLayout* layout
         entries.append(entry);
     }
     return entries;
-}
-
-QVector<TestFlowItemEntry> TestFlowEditor::currentFlowEntries() const {
-    return entriesFromLayout(flowLayout_);
-}
-
-QVector<TestFlowItemEntry> TestFlowEditor::currentFailFlowEntries() const {
-    return entriesFromLayout(failLayout_);
 }
 
 void TestFlowEditor::persistSelectedStation(const QString& key) {
@@ -1041,7 +947,6 @@ bool TestFlowEditor::saveStationFlow(const QString& stationKey) {
         return false;
     }
     const QVector<TestFlowItemEntry> entries = currentFlowEntries();
-    const QVector<TestFlowItemEntry> failEntries = currentFailFlowEntries();
     for (const TestFlowItemEntry& entry : entries) {
         if (!TestCasePaths::stepIniExistsForStation(key, entry.caseName)) {
             QMessageBox::warning(dialogParent_, QStringLiteral("保存失败"),
@@ -1049,21 +954,14 @@ bool TestFlowEditor::saveStationFlow(const QString& stationKey) {
             return false;
         }
     }
-    for (const TestFlowItemEntry& entry : failEntries) {
-        if (!TestCasePaths::stepIniExistsForStation(key, entry.caseName)) {
-            QMessageBox::warning(dialogParent_, QStringLiteral("保存失败"),
-                                 QStringLiteral("失败区 case 不存在: %1，请先保存配置").arg(entry.caseName));
-            return false;
-        }
-    }
     QStringList mesErrors;
     if (!TestCaseValidator::validateFlowMesTags(key, entries, mesErrors)) {
-        QMessageBox::warning(dialogParent_, QStringLiteral("保存失败"), mesErrors.join(QStringLiteral("\r\n")));
+        QMessageBox::warning(dialogParent_, QStringLiteral("保存失败"), mesErrors.join(QStringLiteral("\n")));
         return false;
     }
     const bool stopFlowOnTestFail =
         stopFlowOnTestFailCheck_ ? stopFlowOnTestFailCheck_->isChecked() : true;
-    TestCaseStore::saveStationFlowItems(key, entries, failEntries, stopFlowOnTestFail);
+    TestCaseStore::saveStationFlowItems(key, entries, stopFlowOnTestFail);
     persistSelectedStation(key);
     lastLoadedStationKey_ = key;
     updateSavedSnapshot();
@@ -1079,7 +977,6 @@ void TestFlowEditor::saveCurrentFlow() {
 
 void TestFlowEditor::updateSavedSnapshot() {
     savedEntriesSnapshot_ = currentFlowEntries();
-    savedFailEntriesSnapshot_ = currentFailFlowEntries();
     savedStopFlowOnTestFail_ =
         stopFlowOnTestFailCheck_ ? stopFlowOnTestFailCheck_->isChecked() : true;
 }
@@ -1088,8 +985,6 @@ bool TestFlowEditor::hasUnsavedChanges() const {
     if (!uiBound_ || !flowLayout_)
         return false;
     if (!flowEntriesEqual(currentFlowEntries(), savedEntriesSnapshot_))
-        return true;
-    if (!flowEntriesEqual(currentFailFlowEntries(), savedFailEntriesSnapshot_))
         return true;
     if (stopFlowOnTestFailCheck_ && stopFlowOnTestFailCheck_->isChecked() != savedStopFlowOnTestFail_) {
         return true;
@@ -1110,14 +1005,14 @@ bool TestFlowEditor::confirmDiscardOrSaveOnLeave() {
     box.setDefaultButton(btnSave);
     box.exec();
 
+    if (box.clickedButton() == btnCancel)
+        return false;
     if (box.clickedButton() == btnSave) {
         const QString key = lastLoadedStationKey_.isEmpty() ? currentStationKey() : lastLoadedStationKey_;
         if (!saveStationFlow(key))
             return false;
         return true;
     }
-
-    // 「取消」= 不保存：丢弃界面改动，并允许继续关闭/切页/切工站
     reloadCurrentStation();
     return true;
 }
@@ -1126,7 +1021,6 @@ void TestFlowEditor::reloadCurrentStation() {
     const QString key = currentStationKey();
     lastLoadedStationKey_ = key;
     clearBlocks();
-    clearFailBlocks();
     if (stopFlowOnTestFailCheck_) {
         QSignalBlocker blocker(stopFlowOnTestFailCheck_);
         stopFlowOnTestFailCheck_->setChecked(TestCaseStore::loadStationStopFlowOnTestFail(key, true));
@@ -1134,9 +1028,6 @@ void TestFlowEditor::reloadCurrentStation() {
     const QVector<TestFlowItemEntry> entries = TestCaseStore::loadStationFlowItems(key);
     for (const TestFlowItemEntry& entry : entries)
         appendBlock(entry.caseName, entry.enabled);
-    const QVector<TestFlowItemEntry> failEntries = TestCaseStore::loadStationFailFlowItems(key);
-    for (const TestFlowItemEntry& entry : failEntries)
-        appendFailBlock(entry.caseName, entry.enabled);
     if (flowLayout_ && flowLayout_->count() > 0) {
         if (auto* block = qobject_cast<TestCaseBlock*>(flowLayout_->itemAt(0)->widget()))
             setSelectedBlock(block);
@@ -1160,9 +1051,7 @@ void TestFlowEditor::openEditDialog(TestCaseBlock* block) {
     auto* dlg = new TestCaseEditDialog(dialogParent_);
     dlg->setAttribute(Qt::WA_DeleteOnClose, true);
     dlg->setWindowModality(Qt::NonModal);
-    // 独立窗口并带最大化按钮（纯 Dialog 默认往往没有）
-    dlg->setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::WindowSystemMenuHint | Qt::WindowMinMaxButtonsHint
-                        | Qt::WindowCloseButtonHint);
+    dlg->setWindowFlag(Qt::Window, true);
     dlg->setStationContext(stationKey);
     dlg->setFlowContext(currentFlowEntries());
 
@@ -1186,9 +1075,7 @@ void TestFlowEditor::openEditDialog(TestCaseBlock* block) {
         const TestCaseDefinition saved = dlgGuard->definition();
         blockGuard->setCaseName(saved.meta.name);
         if (!oldFlowKey.isEmpty() && oldFlowKey != saved.meta.name)
-            TestCaseStore::saveStationFlowItems(currentStationKey(), currentFlowEntries(),
-                                                currentFailFlowEntries(),
-                                                stopFlowOnTestFailCheck_ ? stopFlowOnTestFailCheck_->isChecked() : true);
+            TestCaseStore::saveStationFlowItems(currentStationKey(), currentFlowEntries());
     });
 
     dlg->show();

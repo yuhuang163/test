@@ -2,7 +2,6 @@
 #include "cameratest.h"
 
 #include <QColor>
-#include <QFileDialog>
 #include <QPainter>
 
 #include "qdebug.h"

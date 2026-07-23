@@ -3,18 +3,15 @@
 
 #include <QHBoxLayout>
 #include <QLabel>
-#include <QNetworkReply>
 #include <QSettings>
 #include <QVBoxLayout>
 
 #include "qmesmanager.h"
 #include "qapplication.h"
 #include "qobject.h"
-#include "qsetting.h"
 #include "test_base.h"
 
 class QAction;
-class QAuthenticator;
 
 class box_base : public QMainWindow {
     Q_OBJECT

@@ -1,8 +1,7 @@
 #include "bulk_device.h"
-#include <QDateTime>
 #include <QDebug>
+#include <QDateTime>
 #include <QThread>
-#include <QtEndian>
 
 DjiBulkDevice::DjiBulkDevice(QObject* parent) : QObject(parent) {
     registerCommand();

@@ -278,8 +278,6 @@ void QFreeWork::refreshOrderedTestIndexes() {
     qDebug() << "[FreeWork] refresh tab, SelectedStationName =" << stationName << ", tabName =" << tabName;
 
     orderedTestCaseNames_.clear();
-    orderedFailCaseNames_.clear();
-    runningFailFlow_ = false;
     stopFlowOnTestFail_ = true;
 
     QString stationKey = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationKey());
@@ -305,11 +303,6 @@ void QFreeWork::refreshOrderedTestIndexes() {
         if (entry.enabled)
             orderedTestCaseNames_.append(entry.caseName);
     }
-    const QVector<TestFlowItemEntry> failItems = TestCaseStore::loadStationFailFlowItems(stationKey);
-    for (const TestFlowItemEntry& entry : failItems) {
-        if (entry.enabled)
-            orderedFailCaseNames_.append(entry.caseName);
-    }
 
     if (orderedTestCaseNames_.isEmpty()) {
         if (!flowItems.isEmpty()) {
@@ -320,19 +313,17 @@ void QFreeWork::refreshOrderedTestIndexes() {
             qDebug() << "[FreeWork] empty flow, station =" << stationKey;
         }
     } else {
-        qDebug() << "[FreeWork] 使用 test_case 流程, station =" << stationKey << ", items =" << orderedTestCaseNames_
-                 << ", failItems =" << orderedFailCaseNames_;
+        qDebug() << "[FreeWork] 使用 test_case 流程, station =" << stationKey << ", items =" << orderedTestCaseNames_;
     }
     updateTuplePositionUiVisible();
 }
 
 bool QFreeWork::currentOrderedStepIsDongleBleConnect() const {
-    const QStringList& orderedNames = activeOrderedCaseNames();
-    if (teststate < 0 || teststate >= orderedNames.count()) {
+    if (teststate < 0 || teststate >= orderedTestCaseNames_.count()) {
         return false;
     }
     TestCaseDefinition caseDef;
-    if (!TestCaseRunner::loadCaseForStation(activeFlowStationKey_, orderedNames.at(teststate), caseDef)) {
+    if (!TestCaseRunner::loadCaseForStation(activeFlowStationKey_, orderedTestCaseNames_.at(teststate), caseDef)) {
         return false;
     }
     if (TestCaseRunner::isDongleBleConnectStep(caseDef)) {
@@ -348,10 +339,9 @@ bool QFreeWork::canRunOrderedTestStepLoop() const {
     if (stepRuntime_.started) {
         return true;
     }
-    const QStringList& orderedNames = activeOrderedCaseNames();
-    if (teststate >= 0 && teststate < orderedNames.count()) {
+    if (teststate >= 0 && teststate < orderedTestCaseNames_.count()) {
         TestCaseDefinition caseDef;
-        if (TestCaseRunner::loadCaseForStation(activeFlowStationKey_, orderedNames.at(teststate), caseDef)) {
+        if (TestCaseRunner::loadCaseForStation(activeFlowStationKey_, orderedTestCaseNames_.at(teststate), caseDef)) {
             return !TestCaseRunner::stepRequiresProductBle(caseDef);
         }
         return true;
@@ -495,8 +485,6 @@ bool QFreeWork::runSingleTestCaseStep(const QString& stationKey, const QString& 
     singleStepDebugRun_ = true;
     activeFlowStationKey_ = key;
     orderedTestCaseNames_ = QStringList{stepId};
-    orderedFailCaseNames_.clear();
-    runningFailFlow_ = false;
     stopFlowOnTestFail_ = true;
     freeWorkMesSegments_.clear();
     testResultTableInit();
@@ -515,21 +503,12 @@ bool QFreeWork::runSingleTestCaseStep(const QString& stationKey, const QString& 
     return true;
 }
 
-const QStringList& QFreeWork::activeOrderedCaseNames() const {
-    return runningFailFlow_ ? orderedFailCaseNames_ : orderedTestCaseNames_;
-}
-
-QStringList& QFreeWork::activeOrderedCaseNames() {
-    return runningFailFlow_ ? orderedFailCaseNames_ : orderedTestCaseNames_;
-}
-
 bool QFreeWork::tickOrderedTestStepLoop() {
-    const QStringList& orderedNames = activeOrderedCaseNames();
-    const int stepCount = orderedNames.count();
+    const int stepCount = orderedTestCaseNames_.count();
     for (; teststate < stepCount;) {
         TestCaseDefinition caseDef;
         QString functionName;
-        const QString caseName = orderedNames.at(teststate);
+        const QString caseName = orderedTestCaseNames_.at(teststate);
         if (!TestCaseRunner::loadCaseForStation(activeFlowStationKey_, caseName, caseDef)) {
             ++teststate;
             stepRuntime_.reset();
@@ -552,11 +531,10 @@ bool QFreeWork::tickOrderedTestStepLoop() {
             lastCommandRetryCount = 0;
             testCasePromptAcknowledged_ = false;
             testCasePromptProgrammaticClose_ = false;
-            showlog((runningFailFlow_ ? QStringLiteral("失败区开始：") : QStringLiteral("开始测试内容："))
-                    + functionName);
+            showlog(QStringLiteral("开始测试内容：") + functionName);
             showTestCasePromptForStep(caseDef);
             TestCaseRunner::beginStep(this, caseDef);
-            qDebug() << "程序在跑" << teststate << stepCount << (runningFailFlow_ ? "failFlow" : "mainFlow");
+            qDebug() << "程序在跑" << teststate << stepCount;
             break;
         }
 
@@ -639,13 +617,19 @@ bool QFreeWork::tickOrderedTestStepLoop() {
         testResultTableUpdate(testItems);
 
         ++teststate;
-        if (!runningFailFlow_ && stopFlowOnTestFail_ && !stepRuntime_.pass) {
-            if (!orderedFailCaseNames_.isEmpty()) {
-                showlog(QStringLiteral("测试失败，执行失败区域步骤（共 %1 项）").arg(orderedFailCaseNames_.count()));
-                runningFailFlow_ = true;
-                teststate = 0;
+        if (stopFlowOnTestFail_ && !stepRuntime_.pass) {
+            const QString cleanupStep = QStringLiteral("GC_气缸抬起");
+            const QString m8SuctionStation = QStringLiteral("M8组装吸力测试工站");
+            const bool isM8SuctionStation =
+                TestCaseStore::loadSelectedFlowStationName() == m8SuctionStation
+                || TestCaseStore::flowStationDisplayName(activeFlowStationKey_) == m8SuctionStation;
+            const int cleanupIndex =
+                isM8SuctionStation ? orderedTestCaseNames_.indexOf(cleanupStep, teststate) : -1;
+            if (cleanupIndex >= 0) {
+                showlog(QStringLiteral("测试失败，跳过后续测试项并执行安全收尾：%1").arg(cleanupStep));
+                teststate = cleanupIndex;
             } else {
-                showlog(QStringLiteral("测试失败，按流程设置结束后续步骤（失败区为空）"));
+                showlog(QStringLiteral("测试失败，按流程设置结束后续步骤"));
                 teststate = orderedTestCaseNames_.count();
             }
         }
@@ -657,9 +641,7 @@ bool QFreeWork::tickOrderedTestStepLoop() {
 }
 
 void QFreeWork::finalizeTestFlowIfComplete() {
-    const QStringList& orderedNames = activeOrderedCaseNames();
-    const int flowStepCount = orderedNames.count();
-    // teststate==0 表示尚未跑完任何步（含刚切入失败区），不收尾
+    const int flowStepCount = orderedTestCaseNames_.count();
     if (teststate != flowStepCount || teststate == 0) {
         return;
     }
@@ -745,10 +727,10 @@ void QFreeWork::startTask() {
     }
     if (canRunOrderedTestStepLoop()) {
         tickOrderedTestStepLoop();
-    } else if (teststate >= 0 && teststate < activeOrderedCaseNames().count() && !at->getConnected()) {
+    } else if (teststate >= 0 && teststate < orderedTestCaseNames_.count() && !at->getConnected()) {
         // 流程里下一步要蓝牙，但当前未连接且没有扫描连接步骤时会静默停住
         TestCaseDefinition nextDef;
-        if (TestCaseRunner::loadCaseForStation(activeFlowStationKey_, activeOrderedCaseNames().at(teststate), nextDef)
+        if (TestCaseRunner::loadCaseForStation(activeFlowStationKey_, orderedTestCaseNames_.at(teststate), nextDef)
             && TestCaseRunner::stepRequiresProductBle(nextDef) && !stepRuntime_.started) {
             static qint64 s_lastBleWaitLogMs = 0;
             const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();

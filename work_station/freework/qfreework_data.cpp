@@ -69,20 +69,15 @@ void QFreeWork::resetTuplePositionHighlight() {
 
 void QFreeWork::updateTuplePositionUiVisible() {
     bool show = false;
-    auto scanList = [this, &show](const QStringList& names) {
-        for (const QString& caseName : names) {
-            TestCaseDefinition def;
-            if (!TestCaseRunner::loadCaseForStation(activeFlowStationKey_, caseName, def))
-                continue;
-            if (def.send.deviceCmd == QStringLiteral("ApplyTupleByMac")) {
-                show = true;
-                break;
-            }
+    for (const QString& caseName : orderedTestCaseNames_) {
+        TestCaseDefinition def;
+        if (!TestCaseRunner::loadCaseForStation(activeFlowStationKey_, caseName, def))
+            continue;
+        if (def.send.deviceCmd == QStringLiteral("ApplyTupleByMac")) {
+            show = true;
+            break;
         }
-    };
-    scanList(orderedTestCaseNames_);
-    if (!show)
-        scanList(orderedFailCaseNames_);
+    }
     ui->label_tuplePositionCaption->setVisible(show);
     ui->label_tuplePosLeft->setVisible(show);
     ui->label_tuplePosRight->setVisible(show);

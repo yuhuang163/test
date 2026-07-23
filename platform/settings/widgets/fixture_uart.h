@@ -14,7 +14,6 @@ class Fixture_uart;
 }
 
 class QFixtureManager;
-class QTimer;
 
 class Fixture_uart : public QWidget {
     Q_OBJECT
@@ -44,7 +43,6 @@ class Fixture_uart : public QWidget {
 
   private:
     QFixtureManager* fixtureManager_ = nullptr;
-    QTimer* scanSerialPortsTimer_ = nullptr;
 
   signals:
     // Re-emitted from QFixtureManager
@@ -59,8 +57,8 @@ class Fixture_uart : public QWidget {
     void set_camera_action(camreaFixtureState fixstate);
 
     void on_FixtureconnectButton_clicked();
+    void on_FixturerefreshCom_clicked();
     void on_FixturedisconnectButton_clicked();
-    void scanSerialPorts();
 
     void send_start_command(int i);
     void send_start_sleep_command(int i);

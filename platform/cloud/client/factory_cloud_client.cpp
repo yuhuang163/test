@@ -1,6 +1,5 @@
 #include "factory_cloud_client.h"
 
-#include "my_set/host_ota_version.h"
 #include "my_set/my_typedef.h"
 #include "test_case.h"
 
@@ -15,6 +14,7 @@
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
+#include <QRegularExpression>
 #include <QSslError>
 #include <QSysInfo>
 #include <QTimer>
@@ -40,6 +40,27 @@ QString trimSlash(const QString& url) {
 QString readSetting(const char* key, const QString& fallback = QString()) {
     const QString v = SETTINGS.value(QString::fromUtf8(key)).toString().trimmed();
     return v.isEmpty() ? fallback : v;
+}
+
+QString parseVersionFromMacro() {
+    const QString macro = QString::fromUtf8(DEBUG_VER);
+    const QRegularExpression re(QStringLiteral("V(\\d+\\.\\d+\\.\\d+)"));
+    const QRegularExpressionMatch m = re.match(macro);
+    if (m.hasMatch()) {
+        return m.captured(1);
+    }
+    return QStringLiteral("0.0.0");
+}
+
+QString parseBuildIdFromExe() {
+    const QString exe = QFileInfo(QCoreApplication::applicationFilePath()).fileName();
+    // yyyyMMdd 或 yyyyMMdd-N（同日多次编译，不改 appVersion）
+    const QRegularExpression re(QStringLiteral("new_production_(\\d{8}(?:-\\d+)?)"));
+    const QRegularExpressionMatch m = re.match(exe);
+    if (m.hasMatch()) {
+        return m.captured(1);
+    }
+    return QString();
 }
 
 FactoryCloudClient::ApiResult parseEnvelope(const QByteArray& body, int httpStatus, const QString& qtError) {
@@ -150,12 +171,11 @@ QString FactoryCloudClient::stationKey() {
 }
 
 QString FactoryCloudClient::appVersion() {
-    // 来自 host_ota_version.h（非 PCH），与固定 TARGET 解耦
-    return QStringLiteral(HOST_OTA_APP_VERSION);
+    return parseVersionFromMacro();
 }
 
 QString FactoryCloudClient::buildId() {
-    return QStringLiteral(HOST_OTA_BUILD_ID);
+    return parseBuildIdFromExe();
 }
 
 QString FactoryCloudClient::packageName() {

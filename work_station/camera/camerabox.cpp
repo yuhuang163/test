@@ -1,7 +1,6 @@
 #include "camerabox.h"
 
 #include <QHBoxLayout>
-#include <QInputDialog>
 #include <QLabel>
 #include <QSettings>
 #include <QVBoxLayout>

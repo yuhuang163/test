@@ -75,15 +75,14 @@ class TestFlowEditor : public QObject {
 
     void bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScrollArea* scroll, QVBoxLayout* flowLayout,
                 QCheckBox* stopFlowOnTestFailCheck, QPushButton* btnSave, QPushButton* btnClear,
-                QPushButton* btnImport, QPushButton* btnAdd, QScrollArea* failScroll, QVBoxLayout* failLayout,
-                QPushButton* btnFailImport, QPushButton* btnFailAdd, QPushButton* btnFailClear);
+                QPushButton* btnImport, QPushButton* btnAdd);
     void reloadCurrentStation();
     /** 产品型号切换后，按 Mes/Product_Name 刷新工站下拉并切到可用工站。 */
     void onProductNameChanged();
 
     /** 当前工站流程相对上次保存/加载是否有改动。 */
     bool hasUnsavedChanges() const;
-    /** 有未保存改动时弹窗：保存 / 取消（不保存并继续离开）。返回 true 表示可离开。 */
+    /** 有未保存改动时弹窗：保存 / 不保存 / 取消。返回 true 表示可离开。 */
     bool confirmDiscardOrSaveOnLeave();
     /** 仅自由工站为 true 时，功能块右键显示「运行」 */
     void setSingleStepRunEnabled(bool enabled);
@@ -104,23 +103,15 @@ class TestFlowEditor : public QObject {
     void setupStationComboContextMenu();
     QMenu* createFlowStationMenu(QWidget* parent, int hitComboIndex);
     bool activateStationComboIndex(int index);
-    void setupFailFlowRegionUi(QPushButton* btnFailImport, QPushButton* btnFailAdd, QPushButton* btnFailClear);
-    void clearBlocksInLayout(QVBoxLayout* layout);
     void clearBlocks();
-    void clearFailBlocks();
     void appendBlock(const QString& caseName, bool enabled = true);
-    void appendFailBlock(const QString& caseName, bool enabled = true);
-    TestCaseBlock* createBlock(QVBoxLayout* layout, QWidget* container, const QString& caseName, bool enabled);
+    TestCaseBlock* createBlock(const QString& caseName, bool enabled);
     void insertBlockAfter(TestCaseBlock* after, const QString& caseName, bool enabled = true);
     void copyBlock(TestCaseBlock* src);
     void runBlock(TestCaseBlock* src);
     void setSelectedBlock(TestCaseBlock* block);
-    void promptImportBlocks(bool toFailRegion);
     QString currentStationKey() const;
     QVector<TestFlowItemEntry> currentFlowEntries() const;
-    QVector<TestFlowItemEntry> currentFailFlowEntries() const;
-    QVector<TestFlowItemEntry> entriesFromLayout(QVBoxLayout* layout) const;
-    QVBoxLayout* layoutOfSelectedBlock() const;
     void saveCurrentFlow();
     bool saveStationFlow(const QString& stationKey);
     void updateSavedSnapshot();
@@ -133,19 +124,15 @@ class TestFlowEditor : public QObject {
     QComboBox* stationCombo_ = nullptr;
     QScrollArea* scroll_ = nullptr;
     QVBoxLayout* flowLayout_ = nullptr;
-    QScrollArea* failScroll_ = nullptr;
-    QVBoxLayout* failLayout_ = nullptr;
     QCheckBox* stopFlowOnTestFailCheck_ = nullptr;
     TestCaseBlock* selectedBlock_ = nullptr;
     QWidget* flowContainer_ = nullptr;
-    QWidget* failContainer_ = nullptr;
     bool uiBound_ = false;
     bool singleStepRunEnabled_ = false;
     bool suppressStationChange_ = false;
     int stationComboPrevIndex_ = 0;
     QString lastLoadedStationKey_;
     QVector<TestFlowItemEntry> savedEntriesSnapshot_;
-    QVector<TestFlowItemEntry> savedFailEntriesSnapshot_;
     bool savedStopFlowOnTestFail_ = true;
     /** 每个流程块最多一个配置窗；关闭后自动移除。 */
     QHash<TestCaseBlock*, QPointer<TestCaseEditDialog>> openEditDialogs_;

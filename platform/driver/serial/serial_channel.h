@@ -56,10 +56,6 @@ class SerialChannel : public QObject {
 
     static QStringList availablePortNames();
     static void updateComboBoxPorts(QComboBox* comboBox);
-    /** 主板自带 COM1 等不用于产测的口，下拉与枚举时屏蔽。 */
-    static bool isHiddenSystemPort(const QString& portName);
-    /** 设备已卸载但仍残留在注册表的幽灵口返回 false（占用中的口仍视为存在）。 */
-    static bool isPortPresent(const QString& portName);
 
   signals:
     void opened();

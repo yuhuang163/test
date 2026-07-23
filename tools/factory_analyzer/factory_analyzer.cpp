@@ -3,7 +3,6 @@
 #include "qproduct.h"
 #include "qcustomplot.h"
 #include "ui_factory_analyzer.h"
-#include "serial_channel.h"
 #include <QCoreApplication>
 #include <QDebug>
 #include <QDesktopServices>
@@ -575,7 +574,37 @@ void factory_analyzer::handleProductSerialPortError(QSerialPort::SerialPortError
     }
 }
 void factory_analyzer::scanSerialPorts() {
-    SerialChannel::updateComboBoxPorts(ui->productComNameCombo);
+    QList<QSerialPortInfo> ports = QSerialPortInfo::availablePorts();
+
+    auto updateComboBox = [](QComboBox* comboBox, const QList<QSerialPortInfo>& ports) {
+        if (!comboBox) {
+            return;
+        }
+
+        // 获取当前的项目列表
+        QSet<QString> currentItems;
+        for (int i = 0; i < comboBox->count(); ++i) {
+            currentItems.insert(comboBox->itemText(i));
+        }
+
+        // 添加新的项目
+        for (const QSerialPortInfo& info : ports) {
+            if (!currentItems.contains(info.portName())) {
+                comboBox->addItem(info.portName());
+            }
+            currentItems.remove(info.portName()); // 移除已存在的项目
+        }
+
+        // 移除不存在的项目
+        for (const QString& item : currentItems) {
+            int index = comboBox->findText(item);
+            if (index != -1) {
+                comboBox->removeItem(index);
+            }
+        }
+    };
+
+    updateComboBox(ui->productComNameCombo, ports);
 }
 void factory_analyzer::openProductSerialPort() {
     if (productSerialPort->isOpen()) {

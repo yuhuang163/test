@@ -160,8 +160,8 @@ bool HostOtaService::downloadAndApply(const CheckResult& info, QWidget* parent, 
     }
 
     const QString appDir = QCoreApplication::applicationDirPath();
-    // 固定覆盖当前运行的 exe 名（TARGET=new_production），不再落地为 package_buildId.exe
-    const QString fileName = QFileInfo(QCoreApplication::applicationFilePath()).fileName();
+    const QString fileName =
+        QStringLiteral("%1_%2.exe").arg(FactoryCloudClient::packageName(), info.buildId);
     const QString savePath = QDir(appDir).filePath(fileName);
     const QString tempSavePath = savePath + QStringLiteral(".tmp");
 
@@ -198,7 +198,7 @@ bool HostOtaService::downloadAndApply(const CheckResult& info, QWidget* parent, 
         }
     }
 
-    // 版本号来自 host_ota_version.h 编译进新包，无需写 settings
+    // 不再写入 settings —— appVersion() 和 buildId() 始终从 exe 解析
 
     if (parent) {
         QMessageBox* msgBox = new QMessageBox(parent);

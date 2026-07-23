@@ -6,7 +6,6 @@
 #include <QList>
 #include <QNetworkInterface>
 #include <QSysInfo>
-#include <QUrlQuery>
 
 #include "Abini.h"
 #include "qdebug.h"
