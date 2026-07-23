@@ -3248,6 +3248,56 @@
                    </widget>
                   </item>
                   <item>
+                   <widget class="QLabel" name="label_dongle_suction_osr">
+                    <property name="text">
+                     <string>OSR档位</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QComboBox" name="dongleSuctionOsrCombo">
+                    <property name="toolTip">
+                     <string>AT+SUCTIONOSR：1=1024X/8ms，2=2048X/10ms，3=4096X/11ms，4=8192X/16ms（默认）</string>
+                    </property>
+                    <property name="minimumContentsLength">
+                     <number>22</number>
+                    </property>
+                    <item>
+                     <property name="text">
+                      <string>1 · 1024X / 8ms</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>2 · 2048X / 10ms</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>3 · 4096X / 11ms</string>
+                     </property>
+                    </item>
+                    <item>
+                     <property name="text">
+                      <string>4 · 8192X / 16ms（默认）</string>
+                     </property>
+                    </item>
+                    <property name="currentIndex">
+                     <number>3</number>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QPushButton" name="dongle_suction_set_osr">
+                    <property name="toolTip">
+                     <string>下发 AT+SUCTIONOSR=当前档位</string>
+                    </property>
+                    <property name="text">
+                     <string>设置OSR</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
                    <spacer name="horizontalSpacer_dongle_suction">
                     <property name="orientation">
                      <enum>Qt::Horizontal</enum>

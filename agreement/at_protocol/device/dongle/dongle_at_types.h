@@ -36,6 +36,8 @@ enum class DongleCmd {
 
     GetSuction,           // AT+SUCTION= 0/1
 
+    SetSuctionOsr,        // AT+SUCTIONOSR= 1..4（默认 4=8192X/16ms）
+
     AdcSwitch,            // AT+ADC= 0/1
 
     BleDeviceLog,         // AT+BLEDEVICELOG= 0/1

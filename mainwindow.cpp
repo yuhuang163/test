@@ -5057,7 +5057,7 @@ void MainWindow::stopDongleSuctionCsvLog() {
         if (i + 1 < kDongleSuctionChannelCount)
             dongleSuctionCsvStream_ << QLatin1Char(',');
     }
-    dongleSuctionCsvStream_ << QLatin1Char('\r') << QLatin1Char('\n');
+    dongleSuctionCsvStream_ << QLatin1Char('\r\n') << QLatin1Char('\r\n');
     dongleSuctionCsvStream_.flush();
     dongleSuctionCsvFile_.close();
     dongleSuctionCsvStream_.setDevice(nullptr);
@@ -5073,8 +5073,8 @@ void MainWindow::writeDongleSuctionCsvRow(double tSec, double ch1Kpa, double ch2
         return;
     dongleSuctionCsvStream_ << QString::number(tSec, 'f', 3) << QLatin1Char(',') << QString::number(ch1Kpa, 'f', 3)
                               << QLatin1Char(',') << QString::number(ch2Kpa, 'f', 3) << QLatin1Char(',')
-                              << QString::number(ch3Kpa, 'f', 3) << QLatin1Char(',') << event << QLatin1Char('\r')
-                              << QLatin1Char('\n');
+                              << QString::number(ch3Kpa, 'f', 3) << QLatin1Char(',') << event << QLatin1Char('\r\n')
+                              << QLatin1Char('\r\n');
     dongleSuctionCsvStream_.flush();
 }
 
@@ -5276,8 +5276,12 @@ void MainWindow::on_dongle_suction_open_clicked() {
         setDongleSuctionPeakParamWidgetsEnabled(true);
         return;
     }
+    // 开启前先设 OSR 档位，再 AT+SUCTION=1
+    const int suctionOsr = ui->dongleSuctionOsrCombo ? (ui->dongleSuctionOsrCombo->currentIndex() + 1) : 4;
+    at->set(DongleCmd::SetSuctionOsr, suctionOsr);
     at->set(DongleCmd::GetSuction, 1);
-    showlog(QStringLiteral("已开启 Dongle 吸力读取（峰目标 %1±%2 kPa，漏峰间隔>%3s）")
+    showlog(QStringLiteral("已开启 Dongle 吸力读取（OSR档位 %1，峰目标 %2±%3 kPa，漏峰间隔>%4s）")
+                .arg(suctionOsr)
                 .arg(dongleSuctionPeakTargetKpa_, 0, 'f', 2)
                 .arg(dongleSuctionPeakToleranceKpa_, 0, 'f', 2)
                 .arg(dongleSuctionPeakMaxGapSec_, 0, 'f', 1));
@@ -5294,6 +5298,22 @@ void MainWindow::on_dongle_suction_close_clicked() {
 
 void MainWindow::on_dongle_suction_clear_chart_clicked() {
     resetDongleSuctionChart();
+}
+
+void MainWindow::on_dongle_suction_set_osr_clicked() {
+    if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
+        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("请先连接 Dongle 串口"));
+        return;
+    }
+    if (!at) {
+        showlog(QStringLiteral("AT+SUCTIONOSR 发送失败：Dongle 未就绪"));
+        return;
+    }
+    const int gear = ui->dongleSuctionOsrCombo ? (ui->dongleSuctionOsrCombo->currentIndex() + 1) : 4;
+    at->set(DongleCmd::SetSuctionOsr, gear);
+    static const char* const kOsrDesc[] = {"", "1024X/8ms", "2048X/10ms", "4096X/11ms", "8192X/16ms"};
+    const QString desc = (gear >= 1 && gear <= 4) ? QString::fromUtf8(kOsrDesc[gear]) : QStringLiteral("-");
+    showlog(QStringLiteral("已发送 AT+SUCTIONOSR=%1（%2）").arg(gear).arg(desc));
 }
 
 void MainWindow::on_checkBox_adcSwitch_stateChanged(int arg1) {

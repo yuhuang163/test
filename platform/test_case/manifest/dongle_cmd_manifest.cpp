@@ -10,14 +10,14 @@ constexpr uint8_t kSet = TestCaseCmdManifest::kSendActionSet;
 constexpr uint8_t kGet = TestCaseCmdManifest::kSendActionGet;
 
 constexpr const char kHintBleScan[] =
-    u8"蓝牙 MAC：留空或 $MAC = 当前工位 MAC\n示例：Param_string=$MAC";
+    u8"蓝牙 MAC：留空或 $MAC = 当前工位 MAC\r\n示例：Param_string=$MAC";
 constexpr const char kHintBomb[] =
-    u8"广播注入：deviceName,rssi,connectionInterval,command\n按 Dongle 协议填 JSON 或 name=value";
+    u8"广播注入：deviceName,rssi,connectionInterval,command\r\n按 Dongle 协议填 JSON 或 name=value";
 
 // 新增 Dongle 指令：在此表加一行；实现见 qat.cpp set/get。
 const Row kRows[] = {
     {DongleCmd::BleScanConnect, "BleScanConnect", u8"扫描连接蓝牙", DeviceCmdParamKind::String, kHintBleScan, kSet},
-    {DongleCmd::BleScanConnectByName, "BleScanConnectByName", u8"按广播名自动连接", DeviceCmdParamKind::JsonMap, u8"填写包含 name 和 rssi 的 JSON\n示例: {\"name\":\"Pump-E\", \"rssi\":-50}", kSet},
+    {DongleCmd::BleScanConnectByName, "BleScanConnectByName", u8"按广播名自动连接", DeviceCmdParamKind::JsonMap, u8"填写包含 name 和 rssi 的 JSON\r\n示例: {\"name\":\"Pump-E\", \"rssi\":-50}", kSet},
     {DongleCmd::BleDisconnect, "BleDisconnect", u8"断开蓝牙连接", DeviceCmdParamKind::None,
      u8"下发 AT+MAC=00:00:00:00:00:00，主动断开 dongle 与产品 BLE", kSet},
     {DongleCmd::BleDirectConnect, "BleDirectConnect", u8"直连蓝牙", DeviceCmdParamKind::String, kHintBleScan, kSet},
@@ -31,11 +31,13 @@ const Row kRows[] = {
     {DongleCmd::BleLog, "BleLog", u8"BLE 日志开关", DeviceCmdParamKind::Int, u8"0=关 1=开", kSet},
     {DongleCmd::BleDeviceLog, "BleDeviceLog", u8"BLE 设备日志开关", DeviceCmdParamKind::Int, u8"0=关 1=开", kSet},
     {DongleCmd::GetSuction, "GetSuction", u8"吸力读取开关", DeviceCmdParamKind::Int, u8"0=关 1=开（AT+SUCTION）", kSet},
+    {DongleCmd::SetSuctionOsr, "SetSuctionOsr", u8"吸力 OSR 档位", DeviceCmdParamKind::Int,
+     u8"AT+SUCTIONOSR=1..4\n1=1024X/8ms 2=2048X/10ms 3=4096X/11ms 4=8192X/16ms（默认）", kSet},
     {DongleCmd::SampleSuctionDual, "SampleSuctionDual", u8"采集双通道吸力", DeviceCmdParamKind::JsonMap,
-     u8"可选：sampleDurationMs / sampleIntervalMs\nCH1/CH2 峰值与峰差请在 Gate（Dongle吸力峰值）中配置（同 BYD 双通道：两口最低值 + |差|）",
+     u8"可选：sampleDurationMs / sampleIntervalMs\r\nCH1/CH2 峰值与峰差请在 Gate（Dongle吸力峰值）中配置（同 BYD 双通道：两口最低值 + |差|）",
      kGet},
     {DongleCmd::SampleSuctionSingle, "SampleSuctionSingle", u8"采集单通道吸力", DeviceCmdParamKind::JsonMap,
-     u8"可选：channel=1|2|3、sampleDurationMs/IntervalMs；峰识别可选 peakBaselineKpa/peakDipStartKpa\n"
+     u8"可选：channel=1|2|3、sampleDurationMs/IntervalMs；峰识别可选 peakBaselineKpa/peakDipStartKpa\r\n"
      u8"Gate：peakKpa=各周期峰值均须在范围内；peakDiffKpa=最大峰值-最小峰值（不是窗口绝对最高-最低）",
      kGet},
     {DongleCmd::AdcSwitch, "AdcSwitch", u8"ADC 上报开关", DeviceCmdParamKind::Int, u8"0=关 1=开（AT+ADC）", kSet},

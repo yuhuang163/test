@@ -674,6 +674,7 @@ class MainWindow : public QMainWindow {
     void on_dongle_suction_open_clicked();
     void on_dongle_suction_close_clicked();
     void on_dongle_suction_clear_chart_clicked();
+    void on_dongle_suction_set_osr_clicked();
     void on_checkBox_adcSwitch_stateChanged(int arg1);
 
   signals:

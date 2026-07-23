@@ -68,6 +68,15 @@ void DongleAtDevice::set(DongleCmd cmd, const QVariant& data) {
         sendAtLine(QStringLiteral("AT+SUCTION=%1\r\n").arg(state));
         break;
     }
+    case DongleCmd::SetSuctionOsr: {
+        int gear = data.toInt();
+        if (gear < 1)
+            gear = 1;
+        if (gear > 4)
+            gear = 4;
+        sendAtLine(QStringLiteral("AT+SUCTIONOSR=%1\r\n").arg(gear));
+        break;
+    }
     case DongleCmd::AdcSwitch: {
         int state = data.toInt();
         if (state > 1) {
