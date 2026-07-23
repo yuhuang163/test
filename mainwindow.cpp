@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 
+#include <QDialog>
 #include <QInputDialog>
 #include <QLineEdit>
 #include <QMenu>
@@ -7,6 +8,7 @@
 #include <QRandomGenerator>
 #include <QSlider>
 #include <QTabBar>
+#include <QVBoxLayout>
 #include <QtConcurrent>
 
 #include "md5.h"
@@ -5078,6 +5080,96 @@ void MainWindow::writeDongleSuctionCsvRow(double tSec, double ch1Kpa, double ch2
     dongleSuctionCsvStream_.flush();
 }
 
+void MainWindow::setupDongleSuctionPlotWidget(QCustomPlot* plot) {
+    if (!plot)
+        return;
+    plot->legend->setVisible(true);
+    while (plot->graphCount() < 3)
+        plot->addGraph();
+    plot->graph(0)->setPen(QPen(QColor(30, 120, 220), 2));
+    plot->graph(0)->setName(QStringLiteral("第一通道"));
+    plot->graph(1)->setPen(QPen(QColor(220, 80, 50), 2));
+    plot->graph(1)->setName(QStringLiteral("第二通道"));
+    plot->graph(2)->setPen(QPen(QColor(50, 160, 80), 2));
+    plot->graph(2)->setName(QStringLiteral("第三通道"));
+    plot->xAxis->setLabel(QStringLiteral("时间(s，最近10秒)"));
+    plot->yAxis->setLabel(QStringLiteral("吸力(kPa)"));
+    plot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
+    plot->xAxis->setRange(0, kDongleSuctionChartWindowSec);
+    plot->yAxis->setRange(-40, 0);
+}
+
+void MainWindow::refreshDongleSuctionPlotWidget(QCustomPlot* plot) {
+    if (!plot || plot->graphCount() < 3)
+        return;
+
+    if (dongleSuctionChartTimeSec_.isEmpty()) {
+        for (int i = 0; i < 3; ++i)
+            plot->graph(i)->data()->clear();
+        plot->xAxis->setRange(0, kDongleSuctionChartWindowSec);
+        plot->yAxis->setRange(-40, 0);
+        plot->replot();
+        return;
+    }
+
+    const double tSec = dongleSuctionChartTimeSec_.last();
+    const double windowStart = qMax(0.0, tSec - kDongleSuctionChartWindowSec);
+    QVector<double> relTime;
+    relTime.reserve(dongleSuctionChartTimeSec_.size());
+    for (double t : dongleSuctionChartTimeSec_)
+        relTime.append(t - windowStart);
+
+    plot->graph(0)->setData(relTime, dongleSuctionChartCh1_);
+    plot->graph(1)->setData(relTime, dongleSuctionChartCh2_);
+    plot->graph(2)->setData(relTime, dongleSuctionChartCh3_);
+    plot->xAxis->setRange(0, kDongleSuctionChartWindowSec);
+
+    double yMin = dongleSuctionChartCh1_.isEmpty() ? -40.0 : dongleSuctionChartCh1_.first();
+    double yMax = yMin;
+    auto expand = [&](const QVector<double>& values) {
+        for (double v : values) {
+            yMin = qMin(yMin, v);
+            yMax = qMax(yMax, v);
+        }
+    };
+    expand(dongleSuctionChartCh1_);
+    expand(dongleSuctionChartCh2_);
+    expand(dongleSuctionChartCh3_);
+    const double yPad = qMax(0.5, (yMax - yMin) * 0.1);
+    plot->yAxis->setRange(yMin - yPad, yMax + yPad);
+    plot->replot();
+}
+
+void MainWindow::openDongleSuctionChartPopup() {
+    if (dongleSuctionPlotPopupDlg_) {
+        dongleSuctionPlotPopupDlg_->raise();
+        dongleSuctionPlotPopupDlg_->activateWindow();
+        return;
+    }
+
+    auto* dlg = new QDialog(this);
+    dlg->setAttribute(Qt::WA_DeleteOnClose, true);
+    dlg->setWindowTitle(QStringLiteral("Dongle 吸力曲线（双击原图可再次打开）"));
+    dlg->resize(1200, 720);
+    dlg->setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::WindowSystemMenuHint | Qt::WindowMinMaxButtonsHint |
+                        Qt::WindowCloseButtonHint);
+
+    auto* layout = new QVBoxLayout(dlg);
+    layout->setContentsMargins(8, 8, 8, 8);
+    auto* plot = new QCustomPlot(dlg);
+    setupDongleSuctionPlotWidget(plot);
+    refreshDongleSuctionPlotWidget(plot);
+    layout->addWidget(plot, 1);
+
+    dongleSuctionPlotPopupDlg_ = dlg;
+    dongleSuctionPlotPopup_ = plot;
+    connect(dlg, &QObject::destroyed, this, [this]() {
+        dongleSuctionPlotPopupDlg_.clear();
+        dongleSuctionPlotPopup_.clear();
+    });
+    dlg->show();
+}
+
 void MainWindow::initDongleSuctionChart() {
     if (!ui->dongleSuctionPlotHost || dongleSuctionPlot_ != nullptr)
         return;
@@ -5086,21 +5178,11 @@ void MainWindow::initDongleSuctionChart() {
     layout->setContentsMargins(0, 0, 0, 0);
     dongleSuctionPlot_ = new QCustomPlot(ui->dongleSuctionPlotHost);
     layout->addWidget(dongleSuctionPlot_);
-
-    dongleSuctionPlot_->legend->setVisible(true);
-    for (int i = 0; i < 3; ++i)
-        dongleSuctionPlot_->addGraph();
-    dongleSuctionPlot_->graph(0)->setPen(QPen(QColor(30, 120, 220), 2));
-    dongleSuctionPlot_->graph(0)->setName(QStringLiteral("第一通道"));
-    dongleSuctionPlot_->graph(1)->setPen(QPen(QColor(220, 80, 50), 2));
-    dongleSuctionPlot_->graph(1)->setName(QStringLiteral("第二通道"));
-    dongleSuctionPlot_->graph(2)->setPen(QPen(QColor(50, 160, 80), 2));
-    dongleSuctionPlot_->graph(2)->setName(QStringLiteral("第三通道"));
-    dongleSuctionPlot_->xAxis->setLabel(QStringLiteral("时间(s，最近10秒)"));
-    dongleSuctionPlot_->yAxis->setLabel(QStringLiteral("吸力(kPa)"));
-    dongleSuctionPlot_->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
-    dongleSuctionPlot_->xAxis->setRange(0, kDongleSuctionChartWindowSec);
-    dongleSuctionPlot_->yAxis->setRange(-40, 0);
+    setupDongleSuctionPlotWidget(dongleSuctionPlot_);
+    dongleSuctionPlot_->setToolTip(QStringLiteral("双击放大查看"));
+    connect(dongleSuctionPlot_, &QCustomPlot::mouseDoubleClick, this, [this](QMouseEvent*) {
+        openDongleSuctionChartPopup();
+    });
     dongleSuctionPlot_->replot();
 }
 
@@ -5131,13 +5213,8 @@ void MainWindow::resetDongleSuctionChart() {
     if (ui->dongleSuctionCh3PeakLowLabel)
         ui->dongleSuctionCh3PeakLowLabel->setText(QStringLiteral("第三通道最低：--"));
 
-    if (!dongleSuctionPlot_)
-        return;
-    for (int i = 0; i < 3; ++i)
-        dongleSuctionPlot_->graph(i)->data()->clear();
-    dongleSuctionPlot_->xAxis->setRange(0, kDongleSuctionChartWindowSec);
-    dongleSuctionPlot_->yAxis->setRange(-40, 0);
-    dongleSuctionPlot_->replot();
+    refreshDongleSuctionPlotWidget(dongleSuctionPlot_);
+    refreshDongleSuctionPlotWidget(dongleSuctionPlotPopup_);
 }
 
 void MainWindow::trimDongleSuctionChartToWindow(double tSec) {
@@ -5222,38 +5299,8 @@ void MainWindow::appendDongleSuctionChartSample(double ch1Kpa, double ch2Kpa, do
         ui->dongleSuctionLiveCh3Label->setText(QStringLiteral("第三通道实时：%1 kPa").arg(ch3Kpa, 0, 'f', 3));
     updateDongleSuctionPeakLabels();
 
-    if (!dongleSuctionPlot_)
-        return;
-
-    const double windowStart = qMax(0.0, tSec - kDongleSuctionChartWindowSec);
-    QVector<double> relTime;
-    relTime.reserve(dongleSuctionChartTimeSec_.size());
-    for (double t : dongleSuctionChartTimeSec_)
-        relTime.append(t - windowStart);
-
-    dongleSuctionPlot_->graph(0)->setData(relTime, dongleSuctionChartCh1_);
-    dongleSuctionPlot_->graph(1)->setData(relTime, dongleSuctionChartCh2_);
-    dongleSuctionPlot_->graph(2)->setData(relTime, dongleSuctionChartCh3_);
-
-    dongleSuctionPlot_->xAxis->setRange(0, kDongleSuctionChartWindowSec);
-
-    double yMin = qMin(qMin(ch1Kpa, ch2Kpa), ch3Kpa);
-    double yMax = qMax(qMax(ch1Kpa, ch2Kpa), ch3Kpa);
-    for (double v : dongleSuctionChartCh1_) {
-        yMin = qMin(yMin, v);
-        yMax = qMax(yMax, v);
-    }
-    for (double v : dongleSuctionChartCh2_) {
-        yMin = qMin(yMin, v);
-        yMax = qMax(yMax, v);
-    }
-    for (double v : dongleSuctionChartCh3_) {
-        yMin = qMin(yMin, v);
-        yMax = qMax(yMax, v);
-    }
-    const double yPad = qMax(0.5, (yMax - yMin) * 0.1);
-    dongleSuctionPlot_->yAxis->setRange(yMin - yPad, yMax + yPad);
-    dongleSuctionPlot_->replot();
+    refreshDongleSuctionPlotWidget(dongleSuctionPlot_);
+    refreshDongleSuctionPlotWidget(dongleSuctionPlotPopup_);
 }
 
 void MainWindow::refreshDongleSuctionData(const ProtocolDongleSuctionData& data) {

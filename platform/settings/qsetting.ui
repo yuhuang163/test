@@ -735,26 +735,6 @@
           </spacer>
          </item>
          <item>
-          <widget class="QPushButton" name="pushButton_testFlowAdd">
-           <property name="toolTip">
-            <string>在流程末尾插入空白块；右键「打开设置」保存配置后，保存流程时才会写入顺序</string>
-           </property>
-           <property name="text">
-            <string>新建空白块</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="pushButton_testFlowImport">
-           <property name="toolTip">
-            <string>从 test_case 目录选择已保存的功能块，追加到当前工站流程</string>
-           </property>
-           <property name="text">
-            <string>添加已有块</string>
-           </property>
-          </widget>
-         </item>
-         <item>
           <spacer name="horizontalSpacer_testFlowToolbar">
            <property name="orientation">
             <enum>Qt::Horizontal</enum>
@@ -798,6 +778,9 @@
        </item>
        <item>
         <widget class="QScrollArea" name="scrollArea_testFlow">
+         <property name="toolTip">
+          <string>主测试流程。拖拽调整顺序，右键空白处或功能块可添加空白块/已有块；须点「保存流程」生效。</string>
+         </property>
          <property name="horizontalScrollBarPolicy">
           <enum>Qt::ScrollBarAlwaysOff</enum>
          </property>
@@ -846,26 +829,6 @@
           </spacer>
          </item>
          <item>
-          <widget class="QPushButton" name="pushButton_testFlowFailImport">
-           <property name="toolTip">
-            <string>向失败执行区域添加已有功能块</string>
-           </property>
-           <property name="text">
-            <string>添加已有块</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QPushButton" name="pushButton_testFlowFailAdd">
-           <property name="toolTip">
-            <string>在失败执行区域末尾新建空白块</string>
-           </property>
-           <property name="text">
-            <string>新建空白块</string>
-           </property>
-          </widget>
-         </item>
-         <item>
           <widget class="QPushButton" name="pushButton_testFlowFailClear">
            <property name="toolTip">
             <string>清空失败执行区域（不删磁盘 ini）</string>
@@ -886,7 +849,7 @@
           </size>
          </property>
          <property name="toolTip">
-          <string>失败收尾步骤列表，可与上方主流程互相拖拽。</string>
+          <string>失败收尾步骤列表，可与上方主流程互相拖拽；右键空白处或功能块可添加空白块/已有块。</string>
          </property>
          <property name="horizontalScrollBarPolicy">
           <enum>Qt::ScrollBarAlwaysOff</enum>

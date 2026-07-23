@@ -44,6 +44,8 @@ class TestCaseBlock : public QCheckBox {
 
   signals:
     void editRequested(TestCaseBlock* block);
+    void addBlankAfterRequested(TestCaseBlock* block);
+    void addExistingAfterRequested(TestCaseBlock* block);
     void copyRequested(TestCaseBlock* block);
     void runRequested(TestCaseBlock* block);
     void removeFromFlowRequested(TestCaseBlock* block);
@@ -75,8 +77,7 @@ class TestFlowEditor : public QObject {
 
     void bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScrollArea* scroll, QVBoxLayout* flowLayout,
                 QCheckBox* stopFlowOnTestFailCheck, QPushButton* btnSave, QPushButton* btnClear,
-                QPushButton* btnImport, QPushButton* btnAdd, QScrollArea* failScroll, QVBoxLayout* failLayout,
-                QPushButton* btnFailImport, QPushButton* btnFailAdd, QPushButton* btnFailClear);
+                QScrollArea* failScroll, QVBoxLayout* failLayout, QPushButton* btnFailClear);
     void reloadCurrentStation();
     /** 产品型号切换后，按 Mes/Product_Name 刷新工站下拉并切到可用工站。 */
     void onProductNameChanged();
@@ -104,7 +105,8 @@ class TestFlowEditor : public QObject {
     void setupStationComboContextMenu();
     QMenu* createFlowStationMenu(QWidget* parent, int hitComboIndex);
     bool activateStationComboIndex(int index);
-    void setupFailFlowRegionUi(QPushButton* btnFailImport, QPushButton* btnFailAdd, QPushButton* btnFailClear);
+    void setupFailFlowRegionUi(QPushButton* btnFailClear);
+    void showFlowRegionContextMenu(QVBoxLayout* layout, const QPoint& globalPos, TestCaseBlock* insertAfter);
     void clearBlocksInLayout(QVBoxLayout* layout);
     void clearBlocks();
     void clearFailBlocks();
@@ -115,7 +117,7 @@ class TestFlowEditor : public QObject {
     void copyBlock(TestCaseBlock* src);
     void runBlock(TestCaseBlock* src);
     void setSelectedBlock(TestCaseBlock* block);
-    void promptImportBlocks(bool toFailRegion);
+    void promptImportBlocks(bool toFailRegion, TestCaseBlock* insertAfter = nullptr);
     QString currentStationKey() const;
     QVector<TestFlowItemEntry> currentFlowEntries() const;
     QVector<TestFlowItemEntry> currentFailFlowEntries() const;

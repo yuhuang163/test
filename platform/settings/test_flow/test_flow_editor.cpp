@@ -187,6 +187,10 @@ void TestCaseBlock::contextMenuEvent(QContextMenuEvent* event) {
         QAction* runAct = menu.addAction(QStringLiteral("运行"), this, [this]() { emit runRequested(this); });
         runAct->setEnabled(!isBlank());
     }
+    menu.addSeparator();
+    menu.addAction(QStringLiteral("添加空白块"), this, [this]() { emit addBlankAfterRequested(this); });
+    menu.addAction(QStringLiteral("添加已有块"), this, [this]() { emit addExistingAfterRequested(this); });
+    menu.addSeparator();
     QAction* copyAct = menu.addAction(QStringLiteral("复制"), this, [this]() { emit copyRequested(this); });
     copyAct->setEnabled(!isBlank());
     menu.addAction(QStringLiteral("从流程移除"), this, [this]() { emit removeFromFlowRequested(this); });
@@ -200,8 +204,7 @@ TestFlowEditor::TestFlowEditor(QObject* parent) : QObject(parent) {
 
 void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScrollArea* scroll, QVBoxLayout* flowLayout,
                             QCheckBox* stopFlowOnTestFailCheck, QPushButton* btnSave, QPushButton* btnClear,
-                            QPushButton* btnImport, QPushButton* btnAdd, QScrollArea* failScroll, QVBoxLayout* failLayout,
-                            QPushButton* btnFailImport, QPushButton* btnFailAdd, QPushButton* btnFailClear) {
+                            QScrollArea* failScroll, QVBoxLayout* failLayout, QPushButton* btnFailClear) {
     if (uiBound_)
         return;
     uiBound_ = true;
@@ -222,8 +225,10 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
         flowContainer_->setAcceptDrops(true);
         flowContainer_->installEventFilter(this);
     }
+    if (scroll_ && scroll_->viewport())
+        scroll_->viewport()->installEventFilter(this);
 
-    setupFailFlowRegionUi(btnFailImport, btnFailAdd, btnFailClear);
+    setupFailFlowRegionUi(btnFailClear);
 
     if (auto* toolbar = stationCombo_->parentWidget()->findChild<QHBoxLayout*>(QStringLiteral("horizontalLayout_testFlowToolbar"))) {
         auto* btnUp = new QPushButton(QStringLiteral("上移"), stationCombo_->parentWidget());
@@ -260,8 +265,6 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
             clearBlocks();
         }
     });
-    connect(btnAdd, &QPushButton::clicked, this, [this]() { appendBlock(QString()); });
-    connect(btnImport, &QPushButton::clicked, this, [this]() { promptImportBlocks(false); });
 
     if (stopFlowOnTestFailCheck_) {
         stopFlowOnTestFailCheck_->setToolTip(
@@ -270,7 +273,7 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
     }
     if (scroll_) {
         scroll_->setToolTip(QStringLiteral("主测试流程。拖拽功能块到目标位置：落在某块上半部=插到其前，下半部=插到其后；"
-                                           "也可选中块后点「上移」「下移」。可拖到下方失败区。调整完须点「保存流程」。"));
+                                           "也可选中块后点「上移」「下移」，或右键添加功能块。可拖到下方失败区。调整完须点「保存流程」。"));
     }
 
     QString initialKey = TestCaseStore::resolveFlowStationKey(
@@ -283,8 +286,7 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
     stationComboPrevIndex_ = stationCombo_ ? stationCombo_->currentIndex() : 0;
 }
 
-void TestFlowEditor::setupFailFlowRegionUi(QPushButton* btnFailImport, QPushButton* btnFailAdd,
-                                           QPushButton* btnFailClear) {
+void TestFlowEditor::setupFailFlowRegionUi(QPushButton* btnFailClear) {
     if (!failScroll_ || !failLayout_)
         return;
 
@@ -293,6 +295,8 @@ void TestFlowEditor::setupFailFlowRegionUi(QPushButton* btnFailImport, QPushButt
         failContainer_->setAcceptDrops(true);
         failContainer_->installEventFilter(this);
     }
+    if (failScroll_ && failScroll_->viewport())
+        failScroll_->viewport()->installEventFilter(this);
 
     if (auto* pageLayout = qobject_cast<QVBoxLayout*>(scroll_->parentWidget() ? scroll_->parentWidget()->layout() : nullptr)) {
         const int mainIdx = pageLayout->indexOf(scroll_);
@@ -303,10 +307,6 @@ void TestFlowEditor::setupFailFlowRegionUi(QPushButton* btnFailImport, QPushButt
             pageLayout->setStretch(failIdx, 1);
     }
 
-    if (btnFailImport)
-        connect(btnFailImport, &QPushButton::clicked, this, [this]() { promptImportBlocks(true); });
-    if (btnFailAdd)
-        connect(btnFailAdd, &QPushButton::clicked, this, [this]() { appendFailBlock(QString()); });
     if (btnFailClear) {
         connect(btnFailClear, &QPushButton::clicked, this, [this]() {
             if (QMessageBox::question(dialogParent_, QStringLiteral("确认"),
@@ -317,7 +317,27 @@ void TestFlowEditor::setupFailFlowRegionUi(QPushButton* btnFailImport, QPushButt
     }
 }
 
-void TestFlowEditor::promptImportBlocks(bool toFailRegion) {
+void TestFlowEditor::showFlowRegionContextMenu(QVBoxLayout* layout, const QPoint& globalPos,
+                                               TestCaseBlock* insertAfter) {
+    if (!layout || !dialogParent_)
+        return;
+    const bool toFailRegion = layout == failLayout_;
+    QMenu menu(dialogParent_);
+    menu.addAction(QStringLiteral("添加空白块"), this, [this, layout, insertAfter]() {
+        if (insertAfter)
+            insertBlockAfter(insertAfter, QString());
+        else if (layout == failLayout_)
+            appendFailBlock(QString());
+        else
+            appendBlock(QString());
+    });
+    menu.addAction(QStringLiteral("添加已有块"), this, [this, toFailRegion, insertAfter]() {
+        promptImportBlocks(toFailRegion, insertAfter);
+    });
+    menu.exec(globalPos);
+}
+
+void TestFlowEditor::promptImportBlocks(bool toFailRegion, TestCaseBlock* insertAfter) {
         QDialog pickDlg(dialogParent_);
         pickDlg.setWindowTitle(toFailRegion ? QStringLiteral("选择失败区功能块") : QStringLiteral("选择已有功能块"));
         pickDlg.setMinimumSize(420, 480);
@@ -430,15 +450,30 @@ void TestFlowEditor::promptImportBlocks(bool toFailRegion) {
         lay->addWidget(buttons);
         connect(buttons, &QDialogButtonBox::accepted, &pickDlg, &QDialog::accept);
         connect(buttons, &QDialogButtonBox::rejected, &pickDlg, &QDialog::reject);
+        // 双击某项：仅选中该项并确认添加
+        connect(list, &QListWidget::itemDoubleClicked, &pickDlg, [&pickDlg, list](QListWidgetItem* item) {
+            if (!item)
+                return;
+            list->clearSelection();
+            item->setSelected(true);
+            list->setCurrentItem(item);
+            pickDlg.accept();
+        });
         searchEdit->setFocus();
         list->clearSelection();
         if (pickDlg.exec() != QDialog::Accepted)
             return;
+        TestCaseBlock* anchor = insertAfter;
         for (QListWidgetItem* item : list->selectedItems()) {
-            if (toFailRegion)
-                appendFailBlock(item->text());
-            else
-                appendBlock(item->text());
+            const QString name = item->text();
+            if (anchor) {
+                insertBlockAfter(anchor, name);
+                anchor = selectedBlock_;
+            } else if (toFailRegion) {
+                appendFailBlock(name);
+            } else {
+                appendBlock(name);
+            }
         }
 }
 
@@ -460,10 +495,14 @@ QVBoxLayout* TestFlowEditor::layoutOfSelectedBlock() const {
 
 bool TestFlowEditor::eventFilter(QObject* watched, QEvent* event) {
     QVBoxLayout* targetLayout = nullptr;
-    if (watched == flowContainer_)
+    QWidget* regionWidget = nullptr;
+    if (watched == flowContainer_ || (scroll_ && watched == scroll_->viewport())) {
         targetLayout = flowLayout_;
-    else if (watched == failContainer_)
+        regionWidget = flowContainer_;
+    } else if (watched == failContainer_ || (failScroll_ && watched == failScroll_->viewport())) {
         targetLayout = failLayout_;
+        regionWidget = failContainer_;
+    }
     if (targetLayout) {
         switch (event->type()) {
         case QEvent::DragEnter: {
@@ -487,6 +526,18 @@ bool TestFlowEditor::eventFilter(QObject* watched, QEvent* event) {
                 moveBlockInFlowLayout(targetLayout, src, targetLayout->count());
                 e->acceptProposedAction();
             }
+            return true;
+        }
+        case QEvent::ContextMenu: {
+            auto* e = static_cast<QContextMenuEvent*>(event);
+            if (e->reason() == QContextMenuEvent::Mouse && regionWidget) {
+                const QPoint localPos = regionWidget->mapFromGlobal(e->globalPos());
+                if (regionWidget->childAt(localPos)) {
+                    // 点在功能块上时由 TestCaseBlock::contextMenuEvent 处理
+                    break;
+                }
+            }
+            showFlowRegionContextMenu(targetLayout, e->globalPos(), nullptr);
             return true;
         }
         default:
@@ -838,6 +889,12 @@ TestCaseBlock* TestFlowEditor::createBlock(QVBoxLayout* layout, QWidget* contain
     block->setChecked(enabled);
     block->setRunMenuVisible(singleStepRunEnabled_);
     connect(block, &TestCaseBlock::editRequested, this, &TestFlowEditor::openEditDialog);
+    connect(block, &TestCaseBlock::addBlankAfterRequested, this, [this](TestCaseBlock* b) {
+        insertBlockAfter(b, QString());
+    });
+    connect(block, &TestCaseBlock::addExistingAfterRequested, this, [this](TestCaseBlock* b) {
+        promptImportBlocks(flowLayoutOfBlock(b) == failLayout_, b);
+    });
     connect(block, &TestCaseBlock::copyRequested, this, &TestFlowEditor::copyBlock);
     connect(block, &TestCaseBlock::runRequested, this, &TestFlowEditor::runBlock);
     connect(block, &TestCaseBlock::removeFromFlowRequested, this, [this](TestCaseBlock* b) {

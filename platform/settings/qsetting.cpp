@@ -935,10 +935,8 @@ void qsetting::initTestFlowEditorUi() {
     testFlowEditor_ = new TestFlowEditor(this);
     testFlowEditor_->bindUi(this, ui->comboBox_testFlowStation, ui->scrollArea_testFlow,
                             ui->verticalLayout_testFlowBlocks, ui->checkBox_testFlowStopOnTestFail,
-                            ui->pushButton_testFlowSave, ui->pushButton_testFlowClear, ui->pushButton_testFlowImport,
-                            ui->pushButton_testFlowAdd, ui->scrollArea_testFlowFail, ui->verticalLayout_testFlowFailBlocks,
-                            ui->pushButton_testFlowFailImport, ui->pushButton_testFlowFailAdd,
-                            ui->pushButton_testFlowFailClear);
+                            ui->pushButton_testFlowSave, ui->pushButton_testFlowClear, ui->scrollArea_testFlowFail,
+                            ui->verticalLayout_testFlowFailBlocks, ui->pushButton_testFlowFailClear);
     connect(testFlowEditor_, &TestFlowEditor::runStepRequested, this, &qsetting::runTestCaseStepRequested);
     testFlowEditor_->setSingleStepRunEnabled(false);
     const int tabIdx = ui->tabWidget->indexOf(ui->tab_test_flow);

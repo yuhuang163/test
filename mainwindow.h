@@ -54,7 +54,10 @@ class QAction;
 #include "root_ble_ota2.h"
 #include "serial_channel.h"
 
+#include <QPointer>
+
 class QCustomPlot;
+class QDialog;
 class qsetting;
 
 extern "C" {
@@ -174,6 +177,9 @@ class MainWindow : public QMainWindow {
     };
 
     void initDongleSuctionChart();
+    void setupDongleSuctionPlotWidget(QCustomPlot* plot);
+    void refreshDongleSuctionPlotWidget(QCustomPlot* plot);
+    void openDongleSuctionChartPopup();
     void resetDongleSuctionChart();
     void appendDongleSuctionChartSample(double ch1Kpa, double ch2Kpa, double ch3Kpa);
     void refreshDongleSuctionData(const ProtocolDongleSuctionData& data);
@@ -192,6 +198,8 @@ class MainWindow : public QMainWindow {
     static constexpr int kDongleSuctionChannelCount = 3;
     bool dongleSuctionReadEnabled_ = false;
     QCustomPlot* dongleSuctionPlot_ = nullptr;
+    QPointer<QDialog> dongleSuctionPlotPopupDlg_;
+    QPointer<QCustomPlot> dongleSuctionPlotPopup_;
     QVector<double> dongleSuctionChartTimeSec_;
     QVector<double> dongleSuctionChartCh1_;
     QVector<double> dongleSuctionChartCh2_;
