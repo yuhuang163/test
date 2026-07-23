@@ -42,6 +42,7 @@ enum CommandType
     MAINDATA,
     DCON,
     SUCTION,
+    SUCTIONOSR,
     ADC,
     // 加入其他的at命令
 };
@@ -124,6 +125,7 @@ void processATCommand(byte *get_cmd, int length)
         {"MAINDATA=", 9, MAINDATA},          // 默认使用 FAC
         {"BLEDEVICELOG=", 13, BLEDEVICELOG}, // 默认使用 FAC
         {"SUCTION=", 8, SUCTION},            // 控制吸力值打印
+        {"SUCTIONOSR=", 11, SUCTIONOSR},      // 吸力采样档位 1~4
         {"ADC=", 4, ADC},                    // 控制ADC数据打印
         {"WIFI=", 5, WIFI}                   // 默认使用 FAC
     };
@@ -223,6 +225,24 @@ void processATCommand(byte *get_cmd, int length)
     case SUCTION:
         suction_data = (get_cmd[0] == '1') ? 1 : 0;
         break;
+    case SUCTIONOSR:
+    {
+        char numBuf[8] = {0};
+        int copyLen = length < (int)sizeof(numBuf) - 1 ? length : (int)sizeof(numBuf) - 1;
+        memcpy(numBuf, get_cmd, copyLen);
+        int level = atoi(numBuf);
+        if (level < 1 || level > 4)
+        {
+            Serial.println("SUCTIONOSR范围1~4");
+            break;
+        }
+        suction_osr_level = (uint8_t)level;
+        Serial.printf("吸力采样档位=%u (OSR_P=%uX, 转换=%ums)\r\n",
+                      suction_osr_level,
+                      (unsigned)(1024u << (suction_osr_level - 1)),
+                      (unsigned)(suction_osr_level == 1 ? 8 : suction_osr_level == 2 ? 10 : suction_osr_level == 3 ? 11 : 16));
+        break;
+    }
     case ADC:
         adc_data = (get_cmd[0] == '1') ? 1 : 0;
         break;

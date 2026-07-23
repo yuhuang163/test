@@ -1,8 +1,44 @@
 // i2c.cpp
 #include "i2c.h"
 
+int suction_data = 0;              // 1表示打印传感器数据日志
+uint8_t suction_osr_level = 4;     // 采样档位1~4，默认4(8192X/16ms)
 
-int suction_data=0; // 1表示打印传感器数据日志
+// 0x5B: bit7=1, bit6=T/B(1压力/0温度), bits[5:3]=OSR_P, bits[2:0]=OSR_T
+// OSR: 011=1024X, 100=2048X, 101=4096X, 110=8192X；OSR_T 固定1024X
+static uint8_t suctionPressureCmd()
+{
+    static const uint8_t kCmd[] = {0xDB, 0xE3, 0xEB, 0xF3}; // 档1~4
+    uint8_t idx = suction_osr_level;
+    if (idx < 1)
+        idx = 1;
+    if (idx > 4)
+        idx = 4;
+    return kCmd[idx - 1];
+}
+
+static uint8_t suctionTemperatureCmd()
+{
+    static const uint8_t kCmd[] = {0x9B, 0xA3, 0xAB, 0xB3}; // 档1~4，T/B=0
+    uint8_t idx = suction_osr_level;
+    if (idx < 1)
+        idx = 1;
+    if (idx > 4)
+        idx = 4;
+    return kCmd[idx - 1];
+}
+
+static uint32_t suctionConversionMs()
+{
+    static const uint32_t kMs[] = {8, 10, 11, 16}; // 与手册 Table 2.3 一致
+    uint8_t idx = suction_osr_level;
+    if (idx < 1)
+        idx = 1;
+    if (idx > 4)
+        idx = 4;
+    return kMs[idx - 1];
+}
+
 // ======================== 初始化 ========================
 
 void I2CDriver::init_all() {
@@ -154,14 +190,14 @@ bool I2CDriver::read_regs(int bus_id, uint8_t addr, uint8_t reg, uint8_t *data, 
 
 int32_t I2CDriver::read_pressure(int bus_id, uint8_t addr)
 {
-    // 1. 配置为压力转换 (推荐0xE3)
-    if (!write_reg(bus_id, addr, 0x5B, 0xE3)) {
+    // 1. 配置为压力转换（按当前 OSR 档位）
+    if (!write_reg(bus_id, addr, 0x5B, suctionPressureCmd())) {
         Serial.printf("[I2C%d] ❌ 压力配置失败\n", bus_id);
         return 0;
     }
     
-    // 2. 等待转换完成 (7ms)
-    delay(7);
+    // 2. 等待转换完成
+    delay(suctionConversionMs());
     
     // 3. 读取压力数据 (3字节: 0x55高位, 0x56中位, 0x57低位)
     uint8_t data[3];
@@ -179,13 +215,13 @@ int32_t I2CDriver::read_pressure(int bus_id, uint8_t addr)
 }
 
 int16_t I2CDriver::read_temperature(int bus_id, uint8_t addr) {
-    // 1. 配置为温度转换 (推荐0xA3)
-    if (!write_reg(bus_id, addr, 0x5B, 0xA3)) {
+    // 1. 配置为温度转换（OSR_T 固定 1024X，与压力同档写入 OSR_P）
+    if (!write_reg(bus_id, addr, 0x5B, suctionTemperatureCmd())) {
         Serial.printf("[I2C%d] ❌ 温度配置失败\n", bus_id);
         return 0;
     }
     
-    // 2. 等待转换完成 (3ms)
+    // 2. 等待转换完成（OSR_T=1024X，沿用原 3ms）
     delay(3);
     
     // 3. 读取温度数据 (2字节: 0x58高位, 0x59低位)
@@ -420,29 +456,61 @@ bool I2CDriver::soft_i2c_read_regs(uint8_t addr, uint8_t reg, uint8_t *data, siz
 }
 
 void I2CDriver::read_and_print_three_pressures() {
-    if (suction_data)
+    if (!suction_data)
     {
-        int16_t raw_t1 = I2CDriver::read_temperature(1);
-        int16_t raw_t2 = I2CDriver::read_temperature(2);
-        int16_t raw_t3 = I2CDriver::read_temperature(3);
-
-        float t1 = I2CDriver::calc_temperature_celsius(raw_t1);
-        float t2 = I2CDriver::calc_temperature_celsius(raw_t2);
-        float t3 = I2CDriver::calc_temperature_celsius(raw_t3);
-
-        uint32_t raw_p1 = I2CDriver::read_pressure(1);
-        uint32_t raw_p2 = I2CDriver::read_pressure(2);
-        uint32_t raw_p3 = I2CDriver::read_pressure(3);
-
-        float p1 = I2CDriver::calc_pressure_pa(raw_p1);
-        float p2 = I2CDriver::calc_pressure_pa(raw_p2);
-        float p3 = I2CDriver::calc_pressure_pa(raw_p3);
-
-        Serial.printf("AT+SUCTION_DATA=%.2f,%.2f,%.2f\r\n", p1, p2, p3);
-        Serial.printf("AT+TEMP_DATA=%.2f,%.2f,%.2f\r\n", t1, t2, t3);
-
-        delay(20);
+        return;
     }
-    
-    
+
+    const uint8_t addr = SENSOR_I2C_ADDR;
+
+    // 三路同时启动温度转换，只等一次
+    for (int bus = 1; bus <= 3; bus++)
+    {
+        write_reg(bus, addr, 0x5B, suctionTemperatureCmd());
+    }
+    delay(3);
+
+    int16_t raw_t[3] = {0, 0, 0};
+    for (int i = 0; i < 3; i++)
+    {
+        uint8_t data[2];
+        if (read_regs(i + 1, addr, 0x58, data, 2))
+        {
+            raw_t[i] = ((data[0] & 0x7F) << 8) | data[1];
+            if (data[0] & 0x80)
+            {
+                raw_t[i] = -raw_t[i];
+            }
+        }
+    }
+
+    // 三路同时启动压力转换，只等一次
+    for (int bus = 1; bus <= 3; bus++)
+    {
+        write_reg(bus, addr, 0x5B, suctionPressureCmd());
+    }
+    delay(suctionConversionMs());
+
+    uint32_t raw_p[3] = {0, 0, 0};
+    for (int i = 0; i < 3; i++)
+    {
+        uint8_t data[3];
+        if (read_regs(i + 1, addr, 0x55, data, 3))
+        {
+            raw_p[i] = ((uint32_t)data[0] << 16) |
+                       ((uint32_t)data[1] << 8) |
+                       data[2];
+        }
+    }
+
+    Serial.printf("[%lu] AT+SUCTION_DATA=%.2f,%.2f,%.2f\r\n",
+                  millis(),
+                  calc_pressure_pa(raw_p[0]),
+                  calc_pressure_pa(raw_p[1]),
+                  calc_pressure_pa(raw_p[2]));
+    Serial.printf("[%lu] AT+TEMP_DATA=%.2f,%.2f,%.2f\r\n",
+                  millis(),
+                  calc_temperature_celsius(raw_t[0]),
+                  calc_temperature_celsius(raw_t[1]),
+                  calc_temperature_celsius(raw_t[2]));
 }
