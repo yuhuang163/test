@@ -55,31 +55,7 @@
 #include <qpb.h> // 与设备的pb协议
 #include <qproduct.h>
 
-// ---------------------------------------------------------------------------
-// 工站入口开关（1=启用，0=屏蔽：设置页隐藏且 main 不进入该工站）
-// ---------------------------------------------------------------------------
-#ifndef ENABLE_STATION_MOTOR_TEST
-#define ENABLE_STATION_MOTOR_TEST 0 // 电机校准
-#endif
-#ifndef ENABLE_STATION_IMU_CALI
-#define ENABLE_STATION_IMU_CALI 0 // IMU 校准
-#endif
-#ifndef ENABLE_STATION_SCREEN_TEST
-#define ENABLE_STATION_SCREEN_TEST 0 // 屏幕测试
-#endif
-#ifndef ENABLE_STATION_CAMERA_TEST
-#define ENABLE_STATION_CAMERA_TEST 0 // 摄像头测试
-#endif
-#ifndef ENABLE_STATION_WIFIBLE_TEST
-#define ENABLE_STATION_WIFIBLE_TEST 0 // 信号测试
-#endif
-#ifndef ENABLE_STATION_PRESS_TEST
-#define ENABLE_STATION_PRESS_TEST 0 // 压感测试
-#endif
-#ifndef ENABLE_STATION_PCBA_TEST
-#define ENABLE_STATION_PCBA_TEST 0 // 板厂测试
-#endif
-
+// 工站开关 ENABLE_STATION_* 仅在 new_production.pro 配置，经 DEFINES 传入；此处不再定义。
 /** SYSTEM/station 键是否允许进入（被屏蔽的工站返回 false） */
 inline bool isStationEnabled(const QString& stationKey) {
     if (stationKey == QLatin1String("MOTOR_TEST"))

@@ -6,6 +6,7 @@
 #include "host_ota_service.h"
 #include "ui_mainwindow.h"
 #include <QBuffer>
+#include "dcrf32.h"
 
 #ifdef Q_OS_WIN
 #include <windows.h>

@@ -60,8 +60,9 @@ class qsetting;
 extern "C" {
 #include "md5.h" // 引入 tiny-AES-c 的头文件
 }
-#include "camerabox.h"
 #include "usmile_ring_buffer.h"
+#include "cameratest.h"
+#include "qatmanager.h"
 Q_DECLARE_METATYPE(FacErrorCode)
 
 #if defined(_MSC_VER)
