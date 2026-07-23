@@ -41,7 +41,9 @@ def _parse_version(v: str) -> tuple[int, ...]:
 
 
 def _parse_build_id(build_id: str) -> tuple[str, int]:
-    """buildId：yyyyMMdd 视为序号 0；yyyyMMdd-N 为同日第 N 次构建。"""
+    """buildId：yyyyMMdd 视为序号 0；yyyyMMdd-N 为同日第 N 次构建。
+    上位机侧由 host_ota_version.h 维护（与 exe 文件名无关）；请保持此格式以便比较。
+    """
     bid = (build_id or "").strip()
     if not bid:
         return ("", -1)
@@ -167,6 +169,28 @@ async def host_upload(
 def list_versions(user: Annotated[User, Depends(get_current_user)]):
     _require_admin(user)
     return ok({"items": host_app_service.list_versions()})
+
+
+@admin_router.delete("/versions")
+def delete_version(
+    user: Annotated[User, Depends(get_current_user)],
+    buildId: str,
+    uploadedAt: str | None = None,
+    packageName: str | None = None,
+):
+    """删除一条上位机版本记录及其 exe（同 buildId 多条时用 uploadedAt 精确定位）。"""
+    _require_admin(user)
+    if not (buildId or "").strip():
+        fail(400, "buildId 不能为空", 400)
+    try:
+        result = host_app_service.delete_version(
+            build_id=buildId.strip(),
+            package_name=(packageName.strip() if packageName else None),
+            uploaded_at=(uploadedAt.strip() if uploadedAt else None),
+        )
+    except ValueError as exc:
+        fail(404, str(exc), 404)
+    return ok(result, message="版本已删除")
 
 
 @admin_router.post("/versions")

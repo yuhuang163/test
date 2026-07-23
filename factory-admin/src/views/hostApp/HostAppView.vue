@@ -30,9 +30,10 @@
           <el-table-column prop="uploadedAt" label="上传时间" width="170">
             <template #default="{ row }">{{ row.uploadedAt || '-' }}</template>
           </el-table-column>
-          <el-table-column label="操作" width="80" fixed="right">
+          <el-table-column label="操作" width="140" fixed="right">
             <template #default="{ row }">
               <el-button link type="primary" @click="openDialog(row)">详情</el-button>
+              <el-button link type="danger" @click="onDelete(row)">删除</el-button>
             </template>
           </el-table-column>
         </el-table>
@@ -272,6 +273,29 @@ async function onSubmit() {
     if (e !== 'cancel') ElMessage.error(e.message)
   } finally {
     submitting.value = false
+  }
+}
+
+async function onDelete(row) {
+  const label = `${row.appVersion || '-'} (buildId ${row.buildId || '-'})`
+  try {
+    await ElMessageBox.confirm(
+      `确认删除版本 ${label}？将同时删除服务器上的安装包文件。`,
+      '删除确认',
+      { type: 'warning' },
+    )
+    await api.deleteVersion({
+      buildId: row.buildId,
+      uploadedAt: row.uploadedAt || undefined,
+      packageName: row.packageName || undefined,
+    })
+    ElMessage.success('版本已删除')
+    if (dialogVisible.value && editing.value && form.buildId === row.buildId) {
+      dialogVisible.value = false
+    }
+    await load()
+  } catch (e) {
+    if (e !== 'cancel') ElMessage.error(e.message)
   }
 }
 

@@ -98,6 +98,59 @@ def list_versions() -> list[dict]:
     return manifest["versions"]
 
 
+def delete_version(
+    build_id: str,
+    package_name: str | None = None,
+    uploaded_at: str | None = None,
+) -> dict:
+    """从清单移除一条版本记录，并尽量删除对应 exe 文件。"""
+    bid = (build_id or "").strip()
+    if not bid:
+        raise ValueError("buildId 不能为空")
+
+    manifest = _load_manifest()
+    versions = manifest.get("versions") or []
+    idx = -1
+    for i, v in enumerate(versions):
+        if v.get("buildId") != bid:
+            continue
+        if package_name is not None and (v.get("packageName") or "new_production") != package_name:
+            continue
+        if uploaded_at and (v.get("uploadedAt") or "") != uploaded_at:
+            continue
+        idx = i
+        break
+
+    if idx < 0:
+        raise ValueError("未找到对应版本记录")
+
+    entry = versions.pop(idx)
+    _save_manifest(manifest)
+
+    root = _root()
+    removed_file = False
+    fn = entry.get("fileName")
+    if fn:
+        path = root / fn
+        if path.is_file():
+            path.unlink()
+            removed_file = True
+    else:
+        # 旧格式回退
+        pkg = entry.get("packageName") or "new_production"
+        for candidate in (
+            root / f"{pkg}_{bid}.exe",
+            root / f"new_production_{bid}.exe",
+            root / f"{bid}.exe",
+        ):
+            if candidate.is_file():
+                candidate.unlink()
+                removed_file = True
+                break
+
+    return {"deleted": entry, "fileRemoved": removed_file}
+
+
 def get_version(build_id: str, package_name: str | None = None) -> dict | None:
     manifest = _load_manifest()
     for v in manifest["versions"]:

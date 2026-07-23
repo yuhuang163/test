@@ -14,6 +14,10 @@ export function uploadVersion(formData) {
   })
 }
 
+export function deleteVersion(params) {
+  return http.delete('/admin/host-app/versions', { params })
+}
+
 export function getRuntimeEnvInfo() {
   return http.get('/admin/host-app/runtime-env/info')
 }

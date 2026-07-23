@@ -166,6 +166,7 @@ Authorization: Bearer <token>
 | GET | `/host-app/download/{buildId}` | 上位机 | exe 下载，待实现 |
 | GET | `/admin/host-app/versions` | 网页 admin | 版本列表 |
 | POST | `/admin/host-app/versions` | 网页 admin | 上传 exe（`multipart`）或登记元数据 |
+| DELETE | `/admin/host-app/versions` | 网页 admin | 删除版本（query: `buildId`，可选 `uploadedAt`/`packageName`） |
 | GET | `/admin/host-app/runtime-env` | 网页 admin | 下载路特上位机运行环境（zip） |
 | GET | `/admin/host-app/runtime-env/info` | 网页 admin | 查询运行环境基本信息 |
 
