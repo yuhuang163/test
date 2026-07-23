@@ -180,6 +180,10 @@ class MainWindow : public QMainWindow {
     void setupDongleSuctionPlotWidget(QCustomPlot* plot);
     void refreshDongleSuctionPlotWidget(QCustomPlot* plot);
     void openDongleSuctionChartPopup();
+    void applyDongleSuctionAxisSettings();
+    void applyDongleSuctionAxisTickResolution(QCustomPlot* plot);
+    double dongleSuctionXWindowSec() const;
+    void dongleSuctionYAxisRange(double& yMin, double& yMax) const;
     void resetDongleSuctionChart();
     void appendDongleSuctionChartSample(double ch1Kpa, double ch2Kpa, double ch3Kpa);
     void refreshDongleSuctionData(const ProtocolDongleSuctionData& data);

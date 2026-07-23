@@ -1,7 +1,10 @@
 #include "mainwindow.h"
 
+#include <QCheckBox>
 #include <QDialog>
+#include <QDoubleSpinBox>
 #include <QInputDialog>
+#include <QSpinBox>
 #include <QLineEdit>
 #include <QMenu>
 #include <QPushButton>
@@ -5092,28 +5095,99 @@ void MainWindow::setupDongleSuctionPlotWidget(QCustomPlot* plot) {
     plot->graph(1)->setName(QStringLiteral("第二通道"));
     plot->graph(2)->setPen(QPen(QColor(50, 160, 80), 2));
     plot->graph(2)->setName(QStringLiteral("第三通道"));
-    plot->xAxis->setLabel(QStringLiteral("时间(s，最近10秒)"));
+    const double xWin = dongleSuctionXWindowSec();
+    double yMin = -40.0;
+    double yMax = 0.0;
+    dongleSuctionYAxisRange(yMin, yMax);
+    plot->xAxis->setLabel(QStringLiteral("时间(s，最近%1秒)").arg(xWin, 0, 'f', 1));
     plot->yAxis->setLabel(QStringLiteral("吸力(kPa)"));
     plot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
-    plot->xAxis->setRange(0, kDongleSuctionChartWindowSec);
-    plot->yAxis->setRange(-40, 0);
+    plot->xAxis->setRange(0, xWin);
+    plot->yAxis->setRange(yMin, yMax);
+    applyDongleSuctionAxisTickResolution(plot);
+}
+
+void MainWindow::applyDongleSuctionAxisTickResolution(QCustomPlot* plot) {
+    if (!plot)
+        return;
+    const double xStep = ui->dongleSuctionXTickSpin ? qMax(0.001, ui->dongleSuctionXTickSpin->value()) : 1.0;
+    const double yStep = ui->dongleSuctionYTickSpin ? qMax(0.001, ui->dongleSuctionYTickSpin->value()) : 5.0;
+
+    auto makeFixedTicker = [](double step) {
+        QSharedPointer<QCPAxisTickerFixed> ticker(new QCPAxisTickerFixed);
+        ticker->setTickStep(step);
+        // 严格按设定步长，不自动放大成「好看」的倍数
+        ticker->setScaleStrategy(QCPAxisTickerFixed::ssNone);
+        return ticker;
+    };
+    plot->xAxis->setTicker(makeFixedTicker(xStep));
+    plot->yAxis->setTicker(makeFixedTicker(yStep));
+
+    // 标签小数位随步长自适应（0.1→1位，0.01→2位…）
+    auto decimalsFromStep = [](double step) {
+        if (step >= 1.0)
+            return 0;
+        int d = 0;
+        double v = step;
+        while (d < 6 && qAbs(v - qRound(v)) > 1e-9) {
+            v *= 10.0;
+            ++d;
+        }
+        return d;
+    };
+    plot->xAxis->setNumberFormat(QStringLiteral("f"));
+    plot->xAxis->setNumberPrecision(decimalsFromStep(xStep));
+    plot->yAxis->setNumberFormat(QStringLiteral("f"));
+    plot->yAxis->setNumberPrecision(decimalsFromStep(yStep));
+}
+
+double MainWindow::dongleSuctionXWindowSec() const {
+    if (ui->dongleSuctionXWindowSpin)
+        return qMax(1.0, ui->dongleSuctionXWindowSpin->value());
+    return kDongleSuctionChartWindowSec;
+}
+
+void MainWindow::dongleSuctionYAxisRange(double& yMin, double& yMax) const {
+    yMin = ui->dongleSuctionYMinSpin ? ui->dongleSuctionYMinSpin->value() : -40.0;
+    yMax = ui->dongleSuctionYMaxSpin ? ui->dongleSuctionYMaxSpin->value() : 0.0;
+    // 下限须小于上限，相等时略拉开避免 QCustomPlot 零跨度
+    if (yMin > yMax)
+        qSwap(yMin, yMax);
+    if (qFuzzyCompare(yMin, yMax)) {
+        yMin -= 0.5;
+        yMax += 0.5;
+    }
+}
+
+void MainWindow::applyDongleSuctionAxisSettings() {
+    if (!dongleSuctionChartTimeSec_.isEmpty())
+        trimDongleSuctionChartToWindow(dongleSuctionChartTimeSec_.last());
+    refreshDongleSuctionPlotWidget(dongleSuctionPlot_);
+    refreshDongleSuctionPlotWidget(dongleSuctionPlotPopup_);
 }
 
 void MainWindow::refreshDongleSuctionPlotWidget(QCustomPlot* plot) {
     if (!plot || plot->graphCount() < 3)
         return;
 
+    const double xWin = dongleSuctionXWindowSec();
+    double yMin = -40.0;
+    double yMax = 0.0;
+    dongleSuctionYAxisRange(yMin, yMax);
+    plot->xAxis->setLabel(QStringLiteral("时间(s，最近%1秒)").arg(xWin, 0, 'f', 1));
+    applyDongleSuctionAxisTickResolution(plot);
+
     if (dongleSuctionChartTimeSec_.isEmpty()) {
         for (int i = 0; i < 3; ++i)
             plot->graph(i)->data()->clear();
-        plot->xAxis->setRange(0, kDongleSuctionChartWindowSec);
-        plot->yAxis->setRange(-40, 0);
+        plot->xAxis->setRange(0, xWin);
+        plot->yAxis->setRange(yMin, yMax);
         plot->replot();
         return;
     }
 
     const double tSec = dongleSuctionChartTimeSec_.last();
-    const double windowStart = qMax(0.0, tSec - kDongleSuctionChartWindowSec);
+    const double windowStart = qMax(0.0, tSec - xWin);
     QVector<double> relTime;
     relTime.reserve(dongleSuctionChartTimeSec_.size());
     for (double t : dongleSuctionChartTimeSec_)
@@ -5122,21 +5196,8 @@ void MainWindow::refreshDongleSuctionPlotWidget(QCustomPlot* plot) {
     plot->graph(0)->setData(relTime, dongleSuctionChartCh1_);
     plot->graph(1)->setData(relTime, dongleSuctionChartCh2_);
     plot->graph(2)->setData(relTime, dongleSuctionChartCh3_);
-    plot->xAxis->setRange(0, kDongleSuctionChartWindowSec);
-
-    double yMin = dongleSuctionChartCh1_.isEmpty() ? -40.0 : dongleSuctionChartCh1_.first();
-    double yMax = yMin;
-    auto expand = [&](const QVector<double>& values) {
-        for (double v : values) {
-            yMin = qMin(yMin, v);
-            yMax = qMax(yMax, v);
-        }
-    };
-    expand(dongleSuctionChartCh1_);
-    expand(dongleSuctionChartCh2_);
-    expand(dongleSuctionChartCh3_);
-    const double yPad = qMax(0.5, (yMax - yMin) * 0.1);
-    plot->yAxis->setRange(yMin - yPad, yMax + yPad);
+    plot->xAxis->setRange(0, xWin);
+    plot->yAxis->setRange(yMin, yMax);
     plot->replot();
 }
 
@@ -5183,6 +5244,20 @@ void MainWindow::initDongleSuctionChart() {
     connect(dongleSuctionPlot_, &QCustomPlot::mouseDoubleClick, this, [this](QMouseEvent*) {
         openDongleSuctionChartPopup();
     });
+
+    // 轴窗口/刻度分辨率改动立即作用于主图/弹窗
+    auto bindAxisValue = [this](QDoubleSpinBox* spin) {
+        if (!spin)
+            return;
+        connect(spin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this,
+                [this](double) { applyDongleSuctionAxisSettings(); });
+    };
+    bindAxisValue(ui->dongleSuctionXWindowSpin);
+    bindAxisValue(ui->dongleSuctionYMinSpin);
+    bindAxisValue(ui->dongleSuctionYMaxSpin);
+    bindAxisValue(ui->dongleSuctionXTickSpin);
+    bindAxisValue(ui->dongleSuctionYTickSpin);
+
     dongleSuctionPlot_->replot();
 }
 
@@ -5218,7 +5293,7 @@ void MainWindow::resetDongleSuctionChart() {
 }
 
 void MainWindow::trimDongleSuctionChartToWindow(double tSec) {
-    const double windowStart = qMax(0.0, tSec - kDongleSuctionChartWindowSec);
+    const double windowStart = qMax(0.0, tSec - dongleSuctionXWindowSec());
     while (!dongleSuctionChartTimeSec_.isEmpty() && dongleSuctionChartTimeSec_.first() < windowStart) {
         dongleSuctionChartTimeSec_.removeFirst();
         dongleSuctionChartCh1_.removeFirst();

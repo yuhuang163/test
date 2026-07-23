@@ -41,31 +41,73 @@ QString sha256File(const QString& path) {
 bool startDeleteSelfBat(const QString& savePath) {
     const QString appDir = QCoreApplication::applicationDirPath();
     const QString appFilePath = QCoreApplication::applicationFilePath();
-    const QString appFileStem = QFileInfo(appFilePath).completeBaseName();
+    const QString appFileName = QFileInfo(appFilePath).fileName();
+    const QString bakFileName = appFileName + QStringLiteral(".bak");
     const QString batFileName = QDir(appDir).filePath(QStringLiteral("delete_self.bat"));
     const QString tempExePath = savePath + QStringLiteral(".tmp");
+    const QString logPath = QDir(appDir).filePath(QStringLiteral("ota_replace.log"));
 
+    // 旧 exe 仍被占用时，Windows rename 会失败，留下 .tmp 且不会启动
     QFile batFile(batFileName);
     if (!batFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
         return false;
     }
     QTextStream out(&batFile);
-    out << "@echo off\n";
-    out << "timeout /t 2 /nobreak >nul\n";
-    out << "rename \"" << QDir::toNativeSeparators(appFilePath)
-        << "\" \"" << appFileStem << ".bak\"\n";
-    out << "rename \"" << QDir::toNativeSeparators(tempExePath)
-        << "\" \"" << QFileInfo(savePath).fileName() << "\"\n";
-    out << "start \"\" \"" << QDir::toNativeSeparators(savePath) << "\"\n";
-    out << "del \"" << appFileStem << ".bak\"\n";
-    out << "del \"" << QDir::toNativeSeparators(batFileName) << "\"\n";
+    out << "@echo off\r\n";
+    out << "cd /d \"" << QDir::toNativeSeparators(appDir) << "\"\r\n";
+    out << "echo [%date% %time%] OTA replace start > \"" << QDir::toNativeSeparators(logPath) << "\"\r\n";
+    out << "timeout /t 3 /nobreak >nul\r\n";
+    // 重试：等旧进程真正释放文件锁
+    out << "set /a tries=0\r\n";
+    out << ":retry_bak\r\n";
+    out << "set /a tries+=1\r\n";
+    out << "if exist \"" << QDir::toNativeSeparators(QDir(appDir).filePath(bakFileName)) << "\" del /f /q \""
+        << QDir::toNativeSeparators(QDir(appDir).filePath(bakFileName)) << "\" >nul 2>&1\r\n";
+    out << "move /y \"" << QDir::toNativeSeparators(appFilePath) << "\" \""
+        << QDir::toNativeSeparators(QDir(appDir).filePath(bakFileName)) << "\" >> \""
+        << QDir::toNativeSeparators(logPath) << "\" 2>&1\r\n";
+    out << "if errorlevel 1 (\r\n";
+    out << "  if %tries% geq 20 (\r\n";
+    out << "    echo move old exe to bak failed >> \"" << QDir::toNativeSeparators(logPath) << "\"\r\n";
+    out << "    goto fail\r\n";
+    out << "  )\r\n";
+    out << "  timeout /t 1 /nobreak >nul\r\n";
+    out << "  goto retry_bak\r\n";
+    out << ")\r\n";
+    out << "set /a tries=0\r\n";
+    out << ":retry_new\r\n";
+    out << "set /a tries+=1\r\n";
+    out << "move /y \"" << QDir::toNativeSeparators(tempExePath) << "\" \""
+        << QDir::toNativeSeparators(savePath) << "\" >> \"" << QDir::toNativeSeparators(logPath) << "\" 2>&1\r\n";
+    out << "if errorlevel 1 (\r\n";
+    out << "  if %tries% geq 20 (\r\n";
+    out << "    echo move tmp to exe failed >> \"" << QDir::toNativeSeparators(logPath) << "\"\r\n";
+    out << "    goto fail\r\n";
+    out << "  )\r\n";
+    out << "  timeout /t 1 /nobreak >nul\r\n";
+    out << "  goto retry_new\r\n";
+    out << ")\r\n";
+    out << "echo replace ok, starting >> \"" << QDir::toNativeSeparators(logPath) << "\"\r\n";
+    out << "start \"\" \"" << QDir::toNativeSeparators(savePath) << "\"\r\n";
+    out << "del /f /q \"" << QDir::toNativeSeparators(QDir(appDir).filePath(bakFileName)) << "\" >nul 2>&1\r\n";
+    out << "del /f /q \"%~f0\" >nul 2>&1\r\n";
+    out << "exit /b 0\r\n";
+    out << ":fail\r\n";
+    out << "echo OTA replace failed, keep .tmp for manual recover >> \"" << QDir::toNativeSeparators(logPath)
+        << "\"\r\n";
+    out << "exit /b 1\r\n";
     batFile.close();
 
-    QProcess::startDetached(batFileName);
+    // 必须用 cmd + 工作目录，否则部分电脑直接 startDetached(.bat) 会静默失败
+    if (!QProcess::startDetached(QStringLiteral("cmd.exe"),
+                                 {QStringLiteral("/c"), QDir::toNativeSeparators(batFileName)}, appDir)) {
+        return false;
+    }
     QTimer::singleShot(1000, []() {
         qApp->quit();
         QProcess::startDetached(QStringLiteral("cmd.exe"),
-                                {QStringLiteral("/c"), QStringLiteral("taskkill /f /pid ") + QString::number(QCoreApplication::applicationPid())});
+                                {QStringLiteral("/c"),
+                                 QStringLiteral("taskkill /f /pid ") + QString::number(QCoreApplication::applicationPid())});
     });
     return true;
 }
@@ -164,6 +206,9 @@ bool HostOtaService::downloadAndApply(const CheckResult& info, QWidget* parent, 
     const QString fileName = QFileInfo(QCoreApplication::applicationFilePath()).fileName();
     const QString savePath = QDir(appDir).filePath(fileName);
     const QString tempSavePath = savePath + QStringLiteral(".tmp");
+    // 上次替换失败残留的 .tmp 先清掉，避免下载写不进/脚本误用旧包
+    if (QFile::exists(tempSavePath))
+        QFile::remove(tempSavePath);
 
     QString downloadError;
     const QString url = info.downloadUrl.trimmed();
