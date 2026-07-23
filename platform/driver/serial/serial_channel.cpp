@@ -1,12 +1,15 @@
 #include "serial_channel.h"
 
 #include <QComboBox>
+#include <QCoreApplication>
 #include <QElapsedTimer>
 #include <QEventLoop>
 #include <QMutex>
+#include <QPointer>
 #include <QSerialPortInfo>
 #include <QSet>
 #include <QTimer>
+#include <QtConcurrent>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -15,6 +18,103 @@
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
 #endif
+
+namespace {
+
+constexpr int kPortListCacheTtlMs = 2500;
+
+QMutex g_portListMutex;
+QStringList g_cachedPortNames;
+QStringList g_lastInfoPortNames; // CreateFile 前的口名集合，未变则跳过探测
+QElapsedTimer g_portListCacheTimer;
+bool g_portListScanRunning = false;
+QList<QPointer<QComboBox>> g_pendingPortCombos;
+
+void applyPortsToComboBox(QComboBox* comboBox, const QStringList& ports) {
+    if (!comboBox)
+        return;
+
+    QSet<QString> currentItems;
+    for (int i = 0; i < comboBox->count(); ++i)
+        currentItems.insert(comboBox->itemText(i));
+
+    for (const QString& name : ports) {
+        if (!currentItems.contains(name))
+            comboBox->addItem(name);
+        currentItems.remove(name);
+    }
+
+    for (const QString& item : currentItems) {
+        const int index = comboBox->findText(item);
+        if (index != -1)
+            comboBox->removeItem(index);
+    }
+}
+
+QStringList enumeratePresentPortNames() {
+    QStringList infoNames;
+    const QList<QSerialPortInfo> ports = QSerialPortInfo::availablePorts();
+    for (const QSerialPortInfo& info : ports) {
+        const QString name = info.portName();
+        if (SerialChannel::isHiddenSystemPort(name))
+            continue;
+        infoNames.append(name);
+    }
+
+    {
+        QMutexLocker locker(&g_portListMutex);
+        // 系统枚举出的口名集合未变时，复用上次 CreateFile 结果，避免无意义卡顿
+        if (!g_lastInfoPortNames.isEmpty() && infoNames == g_lastInfoPortNames && !g_cachedPortNames.isEmpty())
+            return g_cachedPortNames;
+    }
+
+    QStringList names;
+    names.reserve(infoNames.size());
+    for (const QString& name : infoNames) {
+        if (!SerialChannel::isPortPresent(name))
+            continue;
+        names.append(name);
+    }
+
+    QMutexLocker locker(&g_portListMutex);
+    g_lastInfoPortNames = infoNames;
+    g_cachedPortNames = names;
+    if (!g_portListCacheTimer.isValid())
+        g_portListCacheTimer.start();
+    else
+        g_portListCacheTimer.restart();
+    return names;
+}
+
+void finishPortListScanOnUi(const QStringList& names) {
+    QList<QPointer<QComboBox>> combos;
+    {
+        QMutexLocker locker(&g_portListMutex);
+        g_cachedPortNames = names;
+        if (!g_portListCacheTimer.isValid())
+            g_portListCacheTimer.start();
+        else
+            g_portListCacheTimer.restart();
+        g_portListScanRunning = false;
+        combos.swap(g_pendingPortCombos);
+    }
+    for (const QPointer<QComboBox>& combo : combos) {
+        if (combo)
+            applyPortsToComboBox(combo, names);
+    }
+}
+
+void startPortListScanAsync() {
+    QtConcurrent::run([]() {
+        const QStringList names = enumeratePresentPortNames();
+        // 回到 GUI 线程刷新下拉，避免 CreateFile 堵主线程
+        if (QCoreApplication::instance()) {
+            QTimer::singleShot(0, QCoreApplication::instance(), [names]() { finishPortListScanOnUi(names); });
+        }
+    });
+}
+
+} // namespace
 
 SerialChannel::SerialChannel(QObject* parent) : QObject(parent), port_(new QSerialPort(this)), readTimer_(new QTimer(this)) {
     readTimer_->setSingleShot(true);
@@ -187,48 +287,41 @@ bool SerialChannel::isPortPresent(const QString& portName) {
 }
 
 QStringList SerialChannel::availablePortNames() {
-    // 多工位每秒刷新多个下拉时复用短缓存，避免对同一批口反复 CreateFile
-    static QMutex mutex;
-    static QStringList cachedNames;
-    static QElapsedTimer cacheTimer;
-    QMutexLocker locker(&mutex);
-    if (cacheTimer.isValid() && cacheTimer.elapsed() < 500 && !cachedNames.isEmpty())
-        return cachedNames;
-
-    QStringList names;
-    const QList<QSerialPortInfo> ports = QSerialPortInfo::availablePorts();
-    for (const QSerialPortInfo& info : ports) {
-        const QString name = info.portName();
-        if (isHiddenSystemPort(name) || !isPortPresent(name))
-            continue;
-        names.append(name);
+    QMutexLocker locker(&g_portListMutex);
+    if (g_portListCacheTimer.isValid() && g_portListCacheTimer.elapsed() < kPortListCacheTtlMs &&
+        !g_cachedPortNames.isEmpty()) {
+        return g_cachedPortNames;
     }
-    cachedNames = names;
-    cacheTimer.restart();
-    return names;
+    locker.unlock();
+    // 同步调用方：后台探测，避免在 UI 线程 CreateFile
+    return enumeratePresentPortNames();
 }
 
 void SerialChannel::updateComboBoxPorts(QComboBox* comboBox) {
     if (!comboBox)
         return;
 
-    const QStringList ports = availablePortNames();
-    QSet<QString> currentItems;
-    for (int i = 0; i < comboBox->count(); ++i)
-        currentItems.insert(comboBox->itemText(i));
-
-    for (const QString& name : ports) {
-        if (!currentItems.contains(name))
-            comboBox->addItem(name);
-        currentItems.remove(name);
+    QStringList cached;
+    bool startScan = false;
+    {
+        QMutexLocker locker(&g_portListMutex);
+        cached = g_cachedPortNames;
+        const bool fresh = g_portListCacheTimer.isValid() && g_portListCacheTimer.elapsed() < kPortListCacheTtlMs &&
+                           !g_cachedPortNames.isEmpty();
+        if (!fresh) {
+            g_pendingPortCombos.append(comboBox);
+            if (!g_portListScanRunning) {
+                g_portListScanRunning = true;
+                startScan = true;
+            }
+        }
     }
 
-    // 系统口、幽灵口、已拔掉的口一并从下拉移除
-    for (const QString& item : currentItems) {
-        const int index = comboBox->findText(item);
-        if (index != -1)
-            comboBox->removeItem(index);
-    }
+    // 先刷缓存，再按需后台重扫（CreateFile 探测幽灵口很慢，不能在 UI 线程做）
+    if (!cached.isEmpty())
+        applyPortsToComboBox(comboBox, cached);
+    if (startScan)
+        startPortListScanAsync();
 }
 
 void SerialChannel::applyLineSettings() {
