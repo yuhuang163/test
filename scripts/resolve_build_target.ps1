@@ -1,27 +1,5 @@
-# 计算当日上位机 TARGET：首个为 new_production_yyyyMMdd，同日后续为 -1/-2/…
+# 兼容旧调用：TARGET 已固定为 new_production（OTA 版本见 my_set/host_ota_version.h）
 param(
     [string]$BinDir = ""
 )
-
-if ([string]::IsNullOrWhiteSpace($BinDir)) {
-    $BinDir = Join-Path (Get-Location) "bin"
-}
-
-$buildDay = Get-Date -Format "yyyyMMdd"
-$prefix = "new_production_$buildDay"
-$maxSeq = -1
-
-if (Test-Path -LiteralPath $BinDir) {
-    Get-ChildItem -LiteralPath $BinDir -Filter "${prefix}*.exe" -ErrorAction SilentlyContinue | ForEach-Object {
-        $name = $_.BaseName
-        if ($name -eq $prefix) {
-            if ($maxSeq -lt 0) { $maxSeq = 0 }
-        } elseif ($name -match "^${prefix}-(\d+)$") {
-            $v = [int]$matches[1]
-            if ($v -gt $maxSeq) { $maxSeq = $v }
-        }
-    }
-}
-
-$suffix = if ($maxSeq -lt 0) { "" } else { "-$($maxSeq + 1)" }
-Write-Output "${prefix}${suffix}"
+Write-Output "new_production"

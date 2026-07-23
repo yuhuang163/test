@@ -1,55 +1,79 @@
 
-
 #ifndef ABINI_H
 #define ABINI_H // Qt库头文件
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
 #endif
+
+// --- PCH 常用 Qt（已去掉重复项与 MES/设置页整页 UI，仅保留多数 TU 会用到的）---
 #include <qserialport.h>     // 串口通信类
 #include <qserialportinfo.h> // 串口信息类
 
-#include <QAuthenticator>
 #include <QDateTime>      // 日期和时间操作
 #include <QDebug>         // 调试输出
 #include <QDesktopWidget> // 桌面信息
 #include <QDir>           // 目录操作
 #include <QFile>          // 文件操作
-#include <QFile>
-#include <QFileDialog>  // 文件对话框
-#include <QInputDialog> // 用户输入对话框
-#include <QLibrary>     // 动态链接库加载
-#include <QMainWindow>  // 主窗口类
-#include <QMessageBox>  // 消息框
+#include <QFileDialog>    // 文件对话框
+#include <QInputDialog>   // 用户输入对话框
+// #include <QLibrary>    // 动态链接库加载（已移出 PCH）
+#include <QMainWindow>    // 主窗口类
+#include <QMessageBox>    // 消息框
+#include <QMimeData>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QNetworkRequest>
-#include <QObject>        // QObject基类
-#include <QSettings>      // 持久设置
-#include <QStandardPaths> // 标准路径
-#include <QTextStream>    // 文本输入输出
-#include <QTimer>         // 定时器
-#include <QUrl>           // URL操作
-#include <QUrl>
-#include <QWidget> // QWidget基类
+#include <QObject>         // QObject基类
+#include <QProcess>
+#include <QRandomGenerator>
+#include <QSettings>       // 持久设置
+#include <QStandardPaths>  // 标准路径
+#include <QTextStream>     // 文本输入输出
+#include <QTimer>          // 定时器
+#include <QUrl>            // URL操作
+#include <QWidget>         // QWidget基类
 #include <QtConcurrent>
 
 #include "qcombobox.h"
 #include "qlineedit.h"
 
-// C标准库头文件
-#include <stdbool.h> // 布尔类型
+// C标准库头文件（已移出 PCH）
+// #include <stdbool.h> // 布尔类型
 
-// 个人头文件
-#include <hqmes.h>      // 华勤的mes头文件
-#include <jjmes.h>      // 金进的mes头文件
-#include <lxmes.h>      // 立讯的mes头文件
-#include <qatmanager.h> // 与esp32的at指令
-#include <xwd_fixture_device.h>
+// SETTINGS（原 qsetting.h 会拖入整页设置 UI，改用 my_typedef）
+#include "my_typedef.h"
+
+// 个人头文件（MES/AT/治具/设置页/scpi 等已移出 PCH，各 TU 按需 include）：
+// #include <hqmes.h>      // 华勤的mes头文件
+// #include <jjmes.h>      // 金进的mes头文件
+// #include <lxmes.h>      // 立讯的mes头文件
+// #include <qatmanager.h> // 与esp32的at指令
+// #include <xwd_fixture_device.h>
+// #include <qsetting.h>   //上位机设置界面
+// #include <scpi_types.h> // USB 串口协议路由枚举
+// #include <xwdmes.h>     // 欣旺达的mes头文件
 #include <qpb.h> // 与设备的pb协议
 #include <qproduct.h>
-#include <qsetting.h>   //上位机设置界面
-#include <scpi_types.h> // USB 串口协议路由枚举
-#include <xwdmes.h>     // 欣旺达的mes头文件
+
+// 工站开关 ENABLE_STATION_* 仅在 new_production.pro 配置，经 DEFINES 传入；此处不再定义。
+/** SYSTEM/station 键是否允许进入（被屏蔽的工站返回 false） */
+inline bool isStationEnabled(const QString& stationKey) {
+    if (stationKey == QLatin1String("MOTOR_TEST"))
+        return ENABLE_STATION_MOTOR_TEST != 0;
+    if (stationKey == QLatin1String("IMU_CALI"))
+        return ENABLE_STATION_IMU_CALI != 0;
+    if (stationKey == QLatin1String("SCREEN_TEST"))
+        return ENABLE_STATION_SCREEN_TEST != 0;
+    if (stationKey == QLatin1String("CAMERA_TEST"))
+        return ENABLE_STATION_CAMERA_TEST != 0;
+    if (stationKey == QLatin1String("WIFIBLE_TEST"))
+        return ENABLE_STATION_WIFIBLE_TEST != 0;
+    if (stationKey == QLatin1String("PRESS_TEST"))
+        return ENABLE_STATION_PRESS_TEST != 0;
+    if (stationKey == QLatin1String("PCBA_TEST"))
+        return ENABLE_STATION_PCBA_TEST != 0;
+    return true;
+}
 
 #define WAITTIME 0 // 指令的300延时防止粘包
 

@@ -21,6 +21,7 @@
 #include "platform/cloud/auth/auth_service.h"
 #include "qatmanager.h"
 #include "qcustomplot.h"
+#include "qsetting.h"
 // f4:12:fa:c5:51:c6
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")

@@ -12,6 +12,25 @@ QMAKE_CXXFLAGS += /MP
 # MSVC: keep UTF-8 source files with Chinese literals parsed consistently.
 QMAKE_CXXFLAGS += /utf-8
 QMAKE_CFLAGS += /utf-8
+
+# ---------------------------------------------------------------------------
+# 工站编译/入口开关（唯一配置处）：1=编进工程并允许进入，0=不编译且设置页/main 屏蔽
+# 改完须重新 qmake（会写入 DEFINES，供 AbIni.h / main.cpp / qsetting 使用）
+# ---------------------------------------------------------------------------
+ENABLE_STATION_MOTOR_TEST = 0
+ENABLE_STATION_IMU_CALI = 0
+ENABLE_STATION_SCREEN_TEST = 0
+ENABLE_STATION_CAMERA_TEST = 0
+ENABLE_STATION_WIFIBLE_TEST = 0
+ENABLE_STATION_PRESS_TEST = 0
+ENABLE_STATION_PCBA_TEST = 0
+DEFINES += ENABLE_STATION_MOTOR_TEST=$$ENABLE_STATION_MOTOR_TEST
+DEFINES += ENABLE_STATION_IMU_CALI=$$ENABLE_STATION_IMU_CALI
+DEFINES += ENABLE_STATION_SCREEN_TEST=$$ENABLE_STATION_SCREEN_TEST
+DEFINES += ENABLE_STATION_CAMERA_TEST=$$ENABLE_STATION_CAMERA_TEST
+DEFINES += ENABLE_STATION_WIFIBLE_TEST=$$ENABLE_STATION_WIFIBLE_TEST
+DEFINES += ENABLE_STATION_PRESS_TEST=$$ENABLE_STATION_PRESS_TEST
+DEFINES += ENABLE_STATION_PCBA_TEST=$$ENABLE_STATION_PCBA_TEST
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
@@ -144,13 +163,7 @@ INCLUDEPATH += lib/libusb-win32-bin-1.4.0.0/include
 
 INCLUDEPATH += work_station/ageing
 INCLUDEPATH += work_station/camera
-INCLUDEPATH += work_station/imu
-INCLUDEPATH += work_station/motor
 INCLUDEPATH += work_station/quiescent_current
-INCLUDEPATH += work_station/screen
-INCLUDEPATH += work_station/wifi_ble
-INCLUDEPATH += work_station/pcba
-INCLUDEPATH += work_station/pressure
 INCLUDEPATH += work_station/freework
 INCLUDEPATH += work_station/key
 INCLUDEPATH += work_station/suction
@@ -299,7 +312,6 @@ SOURCES += \
     work_station/box_base.cpp \
     work_station/ageing/ageing.cpp \
     work_station/ageing/ageingbox.cpp \
-    work_station/camera/camerabox.cpp \
     work_station/camera/cameratest.cpp \
     work_station/freework/qfreework.cpp \
     work_station/freework/qfreework_data.cpp \
@@ -310,26 +322,13 @@ SOURCES += \
     business/plc_v3_fixture/plc_v3_touch.cpp \
     business/plc_v3_fixture/plc_v3_facade.cpp \
     business/plc_v3_fixture/plc_v3_fixture.cpp \
-    work_station/imu/imubox.cpp \
     work_station/key/key_test.cpp \
     work_station/key/key_test_box.cpp \
     work_station/suction/suction.cpp \
     work_station/suction/suction_box.cpp \
-    work_station/imu/imucali.cpp \
-    work_station/motor/motor.cpp \
-    work_station/motor/motorbox.cpp \
-    work_station/pcba/pcbabox.cpp \
-    work_station/pcba/pcbaform.cpp \
     work_station/quiescent_current/quiescent_current.cpp \
     work_station/quiescent_current/quiescent_current_box.cpp \
-    work_station/screen/screenbox.cpp \
-    work_station/screen/screentest.cpp \
     work_station/test_base.cpp \
-    work_station/wifi_ble/wifibletest.cpp \
-    work_station/wifi_ble/wifibox.cpp \
-    work_station/pressure/pressuresensorform.cpp \
-    work_station/pressure/PressCalibBox.cpp \
-    work_station/pressure/ndt_sensor_cali.cpp \
 
 
 HEADERS += \
@@ -479,7 +478,6 @@ HEADERS += \
     work_station/box_base.h \
     work_station/ageing/ageing.h \
     work_station/ageing/ageingbox.h \
-    work_station/camera/camerabox.h \
     work_station/camera/cameratest.h \
     work_station/freework/qfreework.h \
     work_station/freework/qfreeworkbox.h \
@@ -494,26 +492,13 @@ HEADERS += \
     business/plc_v3_fixture/plc_v3_touch.h \
     business/plc_v3_fixture/plc_v3_facade.h \
     business/plc_v3_fixture/plc_v3_fixture.h \
-    work_station/imu/imubox.h \
-    work_station/imu/imucali.h \
     work_station/key/key_test.h \
     work_station/key/key_test_box.h \
     work_station/suction/suction.h \
     work_station/suction/suction_box.h \
-    work_station/motor/motor.h \
-    work_station/motor/motorbox.h \
-    work_station/pcba/pcbabox.h \
-    work_station/pcba/pcbaform.h \
     work_station/quiescent_current/quiescent_current.h \
     work_station/quiescent_current/quiescent_current_box.h \
-    work_station/screen/screenbox.h \
-    work_station/screen/screentest.h \
     work_station/test_base.h \
-    work_station/wifi_ble/wifibletest.h \
-    work_station/wifi_ble/wifibox.h \
-    work_station/pressure/pressuresensorform.h \
-    work_station/pressure/PressCalibBox.h \
-    work_station/pressure/ndt_sensor_cali.h \
 
 FORMS += \
     platform/cloud/auth/login_dialog.ui \
@@ -524,28 +509,79 @@ FORMS += \
     mainwindow.ui \
     work_station/ageing/ageing.ui \
     work_station/ageing/ageingbox.ui \
-    work_station/camera/camerabox.ui \
     work_station/camera/cameratest.ui \
     work_station/freework/qfreework.ui \
     work_station/freework/qfreeworkbox.ui \
-    work_station/imu/imubox.ui \
-    work_station/imu/imucali.ui \
     work_station/key/key_test.ui \
     work_station/key/key_test_box.ui \
     work_station/suction/suction.ui \
     work_station/suction/suction_box.ui \
-    work_station/motor/motor.ui \
-    work_station/motor/motorbox.ui \
-    work_station/pcba/pcbabox.ui \
-    work_station/pcba/pcbaform.ui \
     work_station/quiescent_current/quiescent_current.ui \
     work_station/quiescent_current/quiescent_current_box.ui \
-    work_station/screen/screenbox.ui \
-    work_station/screen/screentest.ui \
-    work_station/wifi_ble/wifibletest.ui \
-    work_station/wifi_ble/wifibox.ui \
-    work_station/pressure/pressuresensorform.ui \
-    work_station/pressure/PressCalibBox.ui \
+
+# 按工站宏条件编入（与文件顶部 ENABLE_STATION_* 一致）
+equals(ENABLE_STATION_MOTOR_TEST, 1) {
+    INCLUDEPATH += work_station/motor
+    SOURCES += work_station/motor/motor.cpp \
+        work_station/motor/motorbox.cpp
+    HEADERS += work_station/motor/motor.h \
+        work_station/motor/motorbox.h
+    FORMS += work_station/motor/motor.ui \
+        work_station/motor/motorbox.ui
+}
+equals(ENABLE_STATION_IMU_CALI, 1) {
+    INCLUDEPATH += work_station/imu
+    SOURCES += work_station/imu/imubox.cpp \
+        work_station/imu/imucali.cpp
+    HEADERS += work_station/imu/imubox.h \
+        work_station/imu/imucali.h
+    FORMS += work_station/imu/imubox.ui \
+        work_station/imu/imucali.ui
+}
+equals(ENABLE_STATION_SCREEN_TEST, 1) {
+    INCLUDEPATH += work_station/screen
+    SOURCES += work_station/screen/screenbox.cpp \
+        work_station/screen/screentest.cpp
+    HEADERS += work_station/screen/screenbox.h \
+        work_station/screen/screentest.h
+    FORMS += work_station/screen/screenbox.ui \
+        work_station/screen/screentest.ui
+}
+equals(ENABLE_STATION_CAMERA_TEST, 1) {
+    # cameratest 已被 MainWindow 共用，始终编入；此处仅补工站壳 camerabox
+    SOURCES += work_station/camera/camerabox.cpp
+    HEADERS += work_station/camera/camerabox.h
+    FORMS += work_station/camera/camerabox.ui
+}
+equals(ENABLE_STATION_WIFIBLE_TEST, 1) {
+    INCLUDEPATH += work_station/wifi_ble
+    SOURCES += work_station/wifi_ble/wifibletest.cpp \
+        work_station/wifi_ble/wifibox.cpp
+    HEADERS += work_station/wifi_ble/wifibletest.h \
+        work_station/wifi_ble/wifibox.h
+    FORMS += work_station/wifi_ble/wifibletest.ui \
+        work_station/wifi_ble/wifibox.ui
+}
+equals(ENABLE_STATION_PRESS_TEST, 1) {
+    INCLUDEPATH += work_station/pressure
+    SOURCES += work_station/pressure/pressuresensorform.cpp \
+        work_station/pressure/PressCalibBox.cpp \
+        work_station/pressure/ndt_sensor_cali.cpp
+    HEADERS += work_station/pressure/pressuresensorform.h \
+        work_station/pressure/PressCalibBox.h \
+        work_station/pressure/ndt_sensor_cali.h
+    FORMS += work_station/pressure/pressuresensorform.ui \
+        work_station/pressure/PressCalibBox.ui
+}
+equals(ENABLE_STATION_PCBA_TEST, 1) {
+    INCLUDEPATH += work_station/pcba
+    SOURCES += work_station/pcba/pcbabox.cpp \
+        work_station/pcba/pcbaform.cpp
+    HEADERS += work_station/pcba/pcbabox.h \
+        work_station/pcba/pcbaform.h
+    FORMS += work_station/pcba/pcbabox.ui \
+        work_station/pcba/pcbaform.ui
+}
 
 #CONFIG += incremental
 
@@ -553,17 +589,15 @@ FORMS += \
 CONFIG += AbIni
 # 指定要使用的预编译头文件
 PRECOMPILED_HEADER += $$PWD/my_set/AbIni.h
+# PCH 文件名与带日期的 TARGET 解耦，避免同日 -1/-2 改名后找不到 pch（C1083）
+QMAKE_PCH_OUTPUT_BASE = new_production
 
 RC_ICONS = ./stytle/picture/lute.ico
-# TARGET：new_production_yyyyMMdd，同日重复编译自动 -1/-2/…（优先环境变量，否则脚本扫描 bin）
+# TARGET 固定为 new_production.exe（OTA 版本见 my_set/host_ota_version.h，勿靠 exe 名区分）
+# 调试临时改名可设环境变量 NEW_PRODUCT_BUILD_TARGET 覆盖
 BUILD_TARGET = $$(NEW_PRODUCT_BUILD_TARGET)
 isEmpty(BUILD_TARGET) {
-    BUILD_BIN = $$OUT_PWD/bin
-    BUILD_TARGET = $$system(powershell -NoProfile -ExecutionPolicy Bypass -File \"$$PWD/scripts/resolve_build_target.ps1\" \"$$BUILD_BIN\")
-}
-isEmpty(BUILD_TARGET) {
-    build_day = $$system(powershell -NoProfile -Command "(Get-Date).ToString('yyyyMMdd')")
-    TARGET = new_production_$$build_day
+    TARGET = new_production
 } else {
     TARGET = $$BUILD_TARGET
 }

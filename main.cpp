@@ -15,25 +15,40 @@
 #include <unordered_map>
 #include "qprotocol_types.h"
 
-#include "PressCalibBox.h"
-#include "ageingbox.h"
-#include "camerabox.h"
-#include "imubox.h"
-#include "key_test_box.h"
-#include "mainwindow.h"
-#include "login_dialog.h"
-#include "auth_service.h"
-#include "motorbox.h"
-#include "pcbabox.h"
-#include "qfreeworkbox.h"
-#include "quiescent_current_box.h"
-#include "screenbox.h"
-#include "suction_box.h"
-#include "wifibox.h"
-#include "factory_analyzer.h"
 #include "AbIni.h"
 #include "common_utils.h"
 #include "qlog.h"
+#include "login_dialog.h"
+#include "auth_service.h"
+#include "key_test_box.h"
+#include "qfreeworkbox.h"
+#include "quiescent_current_box.h"
+#include "suction_box.h"
+#include "ageingbox.h"
+#include "mainwindow.h"
+#include "factory_analyzer.h"
+
+#if ENABLE_STATION_PRESS_TEST
+#include "PressCalibBox.h"
+#endif
+#if ENABLE_STATION_CAMERA_TEST
+#include "camerabox.h"
+#endif
+#if ENABLE_STATION_IMU_CALI
+#include "imubox.h"
+#endif
+#if ENABLE_STATION_MOTOR_TEST
+#include "motorbox.h"
+#endif
+#if ENABLE_STATION_PCBA_TEST
+#include "pcbabox.h"
+#endif
+#if ENABLE_STATION_SCREEN_TEST
+#include "screenbox.h"
+#endif
+#if ENABLE_STATION_WIFIBLE_TEST
+#include "wifibox.h"
+#endif
 
 #ifdef Q_OS_WIN
 #include "qlog_win.h"
@@ -119,6 +134,11 @@ int main(int argc, char* argv[]) {
     do {
         a.setProperty("StationRestartRequested", false);
         QString station = SETTINGS.value("SYSTEM/station").toString(); // 工站
+        if (!isStationEnabled(station)) {
+            qWarning().noquote() << QStringLiteral("工站已屏蔽，改用自由工站：") << station;
+            station = QStringLiteral("FREE_WORK");
+            SETTINGS.setValue(QStringLiteral("SYSTEM/station"), station);
+        }
         qDebug() << "工站为：" + station;
 
         switch (map[station]) {
@@ -130,6 +150,7 @@ int main(int argc, char* argv[]) {
             break;
         }
 
+#if ENABLE_STATION_MOTOR_TEST
         case 2: {
             motorbox* m = new motorbox; // 电机测试
             m->show();
@@ -137,7 +158,9 @@ int main(int argc, char* argv[]) {
             delete m;
             break;
         }
+#endif
 
+#if ENABLE_STATION_IMU_CALI
         case 3: {
             imubox* i = new imubox; // imu校准
             i->show();
@@ -145,7 +168,9 @@ int main(int argc, char* argv[]) {
             delete i;
             break;
         }
+#endif
 
+#if ENABLE_STATION_SCREEN_TEST
         case 4: {
             screenbox* c = new screenbox; // 屏幕测试
             c->show();
@@ -153,7 +178,9 @@ int main(int argc, char* argv[]) {
             delete c;
             break;
         }
+#endif
 
+#if ENABLE_STATION_CAMERA_TEST
         case 5: {
             camerabox* c = new camerabox; // 摄像头测试
             c->show();
@@ -161,7 +188,9 @@ int main(int argc, char* argv[]) {
             delete c;
             break;
         }
+#endif
 
+#if ENABLE_STATION_WIFIBLE_TEST
         case 6: {
             wifibox* f = new wifibox; // wifi蓝牙测试
             f->show();
@@ -169,6 +198,7 @@ int main(int argc, char* argv[]) {
             delete f;
             break;
         }
+#endif
 
         case 7: {
             ageingbox* x = new ageingbox; // 老化测试工站
@@ -177,6 +207,7 @@ int main(int argc, char* argv[]) {
             delete x;
             break;
         }
+#if ENABLE_STATION_PCBA_TEST
         case 8: {
             pcbabox* p = new pcbabox; // 老化测试工站
             p->show();
@@ -184,6 +215,8 @@ int main(int argc, char* argv[]) {
             delete p;
             break;
         }
+#endif
+#if ENABLE_STATION_PRESS_TEST
         case 9: {
             PressCalibBox* c = new PressCalibBox; // 压感校准测试工站
             c->show();
@@ -191,6 +224,7 @@ int main(int argc, char* argv[]) {
             delete c;
             break;
         }
+#endif
         case 10: {
             QFreeWorkBox* f = new QFreeWorkBox; // 自由工站
             f->show();
@@ -224,11 +258,12 @@ int main(int argc, char* argv[]) {
             delete s;
             break;
         }
-        default:
+        default: {
             factory_analyzer dji; // 主测试
             dji.show();
             exitCode = a.exec();
             break;
+        }
         }
     } while (a.property("StationRestartRequested").toBool());
 
