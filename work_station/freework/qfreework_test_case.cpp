@@ -395,6 +395,14 @@ LxAmmeterRtuCmd lxAmmeterRtuCmdFromName(const QString& name) {
     return LxAmmeterRtuCmd::ReadMeasurement;
 }
 
+MultiTempLoggerRtuCmd multiTempLoggerRtuCmdFromName(const QString& name) {
+    if (name.compare(QLatin1String("SendRaw"), Qt::CaseInsensitive) == 0)
+        return MultiTempLoggerRtuCmd::SendRaw;
+    if (name.compare(QLatin1String("ReadChannelTemp"), Qt::CaseInsensitive) == 0)
+        return MultiTempLoggerRtuCmd::ReadChannelTemp;
+    return MultiTempLoggerRtuCmd::ReadChannelTemp;
+}
+
 HuilingScpiCmd huilingScpiCmdFromName(const QString& name) {
     if (name == QLatin1String("ConfigureMeasure"))
         return HuilingScpiCmd::ConfigureMeasure;
@@ -1108,8 +1116,13 @@ void QFreeWork::runModbusAmmeterCurrentSampleAnyMatch(const TestCaseDefinition& 
         bool ok = false;
         if (route == ModbusDeviceRoute::HqAmmeterRtu)
             ok = modbusManager.exec(hqAmmeterRtuCmdFromName(def.send.deviceCmd), &errStr);
-        else
+        else if (route == ModbusDeviceRoute::LxAmmeterRtu)
             ok = modbusManager.exec(lxAmmeterRtuCmdFromName(def.send.deviceCmd), &errStr);
+        else if (route == ModbusDeviceRoute::MultiTempLoggerRtu)
+            ok = modbusManager.exec(multiTempLoggerRtuCmdFromName(def.send.deviceCmd),
+                                    resolveTestCaseSendParamTree(def.send.param), &errStr);
+        else
+            ok = false;
         if (!ok)
             showlog(QStringLiteral("Modbus 电流表采样下发失败（继续）：%1").arg(errStr));
         if (isActiveTestCaseStepDone())
@@ -1398,6 +1411,30 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                 });
                 ctx->showlog(QStringLiteral("等待 LX 电流表回包：%1（超时 %2ms）").arg(def.send.deviceCmd).arg(timeoutMs));
             } else {
+                ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
+            }
+        } else if (devRoute == ModbusDeviceRoute::MultiTempLoggerRtu) {
+            if (def.send.action == TestCaseSendAction::Get && def.gate.enabled
+                && def.send.deviceCmd.compare(QLatin1String("SendRaw"), Qt::CaseInsensitive) != 0) {
+                ctx->runModbusAmmeterCurrentSampleAnyMatch(def, devRoute);
+                return;
+            }
+            MultiTempLoggerRtuCmd cmd = multiTempLoggerRtuCmdFromName(def.send.deviceCmd);
+            bool ok = ctx->modbusManager.exec(cmd, resolvedParam, &errStr);
+            if (!ok) {
+                ctx->showlog(QStringLiteral("温度记录仪指令 [%1] 下发失败: %2").arg(def.send.deviceCmd, errStr));
+                ctx->markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
+            } else if (def.send.action == TestCaseSendAction::Get) {
+                const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+                QTimer::singleShot(timeoutMs, ctx, [ctx, def]() {
+                    if (!ctx->isActiveTestCaseStep(def.meta.name) || ctx->isActiveTestCaseStepDone())
+                        return;
+                    ctx->showlog(QStringLiteral("温度记录仪等待超时：%1").arg(def.send.deviceCmd));
+                    ctx->markActiveTestCaseStepDone(false, QStringLiteral("超时"), QStringLiteral("失败"));
+                });
+                ctx->showlog(QStringLiteral("等待温度记录仪回包：%1（超时 %2ms）").arg(def.send.deviceCmd).arg(timeoutMs));
+            } else {
+                // SendRaw 设置：只下发开放报文
                 ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
             }
         } else {
