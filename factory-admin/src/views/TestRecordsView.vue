@@ -132,7 +132,7 @@
                 </el-col>
                 <el-col :span="16">
                   <el-card :header="currentLogFile || '预览'" shadow="never">
-                    <pre class="preview">{{ logPreviewText }}</pre>
+                    <LogPreview :text="logPreviewText" class="record-log-preview" />
                   </el-card>
                 </el-col>
               </el-row>
@@ -155,6 +155,7 @@ import { formatTime, formatSize, testResultClass } from '../utils/format'
 import { useFactoryScope } from '../composables/useFactoryScope'
 import http from '../api/http'
 import { fetchLogPreviewText } from '../api/logs'
+import LogPreview from '../components/LogPreview.vue'
 
 const router = useRouter()
 const { isFactoryScoped, scopedFactoryLabel, applyScopedFactoryFilter } = useFactoryScope()
@@ -218,10 +219,11 @@ const logTreeData = computed(() => buildFileTree(detail.value?.logArchive?.files
 
 function pickDefaultLogFile(files) {
   if (!files?.length) return null
-  const sessionTxt = files.find(
-    (f) => f.previewable && /上位机log\/.+\.txt$/i.test(f.relativePath)
+  // 优先打开工位会话主文件（扩展名已统一为 .log，兼容历史 .txt）
+  const sessionLog = files.find(
+    (f) => f.previewable && /上位机log\/.+\.(txt|log)$/i.test(f.relativePath)
   )
-  return sessionTxt || files.find((f) => f.previewable) || null
+  return sessionLog || files.find((f) => f.previewable) || null
 }
 
 async function previewLogFile(logId, relativePath) {
@@ -353,17 +355,7 @@ onMounted(async () => {
 .pager { margin-top: 16px; justify-content: flex-end; }
 .mb { margin-bottom: 16px; }
 .log-actions { display: flex; gap: 8px; }
-.preview {
-  margin: 0;
-  max-height: 55vh;
-  overflow: auto;
-  white-space: pre-wrap;
-  word-break: break-all;
-  font-size: 12px;
-  line-height: 1.5;
-  background: #1e1e1e;
-  color: #d4d4d4;
-  padding: 12px;
-  border-radius: 4px;
+.record-log-preview {
+  --log-preview-max-height: 55vh;
 }
 </style>

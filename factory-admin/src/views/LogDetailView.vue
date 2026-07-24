@@ -34,7 +34,7 @@
       </el-col>
       <el-col :span="16">
         <el-card :header="currentFile || '预览'">
-          <pre class="preview">{{ previewText }}</pre>
+          <LogPreview :text="previewText" />
         </el-card>
       </el-col>
     </el-row>
@@ -47,6 +47,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import http from '../api/http'
 import { fetchLogPreviewText } from '../api/logs'
+import LogPreview from '../components/LogPreview.vue'
 import { formatTime, formatSize, testResultClass } from '../utils/format'
 
 const route = useRoute()
@@ -156,17 +157,4 @@ onMounted(load)
 
 <style scoped>
 .mb { margin-bottom: 16px; }
-.preview {
-  margin: 0;
-  max-height: 70vh;
-  overflow: auto;
-  white-space: pre-wrap;
-  word-break: break-all;
-  font-size: 12px;
-  line-height: 1.5;
-  background: #1e1e1e;
-  color: #d4d4d4;
-  padding: 12px;
-  border-radius: 4px;
-}
 </style>
