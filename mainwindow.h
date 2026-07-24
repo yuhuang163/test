@@ -656,6 +656,7 @@ class MainWindow : public QMainWindow {
     void on_kTlvKeyWrite_clicked();
     void on_kTlvKeyread_clicked();
     void on_read_current_charge_clicked();
+    void on_set_current_charge_clicked();
     void on_read_light_sensor_clicked();
     void on_set_light_sensor_clicked();
     void on_light_repo_start_clicked();

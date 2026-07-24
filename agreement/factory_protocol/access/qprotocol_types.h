@@ -468,6 +468,7 @@ enum class DeviceCmd {
     LcdBacklight,       // 【Qfctp】LCD 背光（QVariantMap，setCaseLcdBacklight）
     LightReportControl, // 【Qfctp】光感上报开关（QVariantMap，setCaseLightReportControl）
     LightCalibWrite,    // 【Qfctp】光感校准写（QVariantMap，setCaseLightCalibWrite）
+    ChargeCurrentSet,   // 【Qfctp】设置充电电流（QVariantMap{currentMa|value}，uint16 mA，setCaseChargeCurrentSet）
     CompensationSet,    // 【Qfctp】吸力补偿开关（QVariantMap，setCaseCompensationSet）
 
     // 【Qroot】吸奶器 PCBA 串口协议
@@ -509,7 +510,7 @@ enum class DeviceCmd {
     RssiRead,            // 【Qfctp】读 RSSI（param 为 QVariantMap，含 mode，getCaseRssiRead）
     KeySignalRead,       // 【Qfctp】读按键电容（param 为 QVariantMap，含 key，getCaseKeySignalRead）
     LightCalibRead,      // 【Qfctp】读光感校准（param 为 QVariantMap，含 index，getCaseLightCalibRead）
-    ChargeCurrentRead,   // 【Qfctp】读充电电流（无参，getCaseChargeCurrentRead）
+    ChargeCurrentRead,   // 【Qfctp】读充电电流 TLV 0x0020（无参，应答 uint32 mA，getCaseChargeCurrentRead）
     AgingStatusRead,     // 【兼容别名】Qfctp 老化状态查询（保留兼容）
     FactoryDoneRead,     // 【兼容别名】Qfctp 产测标识读取（保留兼容）
     DeviceExceptionRead, // 【Qfctp】读设备异常状态（独立入口）

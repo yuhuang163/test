@@ -66,6 +66,7 @@ class Qfctp : public qProtocol {
     void handleRspLightReportCtrl(const uint8_t* mainValue, uint16_t mainLen);
     void handleRspLightCalibWrite(const uint8_t* mainValue, uint16_t mainLen);
     void handleRspChargeCurrentRead(const uint8_t* mainValue, uint16_t mainLen);
+    void handleRspChargeCurrentSet(const uint8_t* mainValue, uint16_t mainLen);
 
     bool setSn(const QVariant& data);
     bool setCaseAgingMode(const QVariantMap& map);
@@ -86,6 +87,7 @@ class Qfctp : public qProtocol {
     bool setCaseLcdBacklight(const QVariantMap& map);
     bool setCaseLightReportControl(const QVariantMap& map);
     bool setCaseLightCalibWrite(const QVariantMap& map);
+    bool setCaseChargeCurrentSet(const QVariantMap& map);
     bool setCaseCompensationSet(const QVariantMap& map);
 
     bool getCaseTupleRead();

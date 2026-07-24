@@ -4670,6 +4670,19 @@ void MainWindow::on_read_current_charge_clicked() {
     protocolManager.get(DeviceCmd::ChargeCurrentRead);
 }
 
+void MainWindow::on_set_current_charge_clicked() {
+    bool ok = false;
+    const uint currentMa = ui->charge_current_ma->text().trimmed().toUInt(&ok);
+    if (!ok) {
+        showlog(QStringLiteral("充电电流输入无效，请填写 0~65535 的 mA 数值"));
+        return;
+    }
+    QVariantMap m;
+    m.insert(QStringLiteral("currentMa"), currentMa);
+    protocolManager.set(DeviceCmd::ChargeCurrentSet, m);
+    showlog(QStringLiteral("已发送设置充电电流：%1 mA").arg(currentMa));
+}
+
 void MainWindow::on_read_light_sensor_clicked() {
     protocolManager.get(DeviceCmd::LightCalibRead);
 }

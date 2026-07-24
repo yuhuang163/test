@@ -175,6 +175,7 @@ static constexpr uint16_t kTlvLightReportCtrl = 0x001D;
 static constexpr uint16_t kTlvLightCalibWrite = 0x001E;
 static constexpr uint16_t kTlvLightCalibRead = 0x001F;
 static constexpr uint16_t kTlvChargeCurrentRead = 0x0020;
+static constexpr uint16_t kTlvChargeCurrentSet = 0x0022;
 
 // SYSTEM CONFIG SERVICE TLV
 static constexpr uint16_t kTlvFwVersionRead = 0x0001;
@@ -347,6 +348,7 @@ void Qfctp::registerResponseHandlers() {
     registerResponseHandler(kTestsService, kTlvLightReportCtrl, QStringLiteral("handleRspLightReportCtrl"), &Qfctp::handleRspLightReportCtrl);
     registerResponseHandler(kTestsService, kTlvLightCalibWrite, QStringLiteral("handleRspLightCalibWrite"), &Qfctp::handleRspLightCalibWrite);
     registerResponseHandler(kTestsService, kTlvChargeCurrentRead, QStringLiteral("handleRspChargeCurrentRead"), &Qfctp::handleRspChargeCurrentRead);
+    registerResponseHandler(kTestsService, kTlvChargeCurrentSet, QStringLiteral("handleRspChargeCurrentSet"), &Qfctp::handleRspChargeCurrentSet);
 
     registerResponseHandler(kSystemConfigService, kTlvFwVersionRead, QStringLiteral("handleRspFwVersionRead"), &Qfctp::handleRspFwVersionRead);
     registerResponseHandler(kSystemConfigService, kTlvMacRead, QStringLiteral("handleRspMacRead"), &Qfctp::handleRspMacRead);
@@ -651,6 +653,7 @@ void Qfctp::handleRspLightCalibWrite(const uint8_t* mainValue, uint16_t mainLen)
 void Qfctp::handleRspChargeCurrentRead(const uint8_t* mainValue, uint16_t mainLen) {
     if (mainValue != nullptr) {
         if (mainLen >= 4) {
+            // 0x0020 应答：充电电流 uint32 小端，单位 mA；无电池节点或查询失败时为 0
             const uint32_t chargeCurrentMa = static_cast<uint32_t>(mainValue[0]) | (static_cast<uint32_t>(mainValue[1]) << 8) | (static_cast<uint32_t>(mainValue[2]) << 16) | (static_cast<uint32_t>(mainValue[3]) << 24);
             qInfo() << "FCTP 充电电流值 current_mA=" << chargeCurrentMa;
             const QString rawHex = QByteArray(reinterpret_cast<const char*>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
@@ -659,6 +662,24 @@ void Qfctp::handleRspChargeCurrentRead(const uint8_t* mainValue, uint16_t mainLe
                        QVariant::fromValue(ProtocolChargeCurrentData{chargeCurrentMa}));
         } else {
             qWarning() << "FCTP ChargeCurrentGet 长度异常 len=" << mainLen;
+        }
+    }
+}
+
+void Qfctp::handleRspChargeCurrentSet(const uint8_t* mainValue, uint16_t mainLen) {
+    if (mainValue != nullptr) {
+        const QString rawHex = QByteArray(reinterpret_cast<const char*>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
+        if (mainLen == 1) {
+            // 0x0022 应答：0x01 成功
+            const int ack = static_cast<int>(static_cast<uint8_t>(mainValue[0]));
+            const QString ackText = (ack == 1) ? QStringLiteral("成功") : QStringLiteral("失败");
+            qInfo() << "FCTP 设置充电电流应答 响应结果=" << ackText << "raw=" << rawHex;
+            emitReport(QStringLiteral("ProtocolPbDate"),
+                       QStringLiteral("FCTP 设置充电电流应答 响应结果=%1 raw=%2").arg(ackText, rawHex));
+            emitReport(QStringLiteral("ProtocolAckData"), QVariant::fromValue(ProtocolAckData{ack}));
+        } else {
+            qInfo() << "FCTP 设置充电电流应答 len=" << mainLen << "raw=" << rawHex;
+            emitReport(QStringLiteral("ProtocolPbDate"), QStringLiteral("FCTP 设置充电电流应答 raw=%1").arg(rawHex));
         }
     }
 }
@@ -1129,6 +1150,21 @@ bool Qfctp::setCaseLightCalibWrite(const QVariantMap& map) {
     return sendTestsServiceTlv(kTlvLightCalibWrite, value, "光感校准写入");
 }
 
+bool Qfctp::setCaseChargeCurrentSet(const QVariantMap& map) {
+    // 优先 currentMa；兼容 value。协议 TLV 0x0022 为 uint16 小端，单位 mA
+    uint currentMa = map.value(QStringLiteral("currentMa")).toUInt();
+    if (!map.contains(QStringLiteral("currentMa")) && map.contains(QStringLiteral("value"))) {
+        currentMa = map.value(QStringLiteral("value")).toUInt();
+    }
+    if (currentMa > 0xFFFFu) {
+        currentMa = 0xFFFFu;
+    }
+    QByteArray value;
+    value.append(static_cast<char>(currentMa & 0xFFu));
+    value.append(static_cast<char>((currentMa >> 8) & 0xFFu));
+    return sendTestsServiceTlv(kTlvChargeCurrentSet, value, "设置充电电流");
+}
+
 bool Qfctp::getCaseTupleRead() {
     return sendTestsServiceTlv(kTlvTupleRead, {}, "读取三元组");
 }
@@ -1338,6 +1374,15 @@ void Qfctp::set(DeviceCmd cmd, const QVariant& data) {
         if (setCaseLightCalibWrite(data.toMap()))
             return;
         break;
+    case DeviceCmd::ChargeCurrentSet: {
+        QVariantMap map = data.toMap();
+        if (map.isEmpty() && data.canConvert<uint>()) {
+            map.insert(QStringLiteral("currentMa"), data.toUInt());
+        }
+        if (setCaseChargeCurrentSet(map))
+            return;
+        break;
+    }
     case DeviceCmd::CompensationSet:
         if (setCaseCompensationSet(data.toMap()))
             return;

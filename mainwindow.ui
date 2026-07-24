@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1649</width>
-    <height>1080</height>
+    <height>1100</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -492,7 +492,7 @@
                <bool>true</bool>
               </property>
               <property name="currentIndex">
-               <number>1</number>
+               <number>0</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -555,9 +555,16 @@
                       </widget>
                      </item>
                      <item>
-                      <widget class="QPushButton" name="read_current_charge">
+                      <widget class="QPushButton" name="factory_flag">
                        <property name="text">
-                        <string>读取充电电流</string>
+                        <string>产测完成写入</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="factory_flag_read">
+                       <property name="text">
+                        <string>产测完成读取</string>
                        </property>
                       </widget>
                      </item>
@@ -645,20 +652,6 @@
                      <property name="topMargin">
                       <number>0</number>
                      </property>
-                     <item>
-                      <widget class="QPushButton" name="factory_flag">
-                       <property name="text">
-                        <string>产测完成写入</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="factory_flag_read">
-                       <property name="text">
-                        <string>产测完成读取</string>
-                       </property>
-                      </widget>
-                     </item>
                      <item>
                       <widget class="QPushButton" name="enterSuctionMode">
                        <property name="text">
@@ -993,6 +986,42 @@
                        <widget class="QLabel" name="battery_type">
                         <property name="text">
                          <string>电池类型：</string>
+                        </property>
+                       </widget>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QGroupBox" name="horizontalGroupBox_2">
+                     <layout class="QHBoxLayout" name="horizontalLayout_112">
+                      <item>
+                       <widget class="QPushButton" name="set_current_charge">
+                        <property name="text">
+                         <string>设置充电电流</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QLineEdit" name="charge_current_ma">
+                        <property name="maximumSize">
+                         <size>
+                          <width>80</width>
+                          <height>16777215</height>
+                         </size>
+                        </property>
+                        <property name="text">
+                         <string>2000</string>
+                        </property>
+                        <property name="placeholderText">
+                         <string>mA</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="read_current_charge">
+                        <property name="text">
+                         <string>读取充电电流</string>
                         </property>
                        </widget>
                       </item>
@@ -3259,6 +3288,9 @@
                     <property name="toolTip">
                      <string>AT+SUCTIONOSR：1=1024X/8ms，2=2048X/10ms，3=4096X/11ms，4=8192X/16ms（默认）</string>
                     </property>
+                    <property name="currentIndex">
+                     <number>3</number>
+                    </property>
                     <property name="minimumContentsLength">
                      <number>22</number>
                     </property>
@@ -3282,9 +3314,6 @@
                       <string>4 · 8192X / 16ms（默认）</string>
                      </property>
                     </item>
-                    <property name="currentIndex">
-                     <number>3</number>
-                    </property>
                    </widget>
                   </item>
                   <item>
