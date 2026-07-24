@@ -172,6 +172,8 @@ class test_base : public QWidget {
     int commandRetryCount = 0;
     int commandRetrySendCount = 0;
     int lastCommandRetryCount = 0;
+    /** 本步指令最长等待截止（ms epoch）；CommandTimeoutMs 语义为总超时而非重试间隔 */
+    qint64 commandRetryDeadlineMs_ = 0;
     CommandWaitSource commandWaitSource_ = CommandWaitSource::Any;
 
     bool isTestContinue = false;

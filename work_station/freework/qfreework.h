@@ -121,6 +121,8 @@ class QFreeWork : public test_base {
     QString snBinding;
     QString deviceTailSnFromDevice = "";
     QString wholeMachineSn_;
+    /** BYD 开局扫码过程码：MES Start/Complete/AddSfcKey 的 SFC；勿被 MES 主板 SN / 三元组整机 SN 冲掉 */
+    QString mesProcessCode_;
     QString macAddress = "没有mac地址";
 
     // --- RSSI / WiFi / 电量 / 电流 ---

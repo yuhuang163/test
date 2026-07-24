@@ -35,8 +35,9 @@ class VisaChannel : public QObject {
   private:
     Config config_;
 #ifdef HAVE_NI_VISA
-    ViSession visaRm_ = VI_NULL;
-    ViSession visaInst_ = VI_NULL;
+    /** 本通道是否持有共享仪器会话引用（进程内同地址共用一把句柄）。 */
+    bool holdsSharedInst_ = false;
+    static QString statusText(ViStatus status);
 #endif
 };
 
