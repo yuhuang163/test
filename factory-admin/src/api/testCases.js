@@ -46,3 +46,35 @@ export function getVersionFile(version, path) {
 export function diffVersions(fromVer, toVer) {
   return http.get('/admin/test-cases/versions/diff', { params: { from: fromVer, to: toVer } })
 }
+
+export function listStaging() {
+  return http.get('/admin/test-cases/staging')
+}
+
+export function stagingDiff(params) {
+  return http.get('/admin/test-cases/staging/diff', { params })
+}
+
+export function mergeStaging(body) {
+  return http.post('/admin/test-cases/staging/merge', body)
+}
+
+export function clearStaging(params) {
+  return http.delete('/admin/test-cases/staging', { params })
+}
+
+export function listMergeHistory(params) {
+  return http.get('/admin/test-cases/merge-history', { params })
+}
+
+export function undoMerge(mergeId) {
+  return http.post(`/admin/test-cases/merge-history/${encodeURIComponent(mergeId)}/undo`)
+}
+
+export function listOnlineDevices() {
+  return http.get('/admin/test-cases/online-devices')
+}
+
+export function pullProfile(body) {
+  return http.post('/admin/test-cases/pull-profile', body)
+}
