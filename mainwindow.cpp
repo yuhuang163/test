@@ -5062,7 +5062,7 @@ void MainWindow::stopDongleSuctionCsvLog() {
         if (i + 1 < kDongleSuctionChannelCount)
             dongleSuctionCsvStream_ << QLatin1Char(',');
     }
-    dongleSuctionCsvStream_ << QLatin1Char('\r\n') << QLatin1Char('\r\n');
+    dongleSuctionCsvStream_ << QStringLiteral("\r\n\r\n");
     dongleSuctionCsvStream_.flush();
     dongleSuctionCsvFile_.close();
     dongleSuctionCsvStream_.setDevice(nullptr);
@@ -5078,8 +5078,8 @@ void MainWindow::writeDongleSuctionCsvRow(double tSec, double ch1Kpa, double ch2
         return;
     dongleSuctionCsvStream_ << QString::number(tSec, 'f', 3) << QLatin1Char(',') << QString::number(ch1Kpa, 'f', 3)
                               << QLatin1Char(',') << QString::number(ch2Kpa, 'f', 3) << QLatin1Char(',')
-                              << QString::number(ch3Kpa, 'f', 3) << QLatin1Char(',') << event << QLatin1Char('\r\n')
-                              << QLatin1Char('\r\n');
+                              << QString::number(ch3Kpa, 'f', 3) << QLatin1Char(',') << event
+                              << QStringLiteral("\r\n\r\n");
     dongleSuctionCsvStream_.flush();
 }
 

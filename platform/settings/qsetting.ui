@@ -761,6 +761,26 @@
           </widget>
          </item>
          <item>
+          <widget class="QPushButton" name="pushButton_testFlowDownloadCase">
+           <property name="toolTip">
+            <string>从云端下载已发布的正式工站用例（可选本工站或其他工站）</string>
+           </property>
+           <property name="text">
+            <string>下载工站用例</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pushButton_testFlowUploadCase">
+           <property name="toolTip">
+            <string>将当前选中工站用例上传为云端草稿（需网页合入并发布后他人才能下载）</string>
+           </property>
+           <property name="text">
+            <string>上传本工站用例</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QPushButton" name="pushButton_testFlowSave">
            <property name="text">
             <string>保存流程</string>

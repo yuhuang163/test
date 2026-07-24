@@ -2,6 +2,7 @@
 
 #include "test_case.h"
 #include "test_case_edit_dialog.h"
+#include "test_case_sync_service.h"
 
 #include "Abini.h"
 
@@ -17,7 +18,9 @@
 #include <QDragMoveEvent>
 #include <QDropEvent>
 #include <QFile>
+#include <QFutureWatcher>
 #include <QHBoxLayout>
+#include <QInputDialog>
 #include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
@@ -34,6 +37,7 @@
 #include <QSet>
 #include <QSignalBlocker>
 #include <QVBoxLayout>
+#include <QtConcurrent>
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
@@ -203,7 +207,8 @@ TestFlowEditor::TestFlowEditor(QObject* parent) : QObject(parent) {
 }
 
 void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScrollArea* scroll, QVBoxLayout* flowLayout,
-                            QCheckBox* stopFlowOnTestFailCheck, QPushButton* btnSave, QPushButton* btnClear,
+                            QCheckBox* stopFlowOnTestFailCheck, QPushButton* btnDownloadCase,
+                            QPushButton* btnUploadCase, QPushButton* btnSave, QPushButton* btnClear,
                             QScrollArea* failScroll, QVBoxLayout* failLayout, QPushButton* btnFailClear) {
     if (uiBound_)
         return;
@@ -258,6 +263,12 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
         persistSelectedStation(currentStationKey());
         reloadCurrentStation();
     });
+    if (btnDownloadCase) {
+        connect(btnDownloadCase, &QPushButton::clicked, this, &TestFlowEditor::startDownloadStationCase);
+    }
+    if (btnUploadCase) {
+        connect(btnUploadCase, &QPushButton::clicked, this, &TestFlowEditor::startUploadCurrentStationCase);
+    }
     connect(btnSave, &QPushButton::clicked, this, [this]() { saveCurrentFlow(); });
     connect(btnClear, &QPushButton::clicked, this, [this]() {
         if (QMessageBox::question(dialogParent_, QStringLiteral("确认"),
@@ -1132,6 +1143,173 @@ void TestFlowEditor::saveCurrentFlow() {
         return;
     QMessageBox::information(dialogParent_, QStringLiteral("已保存"),
                              QStringLiteral("流程已写入 test_case/总的测试流程.ini"));
+}
+
+void TestFlowEditor::startUploadCurrentStationCase() {
+    const QString stationKey = currentStationKey();
+    const QString stationName = TestCaseStore::flowStationDisplayName(stationKey);
+    const QString label = stationName.isEmpty() ? stationKey : stationName;
+    if (label.isEmpty()) {
+        QMessageBox::warning(dialogParent_, QStringLiteral("上传本工站用例"),
+                             QStringLiteral("请先选择当前测试工站。"));
+        return;
+    }
+
+    if (hasUnsavedChanges()) {
+        const auto saveAnswer = QMessageBox::question(
+            dialogParent_, QStringLiteral("上传本工站用例"),
+            QStringLiteral("当前编排有未保存改动，是否先保存再上传？"),
+            QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel, QMessageBox::Yes);
+        if (saveAnswer == QMessageBox::Cancel) {
+            return;
+        }
+        if (saveAnswer == QMessageBox::Yes && !saveStationFlow(stationKey)) {
+            return;
+        }
+    }
+
+    bool remarkOk = false;
+    const QString remark = QInputDialog::getMultiLineText(
+                               dialogParent_, QStringLiteral("上传本工站用例"),
+                               QStringLiteral("请填写上传说明（必填，将显示在网页草稿列表）：\n工站「%1」")
+                                   .arg(label),
+                               QString(), &remarkOk)
+                               .trimmed();
+    if (!remarkOk) {
+        return;
+    }
+    if (remark.isEmpty()) {
+        QMessageBox::warning(dialogParent_, QStringLiteral("上传本工站用例"),
+                             QStringLiteral("上传说明不能为空。"));
+        return;
+    }
+    if (remark.size() > 500) {
+        QMessageBox::warning(dialogParent_, QStringLiteral("上传本工站用例"),
+                             QStringLiteral("上传说明最多 500 字。"));
+        return;
+    }
+
+    const auto answer = QMessageBox::question(
+        dialogParent_, QStringLiteral("上传本工站用例"),
+        QStringLiteral("上传当前工站「%1」到云端草稿（不影响其他工站）。\n"
+                       "说明：%2\n\n网页「合入 + 发布」后，其他电脑才能下载到。\n\n确认上传？")
+            .arg(label, remark));
+    if (answer != QMessageBox::Yes) {
+        return;
+    }
+
+    persistSelectedStation(stationKey);
+    auto* watcher = new QFutureWatcher<TestCaseSyncService::SyncResult>(this);
+    connect(watcher, &QFutureWatcher<TestCaseSyncService::SyncResult>::finished, this, [this, watcher]() {
+        const TestCaseSyncService::SyncResult result = watcher->result();
+        if (result.ok) {
+            QMessageBox::information(dialogParent_, QStringLiteral("上传本工站用例"), result.message);
+        } else {
+            QMessageBox::warning(dialogParent_, QStringLiteral("上传本工站用例"), result.message);
+        }
+        watcher->deleteLater();
+    });
+    watcher->setFuture(QtConcurrent::run([remark]() { return TestCaseSyncService::uploadToCloud(remark); }));
+}
+
+void TestFlowEditor::startDownloadStationCase() {
+    auto* listWatcher = new QFutureWatcher<TestCaseSyncService::ProfileListResult>(this);
+    connect(listWatcher, &QFutureWatcher<TestCaseSyncService::ProfileListResult>::finished, this,
+            [this, listWatcher]() {
+                const TestCaseSyncService::ProfileListResult listResult = listWatcher->result();
+                listWatcher->deleteLater();
+                if (!listResult.ok) {
+                    QMessageBox::warning(dialogParent_, QStringLiteral("下载工站用例"), listResult.message);
+                    return;
+                }
+                if (listResult.items.isEmpty()) {
+                    QMessageBox::information(dialogParent_, QStringLiteral("下载工站用例"),
+                                             listResult.message.isEmpty()
+                                                 ? QStringLiteral("云端尚无已发布的工站用例")
+                                                 : listResult.message);
+                    return;
+                }
+
+                const QString currentKey = currentStationKey().trimmed();
+                QStringList labels;
+                int currentIndex = 0;
+                for (int i = 0; i < listResult.items.size(); ++i) {
+                    const TestCaseSyncService::PublishedProfile& item = listResult.items.at(i);
+                    QString label = item.displayName;
+                    if (label.isEmpty()) {
+                        label = item.stationKey;
+                    }
+                    if (!item.profileVersion.isEmpty()) {
+                        label += QStringLiteral("（v%1）").arg(item.profileVersion);
+                    }
+                    if (!currentKey.isEmpty() &&
+                        item.stationKey.compare(currentKey, Qt::CaseInsensitive) == 0) {
+                        label += QStringLiteral(" · 当前工站");
+                        currentIndex = i;
+                    }
+                    labels.append(label);
+                }
+
+                bool ok = false;
+                const QString selected = QInputDialog::getItem(
+                    dialogParent_, QStringLiteral("下载工站用例"),
+                    QStringLiteral("请选择要下载的工站（可下载本工站或其他工站）："), labels,
+                    currentIndex, false, &ok);
+                if (!ok || selected.isEmpty()) {
+                    return;
+                }
+
+                const int idx = labels.indexOf(selected);
+                if (idx < 0 || idx >= listResult.items.size()) {
+                    return;
+                }
+
+                const TestCaseSyncService::PublishedProfile chosen = listResult.items.at(idx);
+                const QString label =
+                    chosen.displayName.isEmpty() ? chosen.stationKey : chosen.displayName;
+                const bool downloadingCurrent =
+                    !currentKey.isEmpty() &&
+                    chosen.stationKey.compare(currentKey, Qt::CaseInsensitive) == 0;
+                if (downloadingCurrent && hasUnsavedChanges() && !confirmDiscardOrSaveOnLeave()) {
+                    return;
+                }
+
+                const auto answer = QMessageBox::question(
+                    dialogParent_, QStringLiteral("下载工站用例"),
+                    QStringLiteral("从云端下载已发布的正式用例，仅覆盖本机工站「%1」。\n"
+                                   "不会动其他工站；未发布的草稿也拉不到。\n\n确认下载？")
+                        .arg(label));
+                if (answer != QMessageBox::Yes) {
+                    return;
+                }
+
+                const QString stationKey = chosen.stationKey;
+                const QString displayName = chosen.displayName;
+                auto* syncWatcher = new QFutureWatcher<TestCaseSyncService::SyncResult>(this);
+                connect(syncWatcher, &QFutureWatcher<TestCaseSyncService::SyncResult>::finished, this,
+                        [this, syncWatcher]() {
+                            const TestCaseSyncService::SyncResult result = syncWatcher->result();
+                            syncWatcher->deleteLater();
+                            if (!result.ok) {
+                                QMessageBox::warning(dialogParent_, QStringLiteral("下载工站用例"),
+                                                     result.message);
+                                return;
+                            }
+                            QMessageBox::information(dialogParent_, QStringLiteral("下载工站用例"),
+                                                     result.message);
+                            const QString stayKey = currentStationKey();
+                            refreshStationCombo(stayKey.isEmpty() ? result.stationKey : stayKey);
+                            if (!result.stationKey.isEmpty() &&
+                                result.stationKey.compare(currentStationKey(), Qt::CaseInsensitive) ==
+                                    0) {
+                                reloadCurrentStation();
+                            }
+                        });
+                syncWatcher->setFuture(QtConcurrent::run([stationKey, displayName]() {
+                    return TestCaseSyncService::syncStationFromCloud(stationKey, displayName);
+                }));
+            });
+    listWatcher->setFuture(QtConcurrent::run([]() { return TestCaseSyncService::listPublishedProfiles(); }));
 }
 
 void TestFlowEditor::updateSavedSnapshot() {

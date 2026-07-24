@@ -935,6 +935,7 @@ void qsetting::initTestFlowEditorUi() {
     testFlowEditor_ = new TestFlowEditor(this);
     testFlowEditor_->bindUi(this, ui->comboBox_testFlowStation, ui->scrollArea_testFlow,
                             ui->verticalLayout_testFlowBlocks, ui->checkBox_testFlowStopOnTestFail,
+                            ui->pushButton_testFlowDownloadCase, ui->pushButton_testFlowUploadCase,
                             ui->pushButton_testFlowSave, ui->pushButton_testFlowClear, ui->scrollArea_testFlowFail,
                             ui->verticalLayout_testFlowFailBlocks, ui->pushButton_testFlowFailClear);
     connect(testFlowEditor_, &TestFlowEditor::runStepRequested, this, &qsetting::runTestCaseStepRequested);

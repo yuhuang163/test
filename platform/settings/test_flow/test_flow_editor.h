@@ -76,8 +76,9 @@ class TestFlowEditor : public QObject {
     explicit TestFlowEditor(QObject* parent = nullptr);
 
     void bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScrollArea* scroll, QVBoxLayout* flowLayout,
-                QCheckBox* stopFlowOnTestFailCheck, QPushButton* btnSave, QPushButton* btnClear,
-                QScrollArea* failScroll, QVBoxLayout* failLayout, QPushButton* btnFailClear);
+                QCheckBox* stopFlowOnTestFailCheck, QPushButton* btnDownloadCase, QPushButton* btnUploadCase,
+                QPushButton* btnSave, QPushButton* btnClear, QScrollArea* failScroll, QVBoxLayout* failLayout,
+                QPushButton* btnFailClear);
     void reloadCurrentStation();
     /** 产品型号切换后，按 Mes/Product_Name 刷新工站下拉并切到可用工站。 */
     void onProductNameChanged();
@@ -129,6 +130,8 @@ class TestFlowEditor : public QObject {
     void persistSelectedStation(const QString& key);
     void openEditDialog(TestCaseBlock* block);
     void moveSelectedBlock(int delta);
+    void startUploadCurrentStationCase();
+    void startDownloadStationCase();
     bool eventFilter(QObject* watched, QEvent* event) override;
 
     QWidget* dialogParent_ = nullptr;

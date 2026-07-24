@@ -13,58 +13,12 @@
 #include "AbIni.h"
 #include "login_dialog.h"
 #include "log_upload_service.h"
-#include "test_case_sync_service.h"
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
 #endif
 
 namespace {
-
-void startTestCaseUpload(QWidget* parent) {
-    const auto answer = QMessageBox::question(
-        parent, QStringLiteral("上传用例"),
-        QStringLiteral(
-            "将打包本地 test_case 目录（不含 .backup）上传至云端并发布新版本，其他产线机可「下载用例」拉取。\n\n确认上传？"));
-    if (answer != QMessageBox::Yes) {
-        return;
-    }
-
-    auto* watcher = new QFutureWatcher<TestCaseSyncService::SyncResult>(parent);
-    QObject::connect(watcher, &QFutureWatcher<TestCaseSyncService::SyncResult>::finished, parent,
-                     [parent, watcher]() {
-                         const TestCaseSyncService::SyncResult result = watcher->result();
-                         if (result.ok) {
-                             QMessageBox::information(parent, QStringLiteral("用例上传"), result.message);
-                         } else {
-                             QMessageBox::warning(parent, QStringLiteral("用例上传"), result.message);
-                         }
-                         watcher->deleteLater();
-                     });
-    watcher->setFuture(QtConcurrent::run([]() { return TestCaseSyncService::uploadToCloud(); }));
-}
-
-void startTestCaseSync(QWidget* parent) {
-    const auto answer = QMessageBox::question(
-        parent, QStringLiteral("更新测试用例"),
-        QStringLiteral("将从云端下载最新测试用例并覆盖本地 test_case 目录。\n\n确认更新？"));
-    if (answer != QMessageBox::Yes) {
-        return;
-    }
-
-    auto* watcher = new QFutureWatcher<TestCaseSyncService::SyncResult>(parent);
-    QObject::connect(watcher, &QFutureWatcher<TestCaseSyncService::SyncResult>::finished, parent,
-                     [parent, watcher]() {
-                         const TestCaseSyncService::SyncResult result = watcher->result();
-                         if (result.ok) {
-                             QMessageBox::information(parent, QStringLiteral("更新测试用例"), result.message);
-                         } else {
-                             QMessageBox::warning(parent, QStringLiteral("更新测试用例"), result.message);
-                         }
-                         watcher->deleteLater();
-                     });
-    watcher->setFuture(QtConcurrent::run([]() { return TestCaseSyncService::syncFromCloud(); }));
-}
 
 void startLogUpload(QWidget* parent) {
     if (!LogUploadService::isUploadEnabled()) {
@@ -116,14 +70,6 @@ QMenu* AppHelpMenu::install(QMenuBar* menuBar, QWidget* dialogParent, const Host
     });
 
     helpMenu->addSeparator();
-
-    QAction* syncCase = helpMenu->addAction(QStringLiteral("更新测试用例"));
-    QObject::connect(syncCase, &QAction::triggered, dialogParent,
-                     [dialogParent]() { startTestCaseSync(dialogParent); });
-
-    QAction* uploadCase = helpMenu->addAction(QStringLiteral("上传测试用例"));
-    QObject::connect(uploadCase, &QAction::triggered, dialogParent,
-                     [dialogParent]() { startTestCaseUpload(dialogParent); });
 
     QAction* uploadLog = helpMenu->addAction(QStringLiteral("上传日志"));
     QObject::connect(uploadLog, &QAction::triggered, dialogParent,

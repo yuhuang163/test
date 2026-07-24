@@ -313,6 +313,8 @@ static const Row kSettings[] = {
     TIP("label_mes_config_file_path", "仅 BYD：外部 MES 配置文件路径。"),
     TIP("comboBox_testFlowStation",
         "TestOrderMeta/SelectedStation（local.ini）；按 Mes/Product_Name 过滤工站，编排 test_case 流程。"),
+    TIP("pushButton_testFlowDownloadCase", "从云端下载已发布正式工站用例（可选本工站或其他工站）。"),
+    TIP("pushButton_testFlowUploadCase", "上传当前选中工站用例到云端草稿（需网页合入并发布）。"),
     TIP("pushButton_testFlowClear", "清空当前工站已配置测试流程。"),
     TIP("comboBox_systemProtocolType", "设备协议 qpb / qfctp / qaiot / qroot（吸奶器 PCBA，经蓝牙透传）。"),
     TIP("comboBox_tupleEnvironment", "三元组环境预设。"),

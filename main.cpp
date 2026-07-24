@@ -20,6 +20,7 @@
 #include "qlog.h"
 #include "login_dialog.h"
 #include "auth_service.h"
+#include "test_case_sync_service.h"
 #include "key_test_box.h"
 #include "qfreeworkbox.h"
 #include "quiescent_current_box.h"
@@ -129,6 +130,9 @@ int main(int argc, char* argv[]) {
             }
         }
     }
+
+    // 登录后启动心跳/命令轮询，供网页拉取产线工站用例
+    TestCaseSyncService::startDeviceAgent();
 
     int exitCode = 0;
     do {

@@ -21,6 +21,7 @@ struct FactoryCloudEnvPreset {
 const QVector<FactoryCloudEnvPreset> kFactoryCloudEnvPresets = {
     {QStringLiteral("local"), QStringLiteral("http://fctp-test.luteos.site")},
     {QStringLiteral("prod"), QStringLiteral("https://fctp.luteos.com")},
+    {QStringLiteral("custom"), QStringLiteral("http://127.0.0.1:8800")}, // 本机 factory-api
 };
 
 int envIndexForKey(QComboBox* combo, const QString& key) {
@@ -74,7 +75,7 @@ void FactoryCloudEnv::populateEnvironmentCombo(QComboBox* combo) {
     }
     combo->clear();
     combo->addItem(QStringLiteral("测试环境"), QStringLiteral("local"));
-    combo->addItem(QStringLiteral("服务器"), QStringLiteral("prod"));
+    combo->addItem(QStringLiteral("生产环境"), QStringLiteral("prod"));
     combo->addItem(QStringLiteral("自定义"), customEnvKey());
 }
 
@@ -92,7 +93,7 @@ void FactoryCloudEnv::applyEnvironmentSelection(QComboBox* envCombo, QLineEdit* 
     }
     const QString key = envCombo->currentData().toString();
     updateBaseUrlEditEnabled(envCombo, baseUrlEdit);
-    if (key == customEnvKey() || key.isEmpty()) {
+    if (key.isEmpty()) {
         return;
     }
     const QString url = baseUrlForKey(key);
@@ -105,18 +106,26 @@ void FactoryCloudEnv::loadToWidgets(QComboBox* envCombo, QLineEdit* baseUrlEdit)
     if (!envCombo || !baseUrlEdit) {
         return;
     }
+    // 未配置时默认生产环境
     const QString savedUrl =
         SETTINGS.value(QStringLiteral("FactoryCloud/BaseUrl"), baseUrlForKey(QStringLiteral("prod"))).toString();
     baseUrlEdit->setText(savedUrl);
 
     QSignalBlocker blocker(envCombo);
-    QString envKey = SETTINGS.value(QStringLiteral("FactoryCloud/Environment")).toString().trimmed();
+    QString envKey = SETTINGS.value(QStringLiteral("FactoryCloud/Environment"), QStringLiteral("prod")).toString().trimmed();
     int idx = envKey.isEmpty() ? -1 : envIndexForKey(envCombo, envKey);
     if (idx < 0) {
         idx = envIndexForUrl(envCombo, savedUrl);
     }
     if (idx < 0) {
-        idx = envCombo->count() - 1;
+        // 非预设地址视为自定义；若尚未填 URL 则用自定义默认
+        idx = envIndexForKey(envCombo, customEnvKey());
+        if (idx < 0) {
+            idx = envCombo->count() - 1;
+        }
+        if (normalizeBaseUrl(savedUrl).isEmpty()) {
+            baseUrlEdit->setText(baseUrlForKey(customEnvKey()));
+        }
     }
     envCombo->setCurrentIndex(idx);
     updateBaseUrlEditEnabled(envCombo, baseUrlEdit);

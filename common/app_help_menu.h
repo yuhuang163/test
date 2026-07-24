@@ -7,7 +7,7 @@ class QMenu;
 class QMenuBar;
 class QWidget;
 
-/** 上位机统一「帮助」菜单：切换账号 / 更新·上传用例 / 上传日志 / 检查更新，并保证菜单在最右侧。 */
+/** 上位机统一「帮助」菜单：切换账号 / 上传日志 / 检查更新，并保证菜单在最右侧。 */
 class AppHelpMenu {
   public:
     struct HostCallbacks {
