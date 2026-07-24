@@ -431,9 +431,6 @@ TestCaseSyncService::SyncResult TestCaseSyncService::uploadStationProfile(const 
 
     const QString remoteProfileVersion = api.data.value(QStringLiteral("profileVersion")).toString().trimmed();
     const int fileCount = api.data.value(QStringLiteral("fileCount")).toInt(0);
-    SETTINGS.setValue(QStringLiteral("FactoryCloud/TestCaseProfileVersion/%1").arg(key),
-                      remoteProfileVersion.isEmpty() ? QString::number(profileVersion) : remoteProfileVersion);
-    SETTINGS.sync();
 
     result.ok = true;
     result.stationKey = key;
@@ -581,11 +578,6 @@ TestCaseSyncService::SyncResult TestCaseSyncService::syncStationFromCloud(const 
     // 是否最新：比文件 sha256，不比各电脑可能撞车的 ProfileVersion 数字
     const QJsonArray remoteFiles = manifest.data.value(QStringLiteral("files")).toArray();
     if (localProfileMatchesRemoteFiles(TestCasePaths::profileDir(key), remoteFiles)) {
-        if (!remoteProfileVersion.isEmpty()) {
-            SETTINGS.setValue(QStringLiteral("FactoryCloud/TestCaseProfileVersion/%1").arg(key),
-                              remoteProfileVersion);
-            SETTINGS.sync();
-        }
         result.ok = true;
         result.stationKey = key;
         result.profileVersion = remoteProfileVersion;
@@ -653,15 +645,11 @@ TestCaseSyncService::SyncResult TestCaseSyncService::syncStationFromCloud(const 
     count = deployed.size();
     QDir(extractRoot).removeRecursively();
 
-    if (!remoteProfileVersion.isEmpty()) {
-        SETTINGS.setValue(QStringLiteral("FactoryCloud/TestCaseProfileVersion/%1").arg(key),
-                          remoteProfileVersion);
-    }
     const QString bundleVersion = manifest.data.value(QStringLiteral("bundleVersion")).toString().trimmed();
     if (!bundleVersion.isEmpty()) {
         SETTINGS.setValue(QStringLiteral("FactoryCloud/TestCaseBundleVersion"), bundleVersion);
+        SETTINGS.sync();
     }
-    SETTINGS.sync();
     TestCaseStore::invalidateCloudItemNameCache();
 
     result.ok = true;

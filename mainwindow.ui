@@ -492,7 +492,7 @@
                <bool>true</bool>
               </property>
               <property name="currentIndex">
-               <number>0</number>
+               <number>6</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -3673,7 +3673,7 @@
                      <double>1.000000000000000</double>
                     </property>
                     <property name="value">
-                     <double>0.000000000000000</double>
+                     <double>5.000000000000000</double>
                     </property>
                    </widget>
                   </item>

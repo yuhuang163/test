@@ -197,7 +197,7 @@ class MainWindow : public QMainWindow {
     void updateDongleSuctionPeakMonitorLabels();
     bool startDongleSuctionCsvLog();
     void stopDongleSuctionCsvLog();
-    void writeDongleSuctionCsvRow(double tSec, double ch1Kpa, double ch2Kpa, double ch3Kpa, const QString& event);
+    void writeDongleSuctionCsvRow(double tSec, double ch1Kpa, double ch2Kpa, double ch3Kpa);
     static constexpr double kDongleSuctionChartWindowSec = 10.0;
     static constexpr int kDongleSuctionChannelCount = 3;
     bool dongleSuctionReadEnabled_ = false;

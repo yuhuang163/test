@@ -5033,7 +5033,7 @@ void MainWindow::updateDongleSuctionPeakMonitor(double ch1Kpa, double ch2Kpa, do
 bool MainWindow::startDongleSuctionCsvLog() {
     stopDongleSuctionCsvLog();
 
-    const QString relDir = QStringLiteral("所有log/dongle吸力log");
+    const QString relDir = QStringLiteral("吸力测试数据");
     if (!CommonUtils::ensureLogDirectory(relDir)) {
         showlog(QStringLiteral("无法创建 Dongle 吸力 CSV 目录：%1").arg(relDir));
         return false;
@@ -5052,7 +5052,8 @@ bool MainWindow::startDongleSuctionCsvLog() {
 
     dongleSuctionCsvStream_.setDevice(&dongleSuctionCsvFile_);
     dongleSuctionCsvStream_.setCodec("UTF-8");
-    dongleSuctionCsvStream_ << QStringLiteral("time_s,ch1_kpa,ch2_kpa,ch3_kpa,event\r\n");
+    // QTextStream 在 Windows 会把 \n 转成 \r\n，勿再手写 \r\n，否则变成 \r\r\n 空行
+    dongleSuctionCsvStream_ << QStringLiteral("time_s,ch1_kpa,ch2_kpa,ch3_kpa\n");
     dongleSuctionCsvStream_.flush();
 
     if (ui->dongleSuctionCsvPathLabel)
@@ -5065,17 +5066,6 @@ void MainWindow::stopDongleSuctionCsvLog() {
     if (!dongleSuctionCsvFile_.isOpen())
         return;
 
-    dongleSuctionCsvStream_ << QStringLiteral("#summary,valid_ch1,miss_ch1,weak_ch1,valid_ch2,miss_ch2,weak_ch2,valid_ch3,"
-                                                "miss_ch3,weak_ch3\r\n");
-    dongleSuctionCsvStream_ << QStringLiteral("#");
-    for (int i = 0; i < kDongleSuctionChannelCount; ++i) {
-        const auto& m = dongleSuctionPeakMonitors_[i];
-        dongleSuctionCsvStream_ << m.validPeakCount << QLatin1Char(',') << m.missedPeakCount << QLatin1Char(',')
-                                << m.weakPeakCount;
-        if (i + 1 < kDongleSuctionChannelCount)
-            dongleSuctionCsvStream_ << QLatin1Char(',');
-    }
-    dongleSuctionCsvStream_ << QStringLiteral("\r\n\r\n");
     dongleSuctionCsvStream_.flush();
     dongleSuctionCsvFile_.close();
     dongleSuctionCsvStream_.setDevice(nullptr);
@@ -5085,14 +5075,12 @@ void MainWindow::stopDongleSuctionCsvLog() {
         ui->dongleSuctionCsvPathLabel->setText(QStringLiteral("CSV 已保存：%1").arg(dongleSuctionCsvPath_));
 }
 
-void MainWindow::writeDongleSuctionCsvRow(double tSec, double ch1Kpa, double ch2Kpa, double ch3Kpa,
-                                          const QString& event) {
+void MainWindow::writeDongleSuctionCsvRow(double tSec, double ch1Kpa, double ch2Kpa, double ch3Kpa) {
     if (!dongleSuctionCsvFile_.isOpen())
         return;
     dongleSuctionCsvStream_ << QString::number(tSec, 'f', 3) << QLatin1Char(',') << QString::number(ch1Kpa, 'f', 3)
                               << QLatin1Char(',') << QString::number(ch2Kpa, 'f', 3) << QLatin1Char(',')
-                              << QString::number(ch3Kpa, 'f', 3) << QLatin1Char(',') << event
-                              << QStringLiteral("\r\n\r\n");
+                              << QString::number(ch3Kpa, 'f', 3) << QLatin1Char('\n');
     dongleSuctionCsvStream_.flush();
 }
 
@@ -5377,7 +5365,7 @@ void MainWindow::appendDongleSuctionChartSample(double ch1Kpa, double ch2Kpa, do
 
     QString peakEvent;
     updateDongleSuctionPeakMonitor(ch1Kpa, ch2Kpa, ch3Kpa, tSec, peakEvent);
-    writeDongleSuctionCsvRow(tSec, ch1Kpa, ch2Kpa, ch3Kpa, peakEvent);
+    writeDongleSuctionCsvRow(tSec, ch1Kpa, ch2Kpa, ch3Kpa);
 
     if (ui->dongleSuctionLiveCh1Label)
         ui->dongleSuctionLiveCh1Label->setText(QStringLiteral("第一通道实时：%1 kPa").arg(ch1Kpa, 0, 'f', 3));
@@ -5402,6 +5390,7 @@ void MainWindow::on_dongle_suction_open_clicked() {
         QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("请先连接 Dongle 串口"));
         return;
     }
+
     loadDongleSuctionPeakSettings();
     setDongleSuctionPeakParamWidgetsEnabled(false);
     dongleSuctionReadEnabled_ = true;
@@ -5413,6 +5402,7 @@ void MainWindow::on_dongle_suction_open_clicked() {
     }
     // 开启前先设 OSR 档位，再 AT+SUCTION=1
     const int suctionOsr = ui->dongleSuctionOsrCombo ? (ui->dongleSuctionOsrCombo->currentIndex() + 1) : 4;
+    at->set(DongleCmd::BleDeviceLog, 0);
     at->set(DongleCmd::SetSuctionOsr, suctionOsr);
     at->set(DongleCmd::GetSuction, 1);
     showlog(QStringLiteral("已开启 Dongle 吸力读取（OSR档位 %1，峰目标 %2±%3 kPa，漏峰间隔>%4s）")
