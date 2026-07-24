@@ -45,7 +45,7 @@ DEFINES += ENABLE_STATION_PCBA_TEST=$$ENABLE_STATION_PCBA_TEST
 # 用Windows开发的弊端在内码中显现的再明显不过，首先要明白几个内码的问题，源代码的编码，执行程序的编码，运行环境的编码，这几个不一致都可能出错。
 # 首先最坑的是vc编译器，utf8的源文件不带bom它就当做本地编码，所以如果统一用utf8，必须保证源文件带bom。其次是qt用的utf8，要保证执行码也用utf8，vc必须cpp声明执行码为utf8，这些gcc全都不存在问题。
 # 另外如果是控制台程序，windows默认本地编码，凡是qt字符串输出都要用tolocal8bit，否则控制台输出也基本是乱码。好好理解源码，执行码，运行环境的编码的关系才能不出错。
-
+# Log File Highlighter 拓展看日志高亮
 # force utf-8 msvc output 不勾选
 # 默认编码utf-8
 # 总是删除with bom

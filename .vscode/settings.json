@@ -1,5 +1,68 @@
 {
+
     "files.encoding": "utf8",
+
     "files.eol": "\r\n",
-    "files.autoGuessEncoding": false
+
+    "files.autoGuessEncoding": false,
+
+    "files.associations": {
+
+        "*.log": "log"
+
+    },
+
+    "logFileHighlighter.customPatterns": [
+
+        {
+
+            "pattern": "\\[WRN\\]",
+
+            "foreground": "#f4ad42"
+
+        },
+
+        {
+
+            "pattern": "\\[DBG\\]",
+
+            "foreground": "#6a9955"
+
+        },
+
+        {
+
+            "pattern": "\\[UI\\]",
+
+            "foreground": "#569cd6"
+
+        },
+
+        {
+
+            "pattern": "\\[ERR\\]|\\[ERROR\\]",
+
+            "foreground": "#f44747"
+
+        },
+
+        {
+
+            "pattern": "失败|卡控失败|不通过|异常|超时",
+
+            "foreground": "#f44747"
+
+        },
+
+        {
+
+            "pattern": "通过|卡控通过|测试完成",
+
+            "foreground": "#4ec9b0"
+
+        }
+
+    ]
+
 }
+

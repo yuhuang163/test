@@ -138,7 +138,7 @@ QString dongleDailyRelativePath(int slot) {
 
 QString processBackgroundDailyFileName() {
     return QSysInfo::machineHostName() + QStringLiteral("_进程后台_") + CommonUtils::formatDateIso() +
-           QStringLiteral(".txt");
+           QStringLiteral(".log");
 }
 
 QString processBackgroundDailyRelativePath() {
@@ -166,9 +166,7 @@ void appendProcessBackgroundLog(const QString& line) {
     if (!CommonUtils::ensureLogDirectory(relDir)) {
         return;
     }
-    const QString fileName =
-        QSysInfo::machineHostName() + QStringLiteral("_进程后台_") + CommonUtils::formatDateIso() + QStringLiteral(".txt");
-    appendLineToFile(CommonUtils::joinPath(relDir, fileName), line, true);
+    appendLineToFile(CommonUtils::joinPath(relDir, processBackgroundDailyFileName()), line, true);
 }
 
 QString exportDailyLogSessionSlice(const QString& dailyAbsolutePath, const QString& outputRelPath,
@@ -405,7 +403,7 @@ void Qlog::beginSession(int slot, const QString& sn, const QString& mac, const Q
     const QString absDir = QDir(QCoreApplication::applicationDirPath()).filePath(relDir);
 
     const QString pendingName = state.startedAt.toString(QStringLiteral("yyyyMMdd_HHmmss")) + QLatin1Char('_') +
-                                state.traceCode + QStringLiteral("_PENDING.txt");
+                                state.traceCode + QStringLiteral("_PENDING.log");
     state.pendingAbsolutePath = resolveUniqueFilePath(absDir, pendingName);
 
     state.dongleDailyRelativePath = dongleDailyRelativePath(slot);
@@ -474,7 +472,7 @@ void Qlog::endSession(int slot, const QString& result) {
     appendLineToFile(state.pendingAbsolutePath, footer, false);
 
     const QString finalName = state.startedAt.toString(QStringLiteral("yyyyMMdd_HHmmss")) + QLatin1Char('_') +
-                              state.traceCode + QLatin1Char('_') + state.result + QStringLiteral(".txt");
+                              state.traceCode + QLatin1Char('_') + state.result + QStringLiteral(".log");
     const QString relDir = hostLogDirRelative(slot);
     const QString absDir = QDir(QCoreApplication::applicationDirPath()).filePath(relDir);
     const QString finalAbs = resolveUniqueFilePath(absDir, finalName);
@@ -599,7 +597,7 @@ void Qlog::handleQtMessage(QtMsgType type, const QMessageLogContext& context, co
     }
     const QString hostName = QSysInfo::machineHostName();
     const QString fileName = hostName + QStringLiteral("_上位机日志_") + fileNumber + QLatin1Char('_') +
-                             CommonUtils::formatDateIso() + QStringLiteral(".txt");
+                             CommonUtils::formatDateIso() + QStringLiteral(".log");
     appendLineToFile(CommonUtils::joinPath(folderName, fileName), message, true);
 }
 
@@ -624,7 +622,7 @@ void Qlog::saveBlackboxLog(const QByteArray& data) {
 
 void Qlog::saveOtaStressLog(const QString& msg) {
     const QString folderName = logRootRelative() + QStringLiteral("/ota升级压测/");
-    appendTextLog(folderName, QStringLiteral("ota升级log.txt"), msg, false);
+    appendTextLog(folderName, QStringLiteral("ota升级log.log"), msg, false);
 }
 
 QString Qlog::exportDongleSessionSlice(const QlogSessionInfo& info, QString* error) {
@@ -648,7 +646,7 @@ QString Qlog::exportProcessBackgroundSessionSlice(const QlogSessionInfo& info, Q
         }
         return {};
     }
-    const QString outName = sessionFileStem(info) + QStringLiteral("_backend.txt");
+    const QString outName = sessionFileStem(info) + QStringLiteral("_backend.log");
     const QString outRel = logRootRelative() + QStringLiteral("/上位机log/进程后台/") + outName;
     return exportDailyLogSessionSlice(info.processBackgroundDailyAbsolutePath, outRel, info,
                                       info.processBackgroundOffsetStart, info.processBackgroundOffsetEnd, error);
