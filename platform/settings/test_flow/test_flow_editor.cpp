@@ -3,6 +3,7 @@
 #include "test_case.h"
 #include "test_case_edit_dialog.h"
 #include "test_case_sync_service.h"
+#include "box_base.h"
 
 #include "Abini.h"
 
@@ -1100,6 +1101,8 @@ void TestFlowEditor::persistSelectedStation(const QString& key) {
 
     const QString displayName = TestCaseStore::flowStationDisplayName(resolved);
     TestCaseStore::saveSelectedFlowStation(resolved, displayName);
+    // 已打开的自由工站立即刷新 Tab / 串口显隐，避免要等点「开始测试」才生效
+    box_base::refreshFlowUiOnAllFreeWork();
 }
 
 bool TestFlowEditor::saveStationFlow(const QString& stationKey) {

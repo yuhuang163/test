@@ -85,6 +85,9 @@ class TestCaseStore {
     static QVector<TestFlowItemEntry> loadStationFailFlowItems(const QString& stationKey);
     /** 工站级：任一步测试失败是否结束整单流程（默认 true）；为 true 时会接着跑 FailItems */
     static bool loadStationStopFlowOnTestFail(const QString& stationKey, bool defaultValue = true);
+    /** 工站 flow.ini [SerialUi]：治具/产品/万用表串口显隐与显示名 */
+    static TestCaseSerialUiConfig loadStationSerialUiConfig(const QString& stationKey);
+    static bool saveStationSerialUiConfig(const QString& stationKey, const TestCaseSerialUiConfig& config);
     static bool saveStationFlowItems(const QString& stationKey, const QVector<TestFlowItemEntry>& items,
                                      bool stopFlowOnTestFail = true);
     static bool saveStationFlowItems(const QString& stationKey, const QVector<TestFlowItemEntry>& items,

@@ -92,6 +92,32 @@ void QFreeWork::updateTuplePositionUiVisible() {
         resetTuplePositionHighlight();
 }
 
+void QFreeWork::applyStationSerialUiConfig() {
+    const TestCaseSerialUiConfig cfg = TestCaseStore::loadStationSerialUiConfig(activeFlowStationKey_);
+    auto centeredLabel = [](const QString& text) {
+        return QStringLiteral("<html><head/><body><p align=\"center\">%1</p></body></html>")
+            .arg(text.toHtmlEscaped());
+    };
+
+    ui->label_8->setText(centeredLabel(cfg.jigLabel));
+    ui->label_8->setVisible(cfg.jigVisible);
+    ui->jigComNameCombo->setVisible(cfg.jigVisible);
+    ui->jigConnectButton->setVisible(cfg.jigVisible);
+    ui->jigDisconnectButton->setVisible(cfg.jigVisible);
+
+    ui->label_productInst->setText(centeredLabel(cfg.productLabel));
+    ui->label_productInst->setVisible(cfg.productVisible);
+    ui->productComNameCombo->setVisible(cfg.productVisible);
+    ui->productConnectButton->setVisible(cfg.productVisible);
+    ui->productDisconnectButton->setVisible(cfg.productVisible);
+
+    ui->label_7->setText(centeredLabel(cfg.usbLabel));
+    ui->label_7->setVisible(cfg.usbVisible);
+    ui->usbcomNameCombo->setVisible(cfg.usbVisible);
+    ui->usbconnectButton->setVisible(cfg.usbVisible);
+    ui->usbdisconnectButton->setVisible(cfg.usbVisible);
+}
+
 void QFreeWork::updateTuplePositionHighlight(const QString& position) {
     resetTuplePositionHighlight();
     QLabel* target = nullptr;

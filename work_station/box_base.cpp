@@ -512,6 +512,20 @@ bool box_base::tryRunSingleTestCaseStepOnAnyFreeWork(const QString& stationKey, 
     return false;
 }
 
+void box_base::refreshFlowUiOnAllFreeWork() {
+    for (QWidget* w : QApplication::topLevelWidgets()) {
+        auto* box = qobject_cast<box_base*>(w);
+        if (!box)
+            continue;
+        for (test_base* t : box->testList) {
+            auto* fw = qobject_cast<QFreeWork*>(t);
+            if (!fw)
+                continue;
+            fw->refreshStationFlowUi();
+        }
+    }
+}
+
 void box_base::loginMes() {
     pack.factory = SETTINGS.value("Mes/FACTORY", "xwd").toString();
     pack.machineNo = SETTINGS.value("Mes/M_MACHINENO").toString();

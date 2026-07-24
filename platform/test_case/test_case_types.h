@@ -115,4 +115,14 @@ struct TestFlowStationEntry {
     QString displayName;
 };
 
+/** 工站 flow.ini [SerialUi]：工位界面三路串口是否显示及标签文案 */
+struct TestCaseSerialUiConfig {
+    bool jigVisible = true;
+    bool productVisible = true;
+    bool usbVisible = true;
+    QString jigLabel = QStringLiteral("治具串口");
+    QString productLabel = QStringLiteral("产品串口(仪器)");
+    QString usbLabel = QStringLiteral("万用表串口");
+};
+
 #endif // PLATFORM_TEST_CASE_TYPES_H

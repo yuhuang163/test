@@ -50,6 +50,8 @@ class QFreeWork : public test_base {
      * @return false 时 errorOut 为原因（如正在测试中、步骤不存在）
      */
     bool runSingleTestCaseStep(const QString& stationKey, const QString& caseName, QString* errorOut = nullptr);
+    /** 设置页切换工站后：重载有序步骤与串口显隐（含 applyStationSerialUiConfig） */
+    void refreshStationFlowUi() { refreshOrderedTestIndexes(); }
 
     Ui::QFreeWork* ui;
 
@@ -293,6 +295,8 @@ class QFreeWork : public test_base {
     void updateTuplePositionHighlight(const QString& position);
     /** 当前流程含「获取云端三元组」(ApplyTupleByMac) 时才显示三元组位置行 */
     void updateTuplePositionUiVisible();
+    /** 按当前工站 flow.ini [SerialUi] 刷新治具/产品/万用表串口行显隐与标签 */
+    void applyStationSerialUiConfig();
     void reportBydSfcKey(const QString& dataName, const QVariant& dataValue, int qty = 1);
     void reportBydBluetoothMesKeyMaterials();
     bool failTupleWriteIfNoValidField(const QString& stepName, bool fieldOk, const QString& emptyReason);

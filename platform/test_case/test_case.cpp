@@ -2122,6 +2122,83 @@ bool TestCaseStore::loadStationStopFlowOnTestFail(const QString& stationKey, boo
     return result;
 }
 
+namespace {
+
+void readSerialUiFieldsFromGroup(QSettings& ini, TestCaseSerialUiConfig& out) {
+    if (ini.contains(QStringLiteral("JigVisible")))
+        out.jigVisible = ini.value(QStringLiteral("JigVisible"), true).toBool();
+    if (ini.contains(QStringLiteral("ProductVisible")))
+        out.productVisible = ini.value(QStringLiteral("ProductVisible"), true).toBool();
+    if (ini.contains(QStringLiteral("UsbVisible")))
+        out.usbVisible = ini.value(QStringLiteral("UsbVisible"), true).toBool();
+    const QString jigLabel = ini.value(QStringLiteral("JigLabel")).toString().trimmed();
+    if (!jigLabel.isEmpty())
+        out.jigLabel = jigLabel;
+    const QString productLabel = ini.value(QStringLiteral("ProductLabel")).toString().trimmed();
+    if (!productLabel.isEmpty())
+        out.productLabel = productLabel;
+    const QString usbLabel = ini.value(QStringLiteral("UsbLabel")).toString().trimmed();
+    if (!usbLabel.isEmpty())
+        out.usbLabel = usbLabel;
+}
+
+} // namespace
+
+TestCaseSerialUiConfig TestCaseStore::loadStationSerialUiConfig(const QString& stationKey) {
+    TestCaseSerialUiConfig out;
+    TestCasePaths::ensureRootDir();
+    ensureFilesystemLayout();
+    const QString key = stationKey.trimmed();
+    if (key.isEmpty())
+        return out;
+
+    const QString profileFlow = TestCasePaths::profileFlowPath(key);
+    if (QFile::exists(profileFlow)) {
+        QSettings profileIni(profileFlow, QSettings::IniFormat);
+        applyTestCaseIniCodec(profileIni);
+        profileIni.beginGroup(QStringLiteral("SerialUi"));
+        readSerialUiFieldsFromGroup(profileIni, out);
+        profileIni.endGroup();
+        return out;
+    }
+
+    QSettings ini(TestCasePaths::flowIniPath(), QSettings::IniFormat);
+    applyTestCaseIniCodec(ini);
+    ini.beginGroup(stationGroup(key));
+    // 旧总流程 ini 可能嵌在 Station/xxx 下；若有 SerialUi 子组则读子组
+    if (ini.childGroups().contains(QStringLiteral("SerialUi"))) {
+        ini.beginGroup(QStringLiteral("SerialUi"));
+        readSerialUiFieldsFromGroup(ini, out);
+        ini.endGroup();
+    } else {
+        readSerialUiFieldsFromGroup(ini, out);
+    }
+    ini.endGroup();
+    return out;
+}
+
+bool TestCaseStore::saveStationSerialUiConfig(const QString& stationKey, const TestCaseSerialUiConfig& config) {
+    TestCasePaths::ensureRootDir();
+    const QString key = stationKey.trimmed();
+    if (key.isEmpty())
+        return false;
+    ensureProfileDirectory(key, flowStationDisplayName(key), QString());
+
+    const QString profileFlow = TestCasePaths::profileFlowPath(key);
+    QSettings profileIni(profileFlow, QSettings::IniFormat);
+    applyTestCaseIniCodec(profileIni);
+    profileIni.beginGroup(QStringLiteral("SerialUi"));
+    profileIni.setValue(QStringLiteral("JigVisible"), config.jigVisible);
+    profileIni.setValue(QStringLiteral("ProductVisible"), config.productVisible);
+    profileIni.setValue(QStringLiteral("UsbVisible"), config.usbVisible);
+    profileIni.setValue(QStringLiteral("JigLabel"), config.jigLabel);
+    profileIni.setValue(QStringLiteral("ProductLabel"), config.productLabel);
+    profileIni.setValue(QStringLiteral("UsbLabel"), config.usbLabel);
+    profileIni.endGroup();
+    syncTestCaseIni(profileIni, profileFlow);
+    return true;
+}
+
 QVector<TestFlowItemEntry> TestCaseStore::loadStationFlowItems(const QString& stationKey) {
     TestCasePaths::ensureRootDir();
     ensureFilesystemLayout();

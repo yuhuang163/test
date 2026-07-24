@@ -296,6 +296,7 @@ void QFreeWork::refreshOrderedTestIndexes() {
         showlog(QStringLiteral("未找到测试流程文件，请在设置页「测试流程编排」中配置"));
         qDebug() << "[FreeWork] flow ini missing:" << TestCasePaths::flowIniPath();
         updateTuplePositionUiVisible();
+        applyStationSerialUiConfig();
         return;
     }
 
@@ -324,6 +325,7 @@ void QFreeWork::refreshOrderedTestIndexes() {
                  << ", failItems =" << orderedFailCaseNames_;
     }
     updateTuplePositionUiVisible();
+    applyStationSerialUiConfig();
 }
 
 bool QFreeWork::currentOrderedStepIsDongleBleConnect() const {

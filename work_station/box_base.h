@@ -57,6 +57,8 @@ class box_base : public QMainWindow {
     /** 在已打开的自由工站窗口上单步运行功能块；找不到窗口时返回 false */
     static bool tryRunSingleTestCaseStepOnAnyFreeWork(const QString& stationKey, const QString& caseName,
                                                       QString* errorOut = nullptr);
+    /** 设置页切换/保存工站后：刷新已打开自由工站的流程 Tab 与串口显隐 */
+    static void refreshFlowUiOnAllFreeWork();
 
     QList<test_base*> testList;
     MesPacketData pack;
