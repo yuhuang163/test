@@ -2295,9 +2295,12 @@ bool TestCaseValidator::validateCase(const TestCaseDefinition& def, QStringList&
     if (def.meta.mesTag.trimmed().isEmpty())
         errors.append(QStringLiteral("「上报MES的字段」不能为空（测试项信息）"));
 
+    // 纯空白提醒 / 仅等 Gate 上报：可不填测试指令
     const bool promptOnlyStep = def.meta.promptEnabled && def.meta.promptOnly && !def.hook.enabled;
-    if (promptOnlyStep) {
-        // 纯空白提醒：不校验 / 不要求测试指令
+    const bool gateWaitOnlyStep =
+        !def.hook.enabled && def.meta.promptOnly && def.gate.enabled && def.send.deviceCmd.trimmed().isEmpty();
+    if (promptOnlyStep || gateWaitOnlyStep) {
+        // 不校验 / 不要求测试指令
     } else if (def.send.deviceCmd.isEmpty()) {
         errors.append(QStringLiteral("请选择测试指令"));
     } else if (def.send.channel == TestCaseSendChannel::Dongle) {
@@ -4236,6 +4239,20 @@ QString fieldStringFromVariant(const QString& reportType, const QString& field, 
             ok = true;
             return QString::number(d.pd_ic_state);
         }
+    } else if (reportType == QLatin1String("ProtocolButtonStateData")) {
+        const auto d = payload.value<ProtocolButtonStateData>();
+        if (field == QLatin1String("modeButtonState")) {
+            ok = true;
+            return QString::number(d.modeButtonState);
+        }
+        if (field == QLatin1String("powerButtonState")) {
+            ok = true;
+            return QString::number(d.powerButtonState);
+        }
+        if (field == QLatin1String("keyButtonId")) {
+            ok = true;
+            return QString::number(d.keyButtonId);
+        }
     } else if (reportType == QLatin1String("ProtocolMeasureData")) {
         const auto d = payload.value<ProtocolMeasureData>();
         if (field == QLatin1String("value")) {
@@ -4504,42 +4521,111 @@ void GateRegistry::resolveRangeBounds(const TestCaseGate& gate, double& lowOut, 
         highOut = SETTINGS.value(gate.highSettingsKey, highOut).toDouble();
 }
 
-QString GateRegistry::formatGateAsk(const TestCaseGate& gate, const QString& reportType) {
-    Q_UNUSED(reportType);
+namespace {
+
+QString withDisplayUnit(const QString& text, const QString& unit) {
+    const QString t = text.trimmed();
+    const QString u = unit.trimmed();
+    if (t.isEmpty() || u.isEmpty() || t == QLatin1String("-") || t == QLatin1String("通过")
+        || t == QLatin1String("失败"))
+        return text;
+    if (t.endsWith(u) && (t.size() == u.size() || t.at(t.size() - u.size() - 1).isSpace()
+                          || !t.at(t.size() - u.size() - 1).isLetterOrNumber()))
+        return text;
+    return t + QLatin1Char(' ') + u;
+}
+
+QString defaultUnitForField(const QString& reportType, const QString& field) {
+    if (reportType == QLatin1String("ProtocolRssiData") && field == QLatin1String("dbm"))
+        return QStringLiteral("dBm");
+    if (reportType == QLatin1String("ProtocolBatteryData")) {
+        if (field == QLatin1String("percent"))
+            return QStringLiteral("%");
+        if (field == QLatin1String("voltageMv"))
+            return QStringLiteral("mV");
+    }
+    if (reportType == QLatin1String("ProtocolChargeCurrentData") && field == QLatin1String("currentMa"))
+        return QStringLiteral("mA");
+    if (reportType == QLatin1String("ProtocolFixturePcbaData")) {
+        if (field == QLatin1String("staticCurrent") || field == QLatin1String("standbyCurrentUa"))
+            return QStringLiteral("uA");
+        if (field == QLatin1String("workingCurrent") || field == QLatin1String("chargingCurrent")
+            || field == QLatin1String("musicCurrent"))
+            return QStringLiteral("mA");
+        if (field == QLatin1String("pumpVoltageMv") || field == QLatin1String("mcuVoltageMv")
+            || field == QLatin1String("valveVoltageMv"))
+            return QStringLiteral("mV");
+    }
+    if (reportType == QLatin1String("ProtocolJieliBtBoxData")) {
+        if (field == QLatin1String("rssi"))
+            return QStringLiteral("dBm");
+        if (field == QLatin1String("freqOffset"))
+            return QStringLiteral("Hz");
+    }
+    if (reportType == QLatin1String("ProtocolDongleSuctionData")
+        || reportType == QLatin1String("ProtocolDongleSuctionPeakData")) {
+        if (field.endsWith(QLatin1String("Kpa")) || field.endsWith(QLatin1String("kPa")))
+            return QStringLiteral("kPa");
+    }
+    if ((reportType == QLatin1String("ProtocolBatteryTempData")
+         || reportType == QLatin1String("ProtocolHeatTempData"))
+        && field == QLatin1String("type"))
+        return QString::fromUtf8("℃");
+    if (reportType == QLatin1String("ProtocolAgingStatusData") && field == QLatin1String("seconds"))
+        return QStringLiteral("s");
+    return {};
+}
+
+} // namespace
+
+QString GateRegistry::unitFor(const QString& reportType, const QString& field, const QVariant& payload) {
+    if (reportType == QLatin1String("ProtocolMeasureData") && payload.canConvert<ProtocolMeasureData>()) {
+        const QString runtimeUnit = payload.value<ProtocolMeasureData>().unit.trimmed();
+        if (!runtimeUnit.isEmpty())
+            return runtimeUnit;
+    }
+    return defaultUnitForField(reportType, field);
+}
+
+QString GateRegistry::formatGateAsk(const TestCaseGate& gate, const QString& reportType, const QVariant& payload) {
+    QString ask;
     if (gate.op == TestCaseGateOp::Range) {
         double low = gate.low;
         double high = gate.high;
         resolveRangeBounds(gate, low, high);
-        return QStringLiteral("[%1,%2]").arg(low).arg(high);
+        ask = QStringLiteral("[%1,%2]").arg(low).arg(high);
+    } else if (gate.op == TestCaseGateOp::Gt) {
+        ask = QStringLiteral(">%1").arg(gate.low);
+    } else if (gate.op == TestCaseGateOp::Lt) {
+        ask = QStringLiteral("<%1").arg(gate.high);
+    } else {
+        ask = gate.expected.trimmed();
     }
-    if (gate.op == TestCaseGateOp::Gt)
-        return QStringLiteral(">%1").arg(gate.low);
-    if (gate.op == TestCaseGateOp::Lt)
-        return QStringLiteral("<%1").arg(gate.high);
-    if (gate.op == TestCaseGateOp::Eq || gate.op == TestCaseGateOp::CompareVersions)
-        return gate.expected.trimmed();
-    return gate.expected.trimmed();
+    return withDisplayUnit(ask, unitFor(reportType, gate.field, payload));
 }
 
-QString GateRegistry::formatMultiFieldAsk(const QVector<TestCaseGate>& gates, const QString& reportType) {
+QString GateRegistry::formatMultiFieldAsk(const QVector<TestCaseGate>& gates, const QString& reportType,
+                                          const QVariant& payload) {
     QStringList expectedParts;
     expectedParts.reserve(gates.size());
     for (const TestCaseGate& g : gates) {
         const QString name = fieldDisplayName(reportType, g.field);
+        QString part;
         if (g.op == TestCaseGateOp::Range) {
             double low = g.low;
             double high = g.high;
             resolveRangeBounds(g, low, high);
-            expectedParts.append(QStringLiteral("%1=[%2,%3]").arg(name).arg(low).arg(high));
+            part = QStringLiteral("%1=[%2,%3]").arg(name).arg(low).arg(high);
         } else if (g.op == TestCaseGateOp::Eq) {
-            expectedParts.append(QStringLiteral("%1=%2").arg(name, g.expected));
+            part = QStringLiteral("%1=%2").arg(name, g.expected);
         } else if (g.op == TestCaseGateOp::Gt) {
-            expectedParts.append(QStringLiteral("%1>%2").arg(name).arg(g.low));
+            part = QStringLiteral("%1>%2").arg(name).arg(g.low);
         } else if (g.op == TestCaseGateOp::Lt) {
-            expectedParts.append(QStringLiteral("%1<%2").arg(name).arg(g.high));
+            part = QStringLiteral("%1<%2").arg(name).arg(g.high);
         } else {
-            expectedParts.append(QStringLiteral("%1:%2").arg(name, g.expected));
+            part = QStringLiteral("%1:%2").arg(name, g.expected);
         }
+        expectedParts.append(withDisplayUnit(part, unitFor(reportType, g.field, payload)));
     }
     return expectedParts.join(QLatin1Char(';'));
 }
@@ -4585,6 +4671,7 @@ GateStepDisplay GateRegistry::formatStepDisplay(const TestCaseGate& primaryGate,
                                                 const QString& reportType, const QVariant& payload,
                                                 bool multiFieldMode) {
     GateStepDisplay out;
+    const QString unit = unitFor(reportType, primaryGate.field, payload);
     if (reportType == QLatin1String("ProtocolFixturePcbaData") && payload.canConvert<FixturePacketData>()) {
         out.testData = fixturePacketSummary(payload.value<FixturePacketData>());
     } else if (reportType == QLatin1String("ProtocolPeriphStateData") && payload.canConvert<ProtocolPeriphStateData>()) {
@@ -4593,17 +4680,15 @@ GateStepDisplay GateRegistry::formatStepDisplay(const TestCaseGate& primaryGate,
                && primaryGate.field == QLatin1String("value")
                && payload.canConvert<ProtocolMeasureData>()) {
         const ProtocolMeasureData data = payload.value<ProtocolMeasureData>();
-        out.testData = QString::number(data.value);
-        if (!data.unit.trimmed().isEmpty())
-            out.testData += QStringLiteral(" ") + data.unit.trimmed();
+        out.testData = withDisplayUnit(QString::number(data.value), unit);
     } else {
-        out.testData = primaryFieldTestData(primaryGate, reportType, payload);
+        out.testData = withDisplayUnit(primaryFieldTestData(primaryGate, reportType, payload), unit);
     }
 
     if (multiFieldMode && allGates.size() > 1)
-        out.ask = formatMultiFieldAsk(allGates, reportType);
+        out.ask = formatMultiFieldAsk(allGates, reportType, payload);
     else
-        out.ask = formatGateAsk(primaryGate, reportType);
+        out.ask = formatGateAsk(primaryGate, reportType, payload);
     return out;
 }
 

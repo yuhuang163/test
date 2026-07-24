@@ -835,8 +835,11 @@ void QFreeWork::emitFixtureMultiGateTableRows(const QVector<TestCaseGate>& gates
         TestItem item;
         item.testItem =
             stepName + QLatin1Char('-') + GateRegistry::fieldDisplayName(reportType, ge.field);
+        const QString unit = GateRegistry::unitFor(reportType, ge.field, payload);
         item.testData = subDetail;
-        item.ask = GateRegistry::formatGateAsk(ge, reportType);
+        if (!unit.isEmpty() && !item.testData.endsWith(unit))
+            item.testData += QLatin1Char(' ') + unit;
+        item.ask = GateRegistry::formatGateAsk(ge, reportType, payload);
         item.testResult = subPass ? passValue : failValue;
         rows.append(item);
     }
@@ -1256,9 +1259,20 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
         return;
     }
 
-    // 纯空白提醒：只等操作员点「是」，不执行 Send；未勾选 PromptOnly 时提示后仍发指令
-    if (def.meta.promptOnly && TestCaseRunner::stepWaitsForPromptAck(def)) {
-        ctx->showlog(QStringLiteral("本步为纯空白提醒，确认后继续（不发送指令）"));
+    // 纯空白提醒 / 仅等 Gate 上报（如按键）：不执行 Send
+    if (def.meta.promptOnly) {
+        if (def.gate.enabled) {
+            const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+            ctx->showlog(QStringLiteral("本步等待协议上报卡控（不发送指令，超时 %1ms）").arg(timeoutMs));
+            QTimer::singleShot(timeoutMs, ctx, [ctx, def]() {
+                if (!ctx->isActiveTestCaseStep(def.meta.name) || ctx->isActiveTestCaseStepDone())
+                    return;
+                ctx->showlog(QStringLiteral("等待上报超时：%1").arg(TestCaseRunner::stepLabel(def)));
+                ctx->markActiveTestCaseStepDone(false, QStringLiteral("超时未收到匹配上报"), QStringLiteral("失败"));
+            });
+        } else {
+            ctx->showlog(QStringLiteral("本步为提示，确认后继续（不发送指令）"));
+        }
         return;
     }
 

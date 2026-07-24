@@ -361,10 +361,17 @@ class GateRegistry {
                             bool& passOut, QString& detailOut);
     /** 解析 range 卡控上下限（含 LowSettingsKey/HighSettingsKey）。 */
     static void resolveRangeBounds(const TestCaseGate& gate, double& lowOut, double& highOut);
-    /** 单项卡控的期望展示（范围/比较符/等值）。 */
-    static QString formatGateAsk(const TestCaseGate& gate, const QString& reportType);
-    /** 多项卡控合并期望展示。 */
-    static QString formatMultiFieldAsk(const QVector<TestCaseGate>& gates, const QString& reportType);
+    /**
+     * 界面/MES 用单位：优先 ProtocolMeasureData.unit，否则按 reportType+field 默认映射；
+     * 无物理单位的文本/状态字段返回空。
+     */
+    static QString unitFor(const QString& reportType, const QString& field, const QVariant& payload = QVariant());
+    /** 单项卡控的期望展示（范围/比较符/等值，末尾带单位）。 */
+    static QString formatGateAsk(const TestCaseGate& gate, const QString& reportType,
+                                 const QVariant& payload = QVariant());
+    /** 多项卡控合并期望展示（各项末尾带单位）。 */
+    static QString formatMultiFieldAsk(const QVector<TestCaseGate>& gates, const QString& reportType,
+                                       const QVariant& payload = QVariant());
     /** 从回包与主卡控项生成步骤 testData/ask（判定逻辑仍用 evaluate/evaluateAll）。 */
     static GateStepDisplay formatStepDisplay(const TestCaseGate& primaryGate, const QVector<TestCaseGate>& allGates,
                                              const QString& reportType, const QVariant& payload, bool multiFieldMode);

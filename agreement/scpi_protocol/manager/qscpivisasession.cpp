@@ -37,7 +37,8 @@ void QScpiVisaSession::closeConnection() {
 }
 
 bool QScpiVisaSession::writeLine(const QString& line) {
-    QByteArray payload = line.toLocal8Bit();
+    // SCPI 为 ASCII，用 Latin1 避免本地代码页干扰
+    QByteArray payload = line.toLatin1();
     if (!payload.endsWith('\n')) {
         payload.append('\n');
     }

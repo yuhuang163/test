@@ -156,7 +156,7 @@ void QFreeWork::onTestCaseStepMarkedDone(bool pass, const QString& testData, con
 void QFreeWork::appendTestCaseMes(const TestCaseDefinition& def, bool pass, const QString& testData) {
     const QString tag = def.meta.mesTag.trimmed().isEmpty() ? def.meta.name.trimmed() : def.meta.mesTag.trimmed();
     const bool hasData = !testData.trimmed().isEmpty() && testData != QStringLiteral("-");
-    const QString value = hasData ? testData : QString();
+    QString value = hasData ? testData.trimmed() : QString();
     const QString resultVal = pass ? QStringLiteral("PASS") : QStringLiteral("FAIL");
 
     QString maxVal, minVal, stdVal;
@@ -178,7 +178,29 @@ void QFreeWork::appendTestCaseMes(const TestCaseDefinition& def, bool pass, cons
             break;
         }
     }
-    appendOneMesStep(&freeWorkMesSegments_, tag, value, maxVal, minVal, stdVal, QString(), resultVal);
+    // MES VALUE 保持无单位；UNIT 单独上报（界面 testData 可能已带单位后缀）
+    QString unit = def.gate.enabled ? GateRegistry::unitFor(def.gate.reportType, def.gate.field) : QString();
+    if (!unit.isEmpty() && value.endsWith(unit)) {
+        value = value.left(value.size() - unit.size()).trimmed();
+    } else if (unit.isEmpty() && value.contains(QLatin1Char(' '))) {
+        // ProtocolMeasureData 等运行时单位：从「12.3 mA」拆出末段作为 UNIT
+        const int sp = value.lastIndexOf(QLatin1Char(' '));
+        if (sp > 0) {
+            const QString maybeUnit = value.mid(sp + 1).trimmed();
+            bool looksNumeric = !maybeUnit.isEmpty();
+            for (const QChar c : maybeUnit) {
+                if (!(c.isDigit() || c == QLatin1Char('.') || c == QLatin1Char('-') || c == QLatin1Char('+'))) {
+                    looksNumeric = false;
+                    break;
+                }
+            }
+            if (!maybeUnit.isEmpty() && !looksNumeric && maybeUnit.size() <= 8) {
+                unit = maybeUnit;
+                value = value.left(sp).trimmed();
+            }
+        }
+    }
+    appendOneMesStep(&freeWorkMesSegments_, tag, value, maxVal, minVal, stdVal, unit, resultVal);
 }
 
 #if _MSC_VER >= 1600
@@ -439,12 +461,9 @@ QString QFreeWork::resolvedWholeMachineSnText() const {
 
 void QFreeWork::setWholeMachineSn(const QString& sn) {
     wholeMachineSn_ = sn.trimmed();
-    // 三元组整机 SN 回填界面与 pack，后续写入/校验/上报统一用这份 SN
+    // 三元组整机 SN 只回填界面，供写入/校验；MES 过站 SFC 仍用开局过程码 mesProcessCode_
     if (ui && ui->getMac) {
         ui->getMac->setText(wholeMachineSn_);
-    }
-    if (!wholeMachineSn_.isEmpty()) {
-        pack.sn = wholeMachineSn_;
     }
 }
 
@@ -459,11 +478,18 @@ QByteArray QFreeWork::resolvedTailSnToWrite() const {
 void QFreeWork::runTestFlowBootstrap() {
     const QString sn = ui->getMac->text().trimmed();
     const QString mac = ui->macInput->text().trimmed();
+    // initData 会清成员；开局过程码须跨 init 保留，供 BYD Complete/SFC 使用
+    const QString processCode = !mesProcessCode_.isEmpty() ? mesProcessCode_ : sn;
     if (!sn.isEmpty() || !mac.isEmpty()) {
         onTestSessionStarting(sn, mac);
     }
     showlog(QStringLiteral("开始测试"));
     initData();
+    mesProcessCode_ = processCode.trimmed();
+    if (!mesProcessCode_.isEmpty()) {
+        pack.sn = mesProcessCode_;
+        showlog(QStringLiteral("MES 过站过程码已锁定：%1").arg(mesProcessCode_));
+    }
     singleStepDebugRun_ = false;
     suppressProductBleAutoReconnect_ = false;
     // 每次开始测试都重新读取配置，避免设置页调整后本页仍使用旧队列。
@@ -694,7 +720,14 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     const QString mesItemValue = joinFreeWorkMesItemvalue(freeWorkMesSegments_, TestResult, failValue);
     showlog(QStringLiteral("mesItemValue======") + mesItemValue);
     pack.itemvalue = mesItemValue;
-    pack.sn = ui->getMac->text().trimmed();
+    // BYD Complete/NcComplete 的 SFC 必须用开局过程码，禁止用界面上已被三元组改写的整机 SN
+    if (!mesProcessCode_.isEmpty()) {
+        pack.sn = mesProcessCode_;
+        showlog(QStringLiteral("MES 过站 SFC（过程码）=%1").arg(mesProcessCode_));
+    } else {
+        pack.sn = ui->getMac->text().trimmed();
+        showlog(QStringLiteral("MES 过站 SFC 回退界面 SN=%1（未记录过程码）").arg(pack.sn));
+    }
     pack.mac = ui->macInput->text().trimmed();
     pack.product = SETTINGS.value("Mes/Product_Name").toString();
     pack.instruct_num = QStringLiteral("079");
@@ -732,6 +765,7 @@ void QFreeWork::finalizeTestFlowIfComplete() {
         box->releaseSharedAsd9026aIfIdle();
     emit send_end_test(getIndex());
     ui->getMac->clear();
+    mesProcessCode_.clear();
 }
 
 void QFreeWork::startTask() {
@@ -1726,6 +1760,7 @@ void QFreeWork::initData() {
     ui->battary_voltage->setText("电压为:");
     deviceTailSnFromDevice = "";
     wholeMachineSn_.clear();
+    mesProcessCode_.clear();
     tupleData_ = TupleApplyResult{};
     QTupleService::clearSharedSession();
     resetTuplePositionHighlight();
@@ -1943,6 +1978,9 @@ void QFreeWork::on_getMac_returnPressed() {
         ui->getMac->clear();
         return;
     }
+    // 开局扫码即 MES 过程码（过站 SFC），后续 MES 主板 SN / 三元组整机 SN 不得覆盖此字段
+    mesProcessCode_ = ui->getMac->text().trimmed();
+    pack.sn = mesProcessCode_;
     showlog("正在查询mac地址");
     processGetMesTestValue(); // mes获取
     // getMac(ui->getMac->text());             // 文件获取
@@ -1956,7 +1994,8 @@ void QFreeWork::processInspection(QString inputSnText) {
     if (inputSnText != "" || !ui->isusemes->checkState()) {
         if (ui->isusemes->checkState()) {
             showlog("正在进行站前检测");
-            pack.sn = inputSnText;
+            // Start 的 SFC 同样用开局过程码（勿被后续界面改写影响）
+            pack.sn = !mesProcessCode_.isEmpty() ? mesProcessCode_ : inputSnText;
 
             pack.mechines = getIndex();
 
@@ -1993,13 +2032,13 @@ void QFreeWork::processGetMesTestValue() {
         return;
     }
     if (pack.factory == "hz") {
-        pack.sn = ui->getMac->text();
+        pack.sn = !mesProcessCode_.isEmpty() ? mesProcessCode_ : ui->getMac->text();
         pack.mechines = getIndex();
         getTestValue(getIndex(), pack.sn.trimmed());
         return;
     }
     if (ui->isformmes->checkState()) {
-        pack.sn = ui->getMac->text();
+        pack.sn = !mesProcessCode_.isEmpty() ? mesProcessCode_ : ui->getMac->text();
 
         pack.is_hq_send_mac = 1;
 
@@ -2257,7 +2296,8 @@ void QFreeWork::getTestValue(const int mechines, const QString value) {
         showlog(QStringLiteral("MES SN 解析 MAC 成功: ") + mesmacAddress);
         // on_macInput_returnPressed();
     } else if (pack.factory.trimmed().compare(QStringLiteral("byd"), Qt::CaseInsensitive) == 0) {
-        // BYD MES 回调为整机 SN（如主板绑定行的 value），与 on_getMac_returnPressed 一致用 parseMacFromSn 取蓝牙 MAC
+        // BYD：过程码换主板 SN 仅用于解析 MAC；界面 SN 框保持过程码，过站 SFC 用 mesProcessCode_
+        // （三元组整机 SN 仍由 setWholeMachineSn 回填界面，不在此处理）
         if (mechines != getIndex()) {
             return;
         }
@@ -2268,11 +2308,8 @@ void QFreeWork::getTestValue(const int mechines, const QString value) {
             showlog(value);
             return;
         }
-        // MES 返回整机 SN 回填界面，后续写入/校验统一读 ui->getMac
-        if (ui && ui->getMac)
-            ui->getMac->setText(snFromMes);
         ui->macInput->setText(mesmacAddress);
-        showlog(QStringLiteral("MES SN 解析 MAC 成功: ") + mesmacAddress);
+        showlog(QStringLiteral("MES 主板 SN 已解析 MAC（不回填界面 SN）：%1").arg(mesmacAddress));
         on_macInput_returnPressed();
     } else {
         if (mechines == getIndex()) {
@@ -2563,6 +2600,7 @@ void QFreeWork::on_stopTest_clicked() {
 
     ui->macInput->clear();
     ui->getMac->clear();
+    mesProcessCode_.clear();
     ui->getMac->setFocus();
     on_disconnectButton_clicked();
 }

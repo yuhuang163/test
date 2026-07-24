@@ -285,9 +285,9 @@ void QFreeWork::refreshBattaryData(ProtocolBatteryData adc) {
     const bool pass = (adc.percent >= standbattary);
     stepRuntime_.done = true;
     stepRuntime_.pass = pass;
-    // MES 与 RSSI 等一致：testData 仅 ASCII 数值，避免 itemvalue 出现「FAIL;电量:0%」
+    // MES：testData 仅 ASCII 数值；界面要求列带 %
     stepRuntime_.testData = QString::number(adc.percent);
-    stepRuntime_.ask = QStringLiteral("[%1,100]").arg(static_cast<int>(standbattary));
+    stepRuntime_.ask = QStringLiteral("[%1,100] %").arg(static_cast<int>(standbattary));
     if (!pass) {
         TestResult = failValue;
         showlog(QString("电量卡控失败，当前%1%，要求≥%2%").arg(adc.percent).arg(standbattary));
@@ -441,7 +441,7 @@ void QFreeWork::refreshRssiRead(ProtocolRssiData data) {
         return;
 
     const QString itemName = isBtStep ? QStringLiteral("BT RSSI") : QStringLiteral("BLE RSSI");
-    const QString ask = QStringLiteral("[%1,%2]").arg(BleLowRssi).arg(BleHighRssi);
+    const QString ask = QStringLiteral("[%1,%2] dBm").arg(BleLowRssi).arg(BleHighRssi);
     const bool pass = (rssi > BleLowRssi && rssi < BleHighRssi);
 
     if (isBtStep) {
@@ -454,7 +454,7 @@ void QFreeWork::refreshRssiRead(ProtocolRssiData data) {
 
     stepRuntime_.done = true;
     stepRuntime_.pass = pass;
-    stepRuntime_.testData = value;
+    stepRuntime_.testData = value + QStringLiteral(" dBm");
     stepRuntime_.ask = ask;
     if (!pass) {
         TestResult = failValue;
@@ -484,8 +484,9 @@ void QFreeWork::refreshChargeCurrentRead(ProtocolChargeCurrentData data) {
     }
 
     const double currentMa = static_cast<double>(data.currentMa);
-    const QString value = QString::number(currentMa, 'f', 0) + "ma";
-    const QString ask = QString("[%1,%2]ma").arg(QString::number(LowCurrent), QString::number(HighCurrent));
+    const QString value = QString::number(currentMa, 'f', 0) + QStringLiteral(" mA");
+    const QString ask =
+        QStringLiteral("[%1,%2] mA").arg(QString::number(LowCurrent), QString::number(HighCurrent));
     const bool pass = (currentMa >= LowCurrent && currentMa <= HighCurrent);
 
     stepRuntime_.done = true;
@@ -533,7 +534,10 @@ void QFreeWork::reportBydSfcKey(const QString& dataName, const QVariant& dataVal
     MesPacketData p = pack;
     p.factory = QStringLiteral("byd");
     p.mechines = getIndex();
-    p.sn = pack.sn.trimmed();
+    // AddSfcKey 的 SFC 与 Complete 一致：开局过程码
+    p.sn = mesProcessCode_.trimmed();
+    if (p.sn.isEmpty())
+        p.sn = pack.sn.trimmed();
     if (p.sn.isEmpty()) {
         p.sn = resolvedPcbaSnText();
     }
@@ -1022,8 +1026,8 @@ void QFreeWork::refreshRootBatteryTemp(quint8 temp) {
     if (!testCaseStepActive_ || activeTestCase_.send.deviceCmd != QStringLiteral("RootBatteryTempQuery"))
         return;
 
-    const QString testData = QString::number(temp);
-    markActiveTestCaseStepDone(true, testData, QStringLiteral("[0,255]"));
+    const QString testData = QString::number(temp) + QString::fromUtf8(" ℃");
+    markActiveTestCaseStepDone(true, testData, QString::fromUtf8("[0,255] ℃"));
     showlog(QStringLiteral("电池温度：%1°C").arg(temp));
 }
 
@@ -1037,8 +1041,8 @@ void QFreeWork::refreshRootHeatTemp(quint8 temp) {
     if (!testCaseStepActive_ || activeTestCase_.send.deviceCmd != QStringLiteral("RootHeatTempQuery"))
         return;
 
-    const QString testData = QString::number(temp);
-    markActiveTestCaseStepDone(true, testData, QStringLiteral("[0,255]"));
+    const QString testData = QString::number(temp) + QString::fromUtf8(" ℃");
+    markActiveTestCaseStepDone(true, testData, QString::fromUtf8("[0,255] ℃"));
     showlog(QStringLiteral("加热温度：%1°C").arg(temp));
 }
 
@@ -1080,6 +1084,36 @@ void QFreeWork::refreshTypeStatus(ProtocolTypeData data) {
 }
 
 void QFreeWork::refreshButton(ProtocolButtonStateData data) {
+    // 步骤 Gate 等待 qroot 0x9A 按键上报：按 keyButtonId 与 Gate/Expected 比对（错键继续等，不结束步骤）
+    if (testCaseStepActive_ && !activeTestCase_.hook.enabled && activeTestCase_.gate.enabled
+        && activeTestCase_.gate.reportType == QStringLiteral("ProtocolButtonStateData")) {
+        if (data.keyButtonId == 0)
+            return;
+        QVector<TestCaseGate> gates = TestCaseStore::activeGatesForEvaluation(activeTestCase_);
+        if (gates.isEmpty())
+            return;
+        bool pass = false;
+        QString detail;
+        if (gates.size() > 1)
+            GateRegistry::evaluateAll(gates, QStringLiteral("ProtocolButtonStateData"), QVariant::fromValue(data), pass,
+                                     detail);
+        else
+            GateRegistry::evaluate(gates.first(), QStringLiteral("ProtocolButtonStateData"), QVariant::fromValue(data),
+                                   pass, detail);
+        if (!pass) {
+            showlog(QStringLiteral("按键上报未匹配期望，继续等待：%1").arg(detail));
+            return;
+        }
+        const GateStepDisplay display =
+            GateRegistry::formatStepDisplay(gates.first(), gates, QStringLiteral("ProtocolButtonStateData"),
+                                            QVariant::fromValue(data), gates.size() > 1);
+        markActiveTestCaseStepDone(true, display.testData.isEmpty() ? detail : display.testData, display.ask);
+        if (commandRetryTimer)
+            finishCommandRetryWait(true, QStringLiteral("按键卡控通过"));
+        showlog(QStringLiteral("按键卡控通过：%1").arg(detail));
+        return;
+    }
+
     if (!freeWorkKeyWaiting_ || currentKeyExpectedKey_.isEmpty()) {
         return;
     }

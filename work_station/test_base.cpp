@@ -567,6 +567,7 @@ void test_base::finishCommandRetryWait(bool success, const QString& logMessage) 
     lastCommandRetryCount = commandRetrySendCount;
     commandRetryCount = 0;
     commandRetrySendCount = 0;
+    commandRetryDeadlineMs_ = 0;
     commandWaitSource_ = CommandWaitSource::Any;
     getRespone = 0;
 
@@ -722,21 +723,21 @@ void test_base::onCommandRetryTimerTimeout() {
     if (!commandRetryTimer) {
         return;
     }
-    qDebug() << "retryCount=" << commandRetryCount
-             << QString("sendCommandWithRetry定时器触发, timer=%1")
-                    .arg(reinterpret_cast<quintptr>(commandRetryTimer), 0, 16);
-
-    if (commandRetryCount < 20) {
-        if (commandRetryFunc_ && (commandRetryCount % 5) == 0) {
-            showlog(QStringLiteral("重新发送指令%1").arg(commandRetryCount));
-            ++commandRetrySendCount;
-            commandRetryFunc_();
-        }
-        ++commandRetryCount;
+    const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+    // CommandTimeoutMs = 整步最长等待；到期即失败并停测推进
+    if (commandRetryDeadlineMs_ > 0 && nowMs >= commandRetryDeadlineMs_) {
+        qDebug() << "retryCount=" << commandRetryCount
+                 << QStringLiteral("sendCommandWithRetry 指令超时");
+        finishCommandRetryWait(false, QStringLiteral("指令超时未响应"));
         return;
     }
 
-    finishCommandRetryWait(false, QStringLiteral("达到最大重试次数，停止定时器"));
+    if (commandRetryFunc_) {
+        showlog(QStringLiteral("重新发送指令%1").arg(commandRetryCount));
+        ++commandRetrySendCount;
+        ++commandRetryCount;
+        commandRetryFunc_();
+    }
 }
 
 int test_base::sendCommandWithRetry(std::function<void()> commandFunc, int timeoutMs) {
@@ -755,6 +756,15 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc, int timeo
     sendRetryOver = false;
     getRespone = 0;
 
+    // timeoutMs：步骤「指令超时」总时长（不是重试间隔）
+    const int totalMs = qMax(100, timeoutMs);
+    // 窗口内按间隔补发；间隔夹在 [200, 2000]，且约 total/3
+    const int thirdMs = totalMs / 3;
+    int intervalMs = qBound(200, thirdMs > 0 ? thirdMs : 200, 2000);
+    if (intervalMs >= totalMs)
+        intervalMs = totalMs;
+    commandRetryDeadlineMs_ = QDateTime::currentMSecsSinceEpoch() + totalMs;
+
     if (commandRetryFunc_) {
         commandRetrySendCount = 1;
         commandRetryFunc_();
@@ -762,7 +772,7 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc, int timeo
 
     commandRetryTimer = new QTimer(this);
     connect(commandRetryTimer, &QTimer::timeout, this, &test_base::onCommandRetryTimerTimeout);
-    commandRetryTimer->start(timeoutMs);
+    commandRetryTimer->start(intervalMs);
     return 0;
 }
 QString test_base::exportTableContent() {

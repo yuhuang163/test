@@ -182,77 +182,7 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         fw->runPlcSwitchTestDoneResetM();
         return;
     }
-    if (hookId == QStringLiteral("KEY_POWER")) {
-        fw->startKeyButtonTest(QStringLiteral("电源键测试"), QStringLiteral("请短按下旋钮"),
-                               QStringLiteral("ProductInfo/KeyIdPower"), QStringLiteral("ProductInfo/KeyIdPower_checkBox"));
-        return;
-    }
-    if (hookId == QStringLiteral("KEY_START_PAUSE")) {
-        fw->startKeyButtonTest(QStringLiteral("开始/暂停键测试"), QStringLiteral("请短按下开始/暂停按钮"),
-                               QStringLiteral("ProductInfo/KeyIdStartPause"),
-                               QStringLiteral("ProductInfo/KeyIdStartPause_checkBox"));
-        return;
-    }
-    if (hookId == QStringLiteral("KEY_MODE")) {
-        fw->startKeyButtonTest(QStringLiteral("模式键测试"), QStringLiteral("请短按下模式按钮"),
-                               QStringLiteral("ProductInfo/KeyIdMode"), QStringLiteral("ProductInfo/KeyIdMode_checkBox"));
-        return;
-    }
-    // M8/qroot：9A 自动上报 keyId 1=加挡位、2=减挡位、3=模式、4=加热（期望键值见 ProductInfo/KeyId*）
-    if (hookId == QStringLiteral("KEY_M8_PLUS")) {
-        fw->startKeyButtonTest(QStringLiteral("M8加挡位键"), QStringLiteral("请按加挡位（+）键"),
-                               QStringLiteral("ProductInfo/KeyIdPower"), QStringLiteral("ProductInfo/KeyIdPower_checkBox"));
-        return;
-    }
-    if (hookId == QStringLiteral("KEY_M8_MINUS")) {
-        fw->startKeyButtonTest(QStringLiteral("M8减挡位键"), QStringLiteral("请按减挡位（-）键"),
-                               QStringLiteral("ProductInfo/KeyIdStartPause"),
-                               QStringLiteral("ProductInfo/KeyIdStartPause_checkBox"));
-        return;
-    }
-    if (hookId == QStringLiteral("KEY_M8_MODE")) {
-        fw->startKeyButtonTest(QStringLiteral("M8模式键"), QStringLiteral("请按模式键"),
-                               QStringLiteral("ProductInfo/KeyIdMode"), QStringLiteral("ProductInfo/KeyIdMode_checkBox"));
-        return;
-    }
-    if (hookId == QStringLiteral("KEY_M8_HEAT")) {
-        fw->startKeyButtonTest(QStringLiteral("M8加热键"), QStringLiteral("请按加热键"),
-                               QStringLiteral("ProductInfo/KeyIdSpeed"), QStringLiteral("ProductInfo/KeyIdSpeed_checkBox"));
-        return;
-    }
-    if (hookId == QStringLiteral("KEY_SPEED")) {
-        fw->startKeyButtonTest(QStringLiteral("速度键测试"), QStringLiteral("请短按下速度按钮"),
-                               QStringLiteral("ProductInfo/KeyIdSpeed"), QStringLiteral("ProductInfo/KeyIdSpeed_checkBox"));
-        return;
-    }
-    if (hookId == QStringLiteral("KEY_PROGRAM")) {
-        fw->startKeyButtonTest(QStringLiteral("程序键测试"), QStringLiteral("请短按下程序按钮"),
-                               QStringLiteral("ProductInfo/KeyIdProgram"),
-                               QStringLiteral("ProductInfo/KeyIdProgram_checkBox"));
-        return;
-    }
-    if (hookId == QStringLiteral("KEY_LEFT")) {
-        fw->startKeyButtonTest(QStringLiteral("左键测试"), QStringLiteral("请短按下左按钮"),
-                               QStringLiteral("ProductInfo/KeyIdLeft"), QStringLiteral("ProductInfo/KeyIdLeft_checkBox"));
-        return;
-    }
-    if (hookId == QStringLiteral("KEY_RIGHT")) {
-        fw->startKeyButtonTest(QStringLiteral("右键测试"), QStringLiteral("请短按下右按钮"),
-                               QStringLiteral("ProductInfo/KeyIdRight"), QStringLiteral("ProductInfo/KeyIdRight_checkBox"));
-        return;
-    }
-    if (hookId == QStringLiteral("KEY_ROT_LEFT")) {
-        fw->startKeyButtonTest(QStringLiteral("左旋键测试"), QStringLiteral("请左旋按钮"),
-                               QStringLiteral("ProductInfo/KeyIdLeftRotate"),
-                               QStringLiteral("ProductInfo/KeyIdLeftRotate_checkBox"));
-        return;
-    }
-    if (hookId == QStringLiteral("KEY_ROT_RIGHT")) {
-        fw->startKeyButtonTest(QStringLiteral("右旋键测试"), QStringLiteral("请右旋按钮"),
-                               QStringLiteral("ProductInfo/KeyIdRightRotate"),
-                               QStringLiteral("ProductInfo/KeyIdRightRotate_checkBox"));
-        return;
-    }
+    // 纯按键等待已改为步骤 Gate（ProtocolButtonStateData + Expected），不再走 KEY_* / KEY_M8_* Hook
     if (hookId == QStringLiteral("PLC_V3_KEY_MODE")) {
         fw->startPlcKeyButtonTest(QStringLiteral("PLC+V3模式键"), QString(), QStringLiteral("ProductInfo/KeyIdMode"),
                                   QStringLiteral("ProductInfo/KeyIdMode_checkBox"), 0, true);
@@ -353,19 +283,6 @@ void QFreeWorkTestCaseHookRegistrar::registerAll() {
     registerHook(QStringLiteral("PLC_MODBUS_CONN"));
     registerHook(QStringLiteral("PLC_V3_SWITCH_RIGHT_WHOLE"));
     registerHook(QStringLiteral("PLC_V3_SWITCH_DONE_RESET_M"));
-    registerHook(QStringLiteral("KEY_POWER"));
-    registerHook(QStringLiteral("KEY_START_PAUSE"));
-    registerHook(QStringLiteral("KEY_MODE"));
-    registerHook(QStringLiteral("KEY_M8_PLUS"));
-    registerHook(QStringLiteral("KEY_M8_MINUS"));
-    registerHook(QStringLiteral("KEY_M8_MODE"));
-    registerHook(QStringLiteral("KEY_M8_HEAT"));
-    registerHook(QStringLiteral("KEY_SPEED"));
-    registerHook(QStringLiteral("KEY_PROGRAM"));
-    registerHook(QStringLiteral("KEY_LEFT"));
-    registerHook(QStringLiteral("KEY_RIGHT"));
-    registerHook(QStringLiteral("KEY_ROT_LEFT"));
-    registerHook(QStringLiteral("KEY_ROT_RIGHT"));
     registerHook(QStringLiteral("PLC_V3_KEY_MODE"));
     registerHook(QStringLiteral("PLC_V3_KEY_PROGRAM"));
     registerHook(QStringLiteral("PLC_V3_KEY_SPEED"));
