@@ -7,11 +7,13 @@
 <script setup>
 import { nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import * as monaco from 'monaco-editor'
-import editorWorkerUrl from 'monaco-editor/editor/editor.worker.js?url'
+// 生产环境必须用 Vite ?worker：?url 会打成 data: + 相对 import，IIS/线上 Worker 起不来，Diff 空白
+// 走 package exports：monaco-editor/editor/... → esm/vs/editor/...；生产须用 ?worker 而非 ?url
+import EditorWorker from 'monaco-editor/editor/editor.worker.js?worker'
 
 self.MonacoEnvironment = {
-  getWorkerUrl() {
-    return editorWorkerUrl
+  getWorker() {
+    return new EditorWorker()
   },
 }
 
