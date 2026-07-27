@@ -640,9 +640,9 @@ async function startSession() {
       // 生产环境多为 IIS ARR 未开 WebSocket 反代；本机直连 8800 一般无此问题
       statusText.value = '信令 WebSocket 失败'
       ElMessage.error({
-        duration: 12000,
+        duration: 14000,
         message:
-          '信令 WebSocket 连接失败。生产站请在服务器：① 安装 IIS「WebSocket 协议」② ARR→Server Proxy Settings→勾选 Enable WebSocket proxy ③ iisreset；并确认 dist/web.config 已更新。',
+          '信令 WebSocket 连接失败（常见 code=1006）。生产站请确认：① 已安装 IIS「WebSocket 协议」② ARR→Server Proxy Settings→勾选 Enable proxy（ARR3 通常无单独 WebSocket proxy 勾选项）③ 站点 URL 重写已允许变量 HTTP_SEC_WEBSOCKET_EXTENSIONS，且 dist/web.config 的 API Proxy 已清空该头 ④ iisreset。服务器本机可对比测 ws://127.0.0.1:8800/... 与 ws://127.0.0.1/api/...',
       })
     }
   } catch (e) {
