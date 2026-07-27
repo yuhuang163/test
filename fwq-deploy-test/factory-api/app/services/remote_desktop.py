@@ -148,18 +148,37 @@ def find_active_session_for_device(device_id: str) -> RemoteSession | None:
     return get_session(sid)
 
 
+def viewer_connected(session_id: str) -> bool:
+    """浏览器刷新后 viewer WS 会断；用于判断会话是否仍被占用。"""
+    room = get_room(session_id)
+    if not room:
+        return False
+    with room.lock:
+        return room.viewer is not None
+
+
 def create_session(
     *,
     device_id: str,
     host_name: str,
     created_by: str,
-) -> RemoteSession:
+    force: bool = False,
+) -> tuple[RemoteSession, RemoteSession | None]:
+    """创建会话。返回 (新会话, 被顶替的旧会话或 None)。
+
+    刷新网页后前端丢了 sessionId，但服务端仍占着设备锁。
+    若旧会话已无 viewer 在线（典型刷新残留），自动顶替；viewer 仍在线时需 force。
+    """
     did = (device_id or "").strip()
     if not did:
         raise ValueError("deviceId 不能为空")
     existing = find_active_session_for_device(did)
+    replaced: RemoteSession | None = None
     if existing and existing.status != "stopped":
-        raise ValueError("该设备已有进行中的远控会话，请先断开")
+        stale = not viewer_connected(existing.session_id)
+        if not force and not stale:
+            raise ValueError("该设备已有进行中的远控会话，请先断开")
+        replaced = stop_session(existing.session_id, "replaced" if force or stale else created_by)
 
     session_id = str(uuid.uuid4())
     viewer_token = create_signaling_token(
@@ -183,7 +202,7 @@ def create_session(
         _sessions[session_id] = sess
         _device_session[did] = session_id
         _rooms[session_id] = SignalingRoom(session_id=session_id)
-    return sess
+    return sess, replaced
 
 
 def stop_session(session_id: str, stopped_by: str) -> RemoteSession | None:
@@ -196,6 +215,14 @@ def stop_session(session_id: str, stopped_by: str) -> RemoteSession | None:
         sess.stopped_by = stopped_by
         _device_session.pop(sess.device_id, None)
     return sess
+
+
+def stop_active_session_for_device(device_id: str, stopped_by: str) -> RemoteSession | None:
+    """按设备断开（刷新后前端不知道 sessionId 时用）。"""
+    existing = find_active_session_for_device(device_id)
+    if not existing or existing.status == "stopped":
+        return None
+    return stop_session(existing.session_id, stopped_by)
 
 
 def mark_session_active(session_id: str) -> None:

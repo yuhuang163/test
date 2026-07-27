@@ -37,14 +37,53 @@ def list_remote_devices(user: Annotated[User, Depends(get_current_user)]):
     return ok({"items": items})
 
 
+def _enqueue_stop_and_hangup(sess: rd.RemoteSession, reason: str) -> None:
+    try:
+        device_runtime.enqueue_command(
+            sess.device_id,
+            "stop_remote_desktop",
+            {"sessionId": sess.session_id},
+        )
+    except ValueError:
+        pass
+    room = rd.get_room(sess.session_id)
+    if not room:
+        return
+    sockets = []
+    with room.lock:
+        if room.viewer is not None:
+            sockets.append(room.viewer)
+        if room.agent is not None:
+            sockets.append(room.agent)
+    msg = json.dumps({"type": "hangup", "reason": reason}, ensure_ascii=False)
+
+    async def _notify() -> None:
+        for ws in sockets:
+            try:
+                await ws.send_text(msg)
+            except Exception:
+                pass
+
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(_notify())
+    except RuntimeError:
+        pass
+
+
 @router.post("/sessions")
 def create_remote_session(
     user: Annotated[User, Depends(get_current_user)],
     body: Annotated[dict[str, Any], Body()],
 ):
-    """创建远控会话并通知产线机拉起 Agent。"""
+    """创建远控会话并通知产线机拉起 Agent。
+
+    force=true：强制顶替该设备上旧会话（刷新残留或抢占）。
+    无 force 时：若旧会话已无浏览器 viewer，也会自动顶替。
+    """
     _require_engineer_or_admin(user)
     device_id = str(body.get("deviceId") or "").strip()
+    force = bool(body.get("force"))
     if not device_id:
         fail(400, "deviceId 不能为空", 400)
     if not device_runtime.is_online(device_id):
@@ -54,13 +93,17 @@ def create_remote_session(
     host_name = str((online.get(device_id) or {}).get("hostName") or device_id)
 
     try:
-        sess = rd.create_session(
+        sess, replaced = rd.create_session(
             device_id=device_id,
             host_name=host_name,
             created_by=user.username,
+            force=force,
         )
     except ValueError as exc:
         fail(409, str(exc), 409)
+
+    if replaced is not None:
+        _enqueue_stop_and_hangup(replaced, "replaced")
 
     signaling_base = "/api/factory-tool/remote-desktop/ws"
     payload = {
@@ -78,6 +121,8 @@ def create_remote_session(
 
     data = rd.session_public(sess)
     data["viewerWsPath"] = _ws_url_hint(sess.session_id, "viewer", sess.viewer_token)
+    if replaced is not None:
+        data["replacedSessionId"] = replaced.session_id
     return ok(data)
 
 
@@ -91,38 +136,25 @@ def stop_remote_session(
     if not sess:
         fail(404, "会话不存在", 404)
     rd.stop_session(session_id, user.username)
-    try:
-        device_runtime.enqueue_command(
-            sess.device_id,
-            "stop_remote_desktop",
-            {"sessionId": session_id},
-        )
-    except ValueError:
-        pass
-    # 信令侧：尽量通知仍在线的 WS（失败忽略，Agent 也会收到 stop 命令）
-    room = rd.get_room(session_id)
-    if room:
-        sockets = []
-        with room.lock:
-            if room.viewer is not None:
-                sockets.append(room.viewer)
-            if room.agent is not None:
-                sockets.append(room.agent)
-        msg = json.dumps({"type": "hangup", "reason": "stopped"}, ensure_ascii=False)
-
-        async def _notify() -> None:
-            for ws in sockets:
-                try:
-                    await ws.send_text(msg)
-                except Exception:
-                    pass
-
-        try:
-            loop = asyncio.get_running_loop()
-            loop.create_task(_notify())
-        except RuntimeError:
-            pass
+    _enqueue_stop_and_hangup(sess, "stopped")
     return ok({"sessionId": session_id, "status": "stopped"})
+
+
+@router.post("/devices/{device_id}/stop-session")
+def stop_remote_session_by_device(
+    device_id: str,
+    user: Annotated[User, Depends(get_current_user)],
+):
+    """按设备断开当前远控（刷新后丢失 sessionId 时用）。"""
+    _require_engineer_or_admin(user)
+    did = (device_id or "").strip()
+    if not did:
+        fail(400, "deviceId 不能为空", 400)
+    sess = rd.stop_active_session_for_device(did, user.username)
+    if not sess:
+        return ok({"deviceId": did, "status": "none"})
+    _enqueue_stop_and_hangup(sess, "stopped")
+    return ok({"sessionId": sess.session_id, "deviceId": did, "status": "stopped"})
 
 
 @router.get("/sessions/{session_id}")

@@ -43,7 +43,7 @@
       >
         开始远控
       </el-button>
-      <el-button type="danger" :disabled="!session" :loading="stopping" @click="confirmEndSession">
+      <el-button type="danger" :disabled="!session && !selectedDeviceId" :loading="stopping" @click="confirmEndSession">
         断开
       </el-button>
 
@@ -248,14 +248,25 @@ async function handleEsc() {
 }
 
 async function confirmEndSession() {
-  if (!session.value) return
-  if (streamReady.value) {
+  // 刷新后 session 丢失时，仍可按所选设备强制断开残留会话
+  if (!session.value && !selectedDeviceId.value) return
+  if (session.value && streamReady.value) {
     try {
       await ElMessageBox.confirm('确定断开远控？', '退出远控', {
         type: 'warning',
         confirmButtonText: '断开',
         cancelButtonText: '取消',
       })
+    } catch {
+      return
+    }
+  } else if (!session.value && selectedDeviceId.value) {
+    try {
+      await ElMessageBox.confirm(
+        '当前页没有进行中的画面会话。是否强制清除该设备在服务端残留的远控锁？',
+        '强制断开',
+        { type: 'warning', confirmButtonText: '强制断开', cancelButtonText: '取消' }
+      )
     } catch {
       return
     }
@@ -319,16 +330,20 @@ function cleanupWs() {
 }
 
 async function endSession() {
-  if (!session.value) return
   stopping.value = true
-  const sid = session.value.sessionId
+  const sid = session.value?.sessionId
+  const deviceId = session.value?.deviceId || selectedDeviceId.value
   try {
     try {
       ws?.send(JSON.stringify({ type: 'hangup', reason: 'viewer_hangup' }))
     } catch (_) {
       /* ignore */
     }
-    await api.stopRemoteSession(sid)
+    if (sid) {
+      await api.stopRemoteSession(sid)
+    } else if (deviceId) {
+      await api.stopRemoteSessionByDevice(deviceId)
+    }
   } catch (e) {
     ElMessage.warning(e.message || '停止会话失败')
   } finally {
@@ -343,6 +358,7 @@ async function endSession() {
     cleanupWs()
     cleanupPeer()
     session.value = null
+    api.clearRememberedSession()
     statusText.value = '已断开'
     stopWaitTimer()
     stopping.value = false
@@ -571,8 +587,10 @@ async function startSession() {
   starting.value = true
   statusText.value = '创建会话…'
   try {
-    const data = await api.createRemoteSession(selectedDeviceId.value)
+    // force=true：刷新后服务端残留锁可直接顶替
+    const data = await api.createRemoteSession(selectedDeviceId.value, { force: true })
     session.value = data
+    api.rememberSession(data)
     streamReady.value = false
     statusText.value = '等待 Agent…'
     startWaitTimer()
@@ -607,6 +625,7 @@ async function startSession() {
         cleanupWs()
         cleanupPeer()
         session.value = null
+        api.clearRememberedSession()
         expanded.value = false
         statusText.value = '对端断开'
         stopWaitTimer()
@@ -628,6 +647,7 @@ async function startSession() {
     }
   } catch (e) {
     session.value = null
+    api.clearRememberedSession()
     statusText.value = ''
     stopWaitTimer()
     ElMessage.error(e.message || '创建远控失败')
@@ -650,10 +670,22 @@ function onGlobalKeyDown(e) {
   }
 }
 
+function onPageHide() {
+  // 刷新/关页时 await 常来不及；用 keepalive 尽量释放服务端设备锁
+  const sid = session.value?.sessionId || api.readRememberedSession()?.sessionId
+  if (sid) api.beaconStopSession(sid)
+}
+
 onMounted(async () => {
   document.addEventListener('fullscreenchange', onFullscreenChange)
   document.addEventListener('keydown', onGlobalKeyDown)
+  window.addEventListener('pagehide', onPageHide)
   await loadDevices()
+  // 若上次刷新未清掉锁，选中设备后可直接「断开」或再点「开始远控」顶替
+  const remembered = api.readRememberedSession()
+  if (remembered?.deviceId && !selectedDeviceId.value) {
+    selectedDeviceId.value = remembered.deviceId
+  }
   refreshTimer = setInterval(() => {
     if (!session.value) loadDevices()
   }, 15000)
@@ -662,6 +694,7 @@ onMounted(async () => {
 onBeforeUnmount(async () => {
   document.removeEventListener('fullscreenchange', onFullscreenChange)
   document.removeEventListener('keydown', onGlobalKeyDown)
+  window.removeEventListener('pagehide', onPageHide)
   if (document.fullscreenElement) {
     try {
       await document.exitFullscreen()
@@ -674,13 +707,16 @@ onBeforeUnmount(async () => {
     refreshTimer = null
   }
   stopWaitTimer()
-  if (session.value) {
+  const sid = session.value?.sessionId
+  if (sid) {
+    api.beaconStopSession(sid)
     try {
-      await api.stopRemoteSession(session.value.sessionId)
+      await api.stopRemoteSession(sid)
     } catch (_) {
       /* ignore */
     }
   }
+  api.clearRememberedSession()
   cleanupWs()
   cleanupPeer()
 })
