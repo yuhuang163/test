@@ -1,6 +1,7 @@
 #include "shared_instrument.h"
 
 #include <QRegularExpression>
+#include <QStringList>
 #include <QVector>
 
 #if _MSC_VER >= 1600
@@ -71,16 +72,48 @@ bool paramTruthy(const QVariantMap& map, const QString& key) {
            || s == QStringLiteral("on");
 }
 
+QVector<int> parseChannelListText(const QString& text) {
+    QVector<int> out;
+    const QString t = text.trimmed();
+    if (t.isEmpty())
+        return out;
+    if (t.contains(QLatin1Char('-')) && !t.contains(QLatin1Char(','))) {
+        const QStringList parts = t.split(QLatin1Char('-'));
+        if (parts.size() == 2) {
+            bool ok1 = false;
+            bool ok2 = false;
+            const int a = parts[0].trimmed().toInt(&ok1);
+            const int b = parts[1].trimmed().toInt(&ok2);
+            if (ok1 && ok2 && a >= 1 && b >= a && b <= 64) {
+                for (int i = a; i <= b; ++i)
+                    out.append(i);
+                return out;
+            }
+        }
+    }
+    const QStringList parts = t.split(QRegularExpression(QStringLiteral("[,;\\s]+")), Qt::SkipEmptyParts);
+    for (const QString& p : parts) {
+        bool ok = false;
+        const int ch = p.toInt(&ok);
+        if (ok && ch >= 1 && ch <= 64)
+            out.append(ch);
+    }
+    return out;
+}
+
 } // namespace
 
 bool isEnabledInParam(const QVariantMap& paramMap) {
     if (paramTruthy(paramMap, QStringLiteral("sharedPair"))
         || paramTruthy(paramMap, QStringLiteral("shareInstrument")))
         return true;
-    // 写了地址表/串口表也视为启用（方便只配 visaAddress0 不写开关）
     if (!visaAddressFromParam(paramMap, 0).isEmpty() || !visaAddressFromParam(paramMap, 1).isEmpty())
         return true;
     if (!tempComNameFromParam(paramMap, 0).isEmpty() || !tempComNameFromParam(paramMap, 1).isEmpty())
+        return true;
+    if (channelsPerStationFromParam(paramMap) > 1)
+        return true;
+    if (!parseChannelListText(paramMap.value(QStringLiteral("channels")).toString()).isEmpty())
         return true;
     return false;
 }
@@ -88,6 +121,11 @@ bool isEnabledInParam(const QVariantMap& paramMap) {
 int stationsPerDeviceFromParam(const QVariantMap& paramMap) {
     const int per = paramMap.value(QStringLiteral("stationsPerDevice"), 2).toInt();
     return qBound(1, per, 16);
+}
+
+int channelsPerStationFromParam(const QVariantMap& paramMap) {
+    const int n = paramMap.value(QStringLiteral("channelsPerStation"), 1).toInt();
+    return qBound(1, n, 64);
 }
 
 Slot slotForStation(int stationIndex1Based, int stationsPerDevice) {
@@ -102,7 +140,6 @@ Slot slotForStation(int stationIndex1Based, int stationsPerDevice) {
 
 QString visaAddressFromParam(const QVariantMap& paramMap, int deviceIndex0Based) {
     const int n = qMax(0, deviceIndex0Based);
-    // 优先 visaAddress0 / visaAddress1；兼容 visaAddress_0
     QString addr = paramMap.value(QStringLiteral("visaAddress%1").arg(n)).toString().trimmed();
     if (addr.isEmpty())
         addr = paramMap.value(QStringLiteral("visaAddress_%1").arg(n)).toString().trimmed();
@@ -119,6 +156,22 @@ QString tempComNameFromParam(const QVariantMap& paramMap, int deviceIndex0Based)
     return com;
 }
 
+QVector<int> tempChannelListForStation(int stationIndex1Based, const QVariantMap& paramMap) {
+    QVector<int> explicitList = parseChannelListText(paramMap.value(QStringLiteral("channels")).toString());
+    if (!explicitList.isEmpty())
+        return explicitList;
+
+    const int perStation = channelsPerStationFromParam(paramMap);
+    const int perDevice = stationsPerDeviceFromParam(paramMap);
+    const int localIndex = (qMax(1, stationIndex1Based) - 1) % perDevice;
+    const int start = localIndex * perStation + 1;
+    QVector<int> list;
+    list.reserve(perStation);
+    for (int i = 0; i < perStation; ++i)
+        list.append(start + i);
+    return list;
+}
+
 bool applyVisaParamsForStation(int stationIndex1Based, QVariantMap* paramMap, QString* detailOut) {
     if (!paramMap)
         return false;
@@ -129,7 +182,6 @@ bool applyVisaParamsForStation(int stationIndex1Based, QVariantMap* paramMap, QS
     int deviceIndex = autoSlot.deviceIndex;
     int channel = autoSlot.channel;
 
-    // 显式锁死设备号/通道（调试用）；sharedPair 开启时默认按工位重算，忽略缓存里的旧 powerChannel
     const bool deviceLocked = paramTruthy(*paramMap, QStringLiteral("visaDeviceIndexLock"))
                               && paramMap->contains(QStringLiteral("visaDeviceIndex"));
     const bool channelLocked = paramTruthy(*paramMap, QStringLiteral("powerChannelLock"))
@@ -145,7 +197,6 @@ bool applyVisaParamsForStation(int stationIndex1Based, QVariantMap* paramMap, QS
         return false;
     }
     if (!enabled && paramMap->contains(QStringLiteral("powerChannel")) && !channelLocked) {
-        // 仅写了 powerChannel、未开共享：按显式通道改写 SCPI（单电源双通道手工指定）
         channel = qMax(1, paramMap->value(QStringLiteral("powerChannel")).toInt());
         paramMap->insert(QStringLiteral("powerChannel"), channel);
         rewriteScpiCmdsInMap(paramMap, channel);
@@ -157,7 +208,6 @@ bool applyVisaParamsForStation(int stationIndex1Based, QVariantMap* paramMap, QS
     const QString tableAddr = visaAddressFromParam(*paramMap, deviceIndex);
     if (!tableAddr.isEmpty())
         paramMap->insert(QStringLiteral("visaAddress"), tableAddr);
-    // 无地址表时保留步骤/缓存里的 Param_visaAddress（两工位共一台电源同一地址）
 
     paramMap->insert(QStringLiteral("sharedPair"), true);
     paramMap->insert(QStringLiteral("stationsPerDevice"), per);
@@ -181,24 +231,33 @@ bool applyTempLoggerParamsForStation(int stationIndex1Based, QVariantMap* paramM
         return false;
     if (!isEnabledInParam(*paramMap)) {
         if (detailOut)
-            *detailOut = QStringLiteral("步骤未配置 sharedPair/tempComName0，跳过温度仪共享映射");
+            *detailOut = QStringLiteral("步骤未配置 sharedPair/tempComName0/channelsPerStation，跳过温度仪共享映射");
         return false;
     }
 
     const int per = stationsPerDeviceFromParam(*paramMap);
+    const int perStation = channelsPerStationFromParam(*paramMap);
     const Slot autoSlot = slotForStation(stationIndex1Based, per);
     int deviceIndex = autoSlot.deviceIndex;
-    int channel = autoSlot.channel;
 
     if (paramTruthy(*paramMap, QStringLiteral("tempDeviceIndexLock"))
         && paramMap->contains(QStringLiteral("tempDeviceIndex"))) {
         deviceIndex = qMax(0, paramMap->value(QStringLiteral("tempDeviceIndex")).toInt());
     }
-    if (paramTruthy(*paramMap, QStringLiteral("channelLock")) && paramMap->contains(QStringLiteral("channel"))) {
-        channel = qMax(1, paramMap->value(QStringLiteral("channel")).toInt());
-    } else {
-        paramMap->insert(QStringLiteral("channel"), channel);
+
+    const QVector<int> channels = tempChannelListForStation(stationIndex1Based, *paramMap);
+    if (!paramTruthy(*paramMap, QStringLiteral("channelLock"))) {
+        if (!channels.isEmpty())
+            paramMap->insert(QStringLiteral("channel"), channels.first());
+        else
+            paramMap->insert(QStringLiteral("channel"), autoSlot.channel);
     }
+
+    QStringList chText;
+    for (int ch : channels)
+        chText.append(QString::number(ch));
+    if (!chText.isEmpty())
+        paramMap->insert(QStringLiteral("channels"), chText.join(QLatin1Char(',')));
 
     const QString sharedCom = tempComNameFromParam(*paramMap, deviceIndex);
     if (!sharedCom.isEmpty())
@@ -206,13 +265,14 @@ bool applyTempLoggerParamsForStation(int stationIndex1Based, QVariantMap* paramM
 
     paramMap->insert(QStringLiteral("sharedPair"), true);
     paramMap->insert(QStringLiteral("stationsPerDevice"), per);
+    paramMap->insert(QStringLiteral("channelsPerStation"), perStation);
     paramMap->insert(QStringLiteral("tempDeviceIndex"), deviceIndex);
 
     if (detailOut) {
-        *detailOut = QStringLiteral("工位%1→温度仪设备%2 通道%3%4")
+        *detailOut = QStringLiteral("工位%1→温度仪设备%2 通道[%3]%4")
                          .arg(stationIndex1Based)
                          .arg(deviceIndex)
-                         .arg(channel)
+                         .arg(chText.join(QLatin1Char(',')))
                          .arg(sharedCom.isEmpty() ? QString() : QStringLiteral(" 串口=%1").arg(sharedCom));
     }
     return true;

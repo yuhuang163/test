@@ -31,9 +31,10 @@ const Row kRows[] = {
     {ModbusDeviceRoute::HqAmmeterRtu, "SetBaud115200", u8"初始化波特率 115200", nullptr, kSet},
     {ModbusDeviceRoute::LxAmmeterRtu, "ReadMeasurement", u8"读电流", u8"机台号见 Current/LuxshareMachineId", kGet},
     {ModbusDeviceRoute::MultiTempLoggerRtu, "ReadChannelTemp", u8"读通道温度",
-     u8"Param：channel=1~64，slaveAddr=1~247\r\n"
-     u8"一拖多共享：sharedPair=true；stationsPerDevice=2|3；tempComName0/1…；可选 tempBaudRate\r\n"
-     u8"开启共享后 channel 按工位自动填（可用 channelLock=true 锁死）",
+     u8"Param：channel=1~64，slaveAddr=1~247；或 channels=1,2,3 / 1-6\r\n"
+     u8"法兰加热多点：channelsPerStation=6；stationsPerDevice=2 → 工位奇偶映射 CH1-6 / CH7-12\r\n"
+     u8"一拖多共享：sharedPair=true；tempComName0/1…；tempBaudRate；sampleDurationMs=20000\r\n"
+     u8"Get+Gate 且通道数>1：窗口内某一轮全部通道落入 Gate 温度范围则通过",
      kGet},
     {ModbusDeviceRoute::MultiTempLoggerRtu, "SendRaw", u8"原文/十六进制收发",
      u8"开放报文：Param_txHex 填完整 RTU 帧（含CRC，低字节在前）\r\n"

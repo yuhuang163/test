@@ -94,12 +94,16 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("sampleDurationMs"), QStringLiteral("连续采样窗口 (ms)")},
         {QStringLiteral("sampleIntervalMs"), QStringLiteral("连续采样间隔 (ms)")},
         {QStringLiteral("channel"), QStringLiteral("温度/采样通道号")},
+        {QStringLiteral("channels"), QStringLiteral("温度通道列表（如 1,2,3,4,5,6 或 1-6）")},
+        {QStringLiteral("channelsPerStation"), QStringLiteral("每工位占用温度通道数（法兰加热填 6）")},
         {QStringLiteral("channelLock"), QStringLiteral("锁定通道号（不按工位改）")},
         {QStringLiteral("slaveAddr"), QStringLiteral("Modbus 从站地址")},
         {QStringLiteral("addr"), QStringLiteral("Modbus 从站地址")},
         {QStringLiteral("tempDeviceIndex"), QStringLiteral("温度仪设备序号（从 0）")},
         {QStringLiteral("tempDeviceIndexLock"), QStringLiteral("锁定温度仪设备序号")},
         {QStringLiteral("tempBaudRate"), QStringLiteral("温度仪串口波特率")},
+        {QStringLiteral("tempLowC"), QStringLiteral("温度下限 ℃（可覆盖 Gate）")},
+        {QStringLiteral("tempHighC"), QStringLiteral("温度上限 ℃（可覆盖 Gate）")},
         {QStringLiteral("sharedComName"), QStringLiteral("共享串口名（运行时解析）")},
         {QStringLiteral("txHex"), QStringLiteral("发送十六进制报文")},
         {QStringLiteral("string"), QStringLiteral("原文/字符串参数")},
@@ -398,8 +402,15 @@ void maybeFillMultiTempLoggerCmdParamDefaults(QTableWidget* table, TestCaseSendC
 
     if (cmdName == QLatin1String("ReadChannelTemp")) {
         QVariantMap map;
-        map.insert(QStringLiteral("channel"), QStringLiteral("1"));
         map.insert(QStringLiteral("slaveAddr"), QStringLiteral("1"));
+        map.insert(QStringLiteral("sharedPair"), QStringLiteral("true"));
+        map.insert(QStringLiteral("stationsPerDevice"), QStringLiteral("2"));
+        map.insert(QStringLiteral("channelsPerStation"), QStringLiteral("6"));
+        map.insert(QStringLiteral("tempComName0"), QStringLiteral("COM10"));
+        map.insert(QStringLiteral("tempComName1"), QStringLiteral("COM11"));
+        map.insert(QStringLiteral("tempBaudRate"), QStringLiteral("115200"));
+        map.insert(QStringLiteral("sampleDurationMs"), QStringLiteral("20000"));
+        map.insert(QStringLiteral("sampleIntervalMs"), QStringLiteral("500"));
         setSendParamTableFromMap(table, map);
         return;
     }

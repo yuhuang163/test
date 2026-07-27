@@ -896,11 +896,7 @@ void qsetting::RestoreFacDefaultSetting() {
 void qsetting::on_comboBox_productName_textActivated(const QString& arg1) {
     qDebug() << "选择的产品" << arg1;
     RestoreProductDefaultSetting();
-    if (arg1 == QStringLiteral("V3")) {
-        CommonUtils::selectSnPatternComboBox(ui->comboBox_snPattern, QStringLiteral("^[0-9a-zA-Z]{12}$"));
-    } else if (arg1 == QStringLiteral("V3Pro")) {
-        CommonUtils::selectSnPatternComboBox(ui->comboBox_snPattern, QStringLiteral("^[0-9a-zA-Z]{15}$"));
-    }
+    // SN 校验规则仅手动改；切 V3/V3Pro 不再自动改成 12/15 位
     // 先落盘产品型号，再按产品过滤工站下拉
     SETTINGS.setValue(QStringLiteral("Mes/Product_Name"), arg1);
     SETTINGS.setValue(QStringLiteral("MES/Product_Name"), arg1);
