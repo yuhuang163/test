@@ -1,5 +1,9 @@
 import http from './http'
 
+export function getAnalyticsStations(params) {
+  return http.get('/analytics/stations', { params })
+}
+
 export function getCurveData(params) {
   return http.get('/analytics/curve', { params })
 }

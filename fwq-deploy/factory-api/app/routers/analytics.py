@@ -96,6 +96,23 @@ def dashboard_summary(
     )
 
 
+@router.get("/stations")
+def analytics_stations(
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+    factoryName: str | None = None,
+    keyword: str | None = None,
+):
+    """从测试记录中取已有工站名称（非工站字典）。"""
+    q = db.query(TestRecord.station).distinct()
+    q = apply_factory_name_filter(q, TestRecord.factory_name, db, user, factoryName)
+    if keyword:
+        q = q.filter(TestRecord.station.contains(keyword))
+    rows = q.order_by(TestRecord.station.asc()).limit(200).all()
+    stations = [r[0] for r in rows if r[0]]
+    return ok({"stations": stations})
+
+
 @router.get("/curve")
 def data_curve(
     db: Annotated[Session, Depends(get_db)],

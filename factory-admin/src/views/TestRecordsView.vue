@@ -116,7 +116,6 @@
             <div v-if="detail.logArchive" class="log-pane">
               <div class="log-actions mb">
                 <el-button size="small" type="primary" @click="downloadSessionLog">下载本次日志 zip</el-button>
-                <el-button size="small" @click="openInLogLibrary">在日志库中打开</el-button>
               </div>
               <el-row :gutter="16">
                 <el-col :span="8">
@@ -137,9 +136,7 @@
                 </el-col>
               </el-row>
             </div>
-            <el-empty v-else description="暂无关联日志">
-              <el-button type="primary" link @click="searchLogsBySn">按 SN 搜索日志库</el-button>
-            </el-empty>
+            <el-empty v-else description="暂无关联日志" />
           </el-tab-pane>
         </el-tabs>
       </div>
@@ -149,7 +146,6 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { formatTime, formatSize, testResultClass } from '../utils/format'
 import { useFactoryScope } from '../composables/useFactoryScope'
@@ -157,7 +153,6 @@ import http from '../api/http'
 import { fetchLogPreviewText } from '../api/logs'
 import LogPreview from '../components/LogPreview.vue'
 
-const router = useRouter()
 const { isFactoryScoped, scopedFactoryLabel, applyScopedFactoryFilter } = useFactoryScope()
 const loading = ref(false)
 const items = ref([])
@@ -316,23 +311,6 @@ async function downloadSessionLog() {
   a.download = `test_log_${detail.value.id}_${archive.id}.zip`
   a.click()
   URL.revokeObjectURL(url)
-}
-
-function openInLogLibrary() {
-  const archive = detail.value?.logArchive
-  if (!archive) {
-    return
-  }
-  router.push(`/data/logs/${archive.id}`)
-}
-
-function searchLogsBySn() {
-  const sn = detail.value?.sn
-  if (sn) {
-    router.push({ path: '/data/logs', query: { sn } })
-  } else {
-    router.push('/data/logs')
-  }
 }
 
 watch(drawerVisible, (visible) => {

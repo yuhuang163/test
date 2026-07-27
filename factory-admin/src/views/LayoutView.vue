@@ -35,10 +35,6 @@
             <el-icon><Search /></el-icon>
             <span>数据查询</span>
           </template>
-          <el-menu-item index="/data/logs">
-            <el-icon><Document /></el-icon>
-            <template #title>日志查询</template>
-          </el-menu-item>
           <el-menu-item index="/data/test-records">
             <el-icon><List /></el-icon>
             <template #title>测试数据</template>
@@ -153,7 +149,7 @@ import { useUserStore } from '../stores/user'
 import { useMetaStore } from '../stores/meta'
 import { useRole } from '../composables/useRole'
 import {
-  Odometer, Search, Document, List, Setting, Files, Upload,
+  Odometer, Search, List, Setting, Files, Upload,
   Monitor, UserFilled, Tools, Clock, DArrowLeft, ArrowDown,
   User, SwitchButton, DataAnalysis, DataLine, Histogram, OfficeBuilding, Coin, Download,
   VideoCamera,

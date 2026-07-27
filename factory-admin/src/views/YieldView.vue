@@ -10,7 +10,16 @@
         </el-select>
       </el-form-item>
       <el-form-item label="工站">
-        <el-input v-model="filters.station" clearable placeholder="工站（模糊）" style="width: 140px" />
+        <el-select
+          v-model="filters.station"
+          clearable
+          filterable
+          placeholder="全部工站"
+          style="width: 220px"
+          :loading="stationLoading"
+        >
+          <el-option v-for="s in stations" :key="s" :label="s" :value="s" />
+        </el-select>
       </el-form-item>
       <el-form-item label="日期段">
         <el-date-picker
@@ -90,7 +99,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref, nextTick } from 'vue'
+import { onMounted, reactive, ref, nextTick, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { DATE_RANGE_SHORTCUTS, defaultDateRange, toApiTimeRange } from '../utils/dateRange'
 import * as api from '../api/analytics'
@@ -101,6 +110,8 @@ import * as echarts from 'echarts'
 const { isFactoryScoped, scopedFactoryLabel, applyScopedFactoryFilter } = useFactoryScope()
 
 const factories = ref([])
+const stations = ref([])
+const stationLoading = ref(false)
 const loading = ref(false)
 const filters = reactive({ factoryName: '', station: '' })
 const dateRange = ref(defaultDateRange(7))
@@ -117,6 +128,23 @@ let barChart = null
 
 async function loadFactories() {
   factories.value = await http.get('/admin/meta/factories')
+}
+
+async function loadStations() {
+  stationLoading.value = true
+  try {
+    const data = await api.getAnalyticsStations({
+      factoryName: filters.factoryName || undefined,
+    })
+    stations.value = data.stations || []
+    if (filters.station && !stations.value.includes(filters.station)) {
+      filters.station = ''
+    }
+  } catch {
+    stations.value = []
+  } finally {
+    stationLoading.value = false
+  }
 }
 
 async function loadYield() {
@@ -254,9 +282,14 @@ function renderBar() {
   })
 }
 
+watch(() => filters.factoryName, () => {
+  loadStations()
+})
+
 onMounted(async () => {
   await loadFactories()
   applyScopedFactoryFilter(filters)
+  await loadStations()
   await loadYield()
 })
 

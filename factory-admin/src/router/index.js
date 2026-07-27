@@ -4,8 +4,6 @@ import { useUserStore } from '../stores/user'
 import LoginView from '../views/LoginView.vue'
 import LayoutView from '../views/LayoutView.vue'
 import DashboardView from '../views/DashboardView.vue'
-import LogsView from '../views/LogsView.vue'
-import LogDetailView from '../views/LogDetailView.vue'
 import TestRecordsView from '../views/TestRecordsView.vue'
 import DataCurveView from '../views/DataCurveView.vue'
 import YieldView from '../views/YieldView.vue'
@@ -36,11 +34,12 @@ const router = createRouter({
           component: DownloadCenterView,
           meta: { title: '上位机下载', menu: '/downloads' },
         },
-        { path: 'data/logs', component: LogsView, meta: { title: '日志查询', menu: '/data/logs' } },
-        { path: 'data/logs/:id', component: LogDetailView, meta: { title: '日志详情', menu: '/data/logs' } },
         { path: 'data/test-records', component: TestRecordsView, meta: { title: '测试数据', menu: '/data/test-records' } },
         { path: 'data/curve', component: DataCurveView, meta: { title: '数据曲线', menu: '/data/curve' } },
         { path: 'data/yield', component: YieldView, meta: { title: '良率统计', menu: '/data/yield' } },
+        // 旧「日志查询」入口已移除，统一在测试数据详情的「测试日志」查看
+        { path: 'data/logs', redirect: '/data/test-records' },
+        { path: 'data/logs/:id', redirect: '/data/test-records' },
         {
           path: 'config/test-cases',
           component: TestCasesView,

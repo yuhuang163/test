@@ -3,7 +3,7 @@ export const ROLE_OPTIONS = [
   {
     value: 'operator',
     label: '产线操作员',
-    tip: '可查看日志、测试数据与良率统计；上位机可登录并拉取用例与更新，不可上传发布。',
+    tip: '可查看测试数据（含测试日志）、良率统计；上位机可登录并拉取用例与更新，不可上传发布。',
   },
   {
     value: 'engineer',

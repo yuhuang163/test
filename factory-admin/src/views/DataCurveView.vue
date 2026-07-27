@@ -10,7 +10,16 @@
         </el-select>
       </el-form-item>
       <el-form-item label="工站">
-        <el-input v-model="filters.station" clearable placeholder="工站（模糊）" style="width: 140px" />
+        <el-select
+          v-model="filters.station"
+          clearable
+          filterable
+          placeholder="全部工站"
+          style="width: 220px"
+          :loading="stationLoading"
+        >
+          <el-option v-for="s in stations" :key="s" :label="s" :value="s" />
+        </el-select>
       </el-form-item>
       <el-form-item label="日期段">
         <el-date-picker
@@ -104,6 +113,8 @@ import * as echarts from 'echarts'
 const { isFactoryScoped, scopedFactoryLabel, applyScopedFactoryFilter } = useFactoryScope()
 
 const factories = ref([])
+const stations = ref([])
+const stationLoading = ref(false)
 const itemNames = ref([])
 const nameLoading = ref(false)
 const loading = ref(false)
@@ -120,6 +131,23 @@ const currentUnit = ref('')
 
 async function loadFactories() {
   factories.value = await http.get('/admin/meta/factories')
+}
+
+async function loadStations() {
+  stationLoading.value = true
+  try {
+    const data = await api.getAnalyticsStations({
+      factoryName: filters.factoryName || undefined,
+    })
+    stations.value = data.stations || []
+    if (filters.station && !stations.value.includes(filters.station)) {
+      filters.station = ''
+    }
+  } catch {
+    stations.value = []
+  } finally {
+    stationLoading.value = false
+  }
 }
 
 async function searchItems(keyword) {
@@ -273,6 +301,7 @@ function renderChart() {
 
 watch(() => filters.factoryName, () => {
   itemNames.value = []
+  loadStations()
 })
 watch(() => filters.station, () => {
   itemNames.value = []
@@ -284,6 +313,7 @@ watch(dateRange, () => {
 onMounted(async () => {
   await loadFactories()
   applyScopedFactoryFilter(filters)
+  await loadStations()
 })
 
 window.addEventListener('resize', () => {

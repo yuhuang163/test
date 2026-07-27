@@ -86,7 +86,7 @@
     </el-row>
 
     <el-row :gutter="16" class="section-row">
-      <el-col :span="12">
+      <el-col :span="24">
         <el-card shadow="never" class="section-card">
           <template #header>
             <div class="section-header">
@@ -95,12 +95,13 @@
             </div>
           </template>
           <el-table :data="summary.recentRecords" size="small" v-if="summary.recentRecords?.length" @row-click="(r) => go('/data/test-records')">
-            <el-table-column label="时间" width="140">
+            <el-table-column label="时间" width="160">
               <template #default="{ row }">{{ formatTime(row.testedAt) }}</template>
             </el-table-column>
-            <el-table-column prop="sn" label="SN" width="130" />
-            <el-table-column prop="station" label="工站" width="100" />
-            <el-table-column prop="testResult" label="结果" width="70">
+            <el-table-column prop="sn" label="SN" min-width="140" />
+            <el-table-column prop="station" label="工站" min-width="120" />
+            <el-table-column prop="factoryDisplayName" label="工厂" width="120" />
+            <el-table-column prop="testResult" label="结果" width="90">
               <template #default="{ row }">
                 <el-tag :type="row.testResult === 'PASS' || row.testResult === 'OK' ? 'success' : 'danger'" size="small">
                   {{ row.testResult || '-' }}
@@ -109,24 +110,6 @@
             </el-table-column>
           </el-table>
           <el-empty v-else description="暂无测试记录" :image-size="80" />
-        </el-card>
-      </el-col>
-      <el-col :span="12">
-        <el-card shadow="never" class="section-card">
-          <template #header>
-            <div class="section-header">
-              <span>最近日志上传</span>
-              <el-button size="small" text @click="go('/data/logs')">查看全部</el-button>
-            </div>
-          </template>
-          <el-table :data="summary.recentLogs" size="small" v-if="summary.recentLogs?.length" @row-click="() => go('/data/logs')">
-            <el-table-column label="时间" width="140">
-              <template #default="{ row }">{{ formatTime(row.createdAt) }}</template>
-            </el-table-column>
-            <el-table-column prop="hostName" label="电脑" width="130" />
-            <el-table-column prop="station" label="工站" width="140" />
-          </el-table>
-          <el-empty v-else description="暂无日志" :image-size="80" />
         </el-card>
       </el-col>
     </el-row>
@@ -143,7 +126,7 @@ import { formatRoleLabels } from '../utils/roles'
 import * as api from '../api/analytics'
 import {
   Document, List, CircleCheck, TrendCharts,
-  Files, Tools, Upload, UserFilled, Clock, DataAnalysis, DataLine
+  Files, Tools, Upload, UserFilled, Clock, DataLine
 } from '@element-plus/icons-vue'
 
 const router = useRouter()
@@ -169,7 +152,6 @@ function pct(count) {
 }
 
 const quickLinks = [
-  { title: '日志查询', path: '/data/logs', icon: Document, tone: 'blue' },
   { title: '测试数据', path: '/data/test-records', icon: List, tone: 'purple' },
   { title: '数据曲线', path: '/data/curve', icon: DataLine, tone: 'green' },
   { title: '良率统计', path: '/data/yield', icon: TrendCharts, tone: 'orange' },

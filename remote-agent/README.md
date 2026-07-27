@@ -10,6 +10,8 @@ py -3 -m venv .venv
 .venv\Scripts\pip install -r requirements.txt
 ```
 
+Windows 会优先用 `dxcam`（DXGI）抓屏，减轻同机自控时浏览器窗口被截成纯黑的问题；需同时安装 `opencv-python-headless`（dxcam 依赖）。若 dxcam 不可用则回退 `mss`。
+
 部署时把整个 `remote_agent` 目录拷到上位机 `bin\remote_agent\`（与 `new_production.exe` 同级）。
 
 ## 手动调试

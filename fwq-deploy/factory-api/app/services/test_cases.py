@@ -155,6 +155,17 @@ def _file_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _file_updated_at(path: Path) -> str:
+    """文件最近修改时间（UTC ISO，与前端 formatTime 一致）。"""
+    mtime = path.stat().st_mtime
+    return (
+        datetime.fromtimestamp(mtime, tz=timezone.utc)
+        .replace(microsecond=0)
+        .isoformat()
+        .replace("+00:00", "Z")
+    )
+
+
 def _is_safe_rel_path(rel: str) -> bool:
     rel = rel.replace("\\", "/").strip().lstrip("/")
     if not rel or rel.startswith("..") or "/.." in rel:
@@ -173,6 +184,7 @@ def _scan_files(root: Path) -> list[dict[str, str]]:
                 "path": rel,
                 "version": "1",
                 "sha256": _file_sha256(path),
+                "updatedAt": _file_updated_at(path),
             }
         )
     return files
@@ -238,6 +250,7 @@ def read_manifest() -> dict:
             if abs_path.is_file():
                 entry["version"] = str(item.get("version") or "1")
                 entry["sha256"] = item.get("sha256") or _file_sha256(abs_path)
+                entry["updatedAt"] = _file_updated_at(abs_path)
                 normalized.append(entry)
     if not normalized:
         normalized = _scan_files(root)

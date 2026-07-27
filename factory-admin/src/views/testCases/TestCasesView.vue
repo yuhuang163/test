@@ -44,7 +44,20 @@
                 :default-expand-all="!!stationSearch.trim()"
                 :props="{ label: 'label', children: 'children', isLeaf: 'isLeaf' }"
                 @node-click="onSelect"
-              />
+              >
+                <template #default="{ data }">
+                  <div class="tree-node" :class="{ 'is-station': data.isStation }">
+                    <span class="tree-node-label" :title="data.label">{{ data.label }}</span>
+                    <span
+                      v-if="data.isStation && data.updatedAt"
+                      class="tree-node-time"
+                      :title="'最近更新 ' + formatTime(data.updatedAt)"
+                    >
+                      {{ formatTreeTime(data.updatedAt) }}
+                    </span>
+                  </div>
+                </template>
+              </el-tree>
               <el-empty
                 v-if="!treeLoading && !filteredTreeData.length"
                 :image-size="64"
@@ -55,8 +68,15 @@
 
           <section class="editor">
             <div class="editor-bar">
-              <div class="editor-path" :title="selectedPath">
-                {{ selectedPath || '从左侧选择工站下的用例进行编辑' }}
+              <div class="editor-meta">
+                <div class="editor-path" :title="selectedPath">
+                  {{ selectedPath || '从左侧选择工站下的用例进行编辑' }}
+                </div>
+                <div v-if="currentStationName" class="editor-updated">
+                  文件夹「{{ currentStationName }}」最近更新：{{
+                    currentStationUpdatedAtText || '—'
+                  }}
+                </div>
               </div>
               <div class="editor-actions">
                 <el-button
@@ -306,6 +326,7 @@
 <script setup>
 import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { formatTime, parseApiDateTime } from '../../utils/format'
 import * as api from '../../api/testCases'
 
 const MergeDiffEditor = defineAsyncComponent(() => import('../../components/MergeDiffEditor.vue'))
@@ -337,6 +358,30 @@ const currentStationName = ref('')
 let onlineTimer = null
 
 const stationCount = computed(() => treeData.value.length)
+
+const currentStationUpdatedAt = computed(() => {
+  if (!currentStationName.value) return ''
+  const node = treeData.value.find((s) => s.stationName === currentStationName.value)
+  return node?.updatedAt || ''
+})
+
+const currentStationUpdatedAtText = computed(() => formatTime(currentStationUpdatedAt.value))
+
+/** 侧栏紧凑时间，给工站名留更多宽度 */
+function formatTreeTime(v) {
+  const d = parseApiDateTime(v)
+  if (!d) return ''
+  const parts = new Intl.DateTimeFormat('zh-CN', {
+    timeZone: 'Asia/Shanghai',
+    month: 'numeric',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(d)
+  const get = (type) => parts.find((p) => p.type === type)?.value || ''
+  return `${get('month')}/${get('day')} ${get('hour')}:${get('minute')}`
+}
 
 /** 当前选中产线机心跳上报的本机工站 */
 const pullDeviceStations = computed(() => {
@@ -484,6 +529,14 @@ function initFinalContentsFromDiff(diff) {
   selectedMergePath.value = firstChanged?.path || (diff?.files || [])[0]?.path || ''
 }
 
+function newerUpdatedAt(a, b) {
+  const da = parseApiDateTime(a)
+  const db = parseApiDateTime(b)
+  if (!da) return b || ''
+  if (!db) return a || ''
+  return da.getTime() >= db.getTime() ? a : b
+}
+
 function toStationTree(files) {
   const stations = new Map()
   for (const f of files || []) {
@@ -499,8 +552,14 @@ function toStationTree(files) {
         label: stationName,
         stationName,
         isStation: true,
+        updatedAt: '',
         children: [],
       })
+    }
+    const station = stations.get(stationName)
+    // 工站文件夹最近更新 = 其下文件 mtime 最大值
+    if (f.updatedAt) {
+      station.updatedAt = newerUpdatedAt(station.updatedAt, f.updatedAt)
     }
     const relParts = parts.slice(2)
     if (!relParts.length) continue
@@ -516,12 +575,13 @@ function toStationTree(files) {
       label = '流程'
       kind = 'meta'
     }
-    stations.get(stationName).children.push({
+    station.children.push({
       id: full,
       label,
       path: full,
       stationName,
       kind,
+      updatedAt: f.updatedAt || '',
       isLeaf: true,
     })
   }
@@ -930,7 +990,7 @@ onUnmounted(() => {
 .edit-layout {
   height: 100%;
   display: grid;
-  grid-template-columns: 280px 1fr;
+  grid-template-columns: 380px 1fr;
   gap: 12px;
   min-height: 0;
 }
@@ -950,6 +1010,43 @@ onUnmounted(() => {
 .side-scroll {
   flex: 1;
   min-height: 0;
+}
+.tree-node {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  width: 0;
+  padding-right: 4px;
+  line-height: 1.35;
+}
+.tree-node-label {
+  flex: 1;
+  min-width: 0;
+  white-space: normal;
+  word-break: break-all;
+  line-height: 1.35;
+}
+.tree-node-time {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: #909399;
+  line-height: 1.35;
+  white-space: nowrap;
+  padding-top: 1px;
+}
+.side :deep(.el-tree-node__content) {
+  height: auto;
+  min-height: 26px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  align-items: flex-start;
+}
+.side :deep(.el-tree-node__content > .tree-node) {
+  flex: 1;
+  min-width: 0;
 }
 
 .editor {
@@ -972,6 +1069,10 @@ onUnmounted(() => {
   background: #fafafa;
   flex-shrink: 0;
 }
+.editor-meta {
+  min-width: 0;
+  flex: 1;
+}
 .editor-path {
   font-size: 13px;
   color: #606266;
@@ -979,6 +1080,11 @@ onUnmounted(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: Consolas, 'Microsoft YaHei', monospace;
+}
+.editor-updated {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #909399;
 }
 .editor-actions {
   display: flex;
