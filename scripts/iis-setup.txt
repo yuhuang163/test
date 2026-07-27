@@ -24,13 +24,24 @@
 
 四、IIS 配置
   1. 安装 IIS、URL Rewrite、ARR（启用 Proxy）
-  2. 新建网站：
+  2. 【远控必做】安装「WebSocket 协议」：
+     服务器管理器 → 添加角色和功能 → Web 服务器(IIS) → 应用程序开发 → 勾选 WebSocket 协议
+  3. 【远控必做】启用 ARR 的 WebSocket 反代：
+     IIS 根节点 → 应用程序请求路由缓存 → Server Proxy Settings
+     → 勾选 Enable proxy
+     → 勾选 Enable WebSocket proxy
+     → 应用 → 管理员 CMD 执行：iisreset
+  4. 新建网站：
      - 物理路径：...\factory-admin\dist
      - 绑定：http，端口 80，主机名 fctp.luteos.com
      - HTTPS：申请证书后增加 https:443 同名绑定（推荐）
-  3. web.config 已将 /api 反代到 http://127.0.0.1:8800；/docs、/openapi.json 同理（Swagger 文档）
-  4. 访问：https://fctp.luteos.com/  登录 admin / admin123
+  5. web.config 已将 /api 反代到 http://127.0.0.1:8800；/docs、/openapi.json 同理（Swagger 文档）
+  6. 访问：https://fctp.luteos.com/  登录 admin / admin123
      API 文档（外网）：https://fctp.luteos.com/docs
+  7. 自测信令（服务器本机或办公电脑，把 TOKEN/SESSION 换成真实值）：
+     浏览器 F12 → Console：
+       new WebSocket('wss://fctp.luteos.com/api/factory-tool/remote-desktop/ws?sessionId=x&role=viewer&token=y')
+     onopen 有回调即反代正常；立刻 onerror/code=1006 → 回到第 2～3 步
 
 五、防火墙 / 安全组（服务器本机能开、外网电脑打不开时，优先查这里）
   A. 阿里云 ECS 安全组（控制台 → 云服务器 → 安全组 → 入方向）
@@ -58,4 +69,5 @@
 八、WebRTC 远控（可选）
   - 详见 scripts\coturn-setup.txt
   - 需在服务器部署 coturn，并在 factory-api\.env 配置 TURN_URLS / TURN_SECRET
-  - IIS ARR 勾选 Enable WebSocket proxy，以便 /api/.../remote-desktop/ws 信令连通
+  - 若提示「信令 WebSocket 连接失败」：几乎一定是第四节第 2～3 步未做
+    （HTTP 接口正常 ≠ WebSocket 已通；ARR 默认不转发 WS）

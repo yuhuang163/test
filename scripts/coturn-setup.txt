@@ -48,11 +48,17 @@
 
   本地调试可不配 TURN_*：接口会回退 Google STUN，仅同网/本机可用。
 
-五、IIS 反代 WebSocket
+五、IIS 反代 WebSocket（远控信令必做，否则浏览器报「信令 WebSocket 连接失败」）
 
-  1. IIS → 应用程序请求路由缓存 → Server Proxy Settings → 勾选 Enable WebSocket proxy
-  2. 站点 web.config 已含 api 反代；确保未禁用 WebSocket
-  3. 浏览器控制台看 ICE candidate type=relay 即表示走了 TURN
+  HTTP/HTTPS 的 REST 能登录、能拉设备列表，不代表 WebSocket 已通。
+
+  1. 服务器管理器 → 添加角色和功能 → Web 服务器 → 应用程序开发 → 勾选「WebSocket 协议」
+  2. IIS 根节点 → 应用程序请求路由缓存 → Server Proxy Settings
+       - Enable proxy = 开
+       - Enable WebSocket proxy = 开
+  3. 确认站点物理路径下 dist\web.config 含 `<webSocket enabled="true" />` 与 API Proxy 规则
+  4. 管理员 CMD：iisreset
+  5. 浏览器控制台看 ICE candidate type=relay 即表示走了 TURN（画面问题另查 coturn）
 
 六、验证
 

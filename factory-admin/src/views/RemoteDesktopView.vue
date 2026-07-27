@@ -612,11 +612,19 @@ async function startSession() {
         stopWaitTimer()
       }
     }
-    ws.onclose = () => {
-      if (session.value) statusText.value = '信令断开'
+    ws.onclose = (ev) => {
+      if (session.value) {
+        statusText.value = `信令断开 code=${ev.code}`
+      }
     }
     ws.onerror = () => {
-      ElMessage.error('信令 WebSocket 连接失败（检查 API/反代 WebSocket）')
+      // 生产环境多为 IIS ARR 未开 WebSocket 反代；本机直连 8800 一般无此问题
+      statusText.value = '信令 WebSocket 失败'
+      ElMessage.error({
+        duration: 12000,
+        message:
+          '信令 WebSocket 连接失败。生产站请在服务器：① 安装 IIS「WebSocket 协议」② ARR→Server Proxy Settings→勾选 Enable WebSocket proxy ③ iisreset；并确认 dist/web.config 已更新。',
+      })
     }
   } catch (e) {
     session.value = null
