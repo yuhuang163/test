@@ -4,7 +4,7 @@
 #include <QString>
 #include <QVector>
 
-/** 上位机 test_case 与云端同步：按工站上传草稿 / 下载正式 bundle / 心跳领命令 */
+/** 上位机 test_case 与云端同步：按工站上传草稿 / 下载正式 bundle / 心跳领命令（含远控 Agent） */
 class TestCaseSyncService {
   public:
     struct SyncResult {
@@ -46,6 +46,8 @@ class TestCaseSyncService {
 
     /** 心跳 + 领取命令；收到 pull_test_profile 时自动回传 Profile */
     static void heartbeatAndPollCommands();
+    /** 仅拉取并执行设备命令（远控启动需高频轮询） */
+    static void pollDeviceCommands();
     /** 启动后台定时心跳（进程内单例） */
     static void startDeviceAgent();
 };
