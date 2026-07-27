@@ -28,8 +28,13 @@
      服务器管理器 → 添加角色和功能 → Web 服务器(IIS) → 应用程序开发 → 勾选 WebSocket 协议
   3. 【远控必做】启用 ARR 反代（服务器根节点，不要在站点 web.config 写 proxy/webSocket，会 500.19）：
      IIS 根节点 → 应用程序请求路由缓存 → Server Proxy Settings
-     → 勾选 Enable proxy
+     → 勾选 Enable proxy（ARR 3.0 通常无单独「Enable WebSocket proxy」项，属正常）
      → 应用 → 管理员 CMD 执行：iisreset
+  3b.【远控必做】允许清空 WebSocket 压缩扩展头（否则 ARR 易 1006）：
+     站点 → URL 重写 → 右侧「查看服务器变量…」→ 添加 HTTP_SEC_WEBSOCKET_EXTENSIONS
+     web.config 的 API Proxy 规则已含：
+       <serverVariables><set name="HTTP_SEC_WEBSOCKET_EXTENSIONS" value="" /></serverVariables>
+     未先允许变量会报 500.50；允许后覆盖 dist\web.config 并 iisreset
   4. 新建网站：
      - 物理路径：...\factory-admin\dist
      - 绑定：http，端口 80，主机名 fctp.luteos.com
