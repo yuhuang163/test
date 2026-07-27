@@ -5096,14 +5096,15 @@ void MainWindow::setupDongleSuctionPlotWidget(QCustomPlot* plot) {
     plot->graph(1)->setName(QStringLiteral("第二通道"));
     plot->graph(2)->setPen(QPen(QColor(50, 160, 80), 2));
     plot->graph(2)->setName(QStringLiteral("第三通道"));
-    const double xWin = dongleSuctionXWindowSec();
+    const double xInit = dongleSuctionXWindowSec();
     double yMin = -40.0;
     double yMax = 0.0;
     dongleSuctionYAxisRange(yMin, yMax);
-    plot->xAxis->setLabel(QStringLiteral("时间(s，最近%1秒)").arg(xWin, 0, 'f', 1));
+    // 全程曲线：横轴为从开始计时起的绝对时间，不再裁「最近 N 秒」
+    plot->xAxis->setLabel(QStringLiteral("时间(s)"));
     plot->yAxis->setLabel(QStringLiteral("吸力(kPa)"));
     plot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
-    plot->xAxis->setRange(0, xWin);
+    plot->xAxis->setRange(0, xInit);
     plot->yAxis->setRange(yMin, yMax);
     applyDongleSuctionAxisTickResolution(plot);
 }
@@ -5161,8 +5162,6 @@ void MainWindow::dongleSuctionYAxisRange(double& yMin, double& yMax) const {
 }
 
 void MainWindow::applyDongleSuctionAxisSettings() {
-    if (!dongleSuctionChartTimeSec_.isEmpty())
-        trimDongleSuctionChartToWindow(dongleSuctionChartTimeSec_.last());
     refreshDongleSuctionPlotWidget(dongleSuctionPlot_);
     refreshDongleSuctionPlotWidget(dongleSuctionPlotPopup_);
 }
@@ -5171,33 +5170,28 @@ void MainWindow::refreshDongleSuctionPlotWidget(QCustomPlot* plot) {
     if (!plot || plot->graphCount() < 3)
         return;
 
-    const double xWin = dongleSuctionXWindowSec();
+    const double xInit = dongleSuctionXWindowSec();
     double yMin = -40.0;
     double yMax = 0.0;
     dongleSuctionYAxisRange(yMin, yMax);
-    plot->xAxis->setLabel(QStringLiteral("时间(s，最近%1秒)").arg(xWin, 0, 'f', 1));
+    plot->xAxis->setLabel(QStringLiteral("时间(s)"));
     applyDongleSuctionAxisTickResolution(plot);
 
     if (dongleSuctionChartTimeSec_.isEmpty()) {
         for (int i = 0; i < 3; ++i)
             plot->graph(i)->data()->clear();
-        plot->xAxis->setRange(0, xWin);
+        plot->xAxis->setRange(0, xInit);
         plot->yAxis->setRange(yMin, yMax);
         plot->replot();
         return;
     }
 
     const double tSec = dongleSuctionChartTimeSec_.last();
-    const double windowStart = qMax(0.0, tSec - xWin);
-    QVector<double> relTime;
-    relTime.reserve(dongleSuctionChartTimeSec_.size());
-    for (double t : dongleSuctionChartTimeSec_)
-        relTime.append(t - windowStart);
-
-    plot->graph(0)->setData(relTime, dongleSuctionChartCh1_);
-    plot->graph(1)->setData(relTime, dongleSuctionChartCh2_);
-    plot->graph(2)->setData(relTime, dongleSuctionChartCh3_);
-    plot->xAxis->setRange(0, xWin);
+    plot->graph(0)->setData(dongleSuctionChartTimeSec_, dongleSuctionChartCh1_);
+    plot->graph(1)->setData(dongleSuctionChartTimeSec_, dongleSuctionChartCh2_);
+    plot->graph(2)->setData(dongleSuctionChartTimeSec_, dongleSuctionChartCh3_);
+    // 有数据后横轴覆盖全程（可拖拽/滚轮缩放查看细节）
+    plot->xAxis->setRange(0, qMax(xInit, tSec));
     plot->yAxis->setRange(yMin, yMax);
     plot->replot();
 }
@@ -5293,14 +5287,8 @@ void MainWindow::resetDongleSuctionChart() {
     refreshDongleSuctionPlotWidget(dongleSuctionPlotPopup_);
 }
 
-void MainWindow::trimDongleSuctionChartToWindow(double tSec) {
-    const double windowStart = qMax(0.0, tSec - dongleSuctionXWindowSec());
-    while (!dongleSuctionChartTimeSec_.isEmpty() && dongleSuctionChartTimeSec_.first() < windowStart) {
-        dongleSuctionChartTimeSec_.removeFirst();
-        dongleSuctionChartCh1_.removeFirst();
-        dongleSuctionChartCh2_.removeFirst();
-        dongleSuctionChartCh3_.removeFirst();
-    }
+void MainWindow::trimDongleSuctionChartToWindow(double /*tSec*/) {
+    // 保留全程采样点，不再按「最近 N 秒」丢弃历史数据
 }
 
 void MainWindow::updateDongleSuctionPeakLabels() {
@@ -5386,11 +5374,16 @@ void MainWindow::refreshDongleSuctionData(const ProtocolDongleSuctionData& data)
 }
 
 void MainWindow::on_dongle_suction_open_clicked() {
+    // 串口未开时自动打开（当前下拉所选端口），不弹窗打断
     if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
-        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("请先连接 Dongle 串口"));
-        return;
+        openDongleSerialPort();
+        if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
+            showlog(QStringLiteral("开启吸力读取失败：无法打开 Dongle 串口（请检查端口选择是否正确、是否被占用）"));
+            return;
+        }
+        showlog(QStringLiteral("Dongle 串口未连接，已自动打开：%1").arg(ui->comNameCombo->currentText()));
     }
-
+    waitWork(200);
     loadDongleSuctionPeakSettings();
     setDongleSuctionPeakParamWidgetsEnabled(false);
     dongleSuctionReadEnabled_ = true;
@@ -5427,8 +5420,11 @@ void MainWindow::on_dongle_suction_clear_chart_clicked() {
 
 void MainWindow::on_dongle_suction_set_osr_clicked() {
     if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
-        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("请先连接 Dongle 串口"));
-        return;
+        openDongleSerialPort();
+        if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
+            showlog(QStringLiteral("设置吸力 OSR 失败：无法打开 Dongle 串口"));
+            return;
+        }
     }
     if (!at) {
         showlog(QStringLiteral("AT+SUCTIONOSR 发送失败：Dongle 未就绪"));

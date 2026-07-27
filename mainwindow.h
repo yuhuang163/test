@@ -187,7 +187,7 @@ class MainWindow : public QMainWindow {
     void resetDongleSuctionChart();
     void appendDongleSuctionChartSample(double ch1Kpa, double ch2Kpa, double ch3Kpa);
     void refreshDongleSuctionData(const ProtocolDongleSuctionData& data);
-    void trimDongleSuctionChartToWindow(double tSec);
+    void trimDongleSuctionChartToWindow(double tSec); // 兼容旧调用；现已保留全程数据，内部为空实现
     void updateDongleSuctionPeakLabels();
     void loadDongleSuctionPeakSettings();
     void setDongleSuctionPeakParamWidgetsEnabled(bool enabled);
@@ -198,6 +198,7 @@ class MainWindow : public QMainWindow {
     bool startDongleSuctionCsvLog();
     void stopDongleSuctionCsvLog();
     void writeDongleSuctionCsvRow(double tSec, double ch1Kpa, double ch2Kpa, double ch3Kpa);
+    /** 空图时横轴初始长度；有数据后按全程自动扩展 */
     static constexpr double kDongleSuctionChartWindowSec = 10.0;
     static constexpr int kDongleSuctionChannelCount = 3;
     bool dongleSuctionReadEnabled_ = false;

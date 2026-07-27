@@ -3593,14 +3593,14 @@
                   <item>
                    <widget class="QLabel" name="label_dongle_suction_x_window">
                     <property name="text">
-                     <string>X窗口(s)</string>
+                     <string>空图X(s)</string>
                     </property>
                    </widget>
                   </item>
                   <item>
                    <widget class="QDoubleSpinBox" name="dongleSuctionXWindowSpin">
                     <property name="toolTip">
-                     <string>横轴显示最近多少秒的数据</string>
+                     <string>尚无数据时横轴初始长度；有数据后自动显示从开始到当前的全程曲线</string>
                     </property>
                     <property name="decimals">
                      <number>1</number>
