@@ -1263,7 +1263,12 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
     if (def.meta.promptOnly) {
         if (def.gate.enabled) {
             const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
-            ctx->showlog(QStringLiteral("本步等待协议上报卡控（不发送指令，超时 %1ms）").arg(timeoutMs));
+            const QString expectHint = def.gate.expected.trimmed().isEmpty()
+                                           ? def.gate.field
+                                           : QStringLiteral("%1=%2").arg(def.gate.field, def.gate.expected.trimmed());
+            ctx->showlog(QStringLiteral("本步提示并等待协议上报卡控（%1，超时 %2ms，不发送指令）")
+                             .arg(expectHint)
+                             .arg(timeoutMs));
             QTimer::singleShot(timeoutMs, ctx, [ctx, def]() {
                 if (!ctx->isActiveTestCaseStep(def.meta.name) || ctx->isActiveTestCaseStepDone())
                     return;

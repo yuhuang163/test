@@ -1099,10 +1099,21 @@ void QFreeWork::showTestCasePromptForStep(const TestCaseDefinition& def) {
     if (text.isEmpty())
         return;
     const QString title = def.meta.name.trimmed();
-    testCasePrompt_ = new QMessageBox(QMessageBox::Information, title, text, QMessageBox::Yes, this);
-    if (QAbstractButton* yesBtn = testCasePrompt_->button(QMessageBox::Yes))
-        yesBtn->setText(QStringLiteral("是"));
-    testCasePrompt_->setDefaultButton(QMessageBox::Yes);
+    // 弹窗两种形态：
+    // 1) 下方 Gate 已开：只提示、同步等上报卡控，无「是」防误点，通过/超时后关窗
+    // 2) Gate 未开：点「是」确认（纯 PromptOnly 确认过步，或提示同时发指令时的确认）
+    const bool waitReportGate = def.gate.enabled;
+    testCasePrompt_ = new QMessageBox(QMessageBox::Information, title, text,
+                                      waitReportGate ? QMessageBox::NoButton : QMessageBox::Yes, this);
+    if (!waitReportGate) {
+        if (QAbstractButton* yesBtn = testCasePrompt_->button(QMessageBox::Yes))
+            yesBtn->setText(QStringLiteral("是"));
+        testCasePrompt_->setDefaultButton(QMessageBox::Yes);
+    } else {
+        QPushButton* hiddenCloseButton = testCasePrompt_->addButton(QString(), QMessageBox::RejectRole);
+        if (hiddenCloseButton)
+            hiddenCloseButton->setVisible(false);
+    }
     testCasePrompt_->setAttribute(Qt::WA_DeleteOnClose);
     testCasePromptProgrammaticClose_ = false;
     applyTestItemPromptFont(testCasePrompt_);
