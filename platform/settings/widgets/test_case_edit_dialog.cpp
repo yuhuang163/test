@@ -20,6 +20,9 @@
 #include <QItemSelectionModel>
 
 #include <QHash>
+#include <QInputDialog>
+#include <QLineEdit>
+#include <QRegularExpression>
 
 #include <algorithm>
 #include <functional>
@@ -62,14 +65,99 @@ bool sendParamTableIsEmpty(const QTableWidget* table) {
     return true;
 }
 
+/** 步骤 Param 键 → 界面中文说明（保存仍用英文键）。 */
+QString sendParamKeyZhLabel(const QString& key) {
+    const QString k = key.trimmed();
+    if (k.isEmpty())
+        return {};
+    static const QHash<QString, QString> kMap = {
+        {QStringLiteral("visaAddress"), QStringLiteral("VISA 资源地址（单电源）")},
+        {QStringLiteral("voltage"), QStringLiteral("电压 (V)")},
+        {QStringLiteral("current"), QStringLiteral("限流 (A)")},
+        {QStringLiteral("currentRange"), QStringLiteral("电流量程")},
+        {QStringLiteral("scpiSetVoltageCmd"), QStringLiteral("设电压 SCPI（含 %1）")},
+        {QStringLiteral("scpiSetCurrentCmd"), QStringLiteral("设限流 SCPI（含 %1）")},
+        {QStringLiteral("scpiOutputOnCmd"), QStringLiteral("打开输出 SCPI")},
+        {QStringLiteral("scpiOutputOffCmd"), QStringLiteral("关闭输出 SCPI")},
+        {QStringLiteral("scpiReadVoltageCmd"), QStringLiteral("读电压 SCPI")},
+        {QStringLiteral("scpiReadCurrentCmd"), QStringLiteral("读电流 SCPI")},
+        {QStringLiteral("scpiSetCurrentRangeCmd"), QStringLiteral("设电流量程 SCPI（含 %1）")},
+        {QStringLiteral("scpiChannelSelectCmd"), QStringLiteral("选通道 SCPI（含 %1，如 INST OUT%1）")},
+        {QStringLiteral("sharedPair"), QStringLiteral("启用多工位共享外设")},
+        {QStringLiteral("shareInstrument"), QStringLiteral("启用多工位共享外设（同 sharedPair）")},
+        {QStringLiteral("stationsPerDevice"), QStringLiteral("每台设备对应工位数（如 2 或 3）")},
+        {QStringLiteral("powerChannel"), QStringLiteral("电源通道号（一般自动填）")},
+        {QStringLiteral("powerChannelLock"), QStringLiteral("锁定电源通道（不按工位改）")},
+        {QStringLiteral("visaDeviceIndex"), QStringLiteral("电源设备序号（从 0，一般自动）")},
+        {QStringLiteral("visaDeviceIndexLock"), QStringLiteral("锁定电源设备序号")},
+        {QStringLiteral("enable"), QStringLiteral("输出开关（1开/0关）")},
+        {QStringLiteral("sampleDurationMs"), QStringLiteral("连续采样窗口 (ms)")},
+        {QStringLiteral("sampleIntervalMs"), QStringLiteral("连续采样间隔 (ms)")},
+        {QStringLiteral("channel"), QStringLiteral("温度/采样通道号")},
+        {QStringLiteral("channelLock"), QStringLiteral("锁定通道号（不按工位改）")},
+        {QStringLiteral("slaveAddr"), QStringLiteral("Modbus 从站地址")},
+        {QStringLiteral("addr"), QStringLiteral("Modbus 从站地址")},
+        {QStringLiteral("tempDeviceIndex"), QStringLiteral("温度仪设备序号（从 0）")},
+        {QStringLiteral("tempDeviceIndexLock"), QStringLiteral("锁定温度仪设备序号")},
+        {QStringLiteral("tempBaudRate"), QStringLiteral("温度仪串口波特率")},
+        {QStringLiteral("sharedComName"), QStringLiteral("共享串口名（运行时解析）")},
+        {QStringLiteral("txHex"), QStringLiteral("发送十六进制报文")},
+        {QStringLiteral("string"), QStringLiteral("原文/字符串参数")},
+        {QStringLiteral("line"), QStringLiteral("SCPI 原始行")},
+        {QStringLiteral("mLeft"), QStringLiteral("PLC 左工位线圈")},
+        {QStringLiteral("mRight"), QStringLiteral("PLC 右工位线圈")},
+        {QStringLiteral("readChannel"), QStringLiteral("治具读电流通道 CH1/CH2")},
+        {QStringLiteral("MachineIndex"), QStringLiteral("治具机号")},
+        {QStringLiteral("machineIndex"), QStringLiteral("治具机号")},
+    };
+    if (kMap.contains(k))
+        return kMap.value(k);
+    {
+        QRegularExpression re(QStringLiteral(R"(^visaAddress_?(\d+)$)"), QRegularExpression::CaseInsensitiveOption);
+        const QRegularExpressionMatch m = re.match(k);
+        if (m.hasMatch())
+            return QStringLiteral("第 %1 台程控电源 VISA 地址").arg(m.captured(1).toInt() + 1);
+    }
+    {
+        QRegularExpression re(QStringLiteral(R"(^(?:tempComName|sharedComName)_?(\d+)$)"),
+                              QRegularExpression::CaseInsensitiveOption);
+        const QRegularExpressionMatch m = re.match(k);
+        if (m.hasMatch())
+            return QStringLiteral("第 %1 台温度仪串口名").arg(m.captured(1).toInt() + 1);
+    }
+    // 未登记键：界面仍显示英文键本身，悬停同样提示
+    return k;
+}
+
+enum { SendParamKeyRole = Qt::UserRole + 31 };
+
+void applySendParamNameCell(QTableWidgetItem* nameItem, const QString& key) {
+    if (!nameItem)
+        return;
+    const QString k = key.trimmed();
+    nameItem->setData(SendParamKeyRole, k);
+    nameItem->setText(k.isEmpty() ? QString() : sendParamKeyZhLabel(k));
+    nameItem->setFlags((nameItem->flags() | Qt::ItemIsEnabled | Qt::ItemIsSelectable) & ~Qt::ItemIsEditable);
+    nameItem->setToolTip(k.isEmpty() ? QStringLiteral("双击可填写英文参数名")
+                                      : QStringLiteral("英文参数名：%1").arg(k));
+}
+
+QTableWidgetItem* makeSendParamNameItem(const QString& key) {
+    auto* item = new QTableWidgetItem();
+    applySendParamNameCell(item, key);
+    return item;
+}
+
 void configureSendParamTable(QTableWidget* table, bool namedKeys) {
     if (!table)
         return;
     table->clear();
     table->setRowCount(0);
     if (namedKeys) {
+        // 界面只显示中文说明；英文键存在 UserRole，悬停 tooltip 可见
         table->setColumnCount(2);
         table->setHorizontalHeaderLabels({QStringLiteral("参数名"), QStringLiteral("参数值")});
+        table->setColumnWidth(0, 260);
     } else {
         table->setColumnCount(1);
         table->setHorizontalHeaderLabels({QStringLiteral("参数值")});
@@ -87,12 +175,12 @@ void setSendParamTableFromMap(QTableWidget* table, const QVariantMap& map) {
     for (const QString& key : keys) {
         const int r = table->rowCount();
         table->insertRow(r);
-        table->setItem(r, 0, new QTableWidgetItem(key));
+        table->setItem(r, 0, makeSendParamNameItem(key));
         table->setItem(r, 1, new QTableWidgetItem(map.value(key).toString()));
     }
     if (table->rowCount() == 0) {
         table->insertRow(0);
-        table->setItem(0, 0, new QTableWidgetItem());
+        table->setItem(0, 0, makeSendParamNameItem(QString()));
         table->setItem(0, 1, new QTableWidgetItem());
     }
 }
@@ -110,7 +198,13 @@ QVariantMap readSendParamMapFromTable(const QTableWidget* table) {
     for (int r = 0; r < table->rowCount(); ++r) {
         const QTableWidgetItem* nameItem = table->item(r, 0);
         const QTableWidgetItem* valItem = table->item(r, 1);
-        const QString name = nameItem ? nameItem->text().trimmed() : QString();
+        QString name;
+        if (nameItem) {
+            name = nameItem->data(SendParamKeyRole).toString().trimmed();
+            // 兼容旧两列表（参数名直接写在文案里）
+            if (name.isEmpty())
+                name = nameItem->text().trimmed();
+        }
         if (name.isEmpty())
             continue;
         map.insert(name, valItem ? valItem->text() : QString());
@@ -1015,12 +1109,19 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
     connect(ui->pushButton_addParamRow, &QPushButton::clicked, this, [this]() {
         if (!ui->tableWidget_sendParam || ui->tableWidget_sendParam->columnCount() < 2)
             return;
+        bool ok = false;
+        const QString key = QInputDialog::getText(this, QStringLiteral("添加参数"),
+                                                  QStringLiteral("英文参数名（保存到步骤 ini）："),
+                                                  QLineEdit::Normal, QString(), &ok)
+                                .trimmed();
+        if (!ok || key.isEmpty())
+            return;
         const int r = ui->tableWidget_sendParam->rowCount();
         ui->tableWidget_sendParam->insertRow(r);
-        ui->tableWidget_sendParam->setItem(r, 0, new QTableWidgetItem());
+        ui->tableWidget_sendParam->setItem(r, 0, makeSendParamNameItem(key));
         ui->tableWidget_sendParam->setItem(r, 1, new QTableWidgetItem());
-        ui->tableWidget_sendParam->setCurrentCell(r, 0);
-        ui->tableWidget_sendParam->editItem(ui->tableWidget_sendParam->item(r, 0));
+        ui->tableWidget_sendParam->setCurrentCell(r, 1);
+        ui->tableWidget_sendParam->editItem(ui->tableWidget_sendParam->item(r, 1));
     });
     connect(ui->pushButton_removeParamRow, &QPushButton::clicked, this, [this]() {
         if (!ui->tableWidget_sendParam)
@@ -1034,9 +1135,26 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
             ui->tableWidget_sendParam->removeRow(r);
         if (ui->tableWidget_sendParam->columnCount() >= 2 && ui->tableWidget_sendParam->rowCount() == 0) {
             ui->tableWidget_sendParam->insertRow(0);
-            ui->tableWidget_sendParam->setItem(0, 0, new QTableWidgetItem());
+            ui->tableWidget_sendParam->setItem(0, 0, makeSendParamNameItem(QString()));
             ui->tableWidget_sendParam->setItem(0, 1, new QTableWidgetItem());
         }
+    });
+    // 双击参数名列：修改英文键（界面仍只显示中文）
+    connect(ui->tableWidget_sendParam, &QTableWidget::cellDoubleClicked, this, [this](int row, int column) {
+        if (!ui->tableWidget_sendParam || ui->tableWidget_sendParam->columnCount() != 2 || column != 0)
+            return;
+        QTableWidgetItem* nameItem = ui->tableWidget_sendParam->item(row, 0);
+        if (!nameItem)
+            return;
+        const QString oldKey = nameItem->data(SendParamKeyRole).toString();
+        bool ok = false;
+        const QString key = QInputDialog::getText(this, QStringLiteral("修改参数名"),
+                                                  QStringLiteral("英文参数名（保存到步骤 ini）："),
+                                                  QLineEdit::Normal, oldKey, &ok)
+                                .trimmed();
+        if (!ok || key.isEmpty())
+            return;
+        applySendParamNameCell(nameItem, key);
     });
 
     tableWidget_multiGates_ = new QTableWidget(ui->groupBox_gate);
