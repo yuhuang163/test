@@ -64,11 +64,13 @@
       <item row="3" column="0" colspan="2">
        <widget class="QCheckBox" name="checkBox_promptOnly">
         <property name="text">
-         <string>纯空白提醒（确认后不发送指令）</string>
+         <string>不发送指令（PromptOnly）</string>
         </property>
         <property name="toolTip">
-         <string>勾选：仅弹窗，点「是」后进入下一步，不执行下方测试指令。
-不勾选：弹窗提示的同时仍会执行下方测试指令。</string>
+         <string>勾选「测试时弹出操作提示」+ 本项：
+· 下方卡控未开：弹窗有「是」，点「是」即过本步（纯确认）。
+· 下方卡控已开：弹窗无按钮，同步等待上报匹配后自动下一步（防误点）。
+不勾选本项：弹窗提示的同时仍会执行下方测试指令。</string>
         </property>
        </widget>
       </item>
