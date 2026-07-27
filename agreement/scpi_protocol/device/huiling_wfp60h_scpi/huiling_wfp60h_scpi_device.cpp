@@ -92,6 +92,14 @@ bool HuilingWfp60hScpiDevice::writeCurrentRangeIfConfigured(const HuilingWfp60hS
     return transport_->writeLine(line);
 }
 
+bool HuilingWfp60hScpiDevice::writePowerChannelSelectIfConfigured(const HuilingWfp60hScpiProfile& profile) {
+    if (profile.powerChannel < 1 || profile.scpiChannelSelectCmd.trimmed().isEmpty())
+        return true;
+    const QString line = profile.scpiChannelSelectCmd.arg(profile.powerChannel);
+    qDebug().noquote() << "[Scpi] TX channel select:" << line;
+    return transport_->writeLine(line);
+}
+
 bool HuilingWfp60hScpiDevice::set(HuilingScpiCmd cmd, const QVariant& data) {
     if (!transport_ || !transport_->isOpen()) {
         return false;
@@ -112,6 +120,8 @@ bool HuilingWfp60hScpiDevice::set(HuilingScpiCmd cmd, const QVariant& data) {
         return transport_->writeLine(QStringLiteral("*RST"));
     case HuilingScpiCmd::ConfigureProgrammablePower: {
         const QVariantMap m = data.toMap();
+        if (!writePowerChannelSelectIfConfigured(profile))
+            return false;
         if (!writeCurrentRangeIfConfigured(profile, data)) {
             return false;
         }
@@ -123,14 +133,20 @@ bool HuilingWfp60hScpiDevice::set(HuilingScpiCmd cmd, const QVariant& data) {
         return transport_->writeLine(profile.scpiSetCurrentCmd.arg(QString::number(currentA, 'f', 3)));
     }
     case HuilingScpiCmd::ProgrammablePowerOutput:
+        if (!writePowerChannelSelectIfConfigured(profile))
+            return false;
         return transport_->writeLine(data.toBool() ? profile.scpiOutputOnCmd : profile.scpiOutputOffCmd);
     case HuilingScpiCmd::ReadProgrammableVoltage:
+        if (!writePowerChannelSelectIfConfigured(profile))
+            return false;
         if (visaSync) {
             return queryProgrammablePower(profile.scpiReadVoltageCmd, ProgrammablePowerReadPending::Voltage);
         }
         pendingProgPowerRead_ = ProgrammablePowerReadPending::Voltage;
         return transport_->writeLine(profile.scpiReadVoltageCmd);
     case HuilingScpiCmd::ReadProgrammableCurrent:
+        if (!writePowerChannelSelectIfConfigured(profile))
+            return false;
         if (!writeCurrentRangeIfConfigured(profile, data)) {
             return false;
         }

@@ -318,6 +318,7 @@ SOURCES += \
     work_station/freework/qfreeworkbox.cpp \
     work_station/freework/qfreework_case_hooks.cpp \
     work_station/freework/qfreework_test_case.cpp \
+    work_station/freework/shared_instrument.cpp \
     agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp.cpp \
     business/plc_v3_fixture/plc_v3_touch.cpp \
     business/plc_v3_fixture/plc_v3_facade.cpp \
@@ -481,6 +482,7 @@ HEADERS += \
     work_station/camera/cameratest.h \
     work_station/freework/qfreework.h \
     work_station/freework/qfreeworkbox.h \
+    work_station/freework/shared_instrument.h \
     agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp.h \
     agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp_types.h \
     agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp_device.h \

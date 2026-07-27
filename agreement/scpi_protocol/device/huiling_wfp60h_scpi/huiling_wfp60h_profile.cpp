@@ -66,6 +66,9 @@ HuilingWfp60hScpiProfile HuilingWfp60hScpiProfile::fromParamMap(const QVariantMa
     applyCmd("scpiReadVoltageCmd", &HuilingWfp60hScpiProfile::scpiReadVoltageCmd);
     applyCmd("scpiReadCurrentCmd", &HuilingWfp60hScpiProfile::scpiReadCurrentCmd);
     applyCmd("scpiSetCurrentRangeCmd", &HuilingWfp60hScpiProfile::scpiSetCurrentRangeCmd);
+    applyCmd("scpiChannelSelectCmd", &HuilingWfp60hScpiProfile::scpiChannelSelectCmd);
+    if (map.contains(QStringLiteral("powerChannel")))
+        profile.powerChannel = qBound(0, map.value(QStringLiteral("powerChannel")).toInt(), 8);
     return profile;
 }
 

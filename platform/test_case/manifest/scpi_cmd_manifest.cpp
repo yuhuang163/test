@@ -18,9 +18,10 @@ const Row kRows[] = {
     {ScpiDeviceRoute::HuilingWfp60h, "ReadMeasureConfiguration", u8"读取测量配置", nullptr, kSet},
     {ScpiDeviceRoute::HuilingWfp60h, "InitializeDevice", u8"初始化设备", nullptr, kSet},
     {ScpiDeviceRoute::HuilingWfp60h, "ConfigureProgrammablePower", u8"配置源通道属性",
-     u8"visaAddress(必填); voltage(V); current(A)\n"
-     u8"可选 SCPI 模板(含 %1 占位)：scpiSetVoltageCmd / scpiSetCurrentCmd / scpiOutputOnCmd / scpiOutputOffCmd / scpiReadVoltageCmd / scpiReadCurrentCmd\n"
-     u8"会凌缺省示例：SOURce1:VOLTage:... %1 、OUTPut1:STATe ON/OFF 、MEASure1:CURRent:DC?",
+     u8"单电源：visaAddress；voltage(V)；current(A)\n"
+     u8"一拖多共享：sharedPair=true；stationsPerDevice=2|3；visaAddress0/1/2…；可选 scpiChannelSelectCmd=INST OUT%1\n"
+     u8"可选 SCPI 模板(含 %1)：scpiSetVoltageCmd / scpiSetCurrentCmd / scpiOutputOnCmd / Off / Read*\n"
+     u8"会凌通道写在 SOURceN/OUTPutN；界面「中文说明」列可对照参数含义",
      kSet},
     {ScpiDeviceRoute::HuilingWfp60h, "ProgrammablePowerOutput", u8"源通道输出开关",
      u8"int=1开/0关（须先执行配置步骤；输出 ON/OFF 命令复用配置步的 scpiOutputOnCmd/scpiOutputOffCmd）", kSet},
@@ -40,9 +41,10 @@ const Row kRows[] = {
     {ScpiDeviceRoute::Agilent66319d, "ReadMeasureConfiguration", u8"读取测量配置", nullptr, kSet},
     {ScpiDeviceRoute::Agilent66319d, "InitializeDevice", u8"初始化设备", nullptr, kSet},
     {ScpiDeviceRoute::Agilent66319d, "ConfigureProgrammablePower", u8"配置源通道属性",
-     u8"visaAddress(必填); voltage(V); current(A); currentRange(量程 3/1/0.02/AUTO)\n"
-     u8"可选 SCPI 模板(含 %1)：scpiSetVoltageCmd=VOLT %1; scpiSetCurrentCmd=CURR %1; scpiOutputOnCmd=OUTP ON; scpiOutputOffCmd=OUTP OFF;\n"
-     u8"scpiReadVoltageCmd=MEAS:VOLT:DC?; scpiReadCurrentCmd=MEAS:CURR:DC?; scpiSetCurrentRangeCmd=SENS:CURR:RANG %1",
+     u8"单电源：visaAddress；voltage(V)；current(A)；currentRange(3/1/0.02/AUTO)\n"
+     u8"一拖多共享：sharedPair=true；stationsPerDevice=2|3；visaAddress0/1/2…；scpiChannelSelectCmd=INST OUT%1\n"
+     u8"可选模板：scpiSetVoltageCmd=VOLT %1；scpiSetCurrentCmd=CURR %1；scpiOutputOn/Off；MEAS:*；SENS:CURR:RANG %1\n"
+     u8"界面参数表左侧「中文说明」对照英文参数名",
      kSet},
     {ScpiDeviceRoute::Agilent66319d, "ProgrammablePowerOutput", u8"源通道输出开关",
      u8"int=1开/0关（须先执行配置步骤；输出 ON/OFF 命令复用配置步的 scpiOutputOnCmd/scpiOutputOffCmd）", kSet},

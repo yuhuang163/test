@@ -761,8 +761,10 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     on_disconnectButton_clicked();
     // 关闭输出不等于释放 VISA；ASRL 串口不关会占住，测几次后需拔插才能再连
     resetVisaBackend();
-    if (auto* box = qobject_cast<QFreeWorkBox*>(window()))
+    if (auto* box = qobject_cast<QFreeWorkBox*>(window())) {
         box->releaseSharedAsd9026aIfIdle();
+        box->releaseSharedTempLoggerIfIdle();
+    }
     emit send_end_test(getIndex());
     ui->getMac->clear();
     mesProcessCode_.clear();
@@ -2604,8 +2606,10 @@ void QFreeWork::on_stopTest_clicked() {
     plcFacade_.disconnect();
     resetVisaBackend();
     isTestContinue = false;
-    if (auto* box = qobject_cast<QFreeWorkBox*>(window()))
+    if (auto* box = qobject_cast<QFreeWorkBox*>(window())) {
         box->releaseSharedAsd9026aIfIdle();
+        box->releaseSharedTempLoggerIfIdle();
+    }
     ui->macInput->setDisabled(0);
     ui->getMac->setDisabled(0);
 
