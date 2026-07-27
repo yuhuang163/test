@@ -140,6 +140,12 @@ QVariantMap defaultVisaConfigureParamMap(ScpiDeviceRoute route) {
         map.insert(QStringLiteral("scpiReadVoltageCmd"), QStringLiteral("MEAS:VOLT:DC?"));
         map.insert(QStringLiteral("scpiReadCurrentCmd"), QStringLiteral("MEAS:CURR:DC?"));
         map.insert(QStringLiteral("scpiSetCurrentRangeCmd"), QStringLiteral("SENS:CURR:RANG %1"));
+        // 一拖多两工位共一台双通道电源：在步骤里配 sharedPair + visaAddress0/1（不走上位机设置）
+        map.insert(QStringLiteral("sharedPair"), QStringLiteral("true"));
+        map.insert(QStringLiteral("stationsPerDevice"), QStringLiteral("2"));
+        map.insert(QStringLiteral("visaAddress0"), QStringLiteral("GPIB0::7::INSTR"));
+        map.insert(QStringLiteral("visaAddress1"), QStringLiteral("GPIB0::8::INSTR"));
+        map.insert(QStringLiteral("scpiChannelSelectCmd"), QStringLiteral("INST OUT%1"));
         return map;
     }
     map.insert(QStringLiteral("visaAddress"), QStringLiteral("TCPIP::localhost::5026::SOCKET"));

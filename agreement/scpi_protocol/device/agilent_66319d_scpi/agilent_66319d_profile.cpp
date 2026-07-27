@@ -1,5 +1,7 @@
 #include "agilent_66319d_profile.h"
 
+#include <QtGlobal>
+
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
 #endif
@@ -44,6 +46,9 @@ Agilent66319dScpiProfile fromParamMap(const QVariantMap& map) {
     applyCmd("scpiReadVoltageCmd", &HuilingWfp60hScpiProfile::scpiReadVoltageCmd);
     applyCmd("scpiReadCurrentCmd", &HuilingWfp60hScpiProfile::scpiReadCurrentCmd);
     applyCmd("scpiSetCurrentRangeCmd", &HuilingWfp60hScpiProfile::scpiSetCurrentRangeCmd);
+    applyCmd("scpiChannelSelectCmd", &HuilingWfp60hScpiProfile::scpiChannelSelectCmd);
+    if (map.contains(QStringLiteral("powerChannel")))
+        profile.powerChannel = qBound(0, map.value(QStringLiteral("powerChannel")).toInt(), 8);
     return profile;
 }
 

@@ -5,6 +5,7 @@
 #include "Abini.h"
 #include "asd9026a_device.h"
 #include "qfreework.h"
+#include "serial_channel.h"
 #include "ui_qfreeworkbox.h"
 
 QFreeWorkBox::QFreeWorkBox(QWidget* parent) : box_base(parent), ui(new Ui::QFreeWorkBox) {
@@ -37,6 +38,8 @@ QFreeWorkBox::~QFreeWorkBox() {
     if (Fixture_uart_ui != nullptr)
         SETTINGS.setValue(QString("mechine/0/masterFixturecomName"), Fixture_uart_ui->ui->FixturecomNameCombo->currentText());
     delete Fixture_uart_ui;
+    qDeleteAll(sharedTempLoggerMutexes_);
+    sharedTempLoggerMutexes_.clear();
     delete ui;
 }
 
@@ -76,6 +79,59 @@ void QFreeWorkBox::releaseSharedAsd9026aIfIdle() {
     const QString port = asd9026aDevice_->portName();
     asd9026aDevice_->close();
     emit sendBoxLog(QStringLiteral("ASD9026A 共享串口已释放：%1").arg(port));
+}
+
+SerialChannel* QFreeWorkBox::ensureSharedTempLoggerChannel(int deviceIndex0Based, const QString& portName,
+                                                           QString* errorOut, int baudRate) {
+    const QString port = portName.trimmed();
+    if (port.isEmpty()) {
+        if (errorOut)
+            *errorOut = QStringLiteral("共享温度仪串口名为空");
+        return nullptr;
+    }
+    SerialChannel*& channel = sharedTempLoggerChannels_[deviceIndex0Based];
+    if (!channel)
+        channel = new SerialChannel(this);
+    if (channel->isOpen()) {
+        if (channel->portName().compare(port, Qt::CaseInsensitive) == 0)
+            return channel;
+        channel->close();
+    }
+    SerialChannel::OpenParams params;
+    params.portName = port;
+    params.baudRate = baudRate > 0 ? baudRate : 115200;
+    params.readBufferSize = 4096;
+    params.readDebounceMs = 10;
+    params.rtsDtrMode = SerialChannel::RtsDtrMode::Enable;
+    if (!channel->open(params)) {
+        if (errorOut)
+            *errorOut = QStringLiteral("%1：%2").arg(port, channel->errorString());
+        return nullptr;
+    }
+    emit sendBoxLog(QStringLiteral("温度记录仪共享串口已打开：设备%1 %2").arg(deviceIndex0Based).arg(port));
+    return channel;
+}
+
+QMutex* QFreeWorkBox::sharedTempLoggerMutex(int deviceIndex0Based) {
+    QMutex*& mutex = sharedTempLoggerMutexes_[deviceIndex0Based];
+    if (!mutex)
+        mutex = new QMutex();
+    return mutex;
+}
+
+void QFreeWorkBox::releaseSharedTempLoggerIfIdle() {
+    for (test_base* station : testList) {
+        if (station && station->isTestContinue)
+            return;
+    }
+    for (auto it = sharedTempLoggerChannels_.begin(); it != sharedTempLoggerChannels_.end(); ++it) {
+        SerialChannel* ch = it.value();
+        if (!ch || !ch->isOpen())
+            continue;
+        const QString port = ch->portName();
+        ch->close();
+        emit sendBoxLog(QStringLiteral("温度记录仪共享串口已释放：设备%1 %2").arg(it.key()).arg(port));
+    }
 }
 
 Fixture_uart* QFreeWorkBox::ensureFixtureUartConnected(int stationIndex, QString* detailOut,

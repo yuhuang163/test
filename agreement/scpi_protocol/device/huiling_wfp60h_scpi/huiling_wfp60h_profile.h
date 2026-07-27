@@ -19,6 +19,10 @@ struct HuilingWfp60hScpiProfile {
     QString scpiReadCurrentCmd;
     /** 66319D 电流量程：如 SENS:CURR:RANG %1；WFP60H 留空。 */
     QString scpiSetCurrentRangeCmd;
+    /** 双通道电源：先选通再 VOLT/OUTP，如 INST OUT%1；会凌 SOURceN 类可留空。 */
+    QString scpiChannelSelectCmd;
+    /** 1/2；0 表示不发通道选择。 */
+    int powerChannel = 0;
 
     static HuilingWfp60hScpiProfile defaults();
     /** 暂与 defaults 相同（常量表）；后续若需再接入 SETTINGS。 */
