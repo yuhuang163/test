@@ -26,10 +26,9 @@
   1. 安装 IIS、URL Rewrite、ARR（启用 Proxy）
   2. 【远控必做】安装「WebSocket 协议」：
      服务器管理器 → 添加角色和功能 → Web 服务器(IIS) → 应用程序开发 → 勾选 WebSocket 协议
-  3. 【远控必做】启用 ARR 的 WebSocket 反代：
+  3. 【远控必做】启用 ARR 反代（服务器根节点，不要在站点 web.config 写 proxy/webSocket，会 500.19）：
      IIS 根节点 → 应用程序请求路由缓存 → Server Proxy Settings
      → 勾选 Enable proxy
-     → 勾选 Enable WebSocket proxy
      → 应用 → 管理员 CMD 执行：iisreset
   4. 新建网站：
      - 物理路径：...\factory-admin\dist
