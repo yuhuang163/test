@@ -13,14 +13,18 @@
 #include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
+#include <QHash>
 #include <QJsonArray>
+#include <QJsonDocument>
 #include <QJsonObject>
 #include <QMutex>
 #include <QProcess>
 #include <QDateTime>
+#include <QMetaObject>
 #include <QSet>
 #include <QSettings>
 #include <QSysInfo>
+#include <QThread>
 #include <QTimer>
 #include <QUrl>
 #include <QUrlQuery>
@@ -35,6 +39,148 @@ namespace {
 
 constexpr const char* kBackupDirName = ".backup";
 constexpr int kHeartbeatIntervalMs = 20000;
+/** 远控命令要快，单独高频拉命令，避免干等下一次 20s 心跳 */
+constexpr int kCommandPollIntervalMs = 3000;
+
+QMutex g_remoteDesktopMutex;
+QHash<QString, qint64> g_remoteDesktopPids; // sessionId -> pid
+
+QString remoteAgentDir() {
+    return QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("remote_agent"));
+}
+
+bool remoteAgentAvailable() {
+    const QDir dir(remoteAgentDir());
+    return dir.exists(QStringLiteral("run.bat")) || dir.exists(QStringLiteral("main.py"));
+}
+
+QString buildAgentSignalingUrl(const QString& sessionId, const QString& agentToken) {
+    QUrl base(FactoryCloudClient::apiRoot() + QStringLiteral("/remote-desktop/ws"));
+    QUrlQuery q;
+    q.addQueryItem(QStringLiteral("sessionId"), sessionId);
+    q.addQueryItem(QStringLiteral("role"), QStringLiteral("agent"));
+    q.addQueryItem(QStringLiteral("token"), agentToken);
+    base.setQuery(q);
+    QString s = base.toString(QUrl::FullyEncoded);
+    if (s.startsWith(QStringLiteral("https://"), Qt::CaseInsensitive)) {
+        s = QStringLiteral("wss://") + s.mid(8);
+    } else if (s.startsWith(QStringLiteral("http://"), Qt::CaseInsensitive)) {
+        s = QStringLiteral("ws://") + s.mid(7);
+    }
+    return s;
+}
+
+void stopRemoteDesktopSession(const QString& sessionId) {
+    QMutexLocker locker(&g_remoteDesktopMutex);
+    if (!g_remoteDesktopPids.contains(sessionId)) {
+        return;
+    }
+    const qint64 pid = g_remoteDesktopPids.take(sessionId);
+    locker.unlock();
+    if (pid > 0) {
+        QProcess::startDetached(QStringLiteral("taskkill"),
+                                {QStringLiteral("/PID"), QString::number(pid), QStringLiteral("/T"),
+                                 QStringLiteral("/F")});
+    }
+    qDebug() << QStringLiteral("[RemoteDesktop] 已停止 session") << sessionId << "pid" << pid;
+}
+
+void startRemoteDesktopSessionImpl(const QJsonObject& payload) {
+    const QString sessionId = payload.value(QStringLiteral("sessionId")).toString().trimmed();
+    const QString agentToken = payload.value(QStringLiteral("agentToken")).toString().trimmed();
+    if (sessionId.isEmpty() || agentToken.isEmpty()) {
+        qDebug() << QStringLiteral("[RemoteDesktop] start 命令缺少 sessionId/agentToken");
+        return;
+    }
+    if (!remoteAgentAvailable()) {
+        qDebug() << QStringLiteral("[RemoteDesktop] 未找到 bin/remote_agent，请部署 Agent 目录");
+        return;
+    }
+
+    {
+        QMutexLocker locker(&g_remoteDesktopMutex);
+        if (g_remoteDesktopPids.contains(sessionId)) {
+            qDebug() << QStringLiteral("[RemoteDesktop] 会话已在运行") << sessionId;
+            return;
+        }
+    }
+
+    QJsonObject cfg;
+    cfg.insert(QStringLiteral("sessionId"), sessionId);
+    cfg.insert(QStringLiteral("agentToken"), agentToken);
+    cfg.insert(QStringLiteral("signalingUrl"), buildAgentSignalingUrl(sessionId, agentToken));
+    qDebug() << QStringLiteral("[RemoteDesktop] signaling") << cfg.value(QStringLiteral("signalingUrl")).toString();
+    cfg.insert(QStringLiteral("iceServers"), payload.value(QStringLiteral("iceServers")));
+    // 1920@60fps + 较高码率；带宽紧时可降 fps/maxWidth
+    cfg.insert(QStringLiteral("maxWidth"), 1920);
+    cfg.insert(QStringLiteral("fps"), 60);
+    cfg.insert(QStringLiteral("maxBitrate"), 12000000);
+
+    const QString workDir = remoteAgentDir();
+    const QString cfgPath = QDir(workDir).filePath(QStringLiteral("session_%1.json").arg(sessionId));
+    {
+        QFile f(cfgPath);
+        if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+            qDebug() << QStringLiteral("[RemoteDesktop] 无法写配置") << cfgPath;
+            return;
+        }
+        f.write(QJsonDocument(cfg).toJson(QJsonDocument::Compact));
+    }
+
+    auto* proc = new QProcess(qApp);
+    proc->setWorkingDirectory(workDir);
+    const QString venvPy = QDir(workDir).filePath(QStringLiteral(".venv/Scripts/python.exe"));
+    const QString mainPy = QDir(workDir).filePath(QStringLiteral("main.py"));
+    // 已有 venv 时直接起 python，避免每次走 run.bat（首次装依赖会非常慢）
+    if (QFileInfo::exists(venvPy) && QFileInfo::exists(mainPy)) {
+        proc->setProgram(venvPy);
+        proc->setArguments({mainPy, QStringLiteral("--config"), cfgPath, QStringLiteral("--log-dir"), workDir});
+    } else {
+        proc->setProgram(QStringLiteral("cmd.exe"));
+        proc->setArguments({QStringLiteral("/c"), QStringLiteral("run.bat"), QStringLiteral("--config"), cfgPath,
+                            QStringLiteral("--log-dir"), workDir});
+    }
+    proc->setProcessChannelMode(QProcess::MergedChannels);
+    QObject::connect(proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), proc,
+                     [proc, sessionId](int code, QProcess::ExitStatus status) {
+                         const QByteArray tail = proc->readAllStandardOutput().trimmed().right(800);
+                         {
+                             QMutexLocker locker(&g_remoteDesktopMutex);
+                             g_remoteDesktopPids.remove(sessionId);
+                         }
+                         qDebug() << QStringLiteral("[RemoteDesktop] Agent 退出") << sessionId << "code" << code
+                                  << "status" << int(status);
+                         if (!tail.isEmpty()) {
+                             qDebug() << QStringLiteral("[RemoteDesktop] Agent 输出尾部:") << QString::fromUtf8(tail);
+                         }
+                         proc->deleteLater();
+                     });
+    proc->start();
+    if (!proc->waitForStarted(8000)) {
+        qDebug() << QStringLiteral("[RemoteDesktop] 启动 Agent 失败：") << proc->errorString();
+        proc->deleteLater();
+        return;
+    }
+    {
+        QMutexLocker locker(&g_remoteDesktopMutex);
+        g_remoteDesktopPids.insert(sessionId, proc->processId());
+    }
+    qDebug() << QStringLiteral("[RemoteDesktop] Agent 已启动") << sessionId << "pid" << proc->processId();
+}
+
+void startRemoteDesktopSession(const QJsonObject& payload) {
+    // pollDeviceCommands 在 QtConcurrent 线程里跑，QProcess 必须在 GUI 主线程创建/启动
+    QCoreApplication* app = QCoreApplication::instance();
+    if (!app) {
+        return;
+    }
+    if (QThread::currentThread() != app->thread()) {
+        const QJsonObject copy = payload;
+        QTimer::singleShot(0, app, [copy]() { startRemoteDesktopSessionImpl(copy); });
+        return;
+    }
+    startRemoteDesktopSessionImpl(payload);
+}
 
 bool runPowerShell(const QString& script, QString* error, int timeoutMs = 180000) {
     QProcess process;
@@ -695,9 +841,19 @@ void TestCaseSyncService::heartbeatAndPollCommands() {
         stations.append(one);
     }
     body.insert(QStringLiteral("stations"), stations);
+    body.insert(QStringLiteral("remoteDesktop"), remoteAgentAvailable());
     const FactoryCloudClient::ApiResult hb = FactoryCloudClient::post(QStringLiteral("/device/heartbeat"), body);
     if (!hb.ok) {
         qDebug() << QStringLiteral("[TestCaseSync] heartbeat 失败：") << hb.message;
+        return;
+    }
+
+    pollDeviceCommands();
+}
+
+void TestCaseSyncService::pollDeviceCommands() {
+    QString readyError;
+    if (!ensureCloudReady(&readyError)) {
         return;
     }
 
@@ -716,10 +872,18 @@ void TestCaseSyncService::heartbeatAndPollCommands() {
         }
         const QJsonObject cmd = value.toObject();
         const QString type = cmd.value(QStringLiteral("type")).toString().trimmed();
+        const QJsonObject payload = cmd.value(QStringLiteral("payload")).toObject();
+        if (type == QLatin1String("start_remote_desktop")) {
+            startRemoteDesktopSession(payload);
+            continue;
+        }
+        if (type == QLatin1String("stop_remote_desktop")) {
+            stopRemoteDesktopSession(payload.value(QStringLiteral("sessionId")).toString().trimmed());
+            continue;
+        }
         if (type != QLatin1String("pull_test_profile")) {
             continue;
         }
-        const QJsonObject payload = cmd.value(QStringLiteral("payload")).toObject();
         QString stationKey = payload.value(QStringLiteral("stationKey")).toString().trimmed();
         QString displayName = payload.value(QStringLiteral("displayName")).toString().trimmed();
         if (stationKey.isEmpty()) {
@@ -740,11 +904,19 @@ void TestCaseSyncService::startDeviceAgent() {
     }
     started = true;
 
-    auto* timer = new QTimer(qApp);
-    timer->setInterval(kHeartbeatIntervalMs);
-    QObject::connect(timer, &QTimer::timeout, qApp, []() {
+    auto* hbTimer = new QTimer(qApp);
+    hbTimer->setInterval(kHeartbeatIntervalMs);
+    QObject::connect(hbTimer, &QTimer::timeout, qApp, []() {
         QtConcurrent::run([]() { heartbeatAndPollCommands(); });
     });
-    timer->start();
+    hbTimer->start();
+
+    auto* cmdTimer = new QTimer(qApp);
+    cmdTimer->setInterval(kCommandPollIntervalMs);
+    QObject::connect(cmdTimer, &QTimer::timeout, qApp, []() {
+        QtConcurrent::run([]() { pollDeviceCommands(); });
+    });
+    cmdTimer->start();
+
     QtConcurrent::run([]() { heartbeatAndPollCommands(); });
 }
