@@ -1,0 +1,60 @@
+路特产线管理平台 - coturn（TURN）部署说明（WebRTC 远控）
+
+适用：工程师从公网打开 factory-admin，远控工厂 NAT 后的产线电脑。
+纯 STUN 无法打洞时必须走 TURN 中继。
+
+一、安装（Windows Server 建议用 Docker；或 Linux 旁路机）
+
+  Docker 示例：
+    docker run -d --name coturn --network host \\
+      -v D:/fwq/coturn/turnserver.conf:/etc/coturn/turnserver.conf \\
+      coturn/coturn -c /etc/coturn/turnserver.conf
+
+  若无 Docker，可在同机 Linux/WSL 或单独 UDP 可达的机器部署官方 coturn。
+
+二、turnserver.conf 最小示例
+
+  listening-port=3478
+  fingerprint
+  lt-cred-mech
+  use-auth-secret
+  static-auth-secret=请换成足够长的随机串
+  realm=lute-factory
+  # 公网 IP（ECS 弹性公网）
+  external-ip=120.25.211.50
+  # 中继端口段（安全组/防火墙放行）
+  min-port=49160
+  max-port=49200
+  no-cli
+  no-tls
+  no-dtls
+
+三、防火墙 / 安全组
+
+  - UDP/TCP 3478
+  - UDP 49160-49200（与 min/max-port 一致）
+  Windows：
+    netsh advfirewall firewall add rule name="TURN 3478" dir=in action=allow protocol=UDP localport=3478
+    netsh advfirewall firewall add rule name="TURN 3478 TCP" dir=in action=allow protocol=TCP localport=3478
+    netsh advfirewall firewall add rule name="TURN relay" dir=in action=allow protocol=UDP localport=49160-49200
+
+四、factory-api .env（与 coturn 一致）
+
+  TURN_URLS=turn:fctp.luteos.com:3478?transport=udp,turn:fctp.luteos.com:3478?transport=tcp
+  TURN_SECRET=与 static-auth-secret 相同
+  TURN_REALM=lute-factory
+  TURN_TTL_SEC=600
+  REMOTE_DESKTOP_SESSION_TTL_SEC=1800
+
+  本地调试可不配 TURN_*：接口会回退 Google STUN，仅同网/本机可用。
+
+五、IIS 反代 WebSocket
+
+  1. IIS → 应用程序请求路由缓存 → Server Proxy Settings → 勾选 Enable WebSocket proxy
+  2. 站点 web.config 已含 api 反代；确保未禁用 WebSocket
+  3. 浏览器控制台看 ICE candidate type=relay 即表示走了 TURN
+
+六、验证
+
+  1. 管理端「远程桌面」选在线设备 → 应能看到画面
+  2. chrome://webrtc-internals 看 selected candidate pair 是否为 relay

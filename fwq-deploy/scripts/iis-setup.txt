@@ -55,3 +55,7 @@
 
 七、更新
   - 本机 pack-deploy.bat -> 覆盖服务器 factory-api 与 factory-admin\dist -> 重启 API
+八、WebRTC 远控（可选）
+  - 详见 scripts\coturn-setup.txt
+  - 需在服务器部署 coturn，并在 factory-api\.env 配置 TURN_URLS / TURN_SECRET
+  - IIS ARR 勾选 Enable WebSocket proxy，以便 /api/.../remote-desktop/ws 信令连通

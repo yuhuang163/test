@@ -51,6 +51,7 @@ def heartbeat(
     station_name: str | None = None,
     app_version: str | None = None,
     stations: list | None = None,
+    remote_desktop: bool | None = None,
 ) -> dict[str, Any]:
     did = _safe_id(device_id)
     normalized_stations: list[dict[str, str]] = []
@@ -73,6 +74,9 @@ def heartbeat(
         seen.add(dedupe)
         normalized_stations.append({"stationKey": key, "displayName": name})
 
+    prev = _load_heartbeat(did) or {}
+    rd_flag = bool(remote_desktop) if remote_desktop is not None else bool(prev.get("remoteDesktop"))
+
     payload = {
         "deviceId": did,
         "hostName": (host_name or did).strip() or did,
@@ -80,6 +84,7 @@ def heartbeat(
         "stationName": (station_name or "").strip(),
         "appVersion": (app_version or "").strip(),
         "stations": normalized_stations,
+        "remoteDesktop": rd_flag,
         "lastSeenAt": _utc_now_iso(),
         "lastSeenTs": time.time(),
     }
@@ -137,6 +142,7 @@ def list_online_devices(ttl_sec: int = ONLINE_TTL_SEC) -> list[dict[str, Any]]:
                 "stationName": data.get("stationName") or "",
                 "appVersion": data.get("appVersion") or "",
                 "stations": data.get("stations") if isinstance(data.get("stations"), list) else [],
+                "remoteDesktop": True if "remoteDesktop" not in data else bool(data.get("remoteDesktop")),
                 "lastSeenAt": data.get("lastSeenAt"),
                 "online": True,
                 "ageSec": int(age) if age >= 0 else None,

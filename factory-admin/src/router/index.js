@@ -15,6 +15,7 @@ import HostAppView from '../views/hostApp/HostAppView.vue'
 import UsersView from '../views/system/UsersView.vue'
 import FactoriesView from '../views/system/FactoriesView.vue'
 import DevicesView from '../views/system/DevicesView.vue'
+import RemoteDesktopView from '../views/RemoteDesktopView.vue'
 import AuditLoginsView from '../views/system/AuditLoginsView.vue'
 import StorageView from '../views/system/StorageView.vue'
 import DownloadCenterView from '../views/DownloadCenterView.vue'
@@ -54,6 +55,11 @@ const router = createRouter({
           path: 'config/host-app',
           component: HostAppView,
           meta: { title: '上位机版本管理', menu: '/config/host-app', roles: ['engineer', 'admin'] },
+        },
+        {
+          path: 'ops/remote-desktop',
+          component: RemoteDesktopView,
+          meta: { title: '远程桌面', menu: '/ops/remote-desktop', roles: ['engineer', 'admin'] },
         },
         {
           path: 'system/users',

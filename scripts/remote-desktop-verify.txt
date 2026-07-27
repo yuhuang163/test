@@ -1,0 +1,25 @@
+# WebRTC 远控验证清单
+
+## 本机环回（可不配 TURN）
+
+1. 启动 factory-api（8800）与 factory-admin（5173）。
+2. 确认 `bin/remote_agent` 存在；首次在该目录执行 `run.bat` 会建 venv 并装依赖。
+3. 启动上位机并登录云端（心跳正常）。
+4. 管理端 → **远程桌面** → 选本机设备 → **开始远控**。
+5. 数秒内应出现画面；点击画面区域可键鼠操作。
+
+## 跨网（需 coturn）
+
+1. 按 `scripts/coturn-setup.txt` 部署 TURN，配置 `.env` 的 `TURN_*`。
+2. IIS ARR 启用 WebSocket proxy。
+3. 外网打开 `https://fctp.luteos.com` 远控工厂机。
+4. Chrome `chrome://webrtc-internals` 中 selected candidate 含 **relay** 即中继成功。
+
+## 常见问题
+
+| 现象 | 排查 |
+|------|------|
+| 信令 WebSocket 失败 | API 未启 / IIS 未开 WS 代理 / vite 未 `ws: true` |
+| 一直「等待 Agent」 | 上位机未拉到命令；看上位机日志 `[RemoteDesktop]`；确认 `bin/remote_agent` |
+| Agent 闪退 | 看 `bin/remote_agent/remote_agent.log`；依赖是否装好 |
+| 有画面无键鼠 | 点一下画面使舞台获焦；检查 DataChannel `input` 是否 open |

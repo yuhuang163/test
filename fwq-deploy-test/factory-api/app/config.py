@@ -21,10 +21,20 @@ class Settings(BaseSettings):
     default_admin_user: str = "admin"
     default_admin_password: str = "admin123"
     api_prefix: str = "/api/factory-tool"
+    # WebRTC 远控 TURN（coturn time-limited credentials）；空则仅返回 STUN/空列表供本机调试
+    turn_urls: str = ""
+    turn_secret: str = ""
+    turn_realm: str = "lute-factory"
+    turn_ttl_sec: int = 600
+    remote_desktop_session_ttl_sec: int = 1800
 
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    @property
+    def turn_url_list(self) -> list[str]:
+        return [u.strip() for u in self.turn_urls.split(",") if u.strip()]
 
     @property
     def storage_path(self) -> Path:

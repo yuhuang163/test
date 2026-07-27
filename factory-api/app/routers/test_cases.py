@@ -154,6 +154,7 @@ def device_heartbeat(
             station_name=str(body.get("stationName") or "") or None,
             app_version=str(body.get("appVersion") or "") or None,
             stations=body.get("stations") if isinstance(body.get("stations"), list) else None,
+            remote_desktop=body.get("remoteDesktop") if "remoteDesktop" in body else None,
         )
     except ValueError as exc:
         fail(400, str(exc), 400)

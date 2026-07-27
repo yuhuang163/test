@@ -75,6 +75,11 @@
           </el-menu-item>
         </el-sub-menu>
 
+        <el-menu-item v-if="isEngineer" index="/ops/remote-desktop">
+          <el-icon><VideoCamera /></el-icon>
+          <template #title>远程桌面</template>
+        </el-menu-item>
+
         <el-sub-menu v-if="isAdmin" index="system">
           <template #title>
             <el-icon><Monitor /></el-icon>
@@ -150,7 +155,8 @@ import { useRole } from '../composables/useRole'
 import {
   Odometer, Search, Document, List, Setting, Files, Upload,
   Monitor, UserFilled, Tools, Clock, DArrowLeft, ArrowDown,
-  User, SwitchButton, DataAnalysis, DataLine, Histogram, OfficeBuilding, Coin, Download
+  User, SwitchButton, DataAnalysis, DataLine, Histogram, OfficeBuilding, Coin, Download,
+  VideoCamera,
 } from '@element-plus/icons-vue'
 
 const route = useRoute()

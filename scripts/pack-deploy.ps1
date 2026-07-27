@@ -76,6 +76,15 @@ New-Item -ItemType Directory -Path $ScriptsStage -Force | Out-Null
 Copy-Item (Join-Path $Root "scripts\port.bat") $ScriptsStage -Force
 Copy-Item (Join-Path $Root "scripts\_run-api-prod.cmd") $ScriptsStage -Force
 Copy-Item (Join-Path $Root "scripts\iis-setup.txt") $ScriptsStage -Force
+Copy-Item (Join-Path $Root "scripts\coturn-setup.txt") $ScriptsStage -Force
+Copy-Item (Join-Path $Root "scripts\remote-desktop-verify.txt") $ScriptsStage -Force
+
+$AgentSrc = Join-Path $Root "remote-agent"
+if (Test-Path $AgentSrc) {
+    $AgentStage = Join-Path $Stage "remote-agent"
+    robocopy $AgentSrc $AgentStage /E /XD .venv __pycache__ /NFL /NDL /NJH /NJS /nc /ns /np | Out-Null
+    if ($LASTEXITCODE -ge 8) { throw "robocopy remote-agent failed: $LASTEXITCODE" }
+}
 
 foreach ($bat in @("start-api-prod.bat", "stop-api-prod.bat")) {
     Copy-Item (Join-Path $Root $bat) $Stage -Force
