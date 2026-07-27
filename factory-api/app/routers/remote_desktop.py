@@ -216,8 +216,13 @@ async def remote_desktop_ws(
 
     if role_norm == "agent":
         rd.mark_session_active(sessionId)
+        # Agent 常先于浏览器连上；仅「双方都在线」才 ready 会导致一直等推流
+        try:
+            await websocket.send_text(json.dumps({"type": "ready"}, ensure_ascii=False))
+        except Exception:
+            pass
 
-    # 双方都在线时提示 agent 发 offer（可重复，Agent 侧去重）
+    # 双方都在线时再发一次 ready（Agent 侧 offer 去重）
     with room.lock:
         both = room.viewer is not None and room.agent is not None
         agent_ws = room.agent
@@ -288,23 +293,11 @@ async def remote_desktop_ws(
             if role_norm == "agent" and room.agent is websocket:
                 room.agent = None
             peer = room.agent if role_norm == "viewer" else room.viewer
-        if peer is not None:
+        # Agent 掉线时通知浏览器；浏览器信令闪断时不 stop 会话、不下发 stop_remote_desktop
+        if role_norm == "agent" and peer is not None:
             try:
                 await peer.send_text(
-                    json.dumps({"type": "hangup", "reason": "peer_disconnect"}, ensure_ascii=False)
+                    json.dumps({"type": "hangup", "reason": "agent_disconnect"}, ensure_ascii=False)
                 )
             except Exception:
                 pass
-        # viewer 断开则结束会话并通知 agent 退出
-        if role_norm == "viewer":
-            still = rd.get_session(sessionId)
-            if still and still.status != "stopped":
-                rd.stop_session(sessionId, str(claims.get("sub") or "viewer"))
-                try:
-                    device_runtime.enqueue_command(
-                        still.device_id,
-                        "stop_remote_desktop",
-                        {"sessionId": sessionId},
-                    )
-                except ValueError:
-                    pass

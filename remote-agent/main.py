@@ -139,7 +139,13 @@ async def run_session(cfg: dict) -> None:
     offer_sent = False
     offer_lock = asyncio.Lock()
 
-    async with ws_connect(signaling_url, open_timeout=20, max_size=4 * 1024 * 1024) as ws:
+    async with ws_connect(
+        signaling_url,
+        open_timeout=20,
+        max_size=4 * 1024 * 1024,
+        ping_interval=15,
+        ping_timeout=30,
+    ) as ws:
         LOG.info("signaling connected")
 
         async def send_offer() -> None:
@@ -164,54 +170,57 @@ async def run_session(cfg: dict) -> None:
                 LOG.info("offer sent")
 
         async def reader() -> None:
-            async for raw in ws:
-                try:
-                    msg = json.loads(raw)
-                except json.JSONDecodeError:
-                    continue
-                if not isinstance(msg, dict):
-                    continue
-                mtype = str(msg.get("type") or "")
-                if mtype == "ready":
+            try:
+                async for raw in ws:
                     try:
-                        await send_offer()
-                    except Exception:
-                        LOG.exception("send_offer on ready failed")
-                elif mtype == "answer":
-                    sdp = str(msg.get("sdp") or "")
-                    if sdp:
-                        await pc.setRemoteDescription(RTCSessionDescription(sdp=sdp, type="answer"))
-                        LOG.info("answer applied")
-                        await _apply_video_quality()
-                elif mtype == "ice":
-                    c = msg.get("candidate") or {}
-                    cand_str = str(c.get("candidate") or "")
-                    if not cand_str:
+                        msg = json.loads(raw)
+                    except json.JSONDecodeError:
                         continue
-                    try:
-                        ice = candidate_from_sdp(cand_str)
-                        ice.sdpMid = c.get("sdpMid")
-                        ice.sdpMLineIndex = c.get("sdpMLineIndex")
-                        await pc.addIceCandidate(ice)
-                    except Exception as exc:
-                        LOG.warning("addIceCandidate failed: %s", exc)
-                elif mtype == "input":
-                    # 信令兜底：DataChannel 不通时仍可点按
-                    data = msg.get("data")
-                    if isinstance(data, dict):
-                        _apply_input(data, via="ws")
-                elif mtype == "hangup":
-                    LOG.info("hangup: %s", msg.get("reason"))
-                    stop_event.set()
-                    break
+                    if not isinstance(msg, dict):
+                        continue
+                    mtype = str(msg.get("type") or "")
+                    if mtype == "ready":
+                        try:
+                            await send_offer()
+                        except Exception:
+                            LOG.exception("send_offer on ready failed")
+                    elif mtype == "answer":
+                        sdp = str(msg.get("sdp") or "")
+                        if sdp:
+                            await pc.setRemoteDescription(RTCSessionDescription(sdp=sdp, type="answer"))
+                            LOG.info("answer applied")
+                            await _apply_video_quality()
+                    elif mtype == "ice":
+                        c = msg.get("candidate") or {}
+                        cand_str = str(c.get("candidate") or "")
+                        if not cand_str:
+                            continue
+                        try:
+                            ice = candidate_from_sdp(cand_str)
+                            ice.sdpMid = c.get("sdpMid")
+                            ice.sdpMLineIndex = c.get("sdpMLineIndex")
+                            await pc.addIceCandidate(ice)
+                        except Exception as exc:
+                            LOG.warning("addIceCandidate failed: %s", exc)
+                    elif mtype == "input":
+                        data = msg.get("data")
+                        if isinstance(data, dict):
+                            _apply_input(data, via="ws")
+                    elif mtype == "hangup":
+                        LOG.info("hangup: %s", msg.get("reason"))
+                        stop_event.set()
+                        break
+            except Exception as exc:
+                LOG.warning("signaling reader ended: %s", exc)
 
         reader_task = asyncio.create_task(reader())
 
         async def _kick_offer() -> None:
-            for delay in (0.05, 1.0, 2.5):
+            for delay in (0.0, 0.5, 1.5, 3.0):
                 if stop_event.is_set() or offer_sent:
                     return
-                await asyncio.sleep(delay)
+                if delay > 0:
+                    await asyncio.sleep(delay)
                 if stop_event.is_set() or offer_sent:
                     return
                 try:
