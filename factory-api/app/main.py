@@ -32,6 +32,24 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(title="路特产线管理平台 API", version="0.1.0", lifespan=lifespan)
 
+
+class _StripEmptyWebSocketExtensions:
+    """IIS 若把 Sec-WebSocket-Extensions 设成空串，uvicorn 会 400；此处直接丢掉空头。"""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "websocket":
+            headers = [
+                (k, v)
+                for k, v in scope.get("headers", [])
+                if not (k == b"sec-websocket-extensions" and not v.strip())
+            ]
+            scope = {**scope, "headers": headers}
+        await self.app(scope, receive, send)
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origin_list,
@@ -70,3 +88,7 @@ app.include_router(remote_desktop.ws_router, prefix=settings.api_prefix)
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+# 必须包在最外层：过滤 IIS 注入的空 Sec-WebSocket-Extensions
+app = _StripEmptyWebSocketExtensions(app)
