@@ -21,13 +21,22 @@
 #include "login_dialog.h"
 #include "auth_service.h"
 #include "test_case_sync_service.h"
-#include "key_test_box.h"
 #include "qfreeworkbox.h"
-#include "quiescent_current_box.h"
-#include "suction_box.h"
-#include "ageingbox.h"
 #include "mainwindow.h"
 #include "factory_analyzer.h"
+
+#if ENABLE_STATION_QUIESCENT_CURRENT
+#include "quiescent_current_box.h"
+#endif
+#if ENABLE_STATION_AGE_TEST
+#include "ageingbox.h"
+#endif
+#if ENABLE_STATION_KEY_TEST
+#include "key_test_box.h"
+#endif
+#if ENABLE_STATION_SUCTION_TEST
+#include "suction_box.h"
+#endif
 
 #if ENABLE_STATION_PRESS_TEST
 #include "PressCalibBox.h"
@@ -146,6 +155,7 @@ int main(int argc, char* argv[]) {
         qDebug() << "工站为：" + station;
 
         switch (map[station]) {
+#if ENABLE_STATION_QUIESCENT_CURRENT
         case 1: {
             quiescent_current_box* w = new quiescent_current_box; // 静态电流
             w->show();
@@ -153,6 +163,7 @@ int main(int argc, char* argv[]) {
             delete w;
             break;
         }
+#endif
 
 #if ENABLE_STATION_MOTOR_TEST
         case 2: {
@@ -204,6 +215,7 @@ int main(int argc, char* argv[]) {
         }
 #endif
 
+#if ENABLE_STATION_AGE_TEST
         case 7: {
             ageingbox* x = new ageingbox; // 老化测试工站
             x->show();
@@ -211,6 +223,7 @@ int main(int argc, char* argv[]) {
             delete x;
             break;
         }
+#endif
 #if ENABLE_STATION_PCBA_TEST
         case 8: {
             pcbabox* p = new pcbabox; // 老化测试工站
@@ -248,6 +261,7 @@ int main(int argc, char* argv[]) {
             exitCode = a.exec();
             break;
         }
+#if ENABLE_STATION_KEY_TEST
         case 13: {
             key_test_box* k = new key_test_box; // 按键测试
             k->show();
@@ -255,6 +269,8 @@ int main(int argc, char* argv[]) {
             delete k;
             break;
         }
+#endif
+#if ENABLE_STATION_SUCTION_TEST
         case 14: {
             suction_box* s = new suction_box; // 吸力测试
             s->show();
@@ -262,6 +278,7 @@ int main(int argc, char* argv[]) {
             delete s;
             break;
         }
+#endif
         default: {
             factory_analyzer dji; // 主测试
             dji.show();

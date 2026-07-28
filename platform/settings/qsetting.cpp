@@ -120,6 +120,10 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     setStationRadioVisible(ui->radioButtonSignalTest, ENABLE_STATION_WIFIBLE_TEST != 0);
     setStationRadioVisible(ui->radioButtonPressTest, ENABLE_STATION_PRESS_TEST != 0);
     setStationRadioVisible(ui->radioButtonBoardFactoryTest, ENABLE_STATION_PCBA_TEST != 0);
+    setStationRadioVisible(ui->radioButtonStaticCurrent, ENABLE_STATION_QUIESCENT_CURRENT != 0);
+    setStationRadioVisible(ui->radioButtonAgingTest, ENABLE_STATION_AGE_TEST != 0);
+    setStationRadioVisible(ui->radioButtonKeyTest, ENABLE_STATION_KEY_TEST != 0);
+    setStationRadioVisible(ui->radioButtonSuctionTest, ENABLE_STATION_SUCTION_TEST != 0);
 
     // 如果需要从某个数据源添加项，可以使用循环来添加
     ui->comboBox_productName->addItems(CommonUtils::mesProductNames());

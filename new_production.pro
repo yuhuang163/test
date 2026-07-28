@@ -16,6 +16,7 @@ QMAKE_CFLAGS += /utf-8
 # ---------------------------------------------------------------------------
 # 工站编译/入口开关（唯一配置处）：1=编进工程并允许进入，0=不编译且设置页/main 屏蔽
 # 改完须重新 qmake（会写入 DEFINES，供 AbIni.h / main.cpp / qsetting 使用）
+# 若只增量编译出现 C4651，说明预编译头与 DEFINES 不一致，请完整跑 编译Release版本.ps1（勿 -SkipQmake）
 # ---------------------------------------------------------------------------
 ENABLE_STATION_MOTOR_TEST = 0
 ENABLE_STATION_IMU_CALI = 0
@@ -24,6 +25,10 @@ ENABLE_STATION_CAMERA_TEST = 0
 ENABLE_STATION_WIFIBLE_TEST = 0
 ENABLE_STATION_PRESS_TEST = 0
 ENABLE_STATION_PCBA_TEST = 0
+ENABLE_STATION_QUIESCENT_CURRENT = 0
+ENABLE_STATION_AGE_TEST = 0
+ENABLE_STATION_KEY_TEST = 0
+ENABLE_STATION_SUCTION_TEST = 0
 DEFINES += ENABLE_STATION_MOTOR_TEST=$$ENABLE_STATION_MOTOR_TEST
 DEFINES += ENABLE_STATION_IMU_CALI=$$ENABLE_STATION_IMU_CALI
 DEFINES += ENABLE_STATION_SCREEN_TEST=$$ENABLE_STATION_SCREEN_TEST
@@ -31,6 +36,10 @@ DEFINES += ENABLE_STATION_CAMERA_TEST=$$ENABLE_STATION_CAMERA_TEST
 DEFINES += ENABLE_STATION_WIFIBLE_TEST=$$ENABLE_STATION_WIFIBLE_TEST
 DEFINES += ENABLE_STATION_PRESS_TEST=$$ENABLE_STATION_PRESS_TEST
 DEFINES += ENABLE_STATION_PCBA_TEST=$$ENABLE_STATION_PCBA_TEST
+DEFINES += ENABLE_STATION_QUIESCENT_CURRENT=$$ENABLE_STATION_QUIESCENT_CURRENT
+DEFINES += ENABLE_STATION_AGE_TEST=$$ENABLE_STATION_AGE_TEST
+DEFINES += ENABLE_STATION_KEY_TEST=$$ENABLE_STATION_KEY_TEST
+DEFINES += ENABLE_STATION_SUCTION_TEST=$$ENABLE_STATION_SUCTION_TEST
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
@@ -161,12 +170,8 @@ INCLUDEPATH += lib/qcustomplot
 INCLUDEPATH += lib/libusb-win32-bin-1.4.0.0/include
 
 
-INCLUDEPATH += work_station/ageing
 INCLUDEPATH += work_station/camera
-INCLUDEPATH += work_station/quiescent_current
 INCLUDEPATH += work_station/freework
-INCLUDEPATH += work_station/key
-INCLUDEPATH += work_station/suction
 INCLUDEPATH += work_station
 INCLUDEPATH += qlog
 INCLUDEPATH += common
@@ -310,8 +315,6 @@ SOURCES += \
     qlog/qlog.cpp \
     qlog/qlog_win.cpp \
     work_station/box_base.cpp \
-    work_station/ageing/ageing.cpp \
-    work_station/ageing/ageingbox.cpp \
     work_station/camera/cameratest.cpp \
     work_station/freework/qfreework.cpp \
     work_station/freework/qfreework_data.cpp \
@@ -323,12 +326,6 @@ SOURCES += \
     business/plc_v3_fixture/plc_v3_touch.cpp \
     business/plc_v3_fixture/plc_v3_facade.cpp \
     business/plc_v3_fixture/plc_v3_fixture.cpp \
-    work_station/key/key_test.cpp \
-    work_station/key/key_test_box.cpp \
-    work_station/suction/suction.cpp \
-    work_station/suction/suction_box.cpp \
-    work_station/quiescent_current/quiescent_current.cpp \
-    work_station/quiescent_current/quiescent_current_box.cpp \
     work_station/test_base.cpp \
 
 
@@ -477,8 +474,6 @@ HEADERS += \
     qlog/qlog.h \
     qlog/qlog_win.h \
     work_station/box_base.h \
-    work_station/ageing/ageing.h \
-    work_station/ageing/ageingbox.h \
     work_station/camera/cameratest.h \
     work_station/freework/qfreework.h \
     work_station/freework/qfreeworkbox.h \
@@ -494,12 +489,6 @@ HEADERS += \
     business/plc_v3_fixture/plc_v3_touch.h \
     business/plc_v3_fixture/plc_v3_facade.h \
     business/plc_v3_fixture/plc_v3_fixture.h \
-    work_station/key/key_test.h \
-    work_station/key/key_test_box.h \
-    work_station/suction/suction.h \
-    work_station/suction/suction_box.h \
-    work_station/quiescent_current/quiescent_current.h \
-    work_station/quiescent_current/quiescent_current_box.h \
     work_station/test_base.h \
 
 FORMS += \
@@ -509,17 +498,9 @@ FORMS += \
     platform/settings/widgets/test_case_edit_dialog.ui \
     tools/factory_analyzer/factory_analyzer.ui \
     mainwindow.ui \
-    work_station/ageing/ageing.ui \
-    work_station/ageing/ageingbox.ui \
     work_station/camera/cameratest.ui \
     work_station/freework/qfreework.ui \
     work_station/freework/qfreeworkbox.ui \
-    work_station/key/key_test.ui \
-    work_station/key/key_test_box.ui \
-    work_station/suction/suction.ui \
-    work_station/suction/suction_box.ui \
-    work_station/quiescent_current/quiescent_current.ui \
-    work_station/quiescent_current/quiescent_current_box.ui \
 
 # 按工站宏条件编入（与文件顶部 ENABLE_STATION_* 一致）
 equals(ENABLE_STATION_MOTOR_TEST, 1) {
@@ -583,6 +564,42 @@ equals(ENABLE_STATION_PCBA_TEST, 1) {
         work_station/pcba/pcbaform.h
     FORMS += work_station/pcba/pcbabox.ui \
         work_station/pcba/pcbaform.ui
+}
+equals(ENABLE_STATION_QUIESCENT_CURRENT, 1) {
+    INCLUDEPATH += work_station/quiescent_current
+    SOURCES += work_station/quiescent_current/quiescent_current.cpp \
+        work_station/quiescent_current/quiescent_current_box.cpp
+    HEADERS += work_station/quiescent_current/quiescent_current.h \
+        work_station/quiescent_current/quiescent_current_box.h
+    FORMS += work_station/quiescent_current/quiescent_current.ui \
+        work_station/quiescent_current/quiescent_current_box.ui
+}
+equals(ENABLE_STATION_AGE_TEST, 1) {
+    INCLUDEPATH += work_station/ageing
+    SOURCES += work_station/ageing/ageing.cpp \
+        work_station/ageing/ageingbox.cpp
+    HEADERS += work_station/ageing/ageing.h \
+        work_station/ageing/ageingbox.h
+    FORMS += work_station/ageing/ageing.ui \
+        work_station/ageing/ageingbox.ui
+}
+equals(ENABLE_STATION_KEY_TEST, 1) {
+    INCLUDEPATH += work_station/key
+    SOURCES += work_station/key/key_test.cpp \
+        work_station/key/key_test_box.cpp
+    HEADERS += work_station/key/key_test.h \
+        work_station/key/key_test_box.h
+    FORMS += work_station/key/key_test.ui \
+        work_station/key/key_test_box.ui
+}
+equals(ENABLE_STATION_SUCTION_TEST, 1) {
+    INCLUDEPATH += work_station/suction
+    SOURCES += work_station/suction/suction.cpp \
+        work_station/suction/suction_box.cpp
+    HEADERS += work_station/suction/suction.h \
+        work_station/suction/suction_box.h
+    FORMS += work_station/suction/suction.ui \
+        work_station/suction/suction_box.ui
 }
 
 #CONFIG += incremental

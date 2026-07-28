@@ -59,19 +59,27 @@
 /** SYSTEM/station 键是否允许进入（被屏蔽的工站返回 false） */
 inline bool isStationEnabled(const QString& stationKey) {
     if (stationKey == QLatin1String("MOTOR_TEST"))
-        return ENABLE_STATION_MOTOR_TEST != 0;
+        return ENABLE_STATION_MOTOR_TEST == 1;
     if (stationKey == QLatin1String("IMU_CALI"))
-        return ENABLE_STATION_IMU_CALI != 0;
+        return ENABLE_STATION_IMU_CALI == 1;
     if (stationKey == QLatin1String("SCREEN_TEST"))
-        return ENABLE_STATION_SCREEN_TEST != 0;
+        return ENABLE_STATION_SCREEN_TEST == 1;
     if (stationKey == QLatin1String("CAMERA_TEST"))
-        return ENABLE_STATION_CAMERA_TEST != 0;
+        return ENABLE_STATION_CAMERA_TEST == 1;
     if (stationKey == QLatin1String("WIFIBLE_TEST"))
-        return ENABLE_STATION_WIFIBLE_TEST != 0;
+        return ENABLE_STATION_WIFIBLE_TEST == 1;
     if (stationKey == QLatin1String("PRESS_TEST"))
-        return ENABLE_STATION_PRESS_TEST != 0;
+        return ENABLE_STATION_PRESS_TEST == 1;
     if (stationKey == QLatin1String("PCBA_TEST"))
-        return ENABLE_STATION_PCBA_TEST != 0;
+        return ENABLE_STATION_PCBA_TEST == 1;
+    if (stationKey == QLatin1String("QUIESCENT_CURRENT"))
+        return ENABLE_STATION_QUIESCENT_CURRENT == 1;
+    if (stationKey == QLatin1String("AGE_TEST"))
+        return ENABLE_STATION_AGE_TEST == 1;
+    if (stationKey == QLatin1String("KEY_TEST"))
+        return ENABLE_STATION_KEY_TEST == 1;
+    if (stationKey == QLatin1String("SUCTION_TEST"))
+        return ENABLE_STATION_SUCTION_TEST == 1;
     return true;
 }
 

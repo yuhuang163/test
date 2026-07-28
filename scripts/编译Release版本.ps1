@@ -100,6 +100,37 @@ Write-Host "qt:    $QtDir"
 Write-Host "log:   $LogFile"
 Write-Host ""
 Stop-RunningNewProduction
+
+function Get-StationEnableBlock([string]$ProPath) {
+    $block = New-Object System.Collections.Generic.List[string]
+    foreach ($line in Get-Content -LiteralPath $ProPath -Encoding UTF8) {
+        if ($line -match '^ENABLE_STATION_') {
+            [void]$block.Add($line.TrimEnd())
+        }
+    }
+    return ($block -join "`n")
+}
+
+$forceQmake = $false
+$stationBlock = Get-StationEnableBlock $ProFile
+$stampPath = Join-Path $BuildDir ".enable_station_stamp"
+$prevBlock = ""
+if (Test-Path -LiteralPath $stampPath) {
+    $prevBlock = Get-Content -LiteralPath $stampPath -Raw -Encoding UTF8
+}
+if ($stationBlock -ne $prevBlock) {
+    Write-Host "[build] ENABLE_STATION_* changed: invalidate PCH and run qmake (avoid MSVC C4651)" -ForegroundColor Yellow
+    $forceQmake = $true
+    $relDir = Join-Path $BuildDir "release"
+    foreach ($name in @("new_production_pch.pch", "new_production_pch.obj")) {
+        $p = Join-Path $relDir $name
+        if (Test-Path -LiteralPath $p) {
+            Remove-Item -LiteralPath $p -Force
+        }
+    }
+    Set-Content -LiteralPath $stampPath -Value $stationBlock -Encoding UTF8
+}
+
 Write-Host "========== Release build ==========" -ForegroundColor Cyan
 
 $batLines = New-Object System.Collections.Generic.List[string]
@@ -108,7 +139,7 @@ $batLines = New-Object System.Collections.Generic.List[string]
 [void]$batLines.Add("call `"$VcVars`" >nul 2>&1")
 [void]$batLines.Add("if errorlevel 1 exit /b 1")
 [void]$batLines.Add("cd /d `"$BuildDir`"")
-if (-not $SkipQmake) {
+if ((-not $SkipQmake) -or $forceQmake) {
     [void]$batLines.Add("`"$Qmake`" `"$ProFile`" -spec win32-msvc CONFIG+=release")
     [void]$batLines.Add("if errorlevel 1 exit /b 1")
 }
