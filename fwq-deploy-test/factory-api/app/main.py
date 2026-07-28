@@ -34,7 +34,7 @@ app = FastAPI(title="路特产线管理平台 API", version="0.1.0", lifespan=li
 
 
 class _StripEmptyWebSocketExtensions:
-    """IIS 若把 Sec-WebSocket-Extensions 设成空串，uvicorn 会 400；此处直接丢掉空头。"""
+    """ARR 不支持 permessage-deflate；去掉扩展头，避免协商压缩或空头触发 uvicorn 400。"""
 
     def __init__(self, app):
         self.app = app
@@ -44,7 +44,7 @@ class _StripEmptyWebSocketExtensions:
             headers = [
                 (k, v)
                 for k, v in scope.get("headers", [])
-                if not (k == b"sec-websocket-extensions" and not v.strip())
+                if k != b"sec-websocket-extensions"
             ]
             scope = {**scope, "headers": headers}
         await self.app(scope, receive, send)

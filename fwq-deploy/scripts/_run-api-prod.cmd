@@ -112,7 +112,7 @@ echo [API-PROD] IIS 管理端见 scripts\iis-setup.txt
 
 echo.
 
-.\.venv\Scripts\uvicorn.exe app.main:app --host 0.0.0.0 --port %PORT% --no-ws-per-message-deflate
+.\.venv\Scripts\uvicorn.exe app.main:app --host 0.0.0.0 --port %PORT%
 
 if errorlevel 1 (
 

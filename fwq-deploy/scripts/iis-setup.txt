@@ -35,7 +35,7 @@
      会让 uvicorn 报 400：invalid Sec-WebSocket-Extensions header: expected token at 0 in .
      正确做法：
        - web.config 不要设置该变量为空
-       - API 启动关闭压缩：uvicorn ... ws_per_message_deflate=False（run.py / start-api 已含）
+       - API 侧中间件会去掉 Sec-WebSocket-Extensions（兼容 ARR，且不依赖新版 uvicorn 参数）
      验证：curl 升级 ws-echo 应返回 101，或浏览器 ws://127.0.0.1/api/factory-tool/ws-echo 出现 OPEN
   4. 新建网站：
      - 物理路径：...\factory-admin\dist
