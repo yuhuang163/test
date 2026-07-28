@@ -96,7 +96,8 @@
     <div
       ref="stageRef"
       class="stage"
-      :class="{ expanded }"
+      :class="{ expanded, 'has-stream': !!(session && streamReady) }"
+      :style="stageCursorStyle"
       tabindex="0"
       @mousemove="onMouseMove"
       @mousedown="onMouseDown"
@@ -167,6 +168,8 @@ const expanded = ref(false)
 const isBrowserFs = ref(false)
 const scaleMode = ref('contain')
 const helpVisible = ref(false)
+/** 远端系统光标对应的 CSS cursor（全屏/窗口模式都用） */
+const remoteCursor = ref('default')
 /** DataChannel RTT（ms）；无通道时回退 ICE RTT */
 const statsRttMs = ref(null)
 const statsIceRttMs = ref(null)
@@ -191,6 +194,21 @@ const latencyTagType = computed(() => {
   if (ms <= 180) return 'warning'
   return 'danger'
 })
+
+const stageCursorStyle = computed(() => {
+  if (!(session.value && streamReady.value)) return undefined
+  return { cursor: remoteCursor.value || 'default' }
+})
+
+function applyRemoteCursor(css) {
+  const next = css || 'default'
+  remoteCursor.value = next
+  const el = stageRef.value
+  if (el) {
+    // 全屏根节点用 important，避免浏览器/UA 样式盖住
+    el.style.setProperty('cursor', next, 'important')
+  }
+}
 
 const emptyHint = computed(() => {
   if (loadError.value) return loadError.value
@@ -263,6 +281,8 @@ function onDataChannelMessage(raw) {
     if (msg?.type === 'pong' && pendingPingAt > 0) {
       statsRttMs.value = Math.max(0, Math.round(performance.now() - pendingPingAt))
       pendingPingAt = 0
+    } else if (msg?.type === 'cursor') {
+      applyRemoteCursor(msg.cursor)
     }
   } catch (_) {
     /* ignore */
@@ -380,6 +400,10 @@ function onFullscreenChange() {
   if (!document.fullscreenElement) {
     expanded.value = false
   }
+  // 进入/退出全屏后重新施加远端光标
+  if (session.value && streamReady.value) {
+    applyRemoteCursor(remoteCursor.value)
+  }
 }
 
 async function handleEsc() {
@@ -458,6 +482,7 @@ async function loadDevices() {
 function cleanupPeer() {
   stopStatsTimer()
   resetStats()
+  applyRemoteCursor('default')
   try {
     inputChannel?.close()
   } catch (_) {
@@ -980,6 +1005,11 @@ onBeforeUnmount(async () => {
   height: 100vh;
   border-radius: 0;
   background: #000;
+}
+.stage.has-stream,
+.stage.has-stream .screen {
+  /* 实际 cursor 由 JS setProperty(..., important) 控制 */
+  cursor: inherit;
 }
 .screen {
   width: 100%;
