@@ -81,11 +81,38 @@ void stopRemoteDesktopSession(const QString& sessionId) {
     const qint64 pid = g_remoteDesktopPids.take(sessionId);
     locker.unlock();
     if (pid > 0) {
-        QProcess::startDetached(QStringLiteral("taskkill"),
-                                {QStringLiteral("/PID"), QString::number(pid), QStringLiteral("/T"),
-                                 QStringLiteral("/F")});
+        QProcess killer;
+        killer.start(QStringLiteral("taskkill"),
+                     {QStringLiteral("/PID"), QString::number(pid), QStringLiteral("/T"), QStringLiteral("/F")});
+        killer.waitForFinished(5000);
     }
     qDebug() << QStringLiteral("[RemoteDesktop] 已停止 session") << sessionId << "pid" << pid;
+}
+
+/** 上位机关闭时清理全部远控 Agent（含未登记/PyInstaller 残留） */
+void stopAllRemoteDesktopSessions() {
+    QList<qint64> pids;
+    {
+        QMutexLocker locker(&g_remoteDesktopMutex);
+        pids = g_remoteDesktopPids.values();
+        g_remoteDesktopPids.clear();
+    }
+    for (const qint64 pid : pids) {
+        if (pid <= 0) {
+            continue;
+        }
+        QProcess killer;
+        killer.start(QStringLiteral("taskkill"),
+                     {QStringLiteral("/PID"), QString::number(pid), QStringLiteral("/T"), QStringLiteral("/F")});
+        killer.waitForFinished(5000);
+    }
+    // 兜底：按进程名杀干净，避免关闭上位机后 remote_agent.exe 仍挂后台
+    QProcess byName;
+    byName.start(QStringLiteral("taskkill"),
+                 {QStringLiteral("/IM"), QStringLiteral("remote_agent.exe"), QStringLiteral("/T"),
+                  QStringLiteral("/F")});
+    byName.waitForFinished(8000);
+    qDebug() << QStringLiteral("[RemoteDesktop] 已清理全部 Agent 进程");
 }
 
 void startRemoteDesktopSessionImpl(const QJsonObject& payload) {
@@ -103,8 +130,10 @@ void startRemoteDesktopSessionImpl(const QJsonObject& payload) {
     {
         QMutexLocker locker(&g_remoteDesktopMutex);
         if (g_remoteDesktopPids.contains(sessionId)) {
-            qDebug() << QStringLiteral("[RemoteDesktop] 会话已在运行") << sessionId;
-            return;
+            locker.unlock();
+            qDebug() << QStringLiteral("[RemoteDesktop] 会话已在运行，先结束旧 Agent 再按新参数启动") << sessionId;
+            stopRemoteDesktopSession(sessionId);
+            QThread::msleep(400);
         }
     }
 
@@ -114,10 +143,12 @@ void startRemoteDesktopSessionImpl(const QJsonObject& payload) {
     cfg.insert(QStringLiteral("signalingUrl"), buildAgentSignalingUrl(sessionId, agentToken));
     qDebug() << QStringLiteral("[RemoteDesktop] signaling") << cfg.value(QStringLiteral("signalingUrl")).toString();
     cfg.insert(QStringLiteral("iceServers"), payload.value(QStringLiteral("iceServers")));
-    // 1920@60fps + 较高码率；带宽紧时可降 fps/maxWidth
+    // 1920@30 / 12Mbps
     cfg.insert(QStringLiteral("maxWidth"), 1920);
-    cfg.insert(QStringLiteral("fps"), 60);
+    cfg.insert(QStringLiteral("fps"), 30);
     cfg.insert(QStringLiteral("maxBitrate"), 12000000);
+
+    qDebug() << QStringLiteral("[RemoteDesktop] Agent 推流参数 maxWidth=1920 fps=30 maxBitrate=12000000");
 
     const QString workDir = remoteAgentDir();
     // 配置走环境变量，不写 session_*.json
@@ -906,6 +937,9 @@ void TestCaseSyncService::startDeviceAgent() {
         return;
     }
     started = true;
+
+    // 退出进程前必须杀掉远控 Agent，否则 remote_agent.exe 会残留后台
+    QObject::connect(qApp, &QCoreApplication::aboutToQuit, qApp, []() { stopAllRemoteDesktopSessions(); });
 
     auto* hbTimer = new QTimer(qApp);
     hbTimer->setInterval(kHeartbeatIntervalMs);

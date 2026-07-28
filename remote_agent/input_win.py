@@ -42,8 +42,92 @@ VK_V = 0x56
 CF_UNICODETEXT = 13
 GMEM_MOVEABLE = 0x0002
 
+# 系统光标 ID → CSS cursor（远控网页同步形状用）
+IDC_ARROW = 32512
+IDC_IBEAM = 32513
+IDC_WAIT = 32514
+IDC_CROSS = 32515
+IDC_UPARROW = 32516
+IDC_SIZENWSE = 32642
+IDC_SIZENESW = 32643
+IDC_SIZEWE = 32644
+IDC_SIZENS = 32645
+IDC_SIZEALL = 32646
+IDC_NO = 32648
+IDC_HAND = 32649
+IDC_APPSTARTING = 32650
+IDC_HELP = 32651
+
+CURSOR_SHOWING = 0x00000001
+
 # 64 位下 ULONG_PTR / 结构体对齐必须正确，否则 SendInput 会失败或乱点
 ULONG_PTR = ctypes.c_size_t
+
+
+class POINT(ctypes.Structure):
+    _fields_ = [("x", wintypes.LONG), ("y", wintypes.LONG)]
+
+
+class CURSORINFO(ctypes.Structure):
+    _fields_ = [
+        ("cbSize", wintypes.DWORD),
+        ("flags", wintypes.DWORD),
+        ("hCursor", wintypes.HANDLE),
+        ("ptScreenPos", POINT),
+    ]
+
+
+user32.GetCursorInfo.argtypes = [ctypes.POINTER(CURSORINFO)]
+user32.GetCursorInfo.restype = wintypes.BOOL
+user32.LoadCursorW.argtypes = [wintypes.HINSTANCE, ctypes.c_void_p]
+user32.LoadCursorW.restype = wintypes.HANDLE
+
+_CURSOR_CSS_CACHE: dict[int, str] = {}
+
+
+def _system_cursor_handle(cursor_id: int):
+    # MAKEINTRESOURCE：低位字为资源 ID
+    return user32.LoadCursorW(None, ctypes.c_void_p(cursor_id))
+
+
+def _build_cursor_map() -> dict[int, str]:
+    mapping = {
+        IDC_ARROW: "default",
+        IDC_IBEAM: "text",
+        IDC_WAIT: "wait",
+        IDC_CROSS: "crosshair",
+        IDC_UPARROW: "n-resize",
+        IDC_SIZENWSE: "nwse-resize",
+        IDC_SIZENESW: "nesw-resize",
+        IDC_SIZEWE: "ew-resize",
+        IDC_SIZENS: "ns-resize",
+        IDC_SIZEALL: "move",
+        IDC_NO: "not-allowed",
+        IDC_HAND: "pointer",
+        IDC_APPSTARTING: "progress",
+        IDC_HELP: "help",
+    }
+    out: dict[int, str] = {}
+    for cid, css in mapping.items():
+        h = int(ctypes.cast(_system_cursor_handle(cid), ctypes.c_void_p).value or 0)
+        if h:
+            out[h] = css
+    return out
+
+
+def get_cursor_css() -> str:
+    """读取当前系统光标，映射为 CSS cursor 值。"""
+    global _CURSOR_CSS_CACHE
+    if not _CURSOR_CSS_CACHE:
+        _CURSOR_CSS_CACHE = _build_cursor_map()
+    info = CURSORINFO()
+    info.cbSize = ctypes.sizeof(CURSORINFO)
+    if not user32.GetCursorInfo(ctypes.byref(info)):
+        return "default"
+    if not (info.flags & CURSOR_SHOWING):
+        return "none"
+    h = int(ctypes.cast(info.hCursor, ctypes.c_void_p).value or 0)
+    return _CURSOR_CSS_CACHE.get(h, "default")
 
 user32.OpenClipboard.argtypes = [wintypes.HWND]
 user32.OpenClipboard.restype = wintypes.BOOL

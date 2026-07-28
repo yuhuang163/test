@@ -27,10 +27,17 @@ from aiortc import RTCConfiguration, RTCIceServer, RTCPeerConnection, RTCSession
 from aiortc.sdp import candidate_from_sdp
 from websockets.asyncio.client import connect as ws_connect
 
-from input_win import ensure_dpi_aware, handle_input_event, screen_size
+from input_win import ensure_dpi_aware, get_cursor_css, handle_input_event, screen_size
+from low_latency import apply_aiortc_speedups, is_hardware_encoder, selected_encoder
 from screen import ScreenVideoTrack
 
 LOG = logging.getLogger("remote_agent")
+
+# 日志里可据此确认是否为新版 Agent（与推流参数变更同步递增）
+STREAM_PROFILE = "1920x30"
+
+# 已打开的 DataChannel，用于广播光标形状
+_OPEN_CHANNELS: list = []
 
 
 def _apply_input(evt: dict, *, via: str) -> None:
@@ -44,6 +51,15 @@ def _bind_datachannel(channel, *, label: str) -> None:
     @channel.on("open")
     def on_open() -> None:
         LOG.info("datachannel open: %s", label)
+        if channel not in _OPEN_CHANNELS:
+            _OPEN_CHANNELS.append(channel)
+
+    @channel.on("close")
+    def on_close() -> None:
+        try:
+            _OPEN_CHANNELS.remove(channel)
+        except ValueError:
+            pass
 
     @channel.on("message")
     def on_message(message) -> None:
@@ -51,10 +67,36 @@ def _bind_datachannel(channel, *, label: str) -> None:
             if isinstance(message, bytes):
                 message = message.decode("utf-8", errors="ignore")
             evt = json.loads(message)
-            if isinstance(evt, dict):
-                _apply_input(evt, via=f"dc:{label}")
+            if not isinstance(evt, dict):
+                return
+            # 管理端测 RTT：原样回 pong，不走键鼠
+            if evt.get("type") == "ping":
+                try:
+                    channel.send(json.dumps({"type": "pong", "t": evt.get("t")}, ensure_ascii=False))
+                except Exception:
+                    pass
+                return
+            _apply_input(evt, via=f"dc:{label}")
         except Exception as exc:
             LOG.warning("datachannel message failed: %s", exc)
+
+
+def _broadcast_cursor(css: str) -> None:
+    payload = json.dumps({"type": "cursor", "cursor": css}, ensure_ascii=False)
+    dead = []
+    for ch in list(_OPEN_CHANNELS):
+        try:
+            if getattr(ch, "readyState", "") != "open":
+                dead.append(ch)
+                continue
+            ch.send(payload)
+        except Exception:
+            dead.append(ch)
+    for ch in dead:
+        try:
+            _OPEN_CHANNELS.remove(ch)
+        except ValueError:
+            pass
 
 
 def _setup_log(log_dir: Path | None) -> None:
@@ -99,18 +141,51 @@ async def run_session(cfg: dict) -> None:
     if not session_id or not token or not signaling_url:
         raise SystemExit("config 缺少 sessionId / agentToken / signalingUrl")
 
+    LOG.info("agent profile=%s", STREAM_PROFILE)
     ensure_dpi_aware()
     sw, sh = screen_size()
     LOG.info("session=%s screen=%sx%s signaling=%s", session_id, sw, sh, signaling_url)
 
     pc = RTCPeerConnection(RTCConfiguration(iceServers=_ice_servers(cfg.get("iceServers"))))
-    # 默认 1920/60fps；maxWidth=0 表示不缩小（最清晰，带宽更大）
-    max_width = int(cfg["maxWidth"]) if cfg.get("maxWidth") is not None else 1920
-    fps = int(cfg.get("fps") or 60)
-    # 60fps 桌面推流需要更高码率；可通过 config.maxBitrate 覆盖
-    max_bitrate = int(cfg.get("maxBitrate") or 12_000_000)
+    max_width = int(cfg.get("maxWidth", 1920))
+    fps = int(cfg.get("fps", 30))
+    max_bitrate = int(cfg.get("maxBitrate", 12_000_000))
+    LOG.info(
+        "config from host: maxWidth=%s fps=%s maxBitrate=%s (raw maxWidth=%s fps=%s)",
+        max_width,
+        fps,
+        max_bitrate,
+        cfg.get("maxWidth"),
+        cfg.get("fps"),
+    )
+    enc_name = apply_aiortc_speedups(fps=fps, max_bitrate=max_bitrate)
+    if not is_hardware_encoder(enc_name):
+        LOG.warning(
+            "soft encode %s: target %sx%s @%sfps br=%s (CPU 不足时 fps 会掉)",
+            enc_name,
+            max_width,
+            "auto",
+            fps,
+            max_bitrate,
+        )
+    LOG.info("capture/encode plan: maxWidth=%s fps=%s bitrate=%s encoder=%s", max_width, fps, max_bitrate, selected_encoder())
     track = ScreenVideoTrack(max_width=max_width, fps=fps)
     video_sender = pc.addTrack(track)
+    try:
+        from aiortc import RTCRtpSender
+
+        caps = RTCRtpSender.getCapabilities("video")
+        if caps and caps.codecs:
+            preferred = sorted(
+                caps.codecs,
+                key=lambda c: 0 if "h264" in (c.mimeType or "").lower() else 1,
+            )
+            for tr in pc.getTransceivers():
+                if tr.sender is video_sender:
+                    tr.setCodecPreferences(preferred)
+                    break
+    except Exception as exc:
+        LOG.warning("setCodecPreferences failed: %s", exc)
     channel = pc.createDataChannel("input")
     _bind_datachannel(channel, label="input")
 
@@ -221,6 +296,24 @@ async def run_session(cfg: dict) -> None:
 
         reader_task = asyncio.create_task(reader())
 
+        async def _cursor_loop() -> None:
+            last = ""
+            while not stop_event.is_set():
+                try:
+                    css = get_cursor_css()
+                    if css != last and _OPEN_CHANNELS:
+                        _broadcast_cursor(css)
+                        last = css
+                except Exception as exc:
+                    LOG.debug("cursor poll failed: %s", exc)
+                try:
+                    await asyncio.wait_for(stop_event.wait(), timeout=0.08)
+                    break
+                except asyncio.TimeoutError:
+                    pass
+
+        cursor_task = asyncio.create_task(_cursor_loop())
+
         async def _kick_offer() -> None:
             for delay in (0.0, 0.5, 1.5, 3.0):
                 if stop_event.is_set() or offer_sent:
@@ -243,6 +336,7 @@ async def run_session(cfg: dict) -> None:
         )
         stop_event.set()
         reader_task.cancel()
+        cursor_task.cancel()
         try:
             await ws.send(json.dumps({"type": "hangup", "reason": "agent_exit"}, ensure_ascii=False))
         except Exception:
