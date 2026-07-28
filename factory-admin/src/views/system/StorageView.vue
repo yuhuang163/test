@@ -1,7 +1,7 @@
 <template>
   <div class="storage-page" v-loading="loading">
     <div class="toolbar">
-      <el-button type="primary" :loading="loading" @click="load">刷新</el-button>
+      <el-button type="primary" :loading="loading" @click="loadAll">刷新</el-button>
       <span class="hint">统计耗时取决于日志目录大小，可稍后再次刷新</span>
     </div>
 
@@ -73,6 +73,41 @@
 
     <el-card shadow="never" class="panel">
       <template #header>
+        <div class="panel-head">
+          <div class="panel-title">按电脑清理测试数据</div>
+          <el-button size="small" :loading="hostsLoading" @click="loadHosts">刷新列表</el-button>
+        </div>
+      </template>
+      <div class="clean-hint">
+        按电脑名批量删除该机上传的测试记录；可选同时删除其日志包以释放磁盘。删除不可恢复，请确认后再操作。
+      </div>
+      <el-table v-loading="hostsLoading" :data="hosts" stripe empty-text="暂无测试数据">
+        <el-table-column prop="hostName" label="电脑名" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="recordCount" label="测试记录" width="100" />
+        <el-table-column prop="logCount" label="日志包" width="90" />
+        <el-table-column label="最早" min-width="160">
+          <template #default="{ row }">{{ formatTime(row.firstAt) || '—' }}</template>
+        </el-table-column>
+        <el-table-column label="最近" min-width="160">
+          <template #default="{ row }">{{ formatTime(row.lastAt) || '—' }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="120" fixed="right">
+          <template #default="{ row }">
+            <el-button
+              type="danger"
+              link
+              :loading="deletingHost === row.hostName"
+              @click="onDeleteHost(row)"
+            >
+              删除
+            </el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
+
+    <el-card shadow="never" class="panel">
+      <template #header>
         <div class="panel-title">分类明细</div>
       </template>
       <el-table :data="info?.breakdown || []" stripe>
@@ -111,11 +146,15 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { formatTime } from '../../utils/format'
 import * as api from '../../api/storage'
 
 const loading = ref(false)
+const hostsLoading = ref(false)
+const deletingHost = ref('')
 const info = ref(null)
+const hosts = ref([])
 
 const alertType = computed(() => {
   const level = info.value?.alert?.level
@@ -167,7 +206,79 @@ async function load() {
   }
 }
 
-onMounted(load)
+async function loadHosts() {
+  hostsLoading.value = true
+  try {
+    const data = await api.listStorageHosts()
+    hosts.value = data?.items || []
+  } catch (e) {
+    hosts.value = []
+    ElMessage.error(e.message || '加载电脑列表失败')
+  } finally {
+    hostsLoading.value = false
+  }
+}
+
+async function loadAll() {
+  await Promise.all([load(), loadHosts()])
+}
+
+async function onDeleteHost(row) {
+  if (!row?.hostName) return
+  try {
+    await ElMessageBox.confirm(
+      `确认删除电脑「${row.hostName}」的全部测试记录（${row.recordCount || 0} 条）？此操作不可恢复。`,
+      '批量删除测试数据',
+      {
+        type: 'warning',
+        confirmButtonText: '下一步',
+        cancelButtonText: '取消',
+      }
+    )
+  } catch {
+    return
+  }
+
+  let deleteLogs = false
+  if ((row.logCount || 0) > 0) {
+    try {
+      await ElMessageBox.confirm(
+        `该电脑还有 ${row.logCount} 个日志包。是否一并删除以释放磁盘？`,
+        '是否同时删除日志',
+        {
+          type: 'warning',
+          distinguishCancelAndClose: true,
+          confirmButtonText: '删除数据+日志',
+          cancelButtonText: '仅删测试数据',
+        }
+      )
+      deleteLogs = true
+    } catch (action) {
+      if (action === 'close') return
+      deleteLogs = false
+    }
+  }
+
+  deletingHost.value = row.hostName
+  try {
+    const data = await api.deleteStorageHostData({
+      hostName: row.hostName,
+      deleteLogs,
+    })
+    const parts = [`测试记录 ${data?.deletedRecords ?? 0} 条`]
+    if (deleteLogs) {
+      parts.push(`日志包 ${data?.deletedLogs ?? 0} 个`)
+    }
+    ElMessage.success(`已删除：${parts.join('，')}`)
+    await loadAll()
+  } catch (e) {
+    ElMessage.error(e.message || '删除失败')
+  } finally {
+    deletingHost.value = ''
+  }
+}
+
+onMounted(loadAll)
 </script>
 
 <style scoped>
@@ -191,9 +302,21 @@ onMounted(load)
   margin-bottom: 16px;
   border-radius: var(--admin-radius-lg);
 }
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
 .panel-title {
   font-weight: 600;
   color: var(--admin-text);
+}
+.clean-hint {
+  font-size: 12px;
+  color: var(--admin-text-tertiary);
+  margin-bottom: 12px;
+  line-height: 1.5;
 }
 .disk-block .disk-mount {
   font-size: 22px;

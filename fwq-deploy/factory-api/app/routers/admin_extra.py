@@ -398,3 +398,37 @@ def storage_info(user: Annotated[User, Depends(get_current_user)]):
 
     return ok(collect_storage_info())
 
+
+@router.get("/admin/storage/hosts")
+def storage_hosts(
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+):
+    """按电脑汇总测试记录，供存储管理批量清理。"""
+    _require_admin(user)
+    from app.services.storage_stats import list_test_data_hosts
+
+    return ok({"items": list_test_data_hosts(db)})
+
+
+@router.post("/admin/storage/hosts/delete")
+def storage_hosts_delete(
+    body: dict,
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+):
+    """批量删除某电脑的测试数据（可选同时删日志）。"""
+    _require_admin(user)
+    from app.response import fail
+    from app.services.storage_stats import delete_test_data_by_host
+
+    host_name = str((body or {}).get("hostName") or "").strip()
+    delete_logs = bool((body or {}).get("deleteLogs"))
+    if not host_name:
+        fail(400, "电脑名不能为空", 400)
+    try:
+        result = delete_test_data_by_host(db, host_name, delete_logs=delete_logs)
+    except ValueError as exc:
+        fail(400, str(exc), 400)
+    return ok(result, message="已删除")
+

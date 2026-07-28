@@ -22,6 +22,7 @@
             autocomplete="username"
             size="large"
             :prefix-icon="User"
+            @keyup.enter="onSubmit"
           />
         </el-form-item>
         <el-form-item>
@@ -33,9 +34,16 @@
             autocomplete="current-password"
             size="large"
             :prefix-icon="Lock"
+            @keyup.enter="onSubmit"
           />
         </el-form-item>
-        <el-button type="primary" size="large" class="submit-btn" :loading="loading" @click="onSubmit">
+        <el-button
+          type="primary"
+          size="large"
+          class="submit-btn"
+          native-type="submit"
+          :loading="loading"
+        >
           登录
         </el-button>
       </el-form>

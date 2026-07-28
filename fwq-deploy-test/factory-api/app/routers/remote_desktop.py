@@ -333,3 +333,21 @@ async def remote_desktop_ws(
                 )
             except Exception:
                 pass
+
+
+@ws_router.websocket("/ws-echo")
+async def ws_echo(websocket: WebSocket):
+    """供运维/CLB/WAF 连通性测试：握手成功即 OPEN，收什么回什么。无需登录。"""
+    await websocket.accept()
+    await websocket.send_text(
+        json.dumps(
+            {"type": "ok", "message": "websocket echo ready", "path": "/api/factory-tool/ws-echo"},
+            ensure_ascii=False,
+        )
+    )
+    try:
+        while True:
+            raw = await websocket.receive_text()
+            await websocket.send_text(raw)
+    except WebSocketDisconnect:
+        pass

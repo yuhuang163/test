@@ -5,8 +5,13 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
+from sqlalchemy import func, or_
+from sqlalchemy.orm import Session
+
 from app.config import settings
 from app.database import BASE_DIR
+from app.models import LogArchive, LogFile, TestRecord, TestRecordItem
+from app.time_util import to_utc_iso_z
 
 
 def _safe_dir_size(path: Path) -> int:
@@ -176,4 +181,129 @@ def collect_storage_info() -> dict:
             "criticalPercent": crit_pct,
         },
         "alert": alert,
+    }
+
+
+def _host_key_expr(model):
+    """电脑展示键：优先 host_name，否则 device_id。"""
+    return func.coalesce(func.nullif(model.host_name, ""), model.device_id)
+
+
+def list_test_data_hosts(db: Session) -> list[dict]:
+    """按电脑汇总测试记录数量，便于批量清理。"""
+    host_key = _host_key_expr(TestRecord).label("hostKey")
+    rows = (
+        db.query(
+            host_key,
+            func.count(TestRecord.id).label("recordCount"),
+            func.min(TestRecord.created_at).label("firstAt"),
+            func.max(TestRecord.created_at).label("lastAt"),
+        )
+        .group_by(host_key)
+        .order_by(func.count(TestRecord.id).desc())
+        .all()
+    )
+    items = []
+    for r in rows:
+        key = (r.hostKey or "").strip()
+        if not key:
+            continue
+        log_count = (
+            db.query(func.count(LogArchive.id))
+            .filter(
+                or_(
+                    LogArchive.host_name == key,
+                    LogArchive.device_id == key,
+                )
+            )
+            .scalar()
+            or 0
+        )
+        items.append(
+            {
+                "hostName": key,
+                "recordCount": int(r.recordCount or 0),
+                "logCount": int(log_count),
+                "firstAt": to_utc_iso_z(r.firstAt),
+                "lastAt": to_utc_iso_z(r.lastAt),
+            }
+        )
+    return items
+
+
+def _delete_log_archive_files(archive: LogArchive) -> None:
+    if not archive.object_key:
+        return
+    zip_path = settings.storage_path / archive.object_key
+    abs_dir = zip_path.parent
+    try:
+        if abs_dir.exists() and abs_dir.is_dir():
+            shutil.rmtree(abs_dir, ignore_errors=True)
+    except OSError:
+        pass
+
+
+def delete_test_data_by_host(db: Session, host_name: str, *, delete_logs: bool = False) -> dict:
+    """删除某电脑的全部测试记录（及分项）；可选同时删除该电脑日志包。"""
+    key = (host_name or "").strip()
+    if not key:
+        raise ValueError("电脑名不能为空")
+
+    record_ids = [
+        int(r[0])
+        for r in db.query(TestRecord.id)
+        .filter(
+            or_(
+                TestRecord.host_name == key,
+                TestRecord.device_id == key,
+            )
+        )
+        .all()
+    ]
+    deleted_records = 0
+    deleted_items = 0
+    if record_ids:
+        # 解除日志与测试记录的关联，避免悬空引用
+        db.query(LogArchive).filter(LogArchive.test_record_id.in_(record_ids)).update(
+            {LogArchive.test_record_id: None},
+            synchronize_session=False,
+        )
+        deleted_items = (
+            db.query(TestRecordItem)
+            .filter(TestRecordItem.record_id.in_(record_ids))
+            .delete(synchronize_session=False)
+        )
+        deleted_records = (
+            db.query(TestRecord)
+            .filter(TestRecord.id.in_(record_ids))
+            .delete(synchronize_session=False)
+        )
+
+    deleted_logs = 0
+    freed_log_bytes = 0
+    if delete_logs:
+        archives = (
+            db.query(LogArchive)
+            .filter(
+                or_(
+                    LogArchive.host_name == key,
+                    LogArchive.device_id == key,
+                )
+            )
+            .all()
+        )
+        for archive in archives:
+            freed_log_bytes += int(archive.size or 0)
+            _delete_log_archive_files(archive)
+            db.query(LogFile).filter(LogFile.archive_id == archive.id).delete(synchronize_session=False)
+            db.delete(archive)
+            deleted_logs += 1
+
+    db.commit()
+    return {
+        "hostName": key,
+        "deletedRecords": int(deleted_records or 0),
+        "deletedItems": int(deleted_items or 0),
+        "deletedLogs": deleted_logs,
+        "freedLogBytes": freed_log_bytes,
     }
