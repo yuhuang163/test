@@ -19,6 +19,7 @@
 #include <QJsonObject>
 #include <QMutex>
 #include <QProcess>
+#include <QProcessEnvironment>
 #include <QDateTime>
 #include <QMetaObject>
 #include <QSet>
@@ -51,7 +52,9 @@ QString remoteAgentDir() {
 
 bool remoteAgentAvailable() {
     const QDir dir(remoteAgentDir());
-    return dir.exists(QStringLiteral("run.bat")) || dir.exists(QStringLiteral("main.py"));
+    // 产线优先用打包好的 remote_agent.exe（无需本机 Python）
+    return dir.exists(QStringLiteral("remote_agent.exe")) || dir.exists(QStringLiteral("run.bat"))
+           || dir.exists(QStringLiteral("main.py"));
 }
 
 QString buildAgentSignalingUrl(const QString& sessionId, const QString& agentToken) {
@@ -117,28 +120,28 @@ void startRemoteDesktopSessionImpl(const QJsonObject& payload) {
     cfg.insert(QStringLiteral("maxBitrate"), 12000000);
 
     const QString workDir = remoteAgentDir();
-    const QString cfgPath = QDir(workDir).filePath(QStringLiteral("session_%1.json").arg(sessionId));
-    {
-        QFile f(cfgPath);
-        if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
-            qDebug() << QStringLiteral("[RemoteDesktop] 无法写配置") << cfgPath;
-            return;
-        }
-        f.write(QJsonDocument(cfg).toJson(QJsonDocument::Compact));
-    }
-
+    // 配置走环境变量，不写 session_*.json
+    const QByteArray cfgBytes = QJsonDocument(cfg).toJson(QJsonDocument::Compact);
     auto* proc = new QProcess(qApp);
     proc->setWorkingDirectory(workDir);
+    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
+    env.insert(QStringLiteral("REMOTE_AGENT_CONFIG"), QString::fromUtf8(cfgBytes));
+    proc->setProcessEnvironment(env);
+    const QString agentExe = QDir(workDir).filePath(QStringLiteral("remote_agent.exe"));
     const QString venvPy = QDir(workDir).filePath(QStringLiteral(".venv/Scripts/python.exe"));
     const QString mainPy = QDir(workDir).filePath(QStringLiteral("main.py"));
-    // 已有 venv 时直接起 python，避免每次走 run.bat（首次装依赖会非常慢）
-    if (QFileInfo::exists(venvPy) && QFileInfo::exists(mainPy)) {
+    const QStringList agentArgs{QStringLiteral("--config"), QStringLiteral("env:REMOTE_AGENT_CONFIG"),
+                                QStringLiteral("--log-dir"), workDir};
+    // 产线：独立 exe（无系统 Python）；开发机：venv / run.bat
+    if (QFileInfo::exists(agentExe)) {
+        proc->setProgram(agentExe);
+        proc->setArguments(agentArgs);
+    } else if (QFileInfo::exists(venvPy) && QFileInfo::exists(mainPy)) {
         proc->setProgram(venvPy);
-        proc->setArguments({mainPy, QStringLiteral("--config"), cfgPath, QStringLiteral("--log-dir"), workDir});
+        proc->setArguments(QStringList{mainPy} + agentArgs);
     } else {
         proc->setProgram(QStringLiteral("cmd.exe"));
-        proc->setArguments({QStringLiteral("/c"), QStringLiteral("run.bat"), QStringLiteral("--config"), cfgPath,
-                            QStringLiteral("--log-dir"), workDir});
+        proc->setArguments(QStringList{QStringLiteral("/c"), QStringLiteral("run.bat")} + agentArgs);
     }
     proc->setProcessChannelMode(QProcess::MergedChannels);
     QObject::connect(proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), proc,

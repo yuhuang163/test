@@ -1,0 +1,10 @@
+_pyi_work/
+build/
+dist/
+*.spec
+.venv/
+__pycache__/
+*.pyc
+*.log
+session_*.json
+output/

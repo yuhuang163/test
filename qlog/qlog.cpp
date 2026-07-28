@@ -178,39 +178,69 @@ QString exportDailyLogSessionSlice(const QString& dailyAbsolutePath, const QStri
         }
         return {};
     }
+    // 必须按原始字节读：落盘是 CRLF，offset 也是磁盘字节；用 Text 模式会丢 \r 导致偏移错乱
     QFile inFile(dailyAbsolutePath);
-    if (!inFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    if (!inFile.open(QIODevice::ReadOnly)) {
         if (error) {
             *error = QStringLiteral("无法读取日志：") + dailyAbsolutePath;
         }
         return {};
     }
-
-    static const QRegularExpression tsRe(
-        QStringLiteral(R"((\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}))"));
     const QByteArray all = inFile.readAll();
     inFile.close();
 
-    const QStringList lines = QString::fromUtf8(all).split(QRegularExpression(QStringLiteral("\r?\n")),
-                                                         Qt::KeepEmptyParts);
+    // dongle 一条记录常为「时间戳行 + 后续正文行」，正文行本身没有时间戳
+    static const QRegularExpression tsRe(
+        QStringLiteral(R"(^(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3}))"));
+
     QStringList kept;
+    bool inTimeWindow = false;
     qint64 pos = 0;
-    for (const QString& line : lines) {
-        const qint64 lineBytes = line.toUtf8().size() + 1;
-        const QRegularExpressionMatch m = tsRe.match(line);
-        if (m.hasMatch()) {
-            const QDateTime ts = QDateTime::fromString(m.captured(1), QStringLiteral("yyyy-MM-dd hh:mm:ss.zzz"));
-            if (ts.isValid() && ts >= info.startedAt && ts <= info.endedAt) {
-                kept.append(line);
+    if (all.size() >= 3 && static_cast<unsigned char>(all[0]) == 0xEF
+        && static_cast<unsigned char>(all[1]) == 0xBB && static_cast<unsigned char>(all[2]) == 0xBF) {
+        pos = 3; // 跳过 UTF-8 BOM，偏移仍按文件绝对位置
+    }
+
+    while (pos < all.size()) {
+        const qint64 lineStart = pos;
+        qint64 i = pos;
+        while (i < all.size() && all.at(i) != '\n' && all.at(i) != '\r') {
+            ++i;
+        }
+        const QByteArray lineBytes = all.mid(static_cast<int>(lineStart), static_cast<int>(i - lineStart));
+        qint64 next = i;
+        if (next < all.size() && all.at(next) == '\r') {
+            ++next;
+            if (next < all.size() && all.at(next) == '\n') {
+                ++next;
             }
-        } else if (pos >= offsetStart && pos < offsetEnd) {
+        } else if (next < all.size() && all.at(next) == '\n') {
+            ++next;
+        }
+
+        const QString line = QString::fromUtf8(lineBytes);
+        const QRegularExpressionMatch m = tsRe.match(line);
+        bool keep = false;
+        if (m.hasMatch()) {
+            const QDateTime ts =
+                QDateTime::fromString(m.captured(1), QStringLiteral("yyyy-MM-dd hh:mm:ss.zzz"));
+            inTimeWindow = ts.isValid() && ts >= info.startedAt && ts <= info.endedAt;
+            keep = inTimeWindow;
+        } else {
+            // 无时间戳：归属上一条时间戳头；偏移窗兜底（兼容无时间戳的旧行）
+            const bool inOffset = (offsetEnd > offsetStart) && (next > offsetStart) && (lineStart < offsetEnd);
+            keep = inTimeWindow || inOffset;
+        }
+        if (keep) {
             kept.append(line);
         }
-        pos += lineBytes;
+        pos = next;
     }
+
     if (kept.isEmpty() && offsetEnd > offsetStart) {
-        const QByteArray slice =
-            all.mid(static_cast<int>(offsetStart), static_cast<int>(offsetEnd - offsetStart));
+        const int start = static_cast<int>(qMax(qint64(0), offsetStart));
+        const int len = static_cast<int>(qMax(qint64(0), offsetEnd - offsetStart));
+        const QByteArray slice = all.mid(start, len);
         kept = QString::fromUtf8(slice).split(QRegularExpression(QStringLiteral("\r?\n")), Qt::KeepEmptyParts);
     }
 
