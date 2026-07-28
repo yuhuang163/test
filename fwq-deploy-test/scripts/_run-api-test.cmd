@@ -112,6 +112,8 @@ echo [API-TEST] IIS 测试站见 scripts\iis-setup-test.txt
 
 echo.
 
+set "FACTORY_API_PORT=%PORT%"
+
 .\.venv\Scripts\python.exe run_server.py
 
 if errorlevel 1 (

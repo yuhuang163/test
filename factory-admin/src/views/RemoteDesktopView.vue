@@ -87,6 +87,9 @@
       <el-button @click="helpVisible = true">快捷键</el-button>
 
       <span v-if="statusText" class="status">{{ statusText }}</span>
+      <el-tag v-if="session && streamReady" size="small" :type="latencyTagType" class="latency-tag" effect="plain">
+        {{ latencyLabel }}
+      </el-tag>
       <span class="device-count">在线 {{ devices.length }} 台</span>
     </div>
 
@@ -114,6 +117,11 @@
       />
       <div v-if="!session" class="placeholder">选择在线设备后点击「开始远控」</div>
       <div v-else-if="!streamReady" class="placeholder">{{ waitHint }}</div>
+      <div v-if="session && streamReady" class="stage-hud">
+        <span>{{ latencyLabel }}</span>
+        <span v-if="statsFps != null">{{ statsFps }} fps</span>
+        <span v-if="statsKbps != null">{{ statsKbps }} kbps</span>
+      </div>
       <div v-if="session && streamReady" class="stage-hint">
         Esc 退出 · 双击放大 · F11 全屏 · F1 快捷键
       </div>
@@ -159,6 +167,30 @@ const expanded = ref(false)
 const isBrowserFs = ref(false)
 const scaleMode = ref('contain')
 const helpVisible = ref(false)
+/** DataChannel RTT（ms）；无通道时回退 ICE RTT */
+const statsRttMs = ref(null)
+const statsIceRttMs = ref(null)
+const statsFps = ref(null)
+const statsKbps = ref(null)
+
+const latencyMs = computed(() => {
+  if (statsRttMs.value != null) return statsRttMs.value
+  return statsIceRttMs.value
+})
+
+const latencyLabel = computed(() => {
+  const ms = latencyMs.value
+  if (ms == null) return '延迟测量中…'
+  return `延迟 ${ms} ms`
+})
+
+const latencyTagType = computed(() => {
+  const ms = latencyMs.value
+  if (ms == null) return 'info'
+  if (ms <= 80) return 'success'
+  if (ms <= 180) return 'warning'
+  return 'danger'
+})
 
 const emptyHint = computed(() => {
   if (loadError.value) return loadError.value
@@ -183,6 +215,126 @@ let screenHeight = 1080
 let lastMoveSent = 0
 let refreshTimer = null
 let waitTimer = null
+let statsTimer = null
+let lastBytesReceived = 0
+let lastBytesAt = 0
+let pendingPingAt = 0
+
+function resetStats() {
+  statsRttMs.value = null
+  statsIceRttMs.value = null
+  statsFps.value = null
+  statsKbps.value = null
+  lastBytesReceived = 0
+  lastBytesAt = 0
+  pendingPingAt = 0
+}
+
+function stopStatsTimer() {
+  if (statsTimer) {
+    clearInterval(statsTimer)
+    statsTimer = null
+  }
+}
+
+function startStatsTimer() {
+  stopStatsTimer()
+  resetStats()
+  statsTimer = setInterval(() => {
+    pollPeerStats()
+    sendLatencyPing()
+  }, 1000)
+}
+
+function sendLatencyPing() {
+  if (!inputChannel || inputChannel.readyState !== 'open') return
+  try {
+    pendingPingAt = performance.now()
+    inputChannel.send(JSON.stringify({ type: 'ping', t: Date.now() }))
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+function onDataChannelMessage(raw) {
+  try {
+    const text = typeof raw === 'string' ? raw : new TextDecoder().decode(raw)
+    const msg = JSON.parse(text)
+    if (msg?.type === 'pong' && pendingPingAt > 0) {
+      statsRttMs.value = Math.max(0, Math.round(performance.now() - pendingPingAt))
+      pendingPingAt = 0
+    }
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+async function pollPeerStats() {
+  if (!pc) return
+  try {
+    const report = await pc.getStats()
+    let iceRtt = null
+    let fps = null
+    let bytes = null
+    report.forEach((s) => {
+      if (s.type === 'candidate-pair' && (s.state === 'succeeded' || s.nominated)) {
+        if (typeof s.currentRoundTripTime === 'number') {
+          iceRtt = Math.round(s.currentRoundTripTime * 1000)
+        }
+      }
+      if (s.type === 'inbound-rtp' && s.kind === 'video') {
+        if (typeof s.framesPerSecond === 'number') fps = Math.round(s.framesPerSecond)
+        if (typeof s.bytesReceived === 'number') bytes = s.bytesReceived
+      }
+    })
+    if (iceRtt != null) statsIceRttMs.value = iceRtt
+    if (fps != null) statsFps.value = fps
+    const now = performance.now()
+    if (bytes != null) {
+      if (lastBytesAt > 0) {
+        const dt = (now - lastBytesAt) / 1000
+        if (dt > 0.2) {
+          const kbps = Math.round(((bytes - lastBytesReceived) * 8) / dt / 1000)
+          statsKbps.value = Math.max(0, kbps)
+        }
+      }
+      lastBytesReceived = bytes
+      lastBytesAt = now
+    }
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+function preferLowLatencyPlayback() {
+  if (!pc) return
+  try {
+    for (const receiver of pc.getReceivers()) {
+      if (receiver.track?.kind !== 'video') continue
+      try {
+        receiver.playoutDelayHint = 0
+      } catch (_) {
+        /* ignore */
+      }
+      try {
+        receiver.jitterBufferTarget = 0
+      } catch (_) {
+        /* ignore */
+      }
+    }
+  } catch (_) {
+    /* ignore */
+  }
+  if (videoRef.value) {
+    try {
+      videoRef.value.playsInline = true
+      // 部分浏览器支持降低缓冲
+      if ('latencyHint' in videoRef.value) videoRef.value.latencyHint = 'interactive'
+    } catch (_) {
+      /* ignore */
+    }
+  }
+}
 
 function startWaitTimer() {
   waitSeconds.value = 0
@@ -304,6 +456,8 @@ async function loadDevices() {
 }
 
 function cleanupPeer() {
+  stopStatsTimer()
+  resetStats()
   try {
     inputChannel?.close()
   } catch (_) {
@@ -471,7 +625,8 @@ function takeScreenshot() {
 function onMouseMove(e) {
   if (!session.value) return
   const now = Date.now()
-  if (now - lastMoveSent < 33) return
+  // 键鼠尽快发，略提高采样
+  if (now - lastMoveSent < 12) return
   lastMoveSent = now
   const p = normPos(e)
   sendInput({ type: 'mousemove', x: p.x, y: p.y })
@@ -535,7 +690,9 @@ function attachDataChannel(ch) {
   inputChannel = ch
   ch.onopen = () => {
     statusText.value = streamReady.value ? '已连接（可键鼠控制）' : '键鼠通道已开，等待画面…'
+    sendLatencyPing()
   }
+  ch.onmessage = (ev) => onDataChannelMessage(ev.data)
   ch.onclose = () => {
     if (inputChannel === ch) inputChannel = null
   }
@@ -557,6 +714,8 @@ async function handleOffer(msg) {
       videoRef.value.srcObject = ev.streams[0] || new MediaStream([ev.track])
       streamReady.value = true
       stopWaitTimer()
+      preferLowLatencyPlayback()
+      startStatsTimer()
       const dcOk = inputChannel && inputChannel.readyState === 'open'
       statusText.value = dcOk ? '已连接（可键鼠控制）' : '画面已到达（键鼠走信令）'
       requestAnimationFrame(() => stageRef.value?.focus())
@@ -577,8 +736,30 @@ async function handleOffer(msg) {
   }
 
   await pc.setRemoteDescription({ type: 'offer', sdp: msg.sdp })
+  // 优先 H264（Windows 浏览器硬解更稳、延迟通常更好）
+  try {
+    const caps = RTCRtpReceiver.getCapabilities?.('video')
+    if (caps?.codecs?.length) {
+      const preferred = [...caps.codecs].sort((a, b) => {
+        const rank = (c) => ((c.mimeType || '').toLowerCase().includes('h264') ? 0 : 1)
+        return rank(a) - rank(b)
+      })
+      for (const t of pc.getTransceivers()) {
+        if (t.receiver?.track?.kind === 'video' || t.mid != null) {
+          try {
+            t.setCodecPreferences(preferred)
+          } catch (_) {
+            /* ignore */
+          }
+        }
+      }
+    }
+  } catch (_) {
+    /* ignore */
+  }
   const answer = await pc.createAnswer()
   await pc.setLocalDescription(answer)
+  preferLowLatencyPlayback()
   ws.send(JSON.stringify({ type: 'answer', sdp: pc.localDescription.sdp }))
 }
 
@@ -707,6 +888,7 @@ onBeforeUnmount(async () => {
     refreshTimer = null
   }
   stopWaitTimer()
+  stopStatsTimer()
   const sid = session.value?.sessionId
   if (sid) {
     api.beaconStopSession(sid)
@@ -746,10 +928,29 @@ onBeforeUnmount(async () => {
   color: #666;
   font-size: 13px;
 }
+.latency-tag {
+  margin-left: 4px;
+}
 .device-count {
   margin-left: auto;
   color: #888;
   font-size: 13px;
+}
+.stage-hud {
+  position: absolute;
+  left: 12px;
+  top: 10px;
+  display: flex;
+  gap: 10px;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 4px 10px;
+  border-radius: 6px;
+  pointer-events: none;
+  user-select: none;
+  z-index: 2;
 }
 .opt-tag {
   margin-left: 8px;
