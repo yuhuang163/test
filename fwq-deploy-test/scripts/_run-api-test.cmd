@@ -112,7 +112,7 @@ echo [API-TEST] IIS 测试站见 scripts\iis-setup-test.txt
 
 echo.
 
-.\.venv\Scripts\uvicorn.exe app.main:app --host 0.0.0.0 --port %PORT%
+.\.venv\Scripts\python.exe run_server.py
 
 if errorlevel 1 (
 
