@@ -218,6 +218,15 @@ QStringList AuthService::currentRoles() {
     return roles;
 }
 
+bool AuthService::isAdmin() {
+    for (const QString& role : currentRoles()) {
+        if (role == QLatin1String("admin")) {
+            return true;
+        }
+    }
+    return false;
+}
+
 bool AuthService::canOpenSettings() {
     if (!SETTINGS.value(QStringLiteral("SYSTEM/setting")).toInt()) {
         return false;

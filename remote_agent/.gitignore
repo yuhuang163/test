@@ -7,4 +7,5 @@ __pycache__/
 *.pyc
 *.log
 session_*.json
+encoder_cache.json
 output/

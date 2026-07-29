@@ -41,20 +41,50 @@ namespace {
 constexpr const char* kBackupDirName = ".backup";
 constexpr int kHeartbeatIntervalMs = 20000;
 /** 远控命令要快，单独高频拉命令，避免干等下一次 20s 心跳 */
-constexpr int kCommandPollIntervalMs = 3000;
+constexpr int kCommandPollIntervalMs = 800;
 
 QMutex g_remoteDesktopMutex;
 QHash<QString, qint64> g_remoteDesktopPids; // sessionId -> pid
 
-QString remoteAgentDir() {
+QString remoteAgentDirBesideBin() {
     return QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("remote_agent"));
 }
 
+/** 开发机：build/.../bin → 仓库 remote_agent/ */
+QString remoteAgentDirSourceTree() {
+    return QDir(QCoreApplication::applicationDirPath()).absoluteFilePath(QStringLiteral("../../remote_agent"));
+}
+
+bool remoteAgentDirUsable(const QString& dirPath) {
+    const QDir dir(dirPath);
+    if (!dir.exists()) {
+        return false;
+    }
+    if (dir.exists(QStringLiteral("remote_agent.exe"))) {
+        return true;
+    }
+    // 源码树：main.py + (venv 或 run.bat)
+    if (!dir.exists(QStringLiteral("main.py"))) {
+        return false;
+    }
+    return dir.exists(QStringLiteral(".venv/Scripts/python.exe")) || dir.exists(QStringLiteral("run.bat"));
+}
+
+QString remoteAgentDir() {
+    const QString besideBin = remoteAgentDirBesideBin();
+    if (remoteAgentDirUsable(besideBin)) {
+        return besideBin;
+    }
+    const QString src = QDir(remoteAgentDirSourceTree()).absolutePath();
+    if (remoteAgentDirUsable(src)) {
+        return src;
+    }
+    // 默认仍返回 bin 旁路径，便于日志提示缺目录
+    return besideBin;
+}
+
 bool remoteAgentAvailable() {
-    const QDir dir(remoteAgentDir());
-    // 产线优先用打包好的 remote_agent.exe（无需本机 Python）
-    return dir.exists(QStringLiteral("remote_agent.exe")) || dir.exists(QStringLiteral("run.bat"))
-           || dir.exists(QStringLiteral("main.py"));
+    return remoteAgentDirUsable(remoteAgentDir());
 }
 
 QString buildAgentSignalingUrl(const QString& sessionId, const QString& agentToken) {
@@ -116,6 +146,7 @@ void stopAllRemoteDesktopSessions() {
 }
 
 void startRemoteDesktopSessionImpl(const QJsonObject& payload) {
+    const qint64 t0Ms = QDateTime::currentMSecsSinceEpoch();
     const QString sessionId = payload.value(QStringLiteral("sessionId")).toString().trimmed();
     const QString agentToken = payload.value(QStringLiteral("agentToken")).toString().trimmed();
     if (sessionId.isEmpty() || agentToken.isEmpty()) {
@@ -123,9 +154,13 @@ void startRemoteDesktopSessionImpl(const QJsonObject& payload) {
         return;
     }
     if (!remoteAgentAvailable()) {
-        qDebug() << QStringLiteral("[RemoteDesktop] 未找到 bin/remote_agent，请部署 Agent 目录");
+        qDebug() << QStringLiteral("[RemoteDesktop] 未找到远控 Agent。产线请部署 bin/remote_agent（exe+_internal）；"
+                                   "开发可在仓库 remote_agent/ 执行 setup_dev.bat");
         return;
     }
+
+    const QString workDir = remoteAgentDir();
+    qDebug() << QStringLiteral("[RemoteDesktop] 使用 Agent 目录") << workDir;
 
     {
         QMutexLocker locker(&g_remoteDesktopMutex);
@@ -133,7 +168,7 @@ void startRemoteDesktopSessionImpl(const QJsonObject& payload) {
             locker.unlock();
             qDebug() << QStringLiteral("[RemoteDesktop] 会话已在运行，先结束旧 Agent 再按新参数启动") << sessionId;
             stopRemoteDesktopSession(sessionId);
-            QThread::msleep(400);
+            QThread::msleep(200);
         }
     }
 
@@ -143,14 +178,22 @@ void startRemoteDesktopSessionImpl(const QJsonObject& payload) {
     cfg.insert(QStringLiteral("signalingUrl"), buildAgentSignalingUrl(sessionId, agentToken));
     qDebug() << QStringLiteral("[RemoteDesktop] signaling") << cfg.value(QStringLiteral("signalingUrl")).toString();
     cfg.insert(QStringLiteral("iceServers"), payload.value(QStringLiteral("iceServers")));
-    // 1920@30 / 12Mbps
-    cfg.insert(QStringLiteral("maxWidth"), 1920);
-    cfg.insert(QStringLiteral("fps"), 30);
-    cfg.insert(QStringLiteral("maxBitrate"), 12000000);
+    // 画质由管理端创建会话时下发；缺省与旧行为一致
+    int maxWidth = payload.value(QStringLiteral("maxWidth")).toInt(1920);
+    int fps = payload.value(QStringLiteral("fps")).toInt(30);
+    qint64 maxBitrate = payload.value(QStringLiteral("maxBitrate")).toVariant().toLongLong();
+    if (maxBitrate <= 0)
+        maxBitrate = 12000000;
+    maxWidth = qBound(maxWidth, 640, 1920);
+    fps = qBound(fps, 5, 60);
+    maxBitrate = qBound(maxBitrate, qint64(500000), qint64(25000000));
+    cfg.insert(QStringLiteral("maxWidth"), maxWidth);
+    cfg.insert(QStringLiteral("fps"), fps);
+    cfg.insert(QStringLiteral("maxBitrate"), maxBitrate);
 
-    qDebug() << QStringLiteral("[RemoteDesktop] Agent 推流参数 maxWidth=1920 fps=30 maxBitrate=12000000");
+    qDebug() << QStringLiteral("[RemoteDesktop] Agent 推流参数 maxWidth=") << maxWidth << "fps=" << fps
+             << "maxBitrate=" << maxBitrate;
 
-    const QString workDir = remoteAgentDir();
     // 配置走环境变量，不写 session_*.json
     const QByteArray cfgBytes = QJsonDocument(cfg).toJson(QJsonDocument::Compact);
     auto* proc = new QProcess(qApp);
@@ -163,16 +206,20 @@ void startRemoteDesktopSessionImpl(const QJsonObject& payload) {
     const QString mainPy = QDir(workDir).filePath(QStringLiteral("main.py"));
     const QStringList agentArgs{QStringLiteral("--config"), QStringLiteral("env:REMOTE_AGENT_CONFIG"),
                                 QStringLiteral("--log-dir"), workDir};
-    // 产线：独立 exe（无系统 Python）；开发机：venv / run.bat
+    // 产线：onedir 的 remote_agent.exe（需保留同目录 _internal）；开发机：venv / run.bat
+    QString launchVia;
     if (QFileInfo::exists(agentExe)) {
         proc->setProgram(agentExe);
         proc->setArguments(agentArgs);
+        launchVia = QStringLiteral("exe");
     } else if (QFileInfo::exists(venvPy) && QFileInfo::exists(mainPy)) {
         proc->setProgram(venvPy);
         proc->setArguments(QStringList{mainPy} + agentArgs);
+        launchVia = QStringLiteral("venv");
     } else {
         proc->setProgram(QStringLiteral("cmd.exe"));
         proc->setArguments(QStringList{QStringLiteral("/c"), QStringLiteral("run.bat")} + agentArgs);
+        launchVia = QStringLiteral("run.bat");
     }
     proc->setProcessChannelMode(QProcess::MergedChannels);
     QObject::connect(proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), proc,
@@ -189,6 +236,8 @@ void startRemoteDesktopSessionImpl(const QJsonObject& payload) {
                          }
                          proc->deleteLater();
                      });
+    qDebug() << QStringLiteral("[RemoteDesktop] 即将启动 Agent via=") << launchVia << "cwd=" << workDir
+             << "距收到命令" << (QDateTime::currentMSecsSinceEpoch() - t0Ms) << "ms";
     proc->start();
     if (!proc->waitForStarted(8000)) {
         qDebug() << QStringLiteral("[RemoteDesktop] 启动 Agent 失败：") << proc->errorString();
@@ -199,7 +248,9 @@ void startRemoteDesktopSessionImpl(const QJsonObject& payload) {
         QMutexLocker locker(&g_remoteDesktopMutex);
         g_remoteDesktopPids.insert(sessionId, proc->processId());
     }
-    qDebug() << QStringLiteral("[RemoteDesktop] Agent 已启动") << sessionId << "pid" << proc->processId();
+    qDebug() << QStringLiteral("[RemoteDesktop] Agent 进程已拉起") << sessionId << "pid" << proc->processId()
+             << "via" << launchVia << "耗时" << (QDateTime::currentMSecsSinceEpoch() - t0Ms) << "ms"
+             << "（若距点击仍很久，多半是命令轮询；进程拉起后还要等 Agent 初始化）";
 }
 
 void startRemoteDesktopSession(const QJsonObject& payload) {

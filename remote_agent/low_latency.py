@@ -3,7 +3,11 @@
 from __future__ import annotations
 
 import fractions
+import json
 import logging
+import sys
+import time
+from pathlib import Path
 from typing import Iterator
 
 import av
@@ -11,6 +15,20 @@ import av
 LOG = logging.getLogger("remote_agent.low_latency")
 
 SELECTED_ENCODER = "libx264"
+
+# 编码侧周期统计（main 汇总打印后清零）
+_ENC_STATS: dict = {
+    "frames": 0,
+    "bytes": 0,
+    "reopens": 0,
+    "br_hot": 0,  # 码率热更新次数（不重建）
+    "keyframes": 0,
+    "last_br": 0,
+    "last_w": 0,
+    "last_h": 0,
+    "codec": "",
+    "t0": 0.0,
+}
 
 
 def selected_encoder() -> str:
@@ -20,6 +38,101 @@ def selected_encoder() -> str:
 def is_hardware_encoder(name: str | None = None) -> bool:
     n = (name or SELECTED_ENCODER).lower()
     return n in {"h264_nvenc", "h264_qsv", "h264_amf", "h264_mf"}
+
+
+def encode_size_for_max_width(screen_w: int, screen_h: int, max_width: int) -> tuple[int, int]:
+    """按 maxWidth 等比缩放，宽高取偶数（与抓屏轨一致）。"""
+    sw = max(int(screen_w), 2)
+    sh = max(int(screen_h), 2)
+    mw = int(max_width) if max_width and max_width > 0 else sw
+    w = min(mw, sw)
+    w -= w % 2
+    h = int(round(sh * (w / float(sw))))
+    h -= h % 2
+    return max(w, 2), max(h, 2)
+
+
+def probe_soft_encode_sustain(
+    *,
+    width: int,
+    height: int,
+    fps: int,
+    bitrate: int,
+    frames: int = 6,
+) -> tuple[bool, float]:
+    """
+    软编能否稳住目标 fps：实测几帧 libx264 编码耗时。
+    预留约 15ms 给抓屏+缩放；超时则建议降档。
+    返回 (可维持, 平均每帧编码 ms)。
+    """
+    fps = max(1, int(fps))
+    width = max(2, int(width) - int(width) % 2)
+    height = max(2, int(height) - int(height) % 2)
+    budget_ms = max(1000.0 / fps - 15.0, 8.0)
+    probe_br = max(500_000, min(int(bitrate), 4_000_000))
+    try:
+        ctx = av.CodecContext.create("libx264", "w")
+        _configure_encoder(ctx, "libx264", width, height, fps, probe_br)
+        frame = av.VideoFrame(width=width, height=height, format="yuv420p")
+        for p in frame.planes:
+            p.update(bytes(p.buffer_size))
+        # 预热 1 帧（含 open/首帧开销）
+        frame.pts = 0
+        frame.time_base = ctx.time_base
+        list(ctx.encode(frame))
+        times: list[float] = []
+        for i in range(max(1, int(frames))):
+            frame.pts = i + 1
+            t0 = time.perf_counter()
+            list(ctx.encode(frame))
+            times.append((time.perf_counter() - t0) * 1000.0)
+        list(ctx.encode(None))
+        avg_ms = sum(times) / len(times)
+        ok = avg_ms <= budget_ms
+        LOG.info(
+            "soft encode probe %sx%s @%sfps: avg=%.1fms budget=%.1fms -> %s",
+            width,
+            height,
+            fps,
+            avg_ms,
+            budget_ms,
+            "ok" if ok else "too_slow",
+        )
+        return ok, avg_ms
+    except Exception as exc:
+        LOG.warning("soft encode probe failed: %s", exc)
+        return False, 9999.0
+
+
+def take_encoder_period_stats() -> dict:
+    """取出并清零上一周期编码统计。"""
+    import time
+
+    now = time.time()
+    t0 = float(_ENC_STATS.get("t0") or now)
+    dt = max(now - t0, 1e-6)
+    frames = int(_ENC_STATS.get("frames") or 0)
+    nbytes = int(_ENC_STATS.get("bytes") or 0)
+    out = {
+        "dt": dt,
+        "frames": frames,
+        "fps": frames / dt,
+        "kbps": (nbytes * 8.0 / dt) / 1000.0,
+        "reopens": int(_ENC_STATS.get("reopens") or 0),
+        "br_hot": int(_ENC_STATS.get("br_hot") or 0),
+        "keyframes": int(_ENC_STATS.get("keyframes") or 0),
+        "target_br": int(_ENC_STATS.get("last_br") or 0),
+        "width": int(_ENC_STATS.get("last_w") or 0),
+        "height": int(_ENC_STATS.get("last_h") or 0),
+        "codec": str(_ENC_STATS.get("codec") or ""),
+    }
+    _ENC_STATS["frames"] = 0
+    _ENC_STATS["bytes"] = 0
+    _ENC_STATS["reopens"] = 0
+    _ENC_STATS["br_hot"] = 0
+    _ENC_STATS["keyframes"] = 0
+    _ENC_STATS["t0"] = now
+    return out
 
 
 def _configure_encoder(ctx: av.CodecContext, name: str, width: int, height: int, fps: int, bitrate: int) -> None:
@@ -37,6 +150,9 @@ def _configure_encoder(ctx: av.CodecContext, name: str, width: int, height: int,
             "profile": "baseline",
             "bf": "0",
             "sc_threshold": "0",
+            # 跟 bit_rate 对齐，减少 GCC 调码率时实际码率反应过慢/过冲
+            "maxrate": str(int(bitrate)),
+            "bufsize": str(max(int(bitrate) // 2, 100_000)),
         }
         try:
             ctx.profile = "Baseline"
@@ -57,6 +173,40 @@ def _configure_encoder(ctx: av.CodecContext, name: str, width: int, height: int,
         ctx.options = {"usage": "ultralowlatency", "quality": "speed", "bf": "0"}
     elif name == "h264_mf":
         ctx.options = {"hw_encoding": "1", "bf": "0"}
+
+
+def _encoder_cache_path() -> Path:
+    # onefile 解压目录不可靠，优先写 exe/脚本同目录
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent / "encoder_cache.json"
+    return Path(__file__).resolve().parent / "encoder_cache.json"
+
+
+def _load_encoder_cache() -> str | None:
+    try:
+        path = _encoder_cache_path()
+        if not path.is_file():
+            return None
+        data = json.loads(path.read_text(encoding="utf-8"))
+        name = str(data.get("encoder") or "").strip()
+        ts = float(data.get("ts") or 0)
+        # 7 天内有效；机器换显卡可手动删 encoder_cache.json
+        if name and (time.time() - ts) < 7 * 24 * 3600:
+            return name
+    except Exception:
+        pass
+    return None
+
+
+def _save_encoder_cache(name: str) -> None:
+    try:
+        path = _encoder_cache_path()
+        path.write_text(
+            json.dumps({"encoder": name, "ts": time.time()}, ensure_ascii=False),
+            encoding="utf-8",
+        )
+    except Exception as exc:
+        LOG.debug("encoder cache write failed: %s", exc)
 
 
 def _probe_encoder(name: str, fps: int, bitrate: int) -> bool:
@@ -80,15 +230,74 @@ def _probe_encoder(name: str, fps: int, bitrate: int) -> bool:
         return False
 
 
+def _probe_encoder_timed(name: str, fps: int, bitrate: int, *, timeout_s: float = 1.2) -> bool:
+    """带超时的探测：h264_mf 等在部分机器上会卡死 open2。"""
+    import threading
+
+    box: list[bool | None] = [None]
+
+    def _run() -> None:
+        try:
+            box[0] = _probe_encoder(name, fps=fps, bitrate=bitrate)
+        except Exception as exc:
+            LOG.info("encoder %s probe error: %s", name, exc)
+            box[0] = False
+
+    t0 = time.perf_counter()
+    th = threading.Thread(target=_run, name=f"probe-{name}", daemon=True)
+    th.start()
+    th.join(timeout=max(0.2, float(timeout_s)))
+    elapsed_ms = (time.perf_counter() - t0) * 1000
+    if th.is_alive():
+        # 无法强杀原生卡死线程，标记跳过；daemon 随进程退出
+        LOG.info("encoder %s probe timeout (%.0fms), skip", name, elapsed_ms)
+        return False
+    ok = bool(box[0])
+    if ok:
+        LOG.info("encoder %s probe ok (%.0fms)", name, elapsed_ms)
+    return ok
+
+
 def pick_h264_encoder(*, fps: int, bitrate: int) -> str:
     global SELECTED_ENCODER
-    for name in ("h264_nvenc", "h264_qsv", "h264_amf", "h264_mf", "libx264"):
-        if _probe_encoder(name, fps=fps, bitrate=min(bitrate, 4_000_000)):
+    probe_br = min(bitrate, 4_000_000)
+    # 跳过 h264_mf：Media Foundation 在不少产线机上会卡死探测
+    candidates = ("h264_nvenc", "h264_qsv", "h264_amf", "libx264")
+
+    cached = _load_encoder_cache()
+    if cached:
+        t0 = time.perf_counter()
+        # 缓存命中也限时，避免坏缓存反复卡启动
+        ok = _probe_encoder_timed(cached, fps=fps, bitrate=probe_br, timeout_s=1.5)
+        LOG.info(
+            "encoder cache try %s -> %s (%.0fms)",
+            cached,
+            "ok" if ok else "fail",
+            (time.perf_counter() - t0) * 1000,
+        )
+        if ok:
+            SELECTED_ENCODER = cached
+            LOG.info("selected video encoder: %s (cached)", cached)
+            return cached
+
+    t0 = time.perf_counter()
+    for name in candidates:
+        if cached and name == cached:
+            continue
+        # 硬件限时；软编给稍长一点
+        timeout_s = 2.5 if name == "libx264" else 1.2
+        if _probe_encoder_timed(name, fps=fps, bitrate=probe_br, timeout_s=timeout_s):
             SELECTED_ENCODER = name
-            LOG.info("selected video encoder: %s", name)
+            _save_encoder_cache(name)
+            LOG.info(
+                "selected video encoder: %s (probe %.0fms)",
+                name,
+                (time.perf_counter() - t0) * 1000,
+            )
             return name
     SELECTED_ENCODER = "libx264"
-    LOG.warning("fallback encoder: libx264")
+    _save_encoder_cache(SELECTED_ENCODER)
+    LOG.warning("fallback encoder: libx264 (probe %.0fms)", (time.perf_counter() - t0) * 1000)
     return SELECTED_ENCODER
 
 
@@ -118,18 +327,46 @@ def apply_aiortc_speedups(*, fps: int, max_bitrate: int) -> str:
 
 
 def _patch_h264_encoder(h264_mod, *, fps: int, encoder_name: str) -> None:
+    import time
+
+    _ENC_STATS["t0"] = time.time()
+    # 码率热更新日志节流：避免 GCC 每帧微调刷屏
+    last_br_log_t = 0.0
+    last_logged_br = 0
+
     def _encode_frame(self, frame: av.VideoFrame, force_keyframe: bool) -> Iterator[bytes]:
-        if self.codec and (
-            frame.width != self.codec.width
-            or frame.height != self.codec.height
-            or abs(self.target_bitrate - self.codec.bit_rate) / max(self.codec.bit_rate, 1) > 0.1
-        ):
+        nonlocal last_br_log_t, last_logged_br
+        reopen_reason = ""
+
+        # 仅分辨率变化才重建；码率变化热更新 bit_rate，避免糊屏闪一下
+        if self.codec and (frame.width != self.codec.width or frame.height != self.codec.height):
+            reopen_reason = "size %sx%s->%sx%s" % (
+                self.codec.width,
+                self.codec.height,
+                frame.width,
+                frame.height,
+            )
+            LOG.warning("H264Encoder reopen: %s", reopen_reason)
             self.buffer_data = b""
             self.buffer_pts = None
             self.codec = None
+            _ENC_STATS["reopens"] = int(_ENC_STATS.get("reopens") or 0) + 1
+        elif self.codec:
+            old_br = int(self.codec.bit_rate or 0)
+            new_br = max(100_000, int(self.target_bitrate))
+            if old_br > 0 and abs(new_br - old_br) / old_br > 0.02:
+                # 已打开的编码器只改 bit_rate，勿 reopen / 勿改 options（改 options 常无效且可能异常）
+                self.codec.bit_rate = new_br
+                _ENC_STATS["br_hot"] = int(_ENC_STATS.get("br_hot") or 0) + 1
+                now = time.time()
+                if now - last_br_log_t >= 2.0 or abs(new_br - last_logged_br) / max(last_logged_br, 1) > 0.25:
+                    LOG.info("H264Encoder bitrate hot-update %s->%s (no reopen)", old_br, new_br)
+                    last_br_log_t = now
+                    last_logged_br = new_br
 
         if force_keyframe:
             frame.pict_type = av.video.frame.PictureType.I
+            _ENC_STATS["keyframes"] = int(_ENC_STATS.get("keyframes") or 0) + 1
         else:
             frame.pict_type = av.video.frame.PictureType.NONE
 
@@ -147,17 +384,26 @@ def _patch_h264_encoder(h264_mod, *, fps: int, encoder_name: str) -> None:
                 self.codec = av.CodecContext.create(name, "w")
                 _configure_encoder(self.codec, name, frame.width, frame.height, fps, int(self.target_bitrate))
             LOG.info(
-                "H264Encoder using %s %sx%s @%sfps br=%s",
+                "H264Encoder using %s %sx%s @%sfps br=%s reason=%s",
                 name,
                 frame.width,
                 frame.height,
                 fps,
                 self.target_bitrate,
+                reopen_reason or "init",
             )
+            _ENC_STATS["codec"] = name
+            last_logged_br = int(self.target_bitrate)
 
         data_to_send = b""
         for package in self.codec.encode(frame):
             data_to_send += bytes(package)
+
+        _ENC_STATS["frames"] = int(_ENC_STATS.get("frames") or 0) + 1
+        _ENC_STATS["bytes"] = int(_ENC_STATS.get("bytes") or 0) + len(data_to_send)
+        _ENC_STATS["last_br"] = int(self.target_bitrate)
+        _ENC_STATS["last_w"] = int(frame.width)
+        _ENC_STATS["last_h"] = int(frame.height)
 
         if data_to_send:
             yield from h264_mod.H264Encoder._split_bitstream(data_to_send)

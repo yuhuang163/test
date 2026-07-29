@@ -1,3 +1,4 @@
+REM 用途：启动远控 Agent（优先 exe，否则用本目录 .venv 跑 main.py）
 @echo off
 setlocal
 cd /d "%~dp0"
@@ -13,7 +14,7 @@ if not exist ".venv\Scripts\python.exe" (
   where py >nul 2>nul
   if errorlevel 1 (
     echo [remote_agent] 本机无 Python，且缺少 remote_agent.exe。
-    echo [remote_agent] 请在开发机执行 build_exe.ps1 后，把 dist 内容拷到本目录。
+    echo [remote_agent] 请在开发机执行 build_exe.bat 后，把产物拷到本目录。
     exit /b 1
   )
   py -3 -m venv .venv

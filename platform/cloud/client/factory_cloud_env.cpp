@@ -19,8 +19,8 @@ struct FactoryCloudEnvPreset {
 };
 
 const QVector<FactoryCloudEnvPreset> kFactoryCloudEnvPresets = {
-    {QStringLiteral("local"), QStringLiteral("http://fctp-test.luteos.site")},
     {QStringLiteral("prod"), QStringLiteral("https://fctp.luteos.com")},
+    {QStringLiteral("local"), QStringLiteral("http://fctp-test.luteos.site")},
     {QStringLiteral("custom"), QStringLiteral("http://127.0.0.1:8800")}, // 本机 factory-api
 };
 
@@ -74,8 +74,9 @@ void FactoryCloudEnv::populateEnvironmentCombo(QComboBox* combo) {
         return;
     }
     combo->clear();
-    combo->addItem(QStringLiteral("测试环境"), QStringLiteral("local"));
+    // 登录页下拉：生产在上、测试在下
     combo->addItem(QStringLiteral("生产环境"), QStringLiteral("prod"));
+    combo->addItem(QStringLiteral("测试环境"), QStringLiteral("local"));
     combo->addItem(QStringLiteral("自定义"), customEnvKey());
 }
 

@@ -21,4 +21,3 @@
 *.pdf binary
 # 内置 Python 运行时：不做换行/编码转换
 **/Python39/** -text
-build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/bin/remote_agent/remote_agent.exe filter=lfs diff=lfs merge=lfs -text

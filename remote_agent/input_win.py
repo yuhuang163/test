@@ -137,6 +137,10 @@ user32.EmptyClipboard.argtypes = []
 user32.EmptyClipboard.restype = wintypes.BOOL
 user32.SetClipboardData.argtypes = [wintypes.UINT, wintypes.HANDLE]
 user32.SetClipboardData.restype = wintypes.HANDLE
+user32.GetClipboardData.argtypes = [wintypes.UINT]
+user32.GetClipboardData.restype = wintypes.HANDLE
+user32.IsClipboardFormatAvailable.argtypes = [wintypes.UINT]
+user32.IsClipboardFormatAvailable.restype = wintypes.BOOL
 user32.SetCursorPos.argtypes = [ctypes.c_int, ctypes.c_int]
 user32.SetCursorPos.restype = wintypes.BOOL
 user32.SendInput.argtypes = [wintypes.UINT, ctypes.c_void_p, ctypes.c_int]
@@ -318,6 +322,30 @@ def set_clipboard_text(text: str) -> None:
         kernel32.GlobalUnlock(hmem)
         if not user32.SetClipboardData(CF_UNICODETEXT, hmem):
             raise ctypes.WinError(ctypes.get_last_error())
+    finally:
+        user32.CloseClipboard()
+
+
+def get_clipboard_text(*, max_chars: int = 200_000) -> str:
+    """读取产线机剪贴板 Unicode 文本（无文字则空串）。"""
+    if not user32.OpenClipboard(None):
+        raise ctypes.WinError(ctypes.get_last_error())
+    try:
+        if not user32.IsClipboardFormatAvailable(CF_UNICODETEXT):
+            return ""
+        hmem = user32.GetClipboardData(CF_UNICODETEXT)
+        if not hmem:
+            return ""
+        ptr = kernel32.GlobalLock(hmem)
+        if not ptr:
+            return ""
+        try:
+            text = ctypes.wstring_at(ptr) or ""
+        finally:
+            kernel32.GlobalUnlock(hmem)
+        if max_chars > 0 and len(text) > max_chars:
+            return text[:max_chars]
+        return text
     finally:
         user32.CloseClipboard()
 

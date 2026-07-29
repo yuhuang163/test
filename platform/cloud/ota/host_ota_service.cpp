@@ -315,6 +315,14 @@ bool HostOtaService::uploadCurrentExe(QString* message, const QString& releaseNo
             return false;
         }
     }
+    // 与服务端 POST /host-app/upload 一致：仅 admin 可上传当前上位机版本
+    if (!AuthService::isAdmin()) {
+        if (message) {
+            *message = QStringLiteral("仅管理员可上传当前上位机版本");
+        }
+        qDebug() << "[OTA] 上传失败: 非 admin";
+        return false;
+    }
 
     const QString exePath = QCoreApplication::applicationFilePath();
     if (!QFile::exists(exePath)) {
@@ -487,7 +495,7 @@ bool HostOtaService::tryInteractiveUpdate(QWidget* parent,
         return showVersionPicker(parent, logFn);
     }
 
-    // 已是最新或本地更新：可上传当前包，也可从服务器选择任意历史版本下载（含降级）
+    // 已是最新或本地更新：admin 可上传当前包；均可从服务器选择任意历史版本下载（含降级）
     const QString localVer = FactoryCloudClient::appVersion();
     const QString localBid = FactoryCloudClient::buildId();
     const QString statusText =
@@ -496,26 +504,32 @@ bool HostOtaService::tryInteractiveUpdate(QWidget* parent,
             : QStringLiteral("当前已是最新版本（%1，buildId=%2）。").arg(localVer, localBid);
     log(QStringLiteral("[OTA] ") + check.message);
 
-    if (parent) {
-        QMessageBox box(parent);
-        box.setWindowTitle(QStringLiteral("检查更新"));
-        box.setText(statusText + QStringLiteral("\n\n请选择操作："));
-        QPushButton* uploadBtn = box.addButton(QStringLiteral("上传当前版本"), QMessageBox::ActionRole);
-        QPushButton* downloadBtn = box.addButton(QStringLiteral("下载其他版本"), QMessageBox::ActionRole);
-        QPushButton* cancelBtn = box.addButton(QStringLiteral("取消"), QMessageBox::RejectRole);
-        box.setDefaultButton(cancelBtn);
-        box.exec();
+    if (!parent) {
+        log(QStringLiteral("[OTA] 无界面，跳过"));
+        return true;
+    }
 
-        if (box.clickedButton() == cancelBtn || box.clickedButton() == nullptr) {
-            log(QStringLiteral("[OTA] 用户取消"));
-            return true;
-        }
-        if (box.clickedButton() == downloadBtn) {
-            log(QStringLiteral("[OTA] 用户选择下载其他版本"));
-            return showVersionPicker(parent, logFn);
-        }
-    } else {
-        log(QStringLiteral("[OTA] 无界面，跳过上传"));
+    const bool canUpload = AuthService::isAdmin();
+    QMessageBox box(parent);
+    box.setWindowTitle(QStringLiteral("检查更新"));
+    box.setText(statusText + QStringLiteral("\n\n请选择操作："));
+    QPushButton* uploadBtn =
+        canUpload ? box.addButton(QStringLiteral("上传当前版本"), QMessageBox::ActionRole) : nullptr;
+    QPushButton* downloadBtn = box.addButton(QStringLiteral("下载其他版本"), QMessageBox::ActionRole);
+    QPushButton* cancelBtn = box.addButton(QStringLiteral("取消"), QMessageBox::RejectRole);
+    box.setDefaultButton(cancelBtn);
+    box.exec();
+
+    if (box.clickedButton() == cancelBtn || box.clickedButton() == nullptr) {
+        log(QStringLiteral("[OTA] 用户取消"));
+        return true;
+    }
+    if (box.clickedButton() == downloadBtn) {
+        log(QStringLiteral("[OTA] 用户选择下载其他版本"));
+        return showVersionPicker(parent, logFn);
+    }
+    if (!canUpload || box.clickedButton() != uploadBtn) {
+        log(QStringLiteral("[OTA] 未选择上传（非管理员无上传入口）"));
         return true;
     }
 
@@ -527,14 +541,12 @@ bool HostOtaService::tryInteractiveUpdate(QWidget* parent,
 
     QString uploadMsg;
     const bool uploaded = uploadCurrentExe(&uploadMsg, releaseNotes);
-    if (parent) {
-        if (uploaded) {
-            QMessageBox::information(parent, QStringLiteral("检查更新"),
-                                     QStringLiteral("已将目前版本上传至服务器：\n") + uploadMsg);
-        } else {
-            QMessageBox::warning(parent, QStringLiteral("检查更新"),
-                                 QStringLiteral("上传失败：") + uploadMsg);
-        }
+    if (uploaded) {
+        QMessageBox::information(parent, QStringLiteral("检查更新"),
+                                 QStringLiteral("已将目前版本上传至服务器：\n") + uploadMsg);
+    } else {
+        QMessageBox::warning(parent, QStringLiteral("检查更新"),
+                             QStringLiteral("上传失败：") + uploadMsg);
     }
     log(QStringLiteral("[OTA] 上传结果: ") + uploadMsg);
     return true;

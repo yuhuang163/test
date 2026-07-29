@@ -492,7 +492,7 @@
                <bool>true</bool>
               </property>
               <property name="currentIndex">
-               <number>18</number>
+               <number>8</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -3250,7 +3250,7 @@
               </widget>
               <widget class="QWidget" name="tab_dongle_suction">
                <attribute name="title">
-                <string>dongle吸力测试</string>
+                <string>吸力测试</string>
                </attribute>
                <layout class="QVBoxLayout" name="verticalLayout_dongle_suction">
                 <item>
@@ -3770,7 +3770,7 @@
               </widget>
               <widget class="QWidget" name="tab_dongle_at">
                <attribute name="title">
-                <string>Dongle AT 测试</string>
+                <string>AT 测试</string>
                </attribute>
                <layout class="QVBoxLayout" name="verticalLayout_dongle_at">
                 <item>
@@ -3886,9 +3886,6 @@
                      <property name="text">
                       <string>247</string>
                      </property>
-                     <property name="maximumWidth">
-                      <number>80</number>
-                     </property>
                     </widget>
                    </item>
                    <item>
@@ -3912,9 +3909,6 @@
                      </property>
                      <property name="text">
                       <string>242</string>
-                     </property>
-                     <property name="maximumWidth">
-                      <number>80</number>
                      </property>
                     </widget>
                    </item>

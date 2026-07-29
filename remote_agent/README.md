@@ -1,34 +1,36 @@
 # 产线 WebRTC 远控 Agent
 
-## 目录（只两处）
+## 原则
 
-| 位置 | 作用 |
-|------|------|
-| 仓库 `remote_agent/` | **源码**（Git） |
-| `build/.../bin/remote_agent/remote_agent.exe` | **运行时**（单个 exe） |
+- **Git**：只提交本目录源码，不提交 `bin/remote_agent/`（含 `_internal`）
+- **产线**：发版时把打包好的 `bin/remote_agent/` 整目录和上位机 exe 一起拷走
 
-qmake / `.pro` **不**再拷贝 Agent。发运行包时拷这一个 exe 即可（无需 `_internal`）。
+## 脚本（只留 3 个 bat）
 
-## 打包（产线无 Python）
+| 脚本 | 谁用 | 做什么 |
+|------|------|--------|
+| `setup_dev.bat` | 开发 | 创建 `.venv`、装依赖 |
+| `build_exe.bat` | 发版 | 生成 `bin/remote_agent/`（exe + `_internal`） |
+| `run.bat` | 调试 | 手动启动 Agent |
 
-```bat
-cd remote_agent
-powershell -ExecutionPolicy Bypass -File .\build_exe.ps1
-```
-
-产物：`bin\remote_agent\remote_agent.exe`（onefile，首次启动会稍慢，属正常）。
-
-## 开发调试（有 Python）
+开发：
 
 ```bat
 cd remote_agent
-py -3 -m venv .venv
-.venv\Scripts\pip install -r requirements.txt
-run.bat --config env:REMOTE_AGENT_CONFIG --log-dir .
+setup_dev.bat
 ```
 
-联调上位机前建议先跑一次 `build_exe.ps1`。
+发版：
 
-## 配置（不落盘）
+```bat
+cd remote_agent
+build_exe.bat
+```
 
-上位机通过环境变量 `REMOTE_AGENT_CONFIG` 传 JSON。
+然后拷贝整个 `build/.../bin/remote_agent/`（必须含 `_internal`）到上位机 exe 同级。
+
+> 用 onedir，不要 onefile（onefile 每次启动解压很慢）。
+
+## 配置
+
+上位机通过环境变量 `REMOTE_AGENT_CONFIG` 传 JSON（不落盘）。
