@@ -28,6 +28,10 @@ _ENC_STATS: dict = {
     "last_h": 0,
     "codec": "",
     "t0": 0.0,
+    "encode_ms_sum": 0.0,
+    "encode_ms_max": 0.0,
+    "yuv_ms_sum": 0.0,
+    "yuv_ms_max": 0.0,
 }
 
 
@@ -113,6 +117,8 @@ def take_encoder_period_stats() -> dict:
     dt = max(now - t0, 1e-6)
     frames = int(_ENC_STATS.get("frames") or 0)
     nbytes = int(_ENC_STATS.get("bytes") or 0)
+    enc_sum = float(_ENC_STATS.get("encode_ms_sum") or 0.0)
+    yuv_sum = float(_ENC_STATS.get("yuv_ms_sum") or 0.0)
     out = {
         "dt": dt,
         "frames": frames,
@@ -125,12 +131,20 @@ def take_encoder_period_stats() -> dict:
         "width": int(_ENC_STATS.get("last_w") or 0),
         "height": int(_ENC_STATS.get("last_h") or 0),
         "codec": str(_ENC_STATS.get("codec") or ""),
+        "avg_encode_ms": (enc_sum / frames) if frames else 0.0,
+        "max_encode_ms": float(_ENC_STATS.get("encode_ms_max") or 0.0),
+        "avg_yuv_ms": (yuv_sum / frames) if frames else 0.0,
+        "max_yuv_ms": float(_ENC_STATS.get("yuv_ms_max") or 0.0),
     }
     _ENC_STATS["frames"] = 0
     _ENC_STATS["bytes"] = 0
     _ENC_STATS["reopens"] = 0
     _ENC_STATS["br_hot"] = 0
     _ENC_STATS["keyframes"] = 0
+    _ENC_STATS["encode_ms_sum"] = 0.0
+    _ENC_STATS["encode_ms_max"] = 0.0
+    _ENC_STATS["yuv_ms_sum"] = 0.0
+    _ENC_STATS["yuv_ms_max"] = 0.0
     _ENC_STATS["t0"] = now
     return out
 
@@ -142,17 +156,24 @@ def _configure_encoder(ctx: av.CodecContext, name: str, width: int, height: int,
     ctx.pix_fmt = "yuv420p"
     ctx.framerate = fractions.Fraction(fps, 1)
     ctx.time_base = fractions.Fraction(1, fps)
-    ctx.gop_size = max(int(fps), 1)
+    # 较短 GOP：花屏恢复快，远控延迟体感更好
+    ctx.gop_size = max(int(fps) // 2, 8)
     if name == "libx264":
+        # bufsize 偏小 → 更快跟上码率变化、降低编码器缓冲延迟
+        buf = max(int(bitrate) // 4, 250_000)
         ctx.options = {
             "preset": "ultrafast",
             "tune": "zerolatency",
             "profile": "baseline",
             "bf": "0",
             "sc_threshold": "0",
-            # 跟 bit_rate 对齐，减少 GCC 调码率时实际码率反应过慢/过冲
+            "rc-lookahead": "0",
+            "sync-lookahead": "0",
+            # 2 线程：1920 软编单线程常 16~26ms，略并行仍可压进 33ms 预算
+            "threads": "2",
+            "sliced-threads": "0",
             "maxrate": str(int(bitrate)),
-            "bufsize": str(max(int(bitrate) // 2, 100_000)),
+            "bufsize": str(buf),
         }
         try:
             ctx.profile = "Baseline"
@@ -173,6 +194,24 @@ def _configure_encoder(ctx: av.CodecContext, name: str, width: int, height: int,
         ctx.options = {"usage": "ultralowlatency", "quality": "speed", "bf": "0"}
     elif name == "h264_mf":
         ctx.options = {"hw_encoding": "1", "bf": "0"}
+
+
+def _min_bitrate_for_size(width: int, height: int = 0) -> int:
+    """远控清晰度下限：防止 GCC/REMB 把码率打到 500kbps 导致糊屏。"""
+    w = int(width or 0)
+    if w >= 1920:
+        return 3_000_000
+    if w >= 1280:
+        return 2_000_000
+    return 800_000
+
+
+def _clamp_encode_bitrate(requested: int, *, width: int, max_cap: int | None = None) -> int:
+    floor = _min_bitrate_for_size(width)
+    br = max(floor, int(requested or 0))
+    if max_cap and max_cap > 0:
+        br = min(br, int(max_cap))
+    return max(br, floor)
 
 
 def _encoder_cache_path() -> Path:
@@ -333,6 +372,7 @@ def _patch_h264_encoder(h264_mod, *, fps: int, encoder_name: str) -> None:
     # 码率热更新日志节流：避免 GCC 每帧微调刷屏
     last_br_log_t = 0.0
     last_logged_br = 0
+    max_cap = int(getattr(h264_mod, "MAX_BITRATE", 12_000_000) or 12_000_000)
 
     def _encode_frame(self, frame: av.VideoFrame, force_keyframe: bool) -> Iterator[bytes]:
         nonlocal last_br_log_t, last_logged_br
@@ -352,15 +392,24 @@ def _patch_h264_encoder(h264_mod, *, fps: int, encoder_name: str) -> None:
             self.codec = None
             _ENC_STATS["reopens"] = int(_ENC_STATS.get("reopens") or 0) + 1
         elif self.codec:
+            raw_br = max(100_000, int(self.target_bitrate))
+            new_br = _clamp_encode_bitrate(raw_br, width=frame.width, max_cap=max_cap)
             old_br = int(self.codec.bit_rate or 0)
-            new_br = max(100_000, int(self.target_bitrate))
-            if old_br > 0 and abs(new_br - old_br) / old_br > 0.02:
+            if old_br > 0 and abs(new_br - old_br) / max(old_br, 1) > 0.02:
                 # 已打开的编码器只改 bit_rate，勿 reopen / 勿改 options（改 options 常无效且可能异常）
                 self.codec.bit_rate = new_br
                 _ENC_STATS["br_hot"] = int(_ENC_STATS.get("br_hot") or 0) + 1
                 now = time.time()
                 if now - last_br_log_t >= 2.0 or abs(new_br - last_logged_br) / max(last_logged_br, 1) > 0.25:
-                    LOG.info("H264Encoder bitrate hot-update %s->%s (no reopen)", old_br, new_br)
+                    if new_br > raw_br:
+                        LOG.info(
+                            "H264Encoder bitrate hot-update %s->%s (floor, gcc asked %s)",
+                            old_br,
+                            new_br,
+                            raw_br,
+                        )
+                    else:
+                        LOG.info("H264Encoder bitrate hot-update %s->%s (no reopen)", old_br, new_br)
                     last_br_log_t = now
                     last_logged_br = new_br
 
@@ -370,38 +419,66 @@ def _patch_h264_encoder(h264_mod, *, fps: int, encoder_name: str) -> None:
         else:
             frame.pict_type = av.video.frame.PictureType.NONE
 
+        t_yuv0 = time.perf_counter()
         if frame.format.name != "yuv420p":
-            frame = frame.reformat(format="yuv420p")
+            # 兜底：抓屏轨应已输出 yuv420p；若仍是 rgb24，优先 cv2
+            try:
+                if frame.format.name == "rgb24":
+                    import cv2
+                    from av import VideoFrame as _VF
+
+                    pts = frame.pts
+                    tb = frame.time_base
+                    rgb = frame.to_ndarray(format="rgb24")
+                    yuv = cv2.cvtColor(rgb, cv2.COLOR_RGB2YUV_I420)
+                    frame = _VF.from_ndarray(yuv, format="yuv420p")
+                    frame.pts = pts
+                    frame.time_base = tb
+                else:
+                    frame = frame.reformat(format="yuv420p")
+            except Exception:
+                frame = frame.reformat(format="yuv420p")
+        yuv_ms = (time.perf_counter() - t_yuv0) * 1000.0
+        _ENC_STATS["yuv_ms_sum"] = float(_ENC_STATS.get("yuv_ms_sum") or 0.0) + yuv_ms
+        _ENC_STATS["yuv_ms_max"] = max(float(_ENC_STATS.get("yuv_ms_max") or 0.0), yuv_ms)
 
         if self.codec is None:
             name = encoder_name
+            init_br = _clamp_encode_bitrate(
+                int(self.target_bitrate), width=frame.width, max_cap=max_cap
+            )
             try:
                 self.codec = av.CodecContext.create(name, "w")
-                _configure_encoder(self.codec, name, frame.width, frame.height, fps, int(self.target_bitrate))
+                _configure_encoder(self.codec, name, frame.width, frame.height, fps, init_br)
             except Exception as exc:
                 LOG.warning("encoder %s failed (%s), use libx264", name, exc)
                 name = "libx264"
                 self.codec = av.CodecContext.create(name, "w")
-                _configure_encoder(self.codec, name, frame.width, frame.height, fps, int(self.target_bitrate))
+                _configure_encoder(self.codec, name, frame.width, frame.height, fps, init_br)
             LOG.info(
-                "H264Encoder using %s %sx%s @%sfps br=%s reason=%s",
+                "H264Encoder using %s %sx%s @%sfps br=%s (floor=%s) reason=%s",
                 name,
                 frame.width,
                 frame.height,
                 fps,
-                self.target_bitrate,
+                init_br,
+                _min_bitrate_for_size(frame.width),
                 reopen_reason or "init",
             )
             _ENC_STATS["codec"] = name
-            last_logged_br = int(self.target_bitrate)
+            last_logged_br = init_br
 
+        t_enc0 = time.perf_counter()
         data_to_send = b""
         for package in self.codec.encode(frame):
             data_to_send += bytes(package)
+        encode_ms = (time.perf_counter() - t_enc0) * 1000.0
+        _ENC_STATS["encode_ms_sum"] = float(_ENC_STATS.get("encode_ms_sum") or 0.0) + encode_ms
+        _ENC_STATS["encode_ms_max"] = max(float(_ENC_STATS.get("encode_ms_max") or 0.0), encode_ms)
 
         _ENC_STATS["frames"] = int(_ENC_STATS.get("frames") or 0) + 1
         _ENC_STATS["bytes"] = int(_ENC_STATS.get("bytes") or 0) + len(data_to_send)
-        _ENC_STATS["last_br"] = int(self.target_bitrate)
+        _ENC_STATS["last_br"] = int(self.codec.bit_rate or self.target_bitrate or 0)
         _ENC_STATS["last_w"] = int(frame.width)
         _ENC_STATS["last_h"] = int(frame.height)
 

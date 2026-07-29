@@ -50,9 +50,10 @@ from screen import ScreenVideoTrack
 LOG = logging.getLogger("remote_agent")
 
 # 日志里可据此确认是否为新版 Agent（与推流参数变更同步递增）
-STREAM_PROFILE = "softprobe+clipfiles"
+STREAM_PROFILE = "softprobe+cv2yuv+brfloor+bgcap"
 
-# 软编探测失败时的降档上限（CPU 跟得上则不降，保持上位机下发分辨率/帧率）
+# 软编探测仅告警，不自动降档（画质由网页下发，保持用户选择）
+_SOFT_PROBE_WARN_ONLY = True
 _SOFT_FALLBACK_WIDTH = 1280
 _SOFT_FALLBACK_FPS = 20
 
@@ -549,14 +550,14 @@ async def run_session(cfg: dict) -> None:
     enc_name = apply_aiortc_speedups(fps=fps, max_bitrate=max_bitrate)
     LOG.info("startup encoder ready in %.0fms (%s)", (time.perf_counter() - t0) * 1000, enc_name)
     if not is_hardware_encoder(enc_name):
-        # 仅当软编实测跟不上目标 fps 才降档；性能够的机器保持上位机参数
+        # 探测仅用于诊断；画质始终按网页/上位机下发，不自动降档
         enc_w, enc_h = encode_size_for_max_width(sw, sh, max_width)
         ok, avg_ms = probe_soft_encode_sustain(
             width=enc_w, height=enc_h, fps=fps, bitrate=max_bitrate
         )
         if ok:
             LOG.info(
-                "soft encode %s: keep host %sx%s @%sfps (probe avg=%.1fms)",
+                "soft encode %s: keep host %sx%s @%sfps (probe avg=%.1fms; synthetic black frames)",
                 enc_name,
                 enc_w,
                 enc_h,
@@ -564,26 +565,26 @@ async def run_session(cfg: dict) -> None:
                 avg_ms,
             )
         else:
-            adj_w = min(max_width if max_width > 0 else _SOFT_FALLBACK_WIDTH, _SOFT_FALLBACK_WIDTH)
-            adj_fps = min(max(1, fps), _SOFT_FALLBACK_FPS)
             LOG.warning(
-                "soft encode %s: probe too slow (avg=%.1fms) %sx%s@%sfps -> %sx@%sfps",
+                "soft encode %s: probe too slow (avg=%.1fms) for %sx%s@%sfps — "
+                "仍保持网页画质不降档；若实跑 skip 多请看 [stream] 分阶段耗时",
                 enc_name,
                 avg_ms,
                 enc_w,
                 enc_h,
                 fps,
-                adj_w,
-                adj_fps,
             )
-            max_width = adj_w
-            fps = adj_fps
-            try:
-                import aiortc.mediastreams as ms
+            if not _SOFT_PROBE_WARN_ONLY:
+                adj_w = min(max_width if max_width > 0 else _SOFT_FALLBACK_WIDTH, _SOFT_FALLBACK_WIDTH)
+                adj_fps = min(max(1, fps), _SOFT_FALLBACK_FPS)
+                max_width = adj_w
+                fps = adj_fps
+                try:
+                    import aiortc.mediastreams as ms
 
-                ms.VIDEO_PTIME = 1.0 / float(fps)
-            except Exception:
-                pass
+                    ms.VIDEO_PTIME = 1.0 / float(fps)
+                except Exception:
+                    pass
     LOG.info("capture/encode plan: maxWidth=%s fps=%s bitrate=%s encoder=%s", max_width, fps, max_bitrate, selected_encoder())
 
     # 抓屏初始化与信令连接并行，缩短「等待推流」
@@ -793,9 +794,19 @@ async def run_session(cfg: dict) -> None:
                     last_t = now
 
                     qi = rtp.get("qi_reason") or "none"
+                    budget_ms = 1000.0 / max(float(cap.get("target_fps") or 30), 1.0)
+                    avg_grab = float(cap.get("avg_grab_ms") or 0)
+                    avg_resize = float(cap.get("avg_resize_ms") or 0)
+                    avg_frame = float(cap.get("avg_frame_ms") or 0)
+                    avg_recv = float(cap.get("avg_recv_ms") or 0)
+                    avg_yuv = float(enc.get("avg_yuv_ms") or 0)
+                    avg_enc = float(enc.get("avg_encode_ms") or 0)
+                    pipeline_ms = avg_recv + avg_yuv + avg_enc
                     LOG.info(
                         "[stream] capture native=%sx%s encode=%sx%s fps=%.1f/%s skip=%s stale=%s null=%s "
-                        "grab=%.1fms resize=%.1fms/%s | enc %s %sx%s fps=%.1f kbps=%.0f target_br=%s reopen=%s br_hot=%s key=%s | "
+                        "grab=%.1f/%.1fms resize=%.1f/%.1fms/%s rgb2yuv=%.1fms recv=%.1f/%.1fms "
+                        "behind=%.0fms | enc %s %sx%s fps=%.1f yuv=%.1f/%.1fms enc=%.1f/%.1fms "
+                        "kbps=%.0f target_br=%s reopen=%s br_hot=%s key=%s | "
                         "rtp fps=%.1f kbps=%.0f size=%sx%s mime=%s qi=%s qi_dur=%s "
                         "pli=%s nack=%s fir=%s rtt=%sms avail_out=%skbps ice_target_br=%s",
                         cap.get("native_w"),
@@ -807,13 +818,23 @@ async def run_session(cfg: dict) -> None:
                         cap.get("skips"),
                         cap.get("stale"),
                         cap.get("null"),
-                        cap.get("avg_grab_ms") or 0,
-                        cap.get("avg_resize_ms") or 0,
+                        avg_grab,
+                        float(cap.get("max_grab_ms") or 0),
+                        avg_resize,
+                        float(cap.get("max_resize_ms") or 0),
                         cap.get("resized"),
+                        avg_frame,
+                        avg_recv,
+                        float(cap.get("max_recv_ms") or 0),
+                        float(cap.get("skip_behind_ms") or 0),
                         enc.get("codec") or selected_encoder(),
                         enc.get("width"),
                         enc.get("height"),
                         enc.get("fps") or 0,
+                        avg_yuv,
+                        float(enc.get("max_yuv_ms") or 0),
+                        avg_enc,
+                        float(enc.get("max_encode_ms") or 0),
                         enc.get("kbps") or 0,
                         enc.get("target_br"),
                         enc.get("reopens"),
@@ -833,25 +854,57 @@ async def run_session(cfg: dict) -> None:
                         rtp.get("avail_out_kbps"),
                         rtp.get("target_br"),
                     )
-                    # 糊屏高相关告警
+                    # 瓶颈归因：事件循环上 mainly enc；grab/resize 在后台线程（仍可能抢 CPU）
+                    reasons = []
+                    if avg_enc >= budget_ms * 0.55:
+                        reasons.append(f"encode_cpu({avg_enc:.1f}ms)")
+                    if avg_yuv >= budget_ms * 0.25:
+                        reasons.append(f"rgb2yuv({avg_yuv:.1f}ms)")
+                    if avg_recv >= budget_ms * 0.25:
+                        reasons.append(f"recv({avg_recv:.1f}ms)")
+                    if avg_resize >= 12.0:
+                        reasons.append(f"bg_resize({avg_resize:.1f}ms)")
+                    if avg_grab >= 20.0:
+                        reasons.append(f"bg_grab({avg_grab:.1f}ms)")
+                    target_br = int(enc.get("target_br") or 0)
+                    if target_br and target_br < 2_000_000 and (cap.get("encode_w") or 0) >= 1280:
+                        reasons.append(f"low_bitrate({target_br})")
+                    if (cap.get("skips") or 0) > (cap.get("target_fps") or 30) and not reasons:
+                        reasons.append("timeline_behind(event_loop_busy?)")
+                    LOG.info(
+                        "[stream.bottleneck] budget=%.1fms/frame loop≈%.1fms (recv=%.1f yuv=%.1f enc=%.1f) "
+                        "bg(grab=%.1f resize=%.1f rgb2yuv=%.1f) -> %s",
+                        budget_ms,
+                        pipeline_ms,
+                        avg_recv,
+                        avg_yuv,
+                        avg_enc,
+                        avg_grab,
+                        avg_resize,
+                        avg_frame,
+                        "+".join(reasons) if reasons else "ok",
+                    )
+                    # 糊屏高相关告警（target_br 已是编码器实际码率；floor 后应 ≥2Mbps@1280）
                     if qi and qi not in ("none", "None"):
                         LOG.warning(
                             "[stream] qualityLimitationReason=%s（bandwidth/cpu 都会让画面变糊）dur=%s",
                             qi,
                             _fmt_qi_durations(rtp.get("qi_durations")),
                         )
-                    target_br = int(enc.get("target_br") or 0)
-                    if target_br and target_br < 2_000_000 and (cap.get("encode_w") or 0) >= 1280:
+                    ice_br = int(rtp.get("target_br") or 0)
+                    if ice_br and ice_br < 2_000_000 and (cap.get("encode_w") or 0) >= 1280:
                         LOG.warning(
-                            "[stream] 编码目标码率偏低 target_br=%s @%sx%s（建议对照 avail_out / qi）",
+                            "[stream] GCC/ICE 估带宽偏低 ice_target_br=%s（已用码率下限保护，实际 enc_br=%s）@%sx%s",
+                            ice_br,
                             target_br,
-                            enc.get("width"),
-                            enc.get("height"),
+                            cap.get("encode_w"),
+                            cap.get("encode_h"),
                         )
                     if (cap.get("skips") or 0) > (cap.get("target_fps") or 30):
                         LOG.warning(
-                            "[stream] 抓屏侧跳帧偏多 skip=%s（CPU/抓屏跟不上目标 fps）",
+                            "[stream] 抓屏侧跳帧偏多 skip=%s behind=%.0fms（多为编码/转换阻塞事件循环）",
                             cap.get("skips"),
+                            float(cap.get("skip_behind_ms") or 0),
                         )
                 except Exception as exc:
                     LOG.warning("[stream] diag failed: %s", exc)
