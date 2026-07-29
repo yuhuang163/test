@@ -84,7 +84,8 @@
 
 extern int suction_data;        // 1表示打印传感器数据日志
 extern uint8_t suction_osr_level; // 吸力采样档位 1~4，默认4(8192X/16ms)
-extern int adc_data;            // 1表示打印ADC数据日志
+extern int hsadc_data;          // 1表示高量程ADC采集日志
+extern int lsadc_data;          // 1表示打印低量程(Modbus)采样日志
 extern int blelogs;        // 蓝牙信号日志1表示默认开
 extern int finddevicelogs; // 蓝牙扫描日志1表示默认开
 extern int data_n;

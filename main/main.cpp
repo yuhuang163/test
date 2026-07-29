@@ -46,12 +46,14 @@
 #include "ina236.h"
 #endif
 #include "adc.h"
+#include "ls_meter.h"
 /**配置区*/
 #define wifiuse 1
 int blelogs = 0;          // 蓝牙信号日志1表示默认开
 int finddevicelogs = 1;   // 蓝牙扫描日志1表示默认开
-int adc_data = 0;         // 1表示打印ADC数据日志
-String version = "1.0.9"; // 默认的版本号
+int hsadc_data = 0;       // 1表示高量程ADC采集日志
+int lsadc_data = 0;       // 1表示低量程Modbus采样日志开
+String version = "1.1.0"; // 默认的版本号
 int wifistate = 1;
 /**配置区*/
 
@@ -246,6 +248,7 @@ void loop()
 
   I2CDriver::read_and_print_three_pressures();
   ADCDriver::read_and_print();
+  LSMeter::read_and_print();
 
 #if wifiuse == 1
 

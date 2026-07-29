@@ -42,9 +42,21 @@ float ADCDriver::read_voltage_design_v(uint32_t raw)
 float ADCDriver::read_current_a()
 {
     // V_adc = I × R × Gain + Vos × Gain  →  I = (V_adc/Gain - Vos) / R
-    float v_adc = read_pin_voltage_v();
+    int mv_raw = analogReadMilliVolts(ADC_PIN);
+    if (mv_raw < 0)
+    {
+        mv_raw = 0;
+    }
+    // 无负载时 ADC 接近 0，不做 mV/失调补偿，避免假电流
+    if (mv_raw <= ADC_VOLTAGE_OFFSET_MV)
+    {
+        return 0.0f;
+    }
+
+    float v_adc = (mv_raw + ADC_VOLTAGE_OFFSET_MV) / 1000.0f;
     float v_shunt = v_adc / CURRENT_AMP_GAIN - CURRENT_AMP_INPUT_OFFSET_V;
-    if (v_shunt < 0.0f) {
+    if (v_shunt < 0.0f)
+    {
         v_shunt = 0.0f;
     }
     return v_shunt / CURRENT_SHUNT_OHM;
@@ -52,7 +64,7 @@ float ADCDriver::read_current_a()
 
 void ADCDriver::read_and_print()
 {
-    if (!adc_data) {
+    if (!hsadc_data) {
         return;
     }
 
@@ -63,7 +75,7 @@ void ADCDriver::read_and_print()
     // Serial.printf("AT+LS_CURRENT_DATA_MV=%d\r\n", mv_cal);
     // Serial.printf("AT+LS_CURRENT_DATA_MV_RAW=%d\r\n", mv_raw);
     // Serial.printf("AT+LS_CURRENT_DATA_MV=%d\r\n", mv_cal);
-    Serial.printf("AT+LS_CURRENT_DATA=%.3f\r\n", read_current_a());
+    Serial.printf("AT+HS_CURRENT_DATA=%.3f\r\n", read_current_a());
 #if 0
     INA236Driver::print_status();
 #endif

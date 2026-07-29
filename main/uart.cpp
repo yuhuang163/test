@@ -43,7 +43,8 @@ enum CommandType
     DCON,
     SUCTION,
     SUCTIONOSR,
-    ADC,
+    HSADC,
+    LSADC,
     // 加入其他的at命令
 };
 bool isValidMacAddress(const byte *address, size_t length)
@@ -126,7 +127,8 @@ void processATCommand(byte *get_cmd, int length)
         {"BLEDEVICELOG=", 13, BLEDEVICELOG}, // 默认使用 FAC
         {"SUCTION=", 8, SUCTION},            // 控制吸力值打印
         {"SUCTIONOSR=", 11, SUCTIONOSR},      // 吸力采样档位 1~4
-        {"ADC=", 4, ADC},                    // 控制ADC数据打印
+        {"HSADC=", 6, HSADC},                // 控制高量程ADC采集
+        {"LSADC=", 6, LSADC},                // 控制低量程Modbus采样
         {"WIFI=", 5, WIFI}                   // 默认使用 FAC
     };
 
@@ -243,8 +245,21 @@ void processATCommand(byte *get_cmd, int length)
                       (unsigned)(suction_osr_level == 1 ? 8 : suction_osr_level == 2 ? 10 : suction_osr_level == 3 ? 11 : 16));
         break;
     }
-    case ADC:
-        adc_data = (get_cmd[0] == '1') ? 1 : 0;
+    case HSADC:
+        hsadc_data = (get_cmd[0] == '1') ? 1 : 0;
+        if (hsadc_data)
+        {
+            lsadc_data = 0; // 高低量程互斥，开高量程时自动关低量程
+        }
+        Serial.printf("高量程ADC采集%s\r\n", hsadc_data ? "已开启" : "已关闭");
+        break;
+    case LSADC:
+        lsadc_data = (get_cmd[0] == '1') ? 1 : 0;
+        if (lsadc_data)
+        {
+            hsadc_data = 0; // 高低量程互斥，开低量程时自动关高量程
+        }
+        Serial.printf("低量程采样%s\r\n", lsadc_data ? "已开启" : "已关闭");
         break;
 
     case BLEDEVICELOG:
