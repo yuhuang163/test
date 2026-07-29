@@ -67,6 +67,10 @@ export function listMergeHistory(params) {
   return http.get('/admin/test-cases/merge-history', { params })
 }
 
+export function mergeHistoryDiff(mergeId) {
+  return http.get(`/admin/test-cases/merge-history/${encodeURIComponent(mergeId)}/diff`)
+}
+
 export function undoMerge(mergeId) {
   return http.post(`/admin/test-cases/merge-history/${encodeURIComponent(mergeId)}/undo`)
 }

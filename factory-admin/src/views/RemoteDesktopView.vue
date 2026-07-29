@@ -43,6 +43,20 @@
       >
         开始远控
       </el-button>
+      <el-select
+        v-model="qualityPresetId"
+        placeholder="画质"
+        style="width: 168px"
+        :disabled="!!session"
+        @change="onQualityPresetChange"
+      >
+        <el-option
+          v-for="p in qualityPresets"
+          :key="p.id"
+          :label="p.label"
+          :value="p.id"
+        />
+      </el-select>
       <el-button type="danger" :disabled="!session && !selectedDeviceId" :loading="stopping" @click="confirmEndSession">
         断开
       </el-button>
@@ -83,6 +97,15 @@
         </template>
       </el-dropdown>
       <el-button :disabled="!session || !streamReady" @click="pasteClipboard">粘贴到远端</el-button>
+      <el-button :disabled="!session || !streamReady" @click="copyFromRemote">从远端复制</el-button>
+      <el-button :disabled="!session || !streamReady" @click="pickFilesToRemote">发送文件</el-button>
+      <input
+        ref="fileInputRef"
+        type="file"
+        multiple
+        style="display: none"
+        @change="onFilesPicked"
+      />
       <el-button :disabled="!session || !streamReady" @click="takeScreenshot">截图</el-button>
       <el-button @click="helpVisible = true">快捷键</el-button>
 
@@ -136,7 +159,10 @@
         <el-descriptions-item label="双击画面">放大 / 还原</el-descriptions-item>
         <el-descriptions-item label="适应/铺满/拉伸">画面缩放模式</el-descriptions-item>
         <el-descriptions-item label="特殊键">Win / Alt+Tab / 任务管理器等</el-descriptions-item>
-        <el-descriptions-item label="粘贴到远端">把本机剪贴板文字发到产线机 Ctrl+V</el-descriptions-item>
+        <el-descriptions-item label="画质">开始远控前选择；最高 1920@60。弱 CPU 软编可能自动降档，改画质需断开后重连</el-descriptions-item>
+        <el-descriptions-item label="粘贴到远端">本机剪贴板文字/图片 → 产线机并 Ctrl+V</el-descriptions-item>
+        <el-descriptions-item label="从远端复制">产线机文字/图片写入本机剪贴板；文件则下载到本机（画面内 Ctrl+C/X 也会自动回拉）</el-descriptions-item>
+        <el-descriptions-item label="发送文件">选择本机文件传到产线机临时目录并放入远端剪贴板，可在资源管理器 Ctrl+V</el-descriptions-item>
         <el-descriptions-item label="截图">保存当前远控画面为 PNG</el-descriptions-item>
       </el-descriptions>
       <p class="help-note">
@@ -168,6 +194,42 @@ const expanded = ref(false)
 const isBrowserFs = ref(false)
 const scaleMode = ref('contain')
 const helpVisible = ref(false)
+
+/** 远控画质预设（创建会话时下发给产线 Agent；上限 1920@60） */
+const RD_QUALITY_KEY = 'fc_rd_quality'
+const qualityPresets = [
+  { id: 'smooth', label: '流畅 1280@20', maxWidth: 1280, fps: 20, maxBitrate: 4_000_000 },
+  { id: 'std', label: '标准 1280@30', maxWidth: 1280, fps: 30, maxBitrate: 6_000_000 },
+  { id: 'hd', label: '高清 1920@30', maxWidth: 1920, fps: 30, maxBitrate: 12_000_000 },
+  { id: 'ultra', label: '极致 1920@60', maxWidth: 1920, fps: 60, maxBitrate: 20_000_000 },
+]
+const qualityPresetId = ref('hd')
+
+function loadQualityPreset() {
+  try {
+    const raw = localStorage.getItem(RD_QUALITY_KEY)
+    if (!raw) return
+    const saved = JSON.parse(raw)
+    const id = saved?.id
+    if (qualityPresets.some((p) => p.id === id)) qualityPresetId.value = id
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+function onQualityPresetChange() {
+  const p = qualityPresets.find((x) => x.id === qualityPresetId.value) || qualityPresets[2]
+  try {
+    localStorage.setItem(RD_QUALITY_KEY, JSON.stringify({ id: p.id, ...p }))
+  } catch (_) {
+    /* ignore */
+  }
+}
+
+function currentQuality() {
+  return qualityPresets.find((x) => x.id === qualityPresetId.value) || qualityPresets[2]
+}
+
 /** 远端系统光标对应的 CSS cursor（全屏/窗口模式都用） */
 const remoteCursor = ref('default')
 /** DataChannel RTT（ms）；无通道时回退 ICE RTT */
@@ -217,8 +279,8 @@ const emptyHint = computed(() => {
 
 const waitHint = computed(() => {
   const s = waitSeconds.value
-  if (s < 5) return `正在通知产线拉起 Agent…（${s}s）`
-  if (s < 15) return `等待 Agent 推流…（${s}s，命令轮询约 3 秒）`
+  if (s < 3) return `正在通知产线拉起 Agent…（${s}s）`
+  if (s < 10) return `等待 Agent 推流…（${s}s，命令轮询约 0.8 秒）`
   return `仍在等待推流（${s}s）。请看上位机日志 [RemoteDesktop]，并确认 bin/remote_agent 已装好依赖（先手动跑一次 run.bat）`
 })
 
@@ -237,6 +299,8 @@ let statsTimer = null
 let lastBytesReceived = 0
 let lastBytesAt = 0
 let pendingPingAt = 0
+let lastRecvDiagAt = 0
+let inboundCodecId = null
 
 function resetStats() {
   statsRttMs.value = null
@@ -246,6 +310,8 @@ function resetStats() {
   lastBytesReceived = 0
   lastBytesAt = 0
   pendingPingAt = 0
+  lastRecvDiagAt = 0
+  inboundCodecId = null
 }
 
 function stopStatsTimer() {
@@ -283,6 +349,16 @@ function onDataChannelMessage(raw) {
       pendingPingAt = 0
     } else if (msg?.type === 'cursor') {
       applyRemoteCursor(msg.cursor)
+    } else if (msg?.type === 'clipboard') {
+      handleClipboardMeta(msg)
+    } else if (msg?.type === 'clipboard_part' && msg?.dir !== 'to_agent') {
+      handleClipboardPart(msg)
+    } else if (msg?.type === 'paste_done') {
+      if (msg.ok === false) {
+        ElMessage.error(msg.error || '粘贴到远端失败')
+      } else if (msg.kind === 'files') {
+        ElMessage.success(`已发送 ${msg.count || 0} 个文件到远端剪贴板，请在资源管理器 Ctrl+V`)
+      }
     }
   } catch (_) {
     /* ignore */
@@ -296,6 +372,16 @@ async function pollPeerStats() {
     let iceRtt = null
     let fps = null
     let bytes = null
+    let frameW = null
+    let frameH = null
+    let framesDecoded = null
+    let framesDropped = null
+    let freezeCount = null
+    let jitter = null
+    let packetsLost = null
+    let packetsReceived = null
+    let mime = null
+    let decoderImpl = null
     report.forEach((s) => {
       if (s.type === 'candidate-pair' && (s.state === 'succeeded' || s.nominated)) {
         if (typeof s.currentRoundTripTime === 'number') {
@@ -305,21 +391,96 @@ async function pollPeerStats() {
       if (s.type === 'inbound-rtp' && s.kind === 'video') {
         if (typeof s.framesPerSecond === 'number') fps = Math.round(s.framesPerSecond)
         if (typeof s.bytesReceived === 'number') bytes = s.bytesReceived
+        if (typeof s.frameWidth === 'number') frameW = s.frameWidth
+        if (typeof s.frameHeight === 'number') frameH = s.frameHeight
+        if (typeof s.framesDecoded === 'number') framesDecoded = s.framesDecoded
+        if (typeof s.framesDropped === 'number') framesDropped = s.framesDropped
+        if (typeof s.freezeCount === 'number') freezeCount = s.freezeCount
+        if (typeof s.jitter === 'number') jitter = s.jitter
+        if (typeof s.packetsLost === 'number') packetsLost = s.packetsLost
+        if (typeof s.packetsReceived === 'number') packetsReceived = s.packetsReceived
+        if (s.codecId) inboundCodecId = s.codecId
+      }
+      if (s.type === 'codec' && inboundCodecId && s.id === inboundCodecId) {
+        mime = s.mimeType || null
+      }
+      if (s.type === 'track' && s.kind === 'video') {
+        if (typeof s.frameWidth === 'number' && frameW == null) frameW = s.frameWidth
+        if (typeof s.frameHeight === 'number' && frameH == null) frameH = s.frameHeight
+      }
+      if (s.type === 'media-source' && s.kind === 'video') {
+        /* ignore */
       }
     })
+    // 二次遍历拿 codec（codec 可能先于 inbound-rtp）
+    if (inboundCodecId && !mime) {
+      report.forEach((s) => {
+        if (s.type === 'codec' && s.id === inboundCodecId) mime = s.mimeType || null
+      })
+    }
+    try {
+      const v = videoRef.value
+      if (v && typeof v.getVideoPlaybackQuality === 'function') {
+        const q = v.getVideoPlaybackQuality()
+        if (q && typeof q.droppedVideoFrames === 'number' && framesDropped == null) {
+          framesDropped = q.droppedVideoFrames
+        }
+      }
+      decoderImpl = videoRef.value?.videoWidth
+        ? `${videoRef.value.videoWidth}x${videoRef.value.videoHeight}`
+        : null
+    } catch (_) {
+      /* ignore */
+    }
     if (iceRtt != null) statsIceRttMs.value = iceRtt
     if (fps != null) statsFps.value = fps
     const now = performance.now()
+    let kbps = null
     if (bytes != null) {
       if (lastBytesAt > 0) {
         const dt = (now - lastBytesAt) / 1000
         if (dt > 0.2) {
-          const kbps = Math.round(((bytes - lastBytesReceived) * 8) / dt / 1000)
+          kbps = Math.round(((bytes - lastBytesReceived) * 8) / dt / 1000)
           statsKbps.value = Math.max(0, kbps)
         }
       }
       lastBytesReceived = bytes
       lastBytesAt = now
+    }
+    // 每 ~5s 打一条接收侧诊断，对照 Agent [stream] 日志排查糊屏
+    if (now - lastRecvDiagAt >= 5000) {
+      lastRecvDiagAt = now
+      const lossPct =
+        packetsReceived != null && packetsLost != null && packetsReceived + packetsLost > 0
+          ? (((packetsLost) / (packetsReceived + packetsLost)) * 100).toFixed(2)
+          : '?'
+      console.info(
+        '[rd-recv]',
+        `size=${frameW || '?'}x${frameH || '?'}`,
+        `videoEl=${decoderImpl || '?'}`,
+        `fps=${fps ?? '?'}`,
+        `kbps=${kbps ?? statsKbps.value ?? '?'}`,
+        `mime=${mime || '?'}`,
+        `dropped=${framesDropped ?? '?'}`,
+        `freeze=${freezeCount ?? '?'}`,
+        `decoded=${framesDecoded ?? '?'}`,
+        `loss%=${lossPct}`,
+        `jitter=${jitter != null ? jitter.toFixed(4) : '?'}`,
+        `rtt=${statsRttMs.value ?? iceRtt ?? '?'}ms`,
+        `scale=${scaleMode.value}`,
+        `screenMeta=${screenWidth}x${screenHeight}`
+      )
+      if (frameW && screenWidth && frameW < screenWidth * 0.75) {
+        console.warn(
+          '[rd-recv] 解码分辨率明显低于远端屏 meta，画面会被放大变糊',
+          `${frameW}x${frameH}`,
+          'vs',
+          `${screenWidth}x${screenHeight}`
+        )
+      }
+      if ((kbps ?? statsKbps.value ?? 0) > 0 && (kbps ?? statsKbps.value) < 1500 && (frameW || 0) >= 1280) {
+        console.warn('[rd-recv] 接收码率偏低，易出现块效应/发糊', `kbps=${kbps ?? statsKbps.value}`)
+      }
     }
   } catch (_) {
     /* ignore */
@@ -606,21 +767,431 @@ function sendSpecial(name) {
   stageRef.value?.focus()
 }
 
+const CLIP_CHUNK = 24 * 1024
+const fileInputRef = ref(null)
+
 async function pasteClipboard() {
   try {
-    const text = await navigator.clipboard.readText()
-    if (!text) {
-      ElMessage.warning('本机剪贴板没有文字')
+    if (!inputChannel || inputChannel.readyState !== 'open') {
+      ElMessage.warning('键鼠通道未就绪')
       return
     }
-    // 限制过大文本
-    const clipped = text.length > 20000 ? text.slice(0, 20000) : text
-    sendInput({ type: 'paste', text: clipped })
+    // 优先 ClipboardItem（文字+图片）
+    if (navigator.clipboard?.read) {
+      try {
+        const items = await navigator.clipboard.read()
+        for (const item of items) {
+          if (item.types.includes('image/png')) {
+            const blob = await item.getType('image/png')
+            await sendImageToRemote(blob)
+            ElMessage.success('已粘贴图片到远端')
+            stageRef.value?.focus()
+            return
+          }
+          if (item.types.includes('text/plain')) {
+            const blob = await item.getType('text/plain')
+            const text = await blob.text()
+            if (text) {
+              const clipped = text.length > 200000 ? text.slice(0, 200000) : text
+              sendInput({ type: 'paste', kind: 'text', text: clipped, reqId: ++clipboardReqSeq })
+              ElMessage.success('已粘贴文字到远端')
+              stageRef.value?.focus()
+              return
+            }
+          }
+        }
+      } catch (_) {
+        /* fallback readText */
+      }
+    }
+    const text = await navigator.clipboard.readText()
+    if (!text) {
+      ElMessage.warning('本机剪贴板没有可粘贴的文字/图片（文件请用「发送文件」）')
+      return
+    }
+    const clipped = text.length > 200000 ? text.slice(0, 200000) : text
+    sendInput({ type: 'paste', kind: 'text', text: clipped, reqId: ++clipboardReqSeq })
     ElMessage.success('已粘贴到远端')
     stageRef.value?.focus()
   } catch (e) {
     ElMessage.error(e.message || '读取剪贴板失败（需 HTTPS 或本机授权）')
   }
+}
+
+function pickFilesToRemote() {
+  fileInputRef.value?.click()
+}
+
+async function onFilesPicked(e) {
+  const files = Array.from(e.target?.files || [])
+  e.target.value = ''
+  if (!files.length) return
+  try {
+    await sendFilesToRemote(files)
+  } catch (err) {
+    ElMessage.error(err.message || '发送文件失败')
+  }
+}
+
+function u8ToBase64(u8) {
+  let s = ''
+  const chunk = 0x8000
+  for (let i = 0; i < u8.length; i += chunk) {
+    s += String.fromCharCode.apply(null, u8.subarray(i, i + chunk))
+  }
+  return btoa(s)
+}
+
+function chunkBytes(u8, size = CLIP_CHUNK) {
+  const parts = []
+  for (let i = 0; i < u8.length; i += size) {
+    parts.push(u8ToBase64(u8.subarray(i, i + size)))
+  }
+  return parts.length ? parts : ['']
+}
+
+async function sendImageToRemote(blob) {
+  const buf = new Uint8Array(await blob.arrayBuffer())
+  if (buf.length > 6 * 1024 * 1024) throw new Error('图片过大（>6MB）')
+  const reqId = ++clipboardReqSeq
+  const parts = chunkBytes(buf)
+  sendInput({
+    type: 'paste',
+    kind: 'image',
+    mime: 'image/png',
+    parts: parts.length,
+    bytes: buf.length,
+    reqId,
+  })
+  for (let i = 0; i < parts.length; i++) {
+    sendInput({
+      type: 'clipboard_part',
+      dir: 'to_agent',
+      role: 'image',
+      reqId,
+      index: i,
+      total: parts.length,
+      data: parts[i],
+    })
+  }
+}
+
+async function sendFilesToRemote(fileList) {
+  if (!inputChannel || inputChannel.readyState !== 'open') {
+    throw new Error('键鼠通道未就绪')
+  }
+  const files = fileList.slice(0, 10)
+  const packed = []
+  let total = 0
+  for (const f of files) {
+    if (f.size > 12 * 1024 * 1024) {
+      ElMessage.warning(`跳过过大文件：${f.name}`)
+      continue
+    }
+    if (total + f.size > 24 * 1024 * 1024) {
+      ElMessage.warning('已达总大小上限，其余文件跳过')
+      break
+    }
+    const buf = new Uint8Array(await f.arrayBuffer())
+    total += buf.length
+    packed.push({ name: f.name, buf })
+  }
+  if (!packed.length) throw new Error('没有可发送的文件')
+  const reqId = ++clipboardReqSeq
+  const meta = packed.map((p, fileIndex) => {
+    const parts = chunkBytes(p.buf)
+    return { name: p.name, bytes: p.buf.length, parts: parts.length, fileIndex, _parts: parts }
+  })
+  sendInput({
+    type: 'paste',
+    kind: 'files',
+    reqId,
+    fileCount: meta.length,
+    files: meta.map(({ name, bytes, parts, fileIndex }) => ({ name, bytes, parts, fileIndex })),
+  })
+  for (const m of meta) {
+    for (let i = 0; i < m._parts.length; i++) {
+      sendInput({
+        type: 'clipboard_part',
+        dir: 'to_agent',
+        role: 'file',
+        reqId,
+        name: m.name,
+        fileIndex: m.fileIndex,
+        index: i,
+        total: m._parts.length,
+        data: m._parts[i],
+      })
+    }
+  }
+  ElMessage.info(`正在发送 ${meta.length} 个文件…`)
+}
+
+/** 等待 Agent 回传 clipboard 的 Promise 队列 */
+const clipboardWaiters = []
+const clipboardAssemblers = new Map()
+let clipboardPullTimer = null
+let clipboardReqSeq = 0
+
+function resolveClipboardWaiters(reqId, payload) {
+  for (let i = clipboardWaiters.length - 1; i >= 0; i--) {
+    const w = clipboardWaiters[i]
+    if (reqId != null && w.reqId !== reqId && clipboardWaiters.length > 1) continue
+    clipboardWaiters.splice(i, 1)
+    try {
+      w.resolve(payload)
+    } catch (_) {
+      /* ignore */
+    }
+    if (reqId != null) break
+  }
+}
+
+function handleClipboardMeta(msg) {
+  const reqId = msg.reqId
+  const kind = msg.kind || (msg.text != null ? 'text' : 'empty')
+  const err = msg.error ? String(msg.error) : ''
+  if (err) {
+    resolveClipboardWaiters(reqId, { kind: 'empty', error: err })
+    clipboardAssemblers.delete(reqId)
+    return
+  }
+  if (kind === 'text' || kind === 'empty') {
+    resolveClipboardWaiters(reqId, { kind, text: String(msg.text || ''), error: '' })
+    return
+  }
+  if (kind === 'image') {
+    clipboardAssemblers.set(reqId, {
+      kind: 'image',
+      mime: msg.mime || 'image/png',
+      total: Number(msg.parts || 0),
+      parts: Array(Number(msg.parts || 0)).fill(null),
+      got: 0,
+    })
+    return
+  }
+  if (kind === 'files') {
+    const files = {}
+    for (const f of msg.files || []) {
+      const fi = Number(f.fileIndex ?? 0)
+      files[fi] = {
+        name: f.name || `file${fi}`,
+        error: f.error || '',
+        total: Number(f.parts || 0),
+        parts: f.error ? [] : Array(Number(f.parts || 0)).fill(null),
+        got: 0,
+        bytes: Number(f.bytes || 0),
+      }
+    }
+    clipboardAssemblers.set(reqId, { kind: 'files', files })
+    // 若全是 error、无分片，直接完成
+    const pending = Object.values(files).some((f) => !f.error && f.total > 0)
+    if (!pending) {
+      finishAssembledClipboard(reqId)
+    }
+  }
+}
+
+function b64ToU8(b64) {
+  const bin = atob(b64 || '')
+  const u8 = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i)
+  return u8
+}
+
+function concatU8(parts) {
+  const total = parts.reduce((n, p) => n + p.length, 0)
+  const out = new Uint8Array(total)
+  let off = 0
+  for (const p of parts) {
+    out.set(p, off)
+    off += p.length
+  }
+  return out
+}
+
+function handleClipboardPart(msg) {
+  const reqId = msg.reqId
+  const slot = clipboardAssemblers.get(reqId)
+  if (!slot) return
+  const idx = Number(msg.index || 0)
+  const raw = b64ToU8(msg.data)
+  if (msg.role === 'image' && slot.kind === 'image') {
+    if (idx >= 0 && idx < slot.parts.length && slot.parts[idx] == null) {
+      slot.parts[idx] = raw
+      slot.got += 1
+    }
+    if (slot.got >= slot.total && slot.parts.every((p) => p != null)) {
+      finishAssembledClipboard(reqId)
+    }
+    return
+  }
+  if (msg.role === 'file' && slot.kind === 'files') {
+    const fi = Number(msg.fileIndex || 0)
+    const info = slot.files[fi]
+    if (!info || info.error) return
+    if (idx >= 0 && idx < info.parts.length && info.parts[idx] == null) {
+      info.parts[idx] = raw
+      info.got += 1
+    }
+    const done = Object.values(slot.files).every(
+      (f) => f.error || (f.got >= f.total && f.parts.every((p) => p != null)),
+    )
+    if (done) finishAssembledClipboard(reqId)
+  }
+}
+
+function finishAssembledClipboard(reqId) {
+  const slot = clipboardAssemblers.get(reqId)
+  clipboardAssemblers.delete(reqId)
+  if (!slot) return
+  if (slot.kind === 'image') {
+    const u8 = concatU8(slot.parts)
+    resolveClipboardWaiters(reqId, {
+      kind: 'image',
+      mime: slot.mime || 'image/png',
+      bytes: u8,
+      error: '',
+    })
+    return
+  }
+  if (slot.kind === 'files') {
+    const files = []
+    for (const fi of Object.keys(slot.files)
+      .map(Number)
+      .sort((a, b) => a - b)) {
+      const f = slot.files[fi]
+      if (f.error) {
+        files.push({ name: f.name, error: f.error })
+      } else {
+        files.push({ name: f.name, bytes: concatU8(f.parts) })
+      }
+    }
+    resolveClipboardWaiters(reqId, { kind: 'files', files, error: '' })
+  }
+}
+
+function requestRemoteClipboard(timeoutMs = 15000) {
+  return new Promise((resolve, reject) => {
+    if (!inputChannel || inputChannel.readyState !== 'open') {
+      reject(new Error('键鼠通道未就绪，无法读取远端剪贴板'))
+      return
+    }
+    const reqId = ++clipboardReqSeq
+    const timer = setTimeout(() => {
+      const idx = clipboardWaiters.findIndex((w) => w.reqId === reqId)
+      if (idx >= 0) clipboardWaiters.splice(idx, 1)
+      clipboardAssemblers.delete(reqId)
+      reject(new Error('读取远端剪贴板超时'))
+    }, timeoutMs)
+    clipboardWaiters.push({
+      reqId,
+      resolve: (payload) => {
+        clearTimeout(timer)
+        resolve(payload)
+      },
+    })
+    sendInput({ type: 'clipboard_get', reqId })
+  })
+}
+
+function downloadBytes(name, u8) {
+  const blob = new Blob([u8])
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = name || 'file.bin'
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+async function applyRemoteClipboardToLocal(payload, { silent = false } = {}) {
+  if (!payload || payload.error) {
+    if (!silent) ElMessage.warning(payload?.error || '远端剪贴板为空')
+    return false
+  }
+  const kind = payload.kind || 'empty'
+  try {
+    if (kind === 'text') {
+      const clip = String(payload.text || '')
+      if (!clip) {
+        if (!silent) ElMessage.warning('远端剪贴板没有文字')
+        return false
+      }
+      await navigator.clipboard.writeText(clip)
+      if (!silent) ElMessage.success(`已复制远端文字（${clip.length} 字）`)
+      return true
+    }
+    if (kind === 'image') {
+      const u8 = payload.bytes
+      const blob = new Blob([u8], { type: payload.mime || 'image/png' })
+      if (navigator.clipboard?.write && window.ClipboardItem) {
+        await navigator.clipboard.write([new ClipboardItem({ [blob.type]: blob })])
+        if (!silent) ElMessage.success('已复制远端图片到本机剪贴板')
+      } else {
+        downloadBytes(`remote_clip_${Date.now()}.png`, u8)
+        if (!silent) ElMessage.success('浏览器不支持写图片剪贴板，已下载 PNG')
+      }
+      return true
+    }
+    if (kind === 'files') {
+      const files = payload.files || []
+      let ok = 0
+      let fail = 0
+      for (const f of files) {
+        if (f.error || !f.bytes) {
+          fail += 1
+          continue
+        }
+        downloadBytes(f.name, f.bytes)
+        ok += 1
+      }
+      if (!silent) {
+        if (ok) ElMessage.success(`已下载远端 ${ok} 个文件${fail ? `（${fail} 个失败/跳过）` : ''}`)
+        else ElMessage.warning('远端文件无法传输（可能过大或为文件夹）')
+      }
+      return ok > 0
+    }
+    if (!silent) ElMessage.warning('远端剪贴板为空')
+    return false
+  } catch (e) {
+    if (!silent) ElMessage.error(e.message || '写入本机失败（需 HTTPS 或授权）')
+    return false
+  }
+}
+
+async function copyFromRemote() {
+  try {
+    const payload = await requestRemoteClipboard()
+    await applyRemoteClipboardToLocal(payload, { silent: false })
+    stageRef.value?.focus()
+  } catch (e) {
+    ElMessage.error(e.message || '读取远端剪贴板失败')
+  }
+}
+
+/** 远控画面内 Ctrl/Cmd+C、X 后，延迟回拉产线机剪贴板到本机 */
+function schedulePullRemoteClipboard() {
+  if (clipboardPullTimer) clearTimeout(clipboardPullTimer)
+  clipboardPullTimer = setTimeout(async () => {
+    clipboardPullTimer = null
+    try {
+      const payload = await requestRemoteClipboard(12000)
+      if (!payload || payload.error || payload.kind === 'empty') return
+      if (payload.kind === 'text' && !payload.text) return
+      await applyRemoteClipboardToLocal(payload, { silent: true })
+    } catch (_) {
+      /* 静默 */
+    }
+  }, 280)
+}
+
+function isCopyOrCutShortcut(e) {
+  if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return false
+  const k = String(e.key || '').toLowerCase()
+  if (k === 'c' || k === 'x') return true
+  const code = e.keyCode || e.which
+  return code === 67 || code === 88
 }
 
 function takeScreenshot() {
@@ -699,6 +1270,10 @@ function onKeyDown(e) {
   }
   e.preventDefault()
   sendInput({ type: 'keydown', vk: e.keyCode || e.which })
+  // 远端复制/剪切后回拉剪贴板到本机
+  if (isCopyOrCutShortcut(e)) {
+    schedulePullRemoteClipboard()
+  }
 }
 
 function onKeyUp(e) {
@@ -794,11 +1369,17 @@ async function startSession() {
   statusText.value = '创建会话…'
   try {
     // force=true：刷新后服务端残留锁可直接顶替
-    const data = await api.createRemoteSession(selectedDeviceId.value, { force: true })
+    const q = currentQuality()
+    const data = await api.createRemoteSession(selectedDeviceId.value, {
+      force: true,
+      maxWidth: q.maxWidth,
+      fps: q.fps,
+      maxBitrate: q.maxBitrate,
+    })
     session.value = data
     api.rememberSession(data)
     streamReady.value = false
-    statusText.value = '等待 Agent…'
+    statusText.value = `等待 Agent…（${q.label}）`
     startWaitTimer()
 
     const url = api.buildViewerWsUrl(data.sessionId, data.viewerToken)
@@ -886,6 +1467,8 @@ onMounted(async () => {
   document.addEventListener('fullscreenchange', onFullscreenChange)
   document.addEventListener('keydown', onGlobalKeyDown)
   window.addEventListener('pagehide', onPageHide)
+  loadQualityPreset()
+  onQualityPresetChange()
   await loadDevices()
   // 若上次刷新未清掉锁，选中设备后可直接「断开」或再点「开始远控」顶替
   const remembered = api.readRememberedSession()

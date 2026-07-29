@@ -147,8 +147,8 @@ async def host_upload(
     releaseNotes: str = Form(""),
     sha256: str | None = Form(default=None),
 ):
-    """上位机上传自身 exe（首次部署或主动上报版本）。"""
-    _require_engineer_or_admin(user)
+    """上位机上传自身 exe（首次部署或主动上报版本）。仅 admin。"""
+    _require_admin(user)
     if not appVersion or not buildId:
         fail(400, "appVersion 与 buildId 不能为空", 400)
     content = await file.read()

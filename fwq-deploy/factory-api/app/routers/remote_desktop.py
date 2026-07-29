@@ -106,12 +106,32 @@ def create_remote_session(
         _enqueue_stop_and_hangup(replaced, "replaced")
 
     signaling_base = "/api/factory-tool/remote-desktop/ws"
+    # 画质：网页可选，上限 1920 / 60fps / 25Mbps
+    try:
+        max_width = int(body.get("maxWidth") or 1920)
+    except (TypeError, ValueError):
+        max_width = 1920
+    try:
+        fps = int(body.get("fps") or 30)
+    except (TypeError, ValueError):
+        fps = 30
+    try:
+        max_bitrate = int(body.get("maxBitrate") or 12_000_000)
+    except (TypeError, ValueError):
+        max_bitrate = 12_000_000
+    max_width = max(640, min(max_width, 1920))
+    fps = max(5, min(fps, 60))
+    max_bitrate = max(500_000, min(max_bitrate, 25_000_000))
+
     payload = {
         "sessionId": sess.session_id,
         "agentToken": sess.agent_token,
         "signalingPath": signaling_base,
         "iceServers": rd.make_turn_credentials().get("iceServers") or [],
         "role": "agent",
+        "maxWidth": max_width,
+        "fps": fps,
+        "maxBitrate": max_bitrate,
     }
     try:
         device_runtime.enqueue_command(device_id, "start_remote_desktop", payload)

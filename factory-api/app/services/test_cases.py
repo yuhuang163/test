@@ -1133,3 +1133,73 @@ def diff_staging_against_current(device_id: str, station_key: str) -> dict:
         "fileDiffs": changed_diffs,
         "contents": contents,
     }
+
+
+def diff_merge_history(merge_id: str) -> dict:
+    """
+    合入记录详情：对比合入前/后快照（before vs after），只读。
+    结构与 staging/diff 相近，便于前端复用 Diff 组件。
+    """
+    from app.services.versioning import _compute_line_diff
+
+    meta = _read_merge_meta(merge_id)
+    history_dir = _merge_history_root() / meta["mergeId"]
+    before_dir = history_dir / "before"
+    after_dir = history_dir / "after"
+    if not after_dir.is_dir():
+        raise FileNotFoundError("合入后快照缺失")
+
+    old_paths = _list_ini_rel_paths(before_dir)
+    new_paths = _list_ini_rel_paths(after_dir)
+    all_paths = sorted(old_paths | new_paths)
+
+    file_diffs: list[dict] = []
+    changed_diffs: dict[str, list] = {}
+    contents: dict[str, dict[str, str]] = {}
+    for rel in all_paths:
+        old_text = _read_text_or_empty(before_dir / rel)
+        new_text = _read_text_or_empty(after_dir / rel)
+        # 与合入预览字段对齐：current=合入前，staging=合入后（最终落盘）
+        contents[rel] = {"current": old_text, "staging": new_text, "before": old_text, "after": new_text}
+
+        in_old = rel in old_paths
+        in_new = rel in new_paths
+        if in_old and not in_new:
+            file_diffs.append({"path": rel, "status": "removed"})
+            continue
+        if in_new and not in_old:
+            file_diffs.append({"path": rel, "status": "added"})
+            continue
+        if old_text == new_text:
+            file_diffs.append({"path": rel, "status": "unchanged"})
+        else:
+            file_diffs.append({"path": rel, "status": "changed"})
+            changed_diffs[rel] = _compute_line_diff(old_text, new_text)
+
+    return {
+        "meta": meta,
+        "mergeId": meta.get("mergeId"),
+        "displayName": meta.get("displayName") or meta.get("stationKey") or "",
+        "remark": str(meta.get("remark") or "").strip(),
+        "mergedBy": meta.get("mergedBy") or "",
+        "mergedAt": meta.get("mergedAt") or "",
+        "undone": bool(meta.get("undone")),
+        "undoneAt": meta.get("undoneAt"),
+        "undoneBy": meta.get("undoneBy") or "",
+        "hostName": meta.get("hostName") or "",
+        "deviceId": meta.get("deviceId") or "",
+        "source": meta.get("source") or "",
+        "beforeProfileVersion": meta.get("beforeProfileVersion") or "—",
+        "afterProfileVersion": meta.get("afterProfileVersion") or "—",
+        "currentProfileVersion": meta.get("beforeProfileVersion") or "—",
+        "stagingProfileVersion": meta.get("afterProfileVersion") or "—",
+        "overrideCount": int(meta.get("overrideCount") or 0),
+        "hadBefore": bool(meta.get("hadBefore")),
+        "addedCount": sum(1 for f in file_diffs if f["status"] == "added"),
+        "removedCount": sum(1 for f in file_diffs if f["status"] == "removed"),
+        "changedCount": sum(1 for f in file_diffs if f["status"] == "changed"),
+        "unchangedCount": sum(1 for f in file_diffs if f["status"] == "unchanged"),
+        "files": file_diffs,
+        "fileDiffs": changed_diffs,
+        "contents": contents,
+    }

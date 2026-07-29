@@ -7,8 +7,12 @@ export function listRemoteDevices() {
 }
 
 /** force=true：顶替该设备上旧会话（刷新残留） */
-export function createRemoteSession(deviceId, { force = true } = {}) {
-  return http.post('/admin/remote-desktop/sessions', { deviceId, force })
+export function createRemoteSession(deviceId, { force = true, maxWidth, fps, maxBitrate } = {}) {
+  const body = { deviceId, force }
+  if (maxWidth != null) body.maxWidth = maxWidth
+  if (fps != null) body.fps = fps
+  if (maxBitrate != null) body.maxBitrate = maxBitrate
+  return http.post('/admin/remote-desktop/sessions', body)
 }
 
 export function stopRemoteSession(sessionId) {

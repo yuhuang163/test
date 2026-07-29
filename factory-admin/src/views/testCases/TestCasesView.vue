@@ -217,8 +217,9 @@
               <el-tag v-else size="small" type="success">有效</el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="100" fixed="right">
+          <el-table-column label="操作" width="160" fixed="right">
             <template #default="{ row }">
+              <el-button type="primary" link @click="openMergeHistoryDetail(row)">查看详情</el-button>
               <el-button
                 type="warning"
                 link
@@ -318,6 +319,78 @@
             确认合入
           </el-button>
         </template>
+      </template>
+    </el-dialog>
+
+    <el-dialog
+      v-model="historyDialogVisible"
+      :title="historyDialogTitle"
+      width="96%"
+      top="3vh"
+      destroy-on-close
+      align-center
+      class="merge-dialog"
+      @closed="onHistoryDialogClosed"
+    >
+      <div v-loading="historyDiffLoading" class="merge-body">
+        <div v-if="historyDiff" class="merge-meta">
+          <el-tag size="small" type="info">合入前 v{{ historyDiff.beforeProfileVersion || '—' }}</el-tag>
+          <span>→</span>
+          <el-tag size="small" type="warning">合入后 v{{ historyDiff.afterProfileVersion || '—' }}</el-tag>
+          <el-tag size="small" type="success">+{{ historyDiff.addedCount }}</el-tag>
+          <el-tag size="small" type="danger">-{{ historyDiff.removedCount }}</el-tag>
+          <el-tag size="small" type="warning">~{{ historyDiff.changedCount }}</el-tag>
+          <el-tag v-if="historyDiff.undone" size="small" type="info">已撤销</el-tag>
+          <span class="merge-tip">只读对照合入前后快照</span>
+        </div>
+        <div v-if="historyDiff" class="merge-remark">
+          <template v-if="historyDiff.remark">说明：{{ historyDiff.remark }}；</template>
+          操作人：{{ historyDiff.mergedBy || '—' }}；
+          时间：{{ historyDiff.mergedAt || '—' }}；
+          来源：{{ historyDiff.hostName || historyDiff.deviceId || '—' }}
+          <template v-if="historyDiff.undone">
+            ；撤销人：{{ historyDiff.undoneBy || '—' }}（{{ historyDiff.undoneAt || '—' }}）
+          </template>
+        </div>
+
+        <div v-if="historyDiff && historyAllFiles.length === 0" class="diff-hint">暂无文件</div>
+        <div v-else-if="historyDiff && historyChangedFiles.length === 0" class="diff-hint">
+          合入前后文件内容完全相同。
+        </div>
+
+        <div v-else-if="historyDiff" class="merge-compare">
+          <aside class="merge-file-list">
+            <div
+              v-for="f in historyAllFiles"
+              :key="f.path"
+              class="merge-file-item"
+              :class="{ active: selectedHistoryPath === f.path }"
+              @click="selectedHistoryPath = f.path"
+            >
+              <span class="file-status" :class="f.status">{{ statusLabel(f.status) }}</span>
+              <span class="file-path">{{ f.path }}</span>
+            </div>
+          </aside>
+
+          <div class="merge-diff-wrap">
+            <div class="diff-labels">
+              <span class="diff-label left">合入前</span>
+              <span class="diff-label right">合入后</span>
+            </div>
+            <MergeDiffEditor
+              v-if="selectedHistoryPath"
+              :key="`hist-${selectedHistoryPath}`"
+              :original="selectedHistoryBeforeText"
+              :modified="selectedHistoryAfterText"
+              :read-only-modified="true"
+              class="merge-monaco"
+            />
+            <div v-else class="diff-hint">请选择左侧文件</div>
+          </div>
+        </div>
+      </div>
+      <template #footer>
+        <el-button type="primary" @click="historyDialogVisible = false">关闭</el-button>
       </template>
     </el-dialog>
   </div>
@@ -442,10 +515,22 @@ const selectedMergePath = ref('')
 /** 各文件合入后的最终文本（可编辑） */
 const finalContents = ref({})
 
+const historyDialogVisible = ref(false)
+const historyDiffLoading = ref(false)
+const historyDiff = ref(null)
+const historyTarget = ref(null)
+const selectedHistoryPath = ref('')
+
 const mergeDialogTitle = computed(() => {
   const row = mergeTarget.value
   if (!row) return '合入预览'
   return `合入预览：${row.displayName || row.stationKey}`
+})
+
+const historyDialogTitle = computed(() => {
+  const row = historyTarget.value || historyDiff.value
+  if (!row) return '合入详情'
+  return `合入详情：${row.displayName || row.stationKey || ''}`
 })
 
 const mergeAllFiles = computed(() => {
@@ -457,6 +542,18 @@ const mergeAllFiles = computed(() => {
 })
 
 const mergeChangedFiles = computed(() => mergeAllFiles.value.filter((f) => f.status !== 'unchanged'))
+
+const historyAllFiles = computed(() => {
+  if (!historyDiff.value?.files) return []
+  const order = { added: 0, changed: 1, removed: 2, unchanged: 3 }
+  return [...historyDiff.value.files].sort(
+    (a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9) || a.path.localeCompare(b.path)
+  )
+})
+
+const historyChangedFiles = computed(() =>
+  historyAllFiles.value.filter((f) => f.status !== 'unchanged')
+)
 
 const selectedCurrentText = computed(() => {
   const path = selectedMergePath.value
@@ -475,6 +572,20 @@ const selectedFinalText = computed({
     if (!path) return
     finalContents.value = { ...finalContents.value, [path]: val }
   },
+})
+
+const selectedHistoryBeforeText = computed(() => {
+  const path = selectedHistoryPath.value
+  if (!path || !historyDiff.value?.contents) return ''
+  const c = historyDiff.value.contents[path]
+  return c?.before ?? c?.current ?? ''
+})
+
+const selectedHistoryAfterText = computed(() => {
+  const path = selectedHistoryPath.value
+  if (!path || !historyDiff.value?.contents) return ''
+  const c = historyDiff.value.contents[path]
+  return c?.after ?? c?.staging ?? ''
 })
 
 function statusLabel(status) {
@@ -515,6 +626,12 @@ function onMergeDialogClosed() {
   mergeTarget.value = null
   selectedMergePath.value = ''
   finalContents.value = {}
+}
+
+function onHistoryDialogClosed() {
+  historyDiff.value = null
+  historyTarget.value = null
+  selectedHistoryPath.value = ''
 }
 
 function initFinalContentsFromDiff(diff) {
@@ -669,6 +786,26 @@ async function undoMergeRecord(row) {
     ElMessage.error(e.message)
   } finally {
     undoingId.value = ''
+  }
+}
+
+async function openMergeHistoryDetail(row) {
+  if (!row?.mergeId) return
+  historyTarget.value = row
+  historyDiff.value = null
+  selectedHistoryPath.value = ''
+  historyDialogVisible.value = true
+  historyDiffLoading.value = true
+  try {
+    const diff = await api.mergeHistoryDiff(row.mergeId)
+    historyDiff.value = diff
+    const firstChanged = (diff?.files || []).find((f) => f.status !== 'unchanged')
+    selectedHistoryPath.value = firstChanged?.path || (diff?.files || [])[0]?.path || ''
+  } catch (e) {
+    ElMessage.error(e.message)
+    historyDialogVisible.value = false
+  } finally {
+    historyDiffLoading.value = false
   }
 }
 

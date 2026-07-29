@@ -294,6 +294,19 @@ def list_merge_history(
     return ok({"items": test_case_service.list_merge_history(limit=limit)})
 
 
+@admin_router.get("/merge-history/{merge_id}/diff")
+def merge_history_diff(merge_id: str, user: Annotated[User, Depends(get_current_user)]):
+    """合入记录详情：合入前/后快照的文件与行级差异（只读）。"""
+    _require_engineer_or_admin(user)
+    try:
+        data = test_case_service.diff_merge_history(merge_id)
+    except FileNotFoundError as exc:
+        fail(404, str(exc), 404)
+    except ValueError as exc:
+        fail(400, str(exc), 400)
+    return ok(data)
+
+
 @admin_router.post("/merge-history/{merge_id}/undo")
 def undo_merge(merge_id: str, user: Annotated[User, Depends(get_current_user)]):
     """撤销合入：恢复该工站合入前工作区快照。"""
