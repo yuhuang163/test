@@ -690,6 +690,21 @@ class MainWindow : public QMainWindow {
     void on_dongle_suction_clear_chart_clicked();
     void on_dongle_suction_set_osr_clicked();
     void on_checkBox_adcSwitch_stateChanged(int arg1);
+    void on_checkBox_lsAdcSwitch_stateChanged(int arg1);
+    void on_btnDongleAtDcon_clicked();
+    void on_btnDongleAtOta_clicked();
+    void on_btnDongleAtBle_clicked();
+    void on_btnDongleAtMain_clicked();
+    void on_btnDongleAtDisconnect_clicked();
+    void on_chkDongleAtOtaData_stateChanged(int arg1);
+    void on_chkDongleAtMainData_stateChanged(int arg1);
+    void on_chkDongleAtBleLog_stateChanged(int arg1);
+    void on_chkDongleAtBleDeviceLog_stateChanged(int arg1);
+    void on_btnDongleAtGmac_clicked();
+    void on_btnDongleAtSendCustom_clicked();
+    void on_lineDongleAtCustom_returnPressed();
+    void on_btnDongleAtSetBleMtu_clicked();
+    void on_btnDongleAtSetOtaPkt_clicked();
 
   signals:
     void send_uart_state(int data);

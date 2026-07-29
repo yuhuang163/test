@@ -492,7 +492,7 @@
                <bool>true</bool>
               </property>
               <property name="currentIndex">
-               <number>6</number>
+               <number>18</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -3768,6 +3768,394 @@
                 </item>
                </layout>
               </widget>
+              <widget class="QWidget" name="tab_dongle_at">
+               <attribute name="title">
+                <string>Dongle AT 测试</string>
+               </attribute>
+               <layout class="QVBoxLayout" name="verticalLayout_dongle_at">
+                <item>
+                 <widget class="QGroupBox" name="groupBox_dongle_at_connect">
+                  <property name="title">
+                   <string>连接模式（MAC 使用顶部 macInput）</string>
+                  </property>
+                  <layout class="QHBoxLayout" name="horizontalLayout_dongle_at_connect">
+                   <item>
+                    <widget class="QPushButton" name="btnDongleAtDcon">
+                     <property name="toolTip">
+                      <string>AT+DCON=mac</string>
+                     </property>
+                     <property name="text">
+                      <string>AT+DCON 直连</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="btnDongleAtOta">
+                     <property name="toolTip">
+                      <string>AT+OTA=mac</string>
+                     </property>
+                     <property name="text">
+                      <string>AT+OTA 连接</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="btnDongleAtBle">
+                     <property name="toolTip">
+                      <string>AT+BLE=mac</string>
+                     </property>
+                     <property name="text">
+                      <string>AT+BLE 连接</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="btnDongleAtMain">
+                     <property name="toolTip">
+                      <string>AT+MAIN=mac</string>
+                     </property>
+                     <property name="text">
+                      <string>AT+MAIN 连接</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="btnDongleAtDisconnect">
+                     <property name="toolTip">
+                      <string>AT+MAC=00:00:00:00:00:00</string>
+                     </property>
+                     <property name="text">
+                      <string>断开 BLE</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="horizontalSpacer_dongle_at_connect">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QGroupBox" name="groupBox_dongle_at_passthrough">
+                  <property name="title">
+                   <string>透传与参数</string>
+                  </property>
+                  <layout class="QHBoxLayout" name="horizontalLayout_dongle_at_passthrough">
+                   <item>
+                    <widget class="QCheckBox" name="chkDongleAtOtaData">
+                     <property name="toolTip">
+                      <string>开启发送 AT+OTADATA=1，关闭发送 AT+OTADATA=0</string>
+                     </property>
+                     <property name="text">
+                      <string>AT+OTADATA</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QCheckBox" name="chkDongleAtMainData">
+                     <property name="toolTip">
+                      <string>开启发送 AT+MAINDATA=1，关闭发送 AT+MAINDATA=0</string>
+                     </property>
+                     <property name="text">
+                      <string>AT+MAINDATA</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="label_dongle_at_ble_mtu">
+                     <property name="text">
+                      <string>BLE MTU(字节)</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLineEdit" name="DongleAtBleMtuSize">
+                     <property name="toolTip">
+                      <string>Dongle AT+BLEMTU，配置 BLE MTU</string>
+                     </property>
+                     <property name="text">
+                      <string>247</string>
+                     </property>
+                     <property name="maximumWidth">
+                      <number>80</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="btnDongleAtSetBleMtu">
+                     <property name="text">
+                      <string>设置BLE MTU</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="label_dongle_at_ota_pkt_size">
+                     <property name="text">
+                      <string>OTA切包(字节)</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLineEdit" name="DongleAtOtaPktSize">
+                     <property name="toolTip">
+                      <string>Dongle AT+OTAPKTSIZE，配置 OTA 切包大小（非 BLE MTU）</string>
+                     </property>
+                     <property name="text">
+                      <string>242</string>
+                     </property>
+                     <property name="maximumWidth">
+                      <number>80</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="btnDongleAtSetOtaPkt">
+                     <property name="text">
+                      <string>设置切包</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="horizontalSpacer_dongle_at_passthrough">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QGroupBox" name="groupBox_dongle_at_log">
+                  <property name="title">
+                   <string>日志</string>
+                  </property>
+                  <layout class="QHBoxLayout" name="horizontalLayout_dongle_at_log">
+                   <item>
+                    <widget class="QCheckBox" name="chkDongleAtBleLog">
+                     <property name="toolTip">
+                      <string>开启发送 AT+BLELOG=1，关闭发送 AT+BLELOG=0</string>
+                     </property>
+                     <property name="text">
+                      <string>AT+BLELOG</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QCheckBox" name="chkDongleAtBleDeviceLog">
+                     <property name="toolTip">
+                      <string>开启发送 AT+BLEDEVICELOG=1，关闭发送 AT+BLEDEVICELOG=0</string>
+                     </property>
+                     <property name="text">
+                      <string>AT+BLEDEVICELOG</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="horizontalSpacer_dongle_at_log">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QGroupBox" name="groupBox_dongle_at_adc">
+                  <property name="title">
+                   <string>ADC 采样</string>
+                  </property>
+                  <layout class="QHBoxLayout" name="horizontalLayout_dongle_at_adc">
+                   <item>
+                    <widget class="QCheckBox" name="checkBox_adcSwitch">
+                     <property name="toolTip">
+                      <string>开启后发送 AT+HSADC=1，关闭发送 AT+HSADC=0</string>
+                     </property>
+                     <property name="text">
+                      <string>AT+HSADC 高量程采样</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QCheckBox" name="checkBox_lsAdcSwitch">
+                     <property name="toolTip">
+                      <string>开启后发送 AT+LSADC=1，关闭发送 AT+LSADC=0</string>
+                     </property>
+                     <property name="text">
+                      <string>AT+LSADC 低量程采样</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="horizontalSpacer_dongle_at_adc">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QGroupBox" name="groupBox_dongle_at_bomb">
+                  <property name="title">
+                   <string>船运炸弹 AT+BOMB</string>
+                  </property>
+                  <layout class="QHBoxLayout" name="horizontalLayout_88">
+                   <item>
+                    <widget class="QPushButton" name="ship_bomb">
+                     <property name="text">
+                      <string>船运炸弹</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_87">
+                     <item>
+                      <widget class="QLabel" name="label_86">
+                       <property name="text">
+                        <string>信号强度</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="bombrssi">
+                       <property name="text">
+                        <string>-80</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_86">
+                     <item>
+                      <widget class="QLabel" name="label_85">
+                       <property name="text">
+                        <string>设备名字</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="bombname">
+                       <property name="text">
+                        <string>P20P</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_85">
+                     <item>
+                      <widget class="QLabel" name="label_87">
+                       <property name="text">
+                        <string>连接间隔</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="bombinterval">
+                       <property name="text">
+                        <string>10</string>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <spacer name="horizontalSpacer_dongle_at_bomb">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>40</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QGroupBox" name="groupBox_dongle_at_query">
+                  <property name="title">
+                   <string>查询 / 自定义 AT</string>
+                  </property>
+                  <layout class="QHBoxLayout" name="horizontalLayout_dongle_at_query">
+                   <item>
+                    <widget class="QPushButton" name="btnDongleAtGmac">
+                     <property name="toolTip">
+                      <string>AT+GMAC</string>
+                     </property>
+                     <property name="text">
+                      <string>查询 GMAC</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLineEdit" name="lineDongleAtCustom">
+                     <property name="placeholderText">
+                      <string>自定义 AT 行，例如 AT+BLEMTU=247（可不写末尾 CRLF）</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="btnDongleAtSendCustom">
+                     <property name="text">
+                      <string>发送</string>
+                     </property>
+                    </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item>
+                 <spacer name="verticalSpacer_dongle_at">
+                  <property name="orientation">
+                   <enum>Qt::Vertical</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                   <size>
+                    <width>20</width>
+                    <height>40</height>
+                   </size>
+                  </property>
+                 </spacer>
+                </item>
+               </layout>
+              </widget>
               <widget class="QWidget" name="tab_pcba_factory">
                <attribute name="title">
                 <string>板厂简易测试</string>
@@ -6452,79 +6840,6 @@ border-color: rgb(255, 165, 0)</string>
                  <string>删除文件</string>
                 </property>
                </widget>
-               <widget class="QWidget" name="layoutWidget_3">
-                <property name="geometry">
-                 <rect>
-                  <x>90</x>
-                  <y>70</y>
-                  <width>736</width>
-                  <height>31</height>
-                 </rect>
-                </property>
-                <layout class="QHBoxLayout" name="horizontalLayout_88">
-                 <item>
-                  <widget class="QPushButton" name="ship_bomb">
-                   <property name="text">
-                    <string>船运炸弹</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item>
-                  <layout class="QHBoxLayout" name="horizontalLayout_87">
-                   <item>
-                    <widget class="QLabel" name="label_86">
-                     <property name="text">
-                      <string>信号强度</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QLineEdit" name="bombrssi">
-                     <property name="text">
-                      <string>-80</string>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                 <item>
-                  <layout class="QHBoxLayout" name="horizontalLayout_86">
-                   <item>
-                    <widget class="QLabel" name="label_85">
-                     <property name="text">
-                      <string>设备名字</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QLineEdit" name="bombname">
-                     <property name="text">
-                      <string>P20P</string>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                 <item>
-                  <layout class="QHBoxLayout" name="horizontalLayout_85">
-                   <item>
-                    <widget class="QLabel" name="label_87">
-                     <property name="text">
-                      <string>连接间隔</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QLineEdit" name="bombinterval">
-                     <property name="text">
-                      <string>10</string>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                </layout>
-               </widget>
                <widget class="QPushButton" name="get_noisy">
                 <property name="geometry">
                  <rect>
@@ -6608,35 +6923,6 @@ border-color: rgb(255, 165, 0)</string>
                   </widget>
                  </item>
                 </layout>
-               </widget>
-               <widget class="QPushButton" name="pushButton_3">
-                <property name="geometry">
-                 <rect>
-                  <x>180</x>
-                  <y>30</y>
-                  <width>234</width>
-                  <height>23</height>
-                 </rect>
-                </property>
-                <property name="text">
-                 <string>指令测试</string>
-                </property>
-               </widget>
-               <widget class="QCheckBox" name="checkBox_adcSwitch">
-                <property name="geometry">
-                 <rect>
-                  <x>41</x>
-                  <y>360</y>
-                  <width>200</width>
-                  <height>28</height>
-                 </rect>
-                </property>
-                <property name="toolTip">
-                 <string>开启后发送 AT+ADC=1，关闭发送 AT+ADC=0</string>
-                </property>
-                <property name="text">
-                 <string>AT+ADC 上报</string>
-                </property>
                </widget>
               </widget>
              </widget>

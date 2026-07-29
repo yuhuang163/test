@@ -105,7 +105,8 @@ Dongle 控制指令与异步上报均为 **ASCII 文本行**，以 **`CRLF`（`\
 | `AT+MAINDATA` | 主通道数据透传开关 | 下发 |
 | `AT+BLELOG` | Dongle BLE 日志开关 | 下发 |
 | `AT+SUCTION` | 双通道吸力读取开关 | 下发 → 持续 `SUCTION_DATA` 上报 |
-| `AT+ADC` | ADC 上报开关 | 下发 |
+| `AT+HSADC` | 高量程 ADC 采样开关 | 下发 |
+| `AT+LSADC` | 低量程 ADC 采样开关 | 下发 |
 | `AT+BLEDEVICELOG` | 被连设备 BLE 日志开关 | 下发 |
 | `AT+BOMB` | 广播注入（测试用） | 下发 |
 | `AT+GMAC` | 读取 Dongle GMAC | 查询 → 设备应答（若固件支持） |
@@ -257,13 +258,14 @@ Dongle 控制指令与异步上报均为 **ASCII 文本行**，以 **`CRLF`（`\
 
 ---
 
-### 3.9 `AT+ADC` — ADC 上报开关
+### 3.9 `AT+HSADC` / `AT+LSADC` — ADC 量程采样开关
 
 **上位机 → Dongle**
 
-| 字段 | 值 | 说明 |
+| 命令 | 字段 | 说明 |
 |------|-----|------|
-| 开关 | `0`、`1` | 关、开 |
+| `AT+HSADC` | `0`、`1` | 关、开（高量程） |
+| `AT+LSADC` | `0`、`1` | 关、开（低量程） |
 
 ---
 
@@ -389,7 +391,8 @@ Dongle 控制指令与异步上报均为 **ASCII 文本行**，以 **`CRLF`（`\
 | `MainDataPassthrough` | `AT+MAINDATA=` |
 | `BleLog` | `AT+BLELOG=` |
 | `GetSuction` | `AT+SUCTION=` |
-| `AdcSwitch` | `AT+ADC=` |
+| `AdcSwitch` | `AT+HSADC=` |
+| `LowRangeAdcSwitch` | `AT+LSADC=` |
 | `BleDeviceLog` | `AT+BLEDEVICELOG=` |
 | `Bomb` | `AT+BOMB=` |
 | `GetGmac` | `AT+GMAC` |

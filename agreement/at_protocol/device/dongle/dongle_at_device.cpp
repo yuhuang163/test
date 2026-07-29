@@ -82,7 +82,15 @@ void DongleAtDevice::set(DongleCmd cmd, const QVariant& data) {
         if (state > 1) {
             state = 1;
         }
-        sendAtLine(QStringLiteral("AT+ADC=%1\r\n").arg(state));
+        sendAtLine(QStringLiteral("AT+HSADC=%1\r\n").arg(state));
+        break;
+    }
+    case DongleCmd::LowRangeAdcSwitch: {
+        int state = data.toInt();
+        if (state > 1) {
+            state = 1;
+        }
+        sendAtLine(QStringLiteral("AT+LSADC=%1\r\n").arg(state));
         break;
     }
     case DongleCmd::BleDeviceLog:

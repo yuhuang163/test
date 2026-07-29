@@ -3957,6 +3957,8 @@ void MainWindow::on_setOtaPktSizeButton_clicked() {
     }
     at->set(DongleCmd::OtaPktSize, pktSize);
     showlog(QStringLiteral("已发送 AT+OTAPKTSIZE=%1").arg(pktSize));
+    if (ui->DongleAtOtaPktSize)
+        ui->DongleAtOtaPktSize->setText(QString::number(pktSize));
     ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() +
                                    QStringLiteral(" 设置 OTA 切包：AT+OTAPKTSIZE=%1").arg(pktSize));
 }
@@ -3974,6 +3976,8 @@ void MainWindow::on_setBleMtuButton_clicked() {
     }
     at->set(DongleCmd::BleMtu, mtu);
     showlog(QStringLiteral("已发送 AT+BLEMTU=%1").arg(mtu));
+    if (ui->DongleAtBleMtuSize)
+        ui->DongleAtBleMtuSize->setText(QString::number(mtu));
     ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() +
                                    QStringLiteral(" 设置 BLE MTU：AT+BLEMTU=%1").arg(mtu));
 }
@@ -5439,13 +5443,196 @@ void MainWindow::on_dongle_suction_set_osr_clicked() {
 
 void MainWindow::on_checkBox_adcSwitch_stateChanged(int arg1) {
     if (!at) {
-        showlog(QStringLiteral("AT+ADC 发送失败：Dongle 未就绪"));
+        showlog(QStringLiteral("AT+HSADC 发送失败：Dongle 未就绪"));
         return;
     }
     const int state = arg1 != Qt::Unchecked ? 1 : 0;
     at->set(DongleCmd::AdcSwitch, state);
-    showlog(QStringLiteral("已发送 AT+ADC=%1").arg(state));
+    showlog(QStringLiteral("已发送 AT+HSADC=%1").arg(state));
 }
 
+void MainWindow::on_checkBox_lsAdcSwitch_stateChanged(int arg1) {
+    if (!at) {
+        showlog(QStringLiteral("AT+LSADC 发送失败：Dongle 未就绪"));
+        return;
+    }
+    const int state = arg1 != Qt::Unchecked ? 1 : 0;
+    at->set(DongleCmd::LowRangeAdcSwitch, state);
+    showlog(QStringLiteral("已发送 AT+LSADC=%1").arg(state));
+}
 
+void MainWindow::on_btnDongleAtDcon_clicked() {
+    if (!at) {
+        showlog(QStringLiteral("AT+DCON 发送失败：Dongle 未就绪"));
+        return;
+    }
+    const QString mac = ui->macInput->text().trimmed();
+    if (mac.isEmpty()) {
+        showlog(QStringLiteral("AT+DCON 失败：请先在顶部填写 MAC"));
+        return;
+    }
+    at->set(DongleCmd::BleDirectConnect, mac);
+    showlog(QStringLiteral("已发送 AT+DCON=%1").arg(mac));
+}
+
+void MainWindow::on_btnDongleAtOta_clicked() {
+    if (!at) {
+        showlog(QStringLiteral("AT+OTA 发送失败：Dongle 未就绪"));
+        return;
+    }
+    const QString mac = ui->macInput->text().trimmed();
+    if (mac.isEmpty()) {
+        showlog(QStringLiteral("AT+OTA 失败：请先在顶部填写 MAC"));
+        return;
+    }
+    at->set(DongleCmd::BleOtaConnect, mac);
+    showlog(QStringLiteral("已发送 AT+OTA=%1").arg(mac));
+}
+
+void MainWindow::on_btnDongleAtBle_clicked() {
+    if (!at) {
+        showlog(QStringLiteral("AT+BLE 发送失败：Dongle 未就绪"));
+        return;
+    }
+    const QString mac = ui->macInput->text().trimmed();
+    if (mac.isEmpty()) {
+        showlog(QStringLiteral("AT+BLE 失败：请先在顶部填写 MAC"));
+        return;
+    }
+    at->set(DongleCmd::BleAppConnect, mac);
+    showlog(QStringLiteral("已发送 AT+BLE=%1").arg(mac));
+}
+
+void MainWindow::on_btnDongleAtMain_clicked() {
+    if (!at) {
+        showlog(QStringLiteral("AT+MAIN 发送失败：Dongle 未就绪"));
+        return;
+    }
+    const QString mac = ui->macInput->text().trimmed();
+    if (mac.isEmpty()) {
+        showlog(QStringLiteral("AT+MAIN 失败：请先在顶部填写 MAC"));
+        return;
+    }
+    at->set(DongleCmd::BleMainConnect, mac);
+    showlog(QStringLiteral("已发送 AT+MAIN=%1").arg(mac));
+}
+
+void MainWindow::on_btnDongleAtDisconnect_clicked() {
+    if (!at) {
+        showlog(QStringLiteral("断开 BLE 失败：Dongle 未就绪"));
+        return;
+    }
+    at->set(DongleCmd::BleScanConnect, QStringLiteral("00:00:00:00:00:00"));
+    showlog(QStringLiteral("已发送 AT+MAC=00:00:00:00:00:00（断开）"));
+}
+
+void MainWindow::on_chkDongleAtOtaData_stateChanged(int arg1) {
+    if (!at) {
+        showlog(QStringLiteral("AT+OTADATA 发送失败：Dongle 未就绪"));
+        return;
+    }
+    const int state = arg1 != Qt::Unchecked ? 1 : 0;
+    at->set(DongleCmd::OtaDataPassthrough, state);
+    showlog(QStringLiteral("已发送 AT+OTADATA=%1").arg(state));
+}
+
+void MainWindow::on_chkDongleAtMainData_stateChanged(int arg1) {
+    if (!at) {
+        showlog(QStringLiteral("AT+MAINDATA 发送失败：Dongle 未就绪"));
+        return;
+    }
+    const int state = arg1 != Qt::Unchecked ? 1 : 0;
+    at->set(DongleCmd::MainDataPassthrough, state);
+    showlog(QStringLiteral("已发送 AT+MAINDATA=%1").arg(state));
+}
+
+void MainWindow::on_chkDongleAtBleLog_stateChanged(int arg1) {
+    if (!at) {
+        showlog(QStringLiteral("AT+BLELOG 发送失败：Dongle 未就绪"));
+        return;
+    }
+    const int state = arg1 != Qt::Unchecked ? 1 : 0;
+    at->set(DongleCmd::BleLog, state);
+    showlog(QStringLiteral("已发送 AT+BLELOG=%1").arg(state));
+}
+
+void MainWindow::on_chkDongleAtBleDeviceLog_stateChanged(int arg1) {
+    if (!at) {
+        showlog(QStringLiteral("AT+BLEDEVICELOG 发送失败：Dongle 未就绪"));
+        return;
+    }
+    const int state = arg1 != Qt::Unchecked ? 1 : 0;
+    at->set(DongleCmd::BleDeviceLog, state);
+    showlog(QStringLiteral("已发送 AT+BLEDEVICELOG=%1").arg(state));
+}
+
+void MainWindow::on_btnDongleAtGmac_clicked() {
+    if (!at) {
+        showlog(QStringLiteral("AT+GMAC 发送失败：Dongle 未就绪"));
+        return;
+    }
+    at->get(DongleCmd::GetGmac);
+    showlog(QStringLiteral("已发送 AT+GMAC"));
+}
+
+void MainWindow::on_btnDongleAtSendCustom_clicked() {
+    on_lineDongleAtCustom_returnPressed();
+}
+
+void MainWindow::on_btnDongleAtSetBleMtu_clicked() {
+    if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
+        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("请先连接 Dongle 串口"));
+        return;
+    }
+    bool ok = false;
+    int mtu = ui->DongleAtBleMtuSize->text().toInt(&ok);
+    if (!ok || mtu <= 0) {
+        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("BLE MTU 须为正整数"));
+        return;
+    }
+    // 与蓝牙 OTA 页同名字段同步，便于开 OTA 时沿用
+    ui->BleMtuSize->setText(QString::number(mtu));
+    at->set(DongleCmd::BleMtu, mtu);
+    showlog(QStringLiteral("已发送 AT+BLEMTU=%1").arg(mtu));
+}
+
+void MainWindow::on_btnDongleAtSetOtaPkt_clicked() {
+    if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
+        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("请先连接 Dongle 串口"));
+        return;
+    }
+    bool ok = false;
+    int pktSize = ui->DongleAtOtaPktSize->text().toInt(&ok);
+    if (!ok || pktSize <= 0) {
+        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("OTA 切包大小须为正整数"));
+        return;
+    }
+    ui->OtaPktSize->setText(QString::number(pktSize));
+    at->set(DongleCmd::OtaPktSize, pktSize);
+    showlog(QStringLiteral("已发送 AT+OTAPKTSIZE=%1").arg(pktSize));
+}
+
+void MainWindow::on_lineDongleAtCustom_returnPressed() {
+    if (!at) {
+        showlog(QStringLiteral("自定义 AT 发送失败：Dongle 未就绪"));
+        return;
+    }
+    QString line = ui->lineDongleAtCustom->text().trimmed();
+    if (line.isEmpty()) {
+        showlog(QStringLiteral("自定义 AT 为空"));
+        return;
+    }
+    if (!line.endsWith(QStringLiteral("\r\n"))) {
+        if (line.endsWith('\n') || line.endsWith('\r'))
+            line.chop(1);
+        line += QStringLiteral("\r\n");
+    }
+    QVariantMap msg;
+    msg.insert(QStringLiteral("line"), line);
+    if (!at->sendCustomMessage(msg)) {
+        showlog(QStringLiteral("自定义 AT 发送失败"));
+        return;
+    }
+    showlog(QStringLiteral("已发送自定义 AT：%1").arg(line.trimmed()));
+}
 

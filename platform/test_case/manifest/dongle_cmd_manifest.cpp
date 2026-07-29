@@ -40,7 +40,9 @@ const Row kRows[] = {
      u8"可选：channel=1|2|3、sampleDurationMs/IntervalMs；峰识别可选 peakBaselineKpa/peakDipStartKpa\r\n"
      u8"Gate：peakKpa=各周期峰值均须在范围内；peakDiffKpa=最大峰值-最小峰值（不是窗口绝对最高-最低）",
      kGet},
-    {DongleCmd::AdcSwitch, "AdcSwitch", u8"ADC 上报开关", DeviceCmdParamKind::Int, u8"0=关 1=开（AT+ADC）", kSet},
+    {DongleCmd::AdcSwitch, "AdcSwitch", u8"高量程采样开关", DeviceCmdParamKind::Int, u8"0=关 1=开（AT+HSADC）", kSet},
+    {DongleCmd::LowRangeAdcSwitch, "LowRangeAdcSwitch", u8"低量程采样开关", DeviceCmdParamKind::Int,
+     u8"0=关 1=开（AT+LSADC）", kSet},
     {DongleCmd::Bomb, "Bomb", u8"广播注入", DeviceCmdParamKind::JsonMap, kHintBomb, kSet},
     {DongleCmd::GetGmac, "GetGmac", u8"GMAC", DeviceCmdParamKind::None, u8"无需参数", kGet},
 };
@@ -60,6 +62,7 @@ const QHash<QString, DongleCmd> kLegacyNameMap = {
     {QStringLiteral("DongleBleDeviceLog"), DongleCmd::BleDeviceLog},
     {QStringLiteral("DongleGetSuction"), DongleCmd::GetSuction},
     {QStringLiteral("DongleAdcSwitch"), DongleCmd::AdcSwitch},
+    {QStringLiteral("DongleLowRangeAdcSwitch"), DongleCmd::LowRangeAdcSwitch},
     {QStringLiteral("DongleBomb"), DongleCmd::Bomb},
     {QStringLiteral("DongleGetGmac"), DongleCmd::GetGmac},
 };
