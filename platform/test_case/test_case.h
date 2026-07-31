@@ -60,6 +60,8 @@ class TestCaseStore {
                                    QString* errorOut = nullptr);
     /** 将旧平铺 ini 迁入 steps/，并为各工站生成 profiles 目录（幂等） */
     static void ensureFilesystemLayout();
+    /** 云端下载/外部覆盖 profiles 后：按目录重扫并登记 FlowStations（不依赖进程内一次性迁移标志） */
+    static void reregisterFlowStationsFromProfiles();
     /** 运行时实际参与判定的卡控列表（gates 优先，否则单项 gate） */
     static QVector<TestCaseGate> effectiveGates(const TestCaseDefinition& def);
     /** 运行时参与判定的卡控项（case ini 中 Gate/N/Enabled） */

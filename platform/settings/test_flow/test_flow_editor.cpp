@@ -31,9 +31,11 @@
 #include <QSet>
 #include <QMimeData>
 #include <QMouseEvent>
+#include <QPainter>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QSizePolicy>
+#include <QStyleOptionButton>
 #include <QToolButton>
 #include <QSet>
 #include <QSignalBlocker>
@@ -46,8 +48,91 @@
 
 namespace {
 
-const char* kBlockStyleNormal = "border: 2px solid rgb(255, 165, 0); padding: 4px;";
-const char* kBlockStyleSelected = "border: 2px solid rgb(30, 144, 255); padding: 4px;";
+// 流程块：实体色块；勾选绿 / 未勾选灰；文字居中，勾选框靠左
+const char* kBlockStyleBase =
+    "QCheckBox {"
+    "  min-height: 36px;"
+    "  padding: 8px 40px;"
+    "  border-radius: 8px;"
+    "  font-size: 13px;"
+    "  spacing: 0px;"
+    "  text-align: center;"
+    "}"
+    "QCheckBox::indicator {"
+    "  width: 16px;"
+    "  height: 16px;"
+    "  border-radius: 4px;"
+    "  subcontrol-position: left center;"
+    "  subcontrol-origin: margin;"
+    "  left: 12px;"
+    "}"
+    "QCheckBox::indicator:checked {"
+    "  border: 1px solid #15803d;"
+    "  background: #22c55e;"
+    "}"
+    "QCheckBox::indicator:unchecked {"
+    "  border: 1px solid #6b7280;"
+    "  background: #9ca3af;"
+    "}";
+
+const char* kBlockStyleNormal =
+    "QCheckBox {"
+    "  background: #dcfce7;"
+    "  border: 1px solid #86efac;"
+    "  color: #14532d;"
+    "}"
+    "QCheckBox:hover {"
+    "  background: #bbf7d0;"
+    "  border: 1px solid #4ade80;"
+    "}";
+
+const char* kBlockStyleSelected =
+    "QCheckBox {"
+    "  background: #bbf7d0;"
+    "  border: 2px solid #16a34a;"
+    "  color: #14532d;"
+    "  font-weight: 600;"
+    "}"
+    "QCheckBox:hover {"
+    "  background: #86efac;"
+    "  border: 2px solid #15803d;"
+    "}";
+
+const char* kBlockStyleUnchecked =
+    "QCheckBox {"
+    "  background: #e5e7eb;"
+    "  border: 1px solid #9ca3af;"
+    "  color: #4b5563;"
+    "}"
+    "QCheckBox:hover {"
+    "  background: #d1d5db;"
+    "  border: 1px solid #6b7280;"
+    "}";
+
+const char* kBlockStyleUncheckedSelected =
+    "QCheckBox {"
+    "  background: #d1d5db;"
+    "  border: 2px solid #6b7280;"
+    "  color: #374151;"
+    "  font-weight: 600;"
+    "}"
+    "QCheckBox:hover {"
+    "  background: #c4c9d1;"
+    "  border: 2px solid #4b5563;"
+    "}";
+
+const char* kBlockStyleBlank =
+    "QCheckBox {"
+    "  background: #f3f4f6;"
+    "  border: 1px dashed #9ca3af;"
+    "  color: #6b7280;"
+    "  font-style: italic;"
+    "}"
+    "QCheckBox:hover {"
+    "  background: #e5e7eb;"
+    "  border: 1px dashed #6b7280;"
+    "}";
+
 // 专用 MIME，避免与 qsetting 自由工站 setText(索引) 拖放冲突
 const char kTestCaseFlowMime[] = "application/x-testcase-flow-block";
 
@@ -92,8 +177,10 @@ bool flowEntriesEqual(const QVector<TestFlowItemEntry>& a, const QVector<TestFlo
 TestCaseBlock::TestCaseBlock(const QString& caseName, QWidget* parent)
     : QCheckBox(parent), caseName_(caseName) {
     setAcceptDrops(true);
+    setCursor(Qt::PointingHandCursor);
     setCheckState(Qt::Checked);
     setCaseName(caseName);
+    connect(this, &QCheckBox::stateChanged, this, [this](int) { updateBlockStyle(); });
     updateBlockStyle();
 }
 
@@ -107,6 +194,7 @@ void TestCaseBlock::setCaseName(const QString& name) {
         setText(QStringLiteral("(空白块)"));
     else
         setText(caseName_);
+    updateBlockStyle();
 }
 
 void TestCaseBlock::setSelected(bool selected) {
@@ -121,7 +209,37 @@ void TestCaseBlock::setRunMenuVisible(bool visible) {
 }
 
 void TestCaseBlock::updateBlockStyle() {
-    setStyleSheet(QString::fromUtf8(selected_ ? kBlockStyleSelected : kBlockStyleNormal));
+    QByteArray css = QByteArray(kBlockStyleBase);
+    if (isBlank())
+        css += kBlockStyleBlank;
+    else if (!isChecked())
+        css += selected_ ? kBlockStyleUncheckedSelected : kBlockStyleUnchecked;
+    else
+        css += selected_ ? kBlockStyleSelected : kBlockStyleNormal;
+    setStyleSheet(QString::fromUtf8(css));
+}
+
+void TestCaseBlock::paintEvent(QPaintEvent* event) {
+    Q_UNUSED(event);
+    // 样式表负责底色/勾选框；文字单独居中绘制（QCheckBox 默认无法 text-align:center）
+    QStyleOptionButton opt;
+    initStyleOption(&opt);
+    const QString label = opt.text;
+    opt.text.clear();
+
+    QPainter painter(this);
+    style()->drawControl(QStyle::CE_CheckBox, &opt, &painter, this);
+
+    QColor textColor = isChecked() ? QColor(0x14, 0x53, 0x2d) : QColor(0x4b, 0x55, 0x63);
+    if (isBlank())
+        textColor = QColor(0x6b, 0x72, 0x80);
+    QFont f = font();
+    f.setPointSize(13);
+    f.setBold(selected_);
+    f.setItalic(isBlank());
+    painter.setFont(f);
+    painter.setPen(textColor);
+    painter.drawText(rect(), Qt::AlignCenter, label);
 }
 
 void TestCaseBlock::mousePressEvent(QMouseEvent* event) {
@@ -230,9 +348,23 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
     if (flowContainer_) {
         flowContainer_->setAcceptDrops(true);
         flowContainer_->installEventFilter(this);
+        flowContainer_->setStyleSheet(QStringLiteral("background: #f8fafc;"));
     }
-    if (scroll_ && scroll_->viewport())
-        scroll_->viewport()->installEventFilter(this);
+    if (scroll_) {
+        scroll_->setStyleSheet(QStringLiteral(
+            "QScrollArea {"
+            "  border: 1px solid #e2e8f0;"
+            "  border-radius: 8px;"
+            "  background: #f8fafc;"
+            "}"
+            "QScrollArea > QWidget > QWidget { background: #f8fafc; }"));
+        if (scroll_->viewport())
+            scroll_->viewport()->installEventFilter(this);
+    }
+    if (flowLayout_) {
+        flowLayout_->setSpacing(6);
+        flowLayout_->setContentsMargins(10, 10, 10, 10);
+    }
 
     setupFailFlowRegionUi(btnFailClear);
 
@@ -306,9 +438,20 @@ void TestFlowEditor::setupFailFlowRegionUi(QPushButton* btnFailClear) {
     if (failContainer_) {
         failContainer_->setAcceptDrops(true);
         failContainer_->installEventFilter(this);
+        failContainer_->setStyleSheet(QStringLiteral("background: #fff7ed;"));
     }
-    if (failScroll_ && failScroll_->viewport())
-        failScroll_->viewport()->installEventFilter(this);
+    if (failScroll_) {
+        failScroll_->setStyleSheet(QStringLiteral(
+            "QScrollArea {"
+            "  border: 1px solid #fed7aa;"
+            "  border-radius: 8px;"
+            "  background: #fff7ed;"
+            "}"));
+        if (failScroll_->viewport())
+            failScroll_->viewport()->installEventFilter(this);
+    }
+    failLayout_->setSpacing(6);
+    failLayout_->setContentsMargins(10, 10, 10, 10);
 
     if (auto* pageLayout = qobject_cast<QVBoxLayout*>(scroll_->parentWidget() ? scroll_->parentWidget()->layout() : nullptr)) {
         const int mainIdx = pageLayout->indexOf(scroll_);
@@ -1300,13 +1443,16 @@ void TestFlowEditor::startDownloadStationCase() {
                             }
                             QMessageBox::information(dialogParent_, QStringLiteral("下载工站用例"),
                                                      result.message);
-                            const QString stayKey = currentStationKey();
-                            refreshStationCombo(stayKey.isEmpty() ? result.stationKey : stayKey);
-                            if (!result.stationKey.isEmpty() &&
-                                result.stationKey.compare(currentStationKey(), Qt::CaseInsensitive) ==
-                                    0) {
-                                reloadCurrentStation();
-                            }
+                            // 下载可能新增工站目录或覆盖 flow/steps；须重扫目录并刷新编排区与自由工站 Tab
+                            TestCaseStore::reregisterFlowStationsFromProfiles();
+                            const QString downloadedKey =
+                                TestCaseStore::resolveFlowStationKey(result.stationKey.trimmed());
+                            const QString selectKey =
+                                downloadedKey.isEmpty() ? currentStationKey() : downloadedKey;
+                            refreshStationCombo(selectKey);
+                            stationComboPrevIndex_ = stationCombo_ ? stationCombo_->currentIndex() : 0;
+                            persistSelectedStation(currentStationKey());
+                            reloadCurrentStation();
                         });
                 syncWatcher->setFuture(QtConcurrent::run([stationKey, displayName]() {
                     return TestCaseSyncService::syncStationFromCloud(stationKey, displayName);

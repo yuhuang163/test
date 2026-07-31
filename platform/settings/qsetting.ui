@@ -827,9 +827,9 @@
            <property name="toolTip">
             <string>勾选「测试失败时结束测试流程」后，主流程任一步失败将停止后续主步骤，并按本区顺序执行（如抬气缸、断电等收尾）。</string>
            </property>
-           <property name="styleSheet">
-            <string notr="true">font-weight: bold; color: rgb(180, 60, 0);</string>
-           </property>
+          <property name="styleSheet">
+            <string notr="true">font-weight: 600; color: #c2410c;</string>
+          </property>
            <property name="text">
             <string>测试失败执行区域（运行失败时调用）</string>
            </property>
