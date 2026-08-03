@@ -136,6 +136,62 @@ def client_profile_bundle(station_key: str, user: Annotated[User, Depends(get_cu
     )
 
 
+@router.post("/steps/upload")
+async def client_upload_steps(
+    user: Annotated[User, Depends(get_current_user)],
+    file: Annotated[UploadFile, File()],
+    deviceId: Annotated[str | None, Form()] = None,
+    hostName: Annotated[str | None, Form()] = None,
+    libraryVersion: Annotated[str | None, Form()] = None,
+    source: Annotated[str | None, Form()] = "upload",
+    remark: Annotated[str | None, Form()] = None,
+):
+    """上位机上传共享步骤库（test_case/steps）到 staging 草稿（不自动发布）。"""
+    _require_engineer_or_admin(user)
+    content = await file.read()
+    device_id = (deviceId or "").strip()
+    if not device_id:
+        fail(400, "deviceId 不能为空", 400)
+    try:
+        meta = test_case_service.save_steps_staging(
+            device_id=device_id,
+            zip_bytes=content,
+            host_name=hostName,
+            library_version=libraryVersion,
+            source=(source or "upload"),
+            remark=remark,
+        )
+    except ValueError as exc:
+        fail(400, str(exc), 400)
+    return ok(meta, message="用例库草稿已上传，待网页合入发布")
+
+
+@router.get("/steps/manifest")
+def client_steps_manifest(user: Annotated[User, Depends(get_current_user)]):
+    """上位机下载：查询已发布正式包中的共享步骤库版本与文件清单。"""
+    del user
+    return ok(test_case_service.read_steps_manifest())
+
+
+@router.get("/steps/bundle")
+def client_steps_bundle(user: Annotated[User, Depends(get_current_user)]):
+    """上位机下载：仅下载已发布正式包中的共享步骤库 zip。"""
+    del user
+    try:
+        zip_bytes = test_case_service.build_steps_bundle_zip()
+        meta = test_case_service.read_steps_manifest()
+    except FileNotFoundError as exc:
+        fail(404, str(exc), 404)
+    except ValueError as exc:
+        fail(400, str(exc), 400)
+    version = meta.get("libraryVersion") or "1"
+    return Response(
+        content=zip_bytes,
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="steps_library_v{version}.zip"'},
+    )
+
+
 @device_router.post("/heartbeat")
 def device_heartbeat(
     body: dict[str, Any],

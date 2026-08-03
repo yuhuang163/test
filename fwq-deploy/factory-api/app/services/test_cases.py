@@ -16,6 +16,11 @@ MANIFEST_NAME = "manifest.json"
 FLOW_INI_NAME = "总的测试流程.ini"
 MAX_BUNDLE_MB = 50
 PROFILES_DIR_NAME = "profiles"
+STEPS_DIR_NAME = "steps"
+# 共享步骤库在 staging 中的固定键（与工站 Profile 草稿并列）
+STEPS_STATION_KEY = "__STEPS__"
+STEPS_DISPLAY_NAME = "用例库"
+LIBRARY_META_NAME = "library.ini"
 
 
 def _root() -> Path:
@@ -806,9 +811,18 @@ def merge_profile_staging(
     merged_by: str | None = None,
 ) -> dict:
     """
-    将草稿合入 current/profiles/{displayName}/。
+    将草稿合入 current/profiles/{displayName}/（或步骤库 current/steps）。
     合入前快照工作区，写入合入记录，支持后续撤销。
     """
+    if _is_steps_library_key(station_key):
+        return merge_steps_staging(
+            device_id,
+            station_key,
+            file_overrides=file_overrides,
+            delete_paths=delete_paths,
+            merged_by=merged_by,
+        )
+
     meta = get_profile_staging(device_id, station_key)
     display_name = str(meta.get("displayName") or station_key).strip() or station_key
     display_name = _safe_segment(display_name, field="displayName", allow_cjk=True)
@@ -995,7 +1009,7 @@ def _prune_merge_history() -> None:
 
 def undo_merge(merge_id: str, undone_by: str | None = None) -> dict:
     """
-    撤销合入：将工作区该工站恢复为合入前快照。
+    撤销合入：将工作区该工站/用例库恢复为合入前快照。
     仅允许撤销该工站最新一条未撤销记录，避免旧记录覆盖新编辑。
     """
     meta = _read_merge_meta(merge_id)
@@ -1005,7 +1019,11 @@ def undo_merge(merge_id: str, undone_by: str | None = None) -> dict:
     display_name = str(meta.get("displayName") or "").strip()
     if not display_name:
         raise ValueError("合入记录缺少工站名")
-    display_name = _safe_segment(display_name, field="displayName", allow_cjk=True)
+    is_steps = str(meta.get("kind") or "") == "steps" or _is_steps_library_key(
+        str(meta.get("stationKey") or "")
+    )
+    if not is_steps:
+        display_name = _safe_segment(display_name, field="displayName", allow_cjk=True)
 
     # 必须是该工站最新未撤销记录
     latest = None
@@ -1018,15 +1036,22 @@ def undo_merge(merge_id: str, undone_by: str | None = None) -> dict:
 
     history_dir = _merge_history_root() / meta["mergeId"]
     before_dir = history_dir / "before"
-    dest = _root() / PROFILES_DIR_NAME / display_name
-
-    if dest.exists():
-        shutil.rmtree(dest)
-
-    had_before = bool(meta.get("hadBefore")) and before_dir.is_dir() and any(before_dir.iterdir())
-    if had_before:
-        shutil.copytree(before_dir, dest)
-    # 若合入前不存在该工站，撤销后删除目录即可（上面已 rmtree）
+    if is_steps:
+        dest = _steps_dir()
+        for path in list(dest.glob("*.ini")):
+            path.unlink()
+        had_before = bool(meta.get("hadBefore")) and before_dir.is_dir() and any(before_dir.iterdir())
+        if had_before:
+            for path in before_dir.rglob("*.ini"):
+                shutil.copy2(path, dest / path.name)
+    else:
+        dest = _root() / PROFILES_DIR_NAME / display_name
+        if dest.exists():
+            shutil.rmtree(dest)
+        had_before = bool(meta.get("hadBefore")) and before_dir.is_dir() and any(before_dir.iterdir())
+        if had_before:
+            shutil.copytree(before_dir, dest)
+        # 若合入前不存在该工站，撤销后删除目录即可（上面已 rmtree）
 
     _refresh_manifest_files()
 
@@ -1039,6 +1064,7 @@ def undo_merge(merge_id: str, undone_by: str | None = None) -> dict:
         "mergeId": meta["mergeId"],
         "displayName": display_name,
         "stationKey": meta.get("stationKey"),
+        "kind": "steps" if is_steps else "profile",
         "restored": had_before,
         "beforeProfileVersion": meta.get("beforeProfileVersion"),
         "undoneAt": meta["undoneAt"],
@@ -1061,11 +1087,349 @@ def _read_text_or_empty(path: Path) -> str:
     return path.read_text(encoding="utf-8", errors="replace")
 
 
+def _is_steps_library_key(station_key: str) -> bool:
+    return (station_key or "").strip() == STEPS_STATION_KEY
+
+
+def _steps_dir() -> Path:
+    path = _root() / STEPS_DIR_NAME
+    path.mkdir(parents=True, exist_ok=True)
+    return path
+
+
+def _read_library_version(steps_root: Path) -> int:
+    meta = steps_root / LIBRARY_META_NAME
+    if not meta.is_file():
+        return 0
+    return _parse_profile_version(
+        _read_ini_value(meta.read_text(encoding="utf-8", errors="replace"), "Library", "LibraryVersion")
+    )
+
+
+def read_steps_manifest() -> dict:
+    """已发布正式包中共享步骤库（test_case/steps）清单。"""
+    steps_root = _steps_dir()
+    files = []
+    for path in sorted(steps_root.rglob("*")):
+        if not path.is_file() or not path.name.lower().endswith(".ini"):
+            continue
+        rel = path.relative_to(steps_root).as_posix()
+        files.append({"path": rel, "sha256": _file_sha256(path)})
+    bundle = read_manifest()
+    library_version = str(_read_library_version(steps_root) or 1)
+    return {
+        "stationKey": STEPS_STATION_KEY,
+        "displayName": STEPS_DISPLAY_NAME,
+        "kind": "steps",
+        "libraryVersion": library_version,
+        "bundleVersion": bundle.get("bundleVersion"),
+        "fileCount": len(files),
+        "files": files,
+    }
+
+
+def build_steps_bundle_zip() -> bytes:
+    """打包已发布正式包中的共享步骤库（zip 根即 steps 目录内容）。"""
+    steps_root = _steps_dir()
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for path in sorted(steps_root.rglob("*")):
+            if not path.is_file():
+                continue
+            if not path.name.lower().endswith(".ini"):
+                continue
+            rel = path.relative_to(steps_root).as_posix()
+            zf.write(path, rel)
+    data = buf.getvalue()
+    if not data or len(data) < 22:
+        raise FileNotFoundError("云端尚无用例库（steps），请先上传并合入发布")
+    return data
+
+
+def _extract_steps_zip_to(staging_extract: Path, zip_bytes: bytes) -> int:
+    """解压步骤库 zip 到临时目录，返回 ini 文件数。"""
+    if staging_extract.exists():
+        shutil.rmtree(staging_extract)
+    staging_extract.mkdir(parents=True)
+
+    imported = 0
+    with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zf:
+        for info in zf.infolist():
+            name = info.filename.replace("\\", "/")
+            if info.is_dir() or name.endswith("/"):
+                continue
+            if name.startswith("__MACOSX/") or "/." in name:
+                continue
+            rel = name.lstrip("/")
+            parts = [p for p in rel.split("/") if p]
+            # 允许 zip 根即 steps 内容，或带一层 steps/
+            if len(parts) >= 2 and parts[0].lower() == STEPS_DIR_NAME:
+                rel = "/".join(parts[1:])
+            if not rel or not _is_safe_rel_path(rel):
+                raise ValueError(f"非法路径: {name}")
+            if not rel.lower().endswith(".ini"):
+                raise ValueError(f"仅允许 .ini 文件: {rel}")
+            # 步骤库仅允许扁平文件（禁止子目录），library.ini 除外
+            if "/" in rel and rel.lower() != LIBRARY_META_NAME:
+                raise ValueError(f"用例库仅允许根目录 ini：{rel}")
+            target = staging_extract / rel
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(zf.read(info))
+            imported += 1
+
+    if imported == 0:
+        shutil.rmtree(staging_extract, ignore_errors=True)
+        raise ValueError("zip 内无 ini 文件")
+    return imported
+
+
+def save_steps_staging(
+    *,
+    device_id: str,
+    zip_bytes: bytes,
+    host_name: str | None = None,
+    library_version: str | None = None,
+    source: str = "upload",
+    remark: str | None = None,
+) -> dict:
+    """上位机上报共享步骤库草稿（不发布、不改 current/steps）。"""
+    max_bytes = MAX_BUNDLE_MB * 1024 * 1024
+    if len(zip_bytes) > max_bytes:
+        raise ValueError(f"zip 超过 {MAX_BUNDLE_MB}MB 限制")
+    if zip_bytes[:2] != b"PK":
+        raise ValueError("请上传 zip 文件")
+
+    did = _safe_segment(device_id, field="deviceId")
+    skey = STEPS_STATION_KEY
+    target_dir = _staging_dir(did, skey)
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    extract_tmp = target_dir / "_extract"
+    imported = _extract_steps_zip_to(extract_tmp, zip_bytes)
+
+    src_tag = (source or "upload").strip() or "upload"
+    if src_tag not in {"upload", "pull"}:
+        src_tag = "upload"
+
+    resolved_remark = (remark or "").strip()
+    if len(resolved_remark) > 500:
+        raise ValueError("上传说明最多 500 字")
+    if src_tag == "upload" and not resolved_remark:
+        raise ValueError("请填写上传说明")
+    if src_tag == "pull" and not resolved_remark:
+        resolved_remark = "网页拉取回传"
+
+    zip_path = target_dir / "profile.zip"
+    zip_path.write_bytes(zip_bytes)
+
+    files_dir = target_dir / "files"
+    if files_dir.exists():
+        shutil.rmtree(files_dir)
+    shutil.move(str(extract_tmp), str(files_dir))
+
+    file_list = []
+    for path in sorted(files_dir.rglob("*")):
+        if path.is_file():
+            file_list.append(path.relative_to(files_dir).as_posix())
+
+    resolved_version = str(library_version or _read_library_version(files_dir) or "1").strip() or "1"
+    meta = {
+        "deviceId": did,
+        "stationKey": skey,
+        "displayName": STEPS_DISPLAY_NAME,
+        "kind": "steps",
+        "hostName": (host_name or did).strip() or did,
+        "profileVersion": resolved_version,
+        "libraryVersion": resolved_version,
+        "source": src_tag,
+        "remark": resolved_remark,
+        "uploadedAt": _utc_now_iso(),
+        "fileCount": imported,
+        "files": file_list,
+    }
+    (target_dir / "meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+    return meta
+
+
+def merge_steps_staging(
+    device_id: str,
+    station_key: str = STEPS_STATION_KEY,
+    file_overrides: dict[str, str] | None = None,
+    delete_paths: list[str] | None = None,
+    merged_by: str | None = None,
+) -> dict:
+    """将步骤库草稿合入 current/steps/。"""
+    if not _is_steps_library_key(station_key):
+        raise ValueError("非法步骤库草稿键")
+    meta = get_profile_staging(device_id, station_key)
+    files_dir = _staging_dir(device_id, station_key) / "files"
+    if not files_dir.is_dir():
+        raise FileNotFoundError("草稿文件缺失")
+
+    dest = _steps_dir()
+    old_version = _read_library_version(dest)
+    staging_version = _parse_profile_version(str(meta.get("libraryVersion") or meta.get("profileVersion") or ""))
+    assigned_version = max(old_version, staging_version) + 1
+
+    merge_id = _new_merge_id(STEPS_DISPLAY_NAME)
+    history_dir = _merge_history_root() / merge_id
+    before_dir = history_dir / "before"
+    after_dir = history_dir / "after"
+    history_dir.mkdir(parents=True, exist_ok=False)
+    had_before = any(dest.glob("*.ini"))
+    if had_before:
+        shutil.copytree(dest, before_dir)
+    else:
+        before_dir.mkdir(parents=True, exist_ok=True)
+
+    # 清空后整库替换（仅 .ini）
+    for path in list(dest.glob("*.ini")):
+        path.unlink()
+    for path in sorted(files_dir.rglob("*.ini")):
+        rel = path.relative_to(files_dir).as_posix()
+        if "/" in rel and rel.lower() != LIBRARY_META_NAME:
+            continue
+        target = dest / path.name
+        shutil.copy2(path, target)
+
+    overrides = file_overrides or {}
+    for rel, text in overrides.items():
+        rel_norm = str(rel).replace("\\", "/").lstrip("/")
+        if not _is_safe_rel_path(rel_norm) or not rel_norm.lower().endswith(".ini"):
+            raise ValueError(f"非法覆盖路径: {rel}")
+        if "/" in rel_norm and rel_norm.lower() != LIBRARY_META_NAME:
+            raise ValueError(f"用例库仅允许根目录 ini：{rel}")
+        target = dest / Path(rel_norm).name
+        target.write_text(text if text is not None else "", encoding="utf-8")
+
+    for rel in delete_paths or []:
+        rel_norm = str(rel).replace("\\", "/").lstrip("/")
+        if not _is_safe_rel_path(rel_norm):
+            continue
+        target = dest / Path(rel_norm).name
+        if target.is_file():
+            target.unlink()
+
+    _write_ini_value(dest / LIBRARY_META_NAME, "Library", "LibraryVersion", str(assigned_version))
+    _refresh_manifest_files()
+
+    if after_dir.exists():
+        shutil.rmtree(after_dir)
+    shutil.copytree(dest, after_dir)
+
+    record = {
+        "mergeId": merge_id,
+        "deviceId": meta.get("deviceId"),
+        "stationKey": STEPS_STATION_KEY,
+        "displayName": STEPS_DISPLAY_NAME,
+        "kind": "steps",
+        "hostName": meta.get("hostName") or "",
+        "source": meta.get("source") or "upload",
+        "remark": str(meta.get("remark") or "").strip(),
+        "mergedAt": _utc_now_iso(),
+        "mergedBy": (merged_by or "").strip(),
+        "beforeProfileVersion": str(old_version) if had_before and old_version else ("—" if not had_before else "0"),
+        "afterProfileVersion": str(assigned_version),
+        "hadBefore": had_before,
+        "fileCountBefore": len(list(before_dir.glob("*.ini"))) if had_before else 0,
+        "fileCountAfter": len(list(dest.glob("*.ini"))),
+        "overrideCount": len(overrides),
+        "undone": False,
+        "undoneAt": None,
+        "undoneBy": "",
+    }
+    (history_dir / "meta.json").write_text(
+        json.dumps(record, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+    _prune_merge_history()
+
+    try:
+        delete_profile_staging(device_id, station_key)
+    except FileNotFoundError:
+        pass
+
+    return {
+        "deviceId": meta.get("deviceId"),
+        "stationKey": STEPS_STATION_KEY,
+        "displayName": STEPS_DISPLAY_NAME,
+        "kind": "steps",
+        "profileVersion": str(assigned_version),
+        "libraryVersion": str(assigned_version),
+        "mergedPath": STEPS_DIR_NAME,
+        "fileCount": len(list(dest.glob("*.ini"))),
+        "bundleVersion": read_manifest().get("bundleVersion"),
+        "overrideCount": len(overrides),
+        "mergeId": merge_id,
+    }
+
+
+def diff_steps_staging_against_current(device_id: str, station_key: str = STEPS_STATION_KEY) -> dict:
+    """合入前预览：步骤库草稿 vs current/steps。"""
+    from app.services.versioning import _compute_line_diff
+
+    if not _is_steps_library_key(station_key):
+        raise ValueError("非法步骤库草稿键")
+    meta = get_profile_staging(device_id, station_key)
+    staging_files = _staging_dir(device_id, station_key) / "files"
+    if not staging_files.is_dir():
+        raise FileNotFoundError("草稿文件缺失")
+
+    current_dir = _steps_dir()
+    old_paths = _list_ini_rel_paths(current_dir)
+    new_paths = _list_ini_rel_paths(staging_files)
+    all_paths = sorted(old_paths | new_paths)
+
+    file_diffs: list[dict] = []
+    changed_diffs: dict[str, list] = {}
+    contents: dict[str, dict[str, str]] = {}
+    for rel in all_paths:
+        old_text = _read_text_or_empty(current_dir / rel)
+        new_text = _read_text_or_empty(staging_files / rel)
+        contents[rel] = {"current": old_text, "staging": new_text}
+
+        in_old = rel in old_paths
+        in_new = rel in new_paths
+        if in_old and not in_new:
+            file_diffs.append({"path": rel, "status": "removed"})
+            continue
+        if in_new and not in_old:
+            file_diffs.append({"path": rel, "status": "added"})
+            continue
+        if old_text == new_text:
+            file_diffs.append({"path": rel, "status": "unchanged"})
+        else:
+            file_diffs.append({"path": rel, "status": "changed"})
+            changed_diffs[rel] = _compute_line_diff(old_text, new_text)
+
+    current_version = str(_read_library_version(current_dir) or "—")
+    return {
+        "meta": meta,
+        "displayName": STEPS_DISPLAY_NAME,
+        "kind": "steps",
+        "remark": str(meta.get("remark") or "").strip(),
+        "currentExists": bool(old_paths),
+        "currentPath": STEPS_DIR_NAME,
+        "currentProfileVersion": current_version,
+        "stagingProfileVersion": meta.get("libraryVersion") or meta.get("profileVersion"),
+        "addedCount": sum(1 for f in file_diffs if f["status"] == "added"),
+        "removedCount": sum(1 for f in file_diffs if f["status"] == "removed"),
+        "changedCount": sum(1 for f in file_diffs if f["status"] == "changed"),
+        "unchangedCount": sum(1 for f in file_diffs if f["status"] == "unchanged"),
+        "files": file_diffs,
+        "fileDiffs": changed_diffs,
+        "contents": contents,
+    }
+
+
 def diff_staging_against_current(device_id: str, station_key: str) -> dict:
     """
-    合入前预览：草稿 vs 工作区当前 profiles/{displayName}/。
+    合入前预览：草稿 vs 工作区当前 profiles/{displayName}/（或步骤库）。
     附带各文件全文，供左右对比与编辑最终内容。
     """
+    if _is_steps_library_key(station_key):
+        return diff_steps_staging_against_current(device_id, station_key)
+
     from app.services.versioning import _compute_line_diff
 
     meta = get_profile_staging(device_id, station_key)

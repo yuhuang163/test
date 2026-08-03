@@ -5,6 +5,7 @@
         <h2 class="title">测试用例</h2>
         <el-tag v-if="bundleVersion" size="small" type="info" effect="plain">
           工作区 {{ bundleVersion }} · {{ stationCount }} 工站
+          <template v-if="libraryCaseCount"> · 用例库 {{ libraryCaseCount }}</template>
         </el-tag>
       </div>
       <div class="topbar-right">
@@ -61,7 +62,7 @@
               <el-empty
                 v-if="!treeLoading && !filteredTreeData.length"
                 :image-size="64"
-                :description="stationSearch.trim() ? '无匹配结果' : '暂无工站'"
+                :description="stationSearch.trim() ? '无匹配结果' : '暂无工站/用例库'"
               />
             </el-scrollbar>
           </aside>
@@ -70,7 +71,7 @@
             <div class="editor-bar">
               <div class="editor-meta">
                 <div class="editor-path" :title="selectedPath">
-                  {{ selectedPath || '从左侧选择工站下的用例进行编辑' }}
+                  {{ selectedPath || '从左侧选择用例库或工站下的用例进行编辑' }}
                 </div>
                 <div v-if="currentStationName" class="editor-updated">
                   文件夹「{{ currentStationName }}」最近更新：{{
@@ -430,7 +431,11 @@ const pullStationKey = ref('')
 const currentStationName = ref('')
 let onlineTimer = null
 
-const stationCount = computed(() => treeData.value.length)
+const stationCount = computed(() => treeData.value.filter((n) => !n.isLibrary).length)
+const libraryCaseCount = computed(() => {
+  const lib = treeData.value.find((n) => n.isLibrary)
+  return (lib?.children || []).filter((c) => c.kind === 'case').length
+})
 
 const currentStationUpdatedAt = computed(() => {
   if (!currentStationName.value) return ''
@@ -656,10 +661,38 @@ function newerUpdatedAt(a, b) {
 
 function toStationTree(files) {
   const stations = new Map()
+  const library = {
+    id: 'library:steps',
+    label: '用例库',
+    stationName: '用例库',
+    isStation: true,
+    isLibrary: true,
+    updatedAt: '',
+    children: [],
+  }
   for (const f of files || []) {
     const full = String(f.path || f.name || '').replace(/\\/g, '/').replace(/^\/+/, '')
     if (!full) continue
     const parts = full.split('/')
+    // 共享步骤库：steps/*.ini（不含工站 profiles/.../steps）
+    if (parts[0] === 'steps' && parts.length === 2 && /\.ini$/i.test(parts[1])) {
+      const fileName = parts[1]
+      const isMeta = /^library\.ini$/i.test(fileName)
+      if (f.updatedAt) {
+        library.updatedAt = newerUpdatedAt(library.updatedAt, f.updatedAt)
+      }
+      library.children.push({
+        id: full,
+        label: isMeta ? '库版本' : fileName.replace(/\.ini$/i, ''),
+        path: full,
+        stationName: '用例库',
+        isLibrary: true,
+        kind: isMeta ? 'meta' : 'case',
+        updatedAt: f.updatedAt || '',
+        isLeaf: true,
+      })
+      continue
+    }
     if (parts.length < 2 || parts[0] !== 'profiles') continue
     const stationName = parts[1]
     if (!stationName) continue
@@ -669,6 +702,7 @@ function toStationTree(files) {
         label: stationName,
         stationName,
         isStation: true,
+        isLibrary: false,
         updatedAt: '',
         children: [],
       })
@@ -715,7 +749,17 @@ function toStationTree(files) {
     const caseCount = node.children.filter((c) => c.kind === 'case').length
     node.label = `${node.stationName}（${caseCount}）`
   }
-  return nodes
+  library.children.sort((a, b) => {
+    const order = { meta: 0, case: 1, file: 2 }
+    const oa = order[a.kind] ?? 9
+    const ob = order[b.kind] ?? 9
+    if (oa !== ob) return oa - ob
+    return a.label.localeCompare(b.label, 'zh-CN')
+  })
+  const libCaseCount = library.children.filter((c) => c.kind === 'case').length
+  library.label = `用例库（${libCaseCount}）`
+  // 用例库始终置顶，便于管理共享 steps
+  return [library, ...nodes]
 }
 
 function deviceLabel(d) {
@@ -878,12 +922,17 @@ async function onDelete() {
 
 async function onNewFile() {
   if (!currentStationName.value) {
-    ElMessage.warning('请先在左侧点选一个工站')
+    ElMessage.warning('请先在左侧点选用例库或某个工站')
     return
   }
+  const inLibrary =
+    currentStationName.value === '用例库' ||
+    !!treeData.value.find((n) => n.isLibrary && n.stationName === currentStationName.value)
   try {
     const { value } = await ElMessageBox.prompt(
-      `在「${currentStationName.value}」下新建用例`,
+      inLibrary
+        ? '在共享「用例库」(steps) 下新建用例'
+        : `在「${currentStationName.value}」下新建用例`,
       '新建用例',
       {
         confirmButtonText: '创建',
@@ -893,7 +942,9 @@ async function onNewFile() {
       }
     )
     const fileName = value.trim()
-    const path = `profiles/${currentStationName.value}/steps/${fileName}`
+    const path = inLibrary
+      ? `steps/${fileName}`
+      : `profiles/${currentStationName.value}/steps/${fileName}`
     await api.saveFile(path, `[Meta]\nName=${fileName.replace(/\.ini$/i, '')}\n`)
     ElMessage.success('已创建')
     await loadTree()
@@ -925,7 +976,7 @@ async function onDownload() {
 async function onPublish() {
   try {
     await ElMessageBox.confirm(
-      '确认发布工作区？产线「下载工站用例」将按新版本拉取。',
+      '确认发布工作区？产线「下载工站用例 / 下载用例库」将按新版本拉取。',
       '发布确认',
       { type: 'warning' }
     )
