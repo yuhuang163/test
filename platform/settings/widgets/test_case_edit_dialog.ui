@@ -219,12 +219,12 @@
             </attribute>
             <column>
              <property name="text">
-              <string>参数名</string>
+              <string>参数说明 (英文键)</string>
              </property>
             </column>
             <column>
              <property name="text">
-              <string>参数值</string>
+              <string>参数值（灰斜体=未写入；改后空=显式空）</string>
              </property>
             </column>
            </widget>
@@ -242,6 +242,13 @@
              <widget class="QPushButton" name="pushButton_removeParamRow">
               <property name="text">
                <string>删除选中行</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="pushButton_restoreParamDefaults">
+              <property name="text">
+               <string>恢复默认参数表</string>
               </property>
              </widget>
             </item>

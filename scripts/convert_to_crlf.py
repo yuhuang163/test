@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""将仓库内文本文件换行统一为 CRLF（仓库 * -text 原样入库）。仅改写需要变更的文件。"""
+"""将仓库内文本文件换行统一：默认 CRLF；*.pro / *.pri / *.sh 保持 LF。"""
 from __future__ import annotations
 
 import os
@@ -54,7 +54,8 @@ TEXT_EXTENSIONS = {
     ".gitignore",
 }
 
-KEEP_LF_SUFFIXES = {".sh"}
+# qmake 工程文件与 shell 脚本保持 LF（Qt Creator / qmake 跨平台惯例）
+KEEP_LF_SUFFIXES = {".sh", ".pro", ".pri"}
 
 
 def path_excluded(rel_posix: str) -> bool:
@@ -78,9 +79,12 @@ def decode_text(raw: bytes) -> str:
     return text
 
 
+def normalize_to_lf(text: str) -> str:
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
 def normalize_to_crlf(text: str) -> str:
-    text = text.replace("\r\n", "\n").replace("\r", "\n")
-    return text.replace("\n", "\r\n")
+    return normalize_to_lf(text).replace("\n", "\r\n")
 
 
 def iter_files() -> list[Path]:
@@ -95,8 +99,6 @@ def iter_files() -> list[Path]:
             suffix = p.suffix.lower()
             if suffix not in TEXT_EXTENSIONS and fn not in ("CMakeLists.txt",):
                 continue
-            if suffix in KEEP_LF_SUFFIXES:
-                continue
             out.append(p)
     return out
 
@@ -110,8 +112,12 @@ def convert_file(path: Path, dry_run: bool) -> str:
     except UnicodeDecodeError:
         return "error:decode"
 
-    crlf_text = normalize_to_crlf(text)
-    encoded = crlf_text.encode("utf-8")
+    suffix = path.suffix.lower()
+    if suffix in KEEP_LF_SUFFIXES:
+        normalized = normalize_to_lf(text)
+    else:
+        normalized = normalize_to_crlf(text)
+    encoded = normalized.encode("utf-8")
     new_raw = encoded
 
     if new_raw == raw:
