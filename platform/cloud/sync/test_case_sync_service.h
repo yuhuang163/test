@@ -42,6 +42,10 @@ class TestCaseSyncService {
     static SyncResult syncStationFromCloud(const QString& stationKey, const QString& displayName = QString());
     /** 从云端下载当前选中工站用例（只替换本工站目录） */
     static SyncResult syncFromCloud();
+    /** 打包本地 test_case/steps 共享用例库上传云端草稿（不自动发布） */
+    static SyncResult uploadStepsLibrary(const QString& remark);
+    /** 从云端下载已发布的共享用例库（只替换本地 test_case/steps） */
+    static SyncResult syncStepsLibraryFromCloud();
     static void tryStartupSyncAsync();
 
     /** 心跳 + 领取命令；收到 pull_test_profile 时自动回传 Profile */

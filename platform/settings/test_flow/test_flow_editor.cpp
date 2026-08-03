@@ -402,6 +402,16 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
     if (btnUploadCase) {
         connect(btnUploadCase, &QPushButton::clicked, this, &TestFlowEditor::startUploadCurrentStationCase);
     }
+    if (dialogParent_) {
+        if (auto* btnDownloadSteps =
+                dialogParent_->findChild<QPushButton*>(QStringLiteral("pushButton_testFlowDownloadSteps"))) {
+            connect(btnDownloadSteps, &QPushButton::clicked, this, &TestFlowEditor::startDownloadStepsLibrary);
+        }
+        if (auto* btnUploadSteps =
+                dialogParent_->findChild<QPushButton*>(QStringLiteral("pushButton_testFlowUploadSteps"))) {
+            connect(btnUploadSteps, &QPushButton::clicked, this, &TestFlowEditor::startUploadStepsLibrary);
+        }
+    }
     connect(btnSave, &QPushButton::clicked, this, [this]() { saveCurrentFlow(); });
     connect(btnClear, &QPushButton::clicked, this, [this]() {
         if (QMessageBox::question(dialogParent_, QStringLiteral("确认"),
@@ -1356,6 +1366,74 @@ void TestFlowEditor::startUploadCurrentStationCase() {
         watcher->deleteLater();
     });
     watcher->setFuture(QtConcurrent::run([remark]() { return TestCaseSyncService::uploadToCloud(remark); }));
+}
+
+void TestFlowEditor::startUploadStepsLibrary() {
+    bool remarkOk = false;
+    const QString remark =
+        QInputDialog::getMultiLineText(dialogParent_, QStringLiteral("上传用例库"),
+                                       QStringLiteral("请填写上传说明（必填，将显示在网页草稿列表）：\n"
+                                                      "将上传本机 test_case/steps 共享用例库。"),
+                                       QString(), &remarkOk)
+            .trimmed();
+    if (!remarkOk) {
+        return;
+    }
+    if (remark.isEmpty()) {
+        QMessageBox::warning(dialogParent_, QStringLiteral("上传用例库"), QStringLiteral("上传说明不能为空。"));
+        return;
+    }
+    if (remark.size() > 500) {
+        QMessageBox::warning(dialogParent_, QStringLiteral("上传用例库"), QStringLiteral("上传说明最多 500 字。"));
+        return;
+    }
+
+    const auto answer = QMessageBox::question(
+        dialogParent_, QStringLiteral("上传用例库"),
+        QStringLiteral("上传本机共享用例库（test_case/steps）到云端草稿。\n"
+                       "说明：%1\n\n不会上传各工站 profiles；网页「合入 + 发布」后，"
+                       "其他电脑才能「下载用例库」。\n\n确认上传？")
+            .arg(remark));
+    if (answer != QMessageBox::Yes) {
+        return;
+    }
+
+    auto* watcher = new QFutureWatcher<TestCaseSyncService::SyncResult>(this);
+    connect(watcher, &QFutureWatcher<TestCaseSyncService::SyncResult>::finished, this, [this, watcher]() {
+        const TestCaseSyncService::SyncResult result = watcher->result();
+        watcher->deleteLater();
+        if (result.ok) {
+            QMessageBox::information(dialogParent_, QStringLiteral("上传用例库"), result.message);
+        } else {
+            QMessageBox::warning(dialogParent_, QStringLiteral("上传用例库"), result.message);
+        }
+    });
+    watcher->setFuture(QtConcurrent::run([remark]() { return TestCaseSyncService::uploadStepsLibrary(remark); }));
+}
+
+void TestFlowEditor::startDownloadStepsLibrary() {
+    const auto answer = QMessageBox::question(
+        dialogParent_, QStringLiteral("下载用例库"),
+        QStringLiteral("从云端下载已发布的共享用例库，仅覆盖本机 test_case/steps。\n"
+                       "不会动各工站 profiles；未发布的草稿也拉不到。\n\n确认下载？"));
+    if (answer != QMessageBox::Yes) {
+        return;
+    }
+
+    auto* watcher = new QFutureWatcher<TestCaseSyncService::SyncResult>(this);
+    connect(watcher, &QFutureWatcher<TestCaseSyncService::SyncResult>::finished, this, [this, watcher]() {
+        const TestCaseSyncService::SyncResult result = watcher->result();
+        watcher->deleteLater();
+        if (!result.ok) {
+            QMessageBox::warning(dialogParent_, QStringLiteral("下载用例库"), result.message);
+            return;
+        }
+        QMessageBox::information(dialogParent_, QStringLiteral("下载用例库"), result.message);
+        // 用例库变更可能影响「添加已有块」列表与步骤展示名
+        TestCaseStore::invalidateCloudItemNameCache();
+        reloadCurrentStation();
+    });
+    watcher->setFuture(QtConcurrent::run([]() { return TestCaseSyncService::syncStepsLibraryFromCloud(); }));
 }
 
 void TestFlowEditor::startDownloadStationCase() {

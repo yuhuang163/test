@@ -903,6 +903,198 @@ TestCaseSyncService::SyncResult TestCaseSyncService::syncFromCloud() {
     return syncStationFromCloud(key, name);
 }
 
+TestCaseSyncService::SyncResult TestCaseSyncService::uploadStepsLibrary(const QString& remark) {
+    SyncResult result;
+    QString readyError;
+    if (!ensureCloudReady(&readyError)) {
+        result.message = readyError;
+        return result;
+    }
+
+    const QString trimmedRemark = remark.trimmed();
+    if (trimmedRemark.isEmpty()) {
+        result.message = QStringLiteral("请填写上传说明");
+        return result;
+    }
+    if (trimmedRemark.size() > 500) {
+        result.message = QStringLiteral("上传说明最多 500 字");
+        return result;
+    }
+
+    TestCasePaths::ensureRootDir();
+    const QString stepsDir = TestCasePaths::stepsDir();
+    if (!QDir(stepsDir).exists()) {
+        result.message = QStringLiteral("本地用例库目录不存在：") + stepsDir;
+        return result;
+    }
+    const QFileInfoList iniFiles =
+        QDir(stepsDir).entryInfoList({QStringLiteral("*.ini")}, QDir::Files | QDir::NoDotAndDotDot);
+    if (iniFiles.isEmpty()) {
+        result.message = QStringLiteral("本地用例库为空，无可上传的 ini");
+        return result;
+    }
+
+    // 主动上传时本地库版本 +1（草稿痕迹）；正式号在网页合入时由服务器重写
+    const QString libraryIni = QDir(stepsDir).filePath(QStringLiteral("library.ini"));
+    QSettings meta(libraryIni, QSettings::IniFormat);
+    meta.setIniCodec("UTF-8");
+    const int libraryVersion = qMax(1, meta.value(QStringLiteral("Library/LibraryVersion"), 1).toInt()) + 1;
+    meta.setValue(QStringLiteral("Library/LibraryVersion"), libraryVersion);
+    meta.sync();
+
+    QString zipError;
+    const QString zipPath =
+        compressDirectoryContents(stepsDir, QStringLiteral("steps_library"), &zipError);
+    if (zipPath.isEmpty()) {
+        result.message = zipError.isEmpty() ? QStringLiteral("打包用例库失败") : zipError;
+        return result;
+    }
+
+    QList<QPair<QString, QString>> fields;
+    fields.append({QStringLiteral("deviceId"), FactoryCloudClient::deviceId()});
+    fields.append({QStringLiteral("hostName"), QSysInfo::machineHostName()});
+    fields.append({QStringLiteral("libraryVersion"), QString::number(libraryVersion)});
+    fields.append({QStringLiteral("source"), QStringLiteral("upload")});
+    fields.append({QStringLiteral("remark"), trimmedRemark});
+
+    const FactoryCloudClient::ApiResult api =
+        FactoryCloudClient::uploadMultipart(QStringLiteral("/test-cases/steps/upload"), zipPath, fields);
+    QFile::remove(zipPath);
+
+    if (!api.ok) {
+        result.message = api.message.isEmpty() ? QStringLiteral("上传用例库失败") : api.message;
+        return result;
+    }
+
+    const int fileCount = api.data.value(QStringLiteral("fileCount")).toInt(0);
+    result.ok = true;
+    result.stationKey = QStringLiteral("__STEPS__");
+    result.profileVersion = api.data.value(QStringLiteral("libraryVersion")).toString().trimmed();
+    if (result.profileVersion.isEmpty()) {
+        result.profileVersion = QString::number(libraryVersion);
+    }
+    result.fileCount = fileCount;
+    result.message = QStringLiteral("用例库已上传为云端草稿");
+    if (fileCount > 0) {
+        result.message += QStringLiteral("，共 %1 个文件").arg(fileCount);
+    }
+    result.message +=
+        QStringLiteral("（本地草稿号 %1；网页合入后会由服务器分配正式 LibraryVersion）")
+            .arg(result.profileVersion);
+    return result;
+}
+
+TestCaseSyncService::SyncResult TestCaseSyncService::syncStepsLibraryFromCloud() {
+    SyncResult result;
+    QString readyError;
+    if (!ensureCloudReady(&readyError)) {
+        result.message = readyError;
+        return result;
+    }
+
+    const FactoryCloudClient::ApiResult manifest =
+        FactoryCloudClient::get(QStringLiteral("/test-cases/steps/manifest"));
+    if (!manifest.ok) {
+        result.message = manifest.message.isEmpty()
+                             ? QStringLiteral("云端尚无已发布用例库，请先在网页合入并发布")
+                             : manifest.message;
+        return result;
+    }
+
+    const QString remoteLibraryVersion =
+        manifest.data.value(QStringLiteral("libraryVersion")).toString().trimmed();
+    const QJsonArray remoteFiles = manifest.data.value(QStringLiteral("files")).toArray();
+    TestCasePaths::ensureRootDir();
+    const QString stepsDir = TestCasePaths::stepsDir();
+    if (localProfileMatchesRemoteFiles(stepsDir, remoteFiles)) {
+        result.ok = true;
+        result.stationKey = QStringLiteral("__STEPS__");
+        result.profileVersion = remoteLibraryVersion;
+        result.bundleVersion = manifest.data.value(QStringLiteral("bundleVersion")).toString();
+        result.message =
+            QStringLiteral("用例库已是最新（library=%1）")
+                .arg(remoteLibraryVersion.isEmpty() ? QStringLiteral("content") : remoteLibraryVersion);
+        return result;
+    }
+
+    const QString zipPath = QDir(QDir::tempPath())
+                                .filePath(QStringLiteral("steps_download_%1.zip")
+                                              .arg(QDateTime::currentDateTime().toString(
+                                                  QStringLiteral("yyyyMMddhhmmss"))));
+    if (QFile::exists(zipPath)) {
+        QFile::remove(zipPath);
+    }
+
+    QString downloadError;
+    if (!FactoryCloudClient::downloadToFile(QStringLiteral("/test-cases/steps/bundle"), QUrlQuery(), zipPath,
+                                            &downloadError)) {
+        result.message = downloadError;
+        return result;
+    }
+
+    const QString extractRoot =
+        QDir(QDir::tempPath()).filePath(QStringLiteral("steps_extract_%1")
+                                            .arg(QDateTime::currentDateTime().toString(
+                                                QStringLiteral("yyyyMMddhhmmss"))));
+    QDir(extractRoot).removeRecursively();
+    QString extractError;
+    if (!extractZip(zipPath, extractRoot, &extractError)) {
+        result.message = QStringLiteral("解压用例库失败：") + extractError;
+        QFile::remove(zipPath);
+        return result;
+    }
+    QFile::remove(zipPath);
+
+    // 仅替换共享 steps/，不动各工站 profiles
+    QString backupError;
+    if (QDir(stepsDir).exists()) {
+        const QString backupDir =
+            QDir(testCaseRoot()).filePath(QStringLiteral("%1/steps_%2")
+                                              .arg(QLatin1String(kBackupDirName),
+                                                   QDateTime::currentDateTime().toString(
+                                                       QStringLiteral("yyyyMMddhhmmss"))));
+        QDir().mkpath(QFileInfo(backupDir).absolutePath());
+        if (!copyPath(stepsDir, backupDir, &backupError)) {
+            result.message = QStringLiteral("备份用例库失败：") + backupError;
+            QDir(extractRoot).removeRecursively();
+            return result;
+        }
+        // 只清根目录 ini，保留目录本身
+        const QFileInfoList oldInis =
+            QDir(stepsDir).entryInfoList({QStringLiteral("*.ini")}, QDir::Files | QDir::NoDotAndDotDot);
+        for (const QFileInfo& fi : oldInis) {
+            QFile::remove(fi.absoluteFilePath());
+        }
+    } else {
+        QDir().mkpath(stepsDir);
+    }
+
+    QString deployError;
+    int count = 0;
+    if (!deployExtractedFiles(extractRoot, stepsDir, &count, &deployError)) {
+        result.message = deployError.isEmpty() ? QStringLiteral("部署用例库失败") : deployError;
+        QDir(extractRoot).removeRecursively();
+        return result;
+    }
+    QDir(extractRoot).removeRecursively();
+
+    TestCaseStore::invalidateCloudItemNameCache();
+
+    result.ok = true;
+    result.stationKey = QStringLiteral("__STEPS__");
+    result.profileVersion = remoteLibraryVersion;
+    result.bundleVersion = manifest.data.value(QStringLiteral("bundleVersion")).toString();
+    result.fileCount = count;
+    result.message = QStringLiteral("已下载云端正式用例库");
+    if (!remoteLibraryVersion.isEmpty()) {
+        result.message += QStringLiteral("（library=%1）").arg(remoteLibraryVersion);
+    }
+    if (count > 0) {
+        result.message += QStringLiteral("，共 %1 项").arg(count);
+    }
+    return result;
+}
+
 void TestCaseSyncService::heartbeatAndPollCommands() {
     QString readyError;
     if (!ensureCloudReady(&readyError)) {

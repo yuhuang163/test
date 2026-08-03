@@ -133,6 +133,8 @@ class TestFlowEditor : public QObject {
     void moveSelectedBlock(int delta);
     void startUploadCurrentStationCase();
     void startDownloadStationCase();
+    void startUploadStepsLibrary();
+    void startDownloadStepsLibrary();
     bool eventFilter(QObject* watched, QEvent* event) override;
 
     QWidget* dialogParent_ = nullptr;

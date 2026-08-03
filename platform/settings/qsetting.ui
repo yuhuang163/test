@@ -781,6 +781,26 @@
           </widget>
          </item>
          <item>
+          <widget class="QPushButton" name="pushButton_testFlowDownloadSteps">
+           <property name="toolTip">
+            <string>从云端下载已发布的共享用例库（仅覆盖本机 test_case/steps，不动各工站 profiles）</string>
+           </property>
+           <property name="text">
+            <string>下载用例库</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pushButton_testFlowUploadSteps">
+           <property name="toolTip">
+            <string>将本机 test_case/steps 共享用例库上传为云端草稿（需网页合入并发布）</string>
+           </property>
+           <property name="text">
+            <string>上传用例库</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QPushButton" name="pushButton_testFlowSave">
            <property name="text">
             <string>保存流程</string>
