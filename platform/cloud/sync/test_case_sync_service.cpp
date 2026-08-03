@@ -882,6 +882,8 @@ TestCaseSyncService::SyncResult TestCaseSyncService::syncStationFromCloud(const 
         SETTINGS.sync();
     }
     TestCaseStore::invalidateCloudItemNameCache();
+    // 覆盖 profiles 后按目录补登记 FlowStations，避免仅内存/启动一次迁移导致下拉不出现新工站
+    TestCaseStore::reregisterFlowStationsFromProfiles();
 
     result.ok = true;
     result.stationKey = key;

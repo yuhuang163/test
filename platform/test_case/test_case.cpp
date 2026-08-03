@@ -955,7 +955,10 @@ void migrateProfileStepOverridesForStation(const QString& stationKey) {
     ensureProfileDirectory(key, TestCaseStore::flowStationDisplayName(key), QString());
     QDir().mkpath(TestCasePaths::profileDir(key) + QStringLiteral("/steps"));
 
-    for (const TestFlowItemEntry& entry : TestCaseStore::loadStationFlowItems(key)) {
+    QVector<TestFlowItemEntry> allEntries = TestCaseStore::loadStationFlowItems(key);
+    allEntries += TestCaseStore::loadStationFailFlowItems(key);
+
+    for (const TestFlowItemEntry& entry : allEntries) {
         const QString stepId = entry.caseName.trimmed();
         if (stepId.isEmpty())
             continue;
@@ -1831,6 +1834,11 @@ void TestCaseStore::ensureFilesystemLayout() {
     ensureFilesystemLayoutOnce();
 }
 
+void TestCaseStore::reregisterFlowStationsFromProfiles() {
+    TestCasePaths::ensureRootDir();
+    registerFlowStationsFromProfileDirs();
+}
+
 bool TestCaseStore::loadCaseForStation(const QString& stationKey, const QString& stepId, TestCaseDefinition& out,
                                        QString* errorOut) {
     Q_UNUSED(errorOut);
@@ -2268,6 +2276,8 @@ bool TestCaseStore::saveStationFlowItems(const QString& stationKey, const QVecto
     writeFlowItemsToSettingsGroup(profileIni, items, failItems, stopFlowOnTestFail);
     profileIni.endGroup();
     syncTestCaseIni(profileIni, profileFlow);
+    // 保存流程时把步骤库缺项补进本工站 profiles/.../steps/（与 loadCaseForStation 注释一致）
+    migrateProfileStepOverridesForStation(key);
     return true;
 }
 
