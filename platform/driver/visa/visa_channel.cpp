@@ -5,6 +5,7 @@
 #include <QMutex>
 #include <QMutexLocker>
 #include <QThread>
+#include <QDateTime>
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
@@ -35,6 +36,11 @@ QHash<QString, SharedInstrument>& sharedInstruments() {
     return map;
 }
 
+QHash<QString, qint64>& lastGpiBCloseMs() {
+    static QHash<QString, qint64> map;
+    return map;
+}
+
 QString visaStatusText(ViStatus status) {
     ViChar desc[256] = {0};
     if (viStatusDesc(VI_NULL, status, desc) >= VI_SUCCESS && desc[0] != '\0')
@@ -49,6 +55,16 @@ bool isGpiBResource(const QString& address) {
 void busSettleDelayMs(int ms) {
     if (ms > 0)
         QThread::msleep(static_cast<unsigned long>(ms));
+}
+
+void waitGpiBReopenCooldown(const QString& address) {
+    const qint64 closedAt = lastGpiBCloseMs().value(address, 0);
+    if (closedAt <= 0)
+        return;
+    const qint64 elapsed = QDateTime::currentMSecsSinceEpoch() - closedAt;
+    constexpr int kMinReopenMs = 300;
+    if (elapsed < kMinReopenMs)
+        busSettleDelayMs(static_cast<int>(kMinReopenMs - elapsed));
 }
 
 void trySoftViClear(ViSession inst, const char* context) {
@@ -169,6 +185,8 @@ bool VisaChannel::ensureConnected() {
 
     const QByteArray addr = address.toLatin1();
     ViSession inst = VI_NULL;
+    if (isGpiBResource(address))
+        waitGpiBReopenCooldown(address);
     // 独占打开：NI-488.2 通讯器等占着时直接失败，避免写到一半被 ABORT
     ViStatus openStatus =
         viOpen(sharedResourceManager(), (ViRsrc)addr.constData(), VI_EXCLUSIVE_LOCK,
@@ -217,6 +235,8 @@ void VisaChannel::close() {
             busSettleDelayMs(30);
         viClose(it->session);
         it->session = VI_NULL;
+        if (isGpiBResource(address))
+            lastGpiBCloseMs().insert(address, QDateTime::currentMSecsSinceEpoch());
         qDebug() << "VisaChannel: 已关闭仪器会话" << address;
     }
     sharedInstruments().erase(it);
@@ -253,6 +273,8 @@ bool VisaChannel::write(const QByteArray& data) {
         }
         qDebug() << "VisaChannel: 写入重试成功 retCnt=" << writeCount;
     }
+    if (isGpiBResource(address))
+        busSettleDelayMs(30);
     return true;
 #else
     Q_UNUSED(data);

@@ -759,8 +759,8 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     isTestContinue = false;
     waitWork(50);
     on_disconnectButton_clicked();
-    // 关闭输出不等于释放 VISA；ASRL 串口不关会占住，测几次后需拔插才能再连
-    resetVisaBackend();
+    // GPIB/TCPIP 保持连接供下次开测；仅 ASRL 独占串口在测完关闭
+    releaseVisaBackendAfterTest();
     if (auto* box = qobject_cast<QFreeWorkBox*>(window())) {
         box->releaseSharedAsd9026aIfIdle();
         box->releaseSharedTempLoggerIfIdle();
@@ -1732,8 +1732,7 @@ void QFreeWork::initData() {
     dongleSuctionCh2Samples_.clear();
     resetSuctionChart();
     setDongleSuctionReadEnabled(false);
-    // 新一轮测试前先释放上一轮可能残留的 VISA 会话
-    resetVisaBackend();
+    // 逻辑缓存每轮清空；GPIB/TCPIP 物理会话尽量复用，避免第二次 MAC 开测立刻 viOpen 触发 ABORT
     huilingVisaLinkCache_.clear();
     seedHuilingVisaLinkCacheFromFlowOrSettings();
     BT_RSSI = "";

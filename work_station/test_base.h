@@ -299,6 +299,8 @@ class test_base : public QWidget {
     void abortTestSessionAndUpload();
     void closeEvent(QCloseEvent* event) override;
     void resetVisaBackend();
+    /** 测完释放 VISA：GPIB/TCPIP 保持会话供下次 MAC 开测复用，ASRL 独占串口仍关闭。 */
+    void releaseVisaBackendAfterTest();
 
   private:
     QString receivedData = "";

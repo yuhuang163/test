@@ -968,7 +968,11 @@ void QFreeWork::runScpiProgrammableCurrentSampleAnyMatch(const TestCaseDefinitio
         QString errStr;
         bool ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, commandParam, &errStr);
         if (!ok) {
-            waitWork(200);
+            waitWork(150);
+            ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, commandParam, &errStr);
+        }
+        if (!ok) {
+            waitWork(300);
             resetVisaBackend();
             ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, commandParam, &errStr);
         }
@@ -1822,7 +1826,11 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             }
             bool ok = ctx->scpiVisaManager()->exec(cmd, stepParams.commandParam, &errStr);
             if (!ok) {
-                ctx->waitWork(200);
+                ctx->waitWork(150);
+                ok = ctx->scpiVisaManager()->exec(cmd, stepParams.commandParam, &errStr);
+            }
+            if (!ok) {
+                ctx->waitWork(300);
                 ctx->resetVisaBackend();
                 ok = ctx->scpiVisaManager()->exec(cmd, stepParams.commandParam, &errStr);
             }
