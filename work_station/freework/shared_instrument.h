@@ -15,6 +15,10 @@
  *   visaAddress1=GPIB0::8::INSTR
  *   scpiChannelSelectCmd=INST OUT%1   ; Agilent 双通道；会凌 SOURceN 可省略
  *
+ * 单工位/单通道（关闭二拖二）：
+ *   只填 visaAddress=GPIB0::7::INSTR，不要 sharedPair/visaAddress0/1；
+ *   或显式 sharedPair=false（即使 overlay 里残留 visaAddress0 也不映射）。
+ *
  * 温度记录仪（16 路表例）：
  *   sharedPair=true
  *   stationsPerDevice=2
@@ -34,6 +38,8 @@ struct Slot {
 
 /** 步骤写 sharedPair=true / shareInstrument=true，或已带 visaAddress0/tempComName0 即视为启用。 */
 bool isEnabledInParam(const QVariantMap& paramMap);
+/** 程控电源 VISA 是否走一拖多映射（单 visaAddress 且未开 sharedPair 时为 false）。 */
+bool isVisaSharingEnabled(const QVariantMap& paramMap);
 int stationsPerDeviceFromParam(const QVariantMap& paramMap);
 /** 每工位占用的温度通道数；默认 1。法兰加热 6 点填 6。 */
 int channelsPerStationFromParam(const QVariantMap& paramMap);

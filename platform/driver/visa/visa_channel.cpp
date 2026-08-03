@@ -4,6 +4,7 @@
 #include <QHash>
 #include <QMutex>
 #include <QMutexLocker>
+#include <QThread>
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
@@ -32,6 +33,55 @@ struct SharedInstrument {
 QHash<QString, SharedInstrument>& sharedInstruments() {
     static QHash<QString, SharedInstrument> map;
     return map;
+}
+
+QString visaStatusText(ViStatus status) {
+    ViChar desc[256] = {0};
+    if (viStatusDesc(VI_NULL, status, desc) >= VI_SUCCESS && desc[0] != '\0')
+        return QString::fromLocal8Bit(desc);
+    return QStringLiteral("status=%1").arg(static_cast<int>(status));
+}
+
+bool isGpiBResource(const QString& address) {
+    return address.startsWith(QStringLiteral("GPIB"), Qt::CaseInsensitive);
+}
+
+void busSettleDelayMs(int ms) {
+    if (ms > 0)
+        QThread::msleep(static_cast<unsigned long>(ms));
+}
+
+void trySoftViClear(ViSession inst, const char* context) {
+    const ViStatus clearStatus = viClear(inst);
+    if (clearStatus < VI_SUCCESS)
+        qDebug().noquote() << "VisaChannel:" << context << "viClear 警告" << visaStatusText(clearStatus);
+}
+
+void flushSessionBuffers(ViSession inst) {
+    viFlush(inst, VI_WRITE_BUF);
+    viFlush(inst, VI_READ_BUF);
+}
+
+void configureSessionAfterOpen(ViSession inst, const QString& address, int timeoutMs) {
+    viSetAttribute(inst, VI_ATTR_TMO_VALUE, static_cast<ViAttrState>(timeoutMs));
+    viSetAttribute(inst, VI_ATTR_SEND_END_EN, VI_TRUE);
+    if (isGpiBResource(address)) {
+        // 现场 GPIB：刚 viOpen 立刻 viClear 易报 NRFD/NDAC，并导致紧随 viWrite 被 ABORT
+        busSettleDelayMs(100);
+    } else {
+        trySoftViClear(inst, "打开后");
+    }
+}
+
+bool viWriteOnce(ViSession session, const QByteArray& data, ViUInt32* writeCountOut, ViStatus* statusOut) {
+    ViUInt32 writeCount = 0;
+    const ViStatus status = viWrite(session, reinterpret_cast<ViBuf>(const_cast<char*>(data.constData())),
+                                    static_cast<ViUInt32>(data.size()), &writeCount);
+    if (writeCountOut)
+        *writeCountOut = writeCount;
+    if (statusOut)
+        *statusOut = status;
+    return status >= VI_SUCCESS;
 }
 
 bool ensureSharedRmLocked(QString* errOut) {
@@ -79,11 +129,7 @@ bool VisaChannel::isOpen() const {
 
 #ifdef HAVE_NI_VISA
 QString VisaChannel::statusText(ViStatus status) {
-    ViChar desc[256] = {0};
-    // 无会话时也尽量取描述；失败则只回数字
-    if (viStatusDesc(VI_NULL, status, desc) >= VI_SUCCESS && desc[0] != '\0')
-        return QString::fromLocal8Bit(desc);
-    return QStringLiteral("status=%1").arg(static_cast<int>(status));
+    return visaStatusText(status);
 }
 #endif
 
@@ -131,16 +177,12 @@ bool VisaChannel::ensureConnected() {
         openStatus = viOpen(sharedResourceManager(), (ViRsrc)addr.constData(), VI_NULL, VI_NULL, &inst);
     }
     if (openStatus < VI_SUCCESS) {
-        qDebug() << "VisaChannel: 打开设备失败 address=" << address << statusText(openStatus)
+        qDebug() << "VisaChannel: 打开设备失败 address=" << address << visaStatusText(openStatus)
                  << "（若刚用过 NI-488.2 通讯器请先关掉该窗口）";
         return false;
     }
 
-    viSetAttribute(inst, VI_ATTR_TMO_VALUE, static_cast<ViAttrState>(config_.timeoutMs));
-    // 清总线残留，降低首包 viWrite 被中止的概率
-    const ViStatus clearStatus = viClear(inst);
-    if (clearStatus < VI_SUCCESS)
-        qDebug() << "VisaChannel: viClear 警告" << statusText(clearStatus);
+    configureSessionAfterOpen(inst, address, config_.timeoutMs);
 
     slot.session = inst;
     slot.refCount = 1;
@@ -170,6 +212,9 @@ void VisaChannel::close() {
         return;
     }
     if (it->session != VI_NULL) {
+        flushSessionBuffers(it->session);
+        if (isGpiBResource(address))
+            busSettleDelayMs(30);
         viClose(it->session);
         it->session = VI_NULL;
         qDebug() << "VisaChannel: 已关闭仪器会话" << address;
@@ -195,12 +240,18 @@ bool VisaChannel::write(const QByteArray& data) {
 
     qDebug().noquote() << "VISA TX:" << QString::fromLatin1(data.toHex(' ').toUpper());
     ViUInt32 writeCount = 0;
-    const ViStatus status = viWrite(it->session, reinterpret_cast<ViBuf>(const_cast<char*>(data.constData())),
-                                    static_cast<ViUInt32>(data.size()), &writeCount);
-    if (status < VI_SUCCESS) {
-        qDebug() << "VisaChannel: 写入失败" << statusText(status) << "retCnt=" << writeCount;
-        // 写入失败不主动拆会话：拆了立刻重开会放大 ABORT；由上层 resetVisaBackend 显式关闭
-        return false;
+    ViStatus status = VI_SUCCESS;
+    if (!viWriteOnce(it->session, data, &writeCount, &status)) {
+        qDebug() << "VisaChannel: 写入失败" << visaStatusText(status) << "retCnt=" << writeCount
+                 << "，尝试 viClear 后重试";
+        trySoftViClear(it->session, "写入恢复");
+        busSettleDelayMs(isGpiBResource(address) ? 120 : 50);
+        writeCount = 0;
+        if (!viWriteOnce(it->session, data, &writeCount, &status)) {
+            qDebug() << "VisaChannel: 写入重试仍失败" << visaStatusText(status) << "retCnt=" << writeCount;
+            return false;
+        }
+        qDebug() << "VisaChannel: 写入重试成功 retCnt=" << writeCount;
     }
     return true;
 #else
@@ -229,7 +280,7 @@ bool VisaChannel::read(QByteArray* out, int maxBytes) {
     const ViStatus status =
         viRead(it->session, reinterpret_cast<ViBuf>(buffer.data()), static_cast<ViUInt32>(maxBytes - 1), &readCount);
     if (status < VI_SUCCESS) {
-        qDebug() << "VisaChannel: 读取失败" << statusText(status);
+        qDebug() << "VisaChannel: 读取失败" << visaStatusText(status);
         return false;
     }
     buffer.resize(static_cast<int>(readCount));

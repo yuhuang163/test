@@ -4807,6 +4807,9 @@ bool TestCaseRunner::stepRequiresProductBle(const TestCaseDefinition& def) {
 int TestCaseRunner::commandTimeoutMs(const TestCaseDefinition& def) {
     if (def.timing.commandTimeoutMs > 0)
         return def.timing.commandTimeoutMs;
+    if (def.send.fixtureProtocol == TestCaseFixtureProtocol::JieliBtBox
+        && def.send.deviceCmd == QStringLiteral("WaitRfInfo"))
+        return 10000;
     if (def.send.channel == TestCaseSendChannel::Dongle
         && (def.send.deviceCmd == QStringLiteral("SampleSuctionDual")
             || def.send.deviceCmd == QStringLiteral("SampleSuctionSingle")))
