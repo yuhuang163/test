@@ -72,6 +72,15 @@ bool paramTruthy(const QVariantMap& map, const QString& key) {
            || s == QStringLiteral("on");
 }
 
+bool sharingExplicitlyDisabled(const QVariantMap& paramMap) {
+    if (!paramMap.contains(QStringLiteral("sharedPair"))
+        && !paramMap.contains(QStringLiteral("shareInstrument"))) {
+        return false;
+    }
+    return !paramTruthy(paramMap, QStringLiteral("sharedPair"))
+           && !paramTruthy(paramMap, QStringLiteral("shareInstrument"));
+}
+
 QVector<int> parseChannelListText(const QString& text) {
     QVector<int> out;
     const QString t = text.trimmed();
@@ -103,7 +112,23 @@ QVector<int> parseChannelListText(const QString& text) {
 
 } // namespace
 
+bool isVisaSharingEnabled(const QVariantMap& paramMap) {
+    if (sharingExplicitlyDisabled(paramMap))
+        return false;
+    if (paramTruthy(paramMap, QStringLiteral("sharedPair"))
+        || paramTruthy(paramMap, QStringLiteral("shareInstrument")))
+        return true;
+    const QString singleAddr = paramMap.value(QStringLiteral("visaAddress")).toString().trimmed();
+    if (!singleAddr.isEmpty())
+        return false;
+    if (!visaAddressFromParam(paramMap, 0).isEmpty() || !visaAddressFromParam(paramMap, 1).isEmpty())
+        return true;
+    return false;
+}
+
 bool isEnabledInParam(const QVariantMap& paramMap) {
+    if (sharingExplicitlyDisabled(paramMap))
+        return false;
     if (paramTruthy(paramMap, QStringLiteral("sharedPair"))
         || paramTruthy(paramMap, QStringLiteral("shareInstrument")))
         return true;
@@ -176,7 +201,7 @@ bool applyVisaParamsForStation(int stationIndex1Based, QVariantMap* paramMap, QS
     if (!paramMap)
         return false;
 
-    const bool enabled = isEnabledInParam(*paramMap);
+    const bool enabled = isVisaSharingEnabled(*paramMap);
     const int per = stationsPerDeviceFromParam(*paramMap);
     const Slot autoSlot = slotForStation(stationIndex1Based, per);
     int deviceIndex = autoSlot.deviceIndex;

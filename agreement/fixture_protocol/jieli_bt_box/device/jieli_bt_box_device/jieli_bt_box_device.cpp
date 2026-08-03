@@ -33,13 +33,9 @@ bool JieliBtBoxDevice::waitForRfInfo(SerialChannel* channel, int timeoutMs, Jiel
         if (remainMs <= 0)
             break;
         QByteArray chunk;
-        // 已有流时短切片继续拼；首包用剩余超时
-        const int sliceMs = stream.isEmpty() ? remainMs : qMin(remainMs, 80);
-        if (!channel->waitForFrame(&chunk, sliceMs)) {
-            if (!stream.isEmpty())
-                break;
-            continue;
-        }
+        // 被动等上报：每次用剩余总超时，收到完整频偏+RSSI 即返回，勿短切片提前结束
+        if (!channel->waitForFrame(&chunk, remainMs))
+            break;
         if (chunk.isEmpty())
             continue;
         stream += chunk;

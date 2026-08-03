@@ -281,7 +281,14 @@ bool ensureJieliBtBoxProductUartOpen(QFreeWork* ctx, QString* errorMessage) {
 
 bool isRuntimeMacPlaceholder(const QString& text) {
     const QString s = text.trimmed();
-    return s.isEmpty() || s == QStringLiteral("$MAC") || s == QStringLiteral("${MAC}") || s == QStringLiteral("{mac}");
+    // 空字符串不是 MAC 占位符；否则未填写的 visaAddress 等字段会被误替换成界面 MAC
+    return s == QStringLiteral("$MAC") || s == QStringLiteral("${MAC}") || s == QStringLiteral("{mac}");
+}
+
+bool looksLikeBluetoothMacAddress(const QString& text) {
+    static const QRegularExpression macRe(
+        QStringLiteral(R"(^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$)"));
+    return macRe.match(text.trimmed()).hasMatch();
 }
 
 bool isRuntimePcbaSnPlaceholder(const QString& text) {
@@ -607,7 +614,8 @@ QVariantMap QFreeWork::cachedHuilingVisaLink() const {
 }
 
 void QFreeWork::updateHuilingVisaLinkCache(const QVariantMap& link) {
-    if (link.value(QStringLiteral("visaAddress")).toString().trimmed().isEmpty())
+    const QString addr = link.value(QStringLiteral("visaAddress")).toString().trimmed();
+    if (addr.isEmpty() || looksLikeBluetoothMacAddress(addr))
         return;
     huilingVisaLinkCache_ = link;
 }
@@ -624,10 +632,14 @@ void QFreeWork::seedHuilingVisaLinkCacheFromFlowOrSettings() {
             return false;
         }
         const QVariantMap map = def.send.param.toMap();
-        if (map.value(QStringLiteral("visaAddress")).toString().trimmed().isEmpty()) {
+        QString visaAddr = map.value(QStringLiteral("visaAddress")).toString().trimmed();
+        if (visaAddr.isEmpty())
+            visaAddr = SharedInstrument::visaAddressFromParam(map, 0);
+        if (visaAddr.isEmpty() || looksLikeBluetoothMacAddress(visaAddr))
             return false;
-        }
-        updateHuilingVisaLinkCache(huilingVisaLinkKeysFromMap(map));
+        QVariantMap seedMap = huilingVisaLinkKeysFromMap(map);
+        seedMap.insert(QStringLiteral("visaAddress"), visaAddr);
+        updateHuilingVisaLinkCache(seedMap);
         return true;
     };
 
@@ -956,6 +968,11 @@ void QFreeWork::runScpiProgrammableCurrentSampleAnyMatch(const TestCaseDefinitio
         QString errStr;
         bool ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, commandParam, &errStr);
         if (!ok) {
+            waitWork(150);
+            ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, commandParam, &errStr);
+        }
+        if (!ok) {
+            waitWork(300);
             resetVisaBackend();
             ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, commandParam, &errStr);
         }
@@ -1770,9 +1787,22 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             const QVariantMap loadMap = mergeVisaPowerStepParamMap(linkMap, stepParams.commandParam);
             QVariantMap visaLoadMap = loadMap;
             QString shareDetail;
-            if (SharedInstrument::applyVisaParamsForStation(ctx->getIndex(), &visaLoadMap, &shareDetail))
-                ctx->showlog(QStringLiteral("共享程控电源：%1").arg(shareDetail));
+            if (SharedInstrument::applyVisaParamsForStation(ctx->getIndex(), &visaLoadMap, &shareDetail)) {
+                const QString visaAddr = visaLoadMap.value(QStringLiteral("visaAddress")).toString().trimmed();
+                if (!visaAddr.isEmpty() && !looksLikeBluetoothMacAddress(visaAddr))
+                    ctx->showlog(QStringLiteral("共享程控电源：%1").arg(shareDetail));
+                else
+                    ctx->showlog(QStringLiteral("共享程控电源：%1（VISA 地址无效，请检查配置Visa程控电源步骤的 visaAddress/visaAddress0）")
+                                     .arg(shareDetail));
+            }
             const int visaTimeoutMs = TestCaseRunner::commandTimeoutMs(def);
+            const QString resolvedVisaAddr = visaLoadMap.value(QStringLiteral("visaAddress")).toString().trimmed();
+            if (looksLikeBluetoothMacAddress(resolvedVisaAddr)) {
+                ctx->showlog(QStringLiteral("%1：VISA 地址被误解析为蓝牙 MAC（%2），请检查步骤 Param_visaAddress 或 Param_visaAddress0")
+                                 .arg(ScpiPeriphCmdCatalog::deviceUiLabel(devRoute), resolvedVisaAddr));
+                ctx->markActiveTestCaseStepDone(false, QStringLiteral("visaAddress无效"), QStringLiteral("失败"));
+                return;
+            }
             const bool visaReady =
                 devRoute == ScpiDeviceRoute::Agilent66319d
                     ? ctx->scpiVisaManager()->loadAgilent66319dVisaFromParamMap(visaLoadMap, visaTimeoutMs)
@@ -1796,6 +1826,11 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             }
             bool ok = ctx->scpiVisaManager()->exec(cmd, stepParams.commandParam, &errStr);
             if (!ok) {
+                ctx->waitWork(150);
+                ok = ctx->scpiVisaManager()->exec(cmd, stepParams.commandParam, &errStr);
+            }
+            if (!ok) {
+                ctx->waitWork(300);
                 ctx->resetVisaBackend();
                 ok = ctx->scpiVisaManager()->exec(cmd, stepParams.commandParam, &errStr);
             }
@@ -2594,7 +2629,9 @@ void QFreeWork::executeFixtureJieliBtBoxCase(const TestCaseDefinition& def) {
     }
 
     int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
-    if (timeoutMs < 3000)
+    if (cmd == JieliBtBoxCmd::WaitRfInfo)
+        timeoutMs = qMax(timeoutMs, 10000);
+    else if (timeoutMs < 3000)
         timeoutMs = 3000;
 
     const QString portName = getProductcomNameCombo() ? getProductcomNameCombo()->currentText().trimmed() : QString();

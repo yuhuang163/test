@@ -186,6 +186,12 @@ void test_base::resetVisaBackend() {
     scpiVisaManager_.closeConnection();
 }
 
+void test_base::releaseVisaBackendAfterTest() {
+    const QString addr = scpiVisaManager_.visaConfig().visaAddress.trimmed();
+    if (addr.startsWith(QStringLiteral("ASRL"), Qt::CaseInsensitive))
+        scpiVisaManager_.closeConnection();
+}
+
 void test_base::scanSerialPorts() {
     SerialChannel::updateComboBoxPorts(getComNameCombo());
     SerialChannel::updateComboBoxPorts(getUsbcomNameCombo());

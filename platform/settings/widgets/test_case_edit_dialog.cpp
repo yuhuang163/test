@@ -23,6 +23,8 @@
 #include <QInputDialog>
 #include <QLineEdit>
 #include <QRegularExpression>
+#include <QSignalBlocker>
+#include <QColor>
 
 #include <algorithm>
 #include <functional>
@@ -52,19 +54,6 @@ QVariantMap sendParamAsJsonMap(const QVariant& param) {
     return {};
 }
 
-bool sendParamTableIsEmpty(const QTableWidget* table) {
-    if (!table || table->rowCount() <= 0)
-        return true;
-    for (int r = 0; r < table->rowCount(); ++r) {
-        for (int c = 0; c < table->columnCount(); ++c) {
-            const QTableWidgetItem* item = table->item(r, c);
-            if (item && !item->text().trimmed().isEmpty())
-                return false;
-        }
-    }
-    return true;
-}
-
 /** 步骤 Param 键 → 界面中文说明（保存仍用英文键）。 */
 QString sendParamKeyZhLabel(const QString& key) {
     const QString k = key.trimmed();
@@ -83,8 +72,8 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("scpiReadCurrentCmd"), QStringLiteral("读电流 SCPI")},
         {QStringLiteral("scpiSetCurrentRangeCmd"), QStringLiteral("设电流量程 SCPI（含 %1）")},
         {QStringLiteral("scpiChannelSelectCmd"), QStringLiteral("选通道 SCPI（含 %1，如 INST OUT%1）")},
-        {QStringLiteral("sharedPair"), QStringLiteral("启用多工位共享外设")},
-        {QStringLiteral("shareInstrument"), QStringLiteral("启用多工位共享外设（同 sharedPair）")},
+        {QStringLiteral("sharedPair"), QStringLiteral("启用多工位共享外设（填 false 关闭二拖二）")},
+        {QStringLiteral("shareInstrument"), QStringLiteral("启用多工位共享外设（同 sharedPair，填 false 可关闭）")},
         {QStringLiteral("stationsPerDevice"), QStringLiteral("每台设备对应工位数（如 2 或 3）")},
         {QStringLiteral("powerChannel"), QStringLiteral("电源通道号（一般自动填）")},
         {QStringLiteral("powerChannelLock"), QStringLiteral("锁定电源通道（不按工位改）")},
@@ -133,14 +122,59 @@ QString sendParamKeyZhLabel(const QString& key) {
     return k;
 }
 
-enum { SendParamKeyRole = Qt::UserRole + 31 };
+enum {
+    SendParamKeyRole = Qt::UserRole + 31,
+    SendParamSavedRole = Qt::UserRole + 32,
+    SendParamTouchedRole = Qt::UserRole + 33,
+    SendParamPlaceholderRole = Qt::UserRole + 34,
+};
+
+bool isSendParamExplicitEmptySentinel(const QString& text) {
+    const QString t = text.trimmed();
+    return t == QLatin1String("-") || t == QStringLiteral("(空)") || t == QStringLiteral("（空）");
+}
+
+void applySendParamValueCell(QTableWidgetItem* valItem, const QString& text, bool fromSavedIni, bool asPlaceholder) {
+    if (!valItem)
+        return;
+    valItem->setText(text);
+    valItem->setData(SendParamTouchedRole, false);
+    valItem->setData(SendParamPlaceholderRole, asPlaceholder);
+    QFont font = valItem->font();
+    font.setItalic(asPlaceholder);
+    valItem->setFont(font);
+    if (asPlaceholder) {
+        valItem->setForeground(QBrush(QColor(0x88, 0x88, 0x88)));
+        valItem->setToolTip(QStringLiteral("灰色斜体为参考默认值，尚未写入 ini；直接保存不会写入该项。"
+                                             "若需显式空值：改过后留空保存，或填「-」。"));
+    } else {
+        valItem->setForeground(QBrush());
+        if (fromSavedIni && text.trimmed().isEmpty())
+            valItem->setToolTip(QStringLiteral("已显式保存为空值（Param_键=）"));
+        else
+            valItem->setToolTip(QString());
+    }
+}
+
+QTableWidgetItem* makeSendParamValueItem(const QString& text, bool fromSavedIni, bool asPlaceholder) {
+    auto* item = new QTableWidgetItem();
+    applySendParamValueCell(item, text, fromSavedIni, asPlaceholder);
+    return item;
+}
 
 void applySendParamNameCell(QTableWidgetItem* nameItem, const QString& key) {
     if (!nameItem)
         return;
     const QString k = key.trimmed();
+    const QString zh = sendParamKeyZhLabel(k);
     nameItem->setData(SendParamKeyRole, k);
-    nameItem->setText(k.isEmpty() ? QString() : sendParamKeyZhLabel(k));
+    if (k.isEmpty()) {
+        nameItem->setText(QString());
+    } else if (zh == k) {
+        nameItem->setText(k);
+    } else {
+        nameItem->setText(QStringLiteral("%1  (%2)").arg(zh, k));
+    }
     nameItem->setFlags((nameItem->flags() | Qt::ItemIsEnabled | Qt::ItemIsSelectable) & ~Qt::ItemIsEditable);
     nameItem->setToolTip(k.isEmpty() ? QStringLiteral("双击可填写英文参数名")
                                       : QStringLiteral("英文参数名：%1").arg(k));
@@ -158,10 +192,10 @@ void configureSendParamTable(QTableWidget* table, bool namedKeys) {
     table->clear();
     table->setRowCount(0);
     if (namedKeys) {
-        // 界面只显示中文说明；英文键存在 UserRole，悬停 tooltip 可见
         table->setColumnCount(2);
-        table->setHorizontalHeaderLabels({QStringLiteral("参数名"), QStringLiteral("参数值")});
-        table->setColumnWidth(0, 260);
+        table->setHorizontalHeaderLabels(
+            {QStringLiteral("参数说明 (英文键)"), QStringLiteral("参数值（灰斜体=未写入；改后空=显式空）")});
+        table->setColumnWidth(0, 320);
     } else {
         table->setColumnCount(1);
         table->setHorizontalHeaderLabels({QStringLiteral("参数值")});
@@ -173,57 +207,66 @@ void configureSendParamTable(QTableWidget* table, bool namedKeys) {
 }
 
 void setSendParamTableFromMap(QTableWidget* table, const QVariantMap& map) {
+    QSignalBlocker blocker(table);
     configureSendParamTable(table, true);
     QStringList keys = map.keys();
     keys.sort(Qt::CaseInsensitive);
     for (const QString& key : keys) {
         const int r = table->rowCount();
         table->insertRow(r);
-        table->setItem(r, 0, makeSendParamNameItem(key));
-        table->setItem(r, 1, new QTableWidgetItem(map.value(key).toString()));
+        QTableWidgetItem* nameItem = makeSendParamNameItem(key);
+        nameItem->setData(SendParamSavedRole, true);
+        table->setItem(r, 0, nameItem);
+        table->setItem(r, 1, makeSendParamValueItem(map.value(key).toString(), true, false));
     }
     if (table->rowCount() == 0) {
         table->insertRow(0);
         table->setItem(0, 0, makeSendParamNameItem(QString()));
-        table->setItem(0, 1, new QTableWidgetItem());
+        table->setItem(0, 1, makeSendParamValueItem(QString(), false, false));
     }
 }
 
-void setSendParamTableFromString(QTableWidget* table, const QString& value) {
-    configureSendParamTable(table, false);
-    table->insertRow(0);
-    table->setItem(0, 0, new QTableWidgetItem(value));
-}
+/** 按模板列出全部参数字段；userMap 覆盖已有值，模板缺省值仅作灰色占位提示。 */
+void setSendParamTableFromMapWithTemplate(QTableWidget* table, const QVariantMap& userMap,
+                                          const QVariantMap& templateMap) {
+    QSignalBlocker blocker(table);
+    configureSendParamTable(table, true);
+    QStringList ordered;
+    for (const QString& k : templateMap.keys()) {
+        if (!k.isEmpty() && !ordered.contains(k))
+            ordered.append(k);
+    }
+    QStringList extras;
+    for (const QString& k : userMap.keys()) {
+        if (!k.isEmpty() && !ordered.contains(k))
+            extras.append(k);
+    }
+    extras.sort(Qt::CaseInsensitive);
+    ordered.append(extras);
 
-QVariantMap readSendParamMapFromTable(const QTableWidget* table) {
-    QVariantMap map;
-    if (!table || table->columnCount() < 2)
-        return map;
-    for (int r = 0; r < table->rowCount(); ++r) {
-        const QTableWidgetItem* nameItem = table->item(r, 0);
-        const QTableWidgetItem* valItem = table->item(r, 1);
-        QString name;
-        if (nameItem) {
-            name = nameItem->data(SendParamKeyRole).toString().trimmed();
-            // 兼容旧两列表（参数名直接写在文案里）
-            if (name.isEmpty())
-                name = nameItem->text().trimmed();
-        }
-        if (name.isEmpty())
+    for (const QString& key : ordered) {
+        const int r = table->rowCount();
+        table->insertRow(r);
+        QTableWidgetItem* nameItem = makeSendParamNameItem(key);
+        if (userMap.contains(key)) {
+            nameItem->setData(SendParamSavedRole, true);
+            table->setItem(r, 0, nameItem);
+            table->setItem(r, 1, makeSendParamValueItem(userMap.value(key).toString(), true, false));
             continue;
-        map.insert(name, valItem ? valItem->text() : QString());
+        }
+        table->setItem(r, 0, nameItem);
+        const QString tmplVal = templateMap.value(key).toString();
+        const bool asPlaceholder = templateMap.contains(key) && !tmplVal.isEmpty();
+        table->setItem(r, 1, makeSendParamValueItem(asPlaceholder ? tmplVal : QString(), false, asPlaceholder));
     }
-    return map;
+    if (table->rowCount() == 0) {
+        table->insertRow(0);
+        table->setItem(0, 0, makeSendParamNameItem(QString()));
+        table->setItem(0, 1, makeSendParamValueItem(QString(), false, false));
+    }
 }
 
-QString readSendParamStringFromTable(const QTableWidget* table) {
-    if (!table || table->rowCount() <= 0)
-        return {};
-    const QTableWidgetItem* item = table->item(0, 0);
-    return item ? item->text().trimmed() : QString();
-}
-
-/** 配置程控电源：空参数时预填设备缺省 SCPI 模板，供步骤里直接改。 */
+/** 配置程控电源：设备缺省 SCPI 参数模板。 */
 QVariantMap defaultVisaConfigureParamMap(ScpiDeviceRoute route) {
     QVariantMap map;
     if (route == ScpiDeviceRoute::Agilent66319d) {
@@ -273,153 +316,167 @@ QVariantMap defaultVisaReadCurrentParamMap(ScpiDeviceRoute route) {
     return map;
 }
 
-void maybeFillVisaConfigureDefaults(QTableWidget* table, TestCaseSendChannel channel, const QString& device,
-                                    const QString& cmdName) {
-    if (!table || channel != TestCaseSendChannel::Scpi)
-        return;
-    if (!sendParamTableIsEmpty(table))
-        return;
-    const ScpiDeviceRoute route = ScpiPeriphCmdCatalog::deviceFromIni(device);
-    if (route != ScpiDeviceRoute::HuilingWfp60h && route != ScpiDeviceRoute::Agilent66319d)
-        return;
-    if (cmdName == QLatin1String("ConfigureProgrammablePower")) {
-        setSendParamTableFromMap(table, defaultVisaConfigureParamMap(route));
-        return;
-    }
-    if (cmdName == QLatin1String("ReadProgrammableCurrent")) {
-        setSendParamTableFromMap(table, defaultVisaReadCurrentParamMap(route));
-        return;
-    }
-    if (cmdName == QLatin1String("ReadProgrammableVoltage")) {
-        QVariantMap map;
-        if (route == ScpiDeviceRoute::Agilent66319d)
-            map.insert(QStringLiteral("scpiReadVoltageCmd"), QStringLiteral("MEAS:VOLT:DC?"));
-        else
-            map.insert(QStringLiteral("scpiReadVoltageCmd"), QStringLiteral("MEASure1:VOLTage:DC?"));
-        setSendParamTableFromMap(table, map);
-    }
-}
-
-void maybeFillProductCmdParamDefaults(QTableWidget* table, TestCaseSendChannel channel, const QString& cmdName) {
-    if (!table || channel != TestCaseSendChannel::Product)
-        return;
-    if (!sendParamTableIsEmpty(table))
-        return;
-    if (cmdName == QLatin1String("RootSuctionTest")) {
-        QVariantMap map;
-        map.insert(QStringLiteral("switch"), QStringLiteral("1"));
-        map.insert(QStringLiteral("mode"), QStringLiteral("1"));
-        map.insert(QStringLiteral("level"), QStringLiteral("8"));
-        setSendParamTableFromMap(table, map);
-        return;
-    }
-    if (cmdName == QLatin1String("SuctionMode")) {
-        QVariantMap map;
-        map.insert(QStringLiteral("enter"), QStringLiteral("1"));
-        setSendParamTableFromMap(table, map);
-    }
-}
-
-void maybeFillDongleCmdParamDefaults(QTableWidget* table, TestCaseSendChannel channel, const QString& cmdName) {
-    if (!table || channel != TestCaseSendChannel::Dongle)
-        return;
-    if (!sendParamTableIsEmpty(table))
-        return;
-    if (cmdName == QLatin1String("SampleSuctionSingle")) {
-        QVariantMap map;
-        map.insert(QStringLiteral("sampleDurationMs"), QStringLiteral("10000"));
-        map.insert(QStringLiteral("sampleIntervalMs"), QStringLiteral("20"));
-        map.insert(QStringLiteral("channel"), QStringLiteral("1"));
-        setSendParamTableFromMap(table, map);
-        return;
-    }
-    if (cmdName == QLatin1String("SampleSuctionDual")) {
-        QVariantMap map;
-        map.insert(QStringLiteral("sampleDurationMs"), QStringLiteral("10000"));
-        map.insert(QStringLiteral("sampleIntervalMs"), QStringLiteral("20"));
-        setSendParamTableFromMap(table, map);
-    }
-}
-
-void maybeFillAsd9026aCmdParamDefaults(QTableWidget* table, TestCaseSendChannel channel, const QString& device,
-                                      const QString& cmdName) {
-    if (!table || channel != TestCaseSendChannel::Fixture)
-        return;
-    if (FixturePcbaCmdCatalog::fixtureProtocolFromIni(device) != TestCaseFixtureProtocol::Asd9026a)
-        return;
-    if (!sendParamTableIsEmpty(table))
-        return;
-
-    // 与治具一样可直接改报文；ASD 地址和 CRC 在发送前按工位 index 自动改写。
-    if (cmdName == QLatin1String("ConfigureProgrammablePower")) {
-        QVariantMap map;
-        map.insert(QStringLiteral("voltage"), QStringLiteral("4.0"));
-        map.insert(QStringLiteral("current"), QStringLiteral("2.0"));
-        map.insert(QStringLiteral("currentRange"), QStringLiteral("4"));
-        map.insert(QStringLiteral("txHex"),
-                   QStringLiteral("02 21 10 0D 00 00 3D 09 00 00 00 07 D0 04 01 00 00 91 8F"));
-        setSendParamTableFromMap(table, map);
-        return;
-    }
-    if (cmdName == QLatin1String("ConfigureCurrentMeasureRange")) {
-        QVariantMap map;
-        map.insert(QStringLiteral("currentRange"), QStringLiteral("4"));
-        map.insert(QStringLiteral("txHex"),
-                   QStringLiteral("02 21 10 0D 00 00 00 00 00 00 00 00 00 04 00 00 00 14 A9"));
-        setSendParamTableFromMap(table, map);
-        return;
-    }
-    if (cmdName == QLatin1String("ProgrammablePowerOutput")) {
-        QVariantMap map;
-        map.insert(QStringLiteral("enable"), QStringLiteral("1"));
-        map.insert(QStringLiteral("txHex"), QStringLiteral("02 11 04 03 01 00 00 9B C5"));
-        setSendParamTableFromMap(table, map);
-        return;
-    }
-    if (cmdName == QLatin1String("ReadProgrammableVoltage") || cmdName == QLatin1String("ReadProgrammableCurrent")) {
-        QVariantMap map;
-        map.insert(QStringLiteral("txHex"), QStringLiteral("02 20 10 00 0D 96"));
-        if (cmdName == QLatin1String("ReadProgrammableCurrent")) {
-            map.insert(QStringLiteral("sampleDurationMs"), QStringLiteral("3000"));
-            map.insert(QStringLiteral("sampleIntervalMs"), QStringLiteral("200"));
+QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString& device, const QString& cmdName) {
+    if (channel == TestCaseSendChannel::Scpi) {
+        const ScpiDeviceRoute route = ScpiPeriphCmdCatalog::deviceFromIni(device);
+        if (route == ScpiDeviceRoute::HuilingWfp60h || route == ScpiDeviceRoute::Agilent66319d) {
+            if (cmdName == QLatin1String("ConfigureProgrammablePower"))
+                return defaultVisaConfigureParamMap(route);
+            if (cmdName == QLatin1String("ReadProgrammableCurrent"))
+                return defaultVisaReadCurrentParamMap(route);
+            if (cmdName == QLatin1String("ReadProgrammableVoltage")) {
+                QVariantMap map;
+                if (route == ScpiDeviceRoute::Agilent66319d)
+                    map.insert(QStringLiteral("scpiReadVoltageCmd"), QStringLiteral("MEAS:VOLT:DC?"));
+                else
+                    map.insert(QStringLiteral("scpiReadVoltageCmd"), QStringLiteral("MEASure1:VOLTage:DC?"));
+                return map;
+            }
+            if (cmdName == QLatin1String("SendRawLine")) {
+                return QVariantMap{{QStringLiteral("line"), QString()}};
+            }
         }
-        setSendParamTableFromMap(table, map);
-        return;
+        return {};
     }
-    if (cmdName == QLatin1String("SendRaw")) {
-        setSendParamTableFromString(table, QStringLiteral("02 11 04 03 01 00 00 9B C5"));
+    if (channel == TestCaseSendChannel::Modbus
+        && ModbusPeriphCmdCatalog::deviceFromIni(device) == ModbusDeviceRoute::MultiTempLoggerRtu) {
+        if (cmdName == QLatin1String("ReadChannelTemp")) {
+            QVariantMap map;
+            map.insert(QStringLiteral("slaveAddr"), QStringLiteral("1"));
+            map.insert(QStringLiteral("sharedPair"), QStringLiteral("true"));
+            map.insert(QStringLiteral("stationsPerDevice"), QStringLiteral("2"));
+            map.insert(QStringLiteral("channelsPerStation"), QStringLiteral("6"));
+            map.insert(QStringLiteral("tempComName0"), QStringLiteral("COM10"));
+            map.insert(QStringLiteral("tempComName1"), QStringLiteral("COM11"));
+            map.insert(QStringLiteral("tempBaudRate"), QStringLiteral("115200"));
+            map.insert(QStringLiteral("sampleDurationMs"), QStringLiteral("20000"));
+            map.insert(QStringLiteral("sampleIntervalMs"), QStringLiteral("500"));
+            return map;
+        }
+        if (cmdName == QLatin1String("SendRaw")) {
+            return QVariantMap{{QStringLiteral("txHex"), QStringLiteral("01 03 00 12 00 02 64 0E")}};
+        }
+        return {};
     }
+    if (channel == TestCaseSendChannel::Product) {
+        if (cmdName == QLatin1String("RootSuctionTest")) {
+            return QVariantMap{{QStringLiteral("switch"), QStringLiteral("1")},
+                               {QStringLiteral("mode"), QStringLiteral("1")},
+                               {QStringLiteral("level"), QStringLiteral("8")}};
+        }
+        if (cmdName == QLatin1String("SuctionMode")) {
+            return QVariantMap{{QStringLiteral("enter"), QStringLiteral("1")}};
+        }
+        return {};
+    }
+    if (channel == TestCaseSendChannel::Dongle) {
+        if (cmdName == QLatin1String("SampleSuctionSingle")) {
+            return QVariantMap{{QStringLiteral("sampleDurationMs"), QStringLiteral("10000")},
+                               {QStringLiteral("sampleIntervalMs"), QStringLiteral("20")},
+                               {QStringLiteral("channel"), QStringLiteral("1")}};
+        }
+        if (cmdName == QLatin1String("SampleSuctionDual")) {
+            return QVariantMap{{QStringLiteral("sampleDurationMs"), QStringLiteral("10000")},
+                               {QStringLiteral("sampleIntervalMs"), QStringLiteral("20")}};
+        }
+        return {};
+    }
+    if (channel == TestCaseSendChannel::Fixture
+        && FixturePcbaCmdCatalog::fixtureProtocolFromIni(device) == TestCaseFixtureProtocol::Asd9026a) {
+        if (cmdName == QLatin1String("ConfigureProgrammablePower")) {
+            return QVariantMap{{QStringLiteral("voltage"), QStringLiteral("4.0")},
+                               {QStringLiteral("current"), QStringLiteral("2.0")},
+                               {QStringLiteral("currentRange"), QStringLiteral("4")},
+                               {QStringLiteral("txHex"),
+                                QStringLiteral("02 21 10 0D 00 00 3D 09 00 00 00 07 D0 04 01 00 00 91 8F")}};
+        }
+        if (cmdName == QLatin1String("ConfigureCurrentMeasureRange")) {
+            return QVariantMap{
+                {QStringLiteral("currentRange"), QStringLiteral("4")},
+                {QStringLiteral("txHex"), QStringLiteral("02 21 10 0D 00 00 00 00 00 00 00 00 00 04 00 00 00 14 A9")}};
+        }
+        if (cmdName == QLatin1String("ProgrammablePowerOutput")) {
+            return QVariantMap{{QStringLiteral("enable"), QStringLiteral("1")},
+                               {QStringLiteral("txHex"), QStringLiteral("02 11 04 03 01 00 00 9B C5")}};
+        }
+        if (cmdName == QLatin1String("ReadProgrammableVoltage")
+            || cmdName == QLatin1String("ReadProgrammableCurrent")) {
+            QVariantMap map{{QStringLiteral("txHex"), QStringLiteral("02 20 10 00 0D 96")}};
+            if (cmdName == QLatin1String("ReadProgrammableCurrent")) {
+                map.insert(QStringLiteral("sampleDurationMs"), QStringLiteral("3000"));
+                map.insert(QStringLiteral("sampleIntervalMs"), QStringLiteral("200"));
+            }
+            return map;
+        }
+        if (cmdName == QLatin1String("SendRaw")) {
+            return QVariantMap{{QStringLiteral("txHex"), QStringLiteral("02 11 04 03 01 00 00 9B C5")}};
+        }
+        return {};
+    }
+    return {};
 }
 
-void maybeFillMultiTempLoggerCmdParamDefaults(QTableWidget* table, TestCaseSendChannel channel, const QString& device,
-                                              const QString& cmdName) {
-    if (!table || channel != TestCaseSendChannel::Modbus)
+void applySendParamTableWithTemplate(QTableWidget* table, TestCaseSendChannel channel, const QString& device,
+                                     const QString& cmdName, const QVariantMap& userMap) {
+    if (!table)
         return;
-    if (ModbusPeriphCmdCatalog::deviceFromIni(device) != ModbusDeviceRoute::MultiTempLoggerRtu)
-        return;
-    if (!sendParamTableIsEmpty(table))
-        return;
+    const QVariantMap tmpl = sendParamDefaultMapForCmd(channel, device, cmdName);
+    if (!tmpl.isEmpty())
+        setSendParamTableFromMapWithTemplate(table, userMap, tmpl);
+    else
+        setSendParamTableFromMap(table, userMap);
+}
 
-    if (cmdName == QLatin1String("ReadChannelTemp")) {
-        QVariantMap map;
-        map.insert(QStringLiteral("slaveAddr"), QStringLiteral("1"));
-        map.insert(QStringLiteral("sharedPair"), QStringLiteral("true"));
-        map.insert(QStringLiteral("stationsPerDevice"), QStringLiteral("2"));
-        map.insert(QStringLiteral("channelsPerStation"), QStringLiteral("6"));
-        map.insert(QStringLiteral("tempComName0"), QStringLiteral("COM10"));
-        map.insert(QStringLiteral("tempComName1"), QStringLiteral("COM11"));
-        map.insert(QStringLiteral("tempBaudRate"), QStringLiteral("115200"));
-        map.insert(QStringLiteral("sampleDurationMs"), QStringLiteral("20000"));
-        map.insert(QStringLiteral("sampleIntervalMs"), QStringLiteral("500"));
-        setSendParamTableFromMap(table, map);
-        return;
+void setSendParamTableFromString(QTableWidget* table, const QString& value) {
+    configureSendParamTable(table, false);
+    table->insertRow(0);
+    table->setItem(0, 0, new QTableWidgetItem(value));
+}
+
+QVariantMap readSendParamMapFromTable(const QTableWidget* table) {
+    QVariantMap map;
+    if (!table || table->columnCount() < 2)
+        return map;
+    for (int r = 0; r < table->rowCount(); ++r) {
+        const QTableWidgetItem* nameItem = table->item(r, 0);
+        const QTableWidgetItem* valItem = table->item(r, 1);
+        QString name;
+        if (nameItem) {
+            name = nameItem->data(SendParamKeyRole).toString().trimmed();
+            if (name.isEmpty())
+                name = nameItem->text().trimmed();
+        }
+        if (name.isEmpty())
+            continue;
+
+        QString val = valItem ? valItem->text().trimmed() : QString();
+        const bool explicitEmptySentinel = isSendParamExplicitEmptySentinel(val);
+        if (explicitEmptySentinel)
+            val.clear();
+
+        const bool fromSavedIni = nameItem && nameItem->data(SendParamSavedRole).toBool();
+        const bool touched = valItem && valItem->data(SendParamTouchedRole).toBool();
+        const bool placeholder = valItem && valItem->data(SendParamPlaceholderRole).toBool();
+
+        // 未改动的灰色模板占位：保存时不写入 ini
+        if (placeholder && !touched && !explicitEmptySentinel)
+            continue;
+
+        if (val.isEmpty()) {
+            if (fromSavedIni || touched || explicitEmptySentinel)
+                map.insert(name, QString());
+            continue;
+        }
+        map.insert(name, val);
     }
-    if (cmdName == QLatin1String("SendRaw")) {
-        QVariantMap map;
-        // 协议示例：读从站1通道1温度（寄存器 18~19）
-        map.insert(QStringLiteral("txHex"), QStringLiteral("01 03 00 12 00 02 64 0E"));
-        setSendParamTableFromMap(table, map);
-    }
+    return map;
+}
+
+QString readSendParamStringFromTable(const QTableWidget* table) {
+    if (!table || table->rowCount() <= 0)
+        return {};
+    const QTableWidgetItem* item = table->item(0, 0);
+    return item ? item->text().trimmed() : QString();
 }
 
 bool isFixtureMachineIndexPlaceholder(const QVariant& param) {
@@ -806,23 +863,37 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
 }
 
 void applySendParamHintToUi(const SendCmdParamUi& uiSchema, bool hasParam, QLabel* hintLabel, QTableWidget* paramTable,
-                            QSpinBox* spinBox, QWidget* addRowBtn, QWidget* removeRowBtn) {
+                            QSpinBox* spinBox, QWidget* addRowBtn, QWidget* removeRowBtn, QWidget* restoreBtn,
+                            bool hasDefaultTemplate) {
     if (!hintLabel)
         return;
-    hintLabel->setText(uiSchema.hint);
-    hintLabel->setVisible(hasParam && uiSchema.valid && !uiSchema.hint.isEmpty());
-    // 高度受限时完整说明放进 tooltip，避免再把对话框撑高
-    hintLabel->setToolTip(uiSchema.hint.isEmpty() ? QString() : uiSchema.hint);
-
+    QString hintText = uiSchema.hint;
     const bool namedMap = uiSchema.valid && uiSchema.kind == SendCmdParamKind::JsonMap;
+    if (namedMap) {
+        const QString saveNote =
+            QStringLiteral("灰色斜体为参考默认，保存时不写入；改过后留空保存=显式空值（写入 Param_键=）。"
+                           "也可填「-」表示显式空值。误删字段可点「恢复默认参数表」。");
+        if (!hintText.isEmpty())
+            hintText += QStringLiteral("\n") + saveNote;
+        else
+            hintText = saveNote;
+    }
+    hintLabel->setText(hintText);
+    hintLabel->setVisible(hasParam && uiSchema.valid && !hintText.isEmpty());
+    hintLabel->setToolTip(hintText.isEmpty() ? QString() : hintText);
+
     if (addRowBtn)
         addRowBtn->setVisible(namedMap);
     if (removeRowBtn)
         removeRowBtn->setVisible(namedMap);
+    if (restoreBtn)
+        restoreBtn->setVisible(namedMap && hasDefaultTemplate);
 
     if (paramTable) {
         if (uiSchema.valid && !uiSchema.hint.isEmpty())
             paramTable->setToolTip(uiSchema.hint);
+        else if (namedMap)
+            paramTable->setToolTip(QStringLiteral("灰色斜体=未写入 ini 的参考默认；改过后空=显式空值。"));
         else
             paramTable->setToolTip(QString());
     }
@@ -1130,9 +1201,22 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
         const int r = ui->tableWidget_sendParam->rowCount();
         ui->tableWidget_sendParam->insertRow(r);
         ui->tableWidget_sendParam->setItem(r, 0, makeSendParamNameItem(key));
-        ui->tableWidget_sendParam->setItem(r, 1, new QTableWidgetItem());
+        ui->tableWidget_sendParam->setItem(r, 1, makeSendParamValueItem(QString(), false, false));
         ui->tableWidget_sendParam->setCurrentCell(r, 1);
         ui->tableWidget_sendParam->editItem(ui->tableWidget_sendParam->item(r, 1));
+    });
+    connect(ui->tableWidget_sendParam, &QTableWidget::itemChanged, this, [this](QTableWidgetItem* item) {
+        if (!item || !ui->tableWidget_sendParam || item->column() != 1)
+            return;
+        item->setData(SendParamTouchedRole, true);
+        if (item->data(SendParamPlaceholderRole).toBool()) {
+            item->setData(SendParamPlaceholderRole, false);
+            QFont font = item->font();
+            font.setItalic(false);
+            item->setFont(font);
+            item->setForeground(QBrush());
+            item->setToolTip(QString());
+        }
     });
     connect(ui->pushButton_removeParamRow, &QPushButton::clicked, this, [this]() {
         if (!ui->tableWidget_sendParam)
@@ -1149,6 +1233,21 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
             ui->tableWidget_sendParam->setItem(0, 0, makeSendParamNameItem(QString()));
             ui->tableWidget_sendParam->setItem(0, 1, new QTableWidgetItem());
         }
+    });
+    connect(ui->pushButton_restoreParamDefaults, &QPushButton::clicked, this, [this]() {
+        if (!ui->tableWidget_sendParam || ui->tableWidget_sendParam->columnCount() < 2)
+            return;
+        const TestCaseSendChannel channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
+        const QString device = comboData(ui->comboBox_productProtocol);
+        const QString cmdName = comboData(ui->comboBox_deviceCmd);
+        const QVariantMap tmpl = sendParamDefaultMapForCmd(channel, device, cmdName);
+        if (tmpl.isEmpty()) {
+            QMessageBox::information(this, QStringLiteral("恢复默认参数表"),
+                                     QStringLiteral("当前指令没有预置参数模板，请用「添加一行」自行填写。"));
+            return;
+        }
+        const QVariantMap current = readSendParamMapFromTable(ui->tableWidget_sendParam);
+        setSendParamTableFromMapWithTemplate(ui->tableWidget_sendParam, current, tmpl);
     });
     // 双击参数名列：修改英文键（界面仍只显示中文）
     connect(ui->tableWidget_sendParam, &QTableWidget::cellDoubleClicked, this, [this](int row, int column) {
@@ -1514,18 +1613,16 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
         paramForUi = 0;
     applySendParamToUi(uiSchema, paramForUi, ui->page_paramNone, ui->page_paramInt, ui->page_paramJson,
                        ui->stackedWidget_param, ui->spinBox_intParam, ui->tableWidget_sendParam);
-    // 工站 steps 若缺 Param_*，上面会清空编辑框；再预填常用默认项便于改
-    maybeFillVisaConfigureDefaults(ui->tableWidget_sendParam, channel, comboData(ui->comboBox_productProtocol),
-                                   def.send.deviceCmd);
-    maybeFillProductCmdParamDefaults(ui->tableWidget_sendParam, channel, def.send.deviceCmd);
-    maybeFillDongleCmdParamDefaults(ui->tableWidget_sendParam, channel, def.send.deviceCmd);
-    maybeFillAsd9026aCmdParamDefaults(ui->tableWidget_sendParam, channel, comboData(ui->comboBox_productProtocol),
-                                     def.send.deviceCmd);
-    maybeFillMultiTempLoggerCmdParamDefaults(ui->tableWidget_sendParam, channel, comboData(ui->comboBox_productProtocol),
-                                             def.send.deviceCmd);
+    if (uiSchema.kind == SendCmdParamKind::JsonMap) {
+        applySendParamTableWithTemplate(ui->tableWidget_sendParam, channel, comboData(ui->comboBox_productProtocol),
+                                        def.send.deviceCmd, sendParamAsJsonMap(paramForUi));
+    }
+    const bool hasParamTemplate =
+        !sendParamDefaultMapForCmd(channel, comboData(ui->comboBox_productProtocol), def.send.deviceCmd).isEmpty();
     applySendParamHintToUi(uiSchema, uiSchema.valid && uiSchema.kind != SendCmdParamKind::None,
                            ui->label_sendParamHint, ui->tableWidget_sendParam, ui->spinBox_intParam,
-                           ui->pushButton_addParamRow, ui->pushButton_removeParamRow);
+                           ui->pushButton_addParamRow, ui->pushButton_removeParamRow,
+                           ui->pushButton_restoreParamDefaults, hasParamTemplate);
     lastSendParamCmdKey_ = sendChannelComboData(channel) + QLatin1Char('|')
         + comboData(ui->comboBox_productProtocol) + QLatin1Char('|') + def.send.deviceCmd;
 
@@ -1708,14 +1805,18 @@ void TestCaseEditDialog::onDeviceCmdChanged(int) {
     const SendCmdParamUi uiSchema = sendCmdParamUiForName(cmdName, channel, device);
     const bool hasParam = uiSchema.valid && uiSchema.kind != SendCmdParamKind::None;
     updateSendParamVisibility(hasParam);
-    applySendParamHintToUi(uiSchema, hasParam, ui->label_sendParamHint, ui->tableWidget_sendParam, ui->spinBox_intParam,
-                           ui->pushButton_addParamRow, ui->pushButton_removeParamRow);
     if (!uiSchema.valid) {
         ui->stackedWidget_param->setCurrentWidget(ui->page_paramNone);
+        applySendParamHintToUi(uiSchema, hasParam, ui->label_sendParamHint, ui->tableWidget_sendParam,
+                               ui->spinBox_intParam, ui->pushButton_addParamRow, ui->pushButton_removeParamRow,
+                               ui->pushButton_restoreParamDefaults, false);
         return;
     }
     if (uiSchema.kind == SendCmdParamKind::None) {
         ui->stackedWidget_param->setCurrentWidget(ui->page_paramNone);
+        applySendParamHintToUi(uiSchema, hasParam, ui->label_sendParamHint, ui->tableWidget_sendParam,
+                               ui->spinBox_intParam, ui->pushButton_addParamRow, ui->pushButton_removeParamRow,
+                               ui->pushButton_restoreParamDefaults, false);
         return;
     }
     if (uiSchema.kind == SendCmdParamKind::Int || uiSchema.kind == SendCmdParamKind::UInt) {
@@ -1726,10 +1827,16 @@ void TestCaseEditDialog::onDeviceCmdChanged(int) {
         } else {
             ui->spinBox_intParam->setSpecialValueText(QString());
         }
+        applySendParamHintToUi(uiSchema, hasParam, ui->label_sendParamHint, ui->tableWidget_sendParam,
+                               ui->spinBox_intParam, ui->pushButton_addParamRow, ui->pushButton_removeParamRow,
+                               ui->pushButton_restoreParamDefaults, false);
         return;
     }
     if (uiSchema.kind != SendCmdParamKind::JsonMap && uiSchema.kind != SendCmdParamKind::String) {
         ui->stackedWidget_param->setCurrentWidget(ui->page_paramNone);
+        applySendParamHintToUi(uiSchema, hasParam, ui->label_sendParamHint, ui->tableWidget_sendParam,
+                               ui->spinBox_intParam, ui->pushButton_addParamRow, ui->pushButton_removeParamRow,
+                               ui->pushButton_restoreParamDefaults, false);
         return;
     }
     ui->stackedWidget_param->setCurrentWidget(ui->page_paramJson);
@@ -1743,13 +1850,12 @@ void TestCaseEditDialog::onDeviceCmdChanged(int) {
         if (uiSchema.kind == SendCmdParamKind::String)
             setSendParamTableFromString(ui->tableWidget_sendParam, QString());
         else
-            setSendParamTableFromMap(ui->tableWidget_sendParam, {});
-        maybeFillVisaConfigureDefaults(ui->tableWidget_sendParam, channel, device, cmdName);
-        maybeFillProductCmdParamDefaults(ui->tableWidget_sendParam, channel, cmdName);
-        maybeFillDongleCmdParamDefaults(ui->tableWidget_sendParam, channel, cmdName);
-        maybeFillAsd9026aCmdParamDefaults(ui->tableWidget_sendParam, channel, device, cmdName);
-        maybeFillMultiTempLoggerCmdParamDefaults(ui->tableWidget_sendParam, channel, device, cmdName);
+            applySendParamTableWithTemplate(ui->tableWidget_sendParam, channel, device, cmdName, {});
     }
+    const bool hasParamTemplate = !sendParamDefaultMapForCmd(channel, device, cmdName).isEmpty();
+    applySendParamHintToUi(uiSchema, hasParam, ui->label_sendParamHint, ui->tableWidget_sendParam, ui->spinBox_intParam,
+                           ui->pushButton_addParamRow, ui->pushButton_removeParamRow,
+                           ui->pushButton_restoreParamDefaults, hasParamTemplate);
 }
 
 bool TestCaseEditDialog::saveValidated() {
