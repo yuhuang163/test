@@ -20,6 +20,8 @@ class SerialChannel : public QObject {
         DtrOnly,
         ToggleReset,
         FullReset,
+        /** RS485 半双工：exchange 发前 RTS 高、发完 RTS 低再收。 */
+        Rs485HalfDuplex,
     };
 
     struct OpenParams {
@@ -53,6 +55,8 @@ class SerialChannel : public QObject {
     bool waitForFrame(QByteArray* outFrame, int timeoutMs);
     /** 先清缓冲、写请求，再等回包（避免发送后、监听前应答已到导致丢包）。 */
     bool exchange(const QByteArray& request, QByteArray* response, int timeoutMs);
+    /** 发一次请求并收集多段防抖收包（Modbus RTU 粘包/回显时用）。 */
+    bool exchangeCollect(const QByteArray& request, QByteArray* response, int timeoutMs);
 
     static QStringList availablePortNames();
     static void updateComboBoxPorts(QComboBox* comboBox);

@@ -91,6 +91,7 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("tempDeviceIndex"), QStringLiteral("温度仪设备序号（从 0）")},
         {QStringLiteral("tempDeviceIndexLock"), QStringLiteral("锁定温度仪设备序号")},
         {QStringLiteral("tempBaudRate"), QStringLiteral("温度仪串口波特率")},
+        {QStringLiteral("tempRtsMode"), QStringLiteral("RTS模式：默认 RS232；RS485 转换器填 rs485，无控制填 none")},
         {QStringLiteral("tempLowC"), QStringLiteral("温度下限 ℃（可覆盖 Gate）")},
         {QStringLiteral("tempHighC"), QStringLiteral("温度上限 ℃（可覆盖 Gate）")},
         {QStringLiteral("sharedComName"), QStringLiteral("共享串口名（运行时解析）")},

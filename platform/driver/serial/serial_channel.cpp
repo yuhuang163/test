@@ -3,12 +3,14 @@
 #include <QComboBox>
 #include <QCoreApplication>
 #include <QElapsedTimer>
+#include <QElapsedTimer>
 #include <QEventLoop>
 #include <QMutex>
 #include <QPointer>
 #include <QSerialPortInfo>
 #include <QSet>
 #include <QTimer>
+#include <QThread>
 #include <QtConcurrent>
 
 #ifdef Q_OS_WIN
@@ -233,6 +235,12 @@ bool SerialChannel::exchange(const QByteArray& request, QByteArray* response, in
 
     clearReceiveBuffer();
 
+    const bool rs485Half = params_.rtsDtrMode == RtsDtrMode::Rs485HalfDuplex;
+    if (rs485Half) {
+        port_->setRequestToSend(true);
+        port_->setDataTerminalReady(true);
+    }
+
     const int waitMs = qMax(1, timeoutMs);
     QEventLoop loop;
     QTimer timeout;
@@ -247,16 +255,77 @@ bool SerialChannel::exchange(const QByteArray& request, QByteArray* response, in
 
     if (write(request) != request.size()) {
         disconnect(frameConn);
+        if (rs485Half)
+            port_->setRequestToSend(false);
         return false;
     }
     port_->waitForBytesWritten(qMin(2000, waitMs));
+    if (rs485Half) {
+        port_->setRequestToSend(false);
+        QThread::msleep(5);
+    }
 
     timeout.start(waitMs);
     loop.exec();
     disconnect(frameConn);
+    if (rs485Half && !port_->isOpen())
+        return false;
     if (captured.isEmpty())
         return false;
     *response = captured;
+    return true;
+}
+
+bool SerialChannel::exchangeCollect(const QByteArray& request, QByteArray* response, int timeoutMs) {
+    if (!response)
+        return false;
+    response->clear();
+    if (!port_->isOpen() || request.isEmpty())
+        return false;
+
+    clearReceiveBuffer();
+
+    const bool rs485Half = params_.rtsDtrMode == RtsDtrMode::Rs485HalfDuplex;
+    if (rs485Half) {
+        port_->setRequestToSend(true);
+        port_->setDataTerminalReady(true);
+    }
+
+    if (write(request) != request.size()) {
+        if (rs485Half)
+            port_->setRequestToSend(false);
+        return false;
+    }
+    const int waitMs = qMax(1, timeoutMs);
+    port_->waitForBytesWritten(qMin(2000, waitMs));
+    if (rs485Half) {
+        port_->setRequestToSend(false);
+        QThread::msleep(5);
+    }
+
+    QByteArray accumulated;
+    QElapsedTimer total;
+    total.start();
+    int idleSlices = 0;
+    while (total.elapsed() < waitMs) {
+        const int remain = waitMs - static_cast<int>(total.elapsed());
+        if (remain <= 0)
+            break;
+        QByteArray chunk;
+        if (!waitForFrame(&chunk, qMin(120, remain))) {
+            if (!accumulated.isEmpty()) {
+                ++idleSlices;
+                if (idleSlices >= 2)
+                    break;
+            }
+            continue;
+        }
+        idleSlices = 0;
+        accumulated.append(chunk);
+    }
+    if (accumulated.isEmpty())
+        return false;
+    *response = accumulated;
     return true;
 }
 
@@ -362,6 +431,10 @@ void SerialChannel::applyRtsDtr() {
         port_->setDataTerminalReady(true);
         port_->setRequestToSend(false);
         port_->setDataTerminalReady(false);
+        break;
+    case RtsDtrMode::Rs485HalfDuplex:
+        port_->setDataTerminalReady(true);
+        port_->setRequestToSend(false);
         break;
     }
 }

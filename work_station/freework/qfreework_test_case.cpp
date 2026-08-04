@@ -15,6 +15,7 @@
 #include "shared_instrument.h"
 #include "serial_channel.h"
 #include "multi_temp_logger_rtu.h"
+#include "qmodbus_pdu.h"
 
 #include <QFile>
 #include <QRegularExpression>
@@ -22,6 +23,7 @@
 #include <QElapsedTimer>
 #include <QEventLoop>
 #include <QMutexLocker>
+#include <QThread>
 
 #include <memory>
 
@@ -1160,8 +1162,10 @@ void QFreeWork::runModbusAmmeterCurrentSampleAnyMatch(const TestCaseDefinition& 
                 QString openErr;
                 const int tempDeviceIndex = tempParam.value(QStringLiteral("tempDeviceIndex"), 0).toInt();
                 const int baud = tempParam.value(QStringLiteral("tempBaudRate"), 115200).toInt();
-                SerialChannel* sharedCh =
-                    box ? box->ensureSharedTempLoggerChannel(tempDeviceIndex, sharedCom, &openErr, baud) : nullptr;
+                const auto rtsMode = SharedInstrument::tempRtsModeFromParam(tempParam);
+                SerialChannel* sharedCh = box ? box->ensureSharedTempLoggerChannel(tempDeviceIndex, sharedCom, &openErr,
+                                                                                    baud, rtsMode)
+                                              : nullptr;
                 if (!sharedCh) {
                     showlog(QStringLiteral("共享温度仪串口打开失败（继续）：%1").arg(openErr));
                 } else {
@@ -1169,12 +1173,14 @@ void QFreeWork::runModbusAmmeterCurrentSampleAnyMatch(const TestCaseDefinition& 
                     const QByteArray request = MultiTempLoggerModbusRtu().buildRequest(
                         static_cast<int>(multiTempLoggerRtuCmdFromName(def.send.deviceCmd)), tempParam);
                     QByteArray reply;
-                    if (request.isEmpty() || !sharedCh->exchange(request, &reply, 2000)) {
+                    if (request.isEmpty() || !sharedCh->exchangeCollect(request, &reply, 2000)) {
                         showlog(QStringLiteral("Modbus 温度仪采样收发失败（继续）"));
                     } else {
                         double celsius = 0.0;
                         QString valueText;
-                        if (MultiTempLoggerModbusRtu::parseTemperatureFrame(reply, &celsius, &valueText)) {
+                        const int slaveAddr = tempParam.value(QStringLiteral("slaveAddr"), 1).toInt();
+                        if (MultiTempLoggerModbusRtu::parseTemperatureFrame(reply, &celsius, &valueText, slaveAddr,
+                                                                            request)) {
                             ProtocolMeasureData measureData;
                             measureData.deviceName = QStringLiteral("MultiTempLogger");
                             measureData.channel = QStringLiteral("CH%1").arg(
@@ -1234,6 +1240,14 @@ void QFreeWork::runMultiTempLoggerChannelsWindowAllMatch(const TestCaseDefinitio
     const int durationMs = qMax(1000, currentSampleDurationMs(def, map));
     const int intervalMs = qMax(100, currentSampleIntervalMs(map));
     const int perReadMs = qMax(500, TestCaseRunner::commandTimeoutMs(def));
+    int readTimeoutMs = map.value(QStringLiteral("tempReadTimeoutMs"), 0).toInt();
+    if (readTimeoutMs <= 0)
+        readTimeoutMs = qBound(400, qMin(perReadMs, 1200), 2000);
+    const int interReadDelayMs = qMax(0, map.value(QStringLiteral("tempInterReadDelayMs"), 80).toInt());
+    const bool logHexEveryRead =
+        map.value(QStringLiteral("tempLogHex"), true).toString().trimmed().compare(QLatin1String("false"),
+                                                                                     Qt::CaseInsensitive)
+        != 0;
 
     double lowC = def.gate.low;
     double highC = def.gate.high;
@@ -1247,16 +1261,18 @@ void QFreeWork::runMultiTempLoggerChannelsWindowAllMatch(const TestCaseDefinitio
     QStringList chNames;
     for (int ch : channels)
         chNames.append(QStringLiteral("CH%1").arg(ch));
-    showlog(QStringLiteral("多路温度卡控：通道[%1]，窗口 %2ms，间隔 %3ms，要求同轮全部落在 [%4,%5]℃")
+    showlog(QStringLiteral("多路温度卡控：通道[%1]，窗口 %2ms，间隔 %3ms，单通道超时 %4ms，要求同轮全部落在 [%5,%6]℃")
                 .arg(chNames.join(QLatin1Char(',')))
                 .arg(durationMs)
                 .arg(intervalMs)
+                .arg(readTimeoutMs)
                 .arg(lowC, 0, 'f', 1)
                 .arg(highC, 0, 'f', 1));
 
     const QString sharedCom = map.value(QStringLiteral("sharedComName")).toString().trimmed();
     const int tempDeviceIndex = map.value(QStringLiteral("tempDeviceIndex"), 0).toInt();
     const int baud = map.value(QStringLiteral("tempBaudRate"), 115200).toInt();
+    const auto rtsMode = SharedInstrument::tempRtsModeFromParam(map);
     const int slaveAddr = map.contains(QStringLiteral("slaveAddr"))
                               ? map.value(QStringLiteral("slaveAddr")).toInt()
                               : map.value(QStringLiteral("addr"), 1).toInt();
@@ -1265,17 +1281,22 @@ void QFreeWork::runMultiTempLoggerChannelsWindowAllMatch(const TestCaseDefinitio
     SerialChannel* sharedCh = nullptr;
     if (!sharedCom.isEmpty()) {
         QString openErr;
-        sharedCh = box ? box->ensureSharedTempLoggerChannel(tempDeviceIndex, sharedCom, &openErr, baud) : nullptr;
+        sharedCh = box ? box->ensureSharedTempLoggerChannel(tempDeviceIndex, sharedCom, &openErr, baud, rtsMode)
+                       : nullptr;
         if (!sharedCh) {
             showlog(QStringLiteral("共享温度仪串口打开失败：%1").arg(openErr));
             markActiveTestCaseStepDone(false, QStringLiteral("共享串口失败"), QStringLiteral("失败"));
             return;
         }
+        showlog(QStringLiteral("温度仪串口 %1 波特率 %2 RTS=%3（协议默认 RS232；RS485 转换器步骤填 Param_tempRtsMode=rs485）")
+                    .arg(sharedCom)
+                    .arg(baud)
+                    .arg(SharedInstrument::tempRtsModeLabel(rtsMode)));
     } else {
         modbusManager.setDeviceRoute(ModbusDeviceRoute::MultiTempLoggerRtu);
     }
 
-    auto readOne = [&](int channel, double* outC, QString* errOut) -> bool {
+    auto readOne = [&](int channel, int sampleRound, double* outC, QString* errOut) -> bool {
         QVariantMap one = map;
         one.insert(QStringLiteral("channel"), channel);
         one.insert(QStringLiteral("slaveAddr"), slaveAddr);
@@ -1286,12 +1307,25 @@ void QFreeWork::runMultiTempLoggerChannelsWindowAllMatch(const TestCaseDefinitio
                 *errOut = QStringLiteral("组帧失败");
             return false;
         }
+        const QString txHex = QString::fromLatin1(request.toHex(' ').toUpper());
         QByteArray reply;
+        auto doExchange = [&](SerialChannel* ch) -> bool {
+            return ch->exchangeCollect(request, &reply, readTimeoutMs);
+        };
         if (sharedCh) {
             QMutexLocker locker(box->sharedTempLoggerMutex(tempDeviceIndex));
-            if (!sharedCh->exchange(request, &reply, perReadMs)) {
+            if (!doExchange(sharedCh)) {
                 if (errOut)
                     *errOut = QStringLiteral("收发超时");
+                if (logHexEveryRead) {
+                    const QString rxHex = reply.isEmpty() ? QStringLiteral("(空)")
+                                                          : QString::fromLatin1(reply.toHex(' ').toUpper());
+                    showlog(QStringLiteral("多路温度#%1 CH%2 TX=%3 RX=%4 → 收发超时")
+                                .arg(sampleRound)
+                                .arg(channel)
+                                .arg(txHex)
+                                .arg(rxHex));
+                }
                 return false;
             }
         } else {
@@ -1300,17 +1334,50 @@ void QFreeWork::runMultiTempLoggerChannelsWindowAllMatch(const TestCaseDefinitio
                     *errOut = QStringLiteral("万用表串口未打开");
                 return false;
             }
-            if (!modbusManager.serialChannel()->exchange(request, &reply, perReadMs)) {
+            if (!doExchange(modbusManager.serialChannel())) {
                 if (errOut)
                     *errOut = QStringLiteral("收发超时");
+                if (logHexEveryRead) {
+                    const QString rxHex = reply.isEmpty() ? QStringLiteral("(空)")
+                                                          : QString::fromLatin1(reply.toHex(' ').toUpper());
+                    showlog(QStringLiteral("多路温度#%1 CH%2 TX=%3 RX=%4 → 收发超时")
+                                .arg(sampleRound)
+                                .arg(channel)
+                                .arg(txHex)
+                                .arg(rxHex));
+                }
                 return false;
             }
         }
+        const QString rxHex =
+            reply.isEmpty() ? QStringLiteral("(空)") : QString::fromLatin1(reply.toHex(' ').toUpper());
+        QByteArray rtuFrame;
+        const bool hasRtu =
+            QModbusPdu::extractFc03Read2RegsResponse(reply, slaveAddr, &rtuFrame, request);
+        const QString rtuHex = hasRtu ? QString::fromLatin1(rtuFrame.toHex(' ').toUpper()) : QStringLiteral("(无)");
+
         QString valueText;
-        if (!MultiTempLoggerModbusRtu::parseTemperatureFrame(reply, outC, &valueText)) {
+        if (!MultiTempLoggerModbusRtu::parseTemperatureFrame(reply, outC, &valueText, slaveAddr, request)) {
             if (errOut)
                 *errOut = QStringLiteral("解析失败");
+            if (logHexEveryRead) {
+                showlog(QStringLiteral("多路温度#%1 CH%2 TX=%3 RX=%4 RTU=%5 → 解析失败")
+                            .arg(sampleRound)
+                            .arg(channel)
+                            .arg(txHex)
+                            .arg(rxHex)
+                            .arg(rtuHex));
+            }
             return false;
+        }
+        if (logHexEveryRead) {
+            showlog(QStringLiteral("多路温度#%1 CH%2 TX=%3 RX=%4 RTU=%5 → %6℃")
+                        .arg(sampleRound)
+                        .arg(channel)
+                        .arg(txHex)
+                        .arg(rxHex)
+                        .arg(rtuHex)
+                        .arg(*outC, 0, 'f', 2));
         }
         return true;
     };
@@ -1332,10 +1399,12 @@ void QFreeWork::runMultiTempLoggerChannelsWindowAllMatch(const TestCaseDefinitio
         for (int ch : channels) {
             double c = 0.0;
             QString err;
-            if (!readOne(ch, &c, &err)) {
+            if (!readOne(ch, round, &c, &err)) {
                 parts.append(QStringLiteral("CH%1=读失败(%2)").arg(ch).arg(err));
                 allOk = false;
                 anyFailRead = true;
+                if (interReadDelayMs > 0)
+                    QThread::msleep(interReadDelayMs);
                 continue;
             }
             const bool inRange = (c >= lowC && c <= highC);
@@ -1345,6 +1414,8 @@ void QFreeWork::runMultiTempLoggerChannelsWindowAllMatch(const TestCaseDefinitio
                              .arg(inRange ? QString() : QStringLiteral("(超)")));
             if (!inRange)
                 allOk = false;
+            if (interReadDelayMs > 0)
+                QThread::msleep(interReadDelayMs);
         }
         lastRoundText = parts.join(QLatin1Char(' '));
         showlog(QStringLiteral("多路温度采样#%1：%2 → %3")
@@ -1687,8 +1758,10 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                 auto* box = qobject_cast<QFreeWorkBox*>(ctx->window());
                 QString openErr;
                 const int baud = tempParam.value(QStringLiteral("tempBaudRate"), 115200).toInt();
-                SerialChannel* sharedCh =
-                    box ? box->ensureSharedTempLoggerChannel(tempDeviceIndex, sharedCom, &openErr, baud) : nullptr;
+                const auto rtsMode = SharedInstrument::tempRtsModeFromParam(tempParam);
+                SerialChannel* sharedCh = box ? box->ensureSharedTempLoggerChannel(tempDeviceIndex, sharedCom, &openErr,
+                                                                                    baud, rtsMode)
+                                              : nullptr;
                 if (!sharedCh) {
                     ctx->showlog(QStringLiteral("共享温度仪串口打开失败：%1").arg(openErr));
                     ctx->markActiveTestCaseStepDone(false, QStringLiteral("共享串口失败"), QStringLiteral("失败"));
@@ -1705,8 +1778,12 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                 }
                 const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
                 QByteArray reply;
-                if (!sharedCh->exchange(request, &reply, timeoutMs)) {
-                    ctx->showlog(QStringLiteral("温度记录仪共享串口收发超时/失败：%1").arg(def.send.deviceCmd));
+                if (!sharedCh->exchangeCollect(request, &reply, timeoutMs)) {
+                    ctx->showlog(QStringLiteral("温度记录仪共享串口收发超时/失败：%1 TX=%2 RX=%3")
+                                     .arg(def.send.deviceCmd)
+                                     .arg(QString::fromLatin1(request.toHex(' ').toUpper()))
+                                     .arg(reply.isEmpty() ? QStringLiteral("(空)")
+                                                          : QString::fromLatin1(reply.toHex(' ').toUpper())));
                     ctx->markActiveTestCaseStepDone(false, QStringLiteral("收发失败"), QStringLiteral("失败"));
                     return;
                 }
@@ -1714,7 +1791,9 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                     && def.send.deviceCmd.compare(QLatin1String("SendRaw"), Qt::CaseInsensitive) != 0) {
                     double celsius = 0.0;
                     QString valueText;
-                    if (!MultiTempLoggerModbusRtu::parseTemperatureFrame(reply, &celsius, &valueText)) {
+                    const int slaveAddr = tempParam.value(QStringLiteral("slaveAddr"), 1).toInt();
+                    if (!MultiTempLoggerModbusRtu::parseTemperatureFrame(reply, &celsius, &valueText, slaveAddr,
+                                                                         request)) {
                         ctx->showlog(QStringLiteral("温度记录仪回包解析失败"));
                         ctx->markActiveTestCaseStepDone(false, QStringLiteral("解析失败"), QStringLiteral("失败"));
                         return;
