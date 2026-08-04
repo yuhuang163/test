@@ -9,8 +9,8 @@ alwaysApply: true
 
 - **Qt 5.15**，**MSVC**，**C++17**，工程入口：`new_production.pro`（`CONFIG += c++17`，编译选项含 `/utf-8`）。
 - **文本编码**：除第三方或未改动的存量文件外，本项目新建或修改的 **`.cpp` / `.h` / `.hpp` / `.ui` / `.pro` / `.qrc` / `.md` / `.ini` 配置片段等** 一律使用 **UTF-8（无 BOM）** 保存；工程已配置 `/utf-8` 编译选项，无需 BOM。已有文件若非任务要求不要随意改编码。
-- **换行**：`.gitattributes` 为 `* -text`，**除 `*.pro` 外文本均为 CRLF 原样入库**；**仅 `new_production.pro` 等 `*.pro` 保持 LF**（qmake 惯例）；`*.sh` 保持 LF。批量统一：`python scripts/convert_to_crlf.py`（脚本对 `.pro`/`.sh` 转 LF，含 `.pri` 在内的其余转 CRLF）。
-- **Agent 写文件后必做**：凡修改过 **`.cpp` / `.h` / `.hpp` / `.ui` / `.ini` / `.md` / `.mdc` 等文本** 后，对**本次改动的文件**执行 `python scripts/convert_to_crlf.py`（或确认 **CRLF + UTF-8 无 BOM**）。**仅 `.pro` 须 LF + UTF-8 无 BOM**；`.pri` 与其它源码一样 **CRLF**。**禁止**改编码导致中文乱码。
+- **换行**：`.gitattributes` 为 `* -text`，**仓库内文本默认 CRLF 原样入库**；**仅根目录 `new_production.pro` 固定 LF**（qmake 入口）；`*.sh` 保持 LF。`python scripts/convert_to_crlf.py` **无参数时只检查 `new_production.pro`**，不批量改其它文件；Agent 改动其它文本后对该文件执行 `python scripts/convert_to_crlf.py <路径>` 转 CRLF。
+- **Agent 写文件后必做**：改动 **`.cpp` / `.h` / `.ui` / `.ini` 等** 后对**本次改动的文件**执行 `python scripts/convert_to_crlf.py <路径>`（CRLF + UTF-8 无 BOM）。改动 **`new_production.pro`** 时执行 `python scripts/convert_to_crlf.py new_production.pro`（LF + UTF-8 无 BOM）。**禁止**批量改编码/换行导致中文乱码。
 - 配置多用 **`SETTINGS`（Ini）**；协议与界面分层：`agreement/`、`work_station/` 等，改动前先对照同目录现有写法。
 
 ## 代码风格（与仓库一致）

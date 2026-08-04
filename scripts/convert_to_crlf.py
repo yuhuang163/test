@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
-"""将仓库内文本文件换行统一：默认 CRLF；仅 *.pro / *.sh 保持 LF。"""
+"""换行处理：默认 CRLF；仅仓库根目录 new_production.pro 与 *.sh 保持 LF。
+
+无参数时只检查/修正 new_production.pro，不批量改动其它文件。
+传入路径时仅处理所列文件（Agent 改动的文件）。
+"""
 from __future__ import annotations
 
 import os
@@ -54,8 +58,9 @@ TEXT_EXTENSIONS = {
     ".gitignore",
 }
 
-# qmake 根工程 .pro 与 shell 脚本保持 LF；其余（含 .pri）为 CRLF
-KEEP_LF_SUFFIXES = {".sh", ".pro"}
+# 仅根工程 new_production.pro 固定 LF；*.sh 避免 shebang 带 \r
+KEEP_LF_REL_PATHS = {"new_production.pro"}
+KEEP_LF_SUFFIXES = {".sh"}
 
 
 def path_excluded(rel_posix: str) -> bool:
@@ -87,6 +92,13 @@ def normalize_to_crlf(text: str) -> str:
     return normalize_to_lf(text).replace("\n", "\r\n")
 
 
+def should_keep_lf(rel_posix: str, suffix: str) -> bool:
+    rel = rel_posix.replace("\\", "/")
+    if rel in KEEP_LF_REL_PATHS:
+        return True
+    return suffix.lower() in KEEP_LF_SUFFIXES
+
+
 def iter_files() -> list[Path]:
     out: list[Path] = []
     for dirpath, dirnames, filenames in os.walk(ROOT):
@@ -103,6 +115,28 @@ def iter_files() -> list[Path]:
     return out
 
 
+def resolve_cli_paths(argv: list[str]) -> list[Path]:
+    paths: list[Path] = []
+    for arg in argv:
+        if arg.startswith("-"):
+            continue
+        p = Path(arg)
+        if not p.is_absolute():
+            p = ROOT / p
+        try:
+            p = p.resolve()
+        except OSError:
+            continue
+        if not p.is_file():
+            continue
+        try:
+            p.relative_to(ROOT)
+        except ValueError:
+            continue
+        paths.append(p)
+    return paths
+
+
 def convert_file(path: Path, dry_run: bool) -> str:
     raw = path.read_bytes()
     if not raw:
@@ -112,26 +146,35 @@ def convert_file(path: Path, dry_run: bool) -> str:
     except UnicodeDecodeError:
         return "error:decode"
 
-    suffix = path.suffix.lower()
-    if suffix in KEEP_LF_SUFFIXES:
+    rel = path.relative_to(ROOT).as_posix()
+    if should_keep_lf(rel, path.suffix):
         normalized = normalize_to_lf(text)
     else:
         normalized = normalize_to_crlf(text)
     encoded = normalized.encode("utf-8")
-    new_raw = encoded
 
-    if new_raw == raw:
+    if encoded == raw:
         return "skip"
     if not dry_run:
-        path.write_bytes(new_raw)
+        path.write_bytes(encoded)
     return "would-convert" if dry_run else "convert"
 
 
 def main() -> int:
     dry_run = "--dry-run" in sys.argv
+    cli_paths = resolve_cli_paths(sys.argv[1:])
+    if cli_paths:
+        targets = cli_paths
+    else:
+        # 无参数：只保证 new_production.pro，不批量动其它文件
+        targets = [ROOT / "new_production.pro"]
+
     stats: dict[str, int] = {}
     changed: list[str] = []
-    for p in sorted(iter_files()):
+    for p in sorted(set(targets)):
+        if not p.is_file():
+            stats["missing"] = stats.get("missing", 0) + 1
+            continue
         rel = p.relative_to(ROOT).as_posix()
         try:
             action = convert_file(p, dry_run)

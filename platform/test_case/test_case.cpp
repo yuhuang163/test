@@ -920,6 +920,13 @@ bool stepIniHasMeaningfulContent(const QString& path) {
            || ini.contains(QStringLiteral("Meta/MesTag")) || ini.contains(QStringLiteral("Hook/HookId"));
 }
 
+bool isLegacyHookDeviceCmdPlaceholder(const QString& deviceCmd) {
+    return deviceCmd.trimmed().compare(QLatin1String("Hook"), Qt::CaseInsensitive) == 0;
+}
+
+/** 工站 steps 缺 [Hook] 时从步骤库补全（如 M8_写入mac：Send/DeviceCmd=Hook + MAC_WRITE_ROOT）。 */
+void supplementMissingHookFromLibrary(const QString& stepId, TestCaseDefinition& def);
+
 /** 将 test_case 根目录平铺 ini 迁入 steps/（库文件缺失或为空时覆盖） */
 void migrateLegacyFlatInisToStepLibrary() {
     TestCasePaths::ensureRootDir();
@@ -1239,6 +1246,26 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
     loadMultiGatesFromIni(ini, out);
 
     return true;
+}
+
+void supplementMissingHookFromLibrary(const QString& stepId, TestCaseDefinition& def) {
+    if (def.hook.enabled && !def.hook.hookId.isEmpty())
+        return;
+    if (!isLegacyHookDeviceCmdPlaceholder(def.send.deviceCmd) && def.hook.hookId.isEmpty())
+        return;
+
+    TestCaseDefinition library;
+    const QString libraryPath = TestCasePaths::stepLibraryPath(stepId);
+    const QString legacyPath = TestCasePaths::caseIniPath(stepId);
+    if (!loadCaseDefinitionFromIniFile(libraryPath, stepId, library)
+        && !loadCaseDefinitionFromIniFile(legacyPath, stepId, library)) {
+        return;
+    }
+    if (!library.hook.hookId.isEmpty()) {
+        def.hook.hookId = library.hook.hookId;
+        if (!def.hook.enabled)
+            def.hook.enabled = library.hook.enabled;
+    }
 }
 
 void applyCaseIniOverlay(QSettings& overlay, TestCaseDefinition& def) {
@@ -1867,6 +1894,8 @@ bool TestCaseStore::loadCaseForStation(const QString& stationKey, const QString&
         if (!loaded)
             loaded = loadCaseDefinitionFromIniFile(legacyPath, id, out);
     }
+    if (loaded && !key.isEmpty())
+        supplementMissingHookFromLibrary(id, out);
     return loaded;
 }
 
@@ -2305,12 +2334,17 @@ bool TestCaseValidator::validateCase(const TestCaseDefinition& def, QStringList&
     if (def.meta.mesTag.trimmed().isEmpty())
         errors.append(QStringLiteral("「上报MES的字段」不能为空（测试项信息）"));
 
-    // 纯空白提醒 / 仅等 Gate 上报：可不填测试指令
-    const bool promptOnlyStep = def.meta.promptEnabled && def.meta.promptOnly && !def.hook.enabled;
+    // 纯空白提醒 / 仅等 Gate 上报 / 预置流程 Hook：可不填有效产品指令
+    const bool hookStep = def.hook.enabled;
+    const bool promptOnlyStep = def.meta.promptEnabled && def.meta.promptOnly && !hookStep;
     const bool gateWaitOnlyStep =
-        !def.hook.enabled && def.meta.promptOnly && def.gate.enabled && def.send.deviceCmd.trimmed().isEmpty();
-    if (promptOnlyStep || gateWaitOnlyStep) {
+        !hookStep && def.meta.promptOnly && def.gate.enabled && def.send.deviceCmd.trimmed().isEmpty();
+    if (hookStep) {
+        // Send/DeviceCmd 可为占位 Hook，不校验产品指令 catalog
+    } else if (promptOnlyStep || gateWaitOnlyStep) {
         // 不校验 / 不要求测试指令
+    } else if (def.send.deviceCmd.trimmed().compare(QLatin1String("Hook"), Qt::CaseInsensitive) == 0) {
+        errors.append(QStringLiteral("该步骤 Send/DeviceCmd=Hook，请在「预置流程」勾选启用并选择流程类型（如 MAC_WRITE_ROOT）"));
     } else if (def.send.deviceCmd.isEmpty()) {
         errors.append(QStringLiteral("请选择测试指令"));
     } else if (def.send.channel == TestCaseSendChannel::Dongle) {
