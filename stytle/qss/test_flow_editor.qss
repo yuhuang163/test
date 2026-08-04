@@ -16,14 +16,23 @@ TestCaseBlock::indicator {
   subcontrol-position: left center;
   subcontrol-origin: margin;
   left: 12px;
+  /* 去掉 Windows/全局样式自带的勾选黑点（方块） */
+  image: none;
 }
 TestCaseBlock::indicator:checked {
   border: 1px solid #15803d;
   background: #22c55e;
+  image: none;
 }
 TestCaseBlock::indicator:unchecked {
   border: 1px solid #6b7280;
-  background: #9ca3af;
+  background: #ffffff;
+  image: none;
+}
+TestCaseBlock::indicator:indeterminate {
+  border: 1px solid #6b7280;
+  background: #ffffff;
+  image: none;
 }
 
 /* flowState 由 updateBlockStyle 设置 */
