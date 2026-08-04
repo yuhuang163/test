@@ -927,6 +927,9 @@ bool isLegacyHookDeviceCmdPlaceholder(const QString& deviceCmd) {
 /** 工站 steps 缺 [Hook] 时从步骤库补全（如 M8_写入mac：Send/DeviceCmd=Hook + MAC_WRITE_ROOT）。 */
 void supplementMissingHookFromLibrary(const QString& stepId, TestCaseDefinition& def);
 
+/** 工站 steps 缺 [Gate] 多字段卡控时从步骤库补全（如杰理 RSSI/频偏 WaitRfInfo）。 */
+void supplementMissingGateFromLibrary(const QString& stationKey, const QString& stepId, TestCaseDefinition& def);
+
 /** 将 test_case 根目录平铺 ini 迁入 steps/（库文件缺失或为空时覆盖） */
 void migrateLegacyFlatInisToStepLibrary() {
     TestCasePaths::ensureRootDir();
@@ -1266,6 +1269,41 @@ void supplementMissingHookFromLibrary(const QString& stepId, TestCaseDefinition&
         if (!def.hook.enabled)
             def.hook.enabled = library.hook.enabled;
     }
+}
+
+void supplementMissingGateFromLibrary(const QString& stationKey, const QString& stepId, TestCaseDefinition& def) {
+    const bool defHasMultiGates = def.gates.size() > 1
+        || def.gate.field.compare(QLatin1String("multi"), Qt::CaseInsensitive) == 0;
+    if (defHasMultiGates)
+        return;
+
+    TestCaseDefinition library;
+    const QString libraryPath = TestCasePaths::stepLibraryPath(stepId);
+    const QString legacyPath = TestCasePaths::caseIniPath(stepId);
+    if (!loadCaseDefinitionFromIniFile(libraryPath, stepId, library)
+        && !loadCaseDefinitionFromIniFile(legacyPath, stepId, library)) {
+        return;
+    }
+    const bool libraryHasMultiGates = library.gates.size() > 1
+        || library.gate.field.compare(QLatin1String("multi"), Qt::CaseInsensitive) == 0;
+    if (!libraryHasMultiGates && !library.gate.enabled)
+        return;
+
+    const QString key = stationKey.trimmed();
+    if (!key.isEmpty()) {
+        const QString profilePath = TestCasePaths::profileStepOverridePath(key, stepId);
+        if (QFile::exists(profilePath)) {
+            QSettings profileIni(profilePath, QSettings::IniFormat);
+            applyTestCaseIniCodec(profileIni);
+            if (profileIni.contains(QStringLiteral("Gate/Enabled"))
+                && !profileIni.value(QStringLiteral("Gate/Enabled")).toBool()) {
+                return;
+            }
+        }
+    }
+
+    def.gate = library.gate;
+    def.gates = library.gates;
 }
 
 void applyCaseIniOverlay(QSettings& overlay, TestCaseDefinition& def) {
@@ -1894,8 +1932,10 @@ bool TestCaseStore::loadCaseForStation(const QString& stationKey, const QString&
         if (!loaded)
             loaded = loadCaseDefinitionFromIniFile(legacyPath, id, out);
     }
-    if (loaded && !key.isEmpty())
+    if (loaded && !key.isEmpty()) {
         supplementMissingHookFromLibrary(id, out);
+        supplementMissingGateFromLibrary(key, id, out);
+    }
     return loaded;
 }
 

@@ -272,7 +272,7 @@ static const Row kSettings[] = {
     TIP("groupBox_TestRequirements", "治具状态期望值（FIXTEST/*）：音乐、过压灯、按键等。"),
     TIP("groupBox_camera_position", "摄像头 ROI、脏污检测延时等。"),
     TIP("imuCalibrationWidget", "IMU 校准时间、轴限、静态收敛参数（IMU/*）。"),
-    TIP("signalStrengthSettingWidget", "WiFi/BLE RSSI 卡控与测试次数（WIFI/*、BLE/*）。"),
+    TIP("signalStrengthSettingWidget", "WiFi/BLE RSSI 卡控（WIFI/*、BLE/LowRssi、BLE/HighRssi）；杰理 RSSI/频偏上下限在工站步骤「解析蓝牙信号强度和频偏」Gate 中配置。"),
     TIP("pressureSettingsWidget", "压感测试/校准、治具套号、阈值（PRESSURE/*）。"),
     TIP("mainWidget", "基础信息期望值；勾选后参与 compareVersions 比对。"),
     TIP("groupBox_1", "产品差异化流程开关（SYSTEM/*），按产品可 Restore 默认。"),

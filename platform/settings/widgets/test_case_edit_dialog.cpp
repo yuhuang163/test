@@ -1724,6 +1724,14 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
     def.gates.clear();
     if (def.gate.enabled && isMultiGateTableMode()) {
         def.gates = readMultiGatesFromTable();
+        // 工站 profile 保存以表格数值为准，避免 LowSettingsKey 仍读上位机设置导致「改了不生效」
+        if (!stationKey_.isEmpty()) {
+            for (TestCaseGate& g : def.gates) {
+                g.lowSettingsKey.clear();
+                g.highSettingsKey.clear();
+                g.expectedSettingsKey.clear();
+            }
+        }
         if (!def.gates.isEmpty()) {
             def.gate = def.gates.first();
             def.gate.enabled = true;

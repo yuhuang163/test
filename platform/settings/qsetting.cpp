@@ -521,6 +521,7 @@ void qsetting::saveConfig() {
     if (ui->comboBox_factory->currentText() == QStringLiteral("byd")) {
         bydmes::loadExternalMesConfig(nullptr);
     }
+    SETTINGS.sync();
 }
 
 
