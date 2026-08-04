@@ -686,7 +686,7 @@ TestCaseSyncService::SyncResult TestCaseSyncService::uploadToCloud(const QString
     return uploadStationProfile(key, name, QStringLiteral("upload"), remark);
 }
 
-/** 下载前把工站登记进本地 FlowStations，保证 profiles/{显示名}/ 路径正确 */
+/** 下载前把工站登记进本地 FlowStations；同显示名只保留云端 StationKey。 */
 static void ensureLocalFlowStationCatalog(const QString& stationKey, const QString& displayName) {
     const QString key = stationKey.trimmed();
     const QString name = displayName.trimmed().isEmpty() ? key : displayName.trimmed();
@@ -695,32 +695,33 @@ static void ensureLocalFlowStationCatalog(const QString& stationKey, const QStri
     }
 
     QVector<TestFlowStationEntry> catalog = TestCaseStore::loadFlowStationCatalog();
-    bool changed = false;
+    QVector<TestFlowStationEntry> next;
+    next.reserve(catalog.size() + 1);
     bool found = false;
-    for (TestFlowStationEntry& entry : catalog) {
-        if (entry.key.compare(key, Qt::CaseInsensitive) == 0) {
-            found = true;
-            if (entry.displayName != name) {
-                entry.displayName = name;
+    bool changed = false;
+    for (const TestFlowStationEntry& entry : catalog) {
+        const bool sameKey = entry.key.compare(key, Qt::CaseInsensitive) == 0;
+        const bool sameName = entry.displayName == name;
+        if (sameName || sameKey) {
+            if (!found) {
+                next.append({key, name});
+                found = true;
+                if (!sameKey || entry.displayName != name)
+                    changed = true;
+            } else {
+                // 丢掉同名/同 key 的重复行
                 changed = true;
             }
-            break;
+            continue;
         }
-        if (entry.displayName == name) {
-            found = true;
-            if (entry.key.compare(key, Qt::CaseInsensitive) != 0) {
-                entry.key = key;
-                changed = true;
-            }
-            break;
-        }
+        next.append(entry);
     }
     if (!found) {
-        catalog.append({key, name});
+        next.append({key, name});
         changed = true;
     }
     if (changed) {
-        TestCaseStore::saveFlowStationCatalog(catalog);
+        TestCaseStore::saveFlowStationCatalog(next);
     }
 }
 
@@ -778,17 +779,24 @@ TestCaseSyncService::SyncResult TestCaseSyncService::syncStationFromCloud(const 
     if (name.isEmpty() && !key.isEmpty()) {
         name = TestCaseStore::flowStationDisplayName(key);
     }
-    if (key.isEmpty()) {
+    if (key.isEmpty() && name.isEmpty()) {
         result.message = QStringLiteral("未指定工站，无法下载用例");
         return result;
+    }
+    if (key.isEmpty()) {
+        key = name;
     }
     if (name.isEmpty()) {
         name = key;
     }
 
     const QString encodedKey = QString::fromUtf8(QUrl::toPercentEncoding(key));
-    const FactoryCloudClient::ApiResult manifest =
-        FactoryCloudClient::get(QStringLiteral("/test-cases/profiles/%1/manifest").arg(encodedKey));
+    QUrlQuery profileQuery;
+    if (!name.isEmpty()) {
+        profileQuery.addQueryItem(QStringLiteral("displayName"), name);
+    }
+    const FactoryCloudClient::ApiResult manifest = FactoryCloudClient::get(
+        QStringLiteral("/test-cases/profiles/%1/manifest").arg(encodedKey), profileQuery);
     if (!manifest.ok) {
         result.message = manifest.message.isEmpty()
                              ? QStringLiteral("云端尚无该工站已发布用例，请先在网页合入并发布")
@@ -800,10 +808,15 @@ TestCaseSyncService::SyncResult TestCaseSyncService::syncStationFromCloud(const 
         manifest.data.value(QStringLiteral("profileVersion")).toString().trimmed();
     const QString remoteDisplayName =
         manifest.data.value(QStringLiteral("displayName")).toString().trimmed();
+    const QString remoteStationKey =
+        manifest.data.value(QStringLiteral("stationKey")).toString().trimmed();
     if (!remoteDisplayName.isEmpty()) {
         name = remoteDisplayName;
     }
-    // 下载别的工站前先登记目录映射，避免落盘到错误路径
+    // 以云端正式 StationKey 为准对齐本地目录表（同显示名统一编号）
+    if (!remoteStationKey.isEmpty()) {
+        key = remoteStationKey;
+    }
     ensureLocalFlowStationCatalog(key, name);
 
     // 是否最新：比文件 sha256，不比各电脑可能撞车的 ProfileVersion 数字
@@ -829,7 +842,7 @@ TestCaseSyncService::SyncResult TestCaseSyncService::syncStationFromCloud(const 
 
     QString downloadError;
     if (!FactoryCloudClient::downloadToFile(
-            QStringLiteral("/test-cases/profiles/%1/bundle").arg(encodedKey), QUrlQuery(), zipPath,
+            QStringLiteral("/test-cases/profiles/%1/bundle").arg(encodedKey), profileQuery, zipPath,
             &downloadError)) {
         result.message = downloadError;
         return result;
