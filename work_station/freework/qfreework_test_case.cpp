@@ -200,9 +200,10 @@ bool ensureXwdJigUartOpen(QFreeWork* ctx, QString* errorMessage) {
         ctx->openJigSerialPort();
     if (!ctx->jigSerialPort || !ctx->jigSerialPort->isOpen()) {
         if (errorMessage)
-            *errorMessage = QStringLiteral("治具串口打开失败：%1").arg(port);
+            *errorMessage = QStringLiteral("治具串口打开失败：%1 @ %2").arg(port).arg(baudRate);
         return false;
     }
+    ctx->showlog(QStringLiteral("XWD治具串口已打开：%1 @ %2").arg(port).arg(baudRate));
     return true;
 }
 

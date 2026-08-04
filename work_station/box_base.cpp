@@ -260,6 +260,7 @@ void box_base::saveCustom() {
         if (testList[i]->getMotorCaliParam() != nullptr)
             SETTINGS.setValue(QString("%1/MotorCaliParam").arg(baseKey), testList[i]->getMotorCaliParam()->text());
     }
+    SETTINGS.sync();
 }
 box_base::~box_base() {
     // Cleanup if necessary
@@ -331,10 +332,15 @@ void addComboBoxEditText(QComboBox* comboBox, const QString& text) {
 }
 
 void setComboBoxEditText(QComboBox* comboBox, const QString& text) {
-    if (comboBox != nullptr) {
-        comboBox->setCurrentText(text);
-        // qDebug() << "设置完毕" << text;
-    }
+    if (comboBox == nullptr)
+        return;
+    const QString t = text.trimmed();
+    if (t.isEmpty())
+        return;
+    // 口列表可能尚未异步刷完：先写入项再选中，避免 setCurrentText 在空下拉上无效
+    if (comboBox->findText(t) < 0)
+        comboBox->addItem(t);
+    comboBox->setCurrentText(t);
 }
 
 void box_base::recoverCustom() {

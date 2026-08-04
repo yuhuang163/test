@@ -34,6 +34,9 @@ void applyPortsToComboBox(QComboBox* comboBox, const QStringList& ports) {
     if (!comboBox)
         return;
 
+    // 异步扫口完成前 recoverCustom 可能已选中保存的 COM；刷新列表时必须保留选中项
+    const QString previous = comboBox->currentText().trimmed();
+
     QSet<QString> currentItems;
     for (int i = 0; i < comboBox->count(); ++i)
         currentItems.insert(comboBox->itemText(i));
@@ -45,9 +48,18 @@ void applyPortsToComboBox(QComboBox* comboBox, const QStringList& ports) {
     }
 
     for (const QString& item : currentItems) {
+        // 当前选中/已保存口即便此刻探测不到也先保留，避免重启后空白
+        if (!previous.isEmpty() && item.compare(previous, Qt::CaseInsensitive) == 0)
+            continue;
         const int index = comboBox->findText(item);
         if (index != -1)
             comboBox->removeItem(index);
+    }
+
+    if (!previous.isEmpty()) {
+        if (comboBox->findText(previous) < 0)
+            comboBox->addItem(previous);
+        comboBox->setCurrentText(previous);
     }
 }
 
