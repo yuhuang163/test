@@ -164,4 +164,73 @@ bool validateRtuFrame(const QByteArray& frame, quint8* outByteCount) {
     return true;
 }
 
+bool extractFc03Read2RegsResponse(const QByteArray& buffer, int slaveAddr, QByteArray* outFrame,
+                                  const QByteArray& requestEcho) {
+    if (!outFrame)
+        return false;
+    outFrame->clear();
+    if (buffer.size() < 9)
+        return false;
+
+    QByteArray work = buffer;
+    if (!requestEcho.isEmpty()) {
+        if (work.startsWith(requestEcho))
+            work = work.mid(requestEcho.size());
+        else {
+            const int idx = work.indexOf(requestEcho);
+            if (idx >= 0 && idx + requestEcho.size() <= work.size())
+                work = work.mid(idx + requestEcho.size());
+        }
+    }
+
+    for (int off = work.size() - 9; off >= 0; --off) {
+        const QByteArray cand = work.mid(off, 9);
+        quint8 byteCount = 0;
+        if (!validateRtuFrame(cand, &byteCount))
+            continue;
+        if (byteCount != 4)
+            continue;
+        if (static_cast<quint8>(cand.at(1)) != 0x03)
+            continue;
+        if (slaveAddr >= 0 && static_cast<quint8>(cand.at(0)) != static_cast<quint8>(slaveAddr))
+            continue;
+        *outFrame = cand;
+        return true;
+    }
+    return false;
+}
+
+bool extractValidRtuFrame(const QByteArray& buffer, QByteArray* outFrame) {
+    if (!outFrame)
+        return false;
+    outFrame->clear();
+    if (buffer.size() < 5)
+        return false;
+
+    QByteArray best;
+    int bestScore = -1;
+    for (int off = 0; off < buffer.size(); ++off) {
+        const int maxLen = qMin(256, buffer.size() - off);
+        for (int len = 5; len <= maxLen; ++len) {
+            const QByteArray cand = buffer.mid(off, len);
+            if (!validateRtuFrame(cand))
+                continue;
+            int score = off * 10 + len;
+            if (cand.size() >= 2) {
+                const quint8 fc = static_cast<quint8>(cand.at(1));
+                if (fc == 0x03 || fc == 0x04)
+                    score += 1000;
+            }
+            if (score >= bestScore) {
+                bestScore = score;
+                best = cand;
+            }
+        }
+    }
+    if (best.isEmpty())
+        return false;
+    *outFrame = best;
+    return true;
+}
+
 } // namespace QModbusPdu

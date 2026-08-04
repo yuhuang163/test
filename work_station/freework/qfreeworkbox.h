@@ -3,6 +3,7 @@
 
 #include "box_base.h"
 #include "fixture_uart.h"
+#include "serial_channel.h"
 #include "ui_fixture_uart.h"
 
 #include <QHash>
@@ -41,7 +42,8 @@ class QFreeWorkBox : public box_base {
     void releaseSharedAsd9026aIfIdle();
     /** 两工位共用一台多路温度记录仪时的共享串口（按步骤 Param 设备序号）。 */
     SerialChannel* ensureSharedTempLoggerChannel(int deviceIndex0Based, const QString& portName, QString* errorOut,
-                                                 int baudRate = 115200);
+                                                 int baudRate = 115200,
+                                                 SerialChannel::RtsDtrMode rtsMode = SerialChannel::RtsDtrMode::Enable);
     QMutex* sharedTempLoggerMutex(int deviceIndex0Based);
     void releaseSharedTempLoggerIfIdle();
 
@@ -51,6 +53,7 @@ class QFreeWorkBox : public box_base {
     Asd9026aDevice* asd9026aDevice_ = nullptr;
     QHash<int, SerialChannel*> sharedTempLoggerChannels_;
     QHash<int, QMutex*> sharedTempLoggerMutexes_;
+    QHash<int, SerialChannel::OpenParams> sharedTempLoggerOpenParams_;
 
   private slots:
     void startTest();

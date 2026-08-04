@@ -1,6 +1,8 @@
 #ifndef SHARED_INSTRUMENT_H
 #define SHARED_INSTRUMENT_H
 
+#include "serial_channel.h"
+
 #include <QString>
 #include <QVariantMap>
 #include <QVector>
@@ -60,6 +62,10 @@ QVector<int> tempChannelListForStation(int stationIndex1Based, const QVariantMap
  */
 bool applyVisaParamsForStation(int stationIndex1Based, QVariantMap* paramMap, QString* detailOut = nullptr);
 bool applyTempLoggerParamsForStation(int stationIndex1Based, QVariantMap* paramMap, QString* detailOut = nullptr);
+
+/** 温度仪串口 RTS 模式：默认 Enable（协议 A 版 RS232）；RS485 转换器填 tempRtsMode=rs485。 */
+SerialChannel::RtsDtrMode tempRtsModeFromParam(const QVariantMap& paramMap);
+QString tempRtsModeLabel(SerialChannel::RtsDtrMode mode);
 
 } // namespace SharedInstrument
 

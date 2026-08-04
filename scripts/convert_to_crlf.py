@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""将仓库内文本文件换行统一：默认 CRLF；*.pro / *.pri / *.sh 保持 LF。"""
+"""将仓库内文本文件换行统一：默认 CRLF；仅 *.pro / *.sh 保持 LF。"""
 from __future__ import annotations
 
 import os
@@ -54,8 +54,8 @@ TEXT_EXTENSIONS = {
     ".gitignore",
 }
 
-# qmake 工程文件与 shell 脚本保持 LF（Qt Creator / qmake 跨平台惯例）
-KEEP_LF_SUFFIXES = {".sh", ".pro", ".pri"}
+# qmake 根工程 .pro 与 shell 脚本保持 LF；其余（含 .pri）为 CRLF
+KEEP_LF_SUFFIXES = {".sh", ".pro"}
 
 
 def path_excluded(rel_posix: str) -> bool:

@@ -17,7 +17,8 @@ class MultiTempLoggerModbusRtu : public IModbusRtuDevice {
     static QByteArray buildReadChannelTempRequest(int slaveAddr, int channel1Based);
     static QByteArray buildSendRawRequest(const QVariant& param);
     /** 解析读保持寄存器回包中的 float（寄存器低字+高字 → IEEE754 大端）。 */
-    static bool parseTemperatureFrame(const QByteArray& frame, double* outCelsius, QString* valueText);
+    static bool parseTemperatureFrame(const QByteArray& frame, double* outCelsius, QString* valueText,
+                                      int slaveAddr = -1, const QByteArray& requestEcho = {});
 
     QByteArray buildRequest(int cmd, const QVariant& param = {}) override;
     bool parseResponse(const QByteArray& frame, QString* valueText) override;

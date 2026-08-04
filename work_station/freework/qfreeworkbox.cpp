@@ -1,11 +1,12 @@
 #include "qfreeworkbox.h"
 
 #include <QAction>
+#include <QLabel>
 
 #include "Abini.h"
 #include "asd9026a_device.h"
 #include "qfreework.h"
-#include "serial_channel.h"
+#include "shared_instrument.h"
 #include "ui_qfreeworkbox.h"
 
 QFreeWorkBox::QFreeWorkBox(QWidget* parent) : box_base(parent), ui(new Ui::QFreeWorkBox) {
@@ -82,33 +83,45 @@ void QFreeWorkBox::releaseSharedAsd9026aIfIdle() {
 }
 
 SerialChannel* QFreeWorkBox::ensureSharedTempLoggerChannel(int deviceIndex0Based, const QString& portName,
-                                                           QString* errorOut, int baudRate) {
+                                                           QString* errorOut, int baudRate,
+                                                           SerialChannel::RtsDtrMode rtsMode) {
     const QString port = portName.trimmed();
     if (port.isEmpty()) {
         if (errorOut)
             *errorOut = QStringLiteral("共享温度仪串口名为空");
         return nullptr;
     }
-    SerialChannel*& channel = sharedTempLoggerChannels_[deviceIndex0Based];
-    if (!channel)
-        channel = new SerialChannel(this);
-    if (channel->isOpen()) {
-        if (channel->portName().compare(port, Qt::CaseInsensitive) == 0)
-            return channel;
-        channel->close();
-    }
     SerialChannel::OpenParams params;
     params.portName = port;
     params.baudRate = baudRate > 0 ? baudRate : 115200;
     params.readBufferSize = 4096;
-    params.readDebounceMs = 10;
-    params.rtsDtrMode = SerialChannel::RtsDtrMode::Enable;
+    params.readDebounceMs = 35;
+    params.rtsDtrMode = rtsMode;
+
+    SerialChannel*& channel = sharedTempLoggerChannels_[deviceIndex0Based];
+    if (!channel)
+        channel = new SerialChannel(this);
+
+    const SerialChannel::OpenParams cached = sharedTempLoggerOpenParams_.value(deviceIndex0Based);
+    const bool sameParams = channel->isOpen() && cached.portName.compare(port, Qt::CaseInsensitive) == 0
+                            && cached.baudRate == params.baudRate && cached.readDebounceMs == params.readDebounceMs
+                            && cached.rtsDtrMode == params.rtsDtrMode;
+    if (sameParams)
+        return channel;
+    if (channel->isOpen())
+        channel->close();
+
     if (!channel->open(params)) {
         if (errorOut)
             *errorOut = QStringLiteral("%1：%2").arg(port, channel->errorString());
         return nullptr;
     }
-    emit sendBoxLog(QStringLiteral("温度记录仪共享串口已打开：设备%1 %2").arg(deviceIndex0Based).arg(port));
+    sharedTempLoggerOpenParams_.insert(deviceIndex0Based, params);
+    emit sendBoxLog(QStringLiteral("温度记录仪共享串口已打开：设备%1 %2 波特率%3 RTS=%4")
+                        .arg(deviceIndex0Based)
+                        .arg(port)
+                        .arg(params.baudRate)
+                        .arg(SharedInstrument::tempRtsModeLabel(params.rtsDtrMode)));
     return channel;
 }
 

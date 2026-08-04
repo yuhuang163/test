@@ -303,4 +303,26 @@ bool applyTempLoggerParamsForStation(int stationIndex1Based, QVariantMap* paramM
     return true;
 }
 
+SerialChannel::RtsDtrMode tempRtsModeFromParam(const QVariantMap& paramMap) {
+    const QString m = paramMap.value(QStringLiteral("tempRtsMode")).toString().trimmed().toLower();
+    if (m == QLatin1String("rs485") || m == QLatin1String("half") || m == QLatin1String("rs485halfduplex"))
+        return SerialChannel::RtsDtrMode::Rs485HalfDuplex;
+    if (m == QLatin1String("none") || m == QLatin1String("off"))
+        return SerialChannel::RtsDtrMode::None;
+    return SerialChannel::RtsDtrMode::Enable;
+}
+
+QString tempRtsModeLabel(SerialChannel::RtsDtrMode mode) {
+    switch (mode) {
+    case SerialChannel::RtsDtrMode::Rs485HalfDuplex:
+        return QStringLiteral("RS485半双工");
+    case SerialChannel::RtsDtrMode::None:
+        return QStringLiteral("无RTS");
+    case SerialChannel::RtsDtrMode::Enable:
+        return QStringLiteral("RS232(Enable)");
+    default:
+        return QStringLiteral("其他");
+    }
+}
+
 } // namespace SharedInstrument
