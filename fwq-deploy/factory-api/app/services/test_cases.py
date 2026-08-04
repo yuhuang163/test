@@ -259,6 +259,19 @@ def read_manifest() -> dict:
                 normalized.append(entry)
     if not normalized:
         normalized = _scan_files(root)
+    # 旧 manifest 可能漏掉根目录工站目录表，网页树需始终能看到
+    seen = {str(e.get("path") or "") for e in normalized}
+    flow_path = root / FLOW_INI_NAME
+    if FLOW_INI_NAME not in seen and flow_path.is_file():
+        normalized.insert(
+            0,
+            {
+                "path": FLOW_INI_NAME,
+                "version": "1",
+                "sha256": _file_sha256(flow_path),
+                "updatedAt": _file_updated_at(flow_path),
+            },
+        )
     return {
         "bundleVersion": bundle_version,
         "stationFlows": _parse_station_flows(root),
@@ -303,26 +316,30 @@ def _parse_flow_stations(root: Path) -> dict[str, str]:
     return mapping
 
 
-def resolve_published_profile_dir(station_key: str) -> tuple[Path, str, str]:
+def resolve_published_profile_dir(
+    station_key: str, display_name: str | None = None
+) -> tuple[Path, str, str]:
     """
     在 current/profiles 中定位已发布工站目录。
+    优先按显示名（目录名）定位；其次 StationKey / FlowStations。
     返回 (目录, stationKey, displayName)。
     """
     skey = _safe_segment(station_key, field="stationKey")
+    want_name = (display_name or "").strip()
     root = _root()
     profiles = root / PROFILES_DIR_NAME
     if not profiles.is_dir():
         raise FileNotFoundError(f"云端尚无工站用例：{skey}")
 
     flow_map = _parse_flow_stations(root)
-    preferred_name = flow_map.get(skey)
+    preferred_name = want_name or flow_map.get(skey)
 
     candidates: list[Path] = []
     if preferred_name:
         preferred_path = profiles / preferred_name
         if preferred_path.is_dir():
             candidates.append(preferred_path)
-    # 再扫一遍：按 profile.ini 的 StationKey 匹配
+    # 再扫一遍：按 profile.ini 的 StationKey / 显示名匹配
     for child in sorted(profiles.iterdir()):
         if not child.is_dir():
             continue
@@ -333,6 +350,10 @@ def resolve_published_profile_dir(station_key: str) -> tuple[Path, str, str]:
             continue
         text = meta_path.read_text(encoding="utf-8", errors="replace")
         ini_key = _read_ini_value(text, "Profile", "StationKey") or ""
+        ini_name = (_read_ini_value(text, "Profile", "DisplayName") or child.name).strip()
+        if want_name and (child.name == want_name or ini_name == want_name):
+            candidates.insert(0, child)
+            continue
         if ini_key.strip() == skey or child.name == skey:
             candidates.append(child)
 
@@ -344,15 +365,19 @@ def resolve_published_profile_dir(station_key: str) -> tuple[Path, str, str]:
 
     profile_dir = candidates[0]
     meta_path = profile_dir / "profile.ini"
-    display_name = profile_dir.name
+    resolved_name = profile_dir.name
+    resolved_key = skey
     if meta_path.is_file():
         text = meta_path.read_text(encoding="utf-8", errors="replace")
-        display_name = (_read_ini_value(text, "Profile", "DisplayName") or display_name).strip() or display_name
-    return profile_dir, skey, display_name
+        resolved_name = (_read_ini_value(text, "Profile", "DisplayName") or resolved_name).strip() or resolved_name
+        ini_key = (_read_ini_value(text, "Profile", "StationKey") or "").strip()
+        if ini_key:
+            resolved_key = ini_key
+    return profile_dir, resolved_key, resolved_name
 
 
 def list_published_profiles() -> list[dict]:
-    """已发布正式包中可下载的工站列表（供上位机选择下载）。"""
+    """已发布正式包中可下载的工站列表（以显示名为准，避免同 key 撞车漏项）。"""
     root = _root()
     profiles = root / PROFILES_DIR_NAME
     if not profiles.is_dir():
@@ -361,7 +386,7 @@ def list_published_profiles() -> list[dict]:
     flow_map = _parse_flow_stations(root)  # stationKey -> displayName
     name_to_key = {v: k for k, v in flow_map.items()}
     items: list[dict] = []
-    seen_keys: set[str] = set()
+    seen_names: set[str] = set()
 
     for child in sorted(profiles.iterdir(), key=lambda p: p.name):
         if not child.is_dir():
@@ -373,10 +398,10 @@ def list_published_profiles() -> list[dict]:
         ini_key = (_read_ini_value(text, "Profile", "StationKey") or "").strip()
         display_name = (_read_ini_value(text, "Profile", "DisplayName") or child.name).strip() or child.name
         profile_version = (_read_ini_value(text, "Profile", "ProfileVersion") or "1").strip() or "1"
-        skey = ini_key or name_to_key.get(child.name) or name_to_key.get(display_name) or child.name
-        if skey in seen_keys:
+        if display_name in seen_names:
             continue
-        seen_keys.add(skey)
+        seen_names.add(display_name)
+        skey = ini_key or name_to_key.get(child.name) or name_to_key.get(display_name) or child.name
         items.append(
             {
                 "stationKey": skey,
@@ -389,9 +414,9 @@ def list_published_profiles() -> list[dict]:
     return items
 
 
-def read_profile_manifest(station_key: str) -> dict:
+def read_profile_manifest(station_key: str, display_name: str | None = None) -> dict:
     """已发布正式包中某工站 Profile 的清单（供上位机下载比对）。"""
-    profile_dir, skey, display_name = resolve_published_profile_dir(station_key)
+    profile_dir, skey, resolved_name = resolve_published_profile_dir(station_key, display_name)
     profile_version = "1"
     meta_path = profile_dir / "profile.ini"
     if meta_path.is_file():
@@ -408,7 +433,7 @@ def read_profile_manifest(station_key: str) -> dict:
     bundle = read_manifest()
     return {
         "stationKey": skey,
-        "displayName": display_name,
+        "displayName": resolved_name,
         "profileVersion": profile_version,
         "bundleVersion": bundle.get("bundleVersion"),
         "fileCount": len(files),
@@ -416,9 +441,9 @@ def read_profile_manifest(station_key: str) -> dict:
     }
 
 
-def build_profile_bundle_zip(station_key: str) -> bytes:
+def build_profile_bundle_zip(station_key: str, display_name: str | None = None) -> bytes:
     """打包已发布正式包中某工站 Profile（zip 根即 profile 目录内容）。"""
-    profile_dir, _, _ = resolve_published_profile_dir(station_key)
+    profile_dir, _, _ = resolve_published_profile_dir(station_key, display_name)
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
         for path in sorted(profile_dir.rglob("*")):
@@ -740,8 +765,111 @@ def delete_profile_staging(device_id: str, station_key: str) -> dict:
         "cleared": True,
     }
 
+def _collect_used_station_keys(root: Path) -> set[str]:
+    """汇总 FlowStations + 各 profile.ini 已占用的 StationKey。"""
+    used: set[str] = set()
+    for key in _parse_flow_stations(root).keys():
+        k = (key or "").strip()
+        if k:
+            used.add(k)
+    profiles = root / PROFILES_DIR_NAME
+    if not profiles.is_dir():
+        return used
+    for child in profiles.iterdir():
+        if not child.is_dir():
+            continue
+        meta_path = child / "profile.ini"
+        if not meta_path.is_file():
+            continue
+        text = meta_path.read_text(encoding="utf-8", errors="replace")
+        ini_key = (_read_ini_value(text, "Profile", "StationKey") or "").strip()
+        if ini_key:
+            used.add(ini_key)
+    return used
+
+
+def _station_key_owned_by_other(root: Path, station_key: str, display_name: str) -> bool:
+    """station_key 是否已被其它显示名占用。"""
+    key = (station_key or "").strip()
+    name = (display_name or "").strip()
+    if not key:
+        return False
+    flow_map = _parse_flow_stations(root)
+    owner = flow_map.get(key)
+    if owner and owner != name:
+        return True
+    profiles = root / PROFILES_DIR_NAME
+    if not profiles.is_dir():
+        return False
+    for child in profiles.iterdir():
+        if not child.is_dir():
+            continue
+        if child.name == name:
+            continue
+        meta_path = child / "profile.ini"
+        if not meta_path.is_file():
+            continue
+        text = meta_path.read_text(encoding="utf-8", errors="replace")
+        ini_key = (_read_ini_value(text, "Profile", "StationKey") or "").strip()
+        ini_name = (_read_ini_value(text, "Profile", "DisplayName") or child.name).strip()
+        if ini_key == key and ini_name != name and child.name != name:
+            return True
+    return False
+
+
+def _allocate_next_flow_station_key(root: Path) -> str:
+    """云端统一分配下一个未占用的 FLOW_ST_xxxx。"""
+    used = {k.upper() for k in _collect_used_station_keys(root)}
+    for n in range(1, 10000):
+        key = f"FLOW_ST_{n:04d}"
+        if key.upper() not in used:
+            return key
+    raise RuntimeError("无法分配工站编号")
+
+
+def _canonical_station_key_for_display(
+    root: Path, display_name: str, preferred_key: str = ""
+) -> str:
+    """
+    以显示名为准确定 StationKey：
+    1) 已有同名 profile / FlowStations 映射 → 沿用；
+    2) preferred_key 未被其它显示名占用 → 采用；
+    3) 否则云端新发 FLOW_ST_xxxx。
+    """
+    name = (display_name or "").strip()
+    if not name:
+        raise ValueError("displayName 不能为空")
+
+    dest = root / PROFILES_DIR_NAME / name
+    if dest.is_dir():
+        meta_path = dest / "profile.ini"
+        if meta_path.is_file():
+            existing = (
+                _read_ini_value(
+                    meta_path.read_text(encoding="utf-8", errors="replace"),
+                    "Profile",
+                    "StationKey",
+                )
+                or ""
+            ).strip()
+            # 仅当该 key 未被其它显示名占用时沿用（避免历史撞号继续污染）
+            if existing and not _station_key_owned_by_other(root, existing, name):
+                return existing
+
+    for key, mapped_name in _parse_flow_stations(root).items():
+        if mapped_name == name and key.strip():
+            if not _station_key_owned_by_other(root, key.strip(), name):
+                return key.strip()
+
+    preferred = (preferred_key or "").strip()
+    if preferred and not _station_key_owned_by_other(root, preferred, name):
+        return preferred
+
+    return _allocate_next_flow_station_key(root)
+
+
 def _upsert_flow_station(station_key: str, display_name: str) -> None:
-    """确保 总的测试流程.ini [FlowStations] 含有该工站映射。"""
+    """确保 总的测试流程.ini [FlowStations] 含有该工站映射；同显示名只保留一个 key。"""
     root = _root()
     flow_path = root / FLOW_INI_NAME
     if flow_path.is_file():
@@ -755,6 +883,7 @@ def _upsert_flow_station(station_key: str, display_name: str) -> None:
     found_section = False
     replaced = False
     key_l = station_key.strip().lower()
+    name = display_name.strip()
 
     for raw in lines:
         stripped = raw.strip()
@@ -767,11 +896,22 @@ def _upsert_flow_station(station_key: str, display_name: str) -> None:
                 found_section = True
             out.append(raw)
             continue
-        if in_section and "=" in stripped and not stripped.startswith("#"):
-            k = stripped.split("=", 1)[0].strip()
+        if (
+            in_section
+            and "=" in stripped
+            and not stripped.startswith("#")
+            and not stripped.startswith(";")
+        ):
+            k, _, v = stripped.partition("=")
+            k = k.strip()
+            v = v.strip().strip('"').strip("'")
             if k.lower() == key_l:
-                out.append(f"{station_key}={display_name}")
-                replaced = True
+                if not replaced:
+                    out.append(f"{station_key}={display_name}")
+                    replaced = True
+                continue
+            # 同显示名的旧 key 删掉，避免一机一名多号
+            if v == name:
                 continue
         out.append(raw)
 
@@ -813,6 +953,7 @@ def merge_profile_staging(
     """
     将草稿合入 current/profiles/{displayName}/（或步骤库 current/steps）。
     合入前快照工作区，写入合入记录，支持后续撤销。
+    StationKey 以显示名为准由云端统一裁定/发号。
     """
     if _is_steps_library_key(station_key):
         return merge_steps_staging(
@@ -835,6 +976,10 @@ def merge_profile_staging(
     profiles = root / PROFILES_DIR_NAME
     profiles.mkdir(parents=True, exist_ok=True)
     dest = profiles / display_name
+
+    preferred_key = str(meta.get("stationKey") or station_key).strip()
+    # 合入前按显示名裁定正式 StationKey（已有同名沿用，冲突则云端新发号）
+    canonical_key = _canonical_station_key_for_display(root, display_name, preferred_key)
 
     # 正式 ProfileVersion 由服务端在合入时统一递增，避免各电脑本地自增撞号
     old_version = 0
@@ -881,8 +1026,10 @@ def merge_profile_staging(
             target.unlink()
 
     _write_ini_value(dest / "profile.ini", "Profile", "ProfileVersion", str(assigned_version))
+    _write_ini_value(dest / "profile.ini", "Profile", "StationKey", canonical_key)
+    _write_ini_value(dest / "profile.ini", "Profile", "DisplayName", display_name)
 
-    _upsert_flow_station(str(meta.get("stationKey") or station_key), display_name)
+    _upsert_flow_station(canonical_key, display_name)
     _refresh_manifest_files()
 
     # 合入后快照（便于对照记录）
@@ -893,7 +1040,7 @@ def merge_profile_staging(
     record = {
         "mergeId": merge_id,
         "deviceId": meta.get("deviceId"),
-        "stationKey": meta.get("stationKey") or station_key,
+        "stationKey": canonical_key,
         "displayName": display_name,
         "hostName": meta.get("hostName") or "",
         "source": meta.get("source") or "upload",
@@ -909,6 +1056,7 @@ def merge_profile_staging(
         "undone": False,
         "undoneAt": None,
         "undoneBy": "",
+        "uploadedStationKey": preferred_key,
     }
     (history_dir / "meta.json").write_text(
         json.dumps(record, ensure_ascii=False, indent=2),
@@ -923,7 +1071,7 @@ def merge_profile_staging(
 
     return {
         "deviceId": meta.get("deviceId"),
-        "stationKey": meta.get("stationKey"),
+        "stationKey": canonical_key,
         "displayName": display_name,
         "profileVersion": str(assigned_version),
         "mergedPath": f"{PROFILES_DIR_NAME}/{display_name}",
@@ -931,6 +1079,7 @@ def merge_profile_staging(
         "bundleVersion": read_manifest().get("bundleVersion"),
         "overrideCount": len(overrides),
         "mergeId": merge_id,
+        "uploadedStationKey": preferred_key,
     }
 
 

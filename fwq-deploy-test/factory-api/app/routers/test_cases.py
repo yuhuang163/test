@@ -104,11 +104,15 @@ def client_list_profiles(user: Annotated[User, Depends(get_current_user)]):
 
 
 @router.get("/profiles/{station_key}/manifest")
-def client_profile_manifest(station_key: str, user: Annotated[User, Depends(get_current_user)]):
-    """上位机下载：查询已发布正式包中某工站版本。"""
+def client_profile_manifest(
+    station_key: str,
+    user: Annotated[User, Depends(get_current_user)],
+    displayName: Annotated[str | None, Query()] = None,
+):
+    """上位机下载：查询已发布正式包中某工站版本（可带 displayName 消歧）。"""
     del user
     try:
-        data = test_case_service.read_profile_manifest(station_key)
+        data = test_case_service.read_profile_manifest(station_key, display_name=displayName)
     except FileNotFoundError as exc:
         fail(404, str(exc), 404)
     except ValueError as exc:
@@ -117,12 +121,16 @@ def client_profile_manifest(station_key: str, user: Annotated[User, Depends(get_
 
 
 @router.get("/profiles/{station_key}/bundle")
-def client_profile_bundle(station_key: str, user: Annotated[User, Depends(get_current_user)]):
+def client_profile_bundle(
+    station_key: str,
+    user: Annotated[User, Depends(get_current_user)],
+    displayName: Annotated[str | None, Query()] = None,
+):
     """上位机下载：仅下载已发布正式包中某工站 Profile zip。"""
     del user
     try:
-        zip_bytes = test_case_service.build_profile_bundle_zip(station_key)
-        meta = test_case_service.read_profile_manifest(station_key)
+        zip_bytes = test_case_service.build_profile_bundle_zip(station_key, display_name=displayName)
+        meta = test_case_service.read_profile_manifest(station_key, display_name=displayName)
     except FileNotFoundError as exc:
         fail(404, str(exc), 404)
     except ValueError as exc:

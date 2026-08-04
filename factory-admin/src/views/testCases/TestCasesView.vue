@@ -71,7 +71,7 @@
             <div class="editor-bar">
               <div class="editor-meta">
                 <div class="editor-path" :title="selectedPath">
-                  {{ selectedPath || '从左侧选择用例库或工站下的用例进行编辑' }}
+                  {{ selectedPath || '从左侧选择工站目录 / 用例库 / 工站下的文件进行编辑' }}
                 </div>
                 <div v-if="currentStationName" class="editor-updated">
                   文件夹「{{ currentStationName }}」最近更新：{{
@@ -670,10 +670,36 @@ function toStationTree(files) {
     updatedAt: '',
     children: [],
   }
+  const catalog = {
+    id: 'catalog:flow',
+    label: '工站目录',
+    stationName: '工站目录',
+    isStation: true,
+    isCatalog: true,
+    updatedAt: '',
+    children: [],
+  }
   for (const f of files || []) {
     const full = String(f.path || f.name || '').replace(/\\/g, '/').replace(/^\/+/, '')
     if (!full) continue
     const parts = full.split('/')
+    // 根目录工站目录表
+    if (parts.length === 1 && parts[0] === '总的测试流程.ini') {
+      if (f.updatedAt) {
+        catalog.updatedAt = newerUpdatedAt(catalog.updatedAt, f.updatedAt)
+      }
+      catalog.children.push({
+        id: full,
+        label: '总的测试流程.ini',
+        path: full,
+        stationName: '工站目录',
+        isCatalog: true,
+        kind: 'meta',
+        updatedAt: f.updatedAt || '',
+        isLeaf: true,
+      })
+      continue
+    }
     // 共享步骤库：steps/*.ini（不含工站 profiles/.../steps）
     if (parts[0] === 'steps' && parts.length === 2 && /\.ini$/i.test(parts[1])) {
       const fileName = parts[1]
@@ -758,8 +784,14 @@ function toStationTree(files) {
   })
   const libCaseCount = library.children.filter((c) => c.kind === 'case').length
   library.label = `用例库（${libCaseCount}）`
-  // 用例库始终置顶，便于管理共享 steps
-  return [library, ...nodes]
+  // 工站目录 + 用例库置顶
+  const top = []
+  if (catalog.children.length) {
+    catalog.label = '工站目录'
+    top.push(catalog)
+  }
+  top.push(library)
+  return [...top, ...nodes]
 }
 
 function deviceLabel(d) {
@@ -923,6 +955,13 @@ async function onDelete() {
 async function onNewFile() {
   if (!currentStationName.value) {
     ElMessage.warning('请先在左侧点选用例库或某个工站')
+    return
+  }
+  if (
+    currentStationName.value === '工站目录' ||
+    !!treeData.value.find((n) => n.isCatalog && n.stationName === currentStationName.value)
+  ) {
+    ElMessage.warning('工站目录为总表，请在具体工站或用例库下新建用例')
     return
   }
   const inLibrary =
