@@ -6,13 +6,57 @@
 
 #include "my_set/my_typedef.h"
 
+#include <QAction>
 #include <QApplication>
 #include <QComboBox>
+#include <QIcon>
+#include <QLineEdit>
+#include <QPainter>
+#include <QPainterPath>
+#include <QPixmap>
 #include <QScreen>
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
 #endif
+
+namespace {
+
+/** 自绘眼睛图标：不依赖系统 emoji 字体（Windows 上 👁 常显示为空白）。 */
+QIcon makePasswordEyeIcon(bool visible) {
+    const int size = 18;
+    QPixmap pm(size, size);
+    pm.fill(Qt::transparent);
+    QPainter p(&pm);
+    p.setRenderHint(QPainter::Antialiasing, true);
+    const QColor stroke(0x51, 0x48, 0x41); // 与 Ubuntu.qss 主文字色接近
+    QPen pen(stroke, 1.6);
+    pen.setCapStyle(Qt::RoundCap);
+    pen.setJoinStyle(Qt::RoundJoin);
+    p.setPen(pen);
+    p.setBrush(Qt::NoBrush);
+
+    // 眼眶
+    QPainterPath eye;
+    eye.moveTo(1.5, size / 2.0);
+    eye.cubicTo(4.5, 3.5, size - 4.5, 3.5, size - 1.5, size / 2.0);
+    eye.cubicTo(size - 4.5, size - 3.5, 4.5, size - 3.5, 1.5, size / 2.0);
+    p.drawPath(eye);
+
+    // 瞳孔
+    p.setBrush(stroke);
+    p.drawEllipse(QPointF(size / 2.0, size / 2.0), 2.4, 2.4);
+
+    if (visible) {
+        // 斜杠表示「当前已显示，点击隐藏」
+        p.setBrush(Qt::NoBrush);
+        p.drawLine(QPointF(3.5, size - 3.5), QPointF(size - 3.5, 3.5));
+    }
+    p.end();
+    return QIcon(pm);
+}
+
+} // namespace
 
 LoginDialog::LoginDialog(QWidget* parent)
     : QDialog(parent)
@@ -20,6 +64,7 @@ LoginDialog::LoginDialog(QWidget* parent)
     ui->setupUi(this);
     setWindowFlags(windowFlags() & ~Qt::WindowContextHelpButtonHint);
     applyWidgetStyleSheet(this);
+    setupPasswordVisibilityToggle();
 
     connect(ui->loginButton, &QPushButton::clicked, this, &LoginDialog::onLoginClicked);
     connect(ui->offlineButton, &QPushButton::clicked, this, &LoginDialog::onOfflineClicked);
@@ -39,6 +84,19 @@ LoginDialog::LoginDialog(QWidget* parent)
 
 LoginDialog::~LoginDialog() {
     delete ui;
+}
+
+void LoginDialog::setupPasswordVisibilityToggle() {
+    auto* toggle = new QAction(ui->passwordEdit);
+    toggle->setCheckable(true);
+    toggle->setIcon(makePasswordEyeIcon(false));
+    toggle->setToolTip(QStringLiteral("显示密码"));
+    ui->passwordEdit->addAction(toggle, QLineEdit::TrailingPosition);
+    connect(toggle, &QAction::toggled, this, [this, toggle](bool checked) {
+        ui->passwordEdit->setEchoMode(checked ? QLineEdit::Normal : QLineEdit::Password);
+        toggle->setIcon(makePasswordEyeIcon(checked));
+        toggle->setToolTip(checked ? QStringLiteral("隐藏密码") : QStringLiteral("显示密码"));
+    });
 }
 
 void LoginDialog::initFactoryCloudEnvironment() {

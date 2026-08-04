@@ -7,10 +7,13 @@
 #include <QApplication>
 #include <QDir>
 #include <QFileInfo>
+#include <QLibraryInfo>
+#include <QLocale>
 #include <QSysInfo>
 #include <QMessageBox>
 #include <QTextCodec>
 #include <QTextStream>
+#include <QTranslator>
 #include <QtDebug>
 #include <unordered_map>
 #include "qprotocol_types.h"
@@ -104,6 +107,37 @@ class MyApplication : public QApplication {
     }
 };
 
+/** 加载 Qt 简体中文翻译，使 QLineEdit/文本框右键菜单显示「撤销/复制/粘贴」等中文。 */
+static void installChineseQtTranslations(QApplication& app) {
+    QLocale::setDefault(QLocale(QLocale::Chinese, QLocale::China));
+
+    const QStringList searchDirs = {
+        QStringLiteral(":/translations"),
+        QCoreApplication::applicationDirPath() + QStringLiteral("/translations"),
+        QLibraryInfo::location(QLibraryInfo::TranslationsPath),
+    };
+
+    // qt_zh_CN：官方聚合包；qt_widgets_zh_CN：控件右键菜单兜底（本机 Qt 可能缺 qtbase_zh_CN）
+    const QStringList catalogs = {QStringLiteral("qt_zh_CN"), QStringLiteral("qt_widgets_zh_CN")};
+    for (const QString& catalog : catalogs) {
+        auto* translator = new QTranslator(&app);
+        bool ok = false;
+        for (const QString& dir : searchDirs) {
+            if (translator->load(catalog, dir)) {
+                ok = true;
+                break;
+            }
+        }
+        if (ok) {
+            app.installTranslator(translator);
+            qDebug().noquote() << QStringLiteral("[i18n] 已加载翻译：") << catalog;
+        } else {
+            delete translator;
+            qWarning().noquote() << QStringLiteral("[i18n] 未找到翻译：") << catalog;
+        }
+    }
+}
+
 int main(int argc, char* argv[]) {
     Qlog::installWindowsCrashHandler();
 
@@ -113,6 +147,7 @@ int main(int argc, char* argv[]) {
     // 设置使用 UTF-8 编码
     // QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
     MyApplication a(argc, argv);
+    installChineseQtTranslations(a);
 
     SETTINGS.migrateFactoryCloudToLocal();
 

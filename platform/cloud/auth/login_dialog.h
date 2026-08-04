@@ -23,6 +23,7 @@ class LoginDialog : public QDialog {
     void saveCredentials();
     void saveFactoryCloudEnvironment();
     void initFactoryCloudEnvironment();
+    void setupPasswordVisibilityToggle();
     void refreshOfflineButton();
     Ui::LoginDialog* ui;
 };

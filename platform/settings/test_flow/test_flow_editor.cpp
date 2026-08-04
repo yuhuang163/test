@@ -35,6 +35,7 @@
 #include <QPushButton>
 #include <QScrollArea>
 #include <QSizePolicy>
+#include <QStyle>
 #include <QStyleOptionButton>
 #include <QToolButton>
 #include <QSet>
@@ -48,90 +49,23 @@
 
 namespace {
 
-// 流程块：实体色块；勾选绿 / 未勾选灰；文字居中，勾选框靠左
-const char* kBlockStyleBase =
-    "QCheckBox {"
-    "  min-height: 36px;"
-    "  padding: 8px 40px;"
-    "  border-radius: 8px;"
-    "  font-size: 13px;"
-    "  spacing: 0px;"
-    "  text-align: center;"
-    "}"
-    "QCheckBox::indicator {"
-    "  width: 16px;"
-    "  height: 16px;"
-    "  border-radius: 4px;"
-    "  subcontrol-position: left center;"
-    "  subcontrol-origin: margin;"
-    "  left: 12px;"
-    "}"
-    "QCheckBox::indicator:checked {"
-    "  border: 1px solid #15803d;"
-    "  background: #22c55e;"
-    "}"
-    "QCheckBox::indicator:unchecked {"
-    "  border: 1px solid #6b7280;"
-    "  background: #9ca3af;"
-    "}";
+/** 流程编排 QSS（功能块 + 右键菜单），见 stytle/qss/test_flow_editor.qss */
+const QString& testFlowEditorStyleSheet() {
+    static const QString css = []() -> QString {
+        QFile f(QStringLiteral(":/stytle/qss/test_flow_editor.qss"));
+        if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            qWarning("test_flow_editor: 无法加载 :/stytle/qss/test_flow_editor.qss");
+            return QString();
+        }
+        return QString::fromUtf8(f.readAll());
+    }();
+    return css;
+}
 
-const char* kBlockStyleNormal =
-    "QCheckBox {"
-    "  background: #dcfce7;"
-    "  border: 1px solid #86efac;"
-    "  color: #14532d;"
-    "}"
-    "QCheckBox:hover {"
-    "  background: #bbf7d0;"
-    "  border: 1px solid #4ade80;"
-    "}";
-
-const char* kBlockStyleSelected =
-    "QCheckBox {"
-    "  background: #bbf7d0;"
-    "  border: 2px solid #16a34a;"
-    "  color: #14532d;"
-    "  font-weight: 600;"
-    "}"
-    "QCheckBox:hover {"
-    "  background: #86efac;"
-    "  border: 2px solid #15803d;"
-    "}";
-
-const char* kBlockStyleUnchecked =
-    "QCheckBox {"
-    "  background: #e5e7eb;"
-    "  border: 1px solid #9ca3af;"
-    "  color: #4b5563;"
-    "}"
-    "QCheckBox:hover {"
-    "  background: #d1d5db;"
-    "  border: 1px solid #6b7280;"
-    "}";
-
-const char* kBlockStyleUncheckedSelected =
-    "QCheckBox {"
-    "  background: #d1d5db;"
-    "  border: 2px solid #6b7280;"
-    "  color: #374151;"
-    "  font-weight: 600;"
-    "}"
-    "QCheckBox:hover {"
-    "  background: #c4c9d1;"
-    "  border: 2px solid #4b5563;"
-    "}";
-
-const char* kBlockStyleBlank =
-    "QCheckBox {"
-    "  background: #f3f4f6;"
-    "  border: 1px dashed #9ca3af;"
-    "  color: #6b7280;"
-    "  font-style: italic;"
-    "}"
-    "QCheckBox:hover {"
-    "  background: #e5e7eb;"
-    "  border: 1px dashed #6b7280;"
-    "}";
+void applyFlowContextMenuStyle(QMenu* menu) {
+    if (menu)
+        menu->setStyleSheet(testFlowEditorStyleSheet());
+}
 
 // 专用 MIME，避免与 qsetting 自由工站 setText(索引) 拖放冲突
 const char kTestCaseFlowMime[] = "application/x-testcase-flow-block";
@@ -179,6 +113,7 @@ TestCaseBlock::TestCaseBlock(const QString& caseName, QWidget* parent)
     setAcceptDrops(true);
     setCursor(Qt::PointingHandCursor);
     setCheckState(Qt::Checked);
+    setStyleSheet(testFlowEditorStyleSheet());
     setCaseName(caseName);
     connect(this, &QCheckBox::stateChanged, this, [this](int) { updateBlockStyle(); });
     updateBlockStyle();
@@ -209,14 +144,22 @@ void TestCaseBlock::setRunMenuVisible(bool visible) {
 }
 
 void TestCaseBlock::updateBlockStyle() {
-    QByteArray css = QByteArray(kBlockStyleBase);
+    // 状态走 QSS 动态属性 flowState，样式表见 test_flow_editor.qss
+    QString state;
     if (isBlank())
-        css += kBlockStyleBlank;
+        state = QStringLiteral("blank");
     else if (!isChecked())
-        css += selected_ ? kBlockStyleUncheckedSelected : kBlockStyleUnchecked;
+        state = selected_ ? QStringLiteral("uncheckedSelected") : QStringLiteral("unchecked");
     else
-        css += selected_ ? kBlockStyleSelected : kBlockStyleNormal;
-    setStyleSheet(QString::fromUtf8(css));
+        state = selected_ ? QStringLiteral("selected") : QStringLiteral("normal");
+    if (property("flowState").toString() == state)
+        return;
+    setProperty("flowState", state);
+    if (QStyle* s = style()) {
+        s->unpolish(this);
+        s->polish(this);
+    }
+    update();
 }
 
 void TestCaseBlock::paintEvent(QPaintEvent* event) {
@@ -304,7 +247,9 @@ void TestCaseBlock::dropEvent(QDropEvent* event) {
 
 void TestCaseBlock::contextMenuEvent(QContextMenuEvent* event) {
     emit blockSelected(this);
-    QMenu menu(this);
+    // 勿以功能块为父：块上 QCheckBox { color: 灰/绿 } 会污染菜单文字
+    QMenu menu(window());
+    applyFlowContextMenuStyle(&menu);
     menu.addAction(QStringLiteral("打开设置"), this, [this]() { emit editRequested(this); });
     if (runMenuVisible_) {
         QAction* runAct = menu.addAction(QStringLiteral("运行"), this, [this]() { emit runRequested(this); });
@@ -488,6 +433,7 @@ void TestFlowEditor::showFlowRegionContextMenu(QVBoxLayout* layout, const QPoint
         return;
     const bool toFailRegion = layout == failLayout_;
     QMenu menu(dialogParent_);
+    applyFlowContextMenuStyle(&menu);
     menu.addAction(QStringLiteral("添加空白块"), this, [this, layout, insertAfter]() {
         if (insertAfter)
             insertBlockAfter(insertAfter, QString());
@@ -538,6 +484,7 @@ void TestFlowEditor::promptImportBlocks(bool toFailRegion, TestCaseBlock* insert
                 return;
 
             QMenu menu(list);
+            applyFlowContextMenuStyle(&menu);
             menu.addAction(QStringLiteral("删除功能块"), [this, list, &allNames, searchEdit, targets]() {
                 QStringList names;
                 for (QListWidgetItem* item : targets) {
@@ -755,6 +702,7 @@ void TestFlowEditor::onProductNameChanged() {
 
 QMenu* TestFlowEditor::createFlowStationMenu(QWidget* parent, int hitComboIndex) {
     auto* menu = new QMenu(parent);
+    applyFlowContextMenuStyle(menu);
     QAction* const actNew = menu->addAction(QStringLiteral("新建工站"));
     QAction* const actRename = menu->addAction(QStringLiteral("重命名工站"));
     QAction* const actCopy = menu->addAction(QStringLiteral("复制工站"));
@@ -796,6 +744,7 @@ void TestFlowEditor::setupStationComboContextMenu() {
             stationCombo_->parentWidget()->findChild<QToolButton*>(QStringLiteral("toolButton_testFlowStationMenu"))) {
         // 固定菜单 + aboutToShow 刷新可用态；勿在 currentIndexChanged 里反复 setMenu，否则 InstantPopup 下 QAction 可能不触发
         auto* menu = new QMenu(manageBtn);
+        applyFlowContextMenuStyle(menu);
         QAction* const actNew = menu->addAction(QStringLiteral("新建工站"));
         QAction* const actRename = menu->addAction(QStringLiteral("重命名工站"));
         QAction* const actCopy = menu->addAction(QStringLiteral("复制工站"));

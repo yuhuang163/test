@@ -2,5 +2,8 @@
     <qresource prefix="/">
         <file>new_production.qml</file>
         <file>stytle/qss/Ubuntu.qss</file>
+        <file>stytle/qss/test_flow_editor.qss</file>
+        <file>translations/qt_zh_CN.qm</file>
+        <file>translations/qt_widgets_zh_CN.qm</file>
     </qresource>
 </RCC>
