@@ -508,6 +508,13 @@ void box_base::setting_ui() {
                         }
                     });
         }
+        // 关闭设置保存后热切换 SYSTEM/ProtocolType，免重启
+        connect(qsetting_ui, &qsetting::settingsSaved, this, [this]() {
+            for (test_base* t : testList) {
+                if (t)
+                    t->applySystemProtocolFromSettings();
+            }
+        });
     } else {
         // 如果窗口已存在，重新加载配置以确保显示最新设置
         qsetting_ui->loadConfig();

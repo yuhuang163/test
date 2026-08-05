@@ -121,6 +121,8 @@ class test_base : public QWidget {
     QScpiManager* scpiVisaManager();
     const QScpiManager* scpiVisaManager() const;
     void applyTestCaseProductProtocol(TestCaseProductProtocol protocol);
+    /** 按 SETTINGS SYSTEM/ProtocolType 热切换当前协议（设置页保存后调用） */
+    void applySystemProtocolFromSettings();
 
     /** 当前 Mes/FACTORY 下可选外设用途（中文，如「程控电源」）。 */
     QStringList instrumentPurposeLabels() const;

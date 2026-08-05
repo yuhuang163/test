@@ -643,6 +643,7 @@ Command ID：占1字节，用于标识具体命令类型，每个Service ID对
 |device\_mac\_address|0x03|1|uint8|待测设备的mac地址|O|1\.0\.0|
 |factory\_complete\_status|0x04|1|uint8|产测通过标识，用于标注是否经过产测（掉电不消失）|O|1\.0\.0|
 |hw\_version|0x05|1|uint8\[\]|硬件版本号|O|1\.0\.0|
+|res\_version|0x06|1|uint8\[\]|资源版本号|O|1\.0\.0|
 |factory\_mode\_list|0x20|NA|NA|工厂模式数据列表|O|1\.0\.0|
 |factory\_mode\_struct|0x21|NA|NA|工厂模式数据结构体|O|1\.0\.0|
 |factory\_mode\_type|0x22|1<br>|uint8|工厂模式类型<br>00：idle\_mode<br>01：factory\_test\_mode<br>02：aging\_test\_mode<br>03：suckion\_test\_mode<br>04：sucktion\_compensate\_mode<br>05：ate\_test\_mode|O|1\.0\.0<br>|

@@ -58,22 +58,27 @@ test_base::test_base(QWidget* parent) : QWidget(parent),
     protocolManager.bindQaiot(qaiot);
     protocolManager.bindQroot(qroot);
     // 非 test_case 工站仍用 SETTINGS 初值；自由工站 Product 步在 beginStep 按 case ini 的 Protocol= 覆盖
-    {
-        auto selectedType = QProtocolManager::protocolTypeFromString(
-            SETTINGS.value(QStringLiteral("SYSTEM/ProtocolType"), QStringLiteral("qpb")).toString().toStdString());
-        if (selectedType == QProtocolManager::ProtocolType::Unknown)
-            selectedType = QProtocolManager::ProtocolType::Qpb;
-        if ((selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctp) ||
-            (selectedType == QProtocolManager::ProtocolType::Qaiot && !qaiot) ||
-            (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot)) {
-            selectedType = QProtocolManager::ProtocolType::Qpb;
-        }
-        protocolManager.setCurrentProtocolType(selectedType);
-    }
+    applySystemProtocolFromSettings();
 
     signalAndslot();
     scanSerialPortsTimer->start(1000); // 每秒刷新一次
     initData();
+}
+void test_base::applySystemProtocolFromSettings() {
+    auto selectedType = QProtocolManager::protocolTypeFromString(
+        SETTINGS.value(QStringLiteral("SYSTEM/ProtocolType"), QStringLiteral("qpb")).toString().toStdString());
+    if (selectedType == QProtocolManager::ProtocolType::Unknown)
+        selectedType = QProtocolManager::ProtocolType::Qpb;
+    if ((selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctp) ||
+        (selectedType == QProtocolManager::ProtocolType::Qaiot && !qaiot) ||
+        (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot)) {
+        selectedType = QProtocolManager::ProtocolType::Qpb;
+    }
+    if (protocolManager.currentProtocolType() == selectedType)
+        return;
+    protocolManager.setCurrentProtocolType(selectedType);
+    showlog(QStringLiteral("切换设备协议：%1")
+                .arg(QString::fromStdString(QProtocolManager::protocolTypeToString(selectedType))));
 }
 void test_base::applyTestCaseProductProtocol(TestCaseProductProtocol protocol) {
     QProtocolManager::ProtocolType selectedType = QProtocolManager::ProtocolType::Qfctp;

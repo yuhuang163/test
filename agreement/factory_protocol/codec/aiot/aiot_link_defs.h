@@ -40,6 +40,7 @@ constexpr uint8_t kFctGetTlvFwVersion = 0x02;
 constexpr uint8_t kFctGetTlvMac = 0x03;
 constexpr uint8_t kFctGetTlvFactoryComplete = 0x04;
 constexpr uint8_t kFctGetTlvHwVersion = 0x05;
+constexpr uint8_t kFctGetTlvResVersion = 0x06;
 constexpr uint8_t kFctGetTlvModeList = 0x20;
 constexpr uint8_t kFctGetTlvModeStruct = 0x21;
 constexpr uint8_t kFctGetTlvModeType = 0x22;

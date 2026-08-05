@@ -151,7 +151,7 @@ void Qaiot::handleFctResponse(const Message& message) {
                        QVariant::fromValue(ProtocolFactoryDoneData{done}));
         }
 
-        // GET 顺带回填名称/固件/硬件/MAC
+        // GET 顺带回填名称/固件/硬件/蓝牙 MAC
         if (message.commandId == AiotLink::kFctCidGetFactoryStatus) {
             ProtocolBaseInfoData info;
             if (findTlv(message.tlvs, AiotLink::kFctGetTlvDeviceName, &n))
@@ -160,16 +160,36 @@ void Qaiot::handleFctResponse(const Message& message) {
                 info.soft_version = QString::fromUtf8(n.value);
             if (findTlv(message.tlvs, AiotLink::kFctGetTlvHwVersion, &n))
                 info.hw_version = QString::fromUtf8(n.value);
-            if (!info.product_name.isEmpty() || !info.soft_version.isEmpty() || !info.hw_version.isEmpty()) {
+            if (findTlv(message.tlvs, AiotLink::kFctGetTlvResVersion, &n))
+                info.res_version = QString::fromUtf8(n.value);
+
+            QString macText;
+            if (findTlv(message.tlvs, AiotLink::kFctGetTlvMac, &n) && n.value.size() >= 6) {
+                // 主窗口 BaseInfo 从 ble_mac 取蓝牙 MAC（按字节逆序显示）
+                info.ble_mac.size = 6;
+                for (int i = 0; i < 6; ++i)
+                    info.ble_mac.bytes[i] = static_cast<uint8_t>(n.value.at(i));
+                // 与 qroot/qfctp 一致：线序首字节对应显示末字节
+                QStringList parts;
+                parts.reserve(6);
+                for (int i = 5; i >= 0; --i) {
+                    parts.append(QString::number(static_cast<quint8>(n.value.at(i)), 16)
+                                     .rightJustified(2, QLatin1Char('0'))
+                                     .toUpper());
+                }
+                macText = parts.join(QLatin1Char(':'));
+            }
+
+            if (!info.product_name.isEmpty() || !info.soft_version.isEmpty() || !info.hw_version.isEmpty() ||
+                !info.res_version.isEmpty() || info.ble_mac.size > 0) {
                 emitReport(QStringLiteral("ProtocolBaseInfoData"), QVariant::fromValue(info));
                 emitReport(QStringLiteral("ProtocolPbDate"),
-                           QStringLiteral("QAIOT 产测状态 name=%1 soft=%2 hw=%3")
-                               .arg(info.product_name, info.soft_version, info.hw_version));
+                           QStringLiteral("QAIOT 产测状态 name=%1 soft=%2 hw=%3 res=%4 mac=%5")
+                               .arg(info.product_name, info.soft_version, info.hw_version, info.res_version,
+                                    macText));
             }
-            if (findTlv(message.tlvs, AiotLink::kFctGetTlvMac, &n) && !n.value.isEmpty()) {
-                const QString macText = QString::fromLatin1(n.value.toHex(':')).toUpper();
+            if (!macText.isEmpty())
                 emitReport(QStringLiteral("ProtocolMacData"), QVariant::fromValue(ProtocolMacData{macText}));
-            }
         }
 
         const quint8 modeTypeTlv = (message.commandId == AiotLink::kFctCidGetFactoryStatus)
@@ -421,14 +441,13 @@ void Qaiot::get(DeviceCmd cmd, const QVariant& param) {
     case DeviceCmd::SoftVersionRead:
     case DeviceCmd::BaseInfo:
     case DeviceCmd::DeviceInfo: {
-        // CID=0x01：name/fw/mac/complete/hw + 工厂模式列表
+        // CID=0x01：查 name/fw/mac/hw/res（各 Type Length=0）
         const QList<TlvNode> tlvs = {
             queryLeaf(AiotLink::kFctGetTlvDeviceName),
             queryLeaf(AiotLink::kFctGetTlvFwVersion),
             queryLeaf(AiotLink::kFctGetTlvMac),
-            queryLeaf(AiotLink::kFctGetTlvFactoryComplete),
             queryLeaf(AiotLink::kFctGetTlvHwVersion),
-            queryLeaf(AiotLink::kFctGetTlvModeList),
+            queryLeaf(AiotLink::kFctGetTlvResVersion),
         };
         sendServiceCommand(AiotLink::kSvcFctAte, AiotLink::kFctCidGetFactoryStatus, tlvs,
                            QStringLiteral("读产测状态/版本"));
@@ -441,15 +460,11 @@ void Qaiot::get(DeviceCmd cmd, const QVariant& param) {
         break;
     }
     case DeviceCmd::FactoryDoneRead:
-    case DeviceCmd::FacResult: {
-        const QList<TlvNode> tlvs = {
-            queryLeaf(AiotLink::kFctGetTlvFactoryComplete),
-            queryLeaf(AiotLink::kFctGetTlvModeList),
-        };
-        sendServiceCommand(AiotLink::kSvcFctAte, AiotLink::kFctCidGetFactoryStatus, tlvs,
-                           QStringLiteral("读产测状态"));
+    case DeviceCmd::FacResult:
+        // 只查产测完成标识 Type=0x04，不附带模式列表 0x20
+        sendServiceCommand(AiotLink::kSvcFctAte, AiotLink::kFctCidGetFactoryStatus,
+                           {queryLeaf(AiotLink::kFctGetTlvFactoryComplete)}, QStringLiteral("读产测状态"));
         break;
-    }
     case DeviceCmd::TupleRead:
     case DeviceCmd::Sn: {
         // CID=0x03：side + data_type（SN=0x01 / 三元组=0x02~0x04）

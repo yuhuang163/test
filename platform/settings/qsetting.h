@@ -26,6 +26,8 @@ class qsetting : public QWidget {
   signals:
     /** 测试流程编排功能块右键「运行」（仅自由工站启用时有效） */
     void runTestCaseStepRequested(const QString& stationKey, const QString& caseName);
+    /** 设置已写入 ini（关闭设置页等），主窗口/工站可据此热切换协议等 */
+    void settingsSaved();
 
   private:
     Ui::qsetting* ui;

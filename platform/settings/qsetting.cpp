@@ -522,6 +522,7 @@ void qsetting::saveConfig() {
         bydmes::loadExternalMesConfig(nullptr);
     }
     SETTINGS.sync();
+    emit settingsSaved();
 }
 
 

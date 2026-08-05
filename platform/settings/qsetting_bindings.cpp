@@ -318,7 +318,7 @@ static const Row kSettings[] = {
     TIP("pushButton_testFlowDownloadSteps", "从云端下载已发布共享用例库（仅覆盖本机 test_case/steps）。"),
     TIP("pushButton_testFlowUploadSteps", "上传本机 test_case/steps 用例库到云端草稿（需网页合入并发布）。"),
     TIP("pushButton_testFlowClear", "清空当前工站已配置测试流程。"),
-    TIP("comboBox_systemProtocolType", "设备协议 qpb / qfctp / qaiot / qroot（吸奶器 PCBA，经蓝牙透传）。"),
+    TIP("comboBox_systemProtocolType", "设备协议 qpb / qfctp / qaiot / qroot（吸奶器 PCBA，经蓝牙透传）。关闭设置后立即生效，无需重启。"),
     TIP("comboBox_tupleEnvironment", "三元组环境预设。"),
     TIP("lineEdit_tupleBaseUrl", "Tuple/BaseUrl。"),
     TIP("lineEdit_imu_status", "外设 imu 状态期望值。"),

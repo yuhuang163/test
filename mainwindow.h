@@ -367,6 +367,7 @@ class MainWindow : public QMainWindow {
     void processAudio(const QString& inputFile, const QString& outputFile, const QString& volumeChangeDb,
                       const QString& play_speed);
     void setting_ui();
+    void applySystemProtocolFromSettings();
     void saveblackbox(QString data);
     void sendNoisyData();
     void checkAndUpdateFile();

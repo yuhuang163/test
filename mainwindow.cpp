@@ -788,6 +788,7 @@ void MainWindow::setting_ui() {
     }
     if (qsetting_ui == nullptr) {
         qsetting_ui = new qsetting;
+        connect(qsetting_ui, &qsetting::settingsSaved, this, &MainWindow::applySystemProtocolFromSettings);
     } else {
         // 如果窗口已存在，重新加载配置以确保显示最新设置
         qsetting_ui->loadConfig();
@@ -795,6 +796,25 @@ void MainWindow::setting_ui() {
     qsetting_ui->raise();
     qsetting_ui->show();
     qsetting_ui->activateWindow();
+}
+
+void MainWindow::applySystemProtocolFromSettings() {
+    auto selectedType = QProtocolManager::protocolTypeFromString(
+        SETTINGS.value(QStringLiteral("SYSTEM/ProtocolType"), QStringLiteral("qpb")).toString().toStdString());
+    if (selectedType == QProtocolManager::ProtocolType::Unknown)
+        selectedType = QProtocolManager::ProtocolType::Qpb;
+    if ((selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctp) ||
+        (selectedType == QProtocolManager::ProtocolType::Qaiot && !qaiot) ||
+        (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot)) {
+        QMessageBox::information(this, QStringLiteral("协议提示"),
+                                 QStringLiteral("所选协议未就绪，已自动回退到 qpb。"));
+        selectedType = QProtocolManager::ProtocolType::Qpb;
+    }
+    if (protocolManager.currentProtocolType() == selectedType)
+        return;
+    protocolManager.setCurrentProtocolType(selectedType);
+    showlog(QStringLiteral("切换设备协议：%1")
+                .arg(QString::fromStdString(QProtocolManager::protocolTypeToString(selectedType))));
 }
 void MainWindow::on_add_data_clicked() {
     int ring_size = cameraRingBuf->usmile_ring_buffer_items_count_get(&p_cameraRingBuffer);
