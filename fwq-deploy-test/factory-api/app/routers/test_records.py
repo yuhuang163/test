@@ -200,13 +200,20 @@ def list_test_records(
         q = q.filter(TestRecord.mac.contains(mac))
     if testResult:
         q = q.filter(TestRecord.test_result == testResult)
+    # 与列表「测试时间」列一致：优先 tested_at，否则 created_at
+    display_time = func.coalesce(TestRecord.tested_at, TestRecord.created_at)
     if startTime:
-        q = q.filter(TestRecord.created_at >= datetime.fromisoformat(startTime))
+        q = q.filter(display_time >= datetime.fromisoformat(startTime))
     if endTime:
-        q = q.filter(TestRecord.created_at <= datetime.fromisoformat(endTime))
+        q = q.filter(display_time <= datetime.fromisoformat(endTime))
 
     total = q.with_entities(func.count(TestRecord.id)).scalar() or 0
-    rows = q.order_by(TestRecord.created_at.desc()).offset((page - 1) * pageSize).limit(pageSize).all()
+    rows = (
+        q.order_by(display_time.desc(), TestRecord.id.desc())
+        .offset((page - 1) * pageSize)
+        .limit(pageSize)
+        .all()
+    )
     items = [_to_list_item(db, r) for r in rows]
     data = TestRecordListData(items=items, total=total, page=page, pageSize=pageSize)
     return ok(data.model_dump(mode="json"))

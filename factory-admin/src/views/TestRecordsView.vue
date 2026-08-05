@@ -31,8 +31,21 @@
           <el-option label="失败" value="失败" />
         </el-select>
       </el-form-item>
+      <el-form-item label="测试时间">
+        <el-date-picker
+          v-model="dateRange"
+          type="daterange"
+          clearable
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          value-format="YYYY-MM-DD"
+          :shortcuts="dateShortcuts"
+          style="width: 260px"
+        />
+      </el-form-item>
       <el-form-item>
-        <el-button type="primary" @click="load">查询</el-button>
+        <el-button type="primary" @click="search">查询</el-button>
       </el-form-item>
     </el-form>
 
@@ -148,6 +161,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { formatTime, formatSize, testResultClass } from '../utils/format'
+import { DATE_RANGE_SHORTCUTS, toApiTimeRange } from '../utils/dateRange'
 import { useFactoryScope } from '../composables/useFactoryScope'
 import http from '../api/http'
 import { fetchLogPreviewText } from '../api/logs'
@@ -161,6 +175,8 @@ const page = ref(1)
 const pageSize = 20
 const factories = ref([])
 const filters = reactive({ factoryName: '', station: '', hostName: '', sn: '', mac: '', testResult: '' })
+const dateRange = ref(null)
+const dateShortcuts = DATE_RANGE_SHORTCUTS
 
 const drawerVisible = ref(false)
 const detailLoading = ref(false)
@@ -231,6 +247,11 @@ async function loadFactories() {
   factories.value = await http.get('/admin/meta/factories')
 }
 
+function search() {
+  page.value = 1
+  load()
+}
+
 async function load() {
   loading.value = true
   try {
@@ -244,6 +265,7 @@ async function load() {
         sn: filters.sn || undefined,
         mac: filters.mac || undefined,
         testResult: filters.testResult || undefined,
+        ...toApiTimeRange(dateRange.value),
       },
     })
     items.value = data.items || []

@@ -55,7 +55,15 @@ def dashboard_summary(
     )
     factories = [{"name": get_factory_display_name(db, r[0]), "count": r[1]} for r in factory_counts]
 
-    recent_records = base_records_q.order_by(TestRecord.created_at.desc()).limit(5).all()
+    # 与测试数据页一致：按展示用测试时间倒序
+    recent_records = (
+        base_records_q.order_by(
+            func.coalesce(TestRecord.tested_at, TestRecord.created_at).desc(),
+            TestRecord.id.desc(),
+        )
+        .limit(5)
+        .all()
+    )
     recent = [
         {
             "id": r.id,
