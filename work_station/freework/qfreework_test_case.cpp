@@ -846,7 +846,6 @@ void QFreeWork::emitFixtureMultiGateTableRows(const QVector<TestCaseGate>& gates
     detailOut.clear();
     QVector<TestItem> rows;
     rows.reserve(gates.size());
-    const QString stepName = activeTestCaseStepLabel_.trimmed();
     QStringList detailParts;
     for (const TestCaseGate& g : gates) {
         if (!g.enabled)
@@ -861,8 +860,8 @@ void QFreeWork::emitFixtureMultiGateTableRows(const QVector<TestCaseGate>& gates
         detailParts.append(QStringLiteral("%1(%2)")
                                .arg(GateRegistry::fieldDisplayName(reportType, ge.field), subDetail));
         TestItem item;
-        item.testItem =
-            stepName + QLatin1Char('-') + GateRegistry::fieldDisplayName(reportType, ge.field);
+        // 多字段卡控分项表格只显示判定项（如 RSSI/频偏），不再重复步骤名前缀
+        item.testItem = GateRegistry::fieldDisplayName(reportType, ge.field);
         const QString unit = GateRegistry::unitFor(reportType, ge.field, payload);
         item.testData = subDetail;
         if (!unit.isEmpty() && !item.testData.endsWith(unit))
