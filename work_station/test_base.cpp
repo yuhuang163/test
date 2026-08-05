@@ -11,8 +11,11 @@
 #include <windows.h>
 #include <QDateTime>
 #include <QDebug>
+#include <QElapsedTimer>
 #include <QSet>
 #include <QString>
+#include <QTimer>
+#include <QPlainTextEdit>
 #include "dongle_at_types.h"
 #include "qcoreapplication.h"
 #include "qprocess.h"
@@ -193,10 +196,15 @@ void test_base::releaseVisaBackendAfterTest() {
 }
 
 void test_base::scanSerialPorts() {
+    QElapsedTimer timer;
+    timer.start();
     SerialChannel::updateComboBoxPorts(getComNameCombo());
     SerialChannel::updateComboBoxPorts(getUsbcomNameCombo());
     SerialChannel::updateComboBoxPorts(getJigcomNameCombo());
     SerialChannel::updateComboBoxPorts(getProductcomNameCombo());
+    // 每秒扫描；慢时重点看 cost，快扫也落一条便于对照卡顿时段
+    Qlog::saveResidentLog(QStringLiteral("scanPorts"),
+                          QStringLiteral("station=%1 cost=%2ms").arg(m_index).arg(timer.elapsed()));
 }
 
 void test_base::updateHIDComboBox(QComboBox* comboBox) {
@@ -302,27 +310,56 @@ void test_base::getMacAddress(const QByteArray& byte) {
 }
 
 void test_base::onDongleSerialFrame(const QByteArray& dataTemp) {
-    // qDebug() << getIndex()<< "data len : " << dataTemp.size();
     at->parseCmd(dataTemp);
     protocolManager.parseCmd(dataTemp);
     getMacAddress(dataTemp); // 搜索设备用
-    // getMacAddress(dataTemp);
-    //  qDebug() << getIndex()<< QString::fromUtf8(dataTemp);
-    // ui->log->appendPlainText(QString::fromUtf8(dataTemp));
-    // 获取当前时间
-    const QString timestamp = CommonUtils::formatTimestampMs();
-    QString logEntry = QString("[%1]\r\n%2").arg(timestamp, dataTemp);
 
-    if (dataTemp.contains("内容为:")) {
-        int pos = dataTemp.indexOf("内容为:");
-        QString beforeContent = dataTemp.left(pos + QString("内容为").length() * 3 + 1).trimmed();
-        QByteArray subsequentContent = dataTemp.mid(pos + QString("内容为").length() * 3 + 1).trimmed();
-        const QString hexContent = CommonUtils::toHexUpperSpaced(subsequentContent);
-        logEdit()->appendPlainText(beforeContent + hexContent);
+    const QString timestamp = CommonUtils::formatTimestampMs();
+    QString payloadText;
+    const QByteArray contentMarker = QByteArrayLiteral("内容为:");
+    const int contentPos = dataTemp.indexOf(contentMarker);
+    if (contentPos >= 0) {
+        const QByteArray before = dataTemp.left(contentPos + contentMarker.size());
+        const QByteArray after = dataTemp.mid(contentPos + contentMarker.size()).trimmed();
+        payloadText = CommonUtils::formatUartPayloadForUi(before, 512);
+        if (!after.isEmpty()) {
+            const int n = qMin(after.size(), 256);
+            payloadText += CommonUtils::toHexUpperSpaced(after.left(n));
+            if (after.size() > n)
+                payloadText += QStringLiteral(" ...(+%1 bytes)").arg(after.size() - n);
+        }
     } else {
-        logEdit()->appendPlainText(logEntry);
+        payloadText = CommonUtils::formatUartPayloadForUi(dataTemp);
     }
+    const QString logEntry = QStringLiteral("[%1]\r\n%2").arg(timestamp, payloadText);
+    enqueueDongleUiLog(logEntry);
     saveDongleUartLog(logEntry);
+}
+
+void test_base::enqueueDongleUiLog(const QString& line) {
+    if (line.isEmpty())
+        return;
+    dongleUiLogPending_.append(line);
+    while (dongleUiLogPending_.size() > 200)
+        dongleUiLogPending_.removeFirst();
+    if (dongleUiLogFlushScheduled_)
+        return;
+    dongleUiLogFlushScheduled_ = true;
+    QTimer::singleShot(0, this, [this]() { flushDongleUiLog(); });
+}
+
+void test_base::flushDongleUiLog() {
+    dongleUiLogFlushScheduled_ = false;
+    QPlainTextEdit* edit = logEdit();
+    if (!edit)
+        return;
+    if (edit->maximumBlockCount() <= 0)
+        edit->setMaximumBlockCount(2000);
+    if (dongleUiLogPending_.isEmpty())
+        return;
+    const QString batch = dongleUiLogPending_.join(QChar('\n'));
+    dongleUiLogPending_.clear();
+    edit->appendPlainText(batch);
 }
 void test_base::handleDongleSerialPortError(QSerialPort::SerialPortError error, const QString& message) {
     if (error == QSerialPort::NoError)

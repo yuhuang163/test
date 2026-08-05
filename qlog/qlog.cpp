@@ -655,6 +655,22 @@ void Qlog::saveOtaStressLog(const QString& msg) {
     appendTextLog(folderName, QStringLiteral("ota升级log.log"), msg, false);
 }
 
+void Qlog::saveResidentLog(const QString& tag, const QString& msg) {
+    // 心跳/轮询在工作线程写盘，需互斥避免行交错
+    static QMutex residentMutex;
+    QMutexLocker locker(&residentMutex);
+
+    const QString folderName = logRootRelative() + QStringLiteral("/常驻监控");
+    if (!CommonUtils::ensureLogDirectory(folderName))
+        return;
+    const QString fileName = QSysInfo::machineHostName() + QStringLiteral("_常驻监控_")
+                             + CommonUtils::formatDateIso() + QStringLiteral(".log");
+    const QString absolutePath = CommonUtils::joinPath(folderName, fileName);
+    const QString line = CommonUtils::formatTimestampMs() + QStringLiteral(" [")
+                         + (tag.isEmpty() ? QStringLiteral("-") : tag) + QStringLiteral("] ") + msg;
+    appendLineToFile(absolutePath, line, true);
+}
+
 QString Qlog::exportDongleSessionSlice(const QlogSessionInfo& info, QString* error) {
     if (!info.valid || info.dongleDailyAbsolutePath.isEmpty()) {
         if (error) {

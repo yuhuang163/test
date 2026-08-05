@@ -70,6 +70,11 @@ class Qlog {
     static void saveDongleUartLogMain(const QString& data);
     static void saveBlackboxLog(const QByteArray& data);
     static void saveOtaStressLog(const QString& msg);
+    /**
+     * 常驻后台监控日志（心跳/串口扫描/主任务环等），单独日文件，不走 qDebug/UI。
+     * 路径：所有log/常驻监控/<主机名>_常驻监控_<日期>.log
+     */
+    static void saveResidentLog(const QString& tag, const QString& msg);
 
     void saveTestCsv(const QString& ver, const QString& sn, const QString& macAddress,
                      const QVector<TestItem>& testItems);

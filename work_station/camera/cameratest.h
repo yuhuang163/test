@@ -43,7 +43,7 @@ class ImageViewer : public QGraphicsView {
                 pixmapItem = new QGraphicsPixmapItem(pixmap);
                 scene->addItem(pixmapItem);
             } else {
-                qDebug() << "Failed to load default image.";
+                // qDebug() << "Failed to load default image.";
             }
         }
         // 创建 QGraphicsPixmapItem 对象并添加到场景中

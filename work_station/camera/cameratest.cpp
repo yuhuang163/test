@@ -4,7 +4,9 @@
 #include <QColor>
 #include <QFileDialog>
 #include <QPainter>
+#include <QPlainTextEdit>
 
+#include "common_utils.h"
 #include "qdebug.h"
 #include "qserialportinfo.h"
 #include "ui_cameratest.h"
@@ -1032,21 +1034,15 @@ void cameratest::onDongleSerialFrame(const QByteArray& dataTemp) {
     // getMacAddress(dataTemp);
     //  qDebug() << getIndex()<< QString::fromUtf8(dataTemp);
     // ui->log->appendPlainText(QString::fromUtf8(dataTemp));
-    QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
-
-    // if (dataTemp.contains("内容为:")) {
-    //     int pos = dataTemp.indexOf("内容为:");
-    //     QString beforeContent = dataTemp.left(pos + QString("内容为").length() * 3 + 1).trimmed();
-    //     QByteArray subsequentContent = dataTemp.mid(pos + QString("内容为").length() * 3 + 1).trimmed();
-    //     QString hexContent = toHex(subsequentContent);
-    //     logEdit()->appendPlainText(beforeContent + hexContent);
-    // } else {
-    //     QString logEntry = QString("[%1]\r\n%2").arg(timestamp, dataTemp);
-    //     logEdit()->appendPlainText(logEntry);
-    // }
-
-    QString logEntry = QString("[%1]\r\n%2").arg(timestamp, dataTemp);
-    logEdit()->appendPlainText(logEntry);
+    // 与主窗口一致：二进制走安全格式化，避免 QPlainTextEdit 闪退
+    const QString timestamp = CommonUtils::formatTimestampMs();
+    const QString logEntry =
+        QStringLiteral("[%1]\r\n%2").arg(timestamp, CommonUtils::formatUartPayloadForUi(dataTemp));
+    if (QPlainTextEdit* edit = logEdit()) {
+        if (edit->maximumBlockCount() <= 0)
+            edit->setMaximumBlockCount(2000);
+        edit->appendPlainText(logEntry);
+    }
 }
 
 void cameratest::readPendingDatagrams() {

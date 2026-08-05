@@ -8,6 +8,8 @@
 #include <QDateTime>
 #include <QDir>
 #include <QHash>
+#include <QJsonDocument>
+#include <QJsonParseError>
 #include <QMutex>
 #include <QMutexLocker>
 #include <QSet>
@@ -204,7 +206,7 @@ bool TestRecordStore::ensureOpen() {
         }
     }
 
-    opened_ = ensurePassTable();
+    opened_ = ensurePassTable() && ensureUploadQueueTable();
     if (opened_) {
         logRecord(QStringLiteral("数据库已就绪：") + dbPath);
     }
@@ -232,6 +234,29 @@ bool TestRecordStore::ensurePassTable() {
         logRecord(QStringLiteral("建表 mes_test_pass 失败：") + query.lastError().text());
         return false;
     }
+    return true;
+}
+
+bool TestRecordStore::ensureUploadQueueTable() {
+    QSqlDatabase db = QSqlDatabase::database(QLatin1String(kConnectionName));
+    QSqlQuery query(db);
+    const bool ok = query.exec(
+        QStringLiteral("CREATE TABLE IF NOT EXISTS cloud_upload_queue ("
+                       "id INTEGER PRIMARY KEY AUTOINCREMENT,"
+                       "created_at TEXT NOT NULL,"
+                       "payload_json TEXT NOT NULL,"
+                       "status TEXT NOT NULL DEFAULT 'pending',"
+                       "retry_count INTEGER NOT NULL DEFAULT 0,"
+                       "last_error TEXT,"
+                       "last_attempt_at TEXT,"
+                       "cloud_record_id INTEGER)"));
+    if (!ok) {
+        logRecord(QStringLiteral("建表 cloud_upload_queue 失败：") + query.lastError().text());
+        return false;
+    }
+    QSqlQuery idx(db);
+    (void)idx.exec(QStringLiteral(
+        "CREATE INDEX IF NOT EXISTS idx_cloud_upload_queue_status ON cloud_upload_queue(status, id)"));
     return true;
 }
 
@@ -398,4 +423,179 @@ bool TestRecordStore::saveOnTestPass(const MesPacketData& pack) {
                       .arg(pack.result.trimmed()));
     }
     return true;
+}
+
+qint64 TestRecordStore::enqueueCloudUpload(const QJsonObject& payload) {
+    QMutexLocker locker(&storeMutex());
+    if (!ensureOpen()) {
+        return 0;
+    }
+    if (payload.isEmpty()) {
+        return 0;
+    }
+
+    const QByteArray json = QJsonDocument(payload).toJson(QJsonDocument::Compact);
+    QSqlDatabase db = QSqlDatabase::database(QLatin1String(kConnectionName));
+    QSqlQuery query(db);
+    query.prepare(QStringLiteral(
+        "INSERT INTO cloud_upload_queue (created_at, payload_json, status, retry_count) "
+        "VALUES (?, ?, 'pending', 0)"));
+    query.addBindValue(QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd hh:mm:ss.zzz")));
+    query.addBindValue(QString::fromUtf8(json));
+    if (!query.exec()) {
+        logRecord(QStringLiteral("入队云端补传失败：") + query.lastError().text());
+        return 0;
+    }
+    const qint64 id = query.lastInsertId().toLongLong();
+    logRecord(QStringLiteral("已入队云端补传 queue_id=%1 sn=%2")
+                  .arg(id)
+                  .arg(payload.value(QStringLiteral("sn")).toString()));
+    return id;
+}
+
+bool TestRecordStore::claimCloudUpload(qint64 id) {
+    QMutexLocker locker(&storeMutex());
+    if (!ensureOpen() || id <= 0) {
+        return false;
+    }
+    QSqlDatabase db = QSqlDatabase::database(QLatin1String(kConnectionName));
+    QSqlQuery query(db);
+    query.prepare(QStringLiteral(
+        "UPDATE cloud_upload_queue SET status='uploading', last_attempt_at=? "
+        "WHERE id=? AND status='pending'"));
+    query.addBindValue(QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd hh:mm:ss.zzz")));
+    query.addBindValue(id);
+    if (!query.exec()) {
+        logRecord(QStringLiteral("认领补传队列失败 queue_id=%1：%2").arg(id).arg(query.lastError().text()));
+        return false;
+    }
+    return query.numRowsAffected() > 0;
+}
+
+void TestRecordStore::recoverStaleCloudUploads(int olderThanSeconds) {
+    QMutexLocker locker(&storeMutex());
+    if (!ensureOpen() || olderThanSeconds < 0) {
+        return;
+    }
+    const QDateTime threshold = QDateTime::currentDateTime().addSecs(-olderThanSeconds);
+    QSqlDatabase db = QSqlDatabase::database(QLatin1String(kConnectionName));
+    QSqlQuery query(db);
+    query.prepare(QStringLiteral(
+        "UPDATE cloud_upload_queue SET status='pending' "
+        "WHERE status='uploading' AND (last_attempt_at IS NULL OR last_attempt_at < ?)"));
+    query.addBindValue(threshold.toString(QStringLiteral("yyyy-MM-dd hh:mm:ss.zzz")));
+    if (!query.exec()) {
+        logRecord(QStringLiteral("恢复卡住的补传队列失败：") + query.lastError().text());
+        return;
+    }
+    if (query.numRowsAffected() > 0) {
+        logRecord(QStringLiteral("已恢复卡住的补传队列 %1 条").arg(query.numRowsAffected()));
+    }
+}
+
+QVector<TestRecordStore::PendingCloudUpload> TestRecordStore::listPendingCloudUploads(int limit) {
+    QMutexLocker locker(&storeMutex());
+    QVector<PendingCloudUpload> out;
+    if (!ensureOpen() || limit <= 0) {
+        return out;
+    }
+
+    QSqlDatabase db = QSqlDatabase::database(QLatin1String(kConnectionName));
+    QSqlQuery query(db);
+    query.prepare(QStringLiteral(
+        "SELECT id, payload_json, retry_count FROM cloud_upload_queue "
+        "WHERE status = 'pending' ORDER BY id ASC LIMIT ?"));
+    query.addBindValue(limit);
+    if (!query.exec()) {
+        logRecord(QStringLiteral("读取补传队列失败：") + query.lastError().text());
+        return out;
+    }
+
+    while (query.next()) {
+        PendingCloudUpload item;
+        item.id = query.value(0).toLongLong();
+        item.retryCount = query.value(2).toInt();
+        QJsonParseError err;
+        const QJsonDocument doc = QJsonDocument::fromJson(query.value(1).toString().toUtf8(), &err);
+        if (err.error != QJsonParseError::NoError || !doc.isObject()) {
+            logRecord(QStringLiteral("补传队列 payload 损坏 queue_id=%1").arg(item.id));
+            continue;
+        }
+        item.payload = doc.object();
+        out.append(item);
+    }
+    return out;
+}
+
+bool TestRecordStore::markCloudUploadDone(qint64 id, int cloudRecordId) {
+    QMutexLocker locker(&storeMutex());
+    if (!ensureOpen() || id <= 0) {
+        return false;
+    }
+    QSqlDatabase db = QSqlDatabase::database(QLatin1String(kConnectionName));
+    QSqlQuery query(db);
+    // 成功后直接删除，避免 done 行长期堆积
+    Q_UNUSED(cloudRecordId);
+    query.prepare(QStringLiteral("DELETE FROM cloud_upload_queue WHERE id=?"));
+    query.addBindValue(id);
+    if (!query.exec()) {
+        logRecord(QStringLiteral("删除已补传队列失败 queue_id=%1：%2").arg(id).arg(query.lastError().text()));
+        return false;
+    }
+    return true;
+}
+
+bool TestRecordStore::markCloudUploadRetry(qint64 id, const QString& error) {
+    QMutexLocker locker(&storeMutex());
+    if (!ensureOpen() || id <= 0) {
+        return false;
+    }
+    QSqlDatabase db = QSqlDatabase::database(QLatin1String(kConnectionName));
+    QSqlQuery query(db);
+    query.prepare(QStringLiteral(
+        "UPDATE cloud_upload_queue SET status='pending', retry_count=retry_count+1, "
+        "last_error=?, last_attempt_at=? WHERE id=?"));
+    query.addBindValue(error.left(500));
+    query.addBindValue(QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd hh:mm:ss.zzz")));
+    query.addBindValue(id);
+    if (!query.exec()) {
+        logRecord(QStringLiteral("更新补传重试失败 queue_id=%1：%2").arg(id).arg(query.lastError().text()));
+        return false;
+    }
+    return true;
+}
+
+bool TestRecordStore::markCloudUploadFailed(qint64 id, const QString& error) {
+    QMutexLocker locker(&storeMutex());
+    if (!ensureOpen() || id <= 0) {
+        return false;
+    }
+    QSqlDatabase db = QSqlDatabase::database(QLatin1String(kConnectionName));
+    QSqlQuery query(db);
+    query.prepare(QStringLiteral(
+        "UPDATE cloud_upload_queue SET status='failed', last_error=?, last_attempt_at=? WHERE id=?"));
+    query.addBindValue(error.left(500));
+    query.addBindValue(QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd hh:mm:ss.zzz")));
+    query.addBindValue(id);
+    if (!query.exec()) {
+        logRecord(QStringLiteral("标记补传失败 queue_id=%1：%2").arg(id).arg(query.lastError().text()));
+        return false;
+    }
+    return true;
+}
+
+int TestRecordStore::pendingCloudUploadCount() {
+    QMutexLocker locker(&storeMutex());
+    if (!ensureOpen()) {
+        return 0;
+    }
+    QSqlDatabase db = QSqlDatabase::database(QLatin1String(kConnectionName));
+    QSqlQuery query(db);
+    if (!query.exec(QStringLiteral("SELECT COUNT(1) FROM cloud_upload_queue WHERE status='pending'"))) {
+        return 0;
+    }
+    if (query.next()) {
+        return query.value(0).toInt();
+    }
+    return 0;
 }

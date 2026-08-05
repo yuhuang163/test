@@ -144,6 +144,8 @@ class test_base : public QWidget {
     Qlog* log;
     QTimer* scanSerialPortsTimer = new QTimer(this);
     SerialChannel* dongleSerialChannel_ = nullptr;
+    QStringList dongleUiLogPending_;
+    bool dongleUiLogFlushScheduled_ = false;
     SerialChannel* usbSerialChannel_ = nullptr;
     SerialChannel* jigSerialChannel_ = nullptr;
     SerialChannel* productSerialChannel_ = nullptr;
@@ -199,6 +201,8 @@ class test_base : public QWidget {
 
     // --- 串口打开 / 关闭 / 扫描 ---
     virtual void onDongleSerialFrame(const QByteArray& data);
+    void enqueueDongleUiLog(const QString& line);
+    void flushDongleUiLog();
     void handleDongleSerialPortError(QSerialPort::SerialPortError error, const QString& message);
     void openDongleSerialPort(void);
     void closeDongleSerialPort(void);

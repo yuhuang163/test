@@ -22,6 +22,12 @@ class CommonUtils {
     static QString toHexSpaced(const QByteArray& data, QChar separator = QLatin1Char(' '));
     static QString toHexUpperSpaced(const QByteArray& data);
     static QByteArray fromHexString(const QString& hex, bool* ok = nullptr);
+    /**
+     * 串口原始字节转界面日志文本：可打印文本保留（去 NUL），否则转十六进制。
+     * 禁止把协议二进制直接塞进 QPlainTextEdit，避免 QTextDocument 损坏闪退。
+     * maxDisplayBytes：hex/文本展示上限，超出追加截断提示。
+     */
+    static QString formatUartPayloadForUi(const QByteArray& data, int maxDisplayBytes = 256);
 
     /** RC4 流密码（加密与解密同算法），就地处理 data；与设备端 rc4(key,keyLen,data,dataLen) 一致。 */
     static void rc4Crypt(const QByteArray& key, QByteArray& data);

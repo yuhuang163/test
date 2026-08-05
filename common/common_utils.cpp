@@ -72,6 +72,52 @@ QString CommonUtils::toHexUpperSpaced(const QByteArray& data) {
     return toHexSpaced(data, QLatin1Char(' ')).toUpper();
 }
 
+QString CommonUtils::formatUartPayloadForUi(const QByteArray& data, int maxDisplayBytes) {
+    if (data.isEmpty())
+        return QString();
+    if (maxDisplayBytes < 16)
+        maxDisplayBytes = 16;
+
+    // 含 NUL 或可打印比例不足时按二进制处理（FCTP/AIOT/OTA 帧）
+    const int sample = qMin(data.size(), 64);
+    int printable = 0;
+    bool hasNul = false;
+    for (int i = 0; i < sample; ++i) {
+        const uchar c = static_cast<uchar>(data.at(i));
+        if (c == 0) {
+            hasNul = true;
+            break;
+        }
+        if (c == '\r' || c == '\n' || c == '\t' || (c >= 0x20 && c != 0x7F))
+            ++printable;
+    }
+    const bool looksText = !hasNul && sample > 0 && (printable * 100 / sample >= 85);
+
+    if (looksText) {
+        QString text = QString::fromUtf8(data.constData(), data.size());
+        text.remove(QChar(QChar::Null));
+        // 去掉其余控制字符，避免 QTextDocument 异常
+        for (int i = 0; i < text.size();) {
+            const ushort u = text.at(i).unicode();
+            if (u < 0x20 && u != '\r' && u != '\n' && u != '\t')
+                text.remove(i, 1);
+            else
+                ++i;
+        }
+        if (text.size() > maxDisplayBytes * 2) {
+            text = text.left(maxDisplayBytes * 2);
+            text.append(QStringLiteral("...(截断,共%1字节)").arg(data.size()));
+        }
+        return text;
+    }
+
+    const int n = qMin(data.size(), maxDisplayBytes);
+    QString hex = toHexUpperSpaced(data.left(n));
+    if (data.size() > n)
+        hex.append(QStringLiteral(" ...(+%1 bytes)").arg(data.size() - n));
+    return hex;
+}
+
 QByteArray CommonUtils::fromHexString(const QString& hex, bool* ok) {
     const QByteArray parsed = QByteArray::fromHex(hex.toLatin1());
     if (ok) {
@@ -311,6 +357,7 @@ struct ProductEntry {
 
 // clang-format off
 static const ProductEntry kProductTable[] = {
+    {"Air2",     "qaiot", true, "Air2",      true},
     {"V3Pro",    "qfctp", true,  "V3 PRO",   true},
     {"V3",       "qfctp", true,  "V3",       true},
     {"M8",       "qroot", true,  "Pump-E",   false},

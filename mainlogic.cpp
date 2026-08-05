@@ -6,6 +6,8 @@
 #include "host_ota_service.h"
 #include "ui_mainwindow.h"
 #include <QBuffer>
+#include <QElapsedTimer>
+#include <QTimer>
 #include "dcrf32.h"
 
 #ifdef Q_OS_WIN
@@ -478,13 +480,11 @@ void MainWindow::onDongleSerialFrame(const QByteArray& dataTemp) {
             rootBleOta2Client_.onRx(dataTemp);
         else
             rootBleOtaClient_.onRx(dataTemp);
-        // const QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss.zzz");
-        // ui->bleOtaMsg->appendPlainText(QString("[%1] RX %2 bytes: %3")
-        //                                    .arg(timestamp)
-        //                                    .arg(dataTemp.size())
-        //                                    .arg(QString(dataTemp.toHex(' ').left(120))));
-        // saveDongleUartLog(QString("[%1] OTA_RX %2").arg(timestamp, QString(dataTemp.toHex(' '))));
-        // return;
+        // OTA 二进制高频包禁止灌入 QPlainTextEdit（曾导致 QTextDocument 闪退）
+        const QString timestamp = CommonUtils::formatTimestampMs();
+        saveDongleUartLog(QStringLiteral("[%1]\r\n%2")
+                              .arg(timestamp, CommonUtils::formatUartPayloadForUi(dataTemp, 64)));
+        return;
     }
 
     int write_len = 0;
@@ -492,11 +492,6 @@ void MainWindow::onDongleSerialFrame(const QByteArray& dataTemp) {
     write_len = dongleRingBuf->usmile_ring_buffer_write(
         &p_dongleRingBuffer, reinterpret_cast<const uint8_t*>(dataTemp.constData()),
         static_cast<uint32_t>(dataTemp.size()));
-
-    // printSquareData(reinterpret_cast<uint8_t*>(dataTemp.data()),
-    // dataTemp.size());
-    // cameradatasize = dataTemp.size() + cameradatasize;
-    // qDebug() << "cameradatasize:" << cameradatasize;
 
     if (write_len < len) {
         qDebug() << "dongle"
@@ -507,21 +502,54 @@ void MainWindow::onDongleSerialFrame(const QByteArray& dataTemp) {
     protocolManager.parseCmd(dataTemp);
     getMacAddress(dataTemp); // 搜索设备用
 
-    // qDebug() << "串口接收到的码为:" << dataTemp.toHex(' ');
     const QString timestamp = CommonUtils::formatTimestampMs();
-    QString logEntry = QString("[%1]\r\n%2").arg(timestamp, dataTemp);
-    if (dataTemp.contains("内容为:")) {
-        int pos = dataTemp.indexOf("内容为:");
-        QString beforeContent = dataTemp.left(pos + QString("内容为").length() * 3 + 1).trimmed();
-        QByteArray subsequentContent = dataTemp.mid(pos + QString("内容为").length() * 3 + 1).trimmed();
-        const QString hexContent = CommonUtils::toHexUpperSpaced(subsequentContent);
-        ui->log->appendPlainText(beforeContent + hexContent);
+    QString payloadText;
+    const QByteArray contentMarker = QByteArrayLiteral("内容为:");
+    const int contentPos = dataTemp.indexOf(contentMarker);
+    if (contentPos >= 0) {
+        const QByteArray before = dataTemp.left(contentPos + contentMarker.size());
+        const QByteArray after = dataTemp.mid(contentPos + contentMarker.size()).trimmed();
+        payloadText = CommonUtils::formatUartPayloadForUi(before, 512);
+        if (!after.isEmpty()) {
+            const int n = qMin(after.size(), 256);
+            payloadText += CommonUtils::toHexUpperSpaced(after.left(n));
+            if (after.size() > n)
+                payloadText += QStringLiteral(" ...(+%1 bytes)").arg(after.size() - n);
+        }
     } else {
-        ui->log->appendPlainText(logEntry);
+        payloadText = CommonUtils::formatUartPayloadForUi(dataTemp);
     }
+    const QString logEntry = QStringLiteral("[%1]\r\n%2").arg(timestamp, payloadText);
+    enqueueDongleUiLog(logEntry);
     saveDongleUartLog(logEntry);
     if (is_need_noisy_data)
         solveNosiyData(dataTemp);
+}
+
+void MainWindow::enqueueDongleUiLog(const QString& line) {
+    if (line.isEmpty())
+        return;
+    dongleUiLogPending_.append(line);
+    // 防止队列无限膨胀（界面只保留近期）
+    while (dongleUiLogPending_.size() > 200)
+        dongleUiLogPending_.removeFirst();
+    if (dongleUiLogFlushScheduled_)
+        return;
+    dongleUiLogFlushScheduled_ = true;
+    QTimer::singleShot(0, this, [this]() { flushDongleUiLog(); });
+}
+
+void MainWindow::flushDongleUiLog() {
+    dongleUiLogFlushScheduled_ = false;
+    if (!ui || !ui->log)
+        return;
+    if (ui->log->maximumBlockCount() <= 0)
+        ui->log->setMaximumBlockCount(2000);
+    if (dongleUiLogPending_.isEmpty())
+        return;
+    const QString batch = dongleUiLogPending_.join(QChar('\n'));
+    dongleUiLogPending_.clear();
+    ui->log->appendPlainText(batch);
 }
 void MainWindow::solveNosiyData(QByteArray dataTemp) {
     // 假设你已经正确配置了串口并连接了 readyRead 信号到这个槽函数
@@ -2741,7 +2769,11 @@ void MainWindow::scanIpPorts() {
 }
 
 void MainWindow::scanSerialPorts() {
+    QElapsedTimer timer;
+    timer.start();
     SerialChannel::updateComboBoxPorts(ui->comNameCombo);
+    Qlog::saveResidentLog(QStringLiteral("scanPorts"),
+                          QStringLiteral("main cost=%1ms").arg(timer.elapsed()));
 }
 
 void MainWindow::getMacAddress(const QByteArray& byte) {

@@ -250,6 +250,8 @@ class MainWindow : public QMainWindow {
     QLabel* WifiStatusLabel = nullptr;
     SerialChannel* dongleSerialChannel_ = nullptr;
     QSerialPort* dongleSerialPort; // dongle硬件层（指向 dongleSerialChannel_ 内部端口）
+    QStringList dongleUiLogPending_;
+    bool dongleUiLogFlushScheduled_ = false;
     QLabel* uartStatusLabel = nullptr;
     QLabel* frame_rate = nullptr;
     QLabel* macLabel = nullptr;
@@ -427,6 +429,8 @@ class MainWindow : public QMainWindow {
     void refreshDongleUartState(int state);
     void openDongleSerialPort(void);
     void onDongleSerialFrame(const QByteArray& data);
+    void enqueueDongleUiLog(const QString& line);
+    void flushDongleUiLog();
     void handleDongleSerialPortError(QSerialPort::SerialPortError error, const QString& message);
     void refreshBleRssi(QString data);
     void refreshWifiRssi(QString data);

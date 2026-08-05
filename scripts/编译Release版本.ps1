@@ -133,6 +133,31 @@ if ($stationBlock -ne $prevBlock) {
 
 Write-Host "========== Release build ==========" -ForegroundColor Cyan
 
+# 必须与 Qt Creator Release 的 Effective qmake 一致，否则 Creator 点运行会判定
+# Makefile 参数不匹配而重新 qmake，看起来像「脚本编过一遍、三角形又编一遍」。
+# Creator 当前命令：qmake -o Makefile <pro> -spec win32-msvc "CONFIG+=qtquickcompiler"
+$QmakeArgs = @(
+    "-o", "Makefile",
+    $ProFile,
+    "-spec", "win32-msvc",
+    "CONFIG+=qtquickcompiler"
+)
+
+if ($SkipQmake -and -not $forceQmake) {
+    $makefilePath = Join-Path $BuildDir "Makefile"
+    if (-not (Test-Path -LiteralPath $makefilePath)) {
+        Write-Host "[build] Makefile missing: run qmake (Creator-compatible)" -ForegroundColor Yellow
+        $forceQmake = $true
+    } else {
+        $makefileHead = Get-Content -LiteralPath $makefilePath -TotalCount 12 -ErrorAction SilentlyContinue
+        $cmdLine = ($makefileHead | Where-Object { $_ -match '^\s*#\s*Command:' } | Select-Object -First 1)
+        if ($cmdLine -and ($cmdLine -notmatch 'CONFIG\+=qtquickcompiler')) {
+            Write-Host "[build] Makefile qmake args != Qt Creator; regenerating to match" -ForegroundColor Yellow
+            $forceQmake = $true
+        }
+    }
+}
+
 $batLines = New-Object System.Collections.Generic.List[string]
 [void]$batLines.Add("@echo off")
 [void]$batLines.Add("setlocal")
@@ -140,7 +165,10 @@ $batLines = New-Object System.Collections.Generic.List[string]
 [void]$batLines.Add("if errorlevel 1 exit /b 1")
 [void]$batLines.Add("cd /d `"$BuildDir`"")
 if ((-not $SkipQmake) -or $forceQmake) {
-    [void]$batLines.Add("`"$Qmake`" `"$ProFile`" -spec win32-msvc CONFIG+=release")
+    $qmakeCmd = "`"$Qmake`" " + (($QmakeArgs | ForEach-Object {
+        if ($_ -match '[\s"]') { '"{0}"' -f ($_ -replace '"', '\"') } else { $_ }
+    }) -join " ")
+    [void]$batLines.Add($qmakeCmd)
     [void]$batLines.Add("if errorlevel 1 exit /b 1")
 }
 if ($Clean) {

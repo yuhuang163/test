@@ -37,6 +37,7 @@ alwaysApply: true
 
 - 修改 **`.cpp` / `.h` / `.pro` / `.ui`** 等需编译项后，Agent 应在终端执行 **`scripts\编译Release版本.ps1`**（或 `scripts\编译Release版本.bat`）做 **Release 编译**；失败则根据输出中的 `error C` / `LNK` 修复后重跑，直至通过或确认环境缺失。
 - **默认增量、禁止无谓全量**：日常验证**一律优先** `scripts\编译Release版本.ps1 -SkipQmake`（跳过 qmake，只增量编译改动目标）。**不要**每次默认跑完整 qmake 全量编译。
+- **与 Qt Creator 共用同一 Release 目录**：`build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release`。脚本 qmake 参数须与 Creator Effective qmake 一致（当前为 `-spec win32-msvc "CONFIG+=qtquickcompiler"`），避免 Creator 点运行因 Makefile 参数不匹配再全量编一次。
 - **仅在必要时去掉 `-SkipQmake`（完整跑）**：改了 **`.pro`**、**新增/删除源文件或资源**、Makefile 缺失/损坏、或 `-SkipQmake` 后出现与工程文件列表/生成规则明显相关的编译失败。仅改 `.cpp` / `.h` / `.ui`（已有对应 Makefile 规则时，jom 仍会按依赖跑 `uic`/`moc`）→ **只用 `-SkipQmake`**。
 - 完整日志：`build/logs/build_*.log`；可通过环境变量覆盖工具路径：`NEW_PRODUCT_QT_DIR`、`NEW_PRODUCT_JOM`、`NEW_PRODUCT_VCVARS`。
 

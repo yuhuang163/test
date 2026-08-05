@@ -4,13 +4,17 @@
 
 #include "auth_service.h"
 #include "factory_cloud_client.h"
+#include "test_data_upload_service.h"
+#include "qlog.h"
 
 #include "my_set/my_typedef.h"
 
+#include <QAtomicInt>
 #include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QDir>
 #include <QDirIterator>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
 #include <QHash>
@@ -30,7 +34,6 @@
 #include <QUrl>
 #include <QUrlQuery>
 #include <QtConcurrent>
-#include <qdebug.h>
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
@@ -42,6 +45,9 @@ constexpr const char* kBackupDirName = ".backup";
 constexpr int kHeartbeatIntervalMs = 20000;
 /** 远控命令要快，单独高频拉命令，避免干等下一次 20s 心跳 */
 constexpr int kCommandPollIntervalMs = 800;
+
+QAtomicInt g_heartbeatBusy(0);
+QAtomicInt g_commandPollBusy(0);
 
 QMutex g_remoteDesktopMutex;
 QHash<QString, qint64> g_remoteDesktopPids; // sessionId -> pid
@@ -1109,8 +1115,19 @@ TestCaseSyncService::SyncResult TestCaseSyncService::syncStepsLibraryFromCloud()
 }
 
 void TestCaseSyncService::heartbeatAndPollCommands() {
+    if (!g_heartbeatBusy.testAndSetRelaxed(0, 1)) {
+        Qlog::saveResidentLog(QStringLiteral("heartbeat"),
+                              QStringLiteral("跳过：上一次心跳仍在执行（可能堆积占用）"));
+        return;
+    }
+
+    QElapsedTimer timer;
+    timer.start();
     QString readyError;
     if (!ensureCloudReady(&readyError)) {
+        Qlog::saveResidentLog(QStringLiteral("heartbeat"),
+                              QStringLiteral("未就绪 cost=%1ms err=%2").arg(timer.elapsed()).arg(readyError));
+        g_heartbeatBusy.storeRelaxed(0);
         return;
     }
 
@@ -1134,30 +1151,73 @@ void TestCaseSyncService::heartbeatAndPollCommands() {
     }
     body.insert(QStringLiteral("stations"), stations);
     body.insert(QStringLiteral("remoteDesktop"), remoteAgentAvailable());
+
+    QElapsedTimer httpTimer;
+    httpTimer.start();
     const FactoryCloudClient::ApiResult hb = FactoryCloudClient::post(QStringLiteral("/device/heartbeat"), body);
+    const qint64 httpMs = httpTimer.elapsed();
     if (!hb.ok) {
-        qDebug() << QStringLiteral("[TestCaseSync] heartbeat 失败：") << hb.message;
+        Qlog::saveResidentLog(QStringLiteral("heartbeat"),
+                              QStringLiteral("失败 http=%1ms total=%2ms err=%3")
+                                  .arg(httpMs)
+                                  .arg(timer.elapsed())
+                                  .arg(hb.message));
+        g_heartbeatBusy.storeRelaxed(0);
         return;
     }
 
+    // 心跳通畅说明网络可用，顺带补传断网期间积压的测试数据
+    QElapsedTimer flushTimer;
+    flushTimer.start();
+    TestDataUploadService::flushPendingUploads();
+    const qint64 flushMs = flushTimer.elapsed();
+
     pollDeviceCommands();
+    Qlog::saveResidentLog(QStringLiteral("heartbeat"),
+                          QStringLiteral("成功 http=%1ms flush=%2ms total=%3ms stations=%4")
+                              .arg(httpMs)
+                              .arg(flushMs)
+                              .arg(timer.elapsed())
+                              .arg(stations.size()));
+    g_heartbeatBusy.storeRelaxed(0);
 }
 
 void TestCaseSyncService::pollDeviceCommands() {
+    if (!g_commandPollBusy.testAndSetRelaxed(0, 1)) {
+        Qlog::saveResidentLog(QStringLiteral("cmdPoll"),
+                              QStringLiteral("跳过：上一次命令轮询仍在执行（可能堆积占用）"));
+        return;
+    }
+
+    QElapsedTimer timer;
+    timer.start();
     QString readyError;
     if (!ensureCloudReady(&readyError)) {
+        Qlog::saveResidentLog(QStringLiteral("cmdPoll"),
+                              QStringLiteral("未就绪 cost=%1ms err=%2").arg(timer.elapsed()).arg(readyError));
+        g_commandPollBusy.storeRelaxed(0);
         return;
     }
 
     QUrlQuery query;
     query.addQueryItem(QStringLiteral("deviceId"), FactoryCloudClient::deviceId());
+    QElapsedTimer httpTimer;
+    httpTimer.start();
     const FactoryCloudClient::ApiResult cmdRes =
         FactoryCloudClient::get(QStringLiteral("/device/commands"), query);
+    const qint64 httpMs = httpTimer.elapsed();
     if (!cmdRes.ok) {
+        Qlog::saveResidentLog(QStringLiteral("cmdPoll"),
+                              QStringLiteral("失败 http=%1ms total=%2ms err=%3")
+                                  .arg(httpMs)
+                                  .arg(timer.elapsed())
+                                  .arg(cmdRes.message));
+        g_commandPollBusy.storeRelaxed(0);
         return;
     }
 
     const QJsonArray items = cmdRes.data.value(QStringLiteral("items")).toArray();
+    int handled = 0;
     for (const QJsonValue& value : items) {
         if (!value.isObject()) {
             continue;
@@ -1167,10 +1227,12 @@ void TestCaseSyncService::pollDeviceCommands() {
         const QJsonObject payload = cmd.value(QStringLiteral("payload")).toObject();
         if (type == QLatin1String("start_remote_desktop")) {
             startRemoteDesktopSession(payload);
+            ++handled;
             continue;
         }
         if (type == QLatin1String("stop_remote_desktop")) {
             stopRemoteDesktopSession(payload.value(QStringLiteral("sessionId")).toString().trimmed());
+            ++handled;
             continue;
         }
         if (type != QLatin1String("pull_test_profile")) {
@@ -1183,8 +1245,22 @@ void TestCaseSyncService::pollDeviceCommands() {
             displayName = TestCaseStore::loadSelectedFlowStationName();
         }
         const SyncResult uploadResult = uploadStationProfile(stationKey, displayName, QStringLiteral("pull"));
-        qDebug() << QStringLiteral("[TestCaseSync] 网页拉取回传：") << uploadResult.message;
+        Qlog::saveResidentLog(QStringLiteral("cmdPoll"),
+                              QStringLiteral("网页拉取回传 station=%1 ok=%2 msg=%3")
+                                  .arg(stationKey)
+                                  .arg(uploadResult.ok ? QStringLiteral("1") : QStringLiteral("0"),
+                                       uploadResult.message));
+        ++handled;
     }
+
+    // 空轮询也记耗时，便于对照卡顿时段占用
+    Qlog::saveResidentLog(QStringLiteral("cmdPoll"),
+                          QStringLiteral("完成 http=%1ms total=%2ms items=%3 handled=%4")
+                              .arg(httpMs)
+                              .arg(timer.elapsed())
+                              .arg(items.size())
+                              .arg(handled));
+    g_commandPollBusy.storeRelaxed(0);
 }
 
 void TestCaseSyncService::startDeviceAgent() {
@@ -1198,6 +1274,11 @@ void TestCaseSyncService::startDeviceAgent() {
 
     // 退出进程前必须杀掉远控 Agent，否则 remote_agent.exe 会残留后台
     QObject::connect(qApp, &QCoreApplication::aboutToQuit, qApp, []() { stopAllRemoteDesktopSessions(); });
+
+    Qlog::saveResidentLog(QStringLiteral("agent"),
+                          QStringLiteral("启动常驻：heartbeat=%1ms cmdPoll=%2ms")
+                              .arg(kHeartbeatIntervalMs)
+                              .arg(kCommandPollIntervalMs));
 
     auto* hbTimer = new QTimer(qApp);
     hbTimer->setInterval(kHeartbeatIntervalMs);

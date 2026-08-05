@@ -135,8 +135,9 @@ bool Qroot::sendPacket(quint8 ct, quint8 cid, const QByteArray& body) {
         qWarning() << "[Qroot] write failed";
         return false;
     }
-    qDebug().noquote() << "[Qroot] TX:" << phyPacket.toHex(' ').toUpper()
-                       << "inner:" << frame.toHex(' ').toUpper();
+    // qDebug().noquote() << "[Qroot] TX:" << phyPacket.toHex(' ').toUpper()
+    //                    << "inner:" << frame.toHex(' ').toUpper();
+    qDebug().noquote() << "[Qroot] TX:" << frame.toHex(' ').toUpper();
     if (ct == Req)
         pendingCid_ = cid;
     hasPending_ = (ct == Req);
@@ -274,7 +275,7 @@ void Qroot::parseCmd(const QByteArray& byte) {
     QList<QByteArray> innerPackets;
     feedPhyRx(byte, innerPackets);
     for (const QByteArray& inner : innerPackets) {
-        qDebug().noquote() << "[Qroot] RX inner:" << inner.toHex(' ').toUpper();
+        // qDebug().noquote() << "[Qroot] RX inner:" << inner.toHex(' ').toUpper();
         rxBuffer_.append(inner);
     }
     drainRxBuffer();

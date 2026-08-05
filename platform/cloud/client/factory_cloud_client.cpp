@@ -212,7 +212,7 @@ FactoryCloudClient::ApiResult FactoryCloudClient::post(const QString& path, cons
     QUrl url(apiRoot() + path);
     QNetworkAccessManager manager;
     QNetworkRequest request(url);
-    qDebug() << "自己服务器上传路径：" << url;
+    // qDebug() << "自己服务器上传路径：" << url;
     applyFactoryHeaders(request, true);
 #if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
     request.setTransferTimeout(kHttpTimeoutMs);

@@ -130,7 +130,7 @@ static void installChineseQtTranslations(QApplication& app) {
         }
         if (ok) {
             app.installTranslator(translator);
-            qDebug().noquote() << QStringLiteral("[i18n] 已加载翻译：") << catalog;
+            // qDebug().noquote() << QStringLiteral("[i18n] 已加载翻译：") << catalog;
         } else {
             delete translator;
             qWarning().noquote() << QStringLiteral("[i18n] 未找到翻译：") << catalog;

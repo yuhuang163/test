@@ -2,6 +2,7 @@
 
 #include <QApplication>
 #include <QAuthenticator>
+#include <QElapsedTimer>
 #include <QMessageBox>
 #include <QMenu>
 #include <QRegularExpression>
@@ -12,6 +13,7 @@
 #include "qcombobox.h"
 #include "qmenubar.h"
 #include "qstatusbar.h"
+#include "qlog.h"
 #include "test_base.h"
 #include "qfreework.h"
 #include "qfreeworkbox.h"
@@ -284,15 +286,43 @@ void box_base::startAllReturnPressed() {
 }
 
 void box_base::TotallyTask() {
+    Qlog::saveResidentLog(QStringLiteral("TotallyTask"),
+                          QStringLiteral("进入主任务环 stations=%1").arg(testList.size()));
+    QElapsedTimer reportTimer;
+    reportTimer.start();
+    int loops = 0;
+    qint64 maxIterMs = 0;
     while (isTestContinue) {
+        QElapsedTimer iterTimer;
+        iterTimer.start();
         for (int i = 0; i < testList.size(); i++) {
             testList[i]->startTask();
         }
 
         QCoreApplication::processEvents();
+        const qint64 iterMs = iterTimer.elapsed();
+        ++loops;
+        if (iterMs > maxIterMs)
+            maxIterMs = iterMs;
+        // 单轮偏慢单独记，便于定位卡死前占用
+        if (iterMs >= 50) {
+            Qlog::saveResidentLog(QStringLiteral("TotallyTask"),
+                                  QStringLiteral("单轮偏慢 cost=%1ms stations=%2")
+                                      .arg(iterMs)
+                                      .arg(testList.size()));
+        }
+        if (reportTimer.elapsed() >= 5000) {
+            Qlog::saveResidentLog(QStringLiteral("TotallyTask"),
+                                  QStringLiteral("周期汇总 loops=%1/5s maxIter=%2ms")
+                                      .arg(loops)
+                                      .arg(maxIterMs));
+            loops = 0;
+            maxIterMs = 0;
+            reportTimer.restart();
+        }
     }
 
-    qDebug() << "已经退出主任务";
+    Qlog::saveResidentLog(QStringLiteral("TotallyTask"), QStringLiteral("退出主任务环"));
 }
 // void box_base::TotallyTask() {
 //     QList<QThread*> threads;

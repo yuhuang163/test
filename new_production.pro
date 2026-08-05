@@ -94,6 +94,7 @@ INCLUDEPATH += agreement/at_protocol/manager
 INCLUDEPATH += agreement/factory_protocol/access
 INCLUDEPATH += agreement/factory_protocol/manager
 INCLUDEPATH += agreement/factory_protocol/codec/fctp
+INCLUDEPATH += agreement/factory_protocol/codec/aiot
 INCLUDEPATH += agreement/factory_protocol/protocol/qpb
 INCLUDEPATH += agreement/factory_protocol/protocol/qfctp
 INCLUDEPATH += agreement/factory_protocol/protocol/qaiot
@@ -209,6 +210,7 @@ SOURCES += \
     platform/driver/process/process_channel.cpp \
     agreement/factory_protocol/codec/fctp/comm_protocol_builder.cpp \
     agreement/factory_protocol/codec/fctp/comm_protocol_parser.cpp \
+    agreement/factory_protocol/codec/aiot/aiot_link_codec.cpp \
     agreement/factory_protocol/protocol/qaiot/qaiot.cpp \
     agreement/factory_protocol/protocol/qfctp/qfctp.cpp \
     agreement/factory_protocol/protocol/qroot/qroot.cpp \
@@ -354,6 +356,8 @@ HEADERS += \
     agreement/factory_protocol/codec/fctp/comm_protocol_builder.h \
     agreement/factory_protocol/codec/fctp/comm_protocol_defs.h \
     agreement/factory_protocol/codec/fctp/comm_protocol_parser.h \
+    agreement/factory_protocol/codec/aiot/aiot_link_defs.h \
+    agreement/factory_protocol/codec/aiot/aiot_link_codec.h \
     agreement/factory_protocol/protocol/qaiot/qaiot.h \
     agreement/factory_protocol/protocol/qfctp/qfctp.h \
     agreement/factory_protocol/protocol/qroot/qroot.h \

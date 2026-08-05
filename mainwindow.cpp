@@ -320,6 +320,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     });
     connect(dongleSerialChannel_, &SerialChannel::frameReceived, this, &MainWindow::onDongleSerialFrame);
     connect(dongleSerialChannel_, &SerialChannel::errorOccurred, this, &MainWindow::handleDongleSerialPortError);
+    // 限制串口日志文档块数，避免长时间收包撑爆 QTextDocument
+    ui->log->setMaximumBlockCount(2000);
 
     // 连接信号和槽
     // QObject::connect(cameratimer, &QTimer::timeout, this,
@@ -4388,7 +4390,7 @@ void MainWindow::on_is_audio_mode_stateChanged(int arg1) {
         ui->comboBox_uiPreviewJpegSubsampling->show();
         on_checkBox_uiPreviewJpegLoss_stateChanged(ui->checkBox_uiPreviewJpegLoss->checkState());
     }
-    qDebug() << "on_is_audio_mode_stateChanged" << arg1;
+    // qDebug() << "on_is_audio_mode_stateChanged" << arg1;
 }
 
 void MainWindow::on_checkBox_uiPreviewJpegLoss_stateChanged(int arg1) {

@@ -1,9 +1,11 @@
 #include "fixture_uart.h"
 
+#include <QElapsedTimer>
 #include <QMessageBox>
 #include <QTimer>
 
 #include "qdebug.h"
+#include "qlog.h"
 #include "serial_channel.h"
 #include "ui_fixture_uart.h"
 #include "qfixturemanager.h"
@@ -55,7 +57,11 @@ void Fixture_uart::on_FixturedisconnectButton_clicked() {
 }
 
 void Fixture_uart::scanSerialPorts() {
+    QElapsedTimer timer;
+    timer.start();
     SerialChannel::updateComboBoxPorts(ui->FixturecomNameCombo);
+    Qlog::saveResidentLog(QStringLiteral("scanPorts"),
+                          QStringLiteral("fixture cost=%1ms").arg(timer.elapsed()));
 }
 
 void Fixture_uart::onManagerConnected() {
