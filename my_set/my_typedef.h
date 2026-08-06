@@ -44,6 +44,7 @@ inline QString settingsIniPath(const char* fileName) {
  * 3. 当前测试流程工站（TestOrderMeta/SelectedStation*，仅存 local.ini）
  * 4. WiFi 名称（WIFI/Name、WIFI/Name0…WIFI/Name9 等，各工位/路号）
  * 5. 云平台本机项（FactoryCloud：环境、BaseUrl、登录态等，见 factoryCloudUsesLocalFile）
+ * 6. MES 勾选默认（SYSTEM/MesDefaultUnchecked：true 时启动默认不勾选过站/从MES取MAC）
  */
 inline bool factoryCloudUsesLocalFile(const QString& fullKey) {
     static const QStringList kFactoryCloudLocalKeys = {
@@ -79,6 +80,7 @@ inline bool settingsUseLocalFile(const QString& fullKey) {
         QStringLiteral("Window/SettingSize"),
         QStringLiteral("Window/Size"),
         QStringLiteral("SYSTEM/station"),
+        QStringLiteral("SYSTEM/MesDefaultUnchecked"),
         QStringLiteral("TestOrderMeta/SelectedStation"),
         QStringLiteral("TestOrderMeta/SelectedStationName"),
     };

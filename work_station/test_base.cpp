@@ -89,12 +89,16 @@ void test_base::applyTestCaseProductProtocol(TestCaseProductProtocol protocol) {
     case TestCaseProductProtocol::Qroot:
         selectedType = QProtocolManager::ProtocolType::Qroot;
         break;
+    case TestCaseProductProtocol::Qaiot:
+        selectedType = QProtocolManager::ProtocolType::Qaiot;
+        break;
     case TestCaseProductProtocol::Qfctp:
     default:
         selectedType = QProtocolManager::ProtocolType::Qfctp;
         break;
     }
     if ((selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctp) ||
+        (selectedType == QProtocolManager::ProtocolType::Qaiot && !qaiot) ||
         (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot)) {
         showlog(QStringLiteral("test_case 协议未就绪，已回退到 qpb"));
         selectedType = QProtocolManager::ProtocolType::Qpb;
@@ -1005,7 +1009,8 @@ void test_base::LockProductUI() {
         return;
     }
 
-    if (pack.factory == "无mes厂") {
+    // 无mes厂，或本机 local.ini：SYSTEM/MesDefaultUnchecked=true → 默认不勾选
+    if (pack.factory == "无mes厂" || SETTINGS.value(QStringLiteral("SYSTEM/MesDefaultUnchecked"), false).toBool()) {
         getIsUseMes()->setCheckState(Qt::Unchecked);
         getIsFormMes()->setCheckState(Qt::Unchecked);
     }

@@ -62,6 +62,7 @@ constexpr const char kHintLedTest[] =
     u8"Qroot：Req 0x93，on=1 全亮 / on=0 全灭\r\n"
     u8"示例：Param_on=1 或 {\"on\":1}";
 constexpr const char kHintButtonState[] =
+    u8"Qaiot：模拟按键 CID=0x10，Param_int/Param_key 为按键索引\r\n"
     u8"Qroot：Notify 0x9A，1=开启按键上报 / 0=关闭；Ack body=0xFF 表示已接收\r\n"
     u8"Qpb：Param_int 为按键索引";
 constexpr const char kHintRootSuctionTest[] =
@@ -194,7 +195,7 @@ const Row kRows[] = {
     {DeviceCmd::NowMusicInfo, "NowMusicInfo", u8"当前音乐信息", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::SdCardInfo, "SdCardInfo", u8"存储卡信息", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::LightSensorInfo, "LightSensorInfo", u8"环境光传感器信息", DeviceCmdParamKind::None, nullptr, kGet},
-    {DeviceCmd::ButtonState, "ButtonState", u8"按键状态", DeviceCmdParamKind::Int, kHintButtonState, kGet},
+    {DeviceCmd::ButtonState, "ButtonState", u8"按键状态/模拟按键", DeviceCmdParamKind::Int, kHintButtonState, kBoth},
     {DeviceCmd::GetPressCaliResult, "GetPressCaliResult", u8"压力校准结果", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::GetImuCaliResult, "GetImuCaliResult", u8"惯性校准结果", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::DeviceInfo, "DeviceInfo", u8"设备信息", DeviceCmdParamKind::None, nullptr, kGet},
