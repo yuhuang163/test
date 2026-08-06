@@ -1272,9 +1272,10 @@ void supplementMissingHookFromLibrary(const QString& stepId, TestCaseDefinition&
 }
 
 void supplementMissingGateFromLibrary(const QString& stationKey, const QString& stepId, TestCaseDefinition& def) {
+    // 仅补「工站缺多字段卡控」；单字段 Expected 等必须以工站 steps 为准，禁止被步骤库盖掉
     const bool defHasMultiGates = def.gates.size() > 1
         || def.gate.field.compare(QLatin1String("multi"), Qt::CaseInsensitive) == 0;
-    if (defHasMultiGates)
+    if (defHasMultiGates || def.gate.enabled)
         return;
 
     TestCaseDefinition library;
@@ -1286,7 +1287,7 @@ void supplementMissingGateFromLibrary(const QString& stationKey, const QString& 
     }
     const bool libraryHasMultiGates = library.gates.size() > 1
         || library.gate.field.compare(QLatin1String("multi"), Qt::CaseInsensitive) == 0;
-    if (!libraryHasMultiGates && !library.gate.enabled)
+    if (!libraryHasMultiGates)
         return;
 
     const QString key = stationKey.trimmed();
@@ -1295,6 +1296,7 @@ void supplementMissingGateFromLibrary(const QString& stationKey, const QString& 
         if (QFile::exists(profilePath)) {
             QSettings profileIni(profilePath, QSettings::IniFormat);
             applyTestCaseIniCodec(profileIni);
+            // 工站显式关闭 Gate 时不强行注入库卡控
             if (profileIni.contains(QStringLiteral("Gate/Enabled"))
                 && !profileIni.value(QStringLiteral("Gate/Enabled")).toBool()) {
                 return;
@@ -2276,6 +2278,51 @@ bool TestCaseStore::saveStationSerialUiConfig(const QString& stationKey, const T
     return true;
 }
 
+TestCaseDeviceSideConfig TestCaseStore::loadStationDeviceSideConfig(const QString& stationKey) {
+    TestCaseDeviceSideConfig out;
+    TestCasePaths::ensureRootDir();
+    ensureFilesystemLayout();
+    const QString key = stationKey.trimmed();
+    if (key.isEmpty())
+        return out;
+
+    const QString profileFlow = TestCasePaths::profileFlowPath(key);
+    if (!QFile::exists(profileFlow))
+        return out;
+
+    QSettings profileIni(profileFlow, QSettings::IniFormat);
+    applyTestCaseIniCodec(profileIni);
+    profileIni.beginGroup(QStringLiteral("DeviceSide"));
+    out.position = profileIni.value(QStringLiteral("Position")).toString().trimmed();
+    bool ok = false;
+    const int side = profileIni.value(QStringLiteral("SideId"), -1).toInt(&ok);
+    if (ok && side >= 0 && side <= 2)
+        out.sideId = side;
+    profileIni.endGroup();
+    return out;
+}
+
+bool TestCaseStore::saveStationDeviceSideConfig(const QString& stationKey, const TestCaseDeviceSideConfig& config) {
+    TestCasePaths::ensureRootDir();
+    const QString key = stationKey.trimmed();
+    if (key.isEmpty())
+        return false;
+    ensureProfileDirectory(key, flowStationDisplayName(key), QString());
+
+    const QString profileFlow = TestCasePaths::profileFlowPath(key);
+    QSettings profileIni(profileFlow, QSettings::IniFormat);
+    applyTestCaseIniCodec(profileIni);
+    profileIni.beginGroup(QStringLiteral("DeviceSide"));
+    profileIni.setValue(QStringLiteral("Position"), config.position.trimmed());
+    if (config.sideId >= 0 && config.sideId <= 2)
+        profileIni.setValue(QStringLiteral("SideId"), config.sideId);
+    else
+        profileIni.remove(QStringLiteral("SideId"));
+    profileIni.endGroup();
+    syncTestCaseIni(profileIni, profileFlow);
+    return true;
+}
+
 QVector<TestFlowItemEntry> TestCaseStore::loadStationFlowItems(const QString& stationKey) {
     TestCasePaths::ensureRootDir();
     ensureFilesystemLayout();
@@ -2990,6 +3037,40 @@ QVariant DeviceCmdCatalog::normalizeSendParam(DeviceCmd cmd, const QVariant& par
             DeviceSnPayload payload;
             payload.which_sn = static_cast<FacDevInfoType>(whichFromMap());
             payload.sn = snBytes;
+            // Qaiot device_side_id：随 Sn 归一化一并带上，避免 Param_side 丢失
+            payload.sideId = -1;
+            static const QStringList sideKeys = {QStringLiteral("side"),
+                                                QStringLiteral("device_side_id"),
+                                                QStringLiteral("deviceSideId"),
+                                                QStringLiteral("sideId"),
+                                                QStringLiteral("position")};
+            for (const QString& key : sideKeys) {
+                if (!map.contains(key))
+                    continue;
+                const QString raw = map.value(key).toString().trimmed();
+                bool ok = false;
+                const uint n = raw.toUInt(&ok);
+                if (ok && n <= 2u) {
+                    payload.sideId = static_cast<int>(n);
+                    break;
+                }
+                const QString lower = raw.toLower();
+                if (lower == QLatin1String("left") || lower == QLatin1String("l") || raw.contains(QStringLiteral("左"))) {
+                    payload.sideId = 0;
+                    break;
+                }
+                if (lower == QLatin1String("right") || lower == QLatin1String("r") || raw.contains(QStringLiteral("右"))) {
+                    payload.sideId = 1;
+                    break;
+                }
+                if (lower == QLatin1String("independent") || lower == QLatin1String("single")
+                    || lower == QLatin1String("s") || raw.contains(QStringLiteral("单"))
+                    || raw.contains(QStringLiteral("独立"))) {
+                    payload.sideId = 2;
+                    break;
+                }
+                break;
+            }
             return QVariant::fromValue(payload);
         }
         if (map.contains(QStringLiteral("which_sn")) || map.contains(QStringLiteral("which")) || map.contains(QStringLiteral("type")))
@@ -3044,6 +3125,8 @@ void DeviceCmdCatalog::paramToIniGroup(QSettings& settings, DeviceCmd cmd, const
             QVariantMap map;
             map.insert(QStringLiteral("which_sn"), static_cast<int>(payload.which_sn));
             map.insert(QStringLiteral("sn"), QString::fromUtf8(payload.sn));
+            if (payload.sideId >= 0 && payload.sideId <= 2)
+                map.insert(QStringLiteral("side"), payload.sideId);
             writeJsonMap(settings, prefix, map);
         } else if (value.canConvert<QVariantMap>()) {
             writeJsonMap(settings, prefix, value);
@@ -3971,7 +4054,7 @@ namespace {
 
 const QVector<GateTypeDescriptor> kTypes = {
     {QStringLiteral("ProtocolRssiData"), QStringLiteral("蓝牙信号强度"), {{QStringLiteral("dbm"), QStringLiteral("信号强度(分贝)")}}},
-    {QStringLiteral("ProtocolBatteryData"), QStringLiteral("电量"), {{QStringLiteral("percent"), QStringLiteral("电量(%)")}, {QStringLiteral("chargeState"), QStringLiteral("充电状态")}, {QStringLiteral("voltageMv"), QStringLiteral("电压(mV)")}}},
+    {QStringLiteral("ProtocolBatteryData"), QStringLiteral("电量"), {{QStringLiteral("percent"), QStringLiteral("电量(%)")}, {QStringLiteral("chargeState"), QStringLiteral("充电状态")}, {QStringLiteral("voltageMv"), QStringLiteral("电压(mV)")}, {QStringLiteral("currentMa"), QStringLiteral("电流(mA)")}, {QStringLiteral("temperatureC"), QStringLiteral("温度(℃)")}}},
     {QStringLiteral("ProtocolKeyCapData"), QStringLiteral("按键电容"), {{QStringLiteral("capacitance"), QStringLiteral("电容值")}, {QStringLiteral("keyId"), QStringLiteral("按键编号")}}},
     {QStringLiteral("ProtocolChargeCurrentData"), QStringLiteral("充电电流"), {{QStringLiteral("currentMa"), QStringLiteral("电流(mA)")}}},
     {QStringLiteral("ProtocolTrimData"), QStringLiteral("Trim微调值"), {{QStringLiteral("trim"), QStringLiteral("微调值")}}},
@@ -4029,6 +4112,14 @@ double fieldValueFromVariant(const QString& reportType, const QString& field, co
         if (field == QLatin1String("voltageMv")) {
             ok = true;
             return d.voltageMv;
+        }
+        if (field == QLatin1String("currentMa")) {
+            ok = true;
+            return d.currentMa;
+        }
+        if (field == QLatin1String("temperatureC")) {
+            ok = true;
+            return d.temperatureC;
         }
     } else if (reportType == QLatin1String("ProtocolKeyCapData")) {
         const auto d = payload.value<ProtocolKeyCapData>();
@@ -4240,6 +4331,18 @@ QString fieldStringFromVariant(const QString& reportType, const QString& field, 
         if (field == QLatin1String("percent")) {
             ok = true;
             return QString::number(d.percent);
+        }
+        if (field == QLatin1String("voltageMv")) {
+            ok = true;
+            return QString::number(d.voltageMv);
+        }
+        if (field == QLatin1String("currentMa")) {
+            ok = true;
+            return QString::number(d.currentMa);
+        }
+        if (field == QLatin1String("temperatureC")) {
+            ok = true;
+            return QString::number(d.temperatureC);
         }
     } else if (reportType == QLatin1String("ProtocolSnData")) {
         const auto d = payload.value<ProtocolSnData>();
@@ -4633,6 +4736,10 @@ QString defaultUnitForField(const QString& reportType, const QString& field) {
             return QStringLiteral("%");
         if (field == QLatin1String("voltageMv"))
             return QStringLiteral("mV");
+        if (field == QLatin1String("currentMa"))
+            return QStringLiteral("mA");
+        if (field == QLatin1String("temperatureC"))
+            return QStringLiteral("℃");
     }
     if (reportType == QLatin1String("ProtocolChargeCurrentData") && field == QLatin1String("currentMa"))
         return QStringLiteral("mA");

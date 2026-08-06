@@ -37,9 +37,9 @@ struct TupleEnvPreset {
 };
 
 const QVector<TupleEnvPreset> kTupleEnvPresets = {
-    {QStringLiteral("dev"), QStringLiteral("http://192.168.200.140:8080")},
+    {QStringLiteral("dev"), QStringLiteral("http://192.168.204.166:9185")},
     {QStringLiteral("prod"), QStringLiteral("https://lute-aiot-mac.luteos.com")},
-    {QStringLiteral("build-dev-inner"), QStringLiteral("http://192.168.200.140:8080")},
+    {QStringLiteral("build-dev-inner"), QStringLiteral("http://192.168.204.166:9185")},
     {QStringLiteral("build-dev"), QStringLiteral("https://983ug2va5885.vicp.fun")},
     {QStringLiteral("build-prod"), QStringLiteral("https://lute-aiot-mac.luteos.com")},
 };

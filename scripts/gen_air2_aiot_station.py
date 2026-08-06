@@ -105,6 +105,7 @@ def make_step(
 
 
 def main() -> None:
+    # DisplayName/StepId 用中文；MesTag 必须英文（与其它工站 MES 字段约定一致）
     steps_spec: list[tuple[str, dict]] = [
         (
             "扫描连接蓝牙",
@@ -114,34 +115,54 @@ def main() -> None:
                 cmd="BleScanConnect",
                 params={"string": "$MAC"},
                 timeout=30000,
+                mes="BT_SCAN_MAC",
             ),
         ),
         (
             "进入工厂模式",
-            dict(action="Set", cmd="FacMode", params={"value": "1"}, timeout=2000, delay_after=300),
+            dict(
+                action="Set",
+                cmd="FacMode",
+                params={"value": "1"},
+                timeout=2000,
+                delay_after=300,
+                mes="FAC_MODE_SET",
+            ),
         ),
         (
             "读取版本号",
-            dict(action="Get", cmd="SoftVersionRead", timeout=2000),
+            dict(action="Get", cmd="SoftVersionRead", timeout=2000, mes="SOFT_VERSION"),
         ),
         (
             "读取设备名称",
-            dict(action="Get", cmd="DeviceInfo", timeout=2000),
+            dict(action="Get", cmd="DeviceInfo", timeout=2000, mes="DEVICE_NAME"),
         ),
         (
             "读取MAC地址",
-            dict(action="Get", cmd="MacRead", timeout=2000),
+            dict(action="Get", cmd="MacRead", timeout=2000, mes="MAC_READ"),
+        ),
+        (
+            "写入MAC地址",
+            dict(
+                action="Set",
+                cmd="MacWrite",
+                params={"value": "$MAC"},
+                timeout=2000,
+                mes="MAC_WRITE",
+            ),
         ),
         (
             "读取产测完成标识",
-            dict(action="Get", cmd="FactoryDoneRead", timeout=2000),
+            dict(action="Get", cmd="FactoryDoneRead", timeout=2000, mes="FACTORY_DONE_READ"),
         ),
         (
-            "获取电量信息",
+            "读取电池百分比",
             dict(
                 action="Get",
                 cmd="GetBattery",
                 timeout=2000,
+                mes="BATTERY_PERCENT",
+                params={"field": "percent"},
                 gate={
                     "type": "ProtocolBatteryData",
                     "field": "percent",
@@ -151,8 +172,55 @@ def main() -> None:
                 },
             ),
         ),
-        ("获取整机SN码", dict(action="Get", cmd="Sn", timeout=2000)),
-        ("读取设备三元组", dict(action="Get", cmd="TupleRead", timeout=2000)),
+        (
+            "读取电池电压",
+            dict(action="Get", cmd="GetBattery", timeout=2000, mes="BATTERY_VOLTAGE", params={"field": "voltage"}),
+        ),
+        (
+            "读取电池电流",
+            dict(action="Get", cmd="GetBattery", timeout=2000, mes="BATTERY_CURRENT", params={"field": "current"}),
+        ),
+        (
+            "读取电池温度",
+            dict(
+                action="Get",
+                cmd="GetBattery",
+                timeout=2000,
+                mes="BATTERY_TEMPERATURE",
+                params={"field": "temperature"},
+            ),
+        ),
+        ("获取整机SN码", dict(action="Get", cmd="Sn", timeout=2000, mes="TAIL_SN_READ")),
+        (
+            "读取productKey并比较",
+            dict(
+                action="Get",
+                cmd="TupleRead",
+                params={"dataType": "2"},
+                timeout=2000,
+                mes="READ_PRODUCT_KEY_COMPARE",
+            ),
+        ),
+        (
+            "读取deviceName并比较",
+            dict(
+                action="Get",
+                cmd="TupleRead",
+                params={"dataType": "3"},
+                timeout=2000,
+                mes="READ_DEVICE_NAME_COMPARE",
+            ),
+        ),
+        (
+            "读取deviceSecret并比较",
+            dict(
+                action="Get",
+                cmd="TupleRead",
+                params={"dataType": "4"},
+                timeout=2000,
+                mes="READ_DEVICE_SECRET_COMPARE",
+            ),
+        ),
         (
             "写入SN码",
             dict(
@@ -160,49 +228,149 @@ def main() -> None:
                 cmd="Sn",
                 params={"sn": "$SN"},
                 timeout=2000,
-                prompt="将写入 SN（Param_sn=$SN），确认继续？",
+                mes="SN_WRITE_TAIL",
+            ),
+        ),
+        (
+            "写入productKey",
+            dict(
+                action="Set",
+                cmd="WriteKey",
+                params={"productId": "$TUPLE_PRODUCT_KEY"},
+                timeout=2000,
+                mes="WRITE_PRODUCT_KEY",
+            ),
+        ),
+        (
+            "写入deviceName",
+            dict(
+                action="Set",
+                cmd="WriteKey",
+                params={"deviceId": "$TUPLE_DEVICE_NAME"},
+                timeout=2000,
+                mes="WRITE_DEVICE_NAME",
+            ),
+        ),
+        (
+            "写入deviceSecret",
+            dict(
+                action="Set",
+                cmd="WriteKey",
+                params={"deviceSecret": "$TUPLE_DEVICE_SECRET"},
+                timeout=2000,
+                mes="WRITE_DEVICE_SECRET",
             ),
         ),
         (
             "设置老化模式开",
-            dict(action="Set", cmd="BurningMode", params={"switch": "1"}, timeout=2000, delay_after=300),
+            dict(
+                action="Set",
+                cmd="BurningMode",
+                params={"switch": "1"},
+                timeout=2000,
+                delay_after=300,
+                mes="AGING_MODE_ON",
+            ),
         ),
-        ("读取老化状态", dict(action="Get", cmd="AgingStatusRead", timeout=2000)),
+        ("读取老化状态", dict(action="Get", cmd="AgingStatusRead", timeout=2000, mes="AGING_STATUS")),
         (
             "设置老化模式关",
-            dict(action="Set", cmd="BurningMode", params={"switch": "0"}, timeout=2000, delay_after=300),
+            dict(
+                action="Set",
+                cmd="BurningMode",
+                params={"switch": "0"},
+                timeout=2000,
+                delay_after=300,
+                mes="AGING_MODE_OFF",
+            ),
         ),
         (
             "进入吸力模式",
-            dict(action="Set", cmd="SuctionMode", params={"on": "1"}, timeout=2000, delay_after=300),
+            dict(
+                action="Set",
+                cmd="SuctionMode",
+                params={"on": "1"},
+                timeout=2000,
+                delay_after=300,
+                mes="SUCTION_MODE_ON",
+            ),
         ),
         (
             "退出吸力模式",
-            dict(action="Set", cmd="SuctionMode", params={"on": "0"}, timeout=2000, delay_after=300),
+            dict(
+                action="Set",
+                cmd="SuctionMode",
+                params={"on": "0"},
+                timeout=2000,
+                delay_after=300,
+                mes="SUCTION_MODE_OFF",
+            ),
         ),
         (
             "开启蓝牙信号模式",
-            dict(action="Set", cmd="BtSignalMode", params={"on": "1"}, timeout=2000, delay_after=200),
+            dict(
+                action="Set",
+                cmd="BtSignalMode",
+                params={"on": "1"},
+                timeout=2000,
+                delay_after=200,
+                mes="BT_SIGNAL_MODE_ON",
+            ),
         ),
         (
             "关闭蓝牙信号模式",
-            dict(action="Set", cmd="BtSignalMode", params={"on": "0"}, timeout=2000, delay_after=200),
+            dict(
+                action="Set",
+                cmd="BtSignalMode",
+                params={"on": "0"},
+                timeout=2000,
+                delay_after=200,
+                mes="BT_SIGNAL_MODE_OFF",
+            ),
         ),
         (
             "开启蓝牙无信号模式",
-            dict(action="Set", cmd="BtNoSignalMode", params={"on": "1"}, timeout=2000, delay_after=200),
+            dict(
+                action="Set",
+                cmd="BtNoSignalMode",
+                params={"on": "1"},
+                timeout=2000,
+                delay_after=200,
+                mes="BT_NO_SIGNAL_MODE_ON",
+            ),
         ),
         (
             "关闭蓝牙无信号模式",
-            dict(action="Set", cmd="BtNoSignalMode", params={"on": "0"}, timeout=2000, delay_after=200),
+            dict(
+                action="Set",
+                cmd="BtNoSignalMode",
+                params={"on": "0"},
+                timeout=2000,
+                delay_after=200,
+                mes="BT_NO_SIGNAL_MODE_OFF",
+            ),
         ),
         (
             "开启蓝牙定频模式",
-            dict(action="Set", cmd="BtFreqMode", params={"on": "1"}, timeout=2000, delay_after=200),
+            dict(
+                action="Set",
+                cmd="BtFreqMode",
+                params={"on": "1"},
+                timeout=2000,
+                delay_after=200,
+                mes="BT_FREQ_MODE_ON",
+            ),
         ),
         (
             "关闭蓝牙定频模式",
-            dict(action="Set", cmd="BtFreqMode", params={"on": "0"}, timeout=2000, delay_after=200),
+            dict(
+                action="Set",
+                cmd="BtFreqMode",
+                params={"on": "0"},
+                timeout=2000,
+                delay_after=200,
+                mes="BT_FREQ_MODE_OFF",
+            ),
         ),
         (
             "写入射频Trim",
@@ -211,6 +379,7 @@ def main() -> None:
                 cmd="TrimSet",
                 params={"trim": "0", "power": "0"},
                 timeout=2000,
+                mes="RF_TRIM_WRITE",
                 prompt="将写入射频 Trim=0/Power=0，确认继续？",
             ),
         ),
@@ -220,6 +389,7 @@ def main() -> None:
                 action="Get",
                 cmd="RssiRead",
                 timeout=2000,
+                mes="RSSI_READ",
                 gate={
                     "type": "ProtocolRssiData",
                     "field": "dbm",
@@ -229,9 +399,12 @@ def main() -> None:
                 },
             ),
         ),
-        ("读取Trim", dict(action="Get", cmd="TrimRead", timeout=2000)),
-        ("读取传感器", dict(action="Get", cmd="PeriphState", timeout=2000)),
-        ("模拟按键", dict(action="Set", cmd="ButtonState", params={"int": "1"}, timeout=2000)),
+        ("读取Trim", dict(action="Get", cmd="TrimRead", timeout=2000, mes="RF_TRIM_READ")),
+        ("读取传感器", dict(action="Get", cmd="PeriphState", timeout=2000, mes="SENSOR_READ")),
+        (
+            "模拟按键",
+            dict(action="Set", cmd="ButtonState", params={"int": "1"}, timeout=2000, mes="SIMULATE_KEY"),
+        ),
         (
             "写产测完成标识",
             dict(
@@ -239,24 +412,50 @@ def main() -> None:
                 cmd="FacResult",
                 params={"done": "1"},
                 timeout=2000,
+                mes="FACTORY_DONE_WRITE",
                 prompt="将写产测完成标识=1，确认继续？",
             ),
         ),
         (
             "退出工厂模式",
-            dict(action="Set", cmd="FacMode", params={"value": "0"}, timeout=2000, delay_after=300),
+            dict(
+                action="Set",
+                cmd="FacMode",
+                params={"value": "0"},
+                timeout=2000,
+                delay_after=300,
+                mes="FAC_MODE_EXIT",
+            ),
         ),
         (
             "设备复位",
-            dict(action="Set", cmd="DevReset", timeout=3000, prompt="设备复位（CID=0x0C），确认执行？"),
+            dict(
+                action="Set",
+                cmd="DevReset",
+                timeout=3000,
+                mes="DEV_RESET",
+                prompt="设备复位（CID=0x0C），确认执行？",
+            ),
         ),
         (
             "恢复出厂",
-            dict(action="Set", cmd="FactoryReset", timeout=3000, prompt="恢复出厂（破坏性），确认执行？"),
+            dict(
+                action="Set",
+                cmd="FactoryReset",
+                timeout=3000,
+                mes="FACTORY_RESET",
+                prompt="恢复出厂（破坏性），确认执行？",
+            ),
         ),
         (
             "关机船运模式",
-            dict(action="Set", cmd="ShipMode", timeout=3000, prompt="关机/船运模式（流程末尾），确认执行？"),
+            dict(
+                action="Set",
+                cmd="ShipMode",
+                timeout=3000,
+                mes="SHIP_MODE",
+                prompt="关机/船运模式（流程末尾），确认执行？",
+            ),
         ),
     ]
 

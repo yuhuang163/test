@@ -1262,7 +1262,7 @@
           <item row="1" column="1" colspan="3">
            <widget class="QLineEdit" name="lineEdit_tupleBaseUrl">
             <property name="text">
-             <string>http://192.168.200.140:8080</string>
+             <string>http://192.168.204.166:9185</string>
             </property>
            </widget>
           </item>

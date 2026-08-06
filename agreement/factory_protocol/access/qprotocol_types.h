@@ -68,6 +68,8 @@ struct WifiConnectPayload {
 struct DeviceSnPayload {
     FacDevInfoType which_sn;
     QByteArray sn;
+    /** Qaiot device_side_id：-1 未指定；0 Left / 1 Right / 2 Independent */
+    int sideId = -1;
 };
 
 enum class ProtocolSnType {
@@ -87,6 +89,8 @@ struct ProtocolBatteryData {
     int chargeState = 0;
     int percent = 0;
     int voltageMv = 0;
+    int currentMa = 0;     // 充放电电流 mA（AIOT battery_current）
+    int temperatureC = 0;  // 电池温度 °C（AIOT battery_temperature）
 };
 
 struct ProtocolWifiStateData {
@@ -492,7 +496,7 @@ enum class DeviceCmd {
     SdCardInfo,         // 【Qpb】SD 卡信息（无参，get_sd_card_info）
     LightSensorInfo,    // 【主入口】传感类读取入口；Qpb 读光感，Qfctp 兼容映射充电电流
     GetBattery,         // 【Qpb】读电量（无参，get_battery）；【Qfctp】电量 TLV；【Qroot】Notify 0xE0 查询
-    SetBattery,         // 【Qpb】设置电池类型（FacBatteryType：0两节 1单节）
+    SetBattery,         // 【Qpb】电池类型；【Qaiot】CID=0x13 模拟电量(百分比/电压/电流/温度，0=真实)
     ButtonState,        // 【主入口】按键状态/上报开关；Qpb 读按键，Qroot 9A 开关（param 0|1）
     GetPressCaliResult, // 【Qpb】读压力标定结果（无参，get_press_cali_result）
     GetImuCaliResult,   // 【Qpb】读 IMU 标定结果（无参，get_imu_cali_result）

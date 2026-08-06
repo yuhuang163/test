@@ -419,7 +419,7 @@ QTupleService::QTupleService(const QString& baseUrl)
         if (!g_tupleSharedBaseUrl.isEmpty())
             baseUrl_ = g_tupleSharedBaseUrl;
         else
-            baseUrl_ = SETTINGS.value("Tuple/BaseUrl", "http://192.168.200.140:8080").toString();
+            baseUrl_ = SETTINGS.value("Tuple/BaseUrl", "http://192.168.204.166:9185").toString();
     }
     if (!g_tupleSharedAuthHeader.isEmpty())
         authHeader_ = g_tupleSharedAuthHeader;

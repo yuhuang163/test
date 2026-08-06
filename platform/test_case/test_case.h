@@ -90,6 +90,9 @@ class TestCaseStore {
     /** 工站 flow.ini [SerialUi]：治具/产品/万用表串口显隐与显示名 */
     static TestCaseSerialUiConfig loadStationSerialUiConfig(const QString& stationKey);
     static bool saveStationSerialUiConfig(const QString& stationKey, const TestCaseSerialUiConfig& config);
+    /** 工站 flow.ini [DeviceSide]：三元组位置 / device_side_id */
+    static TestCaseDeviceSideConfig loadStationDeviceSideConfig(const QString& stationKey);
+    static bool saveStationDeviceSideConfig(const QString& stationKey, const TestCaseDeviceSideConfig& config);
     static bool saveStationFlowItems(const QString& stationKey, const QVector<TestFlowItemEntry>& items,
                                      bool stopFlowOnTestFail = true);
     static bool saveStationFlowItems(const QString& stationKey, const QVector<TestFlowItemEntry>& items,

@@ -8,9 +8,9 @@
 
 | 项 | 值 |
 |----|-----|
-| BaseUrl | `http://192.168.200.140:8080` |
+| BaseUrl | `http://192.168.204.166:9185` |
 | OpenAPI | `GET /v3/api-docs` |
-| Swagger UI | `http://192.168.200.140:8080/swagger-ui/index.html` |
+| Swagger UI | `http://192.168.204.166:9185/swagger-ui/index.html` |
 | 锚点接口 create_1 | `POST /api/mac-addresses` |
 | 贴片 PCBA SN | `POST /api/mac-addresses/submit-smt-pcba-sn` |
 | 贴片 MAC | `POST /api/mac-addresses/submit-smt-mac` |
@@ -1071,4 +1071,4 @@
 
 ---
 
-*由 `scripts/_export_mac_swagger_md.py` 从 `http://192.168.200.140:8080/v3/api-docs` 导出；共 25 个接口。*
+*由 `scripts/_export_mac_swagger_md.py` 从 `http://192.168.204.166:9185/v3/api-docs` 导出；共 25 个接口。*

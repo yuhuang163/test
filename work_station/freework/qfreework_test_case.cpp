@@ -730,7 +730,38 @@ bool QFreeWork::prepareTupleProductWriteForTestCase(const TestCaseDefinition& de
     if (cmd == DeviceCmd::Sn && wireParam.canConvert<DeviceSnPayload>()) {
         writeText = QString::fromUtf8(wireParam.value<DeviceSnPayload>().sn);
     } else if (cmd == DeviceCmd::WriteKey) {
-        writeText = QString::fromUtf8(wireParam.toMap().value(QStringLiteral("value")).toByteArray());
+        const QVariantMap map = wireParam.toMap();
+        writeText = QString::fromUtf8(map.value(QStringLiteral("value")).toByteArray());
+        if (writeText.trimmed().isEmpty())
+            writeText = map.value(QStringLiteral("value")).toString();
+        // Qaiot：可单字段写 productId/deviceId/deviceSecret（或一次写多个）
+        if (writeText.trimmed().isEmpty()) {
+            const QString productId =
+                map.value(QStringLiteral("productId"), map.value(QStringLiteral("productKey"))).toString().trimmed();
+            const QString deviceId =
+                map.value(QStringLiteral("deviceId"), map.value(QStringLiteral("deviceName"))).toString().trimmed();
+            const QString deviceSecret =
+                map.value(QStringLiteral("deviceSecret"), map.value(QStringLiteral("key"))).toString().trimmed();
+            QStringList parts;
+            auto appendPart = [&](const QString& label, const QString& text) {
+                if (text.isEmpty())
+                    return true;
+                if (tuplePlaceholderKind(text) != TuplePlaceholderKind::None)
+                    return false;
+                parts.append(QStringLiteral("%1:%2").arg(label, text));
+                return true;
+            };
+            if (!appendPart(QStringLiteral("productId"), productId) || !appendPart(QStringLiteral("deviceId"), deviceId) ||
+                !appendPart(QStringLiteral("deviceSecret"), deviceSecret)) {
+                failTupleWriteIfNoValidField(stepName, false, QStringLiteral("三元组占位符未展开"));
+                return false;
+            }
+            if (!parts.isEmpty()) {
+                writeText = parts.join(QLatin1Char(' '));
+                stepRuntime_.testData = writeText;
+                return true;
+            }
+        }
     }
 
     if (writeText.trimmed().isEmpty() || tuplePlaceholderKind(writeText) != TuplePlaceholderKind::None) {
@@ -894,7 +925,7 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
             markActiveTestCaseStepDone(false, QStringLiteral("-"), QStringLiteral("失败"));
             showlog(QStringLiteral("卡控失败：SN 回传数据类型无效"));
             if (commandRetryTimer)
-                finishCommandRetryWait(false, QStringLiteral("卡控失败"));
+                finishCommandRetryWait(false, QStringLiteral("卡控失败：SN 回传数据类型无效"));
             return true;
         }
     }
@@ -904,7 +935,7 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
         markActiveTestCaseStepDone(false, QStringLiteral("-"), QStringLiteral("失败"));
         showlog(QStringLiteral("卡控失败：未启用任何判定项（请在 case ini 的 Gate/N/Enabled 勾选）"));
         if (commandRetryTimer)
-            finishCommandRetryWait(false, QStringLiteral("卡控失败"));
+            finishCommandRetryWait(false, QStringLiteral("卡控失败：未启用任何判定项"));
         return true;
     }
 
@@ -933,7 +964,10 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
 
     markActiveTestCaseStepDone(pass, display.testData, display.ask);
     if (commandRetryTimer) {
-        finishCommandRetryWait(pass, pass ? QStringLiteral("卡控通过，步骤完成") : QStringLiteral("卡控失败"));
+        finishCommandRetryWait(pass,
+                               pass ? QStringLiteral("卡控通过，步骤完成")
+                                    : QStringLiteral("卡控失败：%1").arg(detail.isEmpty() ? QStringLiteral("未通过")
+                                                                                          : detail));
     }
     if (!pass) {
         result = failValue;

@@ -36,6 +36,40 @@
 
 namespace {
 
+/** SetBattery 步骤：把 Param_* 写入结果表「数据」列（如 3700 mV） */
+QString setBatteryTestDataText(const TestCaseDefinition& def) {
+    if (def.send.deviceCmd != QStringLiteral("SetBattery"))
+        return {};
+    if (!def.send.param.canConvert<QVariantMap>())
+        return {};
+    const QVariantMap map = def.send.param.toMap();
+    QStringList parts;
+    if (map.contains(QStringLiteral("percent")))
+        parts << (map.value(QStringLiteral("percent")).toString() + QStringLiteral(" %"));
+    if (map.contains(QStringLiteral("voltageMv")) || map.contains(QStringLiteral("voltage"))
+        || map.contains(QStringLiteral("mV"))) {
+        const QString mv = map.value(QStringLiteral("voltageMv"),
+                                     map.value(QStringLiteral("voltage"), map.value(QStringLiteral("mV"))))
+                               .toString();
+        parts << (mv + QStringLiteral(" mV"));
+    }
+    if (map.contains(QStringLiteral("currentMa")) || map.contains(QStringLiteral("current"))) {
+        const QString ma =
+            map.value(QStringLiteral("currentMa"), map.value(QStringLiteral("current"))).toString();
+        parts << (ma + QStringLiteral(" mA"));
+    }
+    if (map.contains(QStringLiteral("temperatureC")) || map.contains(QStringLiteral("temperature"))
+        || map.contains(QStringLiteral("temp"))) {
+        const QString tc = map.value(QStringLiteral("temperatureC"),
+                                     map.value(QStringLiteral("temperature"), map.value(QStringLiteral("temp"))))
+                               .toString();
+        parts << (tc + QStringLiteral(" °C"));
+    }
+    if (map.contains(QStringLiteral("value")) && parts.isEmpty())
+        parts << (map.value(QStringLiteral("value")).toString() + QStringLiteral(" mV"));
+    return parts.join(QLatin1Char(' '));
+}
+
 /** 测试项提示弹窗：产线可读性，正文与按钮字号加大 */
 void applyTestItemPromptFont(QMessageBox* box) {
     if (!box) {
@@ -238,6 +272,7 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     ui->banding_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
                                       "padding: 10px; text-align: center; ");
     resetTuplePositionHighlight();
+    setupTuplePositionClickable();
 
     connect(waittime, &QTimer::timeout, [=]() {
         isovertime = 1;
@@ -319,6 +354,7 @@ void QFreeWork::refreshOrderedTestIndexes() {
         qDebug() << "[FreeWork] flow ini missing:" << TestCasePaths::flowIniPath();
         updateTuplePositionUiVisible();
         applyStationSerialUiConfig();
+        loadAndApplyStationDeviceSide();
         return;
     }
 
@@ -348,6 +384,7 @@ void QFreeWork::refreshOrderedTestIndexes() {
     }
     updateTuplePositionUiVisible();
     applyStationSerialUiConfig();
+    loadAndApplyStationDeviceSide();
 }
 
 bool QFreeWork::currentOrderedStepIsDongleBleConnect() const {
@@ -578,6 +615,7 @@ bool QFreeWork::tickOrderedTestStepLoop() {
             stepRuntime_.ask = QStringLiteral("通过");
             stepRuntime_.caseTimer.restart();
             lastCommandRetryCount = 0;
+            lastCommandFailReason.clear();
             testCasePromptAcknowledged_ = false;
             testCasePromptProgrammaticClose_ = false;
             showlog((runningFailFlow_ ? QStringLiteral("失败区开始：") : QStringLiteral("开始测试内容："))
@@ -595,12 +633,20 @@ bool QFreeWork::tickOrderedTestStepLoop() {
 
         if (sendRetryOver) {
             sendRetryOver = false;
-            stepRuntime_.done = true;
-            stepRuntime_.pass = false;
-            if (stepRuntime_.testData == QLatin1String("-"))
-                stepRuntime_.testData = QStringLiteral("协议FAIL或超时");
+            const QString reason = lastCommandFailReason.trimmed().isEmpty()
+                                       ? QStringLiteral("指令失败（原因未知）")
+                                       : lastCommandFailReason.trimmed();
+            lastCommandFailReason.clear();
+            if (!stepRuntime_.done) {
+                stepRuntime_.done = true;
+                stepRuntime_.pass = false;
+            } else {
+                stepRuntime_.pass = false;
+            }
+            if (stepRuntime_.testData == QLatin1String("-") || stepRuntime_.testData.trimmed().isEmpty())
+                stepRuntime_.testData = reason;
             TestResult = failValue;
-            showlog(QStringLiteral("步骤失败：%1（超时未响应或协议 FAIL）").arg(functionName));
+            showlog(QStringLiteral("步骤失败：%1（%2）").arg(functionName, reason));
         }
 
         if (!caseDef.gate.enabled && canGoNext && !stepRuntime_.done && !sendRetryOver) {
@@ -614,13 +660,22 @@ bool QFreeWork::tickOrderedTestStepLoop() {
                 if (!TestCaseRunner::stepWaitsForPromptAck(caseDef) || testCasePromptAcknowledged_) {
                     stepRuntime_.done = true;
                     stepRuntime_.pass = true;
-                    if (stepRuntime_.testData == QLatin1String("-"))
-                        stepRuntime_.testData = QStringLiteral("ok");
+                    if (stepRuntime_.testData == QLatin1String("-")) {
+                        const QString setBatteryText = setBatteryTestDataText(caseDef);
+                        stepRuntime_.testData =
+                            setBatteryText.isEmpty() ? QStringLiteral("ok") : setBatteryText;
+                    }
                 }
             } else if (dongleBleConnect && at->getConnected()) {
                 stepRuntime_.done = true;
                 stepRuntime_.pass = true;
                 stepRuntime_.testData = QStringLiteral("已连接");
+            } else if (productGet && lastCommandRetryCount > 0) {
+                // 无 Gate 的 Product Get：协议层已应答即可过步（有 Gate 时由 evaluateActiveTestCaseGate 收尾）
+                stepRuntime_.done = true;
+                stepRuntime_.pass = true;
+                if (stepRuntime_.testData == QLatin1String("-") || stepRuntime_.testData.trimmed().isEmpty())
+                    stepRuntime_.testData = QStringLiteral("ok");
             } else if (caseDef.hook.enabled && lastCommandRetryCount > 0) {
                 // Hook + sendCommandWithRetry：产测应答后须结束步骤（如 MAC_WRITE_ROOT、SN_WRITE_TAIL）；
                 // 按键/采样/串口仪器等 Hook 自行维护 stepRuntime_，不会走到 lastCommandRetryCount>0。

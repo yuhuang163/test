@@ -2,6 +2,7 @@
 #define QFREEWORK_H
 
 #include <QByteArray>
+#include <QEvent>
 #include <QHash>
 #include <QPair>
 #include <QElapsedTimer>
@@ -295,10 +296,16 @@ class QFreeWork : public test_base {
     void applyTupleByMac();
     void resetTuplePositionHighlight();
     void updateTuplePositionHighlight(const QString& position);
-    /** 当前流程含「获取云端三元组」(ApplyTupleByMac) 时才显示三元组位置行 */
+    /** 流程含 ApplyTupleByMac 或 Qaiot 读写设备数据时显示三元组位置行 */
     void updateTuplePositionUiVisible();
+    /** 主界面「三元组位置」可点击：写入当前工站配置并同步相关步骤 Param_side */
+    void setupTuplePositionClickable();
+    void loadAndApplyStationDeviceSide();
+    void applyTuplePositionSelection(const QString& positionCode);
+    int syncDeviceSideToStationSteps(int sideId, const QString& positionCode);
     /** 按当前工站 flow.ini [SerialUi] 刷新治具/产品/万用表串口行显隐与标签 */
     void applyStationSerialUiConfig();
+    bool eventFilter(QObject* watched, QEvent* event) override;
     void reportBydSfcKey(const QString& dataName, const QVariant& dataValue, int qty = 1);
     void reportBydBluetoothMesKeyMaterials();
     bool failTupleWriteIfNoValidField(const QString& stepName, bool fieldOk, const QString& emptyReason);

@@ -214,9 +214,9 @@ def charge_gate():
 
 
 TUPLE_ENV_PRESETS = [
-    ("dev", "http://192.168.200.140:8080"),
+    ("dev", "http://192.168.204.166:9185"),
     ("prod", "https://lute-aiot-mac.luteos.com"),
-    ("build-dev-inner", "http://192.168.200.140:8080"),
+    ("build-dev-inner", "http://192.168.204.166:9185"),
     ("build-dev", "https://983ug2va5885.vicp.fun"),
     ("build-prod", "https://lute-aiot-mac.luteos.com"),
 ]

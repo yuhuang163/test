@@ -640,10 +640,9 @@ Command ID：占1字节，用于标识具体命令类型，每个Service ID对
 |---|---|---|---|---|---|---|
 |device\_name|0x01|1|uint8\[\]|待测设备名称|O|1\.0\.0|
 |device\_fw\_version|0x02|1|uint8\[\]|待测设备的固件版本|O|1\.0\.0|
-|device\_mac\_address|0x03|1|uint8|待测设备的mac地址|O|1\.0\.0|
+|res\_version|0x03|1|uint8\[\]|资源版本号|O|1\.0\.0|
 |factory\_complete\_status|0x04|1|uint8|产测通过标识，用于标注是否经过产测（掉电不消失）|O|1\.0\.0|
 |hw\_version|0x05|1|uint8\[\]|硬件版本号|O|1\.0\.0|
-|res\_version|0x06|1|uint8\[\]|资源版本号|O|1\.0\.0|
 |factory\_mode\_list|0x20|NA|NA|工厂模式数据列表|O|1\.0\.0|
 |factory\_mode\_struct|0x21|NA|NA|工厂模式数据结构体|O|1\.0\.0|
 |factory\_mode\_type|0x22|1<br>|uint8|工厂模式类型<br>00：idle\_mode<br>01：factory\_test\_mode<br>02：aging\_test\_mode<br>03：suckion\_test\_mode<br>04：sucktion\_compensate\_mode<br>05：ate\_test\_mode|O|1\.0\.0<br>|
@@ -656,11 +655,11 @@ Command ID：占1字节，用于标识具体命令类型，每个Service ID对
 
 |字段名称|Type\(bit0\~bit6\)|Length<br>Size\(Oct\)|Value<br>数据类型|说明|必选/可选\(M/O\)|版本|
 |---|---|---|---|---|---|---|
-|factory\_complete\_status|0x01|1|uint8|产测通过标识，用于标注是否经过产测（掉电不消失）|O|1\.0\.0|
-|factory\_mode\_list|0x02|NA|NA|工厂模式数据列表|O|1\.0\.0|
-|factory\_mode\_struct|0x03|NA|NA|工厂模式数据结构体|O|1\.0\.0|
-|factory\_mode\_type|0x04|1|uint8|工厂模式类型<br>00：idle\_mode<br>01：factory\_test\_mode<br>02：aging\_test\_mode<br>03：suckion\_test\_mode<br>04：sucktion\_compensate\_mode<br>05：ate\_test\_mode|O|1\.0\.0|
-|factory\_mode\_enable|0x05|1|uint8|模式使能状态<br>0x00: disabled<br>0x01: enabled|O|1\.0\.0|
+|factory\_complete\_status|0x01|1|uint8|产测通过标识，用于标注是否经过产测（掉电不消失）<br>1：表示产测完成<br>0：表示产测未完成|O|1\.0\.0|
+|factory\_mode\_list|0x20|NA|NA|工厂模式数据列表|O|1\.0\.0|
+|factory\_mode\_struct|0x21|NA|NA|工厂模式数据结构体|O|1\.0\.0|
+|factory\_mode\_type|0x22|1|uint8|工厂模式类型<br>00：idle\_mode<br>01：factory\_test\_mode<br>02：aging\_test\_mode<br>03：suckion\_test\_mode<br>04：sucktion\_compensate\_mode<br>05：ate\_test\_mode|O|1\.0\.0|
+|factory\_mode\_status|0x23|1|uint8|模式使能状态<br>0x00: disabled<br>0x01: enabled|O|1\.0\.0|
 |**发送帧结构：**<br>![Image](https://internal-api-drive-stream.feishu.cn/space/api/box/stream/download/authcode/?code=ZjUwZWRhOTVjZjdiOGMyNDIyZTYzZDdjYTBhZDM3MGFfMjc3MjU4NGUxMTUzZWNmNTM1ODE4OTFjN2M3Nzg3ZjBfSUQ6NzY1Nzg5NzE4NTcyNzY2MzA1Nl8xNzg1ODM0NTUwOjE3ODU5MjA5NTBfVjM)<br>**接收帧结构：**<br>![Image](https://internal-api-drive-stream.feishu.cn/space/api/box/stream/download/authcode/?code=MmJlZmU1OTQ4M2IwZTRkOTEwZWJiZjJlMTQzZjhhOWFfNTRmYjg5ODZhYjdhOTJiODE2MmMzNDRlMDc2OGI0ZDNfSUQ6NzY1Nzg5NzE4MjM5MzI4OTY3M18xNzg1ODM0NTUwOjE3ODU5MjA5NTBfVjM)<br>**说明：**<br>- |||||||
 
 ## 获取通用设备数据（CID=0x03）
@@ -673,7 +672,7 @@ Command ID：占1字节，用于标识具体命令类型，每个Service ID对
 |device\_data\_timestap|0x02|1|uint8\[\]|数据的UTC写入时间戳|M|1\.0\.0|
 |device\_data\_list|0x03|1|uint8|数据列表|M|1\.0\.0|
 |device\_data\_struct|0x04|1|uint8\[\]|通用数据结构体，包含<br>device\_data\_type<br>device\_data|M|1\.0\.0|
-|device\_data\_type|0x05|1|uint8\[\]|数据类型<br>0x01：device\_sn\_number<br>0x02：product\_id\_number<br>0x03：device\_id\_number<br>0x04：device\_secret\_key<br>0x05：<br>0x06：|M|1\.0\.0|
+|device\_data\_type|0x05|1|uint8\[\]|数据类型<br>0x01：device\_sn\_number<br>0x02：product\_id\_number<br>0x03：device\_id\_number<br>0x04：device\_secret\_key<br>0x05：device\_mac\_address<br>0x06：|M|1\.0\.0|
 |device\_data|0x06|variable|uint8\[\]|读出数据|M|1\.0\.0|
 |**发送帧结构：**<br>**接收帧结构：**<br>**说明：**<br>- 远端主动查询获取。|||||||
 
@@ -687,7 +686,7 @@ Command ID：占1字节，用于标识具体命令类型，每个Service ID对
 |device\_data\_timestap|0x02|4|uint32|UTC时间戳|M|1\.0\.0|
 |device\_data\_list|0x03||uint8|写入数据列表|M|1\.0\.0|
 |device\_data\_struct|0x04||uint8|通用数据结构体，包含<br>device\_data\_type<br>device\_data|M|1\.0\.0|
-|device\_data\_type|0x05||uint8|写入的数据类型<br>0x01：device\_sn\_number<br>0x02：product\_id\_number<br>0x03：device\_id\_number<br>0x04：device\_secret\_key<br>0x05：<br>0x06：|M|1\.0\.0|
+|device\_data\_type|0x05||uint8|写入的数据类型<br>0x01：device\_sn\_number<br>0x02：product\_id\_number<br>0x03：device\_id\_number<br>0x04：device\_secret\_key<br>0x05：device\_mac\_address<br>0x06：|M|1\.0\.0|
 |device\_data|0x06|variable|uint8\[\]|写入数据信息|M|1\.0\.0|
 |**发送帧结构：**<br>**接收帧结构：**<br>**说明：**<br>- 自动定期上报，或者远端主动查询获取。|||||||
 
@@ -862,7 +861,10 @@ Command ID：占1字节，用于标识具体命令类型，每个Service ID对
 
 |字段名称|Type\(bit0\~bit6\)|Length<br>Size\(Oct\)|Value<br>数据类型|说明|必选/可选\(M/O\)|版本|
 |---|---|---|---|---|---|---|
-|virtual\_battery\_value|0x01|1|uint16|设置模拟电池电量，单位mV。|M|1\.0\.0|
+|simbatterypercent|0x01|1|uint8|模拟电量百分比 0–100|O|1\.0\.0|
+|simbatteryvoltagemv|0x02|2|uint16|模拟电池电压，单位 mV|O|1\.0\.0|
+|simbatterycurrentma|0x03|2|int16|模拟电池电流，单位 mA（放电为负）|O|1\.0\.0|
+|simbatterytemperaturec|0x04|1|int8|模拟电池温度，单位 °C|O|1\.0\.0|
 |**发送帧结构：**<br><br>**接收帧结构：**<br><br>**说明：**<br>- 设置成0就是真实的电量，设置成别的数值，就会以别的数值为准|||||||
 
 ## 自定义加热测试接口（CID=0x14）
@@ -941,9 +943,9 @@ Command ID：占1字节，用于标识具体命令类型，每个Service ID对
 |---|---|---|---|---|---|---|
 |dut\_notify\_data\_list|0x01|NA|NA|测试上报数据列表|M|1\.0\.0|
 |dut\_notify\_data\_struct|0x02|NA|NA|测试数据结构体，包含<br>dut\_notify\_data\_type<br>dut\_notify\_data\_value|M|1\.0\.0|
-|dut\_notify\_data\_type|0x03|1|uint8|测试上报数据类型|M|1\.0\.0|
-|dut\_notify\_data\_value|0x04|variable|uint8\[\]|测试上报数据|M|1\.0\.0|
-|**发送帧结构：**<br>![Image](https://internal-api-drive-stream.feishu.cn/space/api/box/stream/download/authcode/?code=NGExNGZiZmFjOWY5Zjc3ZDU5NWIwYjQ5MmE3YzZiOWJfY2Y1MWZlZmY4NWRiYWQwZmQ5MDllMTBlMjVlMzVkMjFfSUQ6NzY2ODI0Njg5OTIxNzAyNjI0OF8xNzg1ODM0NTUxOjE3ODU5MjA5NTFfVjM)<br>**接收帧结构：**<br>![Image](https://internal-api-drive-stream.feishu.cn/space/api/box/stream/download/authcode/?code=M2EyYmQ1ODA4OWJhMDhmOThlNWE5NDNiMzJhMzkwNmJfOTI3YmE2YzY4NzE4YjlmYjEyODU5ZDYwZmU0ZjAwNzlfSUQ6NzY2ODI0Njg5OTEyODkxMzE0N18xNzg1ODM0NTUwOjE3ODU5MjA5NTBfVjM)<br>**说明：**<br>- 自动上报|||||||
+|dut\_notify\_data\_type|0x03|1|uint8|测试上报数据类型<br>按键上报 00：virtual\_key\_value|M|1\.0\.0|
+|dut\_notify\_data\_value|0x04|variable|uint8\[\]|测试上报数据。按键值：<br>0x01 电源 / 0x02 开始 / 0x03 模式 / 0x04 频率 / 0x05 母乳 / 0x06 左控制 / 0x07 右控制 / 0x08 恢复出厂 / 0x09 旅行锁 / 0x0A 旋钮左转 / 0x0B 旋钮右转|M|1\.0\.0|
+|**发送帧结构：**<br><br>**接收帧结构：**<br><br>**说明：**<br>- 自动上报|||||||
 
 
 

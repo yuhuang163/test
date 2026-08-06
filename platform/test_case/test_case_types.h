@@ -126,4 +126,12 @@ struct TestCaseSerialUiConfig {
     QString usbLabel = QStringLiteral("万用表串口");
 };
 
+/** 工站 flow.ini [DeviceSide]：三元组/设备数据左右位（与主界面「三元组位置」一致） */
+struct TestCaseDeviceSideConfig {
+    /** L 左 / R 右 / S 单只 / F 未指定；空表示未配置 */
+    QString position;
+    /** Qaiot device_side_id：0 Left / 1 Right / 2 Independent；-1 表示未配置 */
+    int sideId = -1;
+};
+
 #endif // PLATFORM_TEST_CASE_TYPES_H

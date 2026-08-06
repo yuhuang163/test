@@ -2,8 +2,12 @@
 
 #include <algorithm>
 
+#include <QEvent>
+#include <QMouseEvent>
+
 #include "common_utils.h"
 #include "qproduct.h"
+#include "qprotocol_types.h"
 #include "test_case.h"
 
 namespace {
@@ -22,6 +26,7 @@ TuplePositionKind parseTuplePositionKind(const QString& raw) {
         return TuplePositionKind::Unspecified;
     }
     const QChar first = position.at(0).toUpper();
+    // 云端位置码历史：1/L 左、2/R 右、3/S 单只、F 未指定（与协议 sideId 0/1/2 不同）
     if (position == QStringLiteral("1") || first == QLatin1Char('L') || position.contains(QStringLiteral("左"))) {
         return TuplePositionKind::Left;
     }
@@ -52,6 +57,48 @@ QString tuplePositionKindText(TuplePositionKind kind) {
     }
 }
 
+QString tuplePositionCode(TuplePositionKind kind) {
+    switch (kind) {
+    case TuplePositionKind::Left:
+        return QStringLiteral("L");
+    case TuplePositionKind::Right:
+        return QStringLiteral("R");
+    case TuplePositionKind::Single:
+        return QStringLiteral("S");
+    case TuplePositionKind::Unspecified:
+        return QStringLiteral("F");
+    default:
+        return QString();
+    }
+}
+
+/** 与 Qaiot device_side_id 对齐：未指定按 Independent(2) */
+int deviceSideIdFromKind(TuplePositionKind kind) {
+    switch (kind) {
+    case TuplePositionKind::Left:
+        return 0;
+    case TuplePositionKind::Right:
+        return 1;
+    case TuplePositionKind::Single:
+    case TuplePositionKind::Unspecified:
+        return 2;
+    default:
+        return 2;
+    }
+}
+
+bool caseNeedsDeviceSideParam(const TestCaseDefinition& def) {
+    if (def.send.deviceCmd == QStringLiteral("ApplyTupleByMac"))
+        return true;
+    if (def.send.channel != TestCaseSendChannel::Product)
+        return false;
+    if (def.send.productProtocol != TestCaseProductProtocol::Qaiot)
+        return false;
+    const QString& cmd = def.send.deviceCmd;
+    return cmd == QStringLiteral("Sn") || cmd == QStringLiteral("WriteKey") || cmd == QStringLiteral("MacWrite")
+           || cmd == QStringLiteral("MacRead") || cmd == QStringLiteral("TupleRead");
+}
+
 constexpr char kTuplePosInactiveStyle[] =
     "font-size: 18px; background-color: #808080; color: black; border-radius: 6px; padding: 4px 12px;";
 constexpr char kTuplePosActiveStyle[] =
@@ -74,7 +121,7 @@ void QFreeWork::updateTuplePositionUiVisible() {
             TestCaseDefinition def;
             if (!TestCaseRunner::loadCaseForStation(activeFlowStationKey_, caseName, def))
                 continue;
-            if (def.send.deviceCmd == QStringLiteral("ApplyTupleByMac")) {
+            if (caseNeedsDeviceSideParam(def)) {
                 show = true;
                 break;
             }
@@ -90,6 +137,139 @@ void QFreeWork::updateTuplePositionUiVisible() {
     ui->label_tuplePosUnspecified->setVisible(show);
     if (!show)
         resetTuplePositionHighlight();
+}
+
+void QFreeWork::setupTuplePositionClickable() {
+    const QList<QLabel*> labels = {ui->label_tuplePosLeft, ui->label_tuplePosRight, ui->label_tuplePosSingle,
+                                   ui->label_tuplePosUnspecified};
+    for (QLabel* label : labels) {
+        label->setCursor(Qt::PointingHandCursor);
+        label->setToolTip(QStringLiteral("点击设置当前工站左右位（写入 flow.ini 并同步相关步骤）"));
+        label->installEventFilter(this);
+    }
+}
+
+void QFreeWork::loadAndApplyStationDeviceSide() {
+    const TestCaseDeviceSideConfig cfg = TestCaseStore::loadStationDeviceSideConfig(activeFlowStationKey_);
+    QString position = cfg.position.trimmed();
+    if (position.isEmpty() && cfg.sideId >= 0 && cfg.sideId <= 2) {
+        if (cfg.sideId == 0)
+            position = QStringLiteral("L");
+        else if (cfg.sideId == 1)
+            position = QStringLiteral("R");
+        else
+            position = QStringLiteral("S");
+    }
+    if (position.isEmpty())
+        position = SETTINGS.value(QStringLiteral("Tuple/Position")).toString().trimmed();
+    if (position.isEmpty())
+        return;
+    SETTINGS.setValue(QStringLiteral("Tuple/Position"), tuplePositionCode(parseTuplePositionKind(position)));
+    updateTuplePositionHighlight(position);
+}
+
+int QFreeWork::syncDeviceSideToStationSteps(int sideId, const QString& positionCode) {
+    if (activeFlowStationKey_.isEmpty() || sideId < 0 || sideId > 2)
+        return 0;
+
+    QStringList names = orderedTestCaseNames_;
+    for (const QString& n : orderedFailCaseNames_) {
+        if (!names.contains(n))
+            names.append(n);
+    }
+
+    int updated = 0;
+    for (const QString& caseName : names) {
+        TestCaseDefinition def;
+        if (!TestCaseRunner::loadCaseForStation(activeFlowStationKey_, caseName, def))
+            continue;
+        if (!caseNeedsDeviceSideParam(def))
+            continue;
+
+        if (def.send.deviceCmd == QStringLiteral("ApplyTupleByMac")) {
+            QVariantMap map;
+            if (def.send.param.canConvert<QVariantMap>())
+                map = def.send.param.toMap();
+            else if (def.send.param.type() == QVariant::String) {
+                const QString mac = def.send.param.toString().trimmed();
+                if (!mac.isEmpty())
+                    map.insert(QStringLiteral("mac"), mac);
+            }
+            map.insert(QStringLiteral("position"), positionCode);
+            def.send.param = map;
+        } else if (def.send.param.canConvert<DeviceSnPayload>()) {
+            DeviceSnPayload payload = def.send.param.value<DeviceSnPayload>();
+            payload.sideId = sideId;
+            def.send.param = QVariant::fromValue(payload);
+        } else {
+            QVariantMap map;
+            if (def.send.param.canConvert<QVariantMap>())
+                map = def.send.param.toMap();
+            else if (def.send.param.type() == QVariant::String) {
+                const QString text = def.send.param.toString().trimmed();
+                if (!text.isEmpty()) {
+                    if (def.send.deviceCmd == QStringLiteral("MacWrite") || def.send.deviceCmd == QStringLiteral("MacRead"))
+                        map.insert(QStringLiteral("value"), text);
+                    else
+                        map.insert(QStringLiteral("value"), text);
+                }
+            }
+            map.insert(QStringLiteral("side"), sideId);
+            def.send.param = map;
+        }
+
+        if (TestCaseStore::saveCaseForStation(activeFlowStationKey_, def))
+            ++updated;
+    }
+    return updated;
+}
+
+void QFreeWork::applyTuplePositionSelection(const QString& positionCode) {
+    const TuplePositionKind kind = parseTuplePositionKind(positionCode);
+    if (kind == TuplePositionKind::Unknown)
+        return;
+
+    const QString code = tuplePositionCode(kind);
+    const int sideId = deviceSideIdFromKind(kind);
+
+    TestCaseDeviceSideConfig cfg;
+    cfg.position = code;
+    cfg.sideId = sideId;
+    if (!TestCaseStore::saveStationDeviceSideConfig(activeFlowStationKey_, cfg)) {
+        showlog(QStringLiteral("三元组位置：保存工站配置失败"));
+        return;
+    }
+
+    SETTINGS.setValue(QStringLiteral("Tuple/Position"), code);
+    updateTuplePositionHighlight(code);
+
+    const int n = syncDeviceSideToStationSteps(sideId, code);
+    showlog(QStringLiteral("三元组位置已设为%1（%2），device_side_id=%3，已更新%4个步骤")
+                .arg(tuplePositionKindText(kind), code)
+                .arg(sideId)
+                .arg(n));
+}
+
+bool QFreeWork::eventFilter(QObject* watched, QEvent* event) {
+    if (event && event->type() == QEvent::MouseButtonRelease) {
+        const auto* mouse = static_cast<QMouseEvent*>(event);
+        if (mouse->button() == Qt::LeftButton) {
+            QString code;
+            if (watched == ui->label_tuplePosLeft)
+                code = QStringLiteral("L");
+            else if (watched == ui->label_tuplePosRight)
+                code = QStringLiteral("R");
+            else if (watched == ui->label_tuplePosSingle)
+                code = QStringLiteral("S");
+            else if (watched == ui->label_tuplePosUnspecified)
+                code = QStringLiteral("F");
+            if (!code.isEmpty()) {
+                applyTuplePositionSelection(code);
+                return true;
+            }
+        }
+    }
+    return QWidget::eventFilter(watched, event);
 }
 
 void QFreeWork::applyStationSerialUiConfig() {
@@ -238,7 +418,28 @@ void QFreeWork::refreshBaseData(ProtocolBaseInfoData data) {
     if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolBaseInfoData"), QVariant::fromValue(data)))
         return;
 
-    if (!isCurrentStep(QStringLiteral("读取版本号")) && !isCurrentStep(QStringLiteral("获取基本信息"))) {
+    if (isCurrentStep(QStringLiteral("读取版本号")) || isCurrentStep(QStringLiteral("获取基本信息"))) {
+        // 旧路径：无 case Gate 时走设置页 ProductInfo 勾选/期望（见下方）
+    } else if (testCaseStepActive_ && !activeTestCase_.gate.enabled
+               && activeTestCase_.send.channel == TestCaseSendChannel::Product
+               && activeTestCase_.send.action == TestCaseSendAction::Get) {
+        // 无 Gate 的读名称/版本：有业务上报即过步，并把实测写入表格
+        const QString cmd = activeTestCase_.send.deviceCmd;
+        QString testData;
+        if (cmd == QStringLiteral("DeviceInfo") || cmd == QStringLiteral("BaseInfo"))
+            testData = data.product_name.trimmed();
+        else if (cmd == QStringLiteral("SoftVersionRead"))
+            testData = data.soft_version.trimmed();
+        if (cmd == QStringLiteral("DeviceInfo") || cmd == QStringLiteral("BaseInfo")
+            || cmd == QStringLiteral("SoftVersionRead")) {
+            if (testData.isEmpty())
+                testData = QStringLiteral("ok");
+            markActiveTestCaseStepDone(true, testData, QStringLiteral("通过"));
+            showlog(QStringLiteral("读取完成：%1").arg(testData));
+            return;
+        }
+        return;
+    } else {
         return;
     }
 
@@ -278,6 +479,32 @@ void QFreeWork::refreshBattaryData(ProtocolBatteryData adc) {
     // 电量测试为异步判定：在电池回调里显式回填当前步骤。
     if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolBatteryData"), QVariant::fromValue(adc)))
         return;
+
+    // 无 Gate 的 GetBattery：仍把实测写入结果表「数据」列
+    if (testCaseStepActive_ && activeTestCase_.send.deviceCmd == QStringLiteral("GetBattery")
+        && activeTestCase_.send.action == TestCaseSendAction::Get) {
+        QString field = QStringLiteral("percent");
+        if (activeTestCase_.send.param.canConvert<QVariantMap>()) {
+            const QVariantMap map = activeTestCase_.send.param.toMap();
+            if (map.contains(QStringLiteral("field")))
+                field = map.value(QStringLiteral("field")).toString().trimmed();
+        }
+        QString testData;
+        if (field == QLatin1String("voltage") || field == QLatin1String("voltageMv"))
+            testData = QString::number(adc.voltageMv) + QStringLiteral(" mV");
+        else if (field == QLatin1String("current") || field == QLatin1String("currentMa"))
+            testData = QString::number(adc.currentMa) + QStringLiteral(" mA");
+        else if (field == QLatin1String("temperature") || field == QLatin1String("temperatureC")
+                 || field == QLatin1String("temp"))
+            testData = QString::number(adc.temperatureC) + QStringLiteral(" °C");
+        else
+            testData = QString::number(adc.percent) + QStringLiteral(" %");
+        markActiveTestCaseStepDone(true, testData, QStringLiteral("通过"));
+        if (commandRetryTimer)
+            finishCommandRetryWait(true, QStringLiteral("读取完成"));
+        showlog(QStringLiteral("读取电池完成：%1").arg(testData));
+        return;
+    }
 
     if (!isCurrentStep("获取电量信息")) {
         return;
@@ -336,7 +563,17 @@ void QFreeWork::refreshMacData(ProtocolMacData data) {
     if (ui && ui->macLabel)
         ui->macLabel->setText(QStringLiteral("蓝牙mac: ") + mac);
 
-    evaluateActiveTestCaseGate(QStringLiteral("ProtocolMacData"), QVariant::fromValue(data));
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolMacData"), QVariant::fromValue(data)))
+        return;
+
+    // 无 Gate 的 MacRead：有回包即过步
+    if (testCaseStepActive_ && !activeTestCase_.gate.enabled
+        && activeTestCase_.send.channel == TestCaseSendChannel::Product
+        && activeTestCase_.send.action == TestCaseSendAction::Get
+        && activeTestCase_.send.deviceCmd == QStringLiteral("MacRead")) {
+        markActiveTestCaseStepDone(true, mac, QStringLiteral("通过"));
+        showlog(QStringLiteral("读取 MAC 完成：%1").arg(mac));
+    }
 }
 
 void QFreeWork::refreshPeriphData(ProtocolPeriphStateData data) {
@@ -584,7 +821,7 @@ void QFreeWork::reportBydBluetoothMesKeyMaterials() {
 void QFreeWork::applyTupleByMac() {
     tupleData_ = TupleApplyResult{};
     QString sku;
-    QString position = QStringLiteral("L");
+    QString position;
     QString macFromParam;
 
     if (testCaseStepActive_ && activeTestCase_.send.deviceCmd == QStringLiteral("ApplyTupleByMac")) {
@@ -592,7 +829,7 @@ void QFreeWork::applyTupleByMac() {
         if (resolved.canConvert<QVariantMap>()) {
             const QVariantMap m = resolved.toMap();
             sku = m.value(QStringLiteral("sku")).toString().trimmed();
-            position = m.value(QStringLiteral("position"), QStringLiteral("L")).toString().trimmed();
+            position = m.value(QStringLiteral("position")).toString().trimmed();
             macFromParam = m.value(QStringLiteral("mac")).toString().trimmed();
             if (macFromParam.isEmpty())
                 macFromParam = m.value(QStringLiteral("string")).toString().trimmed();
@@ -602,8 +839,11 @@ void QFreeWork::applyTupleByMac() {
     }
     if (sku.isEmpty())
         sku = SETTINGS.value(QStringLiteral("Tuple/Sku"), QString()).toString().trimmed();
+    // 步骤未写 position 时跟主界面 / SETTINGS（由「三元组位置」点击写入）
     if (position.isEmpty())
-        position = SETTINGS.value(QStringLiteral("Tuple/Position"), QStringLiteral("L")).toString().trimmed();
+        position = SETTINGS.value(QStringLiteral("Tuple/Position")).toString().trimmed();
+    if (position.isEmpty())
+        position = QStringLiteral("L");
 
     updateTuplePositionHighlight(position);
     showlog(QStringLiteral("三元组获取：当前位置=%1（%2）")
@@ -838,26 +1078,93 @@ bool QFreeWork::tryCompleteActiveTestCaseTupleCompare(const ProtocolTupleData& d
         return false;
     if (activeTestCase_.send.channel != TestCaseSendChannel::Product || activeTestCase_.send.action != TestCaseSendAction::Get || activeTestCase_.send.deviceCmd != QStringLiteral("TupleRead"))
         return false;
+    // 启用 Gate 时走单字段卡控，不在这里整包比对
+    if (activeTestCase_.gate.enabled)
+        return false;
 
-    const QString testData =
-        QStringLiteral("productKey:%1 deviceName:%2 deviceSecret:%3").arg(data.productId, data.deviceId, data.key);
-    const QString ask = QStringLiteral("productKey:%1 deviceName:%2 deviceSecret:%3")
-                            .arg(tupleData_.productKey, tupleData_.deviceName, tupleData_.deviceSecret);
+    // Param_dataType / Param_type，或步骤名含 productKey/deviceName/deviceSecret → 只比对应字段
+    int onlyType = 0;
+    if (activeTestCase_.send.param.canConvert<QVariantMap>()) {
+        const QVariantMap map = activeTestCase_.send.param.toMap();
+        if (map.contains(QStringLiteral("dataType")))
+            onlyType = map.value(QStringLiteral("dataType")).toInt();
+        else if (map.contains(QStringLiteral("type")))
+            onlyType = map.value(QStringLiteral("type")).toInt();
+    }
+    if (onlyType == 0) {
+        const QString label = activeTestCase_.meta.displayName.trimmed().isEmpty()
+                                  ? (activeTestCase_.meta.name.trimmed().isEmpty() ? activeTestCase_.meta.mesTag
+                                                                                  : activeTestCase_.meta.name)
+                                  : activeTestCase_.meta.displayName;
+        if (label.contains(QStringLiteral("productKey"), Qt::CaseInsensitive))
+            onlyType = 2;
+        else if (label.contains(QStringLiteral("deviceName"), Qt::CaseInsensitive))
+            onlyType = 3;
+        else if (label.contains(QStringLiteral("deviceSecret"), Qt::CaseInsensitive))
+            onlyType = 4;
+    }
 
     if (!tupleData_.success) {
-        markActiveTestCaseStepDone(false, QStringLiteral("云端三元组未获取成功"), ask);
+        markActiveTestCaseStepDone(false, QStringLiteral("云端三元组未获取成功"), QStringLiteral("-"));
         TestResult = failValue;
         showlog(QStringLiteral("设备三元组比较失败：云端三元组未获取成功"));
         return true;
     }
 
+    bool pass = false;
+    QString testData;
+    QString ask;
+    if (onlyType == 2) {
+        testData = data.productId.trimmed();
+        ask = tupleData_.productKey.trimmed();
+        pass = testData == ask;
+        markActiveTestCaseStepDone(pass, testData, ask);
+        if (!pass) {
+            TestResult = failValue;
+            showlog(QStringLiteral("productKey比较失败，设备=%1，云端=%2").arg(testData, ask));
+        } else {
+            showlog(QStringLiteral("productKey比较通过：%1").arg(testData));
+        }
+        return true;
+    }
+    if (onlyType == 3) {
+        testData = data.deviceId.trimmed();
+        ask = tupleData_.deviceName.trimmed();
+        pass = testData == ask;
+        markActiveTestCaseStepDone(pass, testData, ask);
+        if (!pass) {
+            TestResult = failValue;
+            showlog(QStringLiteral("deviceName比较失败，设备=%1，云端=%2").arg(testData, ask));
+        } else {
+            showlog(QStringLiteral("deviceName比较通过：%1").arg(testData));
+        }
+        return true;
+    }
+    if (onlyType == 4) {
+        testData = data.key.trimmed();
+        ask = tupleData_.deviceSecret.trimmed();
+        pass = CommonUtils::matchTupleDeviceSecret(data.key, data.keyCipherHex, tupleData_.deviceSecret);
+        markActiveTestCaseStepDone(pass, testData, ask);
+        if (!pass) {
+            TestResult = failValue;
+            showlog(QStringLiteral("deviceSecret比较失败，设备=%1，云端=%2").arg(testData, ask));
+        } else {
+            showlog(QStringLiteral("deviceSecret比较通过"));
+        }
+        return true;
+    }
+
+    const QString allTestData =
+        QStringLiteral("productKey:%1 deviceName:%2 deviceSecret:%3").arg(data.productId, data.deviceId, data.key);
+    const QString allAsk = QStringLiteral("productKey:%1 deviceName:%2 deviceSecret:%3")
+                               .arg(tupleData_.productKey, tupleData_.deviceName, tupleData_.deviceSecret);
     const bool productKeyPass = data.productId.trimmed() == tupleData_.productKey.trimmed();
     const bool deviceNamePass = data.deviceId.trimmed() == tupleData_.deviceName.trimmed();
     const bool deviceSecretPass =
         CommonUtils::matchTupleDeviceSecret(data.key, data.keyCipherHex, tupleData_.deviceSecret);
-    const bool pass = productKeyPass && deviceNamePass && deviceSecretPass;
+    pass = productKeyPass && deviceNamePass && deviceSecretPass;
 
-    markActiveTestCaseStepDone(pass, testData, ask);
+    markActiveTestCaseStepDone(pass, allTestData, allAsk);
     if (!pass) {
         TestResult = failValue;
         showlog(QStringLiteral("设备三元组比较失败，设备 productKey=%1 deviceName=%2 deviceSecret=%3，云端 productKey=%4 deviceName=%5 deviceSecret=%6")

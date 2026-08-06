@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from urllib.request import urlopen
 
-URL = "http://192.168.200.140:8080/v3/api-docs"
+URL = "http://192.168.204.166:9185/v3/api-docs"
 ROOT = Path(__file__).resolve().parents[1]
 OUT_MD = ROOT / "docs" / "开发参考资料" / "mac-address-controller接口协议.md"
 OUT_JSON = ROOT / "docs" / "开发参考资料" / "_swagger_v3_mac.json"
@@ -117,9 +117,9 @@ def main() -> None:
     lines.append("")
     lines.append("| 项 | 值 |")
     lines.append("|----|-----|")
-    lines.append("| BaseUrl | `http://192.168.200.140:8080` |")
+    lines.append("| BaseUrl | `http://192.168.204.166:9185` |")
     lines.append("| OpenAPI | `GET /v3/api-docs` |")
-    lines.append("| Swagger UI | `http://192.168.200.140:8080/swagger-ui/index.html` |")
+    lines.append("| Swagger UI | `http://192.168.204.166:9185/swagger-ui/index.html` |")
     lines.append("| 锚点接口 create_1 | `POST /api/mac-addresses` |")
     lines.append("| 贴片 PCBA SN | `POST /api/mac-addresses/submit-smt-pcba-sn` |")
     lines.append("| 贴片 MAC | `POST /api/mac-addresses/submit-smt-mac` |")

@@ -171,6 +171,8 @@ class test_base : public QWidget {
     bool getRespone = 0;
     bool canGoNext = false;
     bool sendRetryOver = false;
+    /** 最近一次指令等待失败原因（超时 / 协议 FAIL / 卡控失败等），供步骤收尾日志使用 */
+    QString lastCommandFailReason;
     QTimer* commandRetryTimer = nullptr;
     std::function<void()> commandRetryFunc_;
     int commandRetryCount = 0;
@@ -178,6 +180,8 @@ class test_base : public QWidget {
     int lastCommandRetryCount = 0;
     /** 本步指令最长等待截止（ms epoch）；CommandTimeoutMs 语义为总超时而非重试间隔 */
     qint64 commandRetryDeadlineMs_ = 0;
+    /** 本步 sendCommandWithRetry 配置的总超时（ms），用于超时日志 */
+    int commandRetryTimeoutMs_ = 0;
     CommandWaitSource commandWaitSource_ = CommandWaitSource::Any;
 
     bool isTestContinue = false;

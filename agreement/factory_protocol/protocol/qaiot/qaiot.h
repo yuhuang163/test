@@ -54,7 +54,7 @@ class Qaiot : public qProtocol {
     bool tlvFromVariant(const QVariant& value, TlvNode* out, QString* errorMessage) const;
     bool valueFromVariant(const QVariant& value, QByteArray* out, QString* errorMessage) const;
     QString describeMessage(const Message& message) const;
-    QString describeTlv(const TlvNode& tlv, int depth = 0) const;
+    QString describeTlv(const TlvNode& tlv, int depth = 0, quint8 commandId = 0xFF) const;
 
     TlvNode makeLeaf(quint8 type, const QByteArray& value) const;
     TlvNode makeParent(quint8 type, const QList<TlvNode>& children) const;

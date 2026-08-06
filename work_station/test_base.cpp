@@ -9,13 +9,19 @@
 #include <initguid.h>
 #include <setupapi.h>
 #include <windows.h>
+#include <QAbstractItemView>
+#include <QApplication>
+#include <QClipboard>
 #include <QDateTime>
 #include <QDebug>
 #include <QElapsedTimer>
+#include <QKeySequence>
+#include <QPlainTextEdit>
 #include <QSet>
+#include <QShortcut>
 #include <QString>
 #include <QTimer>
-#include <QPlainTextEdit>
+#include <algorithm>
 #include "dongle_at_types.h"
 #include "qcoreapplication.h"
 #include "qprocess.h"
@@ -625,6 +631,13 @@ void test_base::finishCommandRetryWait(bool success, const QString& logMessage) 
 
     canGoNext = true;
     sendRetryOver = !success;
+    if (success) {
+        lastCommandFailReason.clear();
+    } else if (!logMessage.trimmed().isEmpty()) {
+        lastCommandFailReason = logMessage.trimmed();
+    } else if (lastCommandFailReason.isEmpty()) {
+        lastCommandFailReason = QStringLiteral("指令失败（原因未知）");
+    }
 
     if (!logMessage.isEmpty()) {
         showlog(logMessage);
@@ -780,7 +793,11 @@ void test_base::onCommandRetryTimerTimeout() {
     if (commandRetryDeadlineMs_ > 0 && nowMs >= commandRetryDeadlineMs_) {
         qDebug() << "retryCount=" << commandRetryCount
                  << QStringLiteral("sendCommandWithRetry 指令超时");
-        finishCommandRetryWait(false, QStringLiteral("指令超时未响应"));
+        const int waitedMs = commandRetryTimeoutMs_ > 0 ? commandRetryTimeoutMs_ : 0;
+        finishCommandRetryWait(
+            false, QStringLiteral("指令超时未响应（已等待%1ms，共重发%2次）")
+                       .arg(waitedMs)
+                       .arg(qMax(0, commandRetrySendCount - 1)));
         return;
     }
 
@@ -804,12 +821,14 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc, int timeo
     commandRetryCount = 0;
     commandRetrySendCount = 0;
     lastCommandRetryCount = 0;
+    lastCommandFailReason.clear();
     canGoNext = false;
     sendRetryOver = false;
     getRespone = 0;
 
     // timeoutMs：步骤「指令超时」总时长（不是重试间隔）
     const int totalMs = qMax(100, timeoutMs);
+    commandRetryTimeoutMs_ = totalMs;
     // 窗口内按间隔补发；间隔夹在 [200, 2000]，且约 total/3
     const int thirdMs = totalMs / 3;
     int intervalMs = qBound(200, thirdMs > 0 ? thirdMs : 200, 2000);
@@ -893,6 +912,11 @@ void test_base::testResultTableUpdate(QVector<TestItem>& testItems) {
         QTableWidgetItem* testDataCell = new QTableWidgetItem(item.testData);
         QTableWidgetItem* resultItem = new QTableWidgetItem(item.testResult);
         QTableWidgetItem* askItem = new QTableWidgetItem(item.ask);
+        const auto selectable = Qt::ItemIsSelectable | Qt::ItemIsEnabled;
+        testItemCell->setFlags(selectable);
+        testDataCell->setFlags(selectable);
+        resultItem->setFlags(selectable);
+        askItem->setFlags(selectable);
         testItemCell->setTextAlignment(Qt::AlignCenter);
         testDataCell->setTextAlignment(Qt::AlignCenter);
         resultItem->setTextAlignment(Qt::AlignCenter);
@@ -978,15 +1002,16 @@ void test_base::solveMesData(const int mechines, QString msg) {
 void test_base::testResultTableInit() {
     pb->setAppVersion(upperComputerVer);
     LockProductUI();
-    if (testResultTable() == nullptr) {
+    QTableWidget* table = testResultTable();
+    if (table == nullptr) {
         showlog("testResultTableInit不存在表格");
         return;
     }
-    testResultTable()->clear();
+    table->clear();
     // 初始化表格
-    testResultTable()->setColumnCount(4); // 三列，分别为Mac地址、SN码和时间戳
+    table->setColumnCount(4); // 三列，分别为Mac地址、SN码和时间戳
 
-    testResultTable()->setRowCount(0); // 初始行数为0，因为还没有数据
+    table->setRowCount(0); // 初始行数为0，因为还没有数据
 
     // 设置表格标题
     QStringList headers;
@@ -994,11 +1019,67 @@ void test_base::testResultTableInit() {
             << "数据"
             << "结果"
             << "要求";
-    testResultTable()->setHorizontalHeaderLabels(headers);
-    testResultTable()->horizontalHeader()->setDefaultAlignment(Qt::AlignCenter);
+    table->setHorizontalHeaderLabels(headers);
+    table->horizontalHeader()->setDefaultAlignment(Qt::AlignCenter);
     // 列宽随表格尺寸变化，拖拽外部大小时同步缩放
-    testResultTable()->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    testResultTable()->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    table->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    // 支持点选/框选后 Ctrl+C 复制（制表符分隔，便于粘贴到 Excel）
+    table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    table->setSelectionMode(QAbstractItemView::ExtendedSelection);
+    table->setSelectionBehavior(QAbstractItemView::SelectItems);
+    table->setFocusPolicy(Qt::StrongFocus);
+    if (!table->property("copyShortcutInstalled").toBool()) {
+        auto* copyShortcut = new QShortcut(QKeySequence::Copy, table);
+        copyShortcut->setContext(Qt::WidgetWithChildrenShortcut);
+        QObject::connect(copyShortcut, &QShortcut::activated, table, [table]() {
+            QModelIndexList indexes;
+            if (table->selectionModel())
+                indexes = table->selectionModel()->selectedIndexes();
+            QString text;
+            if (!indexes.isEmpty()) {
+                std::sort(indexes.begin(), indexes.end(), [](const QModelIndex& a, const QModelIndex& b) {
+                    return a.row() != b.row() ? a.row() < b.row() : a.column() < b.column();
+                });
+                QStringList rows;
+                QStringList cols;
+                int currentRow = -1;
+                for (const QModelIndex& idx : indexes) {
+                    if (idx.row() != currentRow) {
+                        if (currentRow >= 0)
+                            rows.append(cols.join(QLatin1Char('\t')));
+                        cols.clear();
+                        currentRow = idx.row();
+                    }
+                    cols.append(idx.data(Qt::DisplayRole).toString());
+                }
+                if (!cols.isEmpty())
+                    rows.append(cols.join(QLatin1Char('\t')));
+                text = rows.join(QLatin1Char('\n'));
+            } else if (table->rowCount() > 0) {
+                // 未选中时复制整表（含表头）
+                QStringList rows;
+                QStringList headerCols;
+                for (int c = 0; c < table->columnCount(); ++c) {
+                    QTableWidgetItem* h = table->horizontalHeaderItem(c);
+                    headerCols.append(h ? h->text() : QString());
+                }
+                rows.append(headerCols.join(QLatin1Char('\t')));
+                for (int r = 0; r < table->rowCount(); ++r) {
+                    QStringList cols;
+                    for (int c = 0; c < table->columnCount(); ++c) {
+                        QTableWidgetItem* item = table->item(r, c);
+                        cols.append(item ? item->text() : QString());
+                    }
+                    rows.append(cols.join(QLatin1Char('\t')));
+                }
+                text = rows.join(QLatin1Char('\n'));
+            }
+            if (!text.isEmpty())
+                QApplication::clipboard()->setText(text);
+        });
+        table->setProperty("copyShortcutInstalled", true);
+    }
 }
 void test_base::LockProductUI() {
     if (SETTINGS.value("SYSTEM/LockProductUI", 0).toBool())

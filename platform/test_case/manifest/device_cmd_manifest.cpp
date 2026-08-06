@@ -18,24 +18,40 @@ constexpr const char kHintSn[] =
     u8"写 deviceName：which_sn=6，sn=$TUPLE_DEVICE_NAME\r\n"
     u8"写整机 SN：which_sn=1，sn=$WHOLE_MACHINE_SN（本地整机SN）或具体值\r\n"
     u8"  PCBA SN：$PCBA_SN / $SN（扫码/MES，解析 MAC 等，勿用于写整机）\r\n"
+    u8"Qaiot device_side_id：Param_side=0 Left / 1 Right / 2 Independent（默认2）\r\n"
+    u8"  也可用 left/right/independent 或 Param_position=L/R\r\n"
     u8"Qroot：读 0xA0 / 写 0xA1(≤40)；which_sn=7→0xF8；which_sn=6→0xF9；读 6/7 兼容 0xF7";
 constexpr const char kHintRootHeatLevelControl[] =
     u8"Qroot：Req 0x83，CAL=0x02，body：switch(0关1开)+level(0=L1/1=L2/2=L3)\r\n"
     u8"示例：Param_switch=1 Param_level=1 → 开 L2\r\n"
     u8"卡控（可选）：ReportType=ProtocolResultData，Field=result，Expected=1";
 constexpr const char kHintTupleRead[] =
-    u8"无需参数；比对在步骤逻辑中与云端三元组比较\r\n"
+    u8"Qaiot：Param_dataType=2/3/4 只读单项；Param_side=0/1/2（Left/Right/Independent，默认2）\r\n"
+    u8"比对在步骤逻辑中与云端三元组比较\r\n"
     u8"Qroot：Req 0xF7，Ack 30B=ProductID(6)+DeviceID(16)+KeyTail(8 RC4密文)\r\n"
     u8"密钥校验：用完整 16B deviceSecret 对 KeyTail 做 RC4 解密，应等于密钥后 8 字节";
 constexpr const char kHintWriteKey[] =
     u8"写 deviceSecret：value=$TUPLE_DEVICE_SECRET（默认取云端已获取三元组）\r\n"
+    u8"Qaiot：Param_side=0 Left / 1 Right / 2 Independent（默认2）\r\n"
     u8"Qroot：Req 0xFA，密钥 ≤16 字节截断";
 constexpr const char kHintSoftVersionRead[] =
     u8"Qroot：Req 0x91，回包 soft_version(2B)+hw_version(1B)\r\n"
-    u8"卡控：ReportType=ProtocolBaseInfoData，Field=soft_version，Op=compareVersions";
+    u8"Qaiot：Param_field=soft_version|hw_version|res_version（默认固件）\r\n"
+    u8"卡控：ReportType=ProtocolBaseInfoData，Field 与上对应，Op=compareVersions";
+constexpr const char kHintPeriphState[] =
+    u8"Qaiot 读传感器 CID=0x08：Param_type=0x00~0x0D\r\n"
+    u8"00 IMU / 01 压力 / 02 气流 / 03 TOF / 04 电容 / 05 红外 / 06 生物阻抗\r\n"
+    u8"07 液位 / 08 温度 / 09 湿度 / 0A 接近 / 0B 电流 / 0C 霍尔 / 0D 编码器";
+constexpr const char kHintLightCalibWrite[] =
+    u8"Qaiot 写传感器校准 CID=0x09：Param_type + Param_data(hex)\r\n"
+    u8"示例：Param_type=0 Param_data=00";
+constexpr const char kHintAgingStatusRead[] =
+    u8"读工厂模式状态：Param_mode=0~5（默认 2 老化）\r\n"
+    u8"0 idle / 1 factory / 2 aging / 3 suction / 4 compensate / 5 ate";
 constexpr const char kHintGetBattery[] =
     u8"Qroot：Notify 0xE0+0x01 查询；回包 percent(1B)+voltage 大端 0.01V\r\n"
-    u8"卡控：ReportType=ProtocolBatteryData，Field=percent / voltageMv";
+    u8"Qaiot：Param_field=percent|voltage|current|temperature（默认整包）\r\n"
+    u8"卡控：ReportType=ProtocolBatteryData，Field=percent/voltageMv/currentMa/temperatureC";
 constexpr const char kHintRootBatteryTemp[] =
     u8"Qroot：Notify 0x80+0x01 查询电池温度\r\n"
     u8"卡控：ReportType=ProtocolBatteryTempData，Field=type";
@@ -62,7 +78,8 @@ constexpr const char kHintLedTest[] =
     u8"Qroot：Req 0x93，on=1 全亮 / on=0 全灭\r\n"
     u8"示例：Param_on=1 或 {\"on\":1}";
 constexpr const char kHintButtonState[] =
-    u8"Qaiot：模拟按键 CID=0x10，Param_int/Param_key 为按键索引\r\n"
+    u8"Qaiot：模拟按键 CID=0x10，Param_int/Param_key=0x01~0x0B\r\n"
+    u8"01电源 02开始 03模式 04频率 05母乳 06左控 07右控 08恢复出厂 09旅行锁 0A旋钮左 0B旋钮右\r\n"
     u8"Qroot：Notify 0x9A，1=开启按键上报 / 0=关闭；Ack body=0xFF 表示已接收\r\n"
     u8"Qpb：Param_int 为按键索引";
 constexpr const char kHintRootSuctionTest[] =
@@ -83,7 +100,10 @@ constexpr const char kHintFacResult[] =
 constexpr const char kHintBurningMode[] =
     u8"老化：mode、seconds，可选 switch/enter\r\nQroot 进入老化：Notify 0xAF+0x01\r\n示例：{\"mode\":1,\"seconds\":3600}";
 constexpr const char kHintSleep[] = u8"休眠：switch=1 进入，0 退出\r\n示例：{\"switch\":1}";
-constexpr const char kHintFacMode[] = u8"工厂模式：value=1 进入，0 退出\r\n示例：{\"value\":1}";
+constexpr const char kHintFacMode[] =
+    u8"工厂模式：Param_on/value=1 进入 0 退出；Param_mode 模式类型\r\n"
+    u8"0 idle / 1 factory_test / 2 aging / 3 suction / 4 suction_compensate / 5 ate\r\n"
+    u8"示例：Param_mode=1 Param_on=1";
 constexpr const char kHintSuctionMode[] =
     u8"FCTP 吸力测试模式：enter=1 进入，0 退出\r\n示例：Param_enter=1 或 {\"enter\":1}\r\n"
     u8"注意：Qroot 开泵档位请改用「吸力测试(档位)」+ switch/mode/level";
@@ -91,17 +111,29 @@ constexpr const char kHintWifiConnect[] =
     u8"WiFi：name=SSID，password=密码\r\n示例：name=TestAP\r\npassword=12345678";
 constexpr const char kHintRssiRead[] = u8"RSSI：mode=0 读 BLE，mode=1 读 BT\r\n示例：{\"mode\":0}";
 constexpr const char kHintMacWrite[] =
-    u8"写 MAC 地址：value=具体 MAC 地址或 $MAC\r\n示例：Param_value=$MAC 或 {\"value\":\"$MAC\"}";
+    u8"写 MAC：value=MAC 或 $MAC\r\n"
+    u8"Qaiot：CID=0x04 device_data_type=0x05；Param_side=0/1/2（Left/Right/Independent，默认2）\r\n"
+    u8"示例：Param_value=$MAC 或 {\"value\":\"$MAC\"}";
+constexpr const char kHintMacRead[] =
+    u8"读 MAC\r\n"
+    u8"Qaiot：CID=0x03 device_data_type=0x05；Param_side=0/1/2（Left/Right/Independent，默认2）";
 
 // 新增指令：在此表增加一行；协议实现见 qfctp.cpp / qpb.cpp 的 set/get。
 const Row kRows[] = {
     {DeviceCmd::ForbidSleep, "ForbidSleep", u8"禁止休眠", DeviceCmdParamKind::JsonMap, kHintForbidSleep, kSet},
     {DeviceCmd::Sn, "Sn", u8"序列号", DeviceCmdParamKind::JsonMap, kHintSn, kBoth},
-    {DeviceCmd::SoftVersionRead, "SoftVersionRead", u8"版本号", DeviceCmdParamKind::None, kHintSoftVersionRead, kGet},
+    {DeviceCmd::SoftVersionRead, "SoftVersionRead", u8"版本号", DeviceCmdParamKind::JsonMap, kHintSoftVersionRead, kGet},
     {DeviceCmd::BaseInfo, "BaseInfo", u8"基本信息", DeviceCmdParamKind::None, kHintBaseInfo, kGet},
-    {DeviceCmd::GetBattery, "GetBattery", u8"电量", DeviceCmdParamKind::None, kHintGetBattery, kGet},
-    {DeviceCmd::SetBattery, "SetBattery", u8"设置电池类型", DeviceCmdParamKind::JsonMap,
-     u8"Qpb：0=两节电池 1=单节电池\r\n示例：Param_value=0 或 {\"value\":0}", kSet},
+    {DeviceCmd::GetBattery, "GetBattery", u8"电量", DeviceCmdParamKind::JsonMap, kHintGetBattery, kGet},
+    {DeviceCmd::SetBattery, "SetBattery", u8"设置电池/模拟电量", DeviceCmdParamKind::JsonMap,
+     u8"Qpb：0=两节电池 1=单节电池\r\n"
+     u8"Qaiot CID=0x13（可选 TLV，0=该通道真实值）：\r\n"
+     u8"  Param_percent=0~100\r\n"
+     u8"  Param_voltageMv=mV\r\n"
+     u8"  Param_currentMa=mA（放电为负）\r\n"
+     u8"  Param_temperatureC=°C\r\n"
+     u8"示例：Param_percent=50；恢复百分比：Param_percent=0",
+     kSet},
     {DeviceCmd::FacResult, "FacResult", u8"产测结果", DeviceCmdParamKind::JsonMap, kHintFacResult, kSet},
     {DeviceCmd::BurningMode, "BurningMode", u8"老化模式", DeviceCmdParamKind::JsonMap, kHintBurningMode, kSet},
     {DeviceCmd::Sleep, "Sleep", u8"休眠", DeviceCmdParamKind::JsonMap, kHintSleep, kSet},
@@ -115,8 +147,8 @@ const Row kRows[] = {
      u8"FCTP TLV 0x0020，应答电流单位 mA；无电池节点或查询失败时为 0", kGet},
     {DeviceCmd::ChargeCurrentSet, "ChargeCurrentSet", u8"设置充电电流", DeviceCmdParamKind::JsonMap,
      u8"FCTP TLV 0x0022，单位 mA（uint16 小端）\r\n示例：{\"currentMa\":2000} 或 {\"value\":2000}", kSet},
-    {DeviceCmd::TupleRead, "TupleRead", u8"三元组", DeviceCmdParamKind::None, kHintTupleRead, kGet},
-    {DeviceCmd::PeriphState, "PeriphState", u8"外设状态", DeviceCmdParamKind::None, nullptr, kGet},
+    {DeviceCmd::TupleRead, "TupleRead", u8"三元组", DeviceCmdParamKind::JsonMap, kHintTupleRead, kGet},
+    {DeviceCmd::PeriphState, "PeriphState", u8"外设状态", DeviceCmdParamKind::JsonMap, kHintPeriphState, kGet},
     {DeviceCmd::FactoryReset, "FactoryReset", u8"恢复出厂", DeviceCmdParamKind::None, kHintFactoryReset, kSet},
     {DeviceCmd::RootEnterOta, "RootEnterOta", u8"进入OTA", DeviceCmdParamKind::None, kHintRootEnterOta, kSet},
     {DeviceCmd::RootSystemControl, "RootSystemControl", u8"系统控制(兼容)", DeviceCmdParamKind::JsonMap, kHintRootSystemControl, kSet},
@@ -185,12 +217,12 @@ const Row kRows[] = {
     {DeviceCmd::BtFreqMode, "BtFreqMode", u8"蓝牙定频模式", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::WriteKey, "WriteKey", u8"密钥", DeviceCmdParamKind::JsonMap, kHintWriteKey, kSet},
     {DeviceCmd::TrimSet, "TrimSet", u8"微调值", DeviceCmdParamKind::None, nullptr, kSet},
-    {DeviceCmd::MacWrite, "MacWrite", u8"网卡地址", DeviceCmdParamKind::JsonMap, kHintMacWrite, kSet},
+    {DeviceCmd::MacWrite, "MacWrite", u8"蓝牙mac地址", DeviceCmdParamKind::JsonMap, kHintMacWrite, kSet},
     {DeviceCmd::NightLightSet, "NightLightSet", u8"夜灯", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::LedTest, "LedTest", u8"指示灯测试", DeviceCmdParamKind::JsonMap, kHintLedTest, kSet},
     {DeviceCmd::LcdBacklight, "LcdBacklight", u8"屏幕背光", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::LightReportControl, "LightReportControl", u8"灯光上报控制", DeviceCmdParamKind::None, nullptr, kSet},
-    {DeviceCmd::LightCalibWrite, "LightCalibWrite", u8"灯光校准", DeviceCmdParamKind::None, nullptr, kSet},
+    {DeviceCmd::LightCalibWrite, "LightCalibWrite", u8"灯光校准", DeviceCmdParamKind::JsonMap, kHintLightCalibWrite, kSet},
     {DeviceCmd::CompensationSet, "CompensationSet", u8"补偿参数", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::NowMusicInfo, "NowMusicInfo", u8"当前音乐信息", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::SdCardInfo, "SdCardInfo", u8"存储卡信息", DeviceCmdParamKind::None, nullptr, kGet},
@@ -204,10 +236,10 @@ const Row kRows[] = {
     {DeviceCmd::GetServoMotorInfo, "GetServoMotorInfo", u8"舵机信息", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::BurshBacklog, "BurshBacklog", u8"刷牙积压数据", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::TrimRead, "TrimRead", u8"微调值", DeviceCmdParamKind::None, nullptr, kGet},
-    {DeviceCmd::MacRead, "MacRead", u8"网卡地址", DeviceCmdParamKind::None, nullptr, kGet},
+    {DeviceCmd::MacRead, "MacRead", u8"蓝牙mac地址", DeviceCmdParamKind::JsonMap, kHintMacRead, kGet},
     {DeviceCmd::KeySignalRead, "KeySignalRead", u8"按键信号", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::LightCalibRead, "LightCalibRead", u8"灯光校准", DeviceCmdParamKind::None, nullptr, kGet},
-    {DeviceCmd::AgingStatusRead, "AgingStatusRead", u8"老化状态", DeviceCmdParamKind::None, nullptr, kGet},
+    {DeviceCmd::AgingStatusRead, "AgingStatusRead", u8"老化状态", DeviceCmdParamKind::JsonMap, kHintAgingStatusRead, kGet},
     {DeviceCmd::FactoryDoneRead, "FactoryDoneRead", u8"产测完成标志", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::DeviceExceptionRead, "DeviceExceptionRead", u8"设备异常", DeviceCmdParamKind::None, nullptr, kGet},
 };

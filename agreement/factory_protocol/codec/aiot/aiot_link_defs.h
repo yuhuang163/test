@@ -33,25 +33,51 @@ constexpr uint8_t kFctCidSetSensor = 0x09;
 constexpr uint8_t kFctCidDeviceControl = 0x0C;
 constexpr uint8_t kFctCidGetBatteryInfo = 0x0E;
 constexpr uint8_t kFctCidSimulateKey = 0x10;
+constexpr uint8_t kFctCidVirtualBattery = 0x13; // 电量模拟测试，字段置 0=真实
+constexpr uint8_t kFctCidDutNotify = 0x1A;      // 测试数据主动上报（产测模式）
 
-/** 获取产测状态 CID=0x01 的 TLV Type */
+/** CID=0x13 电量模拟 TLV（均可选；置 0 表示该通道恢复真实值） */
+constexpr uint8_t kFctVirtualBattPercent = 0x01;    // uint8 0–100
+constexpr uint8_t kFctVirtualBattVoltageMv = 0x02;  // uint16 mV
+constexpr uint8_t kFctVirtualBattCurrentMa = 0x03;  // int16 mA（放电为负）
+constexpr uint8_t kFctVirtualBattTempC = 0x04;      // int8 °C
+
+/** CID=0x1A 主动上报 TLV */
+constexpr uint8_t kFctDutNotifyList = 0x01;
+constexpr uint8_t kFctDutNotifyStruct = 0x02;
+constexpr uint8_t kFctDutNotifyType = 0x03;
+constexpr uint8_t kFctDutNotifyValue = 0x04;
+constexpr uint8_t kFctDutNotifyTypeVirtualKey = 0x00; // virtual_key_value 按键
+
+/** 获取产测状态 CID=0x01 的 TLV Type（MAC 已迁至通用设备数据 Type=0x05） */
 constexpr uint8_t kFctGetTlvDeviceName = 0x01;
 constexpr uint8_t kFctGetTlvFwVersion = 0x02;
-constexpr uint8_t kFctGetTlvMac = 0x03;
+constexpr uint8_t kFctGetTlvResVersion = 0x03;
 constexpr uint8_t kFctGetTlvFactoryComplete = 0x04;
 constexpr uint8_t kFctGetTlvHwVersion = 0x05;
-constexpr uint8_t kFctGetTlvResVersion = 0x06;
+/** GET/SET 共用：工厂模式 list/struct/type/status */
 constexpr uint8_t kFctGetTlvModeList = 0x20;
 constexpr uint8_t kFctGetTlvModeStruct = 0x21;
 constexpr uint8_t kFctGetTlvModeType = 0x22;
 constexpr uint8_t kFctGetTlvModeStatus = 0x23;
 
-/** 设置产测状态 CID=0x02 的 TLV Type（与 GET 编号空间不同） */
+/** 设置产测状态 CID=0x02：完成标识 Type=0x01（GET 完成标识为 0x04） */
 constexpr uint8_t kFctSetTlvFactoryComplete = 0x01;
-constexpr uint8_t kFctSetTlvModeList = 0x02;
-constexpr uint8_t kFctSetTlvModeStruct = 0x03;
-constexpr uint8_t kFctSetTlvModeType = 0x04;
-constexpr uint8_t kFctSetTlvModeEnable = 0x05;
+
+/** 通用设备数据 CID=0x03/0x04：device_data_type */
+/** CID=0x03/0x04 通用设备数据：device_side_id Type=0x01 */
+constexpr uint8_t kFctDeviceSideId = 0x01;
+constexpr uint8_t kFctDeviceSideLeft = 0x00;
+constexpr uint8_t kFctDeviceSideRight = 0x01;
+constexpr uint8_t kFctDeviceSideIndependent = 0x02;
+/** device_data_timestap：UTC 秒，uint32 大端 */
+constexpr uint8_t kFctDeviceDataTimestamp = 0x02;
+
+constexpr uint8_t kFctDataTypeSn = 0x01;
+constexpr uint8_t kFctDataTypeProductId = 0x02;
+constexpr uint8_t kFctDataTypeDeviceId = 0x03;
+constexpr uint8_t kFctDataTypeDeviceSecret = 0x04;
+constexpr uint8_t kFctDataTypeMac = 0x05;
 
 /** 工厂模式类型 factory_mode_type */
 constexpr uint8_t kFctModeIdle = 0x00;
