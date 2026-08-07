@@ -472,7 +472,10 @@ class MainWindow : public QMainWindow {
     void refreshFlangeStatus(ProtocolTypeData data);
     void refreshPumpStallCurrent(ProtocolPumpStallCurrentData data);
     void refreshTupleData(ProtocolTupleData data);
-    void refreshDongleDeviceName(const QString& name) ;
+    void refreshDongleDeviceName(const QString& name);
+    /** 专用测试页 Qaiot/Air2 控件：填充下拉 itemData；通信走设置页当前协议 */
+    void initQaiotFeatureButtons();
+    void logExtraProtocolReport(const QString& reportType, const QVariant& payload);
 
   private slots:
     void on_connectButton_clicked();
@@ -657,6 +660,29 @@ class MainWindow : public QMainWindow {
     void on_enterSuctionMode_clicked();
     void on_exitSuctionMode_clicked();
     void on_send_root_suction_test_clicked();
+    void on_qaiot_enter_fac_mode_clicked();
+    void on_qaiot_exit_fac_mode_clicked();
+    void on_qaiot_travel_lock_clicked();
+    void on_qaiot_read_soft_ver_clicked();
+    void on_qaiot_read_device_name_clicked();
+    void on_qaiot_send_sim_key_clicked();
+    void on_qaiot_read_aging_status_clicked();
+    void on_qaiot_send_batt_percent_clicked();
+    void on_qaiot_send_batt_mv_clicked();
+    void on_qaiot_send_batt_ma_clicked();
+    void on_qaiot_send_batt_temp_clicked();
+    void on_qaiot_cycle_on_clicked();
+    void on_qaiot_cycle_off_clicked();
+    void on_qaiot_ex_read_clicked();
+    void on_qaiot_ex_write_clicked();
+    void on_qaiot_pump_read_clicked();
+    void on_qaiot_pump_write_clicked();
+    void on_qaiot_valve_read_clicked();
+    void on_qaiot_valve_write_clicked();
+    void on_qaiot_heat_on_clicked();
+    void on_qaiot_heat_off_clicked();
+    void on_qaiot_vib_on_clicked();
+    void on_qaiot_vib_off_clicked();
     void on_send_root_heat_level_clicked();
     void on_readBurningModestatus_clicked();
     void on_kTlvKeyWrite_clicked();

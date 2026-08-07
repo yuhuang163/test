@@ -6,37 +6,26 @@
 #include <QVector>
 
 // --- 发送通道 / 协议 ---
-enum class TestCaseSendAction { Set,
-                                Get };
-
-enum class DeviceCmdParamKind { None,
-                                Int,
-                                UInt,
-                                String,
-                                JsonMap };
+// clang-format off
+enum class TestCaseSendAction { Set, Get };
+enum class DeviceCmdParamKind { None, Int, UInt, String, JsonMap };
+// clang-format on
 
 struct DeviceCmdParamSchema {
     DeviceCmdParamKind kind = DeviceCmdParamKind::None;
     QString hint;
 };
 
-enum class TestCaseSendChannel { Product,
-                                 ProductSerial,
-                                 Dongle,
-                                 Cloud,
-                                 Fixture,
-                                 Modbus,
-                                 Scpi };
-
-enum class TestCaseProductProtocol { Qfctp,
-                                     Qpb,
-                                     Qroot,
-                                     Qaiot };
-
-enum class TestCaseFixtureProtocol { Pcba,
-                                     Asd9026a,
-                                     Xwd, // 原 XWD_BLE / XWD_SUCTION 同一治具串口物理层
-                                     JieliBtBox };
+// clang-format off
+enum class TestCaseSendChannel { Product, ProductSerial, Dongle, Cloud, Fixture, Modbus, Scpi };
+enum class TestCaseProductProtocol { Qfctp, Qpb, Qroot, Qaiot };
+enum class TestCaseFixtureProtocol {
+    Pcba,
+    Asd9026a,
+    Xwd, // 原 XWD_BLE / XWD_SUCTION 同一治具串口物理层
+    JieliBtBox
+};
+// clang-format on
 
 // --- Case 元数据 / 发送 / 时序 ---
 struct TestCaseMeta {
@@ -66,11 +55,9 @@ struct TestCaseTiming {
 };
 
 // --- 卡控 ---
-enum class TestCaseGateOp { Range,
-                            Gt,
-                            Lt,
-                            Eq,
-                            CompareVersions };
+// clang-format off
+enum class TestCaseGateOp { Range, Gt, Lt, Eq, CompareVersions };
+// clang-format on
 
 struct TestCaseGate {
     bool enabled = false;

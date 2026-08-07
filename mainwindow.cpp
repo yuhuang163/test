@@ -1,10 +1,14 @@
 #include "mainwindow.h"
 
 #include <QCheckBox>
+#include <QComboBox>
+#include <QGroupBox>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QSpinBox>
 #include <QDialog>
 #include <QDoubleSpinBox>
 #include <QInputDialog>
-#include <QSpinBox>
 #include <QLineEdit>
 #include <QMenu>
 #include <QPushButton>
@@ -27,6 +31,9 @@
 #include "qatmanager.h"
 #include "qcustomplot.h"
 #include "qsetting.h"
+
+#include <QComboBox>
+#include <QLabel>
 // f4:12:fa:c5:51:c6
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
@@ -114,6 +121,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
                                           ui(new Ui::MainWindow) {
     ui->setupUi(this);
     initDongleSuctionChart();
+    initQaiotFeatureButtons();
     ui->tabWidget->tabBar()->setElideMode(Qt::ElideRight);
     protocolManager.bindQpb(pb);
     protocolManager.bindQfctp(qfctp);
@@ -525,6 +533,9 @@ void MainWindow::onProtocolReport(const ProtocolReport& report) {
         refreshPumpStallCurrent(payload.value<ProtocolPumpStallCurrentData>());
     } else if (reportType == QLatin1String("ProtocolTupleData") && payload.canConvert<ProtocolTupleData>()) {
         refreshTupleData(payload.value<ProtocolTupleData>());
+    } else {
+        // Air2/Qaiot 等调试回包：无专用控件时至少打可读摘要
+        logExtraProtocolReport(reportType, payload);
     }
 }
 
@@ -761,6 +772,360 @@ void MainWindow::refreshTupleData(ProtocolTupleData data) {
 
     showlog(QStringLiteral("三元组：productId=%1 deviceId=%2 key=%3")
                 .arg(data.productId, data.deviceId, data.key));
+}
+
+
+void MainWindow::initQaiotFeatureButtons() {
+    // 专用测试页 groupBox_qaiot_feature：仅填充下拉 itemData（通信走设置页当前协议）
+    if (!ui->groupBox_qaiot_feature)
+        return;
+
+    auto fillCombo = [](QComboBox* cb, const QList<QPair<QString, int>>& items, int currentIndex = 0) {
+        if (!cb)
+            return;
+        cb->clear();
+        for (const auto& it : items)
+            cb->addItem(it.first, it.second);
+        if (currentIndex >= 0 && currentIndex < cb->count())
+            cb->setCurrentIndex(currentIndex);
+    };
+
+    fillCombo(ui->qaiot_fac_mode_type,
+              {{QStringLiteral("工厂模式"), 1},
+               {QStringLiteral("老化模式"), 2},
+               {QStringLiteral("吸力模式"), 3},
+               {QStringLiteral("吸力补偿"), 4},
+               {QStringLiteral("ATE模式"), 5},
+               {QStringLiteral("空闲模式"), 0}});
+    fillCombo(ui->qaiot_sim_key,
+              {{QStringLiteral("电源"), 0x01},
+               {QStringLiteral("开始"), 0x02},
+               {QStringLiteral("模式"), 0x03},
+               {QStringLiteral("频率"), 0x04},
+               {QStringLiteral("母乳"), 0x05},
+               {QStringLiteral("左控制"), 0x06},
+               {QStringLiteral("右控制"), 0x07},
+               {QStringLiteral("恢复出厂"), 0x08},
+               {QStringLiteral("旅行锁键"), 0x09},
+               {QStringLiteral("旋钮左转"), 0x0A},
+               {QStringLiteral("旋钮右转"), 0x0B}});
+    fillCombo(ui->qaiot_aging_mode,
+              {{QStringLiteral("空闲(0)"), 0},
+               {QStringLiteral("工厂(1)"), 1},
+               {QStringLiteral("老化(2)"), 2},
+               {QStringLiteral("吸力(3)"), 3},
+               {QStringLiteral("补偿(4)"), 4},
+               {QStringLiteral("ATE(5)"), 5}},
+              2);
+    fillCombo(ui->qaiot_cycle_type,
+              {{QStringLiteral("IMU(0)"), 0},
+               {QStringLiteral("压力(1)"), 1},
+               {QStringLiteral("气流(2)"), 2},
+               {QStringLiteral("TOF(3)"), 3},
+               {QStringLiteral("红外(4)"), 4},
+               {QStringLiteral("电流(5)"), 5},
+               {QStringLiteral("生物阻抗(6)"), 6},
+               {QStringLiteral("液位(7)"), 7},
+               {QStringLiteral("温度(8)"), 8},
+               {QStringLiteral("湿度(9)"), 9},
+               {QStringLiteral("接近(10)"), 10},
+               {QStringLiteral("霍尔(11)"), 11},
+               {QStringLiteral("编码器(12)"), 12}});
+    fillCombo(ui->qaiot_ex_type,
+              {{QStringLiteral("低电告警(1)"), 1},
+               {QStringLiteral("低电关机(2)"), 2},
+               {QStringLiteral("充电过压(3)"), 3},
+               {QStringLiteral("充电超时(4)"), 4},
+               {QStringLiteral("电池温度(5)"), 5},
+               {QStringLiteral("堵转过流(17)"), 17},
+               {QStringLiteral("电机开路(18)"), 18},
+               {QStringLiteral("负压过高(34)"), 34}});
+}
+
+void MainWindow::on_qaiot_enter_fac_mode_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("mode"), ui->qaiot_fac_mode_type->currentData().toInt());
+    m.insert(QStringLiteral("on"), 1);
+    protocolManager.set(DeviceCmd::FacMode, m);
+    showlog(QStringLiteral("进入%1（走设置页当前协议）").arg(ui->qaiot_fac_mode_type->currentText()));
+}
+
+void MainWindow::on_qaiot_exit_fac_mode_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("mode"), ui->qaiot_fac_mode_type->currentData().toInt());
+    m.insert(QStringLiteral("on"), 0);
+    protocolManager.set(DeviceCmd::FacMode, m);
+    showlog(QStringLiteral("退出%1（走设置页当前协议）").arg(ui->qaiot_fac_mode_type->currentText()));
+}
+
+void MainWindow::on_qaiot_travel_lock_clicked() {
+    protocolManager.set(DeviceCmd::TravelLock);
+    showlog(QStringLiteral("已发送旅行锁"));
+}
+
+void MainWindow::on_qaiot_read_soft_ver_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("field"), QStringLiteral("soft_version"));
+    protocolManager.get(DeviceCmd::SoftVersionRead, m);
+    showlog(QStringLiteral("读取固件版本"));
+}
+
+void MainWindow::on_qaiot_read_device_name_clicked() {
+    protocolManager.get(DeviceCmd::DeviceInfo);
+    showlog(QStringLiteral("读取设备名称"));
+}
+
+void MainWindow::on_qaiot_send_sim_key_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("int"), ui->qaiot_sim_key->currentData().toInt());
+    protocolManager.set(DeviceCmd::ButtonState, m);
+    showlog(QStringLiteral("模拟按键：%1").arg(ui->qaiot_sim_key->currentText()));
+}
+
+void MainWindow::on_qaiot_read_aging_status_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("mode"), ui->qaiot_aging_mode->currentData().toInt());
+    protocolManager.get(DeviceCmd::AgingStatusRead, m);
+    showlog(QStringLiteral("读取%1状态").arg(ui->qaiot_aging_mode->currentText()));
+}
+
+void MainWindow::on_qaiot_send_batt_percent_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("percent"), ui->qaiot_batt_percent->value());
+    protocolManager.set(DeviceCmd::SetBattery, m);
+    showlog(QStringLiteral("模拟电池百分比=%1").arg(ui->qaiot_batt_percent->value()));
+}
+
+void MainWindow::on_qaiot_send_batt_mv_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("voltageMv"), ui->qaiot_batt_mv->value());
+    protocolManager.set(DeviceCmd::SetBattery, m);
+    showlog(QStringLiteral("模拟电池电压=%1 mV").arg(ui->qaiot_batt_mv->value()));
+}
+
+void MainWindow::on_qaiot_send_batt_ma_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("currentMa"), ui->qaiot_batt_ma->value());
+    protocolManager.set(DeviceCmd::SetBattery, m);
+    showlog(QStringLiteral("模拟电池电流=%1 mA").arg(ui->qaiot_batt_ma->value()));
+}
+
+void MainWindow::on_qaiot_send_batt_temp_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("temperatureC"), ui->qaiot_batt_temp->value());
+    protocolManager.set(DeviceCmd::SetBattery, m);
+    showlog(QStringLiteral("模拟电池温度=%1℃").arg(ui->qaiot_batt_temp->value()));
+}
+
+void MainWindow::on_qaiot_cycle_on_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("enable"), 1);
+    m.insert(QStringLiteral("type"), ui->qaiot_cycle_type->currentData().toInt());
+    m.insert(QStringLiteral("intervalTime"), ui->qaiot_cycle_interval->value());
+    protocolManager.set(DeviceCmd::CycleReportWrite, m);
+    showlog(QStringLiteral("开启循环上报：%1 间隔=%2ms")
+                .arg(ui->qaiot_cycle_type->currentText())
+                .arg(ui->qaiot_cycle_interval->value()));
+}
+
+void MainWindow::on_qaiot_cycle_off_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("enable"), 0);
+    protocolManager.set(DeviceCmd::CycleReportWrite, m);
+    showlog(QStringLiteral("关闭循环上报"));
+}
+
+void MainWindow::on_qaiot_ex_read_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("type"), ui->qaiot_ex_type->currentData().toInt());
+    protocolManager.get(DeviceCmd::ExceptionThresholdRead, m);
+    showlog(QStringLiteral("读取异常阈值：%1").arg(ui->qaiot_ex_type->currentText()));
+}
+
+void MainWindow::on_qaiot_ex_write_clicked() {
+    QVariantMap m;
+    const int type = ui->qaiot_ex_type->currentData().toInt();
+    m.insert(QStringLiteral("type"), type);
+    if (type == 5) {
+        m.insert(QStringLiteral("low"), ui->qaiot_ex_low->value());
+        m.insert(QStringLiteral("high"), ui->qaiot_ex_high->value());
+    } else {
+        m.insert(QStringLiteral("value"), ui->qaiot_ex_value->value());
+    }
+    protocolManager.set(DeviceCmd::ExceptionThresholdWrite, m);
+    showlog(QStringLiteral("写入异常阈值：%1").arg(ui->qaiot_ex_type->currentText()));
+}
+
+void MainWindow::on_qaiot_pump_read_clicked() {
+    protocolManager.get(DeviceCmd::PumpParamRead);
+    showlog(QStringLiteral("读取泵运行参数"));
+}
+
+void MainWindow::on_qaiot_pump_write_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("circleNum"), ui->qaiot_pump_circle->value());
+    m.insert(QStringLiteral("durationTime"), ui->qaiot_pump_dur->value());
+    m.insert(QStringLiteral("intervalTime"), ui->qaiot_pump_int->value());
+    m.insert(QStringLiteral("pumpPwm"), ui->qaiot_pump_pwm->value());
+    protocolManager.set(DeviceCmd::PumpParamWrite, m);
+    showlog(QStringLiteral("写入泵运行参数"));
+}
+
+void MainWindow::on_qaiot_valve_read_clicked() {
+    protocolManager.get(DeviceCmd::ValveParamRead);
+    showlog(QStringLiteral("读取阀运行参数"));
+}
+
+void MainWindow::on_qaiot_valve_write_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("valveEnableTime"), ui->qaiot_valve_en->value());
+    m.insert(QStringLiteral("valveDisableTime"), ui->qaiot_valve_dis->value());
+    m.insert(QStringLiteral("valvePwm"), ui->qaiot_valve_pwm->value());
+    protocolManager.set(DeviceCmd::ValveParamWrite, m);
+    showlog(QStringLiteral("写入阀运行参数"));
+}
+
+void MainWindow::on_qaiot_heat_on_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("enable"), 1);
+    m.insert(QStringLiteral("driveStrength"), ui->qaiot_heat_str->value());
+    m.insert(QStringLiteral("durationTime"), ui->qaiot_heat_dur->value());
+    protocolManager.set(DeviceCmd::HeatTestWrite, m);
+    showlog(QStringLiteral("自定义加热开"));
+}
+
+void MainWindow::on_qaiot_heat_off_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("enable"), 0);
+    m.insert(QStringLiteral("driveStrength"), 0);
+    protocolManager.set(DeviceCmd::HeatTestWrite, m);
+    showlog(QStringLiteral("自定义加热关"));
+}
+
+void MainWindow::on_qaiot_vib_on_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("enable"), 1);
+    m.insert(QStringLiteral("driveStrength"), ui->qaiot_vib_str->value());
+    m.insert(QStringLiteral("freq"), ui->qaiot_vib_freq->value());
+    m.insert(QStringLiteral("durationTime"), ui->qaiot_vib_dur->value());
+    protocolManager.set(DeviceCmd::VibrationTestWrite, m);
+    showlog(QStringLiteral("自定义振动开"));
+}
+
+void MainWindow::on_qaiot_vib_off_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("enable"), 0);
+    m.insert(QStringLiteral("driveStrength"), 0);
+    m.insert(QStringLiteral("freq"), 0);
+    protocolManager.set(DeviceCmd::VibrationTestWrite, m);
+    showlog(QStringLiteral("自定义振动关"));
+}
+
+void MainWindow::logExtraProtocolReport(const QString& reportType, const QVariant& payload) {
+    if (reportType == QLatin1String("ProtocolRootAgingHistoryData")
+        && payload.canConvert<ProtocolRootAgingHistoryData>()) {
+        const auto d = payload.value<ProtocolRootAgingHistoryData>();
+        QString head;
+        if (d.status >= 0 || d.finishedFlag >= 0)
+            head = QStringLiteral("使能=%1 完成=%2 ")
+                       .arg(d.status < 0 ? 0 : d.status)
+                       .arg(d.finishedFlag < 0 ? 0 : d.finishedFlag);
+        else
+            head = QStringLiteral("次数=%1 ").arg(d.agingCount);
+        showlog(QStringLiteral("老化历史：%1电池最高温=%2℃ 法兰最高温=%3℃ 堵转次数=%4 阈值=%5 电流=[%6,%7,%8,%9,%10]")
+                    .arg(head)
+                    .arg(d.batteryMaxTempC)
+                    .arg(d.flangeMaxTempC)
+                    .arg(d.stallCount)
+                    .arg(d.stallThreshold)
+                    .arg(d.stallCurrents[0])
+                    .arg(d.stallCurrents[1])
+                    .arg(d.stallCurrents[2])
+                    .arg(d.stallCurrents[3])
+                    .arg(d.stallCurrents[4]));
+        return;
+    }
+    if (reportType == QLatin1String("ProtocolAiotCycleReportData")
+        && payload.canConvert<ProtocolAiotCycleReportData>()) {
+        const auto d = payload.value<ProtocolAiotCycleReportData>();
+        if (d.items.isEmpty()) {
+            showlog(QStringLiteral("循环上报：空 items"));
+            return;
+        }
+        const auto& it = d.items.first();
+        showlog(QStringLiteral("循环上报：type=%1 acc=(%2,%3,%4) temp=%5 current=%6")
+                    .arg(it.dataType)
+                    .arg(it.accX)
+                    .arg(it.accY)
+                    .arg(it.accZ)
+                    .arg(it.temperatureC)
+                    .arg(it.currentMa));
+        return;
+    }
+    if (reportType == QLatin1String("ProtocolAiotCycleReportConfigData")
+        && payload.canConvert<ProtocolAiotCycleReportConfigData>()) {
+        const auto d = payload.value<ProtocolAiotCycleReportConfigData>();
+        showlog(QStringLiteral("循环上报配置：enable=%1").arg(d.enable));
+        return;
+    }
+    if (reportType == QLatin1String("ProtocolAiotExceptionThresholdData")
+        && payload.canConvert<ProtocolAiotExceptionThresholdData>()) {
+        const auto d = payload.value<ProtocolAiotExceptionThresholdData>();
+        if (d.items.isEmpty()) {
+            showlog(QStringLiteral("异常阈值：空"));
+            return;
+        }
+        const auto& it = d.items.first();
+        showlog(QStringLiteral("异常阈值：type=%1 value=%2 high=%3")
+                    .arg(it.type)
+                    .arg(it.value)
+                    .arg(it.valueHigh));
+        return;
+    }
+    if (reportType == QLatin1String("ProtocolAiotHeatTestData") && payload.canConvert<ProtocolAiotHeatTestData>()) {
+        const auto d = payload.value<ProtocolAiotHeatTestData>();
+        showlog(QStringLiteral("加热测试：enable=%1 strength=%2 duration=%3")
+                    .arg(d.enable)
+                    .arg(d.driveStrength)
+                    .arg(d.durationTime));
+        return;
+    }
+    if (reportType == QLatin1String("ProtocolAiotVibrationTestData")
+        && payload.canConvert<ProtocolAiotVibrationTestData>()) {
+        const auto d = payload.value<ProtocolAiotVibrationTestData>();
+        showlog(QStringLiteral("振动测试：enable=%1 strength=%2 freq=%3 duration=%4")
+                    .arg(d.enable)
+                    .arg(d.driveStrength)
+                    .arg(d.freq)
+                    .arg(d.durationTime));
+        return;
+    }
+    if (reportType == QLatin1String("ProtocolAiotPumpParamData") && payload.canConvert<ProtocolAiotPumpParamData>()) {
+        const auto d = payload.value<ProtocolAiotPumpParamData>();
+        showlog(QStringLiteral("泵阀参数：circle=%1 dur=%2 int=%3 vEn=%4 vDis=%5 pPwm=%6 vPwm=%7")
+                    .arg(d.circleNum)
+                    .arg(d.durationTime)
+                    .arg(d.intervalTime)
+                    .arg(d.valveEnableTime)
+                    .arg(d.valveDisableTime)
+                    .arg(d.pumpPwm)
+                    .arg(d.valvePwm));
+        return;
+    }
+    if (reportType == QLatin1String("ProtocolBaseInfoData") && payload.canConvert<ProtocolBaseInfoData>()) {
+        const auto d = payload.value<ProtocolBaseInfoData>();
+        showlog(QStringLiteral("设备信息：name=%1 soft=%2 hw=%3 res=%4")
+                    .arg(d.product_name, d.soft_version, d.hw_version, d.res_version));
+        return;
+    }
+    if (reportType == QLatin1String("ProtocolFactoryDoneData") && payload.canConvert<ProtocolFactoryDoneData>()) {
+        showlog(QStringLiteral("产测完成标识：%1")
+                    .arg(payload.value<ProtocolFactoryDoneData>().done ? QStringLiteral("已完成")
+                                                                      : QStringLiteral("未完成")));
+        return;
+    }
+    if (reportType.startsWith(QLatin1String("ProtocolAiot")) || reportType.startsWith(QLatin1String("ProtocolRoot")))
+        showlog(QStringLiteral("协议上报：%1").arg(reportType));
 }
 
 void MainWindow::refreshSettingsMenuVisibility() {
