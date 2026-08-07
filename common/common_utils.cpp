@@ -363,6 +363,7 @@ static const ProductEntry kProductTable[] = {
     {"M8",       "qroot", true,  "Pump-E",   false},
     {"Wellness Warm",  "qroot", true, "Wellness Warm",  true},
     {"M8P",      "qaiot", false, "M8P",      false},
+    {"W1 Lite",  "qroot", true, "W1 Lite",  true},
 };
 
 /** 主窗口 BLE 扫描过滤名补充项（无产品映射，仅作筛选提示）。 */
