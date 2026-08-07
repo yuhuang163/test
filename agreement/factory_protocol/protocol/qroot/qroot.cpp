@@ -547,6 +547,35 @@ void Qroot::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
         emit sendGetProductResponse(1);
         hasPending_ = false;
         break;
+    case AgingHistory:
+        // 次数1 + 电池最高温1 + 法兰最高温1 + 堵转次数1 + 泵阀堵转阈值2 BE + 最新堵转电流×5(各2B BE) = 16B
+        if (body.size() >= 16) {
+            ProtocolRootAgingHistoryData hist;
+            hist.agingCount = static_cast<quint8>(body.at(0));
+            hist.batteryMaxTempC = static_cast<quint8>(body.at(1));
+            hist.flangeMaxTempC = static_cast<quint8>(body.at(2));
+            hist.stallCount = static_cast<quint8>(body.at(3));
+            hist.stallThreshold =
+                (static_cast<quint8>(body.at(4)) << 8) | static_cast<quint8>(body.at(5));
+            for (int i = 0; i < 5; ++i) {
+                const int off = 6 + i * 2;
+                hist.stallCurrents[i] =
+                    (static_cast<quint8>(body.at(off)) << 8) | static_cast<quint8>(body.at(off + 1));
+            }
+            qDebug().noquote() << "[Qroot] AgingHistory count=" << hist.agingCount
+                               << "batMax=" << hist.batteryMaxTempC << "C"
+                               << "flangeMax=" << hist.flangeMaxTempC << "C"
+                               << "stallCount=" << hist.stallCount
+                               << "stallTh=" << hist.stallThreshold << "I=" << hist.stallCurrents[0]
+                               << hist.stallCurrents[1] << hist.stallCurrents[2]
+                               << hist.stallCurrents[3] << hist.stallCurrents[4];
+            emitReport(QStringLiteral("ProtocolRootAgingHistoryData"), QVariant::fromValue(hist));
+        } else {
+            qWarning() << "[Qroot] AgingHistory body too short, len=" << body.size();
+        }
+        emit sendGetProductResponse(1);
+        hasPending_ = false;
+        break;
     case HeatLevelControl:
         if (body.size() >= 1) {
             ProtocolResultData result;
@@ -985,6 +1014,10 @@ void Qroot::get(DeviceCmd cmd, const QVariant& param) {
         return;
     case DeviceCmd::RootPumpStallCurrentQuery:
         sendPacket(Req, PumpStallCurrent, {});
+        return;
+    case DeviceCmd::RootAgingHistoryQuery:
+        // 0x9C：Req 无参；Ack 16B 老化历史
+        sendPacket(Req, AgingHistory, {});
         return;
     case DeviceCmd::RootNtcQuery:
         sendQuery(NtcStatus);

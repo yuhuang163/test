@@ -92,6 +92,13 @@ class Qaiot : public qProtocol {
     quint8 pendingService_ = 0;
     quint8 pendingCommand_ = 0;
     QString pendingAction_;
+    // 加热/振动/循环上报配置：固件常只回空 ACK（无结果 TLV），用发送参数回填卡控
+    ProtocolAiotHeatTestData pendingHeat_;
+    bool hasPendingHeat_ = false;
+    ProtocolAiotVibrationTestData pendingVibration_;
+    bool hasPendingVibration_ = false;
+    ProtocolAiotCycleReportConfigData pendingCycleReport_;
+    bool hasPendingCycleReport_ = false;
 };
 
 #endif // QAIOT_H

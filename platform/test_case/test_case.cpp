@@ -4059,6 +4059,64 @@ const QVector<GateTypeDescriptor> kTypes = {
     {QStringLiteral("ProtocolChargeCurrentData"), QStringLiteral("充电电流"), {{QStringLiteral("currentMa"), QStringLiteral("电流(mA)")}}},
     {QStringLiteral("ProtocolTrimData"), QStringLiteral("Trim微调值"), {{QStringLiteral("trim"), QStringLiteral("微调值")}}},
     {QStringLiteral("ProtocolLightCalibData"), QStringLiteral("光感校准值"), {{QStringLiteral("calibValue"), QStringLiteral("校准值")}}},
+    {QStringLiteral("ProtocolAiotImuCaliData"), QStringLiteral("Qaiot IMU校准"),
+     {{QStringLiteral("kx"), QStringLiteral("kx")},
+      {QStringLiteral("ky"), QStringLiteral("ky")},
+      {QStringLiteral("kz"), QStringLiteral("kz")},
+      {QStringLiteral("syx"), QStringLiteral("syx")},
+      {QStringLiteral("szx"), QStringLiteral("szx")},
+      {QStringLiteral("szy"), QStringLiteral("szy")},
+      {QStringLiteral("bx"), QStringLiteral("bx")},
+      {QStringLiteral("by"), QStringLiteral("by")},
+      {QStringLiteral("bz"), QStringLiteral("bz")}}},
+    {QStringLiteral("ProtocolAiotFsensorCaliData"), QStringLiteral("Qaiot电容/力传感校准"),
+     {{QStringLiteral("calibrated"), QStringLiteral("校准标志")}}},
+    {QStringLiteral("ProtocolAiotExceptionThresholdData"), QStringLiteral("Qaiot异常阈值"),
+     {{QStringLiteral("type"), QStringLiteral("异常类型")},
+      {QStringLiteral("value"), QStringLiteral("阈值主值")},
+      {QStringLiteral("valueHigh"), QStringLiteral("阈值上限")}}},
+    {QStringLiteral("ProtocolAiotPumpParamData"), QStringLiteral("Qaiot泵/阀参数"),
+     {{QStringLiteral("circleNum"), QStringLiteral("循环次数")},
+      {QStringLiteral("durationTime"), QStringLiteral("泵工作时长")},
+      {QStringLiteral("intervalTime"), QStringLiteral("泵间隔时长")},
+      {QStringLiteral("valveEnableTime"), QStringLiteral("阀使能时长")},
+      {QStringLiteral("valveDisableTime"), QStringLiteral("阀关闭时长")},
+      {QStringLiteral("pumpPwm"), QStringLiteral("泵PWM%")},
+      {QStringLiteral("valvePwm"), QStringLiteral("阀PWM%")}}},
+    {QStringLiteral("ProtocolAiotHeatTestData"), QStringLiteral("Qaiot自定义加热"),
+     {{QStringLiteral("enable"), QStringLiteral("加热使能")},
+      {QStringLiteral("driveStrength"), QStringLiteral("加热强度")},
+      {QStringLiteral("durationTime"), QStringLiteral("加热时长")}}},
+    {QStringLiteral("ProtocolAiotVibrationTestData"), QStringLiteral("Qaiot自定义振动"),
+     {{QStringLiteral("enable"), QStringLiteral("振动使能")},
+      {QStringLiteral("driveStrength"), QStringLiteral("振动强度")},
+      {QStringLiteral("freq"), QStringLiteral("振动频率")},
+      {QStringLiteral("durationTime"), QStringLiteral("振动时长")}}},
+    {QStringLiteral("ProtocolAiotCycleReportConfigData"), QStringLiteral("Qaiot循环上报配置"),
+     {{QStringLiteral("enable"), QStringLiteral("循环上报使能")},
+      {QStringLiteral("dataType"), QStringLiteral("数据类型")},
+      {QStringLiteral("intervalTime"), QStringLiteral("上报周期ms")}}},
+    {QStringLiteral("ProtocolAiotCycleReportData"), QStringLiteral("Qaiot循环上报数据"),
+     {{QStringLiteral("dataType"), QStringLiteral("数据类型")},
+      {QStringLiteral("accX"), QStringLiteral("加速度X")},
+      {QStringLiteral("accY"), QStringLiteral("加速度Y")},
+      {QStringLiteral("accZ"), QStringLiteral("加速度Z")},
+      {QStringLiteral("gyroX"), QStringLiteral("角速度X")},
+      {QStringLiteral("gyroY"), QStringLiteral("角速度Y")},
+      {QStringLiteral("gyroZ"), QStringLiteral("角速度Z")},
+      {QStringLiteral("pressureOut"), QStringLiteral("压力出(0.1Pa)")},
+      {QStringLiteral("pressureIn"), QStringLiteral("压力进(0.1Pa)")},
+      {QStringLiteral("flowRate"), QStringLiteral("气流(0.01L/min)")},
+      {QStringLiteral("distanceMm"), QStringLiteral("距离mm")},
+      {QStringLiteral("adcRaw"), QStringLiteral("ADC原始值")},
+      {QStringLiteral("irLevel"), QStringLiteral("红外强度")},
+      {QStringLiteral("impedance"), QStringLiteral("阻抗(0.1Ω)")},
+      {QStringLiteral("levelMm"), QStringLiteral("液位mm")},
+      {QStringLiteral("temperatureC"), QStringLiteral("温度℃")},
+      {QStringLiteral("humidity"), QStringLiteral("湿度%RH")},
+      {QStringLiteral("currentMa"), QStringLiteral("电流mA")},
+      {QStringLiteral("hallState"), QStringLiteral("霍尔状态")},
+      {QStringLiteral("pulseCount"), QStringLiteral("编码器脉冲")}}},
     {QStringLiteral("ProtocolSnData"), QStringLiteral("序列号"), {{QStringLiteral("value"), QStringLiteral("序列号文本")}}},
     {QStringLiteral("ProtocolBaseInfoData"), QStringLiteral("基本信息"), {{QStringLiteral("soft_version"), QStringLiteral("软件版本")}, {QStringLiteral("res_version"), QStringLiteral("资源版本")}, {QStringLiteral("product_name"), QStringLiteral("产品名称")}, {QStringLiteral("hw_version"), QStringLiteral("硬件版本")}, {QStringLiteral("algo_version"), QStringLiteral("算法版本")}, {QStringLiteral("ageing_state"), QStringLiteral("老化状态")}}},
     {QStringLiteral("ProtocolPeriphStateData"), QStringLiteral("外设状态"), {{QStringLiteral("press0_state"), QStringLiteral("压感0状态")}, {QStringLiteral("press1_state"), QStringLiteral("压感1状态")}, {QStringLiteral("battery_ic_state"), QStringLiteral("电池IC状态")}, {QStringLiteral("touch_ic_state"), QStringLiteral("触摸IC状态")}, {QStringLiteral("led_ic_state"), QStringLiteral("LED IC状态")}, {QStringLiteral("pd_ic_state"), QStringLiteral("PD IC状态")}}},
@@ -4073,6 +4131,19 @@ const QVector<GateTypeDescriptor> kTypes = {
     {QStringLiteral("ProtocolTypeData"), QStringLiteral("状态码"), {{QStringLiteral("type"), QStringLiteral("状态值")}}},
     {QStringLiteral("ProtocolFlangeData"), QStringLiteral("法兰状态"), {{QStringLiteral("type"), QStringLiteral("法兰类型")}}},
     {QStringLiteral("ProtocolPumpStallCurrentData"), QStringLiteral("泵堵电流"), {{QStringLiteral("adcValue"), QStringLiteral("堵转ADC")}}},
+    {QStringLiteral("ProtocolRootAgingHistoryData"), QStringLiteral("老化历史/老化模式"),
+     {{QStringLiteral("status"), QStringLiteral("老化使能")},
+      {QStringLiteral("finishedFlag"), QStringLiteral("老化完成标志")},
+      {QStringLiteral("agingCount"), QStringLiteral("老化当前次数")},
+      {QStringLiteral("batteryMaxTempC"), QStringLiteral("电池历史最高温℃")},
+      {QStringLiteral("flangeMaxTempC"), QStringLiteral("法兰历史最高温℃")},
+      {QStringLiteral("stallCount"), QStringLiteral("老化堵转次数")},
+      {QStringLiteral("stallThreshold"), QStringLiteral("泵阀堵转阈值")},
+      {QStringLiteral("stallCurrent0"), QStringLiteral("堵转电流1")},
+      {QStringLiteral("stallCurrent1"), QStringLiteral("堵转电流2")},
+      {QStringLiteral("stallCurrent2"), QStringLiteral("堵转电流3")},
+      {QStringLiteral("stallCurrent3"), QStringLiteral("堵转电流4")},
+      {QStringLiteral("stallCurrent4"), QStringLiteral("堵转电流5")}}},
     {QStringLiteral("ProtocolBatteryTempData"), QStringLiteral("电池温度"), {{QStringLiteral("type"), QStringLiteral("温度值")}}},
     {QStringLiteral("ProtocolHeatTempData"), QStringLiteral("加热温度"), {{QStringLiteral("type"), QStringLiteral("温度值")}}},
     {QStringLiteral("ProtocolMeasureData"), QStringLiteral("外设测量值"), {{QStringLiteral("value"), QStringLiteral("测量数值")}, {QStringLiteral("valueText"), QStringLiteral("测量文本值")}, {QStringLiteral("deviceName"), QStringLiteral("外设名称")}, {QStringLiteral("channel"), QStringLiteral("通道号")}, {QStringLiteral("type"), QStringLiteral("测量类型")}, {QStringLiteral("unit"), QStringLiteral("单位")}}},
@@ -4143,6 +4214,45 @@ double fieldValueFromVariant(const QString& reportType, const QString& field, co
             ok = true;
             return static_cast<double>(d.adcValue);
         }
+    } else if (reportType == QLatin1String("ProtocolRootAgingHistoryData")) {
+        const auto d = payload.value<ProtocolRootAgingHistoryData>();
+        if (field == QLatin1String("status") || field == QLatin1String("enable")) {
+            ok = true;
+            return static_cast<double>(d.status);
+        }
+        if (field == QLatin1String("finishedFlag") || field == QLatin1String("finished")) {
+            ok = true;
+            return static_cast<double>(d.finishedFlag);
+        }
+        if (field == QLatin1String("agingCount") || field == QLatin1String("count")
+            || field == QLatin1String("loops")) {
+            ok = true;
+            return static_cast<double>(d.agingCount);
+        }
+        if (field == QLatin1String("batteryMaxTempC") || field == QLatin1String("batteryMaxTemp")) {
+            ok = true;
+            return static_cast<double>(d.batteryMaxTempC);
+        }
+        if (field == QLatin1String("flangeMaxTempC") || field == QLatin1String("flangeMaxTemp")) {
+            ok = true;
+            return static_cast<double>(d.flangeMaxTempC);
+        }
+        if (field == QLatin1String("stallCount")) {
+            ok = true;
+            return static_cast<double>(d.stallCount);
+        }
+        if (field == QLatin1String("stallThreshold")) {
+            ok = true;
+            return static_cast<double>(d.stallThreshold);
+        }
+        if (field.startsWith(QLatin1String("stallCurrent"))) {
+            bool idxOk = false;
+            const int idx = field.mid(QStringLiteral("stallCurrent").size()).toInt(&idxOk);
+            if (idxOk && idx >= 0 && idx < 5) {
+                ok = true;
+                return static_cast<double>(d.stallCurrents[idx]);
+            }
+        }
     } else if (reportType == QLatin1String("ProtocolTrimData")) {
         const auto d = payload.value<ProtocolTrimData>();
         if (field == QLatin1String("trim")) {
@@ -4154,6 +4264,245 @@ double fieldValueFromVariant(const QString& reportType, const QString& field, co
         if (field == QLatin1String("calibValue")) {
             ok = true;
             return static_cast<double>(d.calibValue);
+        }
+    } else if (reportType == QLatin1String("ProtocolAiotImuCaliData")) {
+        const auto d = payload.value<ProtocolAiotImuCaliData>();
+        if (field == QLatin1String("kx")) {
+            ok = true;
+            return d.kx;
+        }
+        if (field == QLatin1String("ky")) {
+            ok = true;
+            return d.ky;
+        }
+        if (field == QLatin1String("kz")) {
+            ok = true;
+            return d.kz;
+        }
+        if (field == QLatin1String("syx")) {
+            ok = true;
+            return d.syx;
+        }
+        if (field == QLatin1String("szx")) {
+            ok = true;
+            return d.szx;
+        }
+        if (field == QLatin1String("szy")) {
+            ok = true;
+            return d.szy;
+        }
+        if (field == QLatin1String("bx")) {
+            ok = true;
+            return d.bx;
+        }
+        if (field == QLatin1String("by")) {
+            ok = true;
+            return d.by;
+        }
+        if (field == QLatin1String("bz")) {
+            ok = true;
+            return d.bz;
+        }
+    } else if (reportType == QLatin1String("ProtocolAiotFsensorCaliData")) {
+        const auto d = payload.value<ProtocolAiotFsensorCaliData>();
+        if (field == QLatin1String("calibrated") || field == QLatin1String("flag")) {
+            ok = true;
+            return d.calibrated;
+        }
+    } else if (reportType == QLatin1String("ProtocolAiotExceptionThresholdData")) {
+        const auto d = payload.value<ProtocolAiotExceptionThresholdData>();
+        if (d.items.isEmpty())
+            return 0.0;
+        const auto& item = d.items.first();
+        if (field == QLatin1String("type")) {
+            ok = true;
+            return item.type;
+        }
+        if (field == QLatin1String("value") || field == QLatin1String("percent") || field == QLatin1String("voltageMv")
+            || field == QLatin1String("seconds") || field == QLatin1String("currentMa")
+            || field == QLatin1String("tempLow") || field == QLatin1String("low")) {
+            ok = true;
+            return item.value;
+        }
+        if (field == QLatin1String("valueHigh") || field == QLatin1String("tempHigh") || field == QLatin1String("high")) {
+            ok = true;
+            return item.valueHigh;
+        }
+    } else if (reportType == QLatin1String("ProtocolAiotPumpParamData")) {
+        const auto d = payload.value<ProtocolAiotPumpParamData>();
+        if (field == QLatin1String("circleNum") || field == QLatin1String("loops")
+            || field == QLatin1String("pump_run_time") || field == QLatin1String("pump_circle_num")) {
+            ok = true;
+            return d.circleNum;
+        }
+        if (field == QLatin1String("durationTime") || field == QLatin1String("pump_duration_time")) {
+            ok = true;
+            return d.durationTime;
+        }
+        if (field == QLatin1String("intervalTime") || field == QLatin1String("pump_interval_time")) {
+            ok = true;
+            return d.intervalTime;
+        }
+        if (field == QLatin1String("valveEnableTime") || field == QLatin1String("value_enable_time")
+            || field == QLatin1String("valve_enable_time")) {
+            ok = true;
+            return d.valveEnableTime;
+        }
+        if (field == QLatin1String("valveDisableTime") || field == QLatin1String("value_disable_time")
+            || field == QLatin1String("valve_disable_time")) {
+            ok = true;
+            return d.valveDisableTime;
+        }
+        if (field == QLatin1String("pumpPwm") || field == QLatin1String("pump_pwm_value")) {
+            ok = true;
+            return d.pumpPwm;
+        }
+        if (field == QLatin1String("valvePwm") || field == QLatin1String("value_pwm_value")
+            || field == QLatin1String("valve_pwm_value")) {
+            ok = true;
+            return d.valvePwm;
+        }
+    } else if (reportType == QLatin1String("ProtocolAiotHeatTestData")) {
+        const auto d = payload.value<ProtocolAiotHeatTestData>();
+        if (field == QLatin1String("enable") || field == QLatin1String("heat_enable")) {
+            ok = true;
+            return d.enable;
+        }
+        if (field == QLatin1String("driveStrength") || field == QLatin1String("heat_drive_strength")
+            || field == QLatin1String("strength") || field == QLatin1String("pwm")) {
+            ok = true;
+            return d.driveStrength;
+        }
+        if (field == QLatin1String("durationTime") || field == QLatin1String("heat_duration_time")
+            || field == QLatin1String("duration")) {
+            ok = true;
+            return d.durationTime;
+        }
+    } else if (reportType == QLatin1String("ProtocolAiotVibrationTestData")) {
+        const auto d = payload.value<ProtocolAiotVibrationTestData>();
+        if (field == QLatin1String("enable") || field == QLatin1String("vibration_enable")) {
+            ok = true;
+            return d.enable;
+        }
+        if (field == QLatin1String("driveStrength") || field == QLatin1String("vibration_drive_strength")
+            || field == QLatin1String("strength") || field == QLatin1String("pwm")) {
+            ok = true;
+            return d.driveStrength;
+        }
+        if (field == QLatin1String("freq") || field == QLatin1String("vibration_freq")
+            || field == QLatin1String("frequency")) {
+            ok = true;
+            return d.freq;
+        }
+        if (field == QLatin1String("durationTime") || field == QLatin1String("vibration_duration_time")
+            || field == QLatin1String("duration")) {
+            ok = true;
+            return d.durationTime;
+        }
+    } else if (reportType == QLatin1String("ProtocolAiotCycleReportConfigData")) {
+        const auto d = payload.value<ProtocolAiotCycleReportConfigData>();
+        if (field == QLatin1String("enable") || field == QLatin1String("cycle_report_enable")) {
+            ok = true;
+            return d.enable;
+        }
+        if (d.items.isEmpty())
+            return 0;
+        const auto& item = d.items.first();
+        if (field == QLatin1String("dataType") || field == QLatin1String("type")
+            || field == QLatin1String("report_data_type")) {
+            ok = true;
+            return item.dataType;
+        }
+        if (field == QLatin1String("intervalTime") || field == QLatin1String("report_interval_time")
+            || field == QLatin1String("interval")) {
+            ok = true;
+            return item.intervalTime;
+        }
+    } else if (reportType == QLatin1String("ProtocolAiotCycleReportData")) {
+        const auto d = payload.value<ProtocolAiotCycleReportData>();
+        if (d.items.isEmpty())
+            return 0;
+        const auto& item = d.items.first();
+        if (field == QLatin1String("dataType") || field == QLatin1String("type")
+            || field == QLatin1String("report_data_type")) {
+            ok = true;
+            return item.dataType;
+        }
+        if (field == QLatin1String("accX")) {
+            ok = true;
+            return item.accX;
+        }
+        if (field == QLatin1String("accY")) {
+            ok = true;
+            return item.accY;
+        }
+        if (field == QLatin1String("accZ")) {
+            ok = true;
+            return item.accZ;
+        }
+        if (field == QLatin1String("gyroX")) {
+            ok = true;
+            return item.gyroX;
+        }
+        if (field == QLatin1String("gyroY")) {
+            ok = true;
+            return item.gyroY;
+        }
+        if (field == QLatin1String("gyroZ")) {
+            ok = true;
+            return item.gyroZ;
+        }
+        if (field == QLatin1String("pressureOut") || field == QLatin1String("p_out")) {
+            ok = true;
+            return item.pressureOut;
+        }
+        if (field == QLatin1String("pressureIn") || field == QLatin1String("p_in")) {
+            ok = true;
+            return item.pressureIn;
+        }
+        if (field == QLatin1String("flowRate") || field == QLatin1String("flow_rate")) {
+            ok = true;
+            return item.flowRate;
+        }
+        if (field == QLatin1String("distanceMm") || field == QLatin1String("distance")) {
+            ok = true;
+            return item.distanceMm;
+        }
+        if (field == QLatin1String("adcRaw") || field == QLatin1String("adc")) {
+            ok = true;
+            return item.adcRaw;
+        }
+        if (field == QLatin1String("irLevel") || field == QLatin1String("ir_level")) {
+            ok = true;
+            return item.irLevel;
+        }
+        if (field == QLatin1String("impedance")) {
+            ok = true;
+            return item.impedance;
+        }
+        if (field == QLatin1String("levelMm") || field == QLatin1String("level")) {
+            ok = true;
+            return item.levelMm;
+        }
+        if (field == QLatin1String("temperatureC") || field == QLatin1String("temperature")) {
+            ok = true;
+            return item.temperatureC;
+        }
+        if (field == QLatin1String("humidity")) {
+            ok = true;
+            return item.humidity;
+        }
+        if (field == QLatin1String("currentMa") || field == QLatin1String("current")) {
+            ok = true;
+            return item.currentMa;
+        }
+        if (field == QLatin1String("hallState") || field == QLatin1String("hall")) {
+            ok = true;
+            return item.hallState;
+        }
+        if (field == QLatin1String("pulseCount") || field == QLatin1String("pulse")) {
+            ok = true;
+            return item.pulseCount;
         }
     } else if (reportType == QLatin1String("ProtocolBaseInfoData")) {
         const auto d = payload.value<ProtocolBaseInfoData>();
@@ -4344,6 +4693,231 @@ QString fieldStringFromVariant(const QString& reportType, const QString& field, 
             ok = true;
             return QString::number(d.temperatureC);
         }
+    } else if (reportType == QLatin1String("ProtocolAiotImuCaliData")) {
+        const auto d = payload.value<ProtocolAiotImuCaliData>();
+        auto num = [&](float v) {
+            ok = true;
+            return QString::number(v, 'g', 8);
+        };
+        if (field == QLatin1String("kx"))
+            return num(d.kx);
+        if (field == QLatin1String("ky"))
+            return num(d.ky);
+        if (field == QLatin1String("kz"))
+            return num(d.kz);
+        if (field == QLatin1String("syx"))
+            return num(d.syx);
+        if (field == QLatin1String("szx"))
+            return num(d.szx);
+        if (field == QLatin1String("szy"))
+            return num(d.szy);
+        if (field == QLatin1String("bx"))
+            return num(d.bx);
+        if (field == QLatin1String("by"))
+            return num(d.by);
+        if (field == QLatin1String("bz"))
+            return num(d.bz);
+    } else if (reportType == QLatin1String("ProtocolAiotFsensorCaliData")) {
+        const auto d = payload.value<ProtocolAiotFsensorCaliData>();
+        if (field == QLatin1String("calibrated") || field == QLatin1String("flag")) {
+            ok = true;
+            return QString::number(d.calibrated);
+        }
+    } else if (reportType == QLatin1String("ProtocolAiotExceptionThresholdData")) {
+        const auto d = payload.value<ProtocolAiotExceptionThresholdData>();
+        if (d.items.isEmpty())
+            return {};
+        const auto& item = d.items.first();
+        if (field == QLatin1String("type")) {
+            ok = true;
+            return QString::number(item.type);
+        }
+        if (field == QLatin1String("value") || field == QLatin1String("percent") || field == QLatin1String("voltageMv")
+            || field == QLatin1String("seconds") || field == QLatin1String("currentMa")
+            || field == QLatin1String("tempLow") || field == QLatin1String("low")) {
+            ok = true;
+            return QString::number(item.value);
+        }
+        if (field == QLatin1String("valueHigh") || field == QLatin1String("tempHigh") || field == QLatin1String("high")) {
+            ok = true;
+            return QString::number(item.valueHigh);
+        }
+    } else if (reportType == QLatin1String("ProtocolAiotPumpParamData")) {
+        const auto d = payload.value<ProtocolAiotPumpParamData>();
+        if (field == QLatin1String("circleNum") || field == QLatin1String("loops")
+            || field == QLatin1String("pump_run_time") || field == QLatin1String("pump_circle_num")) {
+            ok = true;
+            return QString::number(d.circleNum);
+        }
+        if (field == QLatin1String("durationTime") || field == QLatin1String("pump_duration_time")) {
+            ok = true;
+            return QString::number(d.durationTime);
+        }
+        if (field == QLatin1String("intervalTime") || field == QLatin1String("pump_interval_time")) {
+            ok = true;
+            return QString::number(d.intervalTime);
+        }
+        if (field == QLatin1String("valveEnableTime") || field == QLatin1String("value_enable_time")
+            || field == QLatin1String("valve_enable_time")) {
+            ok = true;
+            return QString::number(d.valveEnableTime);
+        }
+        if (field == QLatin1String("valveDisableTime") || field == QLatin1String("value_disable_time")
+            || field == QLatin1String("valve_disable_time")) {
+            ok = true;
+            return QString::number(d.valveDisableTime);
+        }
+        if (field == QLatin1String("pumpPwm") || field == QLatin1String("pump_pwm_value")) {
+            ok = true;
+            return QString::number(d.pumpPwm);
+        }
+        if (field == QLatin1String("valvePwm") || field == QLatin1String("value_pwm_value")
+            || field == QLatin1String("valve_pwm_value")) {
+            ok = true;
+            return QString::number(d.valvePwm);
+        }
+    } else if (reportType == QLatin1String("ProtocolAiotHeatTestData")) {
+        const auto d = payload.value<ProtocolAiotHeatTestData>();
+        if (field == QLatin1String("enable") || field == QLatin1String("heat_enable")) {
+            ok = true;
+            return QString::number(d.enable);
+        }
+        if (field == QLatin1String("driveStrength") || field == QLatin1String("heat_drive_strength")
+            || field == QLatin1String("strength") || field == QLatin1String("pwm")) {
+            ok = true;
+            return QString::number(d.driveStrength);
+        }
+        if (field == QLatin1String("durationTime") || field == QLatin1String("heat_duration_time")
+            || field == QLatin1String("duration")) {
+            ok = true;
+            return QString::number(d.durationTime);
+        }
+    } else if (reportType == QLatin1String("ProtocolAiotVibrationTestData")) {
+        const auto d = payload.value<ProtocolAiotVibrationTestData>();
+        if (field == QLatin1String("enable") || field == QLatin1String("vibration_enable")) {
+            ok = true;
+            return QString::number(d.enable);
+        }
+        if (field == QLatin1String("driveStrength") || field == QLatin1String("vibration_drive_strength")
+            || field == QLatin1String("strength") || field == QLatin1String("pwm")) {
+            ok = true;
+            return QString::number(d.driveStrength);
+        }
+        if (field == QLatin1String("freq") || field == QLatin1String("vibration_freq")
+            || field == QLatin1String("frequency")) {
+            ok = true;
+            return QString::number(d.freq);
+        }
+        if (field == QLatin1String("durationTime") || field == QLatin1String("vibration_duration_time")
+            || field == QLatin1String("duration")) {
+            ok = true;
+            return QString::number(d.durationTime);
+        }
+    } else if (reportType == QLatin1String("ProtocolAiotCycleReportConfigData")) {
+        const auto d = payload.value<ProtocolAiotCycleReportConfigData>();
+        if (field == QLatin1String("enable") || field == QLatin1String("cycle_report_enable")) {
+            ok = true;
+            return QString::number(d.enable);
+        }
+        if (d.items.isEmpty())
+            return {};
+        const auto& item = d.items.first();
+        if (field == QLatin1String("dataType") || field == QLatin1String("type")
+            || field == QLatin1String("report_data_type")) {
+            ok = true;
+            return QString::number(item.dataType);
+        }
+        if (field == QLatin1String("intervalTime") || field == QLatin1String("report_interval_time")
+            || field == QLatin1String("interval")) {
+            ok = true;
+            return QString::number(item.intervalTime);
+        }
+    } else if (reportType == QLatin1String("ProtocolAiotCycleReportData")) {
+        const auto d = payload.value<ProtocolAiotCycleReportData>();
+        if (d.items.isEmpty())
+            return {};
+        const auto& item = d.items.first();
+        if (field == QLatin1String("dataType") || field == QLatin1String("type")
+            || field == QLatin1String("report_data_type")) {
+            ok = true;
+            return QString::number(item.dataType);
+        }
+        if (field == QLatin1String("accX")) {
+            ok = true;
+            return QString::number(item.accX);
+        }
+        if (field == QLatin1String("accY")) {
+            ok = true;
+            return QString::number(item.accY);
+        }
+        if (field == QLatin1String("accZ")) {
+            ok = true;
+            return QString::number(item.accZ);
+        }
+        if (field == QLatin1String("gyroX")) {
+            ok = true;
+            return QString::number(item.gyroX);
+        }
+        if (field == QLatin1String("gyroY")) {
+            ok = true;
+            return QString::number(item.gyroY);
+        }
+        if (field == QLatin1String("gyroZ")) {
+            ok = true;
+            return QString::number(item.gyroZ);
+        }
+        if (field == QLatin1String("pressureOut") || field == QLatin1String("p_out")) {
+            ok = true;
+            return QString::number(item.pressureOut);
+        }
+        if (field == QLatin1String("pressureIn") || field == QLatin1String("p_in")) {
+            ok = true;
+            return QString::number(item.pressureIn);
+        }
+        if (field == QLatin1String("flowRate") || field == QLatin1String("flow_rate")) {
+            ok = true;
+            return QString::number(item.flowRate);
+        }
+        if (field == QLatin1String("distanceMm") || field == QLatin1String("distance")) {
+            ok = true;
+            return QString::number(item.distanceMm);
+        }
+        if (field == QLatin1String("adcRaw") || field == QLatin1String("adc")) {
+            ok = true;
+            return QString::number(item.adcRaw);
+        }
+        if (field == QLatin1String("irLevel") || field == QLatin1String("ir_level")) {
+            ok = true;
+            return QString::number(item.irLevel);
+        }
+        if (field == QLatin1String("impedance")) {
+            ok = true;
+            return QString::number(item.impedance);
+        }
+        if (field == QLatin1String("levelMm") || field == QLatin1String("level")) {
+            ok = true;
+            return QString::number(item.levelMm);
+        }
+        if (field == QLatin1String("temperatureC") || field == QLatin1String("temperature")) {
+            ok = true;
+            return QString::number(item.temperatureC);
+        }
+        if (field == QLatin1String("humidity")) {
+            ok = true;
+            return QString::number(item.humidity);
+        }
+        if (field == QLatin1String("currentMa") || field == QLatin1String("current")) {
+            ok = true;
+            return QString::number(item.currentMa);
+        }
+        if (field == QLatin1String("hallState") || field == QLatin1String("hall")) {
+            ok = true;
+            return QString::number(item.hallState);
+        }
+        if (field == QLatin1String("pulseCount") || field == QLatin1String("pulse")) {
+            ok = true;
+            return QString::number(item.pulseCount);
+        }
     } else if (reportType == QLatin1String("ProtocolSnData")) {
         const auto d = payload.value<ProtocolSnData>();
         if (field == QLatin1String("value")) {
@@ -4405,6 +4979,45 @@ QString fieldStringFromVariant(const QString& reportType, const QString& field, 
         if (field == QLatin1String("adcValue")) {
             ok = true;
             return QString::number(d.adcValue);
+        }
+    } else if (reportType == QLatin1String("ProtocolRootAgingHistoryData")) {
+        const auto d = payload.value<ProtocolRootAgingHistoryData>();
+        if (field == QLatin1String("status") || field == QLatin1String("enable")) {
+            ok = true;
+            return QString::number(d.status);
+        }
+        if (field == QLatin1String("finishedFlag") || field == QLatin1String("finished")) {
+            ok = true;
+            return QString::number(d.finishedFlag);
+        }
+        if (field == QLatin1String("agingCount") || field == QLatin1String("count")
+            || field == QLatin1String("loops")) {
+            ok = true;
+            return QString::number(d.agingCount);
+        }
+        if (field == QLatin1String("batteryMaxTempC") || field == QLatin1String("batteryMaxTemp")) {
+            ok = true;
+            return QString::number(d.batteryMaxTempC);
+        }
+        if (field == QLatin1String("flangeMaxTempC") || field == QLatin1String("flangeMaxTemp")) {
+            ok = true;
+            return QString::number(d.flangeMaxTempC);
+        }
+        if (field == QLatin1String("stallCount")) {
+            ok = true;
+            return QString::number(d.stallCount);
+        }
+        if (field == QLatin1String("stallThreshold")) {
+            ok = true;
+            return QString::number(d.stallThreshold);
+        }
+        if (field.startsWith(QLatin1String("stallCurrent"))) {
+            bool idxOk = false;
+            const int idx = field.mid(QStringLiteral("stallCurrent").size()).toInt(&idxOk);
+            if (idxOk && idx >= 0 && idx < 5) {
+                ok = true;
+                return QString::number(d.stallCurrents[idx]);
+            }
         }
     } else if (reportType == QLatin1String("ProtocolPeriphStateData")) {
         const auto d = payload.value<ProtocolPeriphStateData>();
@@ -4850,6 +5463,28 @@ QString periphStateSummary(const ProtocolPeriphStateData& periph) {
         .arg(periph.pd_ic_state);
 }
 
+QString agingHistorySummary(const ProtocolRootAgingHistoryData& hist) {
+    QString head;
+    if (hist.status >= 0 || hist.finishedFlag >= 0) {
+        head = QStringLiteral("使能=%1 完成=%2 ")
+                   .arg(hist.status < 0 ? 0 : hist.status)
+                   .arg(hist.finishedFlag < 0 ? 0 : hist.finishedFlag);
+    } else {
+        head = QStringLiteral("次数=%1 ").arg(hist.agingCount);
+    }
+    return head
+           + QStringLiteral("电池最高温=%1℃ 法兰最高温=%2℃ 堵转次数=%3 泵阀堵转阈值=%4 电流=[%5,%6,%7,%8,%9]")
+                 .arg(hist.batteryMaxTempC)
+                 .arg(hist.flangeMaxTempC)
+                 .arg(hist.stallCount)
+                 .arg(hist.stallThreshold)
+                 .arg(hist.stallCurrents[0])
+                 .arg(hist.stallCurrents[1])
+                 .arg(hist.stallCurrents[2])
+                 .arg(hist.stallCurrents[3])
+                 .arg(hist.stallCurrents[4]);
+}
+
 QString primaryFieldTestData(const TestCaseGate& primaryGate, const QString& reportType, const QVariant& payload) {
     bool strOk = false;
     const QString fromField = fieldStringFromVariant(reportType, primaryGate.field, payload, strOk);
@@ -4873,6 +5508,9 @@ GateStepDisplay GateRegistry::formatStepDisplay(const TestCaseGate& primaryGate,
         out.testData = fixturePacketSummary(payload.value<FixturePacketData>());
     } else if (reportType == QLatin1String("ProtocolPeriphStateData") && payload.canConvert<ProtocolPeriphStateData>()) {
         out.testData = periphStateSummary(payload.value<ProtocolPeriphStateData>());
+    } else if (reportType == QLatin1String("ProtocolRootAgingHistoryData")
+               && payload.canConvert<ProtocolRootAgingHistoryData>()) {
+        out.testData = agingHistorySummary(payload.value<ProtocolRootAgingHistoryData>());
     } else if (reportType == QLatin1String("ProtocolMeasureData")
                && primaryGate.field == QLatin1String("value")
                && payload.canConvert<ProtocolMeasureData>()) {

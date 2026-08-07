@@ -250,6 +250,14 @@ class test_base : public QWidget {
     virtual void refreshButton(ProtocolButtonStateData) {}
     virtual void refreshBrushControlState(ProtocolBrushControlData) {}
     virtual void refreshImuCaliResult(ProtocolImuCalibResultData) {}
+    virtual void refreshAiotImuCali(ProtocolAiotImuCaliData) {}
+    virtual void refreshAiotFsensorCali(ProtocolAiotFsensorCaliData) {}
+    virtual void refreshAiotExceptionThreshold(ProtocolAiotExceptionThresholdData) {}
+    virtual void refreshAiotPumpParam(ProtocolAiotPumpParamData) {}
+    virtual void refreshAiotHeatTest(ProtocolAiotHeatTestData) {}
+    virtual void refreshAiotVibrationTest(ProtocolAiotVibrationTestData) {}
+    virtual void refreshAiotCycleReportConfig(ProtocolAiotCycleReportConfigData) {}
+    virtual void refreshAiotCycleReport(ProtocolAiotCycleReportData) {}
     virtual void refreshImuData(ProtocolImuSampleData) {}
     virtual void refreshPbData(QString);
     virtual void refreshMotorCaliMsg(QString) {}
@@ -281,6 +289,7 @@ class test_base : public QWidget {
     virtual void refreshResultCode(ProtocolResultData) {}
     virtual void refreshFlangeStatus(ProtocolTypeData) {}
     virtual void refreshPumpStallCurrent(ProtocolPumpStallCurrentData) {}
+    virtual void refreshRootAgingHistory(ProtocolRootAgingHistoryData) {}
     virtual void refreshTypeStatus(ProtocolTypeData) {}
     virtual void refreshAmmeterData(QString) {}
     virtual void refreshDongleUartState(int) {}

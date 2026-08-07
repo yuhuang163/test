@@ -361,7 +361,7 @@ static const ProductEntry kProductTable[] = {
     {"V3Pro",    "qfctp", true,  "V3 PRO",   true},
     {"V3",       "qfctp", true,  "V3",       true},
     {"M8",       "qroot", true,  "Pump-E",   false},
-    {"W1 Lite",  "qroot", true, "W1 LITE",  true},
+    {"Wellness Warm",  "qroot", true, "Wellness Warm",  true},
     {"M8P",      "qaiot", false, "M8P",      false},
 };
 

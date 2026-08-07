@@ -70,6 +70,130 @@ QString setBatteryTestDataText(const TestCaseDefinition& def) {
     return parts.join(QLatin1Char(' '));
 }
 
+QString lightCalibWriteTestDataText(const TestCaseDefinition& def) {
+    if (def.send.deviceCmd != QStringLiteral("LightCalibWrite"))
+        return {};
+    if (!def.send.param.canConvert<QVariantMap>())
+        return {};
+    const QVariantMap map = def.send.param.toMap();
+    const int type = map.value(QStringLiteral("type"), map.value(QStringLiteral("sensorType"), -1)).toInt();
+    if (type == 0 || map.contains(QStringLiteral("kx"))) {
+        static const QStringList keys = {QStringLiteral("kx"),  QStringLiteral("ky"),  QStringLiteral("kz"),
+                                         QStringLiteral("syx"), QStringLiteral("szx"), QStringLiteral("szy"),
+                                         QStringLiteral("bx"),  QStringLiteral("by"),  QStringLiteral("bz")};
+        QStringList parts;
+        for (const QString& k : keys) {
+            if (map.contains(k))
+                parts << QStringLiteral("%1=%2").arg(k, map.value(k).toString());
+        }
+        if (!parts.isEmpty())
+            return parts.join(QLatin1Char(' '));
+    }
+    if (type == 4 || map.contains(QStringLiteral("calibrated")) || map.contains(QStringLiteral("flag"))) {
+        const int flag = map.value(QStringLiteral("calibrated"), map.value(QStringLiteral("flag"), 0)).toInt();
+        return flag ? QStringLiteral("1(已校准)") : QStringLiteral("0(未校准)");
+    }
+    const QString data = map.value(QStringLiteral("data"), map.value(QStringLiteral("value"))).toString().trimmed();
+    return data;
+}
+
+/** ExceptionThresholdWrite：把 Param 写入结果表「数据」列 */
+QString exceptionThresholdWriteTestDataText(const TestCaseDefinition& def) {
+    if (def.send.deviceCmd != QStringLiteral("ExceptionThresholdWrite"))
+        return {};
+    if (!def.send.param.canConvert<QVariantMap>())
+        return {};
+    const QVariantMap map = def.send.param.toMap();
+    const int type = map.value(QStringLiteral("type"), map.value(QStringLiteral("exceptionType"), 0)).toInt();
+    QStringList parts;
+    parts << QStringLiteral("type=0x%1").arg(type, 2, 16, QChar('0'));
+    if (map.contains(QStringLiteral("low")) || map.contains(QStringLiteral("tempLow"))) {
+        const QString low = map.value(QStringLiteral("low"), map.value(QStringLiteral("tempLow"))).toString();
+        const QString high = map.value(QStringLiteral("high"), map.value(QStringLiteral("tempHigh"))).toString();
+        parts << QStringLiteral("%1~%2").arg(low, high);
+    } else if (map.contains(QStringLiteral("value")) || map.contains(QStringLiteral("percent"))
+               || map.contains(QStringLiteral("voltageMv")) || map.contains(QStringLiteral("seconds"))
+               || map.contains(QStringLiteral("currentMa"))) {
+        const QString v = map.value(QStringLiteral("value"),
+                                    map.value(QStringLiteral("percent"),
+                                              map.value(QStringLiteral("voltageMv"),
+                                                        map.value(QStringLiteral("seconds"),
+                                                                  map.value(QStringLiteral("currentMa"))))))
+                              .toString();
+        parts << v;
+    } else if (map.contains(QStringLiteral("data"))) {
+        parts << map.value(QStringLiteral("data")).toString();
+    }
+    return parts.join(QLatin1Char(' '));
+}
+
+QString pumpParamWriteTestDataText(const TestCaseDefinition& def) {
+    if (def.send.deviceCmd != QStringLiteral("PumpParamWrite")
+        && def.send.deviceCmd != QStringLiteral("ValveParamWrite"))
+        return {};
+    if (!def.send.param.canConvert<QVariantMap>())
+        return {};
+    const QVariantMap map = def.send.param.toMap();
+    QStringList parts;
+    const bool isValve = (def.send.deviceCmd == QStringLiteral("ValveParamWrite"));
+    const QStringList keys =
+        isValve ? QStringList{QStringLiteral("valveEnableTime"), QStringLiteral("valveDisableTime"),
+                              QStringLiteral("valvePwm")}
+                : QStringList{QStringLiteral("circleNum"), QStringLiteral("durationTime"),
+                              QStringLiteral("intervalTime"), QStringLiteral("pumpPwm")};
+    for (const QString& k : keys) {
+        if (map.contains(k))
+            parts << QStringLiteral("%1=%2").arg(k, map.value(k).toString());
+    }
+    return parts.join(QLatin1Char(' '));
+}
+
+QString heatTestWriteTestDataText(const TestCaseDefinition& def) {
+    if (def.send.deviceCmd != QStringLiteral("HeatTestWrite"))
+        return {};
+    if (!def.send.param.canConvert<QVariantMap>())
+        return {};
+    const QVariantMap map = def.send.param.toMap();
+    QStringList parts;
+    for (const QString& k : {QStringLiteral("enable"), QStringLiteral("driveStrength"),
+                             QStringLiteral("durationTime")}) {
+        if (map.contains(k))
+            parts << QStringLiteral("%1=%2").arg(k, map.value(k).toString());
+    }
+    return parts.join(QLatin1Char(' '));
+}
+
+QString vibrationTestWriteTestDataText(const TestCaseDefinition& def) {
+    if (def.send.deviceCmd != QStringLiteral("VibrationTestWrite"))
+        return {};
+    if (!def.send.param.canConvert<QVariantMap>())
+        return {};
+    const QVariantMap map = def.send.param.toMap();
+    QStringList parts;
+    for (const QString& k : {QStringLiteral("enable"), QStringLiteral("driveStrength"), QStringLiteral("freq"),
+                             QStringLiteral("durationTime")}) {
+        if (map.contains(k))
+            parts << QStringLiteral("%1=%2").arg(k, map.value(k).toString());
+    }
+    return parts.join(QLatin1Char(' '));
+}
+
+QString cycleReportWriteTestDataText(const TestCaseDefinition& def) {
+    if (def.send.deviceCmd != QStringLiteral("CycleReportWrite"))
+        return {};
+    if (!def.send.param.canConvert<QVariantMap>())
+        return {};
+    const QVariantMap map = def.send.param.toMap();
+    QStringList parts;
+    for (const QString& k :
+         {QStringLiteral("enable"), QStringLiteral("type"), QStringLiteral("types"), QStringLiteral("intervalTime"),
+          QStringLiteral("intervals"), QStringLiteral("items")}) {
+        if (map.contains(k))
+            parts << QStringLiteral("%1=%2").arg(k, map.value(k).toString());
+    }
+    return parts.join(QLatin1Char(' '));
+}
+
 /** 测试项提示弹窗：产线可读性，正文与按钮字号加大 */
 void applyTestItemPromptFont(QMessageBox* box) {
     if (!box) {
@@ -661,9 +785,20 @@ bool QFreeWork::tickOrderedTestStepLoop() {
                     stepRuntime_.done = true;
                     stepRuntime_.pass = true;
                     if (stepRuntime_.testData == QLatin1String("-")) {
-                        const QString setBatteryText = setBatteryTestDataText(caseDef);
-                        stepRuntime_.testData =
-                            setBatteryText.isEmpty() ? QStringLiteral("ok") : setBatteryText;
+                        QString setText = setBatteryTestDataText(caseDef);
+                        if (setText.isEmpty())
+                            setText = lightCalibWriteTestDataText(caseDef);
+                        if (setText.isEmpty())
+                            setText = exceptionThresholdWriteTestDataText(caseDef);
+                        if (setText.isEmpty())
+                            setText = pumpParamWriteTestDataText(caseDef);
+                        if (setText.isEmpty())
+                            setText = heatTestWriteTestDataText(caseDef);
+                        if (setText.isEmpty())
+                            setText = vibrationTestWriteTestDataText(caseDef);
+                        if (setText.isEmpty())
+                            setText = cycleReportWriteTestDataText(caseDef);
+                        stepRuntime_.testData = setText.isEmpty() ? QStringLiteral("ok") : setText;
                     }
                 }
             } else if (dongleBleConnect && at->getConnected()) {

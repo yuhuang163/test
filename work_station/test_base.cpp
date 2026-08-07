@@ -675,6 +675,26 @@ void test_base::onProtocolReport(const ProtocolReport& report) {
         refreshImuData(payload.value<ProtocolImuSampleData>());
     } else if (reportType == "ProtocolImuCalibResultData" && payload.canConvert<ProtocolImuCalibResultData>()) {
         refreshImuCaliResult(payload.value<ProtocolImuCalibResultData>());
+    } else if (reportType == "ProtocolAiotImuCaliData" && payload.canConvert<ProtocolAiotImuCaliData>()) {
+        refreshAiotImuCali(payload.value<ProtocolAiotImuCaliData>());
+    } else if (reportType == "ProtocolAiotFsensorCaliData" && payload.canConvert<ProtocolAiotFsensorCaliData>()) {
+        refreshAiotFsensorCali(payload.value<ProtocolAiotFsensorCaliData>());
+    } else if (reportType == "ProtocolAiotExceptionThresholdData"
+               && payload.canConvert<ProtocolAiotExceptionThresholdData>()) {
+        refreshAiotExceptionThreshold(payload.value<ProtocolAiotExceptionThresholdData>());
+    } else if (reportType == "ProtocolAiotPumpParamData" && payload.canConvert<ProtocolAiotPumpParamData>()) {
+        refreshAiotPumpParam(payload.value<ProtocolAiotPumpParamData>());
+    } else if (reportType == "ProtocolAiotHeatTestData" && payload.canConvert<ProtocolAiotHeatTestData>()) {
+        refreshAiotHeatTest(payload.value<ProtocolAiotHeatTestData>());
+    } else if (reportType == "ProtocolAiotVibrationTestData"
+               && payload.canConvert<ProtocolAiotVibrationTestData>()) {
+        refreshAiotVibrationTest(payload.value<ProtocolAiotVibrationTestData>());
+    } else if (reportType == "ProtocolAiotCycleReportConfigData"
+               && payload.canConvert<ProtocolAiotCycleReportConfigData>()) {
+        refreshAiotCycleReportConfig(payload.value<ProtocolAiotCycleReportConfigData>());
+    } else if (reportType == "ProtocolAiotCycleReportData"
+               && payload.canConvert<ProtocolAiotCycleReportData>()) {
+        refreshAiotCycleReport(payload.value<ProtocolAiotCycleReportData>());
     } else if (reportType == "ProtocolMotorCaliMsg") {
         refreshMotorCaliMsg(payload.toString());
     } else if (reportType == "ProtocolLcdControlData" && payload.canConvert<ProtocolTypeData>()) {
@@ -702,6 +722,9 @@ void test_base::onProtocolReport(const ProtocolReport& report) {
     } else if (reportType == QLatin1String("ProtocolPumpStallCurrentData")
                && payload.canConvert<ProtocolPumpStallCurrentData>()) {
         refreshPumpStallCurrent(payload.value<ProtocolPumpStallCurrentData>());
+    } else if (reportType == QLatin1String("ProtocolRootAgingHistoryData")
+               && payload.canConvert<ProtocolRootAgingHistoryData>()) {
+        refreshRootAgingHistory(payload.value<ProtocolRootAgingHistoryData>());
     } else if (reportType == QLatin1String("ProtocolResultData") && payload.canConvert<ProtocolResultData>()) {
         refreshResultCode(payload.value<ProtocolResultData>());
     } else if (reportType == QLatin1String("ProtocolTypeData") && payload.canConvert<ProtocolTypeData>()) {

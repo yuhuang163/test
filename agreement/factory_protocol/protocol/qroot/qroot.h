@@ -45,6 +45,7 @@ class Qroot : public qProtocol {
         VibStatus = 0x99,
         KeyNotify = 0x9A,
         ToggleKeyNotify = 0x9B,
+        AgingHistory = 0x9C, // 读取老化历史信息
         PumpTestEnter = 0x9D,
         PumpTestExit = 0x9E,
         DeviceSnRead = 0xA0,

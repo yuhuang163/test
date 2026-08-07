@@ -87,10 +87,10 @@ struct ProtocolSnData {
 
 struct ProtocolBatteryData {
     int chargeState = 0;
-    int percent = 0;
-    int voltageMv = 0;
-    int currentMa = 0;     // 充放电电流 mA（AIOT battery_current）
-    int temperatureC = 0;  // 电池温度 °C（AIOT battery_temperature）
+    int percent = 0;       // battery_percent uint8 [0,100]
+    int voltageMv = 0;     // battery_voltage uint16 mV
+    int currentMa = 0;     // battery_current uint16 mA
+    int temperatureC = 0;  // battery_temperature uint8 °C
 };
 
 struct ProtocolWifiStateData {
@@ -196,6 +196,116 @@ struct ProtocolImuCalibResultData {
     int szy = 0;
 };
 
+/** Qaiot IMU 校准（CID=0x08/0x09，type=0x00）：imu_cali_data_t = 9×float LE，共 36 字节 */
+struct ProtocolAiotImuCaliData {
+    float kx = 0.f;
+    float ky = 0.f;
+    float kz = 0.f;
+    float syx = 0.f;
+    float szx = 0.f;
+    float szy = 0.f;
+    float bx = 0.f;
+    float by = 0.f;
+    float bz = 0.f;
+};
+
+/** Qaiot 电容/力传感校准标志（type=0x04 fsensor）：1 字节，0 未校准 / 1 已校准 */
+struct ProtocolAiotFsensorCaliData {
+    int calibrated = 0;
+};
+
+/** Qaiot 异常阈值单项（CID=0x0A/0x0B） */
+struct ProtocolAiotExceptionThresholdItem {
+    int type = 0;
+    int value = 0;     // 主值：% / mV / 秒 / mA / 温度下限 / 负压
+    int valueHigh = 0; // 仅 bat_temp_abnormal 上限
+    QByteArray raw;
+};
+
+struct ProtocolAiotExceptionThresholdData {
+    QVector<ProtocolAiotExceptionThresholdItem> items;
+};
+
+/** Qaiot 泵/阀运行参数（CID=0x0F 设置 / 0x10 获取；泵与阀分命令控制，共用回包结构） */
+struct ProtocolAiotPumpParamData {
+    int circleNum = 0;        // 泵侧：SET 目标循环 / GET 已测循环
+    int durationTime = 0;     // 泵工作时长
+    int intervalTime = 0;     // 泵间隔
+    int valveEnableTime = 0;  // 阀使能时长
+    int valveDisableTime = 0; // 阀关闭时长
+    int pumpPwm = 0;          // 泵 PWM %
+    int valvePwm = 0;         // 阀 PWM %
+};
+
+/** Qaiot 自定义加热测试（CID=0x14） */
+struct ProtocolAiotHeatTestData {
+    int enable = 0;       // 0 disable / 1 enable
+    int driveStrength = 0;
+    int durationTime = 0; // 可选；未带回则为 0
+    bool hasDuration = false;
+};
+
+/** Qaiot 自定义振动测试（CID=0x15） */
+struct ProtocolAiotVibrationTestData {
+    int enable = 0;
+    int driveStrength = 0;
+    int freq = 0;
+    int durationTime = 0;
+};
+
+/** Qaiot 循环上报配置单项（CID=0x18） */
+struct ProtocolAiotCycleReportConfigItem {
+    int dataType = 0;     // report_data_type 0x00~0x0D
+    int intervalTime = 0; // ms
+};
+
+/** Qaiot 设置数据采集上报回包（CID=0x18） */
+struct ProtocolAiotCycleReportConfigData {
+    int enable = 0; // 0 Disabled / 1 Enabled
+    QVector<ProtocolAiotCycleReportConfigItem> items;
+};
+
+/** Qaiot 循环上报采样单项（CID=0x19；按 dataType 填对应字段） */
+struct ProtocolAiotCycleReportItem {
+    int dataType = 0;
+    QByteArray raw;
+    // IMU 0x00：6×int16 BE
+    int accX = 0;
+    int accY = 0;
+    int accZ = 0;
+    int gyroX = 0;
+    int gyroY = 0;
+    int gyroZ = 0;
+    // 压力 0x01：int16 p_out/p_in（0.1 Pa）
+    int pressureOut = 0;
+    int pressureIn = 0;
+    // 气流 0x02：int32（0.01 L/min）
+    int flowRate = 0;
+    // TOF 0x03 / 接近 0x0A
+    int distanceMm = 0;
+    // 电容 0x04
+    int adcRaw = 0;
+    // 红外 0x05
+    int irLevel = 0;
+    // 生物阻抗 0x06：uint32（0.1 Ω）
+    int impedance = 0;
+    // 液位 0x07
+    int levelMm = 0;
+    // 温度 0x08 / 湿度 0x09 / 霍尔 0x0C
+    int temperatureC = 0;
+    int humidity = 0;
+    int hallState = 0;
+    // 电流 0x0B
+    int currentMa = 0;
+    // 编码器 0x0D
+    int pulseCount = 0;
+};
+
+/** Qaiot 数据采集被动上报（CID=0x19） */
+struct ProtocolAiotCycleReportData {
+    QVector<ProtocolAiotCycleReportItem> items;
+};
+
 struct ProtocolPressCalibResultData {
     int brushHeadAdc = 0;
     int modeButtonAdc = 0;
@@ -266,6 +376,23 @@ struct ProtocolChargeCurrentData {
 /** qroot 0x82 泵堵电流：堵转 ADC（last_adc_value，大端）。 */
 struct ProtocolPumpStallCurrentData {
     int adcValue = 0;
+};
+
+/**
+ * 老化历史/老化模式信息：
+ * - Qroot 0x9C Ack 16B：次数 + 双温 + 堵转次数(1) + 阈值(2) + 电流×5
+ * - Qaiot CID=0x01 老化模式 factory_mode_info(0x23) 18B：
+ *   使能 + 完成标志 + 双温 + 堵转次数(2 BE) + 阈值(2) + 电流×5
+ */
+struct ProtocolRootAgingHistoryData {
+    int status = -1;                // Qaiot 使能 0/1；Qroot 无此字段为 -1
+    int finishedFlag = -1;          // Qaiot 完成标志；Qroot 为 -1
+    int agingCount = 0;             // Qroot 老化当前次数 uint8
+    int batteryMaxTempC = 0;        // 老化电池历史最高温 ℃
+    int flangeMaxTempC = 0;         // 老化法兰历史最高温 ℃
+    int stallCount = 0;             // 堵转次数（Qroot 1B / Qaiot 2B BE）
+    int stallThreshold = 0;         // 泵阀堵转阈值 uint16 BE
+    int stallCurrents[5] = {0, 0, 0, 0, 0}; // 最新 5 个堵转电流 mA，各 uint16 BE
 };
 
 struct ProtocolTrimData {
@@ -432,7 +559,7 @@ enum class DeviceCmd {
     CameraLightState,      // 【Qpb】相机补光状态（int，set_camera_light_state）
     CameraSupportState,    // 【Qpb】相机能力/支持项状态（int，set_camera_support_state）
     CameraExposureTime,    // 【Qpb】曝光时间（uint，set_camera_exposure_time）
-    DevReset,              // 【Qpb】设备复位（无参/可空 QVariant，set_dev_reset）；【Qroot】Req 0xFC+0x02 重启
+    DevReset,              // 【Qpb】设备复位；【Qroot】0xFC+0x02；【Qaiot】CID=0x0C type=0x04 重启
     BrushReset,            // 【Qpb】使用相关复位（无参，set_brush_reset）
     PressCaliResult,       // 【Qpb】压力标定结果下发（press_calib_data_t，set_press_cali_result）；get 见 GetPressCaliResult
     ImuCaliResult,         // 【Qpb】IMU 标定结果下发（ImuCalData，set_imu_cali_result）；get 见 GetImuCaliResult
@@ -467,7 +594,8 @@ enum class DeviceCmd {
     MacWrite,              // 【Qfctp】写 MAC（QVariantMap，setCaseMacWrite）
     NightLightSet,         // 【Qfctp】夜灯亮度（QVariantMap，setCaseNightLightSet）
     LedTest,               // 【主入口】LED 测试开关（QVariantMap{on:0|1}）；Qfctp/Qroot/Qpb 均兼容
-    FactoryReset,          // 【Qfctp】恢复出厂（无参）；【Qroot】Notify 0xFC+0x04，应答 0xE0/0xFC 返回 0x04
+    FactoryReset,          // 【Qfctp】恢复出厂；【Qroot】0xFC+0x04；【Qaiot】CID=0x0C type=0x01
+    TravelLock,            // 【Qaiot】CID=0x0C type=0x03 旅行锁
 
     LcdBacklight,       // 【Qfctp】LCD 背光（QVariantMap，setCaseLcdBacklight）
     LightReportControl, // 【Qfctp】光感上报开关（QVariantMap，setCaseLightReportControl）
@@ -486,6 +614,7 @@ enum class DeviceCmd {
     RootPumpTestExit,     // 0x9E 主机泵测试退出
     RootSuctionTest,           // 0x81 吸力测试（REQ 3B：switch+mode+level）
     RootPumpStallCurrentQuery, // 0x82 读取泵堵电流（Req 无参；Ack 2B 堵转 ADC 大端）
+    RootAgingHistoryQuery,     // 0x9C 读取老化历史信息（Req 无参；Ack 16B）
     RootHeatLevelControl,      // 0x83 加热档位控制（REQ 2B：switch+level L1~L3）
     RootPumpControl,           // 0xC0 吸奶器控制（REQ 10B，ACK 回显 controlType）
     RootEnterOta,         // 【Qroot】Req 0xFC+0x03 进入 OTA
@@ -518,6 +647,15 @@ enum class DeviceCmd {
     AgingStatusRead,     // 【兼容别名】Qfctp 老化状态查询（保留兼容）
     FactoryDoneRead,     // 【兼容别名】Qfctp 产测标识读取（保留兼容）
     DeviceExceptionRead, // 【Qfctp】读设备异常状态（独立入口）
+    ExceptionThresholdRead,  // 【Qaiot】CID=0x0A 获取异常阈值
+    ExceptionThresholdWrite, // 【Qaiot】CID=0x0B 设置异常阈值（掉电不消失）
+    PumpParamRead,           // 【Qaiot】CID=0x10 读泵运行参数（循环/时长/间隔/泵PWM）
+    PumpParamWrite,          // 【Qaiot】CID=0x0F 写泵运行参数
+    ValveParamRead,          // 【Qaiot】CID=0x10 读阀运行参数（使能/关闭/阀PWM）
+    ValveParamWrite,         // 【Qaiot】CID=0x0F 写阀运行参数
+    HeatTestWrite,           // 【Qaiot】CID=0x14 自定义加热测试
+    VibrationTestWrite,      // 【Qaiot】CID=0x15 自定义振动测试
+    CycleReportWrite,        // 【Qaiot】CID=0x18 设置数据采集上报
 };
 
 class IDevice {
@@ -553,6 +691,14 @@ Q_DECLARE_METATYPE(ProtocolTypeData)
 Q_DECLARE_METATYPE(ProtocolPressSampleData)
 Q_DECLARE_METATYPE(ProtocolImuSampleData)
 Q_DECLARE_METATYPE(ProtocolImuCalibResultData)
+Q_DECLARE_METATYPE(ProtocolAiotImuCaliData)
+Q_DECLARE_METATYPE(ProtocolAiotFsensorCaliData)
+Q_DECLARE_METATYPE(ProtocolAiotExceptionThresholdData)
+Q_DECLARE_METATYPE(ProtocolAiotPumpParamData)
+Q_DECLARE_METATYPE(ProtocolAiotHeatTestData)
+Q_DECLARE_METATYPE(ProtocolAiotVibrationTestData)
+Q_DECLARE_METATYPE(ProtocolAiotCycleReportConfigData)
+Q_DECLARE_METATYPE(ProtocolAiotCycleReportData)
 Q_DECLARE_METATYPE(ProtocolPressCalibResultData)
 Q_DECLARE_METATYPE(ProtocolResultData)
 Q_DECLARE_METATYPE(ProtocolServoMotorInfoData)
@@ -564,6 +710,7 @@ Q_DECLARE_METATYPE(ProtocolDeviceExceptionData)
 Q_DECLARE_METATYPE(ProtocolKeyCapData)
 Q_DECLARE_METATYPE(ProtocolChargeCurrentData)
 Q_DECLARE_METATYPE(ProtocolPumpStallCurrentData)
+Q_DECLARE_METATYPE(ProtocolRootAgingHistoryData)
 Q_DECLARE_METATYPE(ProtocolTrimData)
 Q_DECLARE_METATYPE(ProtocolLightCalibData)
 Q_DECLARE_METATYPE(ProtocolDongleBleStateData)

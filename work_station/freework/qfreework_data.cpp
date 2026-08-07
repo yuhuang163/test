@@ -576,6 +576,219 @@ void QFreeWork::refreshMacData(ProtocolMacData data) {
     }
 }
 
+void QFreeWork::refreshAiotImuCali(ProtocolAiotImuCaliData data) {
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolAiotImuCaliData"), QVariant::fromValue(data)))
+        return;
+
+    const QString text = QStringLiteral("kx=%1 ky=%2 kz=%3 syx=%4 szx=%5 szy=%6 bx=%7 by=%8 bz=%9")
+                             .arg(data.kx, 0, 'g', 8)
+                             .arg(data.ky, 0, 'g', 8)
+                             .arg(data.kz, 0, 'g', 8)
+                             .arg(data.syx, 0, 'g', 8)
+                             .arg(data.szx, 0, 'g', 8)
+                             .arg(data.szy, 0, 'g', 8)
+                             .arg(data.bx, 0, 'g', 8)
+                             .arg(data.by, 0, 'g', 8)
+                             .arg(data.bz, 0, 'g', 8);
+    if (testCaseStepActive_
+        && (activeTestCase_.send.deviceCmd == QStringLiteral("PeriphState")
+            || activeTestCase_.send.deviceCmd == QStringLiteral("GetImuCaliResult")
+            || activeTestCase_.send.deviceCmd == QStringLiteral("LightSensorInfo"))
+        && activeTestCase_.send.action == TestCaseSendAction::Get) {
+        markActiveTestCaseStepDone(true, text, QStringLiteral("通过"));
+        if (commandRetryTimer)
+            finishCommandRetryWait(true, QStringLiteral("读取完成"));
+        showlog(QStringLiteral("读取IMU校准完成：%1").arg(text));
+        return;
+    }
+    showlog(QStringLiteral("IMU校准：%1").arg(text));
+}
+
+void QFreeWork::refreshAiotFsensorCali(ProtocolAiotFsensorCaliData data) {
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolAiotFsensorCaliData"), QVariant::fromValue(data)))
+        return;
+
+    const QString text = data.calibrated ? QStringLiteral("1(已校准)") : QStringLiteral("0(未校准)");
+    if (testCaseStepActive_ && activeTestCase_.send.deviceCmd == QStringLiteral("PeriphState")
+        && activeTestCase_.send.action == TestCaseSendAction::Get) {
+        markActiveTestCaseStepDone(true, text, QStringLiteral("通过"));
+        if (commandRetryTimer)
+            finishCommandRetryWait(true, QStringLiteral("读取完成"));
+        showlog(QStringLiteral("读取电容/力传感校准完成：%1").arg(text));
+        return;
+    }
+    showlog(QStringLiteral("电容/力传感校准：%1").arg(text));
+}
+
+void QFreeWork::refreshAiotExceptionThreshold(ProtocolAiotExceptionThresholdData data) {
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolAiotExceptionThresholdData"), QVariant::fromValue(data)))
+        return;
+
+    QStringList parts;
+    for (const ProtocolAiotExceptionThresholdItem& item : data.items) {
+        if (item.type == 0x05)
+            parts << QStringLiteral("0x%1=%2~%3")
+                         .arg(item.type, 2, 16, QChar('0'))
+                         .arg(item.value)
+                         .arg(item.valueHigh);
+        else
+            parts << QStringLiteral("0x%1=%2").arg(item.type, 2, 16, QChar('0')).arg(item.value);
+    }
+    const QString text = parts.isEmpty() ? QStringLiteral("-") : parts.join(QStringLiteral("; "));
+    if (testCaseStepActive_ && activeTestCase_.send.deviceCmd == QStringLiteral("ExceptionThresholdRead")
+        && activeTestCase_.send.action == TestCaseSendAction::Get) {
+        markActiveTestCaseStepDone(true, text, QStringLiteral("通过"));
+        if (commandRetryTimer)
+            finishCommandRetryWait(true, QStringLiteral("读取完成"));
+        showlog(QStringLiteral("读取异常阈值完成：%1").arg(text));
+        return;
+    }
+    showlog(QStringLiteral("异常阈值：%1").arg(text));
+}
+
+void QFreeWork::refreshAiotPumpParam(ProtocolAiotPumpParamData data) {
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolAiotPumpParamData"), QVariant::fromValue(data)))
+        return;
+
+    const QString cmd = activeTestCase_.send.deviceCmd;
+    const bool valveStep = (cmd == QStringLiteral("ValveParamRead"));
+    const QString text =
+        valveStep
+            ? QStringLiteral("阀使能=%1 关闭=%2 PWM=%3")
+                  .arg(data.valveEnableTime)
+                  .arg(data.valveDisableTime)
+                  .arg(data.valvePwm)
+            : QStringLiteral("循环=%1 泵时长=%2 间隔=%3 PWM=%4")
+                  .arg(data.circleNum)
+                  .arg(data.durationTime)
+                  .arg(data.intervalTime)
+                  .arg(data.pumpPwm);
+    if (testCaseStepActive_
+        && (cmd == QStringLiteral("PumpParamRead") || cmd == QStringLiteral("ValveParamRead"))
+        && activeTestCase_.send.action == TestCaseSendAction::Get) {
+        markActiveTestCaseStepDone(true, text, QStringLiteral("通过"));
+        if (commandRetryTimer)
+            finishCommandRetryWait(true, QStringLiteral("读取完成"));
+        showlog(QStringLiteral("读取%1参数完成：%2")
+                    .arg(valveStep ? QStringLiteral("阀") : QStringLiteral("泵"), text));
+        return;
+    }
+    showlog(QStringLiteral("泵/阀参数：循环=%1 泵=%2/%3/%4 阀=%5/%6/%7")
+                .arg(data.circleNum)
+                .arg(data.durationTime)
+                .arg(data.intervalTime)
+                .arg(data.pumpPwm)
+                .arg(data.valveEnableTime)
+                .arg(data.valveDisableTime)
+                .arg(data.valvePwm));
+}
+
+void QFreeWork::refreshAiotHeatTest(ProtocolAiotHeatTestData data) {
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolAiotHeatTestData"), QVariant::fromValue(data)))
+        return;
+
+    const QString text =
+        data.hasDuration
+            ? QStringLiteral("enable=%1 strength=%2 duration=%3")
+                  .arg(data.enable)
+                  .arg(data.driveStrength)
+                  .arg(data.durationTime)
+            : QStringLiteral("enable=%1 strength=%2").arg(data.enable).arg(data.driveStrength);
+    if (testCaseStepActive_ && activeTestCase_.send.deviceCmd == QStringLiteral("HeatTestWrite")
+        && activeTestCase_.send.action == TestCaseSendAction::Set) {
+        // 有 Gate 时已由 evaluate 收尾；无 Gate 时 Set 默认已 mark，此处补数据列
+        if (stepRuntime_.testData == QLatin1String("-") || stepRuntime_.testData.trimmed().isEmpty()
+            || stepRuntime_.testData == QLatin1String("ok"))
+            stepRuntime_.testData = text;
+        showlog(QStringLiteral("加热测试回包：%1").arg(text));
+        return;
+    }
+    showlog(QStringLiteral("加热测试：%1").arg(text));
+}
+
+void QFreeWork::refreshAiotVibrationTest(ProtocolAiotVibrationTestData data) {
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolAiotVibrationTestData"), QVariant::fromValue(data)))
+        return;
+
+    const QString text = QStringLiteral("enable=%1 strength=%2 freq=%3 duration=%4")
+                             .arg(data.enable)
+                             .arg(data.driveStrength)
+                             .arg(data.freq)
+                             .arg(data.durationTime);
+    if (testCaseStepActive_ && activeTestCase_.send.deviceCmd == QStringLiteral("VibrationTestWrite")
+        && activeTestCase_.send.action == TestCaseSendAction::Set) {
+        if (stepRuntime_.testData == QLatin1String("-") || stepRuntime_.testData.trimmed().isEmpty()
+            || stepRuntime_.testData == QLatin1String("ok"))
+            stepRuntime_.testData = text;
+        showlog(QStringLiteral("振动测试回包：%1").arg(text));
+        return;
+    }
+    showlog(QStringLiteral("振动测试：%1").arg(text));
+}
+
+void QFreeWork::refreshAiotCycleReportConfig(ProtocolAiotCycleReportConfigData data) {
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolAiotCycleReportConfigData"), QVariant::fromValue(data)))
+        return;
+
+    QStringList parts;
+    for (const ProtocolAiotCycleReportConfigItem& it : data.items)
+        parts << QStringLiteral("type=0x%1@%2ms").arg(it.dataType, 2, 16, QChar('0')).arg(it.intervalTime);
+    const QString text = QStringLiteral("enable=%1 [%2]")
+                             .arg(data.enable)
+                             .arg(parts.isEmpty() ? QStringLiteral("-") : parts.join(QStringLiteral(", ")));
+    if (testCaseStepActive_ && activeTestCase_.send.deviceCmd == QStringLiteral("CycleReportWrite")
+        && activeTestCase_.send.action == TestCaseSendAction::Set) {
+        if (stepRuntime_.testData == QLatin1String("-") || stepRuntime_.testData.trimmed().isEmpty()
+            || stepRuntime_.testData == QLatin1String("ok"))
+            stepRuntime_.testData = text;
+        showlog(QStringLiteral("循环上报配置回包：%1").arg(text));
+        return;
+    }
+    showlog(QStringLiteral("循环上报配置：%1").arg(text));
+}
+
+void QFreeWork::refreshAiotCycleReport(ProtocolAiotCycleReportData data) {
+    // 等待被动上报：按 Gate 比对；未匹配则继续等（勿直接失败）
+    if (testCaseStepActive_ && !activeTestCase_.hook.enabled && activeTestCase_.gate.enabled
+        && activeTestCase_.gate.reportType == QStringLiteral("ProtocolAiotCycleReportData")) {
+        if (data.items.isEmpty())
+            return;
+        QVector<TestCaseGate> gates = TestCaseStore::activeGatesForEvaluation(activeTestCase_);
+        if (gates.isEmpty())
+            return;
+        bool pass = false;
+        QString detail;
+        if (gates.size() > 1)
+            GateRegistry::evaluateAll(gates, QStringLiteral("ProtocolAiotCycleReportData"), QVariant::fromValue(data),
+                                     pass, detail);
+        else
+            GateRegistry::evaluate(gates.first(), QStringLiteral("ProtocolAiotCycleReportData"),
+                                   QVariant::fromValue(data), pass, detail);
+        if (!pass) {
+            showlog(QStringLiteral("循环上报未匹配期望，继续等待：%1").arg(detail));
+            return;
+        }
+        const GateStepDisplay display =
+            GateRegistry::formatStepDisplay(gates.first(), gates, QStringLiteral("ProtocolAiotCycleReportData"),
+                                            QVariant::fromValue(data), gates.size() > 1);
+        markActiveTestCaseStepDone(true, display.testData.isEmpty() ? detail : display.testData, display.ask);
+        if (commandRetryTimer)
+            finishCommandRetryWait(true, QStringLiteral("循环上报卡控通过"));
+        showlog(QStringLiteral("循环上报卡控通过：%1").arg(detail));
+        return;
+    }
+
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolAiotCycleReportData"), QVariant::fromValue(data)))
+        return;
+
+    QStringList parts;
+    for (const ProtocolAiotCycleReportItem& it : data.items) {
+        parts << QStringLiteral("type=0x%1 rawLen=%2").arg(it.dataType, 2, 16, QChar('0')).arg(it.raw.size());
+    }
+    showlog(QStringLiteral("循环上报数据：%1")
+                .arg(parts.isEmpty() ? QStringLiteral("(空)") : parts.join(QStringLiteral("; "))));
+}
+
 void QFreeWork::refreshPeriphData(ProtocolPeriphStateData data) {
     if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolPeriphStateData"), QVariant::fromValue(data)))
         return;
@@ -1383,6 +1596,48 @@ void QFreeWork::refreshPumpStallCurrent(ProtocolPumpStallCurrentData data) {
     const QString testData = QString::number(data.adcValue);
     markActiveTestCaseStepDone(true, testData, QString());
     showlog(QStringLiteral("泵堵电流 ADC：%1").arg(data.adcValue));
+}
+
+void QFreeWork::refreshRootAgingHistory(ProtocolRootAgingHistoryData data) {
+    // Qroot 0x9C / Qaiot CID=0x01 老化模式共用；先打全量字段便于对照卡控
+    QString summary;
+    if (data.status >= 0 || data.finishedFlag >= 0) {
+        summary = QStringLiteral("使能=%1 完成=%2 电池最高温=%3℃ 法兰最高温=%4℃ 堵转次数=%5 泵阀堵转阈值=%6 电流=[%7,%8,%9,%10,%11]")
+                      .arg(data.status < 0 ? 0 : data.status)
+                      .arg(data.finishedFlag < 0 ? 0 : data.finishedFlag)
+                      .arg(data.batteryMaxTempC)
+                      .arg(data.flangeMaxTempC)
+                      .arg(data.stallCount)
+                      .arg(data.stallThreshold)
+                      .arg(data.stallCurrents[0])
+                      .arg(data.stallCurrents[1])
+                      .arg(data.stallCurrents[2])
+                      .arg(data.stallCurrents[3])
+                      .arg(data.stallCurrents[4]);
+    } else {
+        summary = QStringLiteral("次数=%1 电池最高温=%2℃ 法兰最高温=%3℃ 堵转次数=%4 泵阀堵转阈值=%5 电流=[%6,%7,%8,%9,%10]")
+                      .arg(data.agingCount)
+                      .arg(data.batteryMaxTempC)
+                      .arg(data.flangeMaxTempC)
+                      .arg(data.stallCount)
+                      .arg(data.stallThreshold)
+                      .arg(data.stallCurrents[0])
+                      .arg(data.stallCurrents[1])
+                      .arg(data.stallCurrents[2])
+                      .arg(data.stallCurrents[3])
+                      .arg(data.stallCurrents[4]);
+    }
+    showlog(QStringLiteral("老化历史：%1").arg(summary));
+
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolRootAgingHistoryData"), QVariant::fromValue(data)))
+        return;
+
+    const QString cmd = activeTestCase_.send.deviceCmd;
+    if (!testCaseStepActive_
+        || (cmd != QStringLiteral("RootAgingHistoryQuery") && cmd != QStringLiteral("AgingStatusRead")))
+        return;
+
+    markActiveTestCaseStepDone(true, summary, QString());
 }
 
 void QFreeWork::refreshTypeStatus(ProtocolTypeData data) {

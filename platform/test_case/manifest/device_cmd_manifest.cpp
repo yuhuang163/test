@@ -40,17 +40,69 @@ constexpr const char kHintSoftVersionRead[] =
     u8"卡控：ReportType=ProtocolBaseInfoData，Field 与上对应，Op=compareVersions";
 constexpr const char kHintPeriphState[] =
     u8"Qaiot 读传感器 CID=0x08：Param_type=0x00~0x0D\r\n"
-    u8"00 IMU / 01 压力 / 02 气流 / 03 TOF / 04 电容 / 05 红外 / 06 生物阻抗\r\n"
-    u8"07 液位 / 08 温度 / 09 湿度 / 0A 接近 / 0B 电流 / 0C 霍尔 / 0D 编码器";
+    u8"00 IMU(回 36B=9×float LE: kx..bz) / 04 电容fsensor(回 1B 0/1)\r\n"
+    u8"01 压力 / 02 气流 / 03 TOF / 05 红外 / 06 生物阻抗\r\n"
+    u8"07 液位 / 08 温度 / 09 湿度 / 0A 接近 / 0B 电流 / 0C 霍尔 / 0D 编码器\r\n"
+    u8"卡控：ProtocolAiotImuCaliData Field=kx..bz；ProtocolAiotFsensorCaliData Field=calibrated";
 constexpr const char kHintLightCalibWrite[] =
-    u8"Qaiot 写传感器校准 CID=0x09：Param_type + Param_data(hex)\r\n"
-    u8"示例：Param_type=0 Param_data=00";
+    u8"Qaiot 写传感器校准 CID=0x09：Param_type + 校准数据\r\n"
+    u8"IMU(type=0)：Param_kx..Param_bz 九个 float，或 Param_data=72位hex(36B LE)\r\n"
+    u8"电容/fsensor(type=4)：Param_calibrated=0|1 或 Param_data=00/01\r\n"
+    u8"其它类型：Param_data=hex（最长64B）";
+constexpr const char kHintExceptionThresholdRead[] =
+    u8"Qaiot CID=0x0A 读异常阈值：Param_type 可选（缺省读全部）\r\n"
+    u8"01低电告警% 02低电关机% 03充电过压mV 04充电超时s 05电池温度(低+高)\r\n"
+    u8"11电机堵转mA 12电机开路mA 22负压过高\r\n"
+    u8"卡控：ReportType=ProtocolAiotExceptionThresholdData Field=value/valueHigh";
+constexpr const char kHintExceptionThresholdWrite[] =
+    u8"Qaiot CID=0x0B 写异常阈值（掉电不消失）：Param_type + 数值\r\n"
+    u8"01/02：Param_value=电量%  03：Param_value/voltageMv  04：Param_value/seconds\r\n"
+    u8"05：Param_low+Param_high（°C）  11/12：Param_value/currentMa  22：Param_value";
+constexpr const char kHintPumpParamRead[] =
+    u8"Qaiot CID=0x10 读泵运行参数（与阀分开）\r\n"
+    u8"回包字段：circleNum / durationTime / intervalTime / pumpPwm\r\n"
+    u8"卡控：ReportType=ProtocolAiotPumpParamData Field=durationTime/pumpPwm…";
+constexpr const char kHintPumpParamWrite[] =
+    u8"Qaiot CID=0x0F 写泵运行参数（不写阀）\r\n"
+    u8"Param_circleNum / durationTime / intervalTime / pumpPwm(0~100)";
+constexpr const char kHintValveParamRead[] =
+    u8"Qaiot CID=0x10 读阀运行参数（与泵分开）\r\n"
+    u8"回包字段：valveEnableTime / valveDisableTime / valvePwm\r\n"
+    u8"卡控：ReportType=ProtocolAiotPumpParamData Field=valveEnableTime/valvePwm…";
+constexpr const char kHintValveParamWrite[] =
+    u8"Qaiot CID=0x0F 写阀运行参数（不写泵）\r\n"
+    u8"Param_valveEnableTime / valveDisableTime / valvePwm(0~100)\r\n"
+    u8"兼容：value_enable_time / value_pwm_value";
+constexpr const char kHintHeatTestWrite[] =
+    u8"Qaiot CID=0x14 自定义加热测试（回包结果反馈）\r\n"
+    u8"Param_enable=0|1（必选）  Param_driveStrength=强度/PWM（必选）\r\n"
+    u8"Param_durationTime=加热时长（可选 uint16）\r\n"
+    u8"卡控：ReportType=ProtocolAiotHeatTestData Field=enable/driveStrength/durationTime";
+constexpr const char kHintVibrationTestWrite[] =
+    u8"Qaiot CID=0x15 自定义振动测试（回包结果反馈）\r\n"
+    u8"Param_enable=0|1  Param_driveStrength=强度  Param_freq=频率  Param_durationTime=时长\r\n"
+    u8"（均为必选）\r\n"
+    u8"卡控：ReportType=ProtocolAiotVibrationTestData Field=enable/driveStrength/freq/durationTime";
+constexpr const char kHintCycleReportWrite[] =
+    u8"Qaiot CID=0x18 设置数据采集循环上报\r\n"
+    u8"Param_enable=0|1（必选）\r\n"
+    u8"单条：Param_type=0x00~0x0D Param_intervalTime=周期ms\r\n"
+    u8"多条：Param_types=0,1,8 Param_intervals=100,200,500\r\n"
+    u8"或 Param_items=[{\"type\":0,\"intervalTime\":100},...]\r\n"
+    u8"类型：00IMU 01压力 02气流 03TOF 04电容 05红外 06生物阻抗 07液位\r\n"
+    u8"      08温度 09湿度 0A接近 0B电流 0C霍尔 0D编码器\r\n"
+    u8"被动上报 CID=0x19：ReportType=ProtocolAiotCycleReportData Field=dataType/accX/…\r\n"
+    u8"卡控配置回包：ReportType=ProtocolAiotCycleReportConfigData Field=enable/dataType/intervalTime";
 constexpr const char kHintAgingStatusRead[] =
-    u8"读工厂模式状态：Param_mode=0~5（默认 2 老化）\r\n"
-    u8"0 idle / 1 factory / 2 aging / 3 suction / 4 compensate / 5 ate";
+    u8"Qaiot CID=0x01 读工厂模式：Param_mode=0~5（默认 2 老化）\r\n"
+    u8"0 idle / 1 factory / 2 aging / 3 suction / 4 compensate / 5 ate\r\n"
+    u8"老化(mode=2) Ack 0x23 可为 18B：使能+完成+双温+堵转次数(2)+阈值(2)+电流×5\r\n"
+    u8"卡控/显示：ReportType=ProtocolRootAgingHistoryData\r\n"
+    u8"Field=status/finishedFlag/batteryMaxTempC/flangeMaxTempC/stallCount/stallThreshold/stallCurrent0~4";
 constexpr const char kHintGetBattery[] =
     u8"Qroot：Notify 0xE0+0x01 查询；回包 percent(1B)+voltage 大端 0.01V\r\n"
-    u8"Qaiot：Param_field=percent|voltage|current|temperature（默认整包）\r\n"
+    u8"Qaiot CID=0x0E：Param_field=percent|voltage|current|temperature（默认四项）\r\n"
+    u8"字段 Type：01 percent%  02 voltage mV  03 current mA  04 temperature °C\r\n"
     u8"卡控：ReportType=ProtocolBatteryData，Field=percent/voltageMv/currentMa/temperatureC";
 constexpr const char kHintRootBatteryTemp[] =
     u8"Qroot：Notify 0x80+0x01 查询电池温度\r\n"
@@ -60,13 +112,27 @@ constexpr const char kHintRootHeatTemp[] =
     u8"卡控（可选）：ReportType=ProtocolHeatTempData，Field=type";
 constexpr const char kHintFactoryReset[] =
     u8"Qroot：Notify 0xFC+0x04 恢复出厂；应答 0xE0/0xFC 返回 0x04\r\n"
+    u8"Qaiot CID=0x0C：side + type=0x01(factory_reset) + data\r\n"
+    u8"可选 Param_side=0/1/2；Param_data=附加数据 hex\r\n"
     u8"卡控：ReportType=ProtocolResultData，Field=result，Expected=1";
 constexpr const char kHintShipMode[] =
     u8"Qfctp：关机 TLV；Qroot：Req 0xFC+0x01 关机\r\n"
+    u8"Qaiot CID=0x0C：side + type=0x02(power_off) + data\r\n"
+    u8"可选 Param_side=0/1/2；Param_data=附加数据 hex\r\n"
     u8"卡控（可选）：ReportType=ProtocolResultData，Field=result，Expected=1";
 constexpr const char kHintDevReset[] =
     u8"Qpb：设备复位；Qroot：Req 0xFC+0x02 重启\r\n"
+    u8"Qaiot CID=0x0C：side + type=0x04(device_reset 重启) + data\r\n"
+    u8"可选 Param_side=0/1/2；Param_data=附加数据 hex\r\n"
     u8"卡控（可选）：ReportType=ProtocolResultData，Field=result，Expected=1";
+constexpr const char kHintTravelLock[] =
+    u8"Qaiot CID=0x0C：side + type=0x03(travel_lock) + data\r\n"
+    u8"可选 Param_side=0/1/2；Param_data=附加数据 hex";
+constexpr const char kHintRootAgingHistory[] =
+    u8"Qroot：Req 0x9C 读取老化历史信息（无参）\r\n"
+    u8"Ack 16B：次数(1)+电池最高温℃(1)+法兰最高温℃(1)+堵转次数(1)+泵阀堵转阈值(2 BE)+最新堵转电流×5(10 BE)\r\n"
+    u8"卡控：ReportType=ProtocolRootAgingHistoryData，Field=multi\r\n"
+    u8"子字段 agingCount / batteryMaxTempC / flangeMaxTempC（stallCount/stallThreshold/stallCurrent0~4 仅显示）";
 constexpr const char kHintRootEnterOta[] =
     u8"Qroot：Req 0xFC+0x03 进入 OTA\r\n"
     u8"卡控（可选）：ReportType=ProtocolResultData，Field=result，Expected=1";
@@ -128,18 +194,19 @@ const Row kRows[] = {
     {DeviceCmd::SetBattery, "SetBattery", u8"设置电池/模拟电量", DeviceCmdParamKind::JsonMap,
      u8"Qpb：0=两节电池 1=单节电池\r\n"
      u8"Qaiot CID=0x13（可选 TLV，0=该通道真实值）：\r\n"
-     u8"  Param_percent=0~100\r\n"
-     u8"  Param_voltageMv=mV\r\n"
-     u8"  Param_currentMa=mA（放电为负）\r\n"
-     u8"  Param_temperatureC=°C\r\n"
+     u8"  Param_percent=0~100（Type=0x01）\r\n"
+     u8"  Param_voltageMv=mV（Type=0x02 uint16）\r\n"
+     u8"  Param_currentMa=mA（Type=0x03 uint16）\r\n"
+     u8"  Param_temperatureC=°C（Type=0x04 uint8）\r\n"
      u8"示例：Param_percent=50；恢复百分比：Param_percent=0",
      kSet},
     {DeviceCmd::FacResult, "FacResult", u8"产测结果", DeviceCmdParamKind::JsonMap, kHintFacResult, kSet},
     {DeviceCmd::BurningMode, "BurningMode", u8"老化模式", DeviceCmdParamKind::JsonMap, kHintBurningMode, kSet},
     {DeviceCmd::Sleep, "Sleep", u8"休眠", DeviceCmdParamKind::JsonMap, kHintSleep, kSet},
-    {DeviceCmd::ShipMode, "ShipMode", u8"关机", DeviceCmdParamKind::None, kHintShipMode, kSet},
+    {DeviceCmd::ShipMode, "ShipMode", u8"关机", DeviceCmdParamKind::JsonMap, kHintShipMode, kSet},
     {DeviceCmd::FacMode, "FacMode", u8"工厂模式", DeviceCmdParamKind::JsonMap, kHintFacMode, kSet},
-    {DeviceCmd::DevReset, "DevReset", u8"设备复位", DeviceCmdParamKind::None, kHintDevReset, kSet},
+    {DeviceCmd::DevReset, "DevReset", u8"设备重启", DeviceCmdParamKind::JsonMap, kHintDevReset, kSet},
+    {DeviceCmd::TravelLock, "TravelLock", u8"旅行锁", DeviceCmdParamKind::JsonMap, kHintTravelLock, kSet},
     {DeviceCmd::WifiDisconnect, "WifiDisconnect", u8"断开无线网络", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::WifiConnect, "WifiConnect", u8"连接无线网络", DeviceCmdParamKind::JsonMap, kHintWifiConnect, kSet},
     {DeviceCmd::RssiRead, "RssiRead", u8"信号强度", DeviceCmdParamKind::JsonMap, kHintRssiRead, kGet},
@@ -149,7 +216,7 @@ const Row kRows[] = {
      u8"FCTP TLV 0x0022，单位 mA（uint16 小端）\r\n示例：{\"currentMa\":2000} 或 {\"value\":2000}", kSet},
     {DeviceCmd::TupleRead, "TupleRead", u8"三元组", DeviceCmdParamKind::JsonMap, kHintTupleRead, kGet},
     {DeviceCmd::PeriphState, "PeriphState", u8"外设状态", DeviceCmdParamKind::JsonMap, kHintPeriphState, kGet},
-    {DeviceCmd::FactoryReset, "FactoryReset", u8"恢复出厂", DeviceCmdParamKind::None, kHintFactoryReset, kSet},
+    {DeviceCmd::FactoryReset, "FactoryReset", u8"恢复出厂", DeviceCmdParamKind::JsonMap, kHintFactoryReset, kSet},
     {DeviceCmd::RootEnterOta, "RootEnterOta", u8"进入OTA", DeviceCmdParamKind::None, kHintRootEnterOta, kSet},
     {DeviceCmd::RootSystemControl, "RootSystemControl", u8"系统控制(兼容)", DeviceCmdParamKind::JsonMap, kHintRootSystemControl, kSet},
     {DeviceCmd::RootBatteryTempQuery, "RootBatteryTempQuery", u8"电池温度", DeviceCmdParamKind::None, kHintRootBatteryTemp, kGet},
@@ -166,6 +233,8 @@ const Row kRows[] = {
     {DeviceCmd::RootPumpStallCurrentQuery, "RootPumpStallCurrentQuery", u8"泵堵电流", DeviceCmdParamKind::None,
      u8"Ack 2B 堵转 ADC（大端 last_adc_value）\r\n卡控（可选）：ReportType=ProtocolPumpStallCurrentData，Field=adcValue",
      kGet},
+    {DeviceCmd::RootAgingHistoryQuery, "RootAgingHistoryQuery", u8"老化历史信息", DeviceCmdParamKind::None,
+     kHintRootAgingHistory, kGet},
     {DeviceCmd::RootHeatLevelControl, "RootHeatLevelControl", u8"加热档位", DeviceCmdParamKind::JsonMap,
      kHintRootHeatLevelControl, kSet},
     {DeviceCmd::RootPumpControl, "RootPumpControl", u8"吸奶器控制", DeviceCmdParamKind::JsonMap, kHintRootPumpControl, kSet},
@@ -222,7 +291,7 @@ const Row kRows[] = {
     {DeviceCmd::LedTest, "LedTest", u8"指示灯测试", DeviceCmdParamKind::JsonMap, kHintLedTest, kSet},
     {DeviceCmd::LcdBacklight, "LcdBacklight", u8"屏幕背光", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::LightReportControl, "LightReportControl", u8"灯光上报控制", DeviceCmdParamKind::None, nullptr, kSet},
-    {DeviceCmd::LightCalibWrite, "LightCalibWrite", u8"灯光校准", DeviceCmdParamKind::JsonMap, kHintLightCalibWrite, kSet},
+    {DeviceCmd::LightCalibWrite, "LightCalibWrite", u8"传感器校准写入", DeviceCmdParamKind::JsonMap, kHintLightCalibWrite, kSet},
     {DeviceCmd::CompensationSet, "CompensationSet", u8"补偿参数", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::NowMusicInfo, "NowMusicInfo", u8"当前音乐信息", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::SdCardInfo, "SdCardInfo", u8"存储卡信息", DeviceCmdParamKind::None, nullptr, kGet},
@@ -242,6 +311,24 @@ const Row kRows[] = {
     {DeviceCmd::AgingStatusRead, "AgingStatusRead", u8"老化状态", DeviceCmdParamKind::JsonMap, kHintAgingStatusRead, kGet},
     {DeviceCmd::FactoryDoneRead, "FactoryDoneRead", u8"产测完成标志", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::DeviceExceptionRead, "DeviceExceptionRead", u8"设备异常", DeviceCmdParamKind::None, nullptr, kGet},
+    {DeviceCmd::ExceptionThresholdRead, "ExceptionThresholdRead", u8"异常阈值读取", DeviceCmdParamKind::JsonMap,
+     kHintExceptionThresholdRead, kGet},
+    {DeviceCmd::ExceptionThresholdWrite, "ExceptionThresholdWrite", u8"异常阈值写入", DeviceCmdParamKind::JsonMap,
+     kHintExceptionThresholdWrite, kSet},
+    {DeviceCmd::PumpParamRead, "PumpParamRead", u8"泵参数读取", DeviceCmdParamKind::None, kHintPumpParamRead,
+     kGet},
+    {DeviceCmd::PumpParamWrite, "PumpParamWrite", u8"泵参数写入", DeviceCmdParamKind::JsonMap, kHintPumpParamWrite,
+     kSet},
+    {DeviceCmd::ValveParamRead, "ValveParamRead", u8"阀参数读取", DeviceCmdParamKind::None, kHintValveParamRead,
+     kGet},
+    {DeviceCmd::ValveParamWrite, "ValveParamWrite", u8"阀参数写入", DeviceCmdParamKind::JsonMap, kHintValveParamWrite,
+     kSet},
+    {DeviceCmd::HeatTestWrite, "HeatTestWrite", u8"自定义加热测试", DeviceCmdParamKind::JsonMap, kHintHeatTestWrite,
+     kSet},
+    {DeviceCmd::VibrationTestWrite, "VibrationTestWrite", u8"自定义振动测试", DeviceCmdParamKind::JsonMap,
+     kHintVibrationTestWrite, kSet},
+    {DeviceCmd::CycleReportWrite, "CycleReportWrite", u8"设置数据采集上报", DeviceCmdParamKind::JsonMap,
+     kHintCycleReportWrite, kSet},
 };
 
 } // namespace
