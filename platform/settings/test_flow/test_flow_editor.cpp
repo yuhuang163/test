@@ -19,6 +19,7 @@
 #include <QDragMoveEvent>
 #include <QDropEvent>
 #include <QFile>
+#include <QFontMetrics>
 #include <QFutureWatcher>
 #include <QHBoxLayout>
 #include <QInputDialog>
@@ -65,6 +66,23 @@ const QString& testFlowEditorStyleSheet() {
 void applyFlowContextMenuStyle(QMenu* menu) {
     if (menu)
         menu->setStyleSheet(testFlowEditorStyleSheet());
+}
+
+/** 弹出列表按最长工站名加宽，避免「Wellness Warm…」截断；闭合框仍用原宽度，悬停看 ToolTip */
+void adjustComboPopupToContents(QComboBox* combo) {
+    if (!combo || !combo->view())
+        return;
+    QFontMetrics fm(combo->font());
+    int maxText = 0;
+    for (int i = 0; i < combo->count(); ++i)
+        maxText = qMax(maxText, fm.horizontalAdvance(combo->itemText(i)));
+    int popupW = maxText + 28; // 边距
+    if (combo->count() > combo->maxVisibleItems())
+        popupW += combo->style()->pixelMetric(QStyle::PM_ScrollBarExtent);
+    popupW = qMax(popupW, combo->width());
+    combo->view()->setMinimumWidth(popupW);
+    if (auto* view = qobject_cast<QListView*>(combo->view()))
+        view->setTextElideMode(Qt::ElideNone);
 }
 
 // 专用 MIME，避免与 qsetting 自由工站 setText(索引) 拖放冲突
@@ -678,8 +696,11 @@ void TestFlowEditor::refreshStationCombo(const QString& selectKey) {
         TestCaseStore::loadFlowStationCatalogForProduct(productName);
     QSignalBlocker blocker(stationCombo_);
     stationCombo_->clear();
-    for (const TestFlowStationEntry& entry : stations)
+    for (const TestFlowStationEntry& entry : stations) {
         stationCombo_->addItem(entry.displayName, entry.key);
+        // 闭合态截断时悬停仍可读全名
+        stationCombo_->setItemData(stationCombo_->count() - 1, entry.displayName, Qt::ToolTipRole);
+    }
 
     int idx = stationCombo_->findData(keyToSelect);
     if (idx < 0)
@@ -689,6 +710,7 @@ void TestFlowEditor::refreshStationCombo(const QString& selectKey) {
         idx = 0;
     if (idx >= 0)
         stationCombo_->setCurrentIndex(idx);
+    adjustComboPopupToContents(stationCombo_);
 }
 
 void TestFlowEditor::onProductNameChanged() {
@@ -773,7 +795,9 @@ void TestFlowEditor::setupStationComboContextMenu() {
 
     auto* stationView = new QListView(stationCombo_);
     stationView->setContextMenuPolicy(Qt::CustomContextMenu);
+    stationView->setTextElideMode(Qt::ElideNone);
     stationCombo_->setView(stationView);
+    adjustComboPopupToContents(stationCombo_);
     connect(stationView, &QWidget::customContextMenuRequested, this, [this, stationView](const QPoint& pos) {
         const QModelIndex modelIndex = stationView->indexAt(pos);
         const int row = modelIndex.isValid() ? modelIndex.row() : stationCombo_->currentIndex();

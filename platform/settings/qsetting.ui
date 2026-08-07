@@ -715,9 +715,12 @@
           <widget class="QComboBox" name="comboBox_testFlowStation">
            <property name="minimumSize">
             <size>
-             <width>160</width>
+             <width>240</width>
              <height>0</height>
             </size>
+           </property>
+           <property name="toolTip">
+            <string>工站名称较长时，展开下拉可看全名；悬停单项也可看完整名称</string>
            </property>
           </widget>
          </item>
