@@ -1472,6 +1472,708 @@
                  </item>
                 </layout>
                </widget>
+               <widget class="QGroupBox" name="groupBox_qaiot_feature">
+                <property name="geometry">
+                 <rect>
+                  <x>410</x>
+                  <y>10</y>
+                  <width>780</width>
+                  <height>530</height>
+                 </rect>
+                </property>
+                <property name="title">
+                 <string>Qaiot/Air2 专用（走设置页当前协议）</string>
+                </property>
+                <layout class="QVBoxLayout" name="verticalLayout_qaiot_feature">
+                 <property name="spacing">
+                  <number>4</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>6</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>4</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>6</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>4</number>
+                 </property>
+                 <item>
+                  <layout class="QHBoxLayout" name="horizontalLayout_qaiot_mode">
+                   <item>
+                    <widget class="QLabel" name="label_qaiot_fac_mode">
+                     <property name="text">
+                      <string>模式</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QComboBox" name="qaiot_fac_mode_type"/>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="qaiot_enter_fac_mode">
+                     <property name="text">
+                      <string>进入所选模式</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="qaiot_exit_fac_mode">
+                     <property name="text">
+                      <string>退出所选模式</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="qaiot_travel_lock">
+                     <property name="text">
+                      <string>旅行锁</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="qaiot_read_soft_ver">
+                     <property name="text">
+                      <string>读固件版本</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="qaiot_read_device_name">
+                     <property name="text">
+                      <string>读设备名称</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="horizontalSpacer_qaiot_mode">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>20</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <layout class="QHBoxLayout" name="horizontalLayout_qaiot_key">
+                   <item>
+                    <widget class="QLabel" name="label_qaiot_sim_key">
+                     <property name="text">
+                      <string>模拟按键</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QComboBox" name="qaiot_sim_key"/>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="qaiot_send_sim_key">
+                     <property name="text">
+                      <string>发送模拟按键</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="label_qaiot_aging_mode">
+                     <property name="text">
+                      <string>读模式状态</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QComboBox" name="qaiot_aging_mode"/>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="qaiot_read_aging_status">
+                     <property name="text">
+                      <string>读取</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="horizontalSpacer_qaiot_key">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>20</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <layout class="QHBoxLayout" name="horizontalLayout_qaiot_batt">
+                   <item>
+                    <widget class="QLabel" name="label_qaiot_batt_percent">
+                     <property name="text">
+                      <string>模拟电池%</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QSpinBox" name="qaiot_batt_percent">
+                     <property name="maximum">
+                      <number>100</number>
+                     </property>
+                     <property name="value">
+                      <number>50</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="qaiot_send_batt_percent">
+                     <property name="text">
+                      <string>下发%</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="label_qaiot_batt_mv">
+                     <property name="text">
+                      <string>mV</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QSpinBox" name="qaiot_batt_mv">
+                     <property name="maximum">
+                      <number>5000</number>
+                     </property>
+                     <property name="value">
+                      <number>3700</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="qaiot_send_batt_mv">
+                     <property name="text">
+                      <string>下发电压</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="label_qaiot_batt_ma">
+                     <property name="text">
+                      <string>mA</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QSpinBox" name="qaiot_batt_ma">
+                     <property name="maximum">
+                      <number>5000</number>
+                     </property>
+                     <property name="value">
+                      <number>200</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="qaiot_send_batt_ma">
+                     <property name="text">
+                      <string>下发电流</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="label_qaiot_batt_temp">
+                     <property name="text">
+                      <string>℃</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QSpinBox" name="qaiot_batt_temp">
+                     <property name="minimum">
+                      <number>-20</number>
+                     </property>
+                     <property name="maximum">
+                      <number>80</number>
+                     </property>
+                     <property name="value">
+                      <number>25</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="qaiot_send_batt_temp">
+                     <property name="text">
+                      <string>下发温度</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="horizontalSpacer_qaiot_batt">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>20</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <layout class="QHBoxLayout" name="horizontalLayout_qaiot_cycle">
+                   <item>
+                    <widget class="QLabel" name="label_qaiot_cycle">
+                     <property name="text">
+                      <string>循环上报</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QComboBox" name="qaiot_cycle_type"/>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="label_qaiot_cycle_interval">
+                     <property name="text">
+                      <string>间隔ms</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QSpinBox" name="qaiot_cycle_interval">
+                     <property name="minimum">
+                      <number>50</number>
+                     </property>
+                     <property name="maximum">
+                      <number>10000</number>
+                     </property>
+                     <property name="value">
+                      <number>200</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="qaiot_cycle_on">
+                     <property name="text">
+                      <string>开启上报</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="qaiot_cycle_off">
+                     <property name="text">
+                      <string>关闭上报</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="horizontalSpacer_qaiot_cycle">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>20</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <layout class="QHBoxLayout" name="horizontalLayout_qaiot_ex">
+                   <item>
+                    <widget class="QLabel" name="label_qaiot_ex">
+                     <property name="text">
+                      <string>异常阈值</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QComboBox" name="qaiot_ex_type"/>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="label_qaiot_ex_value">
+                     <property name="text">
+                      <string>value</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QSpinBox" name="qaiot_ex_value">
+                     <property name="maximum">
+                      <number>65535</number>
+                     </property>
+                     <property name="value">
+                      <number>20</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="label_qaiot_ex_low">
+                     <property name="text">
+                      <string>low</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QSpinBox" name="qaiot_ex_low">
+                     <property name="maximum">
+                      <number>255</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="label_qaiot_ex_high">
+                     <property name="text">
+                      <string>high</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QSpinBox" name="qaiot_ex_high">
+                     <property name="maximum">
+                      <number>255</number>
+                     </property>
+                     <property name="value">
+                      <number>55</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="qaiot_ex_read">
+                     <property name="text">
+                      <string>读取</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="qaiot_ex_write">
+                     <property name="text">
+                      <string>写入</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="horizontalSpacer_qaiot_ex">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>20</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <layout class="QHBoxLayout" name="horizontalLayout_qaiot_pump">
+                   <item>
+                    <widget class="QLabel" name="label_qaiot_pump">
+                     <property name="text">
+                      <string>泵</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QSpinBox" name="qaiot_pump_circle">
+                     <property name="toolTip">
+                      <string>circleNum</string>
+                     </property>
+                     <property name="maximum">
+                      <number>255</number>
+                     </property>
+                     <property name="value">
+                      <number>10</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QSpinBox" name="qaiot_pump_dur">
+                     <property name="toolTip">
+                      <string>durationTime</string>
+                     </property>
+                     <property name="maximum">
+                      <number>65535</number>
+                     </property>
+                     <property name="value">
+                      <number>1000</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QSpinBox" name="qaiot_pump_int">
+                     <property name="toolTip">
+                      <string>intervalTime</string>
+                     </property>
+                     <property name="maximum">
+                      <number>65535</number>
+                     </property>
+                     <property name="value">
+                      <number>500</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QSpinBox" name="qaiot_pump_pwm">
+                     <property name="toolTip">
+                      <string>pumpPwm</string>
+                     </property>
+                     <property name="maximum">
+                      <number>100</number>
+                     </property>
+                     <property name="value">
+                      <number>50</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="qaiot_pump_read">
+                     <property name="text">
+                      <string>读泵参</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="qaiot_pump_write">
+                     <property name="text">
+                      <string>写泵参</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="label_qaiot_valve">
+                     <property name="text">
+                      <string>阀</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QSpinBox" name="qaiot_valve_en">
+                     <property name="toolTip">
+                      <string>valveEnableTime</string>
+                     </property>
+                     <property name="maximum">
+                      <number>65535</number>
+                     </property>
+                     <property name="value">
+                      <number>200</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QSpinBox" name="qaiot_valve_dis">
+                     <property name="toolTip">
+                      <string>valveDisableTime</string>
+                     </property>
+                     <property name="maximum">
+                      <number>65535</number>
+                     </property>
+                     <property name="value">
+                      <number>200</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QSpinBox" name="qaiot_valve_pwm">
+                     <property name="toolTip">
+                      <string>valvePwm</string>
+                     </property>
+                     <property name="maximum">
+                      <number>100</number>
+                     </property>
+                     <property name="value">
+                      <number>50</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="qaiot_valve_read">
+                     <property name="text">
+                      <string>读阀参</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="qaiot_valve_write">
+                     <property name="text">
+                      <string>写阀参</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="horizontalSpacer_qaiot_pump">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>20</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <layout class="QHBoxLayout" name="horizontalLayout_qaiot_heat_vib">
+                   <item>
+                    <widget class="QLabel" name="label_qaiot_heat_str">
+                     <property name="text">
+                      <string>加热强度</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QSpinBox" name="qaiot_heat_str">
+                     <property name="maximum">
+                      <number>100</number>
+                     </property>
+                     <property name="value">
+                      <number>50</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="label_qaiot_heat_dur">
+                     <property name="text">
+                      <string>时长</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QSpinBox" name="qaiot_heat_dur">
+                     <property name="maximum">
+                      <number>65535</number>
+                     </property>
+                     <property name="value">
+                      <number>1000</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="qaiot_heat_on">
+                     <property name="text">
+                      <string>加热开</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="qaiot_heat_off">
+                     <property name="text">
+                      <string>加热关</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="label_qaiot_vib_str">
+                     <property name="text">
+                      <string>振动强度</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QSpinBox" name="qaiot_vib_str">
+                     <property name="maximum">
+                      <number>100</number>
+                     </property>
+                     <property name="value">
+                      <number>50</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="label_qaiot_vib_freq">
+                     <property name="text">
+                      <string>频</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QSpinBox" name="qaiot_vib_freq">
+                     <property name="maximum">
+                      <number>255</number>
+                     </property>
+                     <property name="value">
+                      <number>10</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QLabel" name="label_qaiot_vib_dur">
+                     <property name="text">
+                      <string>时长</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QSpinBox" name="qaiot_vib_dur">
+                     <property name="maximum">
+                      <number>65535</number>
+                     </property>
+                     <property name="value">
+                      <number>1000</number>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="qaiot_vib_on">
+                     <property name="text">
+                      <string>振动开</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QPushButton" name="qaiot_vib_off">
+                     <property name="text">
+                      <string>振动关</string>
+                     </property>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="horizontalSpacer_qaiot_heat_vib">
+                     <property name="orientation">
+                      <enum>Qt::Horizontal</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>20</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
+                   </item>
+                  </layout>
+                 </item>
+                 <item>
+                  <spacer name="verticalSpacer_qaiot_feature">
+                   <property name="orientation">
+                    <enum>Qt::Vertical</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>20</width>
+                     <height>40</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                </layout>
+               </widget>
               </widget>
               <widget class="QWidget" name="tab_3">
                <attribute name="title">
