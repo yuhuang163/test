@@ -152,6 +152,7 @@ INCLUDEPATH += agreement/modbus_protocol/device/gc_series_tcp
 INCLUDEPATH += agreement/modbus_protocol/device/hq_ammeter_rtu
 INCLUDEPATH += agreement/modbus_protocol/device/lx_ammeter_rtu
 INCLUDEPATH += agreement/modbus_protocol/device/multi_temp_logger_rtu
+INCLUDEPATH += agreement/modbus_protocol/device/xinjie_plc_rtu
 INCLUDEPATH += agreement/scpi_protocol/codec
 INCLUDEPATH += agreement/scpi_protocol/device/huiling_wfp60h_scpi
 INCLUDEPATH += agreement/scpi_protocol/device/agilent_66319d_scpi
@@ -207,6 +208,9 @@ SOURCES += \
     agreement/modbus_protocol/device/multi_temp_logger_rtu/multi_temp_logger_rtu.cpp \
     agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp_device.cpp \
     agreement/modbus_protocol/device/gc_series_tcp/gc_series_tcp_device.cpp \
+    agreement/modbus_protocol/device/xinjie_plc_rtu/xinjie_plc_address.cpp \
+    agreement/modbus_protocol/device/xinjie_plc_rtu/xinjie_plc_rtu_types.cpp \
+    agreement/modbus_protocol/device/xinjie_plc_rtu/xinjie_plc_rtu_device.cpp \
     platform/driver/process/process_channel.cpp \
     agreement/factory_protocol/codec/fctp/comm_protocol_builder.cpp \
     agreement/factory_protocol/codec/fctp/comm_protocol_parser.cpp \
@@ -351,6 +355,9 @@ HEADERS += \
     agreement/modbus_protocol/device/lx_ammeter_rtu/lx_ammeter_rtu_types.h \
     agreement/modbus_protocol/device/multi_temp_logger_rtu/multi_temp_logger_rtu.h \
     agreement/modbus_protocol/device/multi_temp_logger_rtu/multi_temp_logger_rtu_types.h \
+    agreement/modbus_protocol/device/xinjie_plc_rtu/xinjie_plc_address.h \
+    agreement/modbus_protocol/device/xinjie_plc_rtu/xinjie_plc_rtu_types.h \
+    agreement/modbus_protocol/device/xinjie_plc_rtu/xinjie_plc_rtu_device.h \
     platform/driver/process/process_channel.h \
     agreement/factory_protocol/codec/fctp/comm_protocol.h \
     agreement/factory_protocol/codec/fctp/comm_protocol_builder.h \

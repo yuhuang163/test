@@ -19,6 +19,8 @@
 #include "lx_ammeter_rtu_types.h"
 #include "multi_temp_logger_rtu.h"
 #include "multi_temp_logger_rtu_types.h"
+#include "xinjie_plc_rtu_device.h"
+#include "xinjie_plc_rtu_types.h"
 #include "modbus_types.h"
 #include "qmodbus_rtu_rx_buffer.h"
 
@@ -54,8 +56,12 @@ class QModbusManager : public QObject {
     InovanceH5uModbusTcp* gcTcp();
     GcSeriesTcpDevice* gcDevice();
 
+    XinjePlcRtuDevice* xinjiePlcDevice();
+    const XinjePlcRtuDevice* xinjiePlcDevice() const;
+
     bool exec(PlcCmd cmd, const QVariant& param = {}, QVariant* result = nullptr, QString* errorMessage = nullptr);
     bool exec(GcPlcCmd cmd, const QVariant& param = {}, QVariant* result = nullptr, QString* errorMessage = nullptr);
+    bool exec(XinjePlcCmd cmd, const QVariant& param = {}, QVariant* result = nullptr, QString* errorMessage = nullptr);
 
     bool connectPlc(QString* errorMessage = nullptr);
     void disconnectPlc();
@@ -132,6 +138,7 @@ class QModbusManager : public QObject {
     PlcModbusSession makeSession() const;
     void syncH5uDeviceBindings();
     void syncGcDeviceBindings();
+    void syncXinjiePlcDeviceBindings();
     void syncRtuDeviceBindings();
 
     int stationIndex_ = 1;
@@ -142,6 +149,7 @@ class QModbusManager : public QObject {
     HqAmmeterModbusRtu hqAmmeterRtu_;
     LxAmmeterModbusRtu lxAmmeterRtu_;
     MultiTempLoggerModbusRtu multiTempLoggerRtu_;
+    XinjePlcRtuDevice xinjiePlcDevice_;
     LogFn log_;
     IsContinueFn isContinue_;
 

@@ -17,6 +17,8 @@ class VisaChannel : public QObject {
     struct Config {
         QString resourceAddress;
         int timeoutMs = 3000;
+        /** 仅 ASRL 生效；须与仪器一致，默认 9600，可由 VisaPower/BaudRate 覆盖 */
+        int asrlBaudRate = 9600;
     };
 
     explicit VisaChannel(QObject* parent = nullptr);
@@ -26,11 +28,22 @@ class VisaChannel : public QObject {
     Config config() const;
 
     bool ensureConnected();
+    /** 释放本通道引用。TCPIP 可保活；GPIB/ASRL 引用归零时真 viClose。 */
     void close();
     bool isOpen() const;
 
     bool write(const QByteArray& data);
     bool read(QByteArray* out, int maxBytes = 1024);
+
+    /** 正式测开局/测完：强制关闭进程内该地址的空闲 GPIB 句柄。 */
+    static void discardIdleSharedSession(const QString& resourceAddress);
+    /** 调试：打印进程内共享 VISA 会话 ref/句柄（无独立 VISA 线程，仅主线程+全局锁）。 */
+    static void dumpSharedSessions(const QString& tag);
+    /**
+     * GPIB 步骤等待：切片 sleep + 泵界面/定时器事件，排除 Socket（避免 dongle AT 插队）。
+     * 代替裸 QThread::msleep，减轻主线程假死。
+     */
+    static void pumpDelayMs(int ms);
 
   private:
     Config config_;

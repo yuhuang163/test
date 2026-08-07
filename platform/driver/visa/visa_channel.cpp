@@ -1,6 +1,9 @@
 #include "visa_channel.h"
 
+#include <QCoreApplication>
 #include <QDebug>
+#include <QElapsedTimer>
+#include <QEventLoop>
 #include <QHash>
 #include <QMutex>
 #include <QMutexLocker>
@@ -29,6 +32,8 @@ struct SharedInstrument {
     ViSession session = VI_NULL;
     int refCount = 0;
     int timeoutMs = 3000;
+    qint64 openedAtMs = 0;
+    qint64 lastIoAtMs = 0;
 };
 
 QHash<QString, SharedInstrument>& sharedInstruments() {
@@ -43,18 +48,49 @@ QHash<QString, qint64>& lastGpiBCloseMs() {
 
 QString visaStatusText(ViStatus status) {
     ViChar desc[256] = {0};
+    QString text;
     if (viStatusDesc(VI_NULL, status, desc) >= VI_SUCCESS && desc[0] != '\0')
-        return QString::fromLocal8Bit(desc);
-    return QStringLiteral("status=%1").arg(static_cast<int>(status));
+        text = QString::fromLocal8Bit(desc);
+    else
+        text = QStringLiteral("status=%1").arg(static_cast<int>(status));
+    // 同时打出数值，便于对照 visa.h 中 VI_ERROR_*（中文描述来自 NI 本地化 DLL）
+    return QStringLiteral("%1 (0x%2/%3)")
+        .arg(text)
+        .arg(static_cast<quint32>(status), 8, 16, QLatin1Char('0'))
+        .arg(static_cast<int>(status));
 }
 
 bool isGpiBResource(const QString& address) {
     return address.startsWith(QStringLiteral("GPIB"), Qt::CaseInsensitive);
 }
 
-void busSettleDelayMs(int ms) {
-    if (ms > 0)
-        QThread::msleep(static_cast<unsigned long>(ms));
+bool isAsrlResource(const QString& address) {
+    return address.startsWith(QStringLiteral("ASRL"), Qt::CaseInsensitive);
+}
+
+/** 仅 TCPIP 引用归零时保活；GPIB 保活易导致下轮/首写 ABORT，须真 viClose。ASRL 亦真关。 */
+bool shouldKeepIdleSession(const QString& address) {
+    return address.startsWith(QStringLiteral("TCPIP"), Qt::CaseInsensitive);
+}
+
+/** 等待时释放 VISA 锁并泵界面；排除 Socket，避免 dongle AT 插队。不排除用户输入，减轻「卡死」感。 */
+void busSettleDelayMs(int ms, QRecursiveMutex* releaseMutex = nullptr) {
+    if (ms <= 0)
+        return;
+    if (releaseMutex)
+        releaseMutex->unlock();
+    QElapsedTimer timer;
+    timer.start();
+    constexpr QEventLoop::ProcessEventsFlags kPumpFlags = QEventLoop::ExcludeSocketNotifiers;
+    while (timer.elapsed() < ms) {
+        QCoreApplication::processEvents(kPumpFlags, 30);
+        const int remain = ms - static_cast<int>(timer.elapsed());
+        if (remain <= 0)
+            break;
+        QThread::msleep(static_cast<unsigned long>(qMin(30, remain)));
+    }
+    if (releaseMutex)
+        releaseMutex->lock();
 }
 
 void waitGpiBReopenCooldown(const QString& address) {
@@ -62,9 +98,10 @@ void waitGpiBReopenCooldown(const QString& address) {
     if (closedAt <= 0)
         return;
     const qint64 elapsed = QDateTime::currentMSecsSinceEpoch() - closedAt;
-    constexpr int kMinReopenMs = 300;
+    // 冷却缩短，避免重试链把界面堵死
+    constexpr int kMinReopenMs = 1200;
     if (elapsed < kMinReopenMs)
-        busSettleDelayMs(static_cast<int>(kMinReopenMs - elapsed));
+        busSettleDelayMs(static_cast<int>(kMinReopenMs - elapsed), &visaGlobalMutex());
 }
 
 void trySoftViClear(ViSession inst, const char* context) {
@@ -78,15 +115,11 @@ void flushSessionBuffers(ViSession inst) {
     viFlush(inst, VI_READ_BUF);
 }
 
-void configureSessionAfterOpen(ViSession inst, const QString& address, int timeoutMs) {
-    viSetAttribute(inst, VI_ATTR_TMO_VALUE, static_cast<ViAttrState>(timeoutMs));
-    viSetAttribute(inst, VI_ATTR_SEND_END_EN, VI_TRUE);
-    if (isGpiBResource(address)) {
-        // 现场 GPIB：刚 viOpen 立刻 viClear 易报 NRFD/NDAC，并导致紧随 viWrite 被 ABORT
-        busSettleDelayMs(100);
-    } else {
-        trySoftViClear(inst, "打开后");
-    }
+/** ASRL（VISA 串口）专用：丢掉驱动/硬件 RX 残留，避免「发什么都乱回」。GPIB 禁止走这条。 */
+void clearAsrlIoResidue(ViSession inst, const char* context) {
+    // 先丢 VISA 层缓冲，再丢串口硬件输入，最后 device clear
+    viFlush(inst, static_cast<ViUInt16>(VI_READ_BUF_DISCARD | VI_WRITE_BUF_DISCARD | VI_IO_IN_BUF_DISCARD));
+    trySoftViClear(inst, context);
 }
 
 bool viWriteOnce(ViSession session, const QByteArray& data, ViUInt32* writeCountOut, ViStatus* statusOut) {
@@ -98,6 +131,147 @@ bool viWriteOnce(ViSession session, const QByteArray& data, ViUInt32* writeCount
     if (statusOut)
         *statusOut = status;
     return status >= VI_SUCCESS;
+}
+
+/** 同会话发一次 *IDN? 并读回；成功返回 true。 */
+bool tryGpiBIdnOnce(ViSession inst, int round) {
+    const QByteArray idnCmd = QByteArrayLiteral("*IDN?\n");
+    ViUInt32 writeCount = 0;
+    ViStatus writeSt = VI_SUCCESS;
+    if (!viWriteOnce(inst, idnCmd, &writeCount, &writeSt)) {
+        qDebug().noquote() << "VisaChannel: GPIB 预热 *IDN? 写失败 round=" << round
+                           << "writeCnt=" << writeCount << visaStatusText(writeSt);
+        if (writeSt == VI_ERROR_NLISTENERS || writeSt == VI_ERROR_ABORT) {
+            qDebug() << "VisaChannel: 提示 — 请先关闭 NI-488.2 通讯器 / NI MAX 交互窗口，再测上位机"
+                        "（通讯器能 *IDN? 说明硬件正常，开着会占住 GPIB）";
+        }
+        return false;
+    }
+    char buf[256] = {0};
+    ViUInt32 readCount = 0;
+    const ViStatus readSt =
+        viRead(inst, reinterpret_cast<ViBuf>(buf), static_cast<ViUInt32>(sizeof(buf) - 1), &readCount);
+    if (readSt < VI_SUCCESS || readCount == 0) {
+        qDebug().noquote() << "VisaChannel: GPIB 预热 *IDN? 读失败 round=" << round
+                           << "writeCnt=" << writeCount << "readCnt=" << readCount << visaStatusText(readSt);
+        return false;
+    }
+    qDebug().noquote() << "VisaChannel: GPIB 预热 *IDN? round=" << round << "writeCnt=" << writeCount
+                       << visaStatusText(writeSt) << "readCnt=" << readCount << visaStatusText(readSt)
+                       << "rsp=" << QString::fromLatin1(buf, static_cast<int>(readCount)).trimmed();
+    return true;
+}
+
+/**
+ * GPIB 打开后预热：先按 NI-488.2 通讯器方式直接 *IDN?；
+ * 失败再 REN_ASSERT（总线远程），避免一上来 REN_ASSERT_ADDRESS 就报 NLISTENERS。
+ */
+bool warmUpGpiBAfterOpen(ViSession inst) {
+    busSettleDelayMs(200, &visaGlobalMutex());
+    if (tryGpiBIdnOnce(inst, 1)) {
+        busSettleDelayMs(150, &visaGlobalMutex());
+        return true;
+    }
+    busSettleDelayMs(300, &visaGlobalMutex());
+
+    const ViStatus renSt = viGpibControlREN(inst, VI_GPIB_REN_ASSERT);
+    if (renSt < VI_SUCCESS) {
+        qDebug().noquote() << "VisaChannel: GPIB REN 断言警告" << visaStatusText(renSt);
+        if (renSt == VI_ERROR_NLISTENERS) {
+            qDebug() << "VisaChannel: NLISTENERS — 总线无侦听或被其它程序占用，请关闭 NI-488.2 通讯器后重试";
+        }
+    } else {
+        qDebug() << "VisaChannel: GPIB REN 已断言(远程/RMT)";
+    }
+    busSettleDelayMs(300, &visaGlobalMutex());
+    if (tryGpiBIdnOnce(inst, 2)) {
+        busSettleDelayMs(150, &visaGlobalMutex());
+        return true;
+    }
+    return false;
+}
+
+void configureSessionAfterOpen(ViSession inst, const QString& address, int timeoutMs, int asrlBaudRate) {
+    // GPIB：超时不宜过长，失败时 viWrite/viRead 会堵死主线程直到 TMO
+    const int tmo = isGpiBResource(address) ? qBound(1000, timeoutMs, 2000) : qMax(timeoutMs, 5000);
+    viSetAttribute(inst, VI_ATTR_TMO_VALUE, static_cast<ViAttrState>(tmo));
+    viSetAttribute(inst, VI_ATTR_SEND_END_EN, VI_TRUE);
+    if (isGpiBResource(address))
+        return;
+    viSetAttribute(inst, VI_ATTR_DMA_ALLOW_EN, VI_FALSE);
+    viSetAttribute(inst, VI_ATTR_TERMCHAR, static_cast<ViAttrState>('\n'));
+    viSetAttribute(inst, VI_ATTR_TERMCHAR_EN, VI_TRUE);
+    if (isAsrlResource(address)) {
+        const int baud = asrlBaudRate > 0 ? asrlBaudRate : 9600;
+        viSetAttribute(inst, VI_ATTR_ASRL_BAUD, static_cast<ViAttrState>(baud));
+        viSetAttribute(inst, VI_ATTR_ASRL_DATA_BITS, static_cast<ViAttrState>(8));
+        viSetAttribute(inst, VI_ATTR_ASRL_PARITY, static_cast<ViAttrState>(VI_ASRL_PAR_NONE));
+        viSetAttribute(inst, VI_ATTR_ASRL_STOP_BITS, static_cast<ViAttrState>(VI_ASRL_STOP_ONE));
+        viSetAttribute(inst, VI_ATTR_ASRL_FLOW_CNTRL, static_cast<ViAttrState>(VI_ASRL_FLOW_NONE));
+        qDebug() << "VisaChannel: ASRL 串口参数" << address << "baud=" << baud << "8N1";
+        clearAsrlIoResidue(inst, "ASRL打开后");
+        busSettleDelayMs(50);
+    } else {
+        trySoftViClear(inst, "打开后");
+    }
+}
+
+/** GPIB 写前：已做过 *IDN? 预热则只保指令间距，避免再空等开后 800ms。 */
+void settleGpiBBeforeIoLocked(SharedInstrument& slot) {
+    if (slot.lastIoAtMs > 0) {
+        const qint64 sinceIo = QDateTime::currentMSecsSinceEpoch() - slot.lastIoAtMs;
+        constexpr qint64 kMinGapMs = 200;
+        if (sinceIo < kMinGapMs)
+            busSettleDelayMs(static_cast<int>(kMinGapMs - sinceIo), &visaGlobalMutex());
+        return;
+    }
+    const qint64 now = QDateTime::currentMSecsSinceEpoch();
+    if (slot.openedAtMs > 0) {
+        const qint64 sinceOpen = now - slot.openedAtMs;
+        constexpr qint64 kMinAfterOpenMs = 500;
+        if (sinceOpen < kMinAfterOpenMs)
+            busSettleDelayMs(static_cast<int>(kMinAfterOpenMs - sinceOpen), &visaGlobalMutex());
+    }
+}
+
+bool viWriteGpiBLocked(ViSession session, const QByteArray& data, ViUInt32* writeCountOut, ViStatus* statusOut) {
+    // 不做 viLock：部分 USB-GPIB 上 Lock/Unlock 反而会触发 ABORT
+    return viWriteOnce(session, data, writeCountOut, statusOut);
+}
+
+bool viReadGpiBLocked(ViSession session, ViBuf buf, ViUInt32 count, ViUInt32* readCountOut, ViStatus* statusOut) {
+    ViUInt32 readCount = 0;
+    const ViStatus status = viRead(session, buf, count, &readCount);
+    if (readCountOut)
+        *readCountOut = readCount;
+    if (statusOut)
+        *statusOut = status;
+    return status >= VI_SUCCESS;
+}
+
+/** 调用方须已持有 visaGlobalMutex；作废共享会话并记录 GPIB 关闭时刻。 */
+void invalidateSharedSessionLocked(const QString& address, QHash<QString, SharedInstrument>::iterator it,
+                                   bool* holdsSharedInstFlag) {
+    if (it == sharedInstruments().end()) {
+        if (holdsSharedInstFlag)
+            *holdsSharedInstFlag = false;
+        return;
+    }
+    if (it->session != VI_NULL) {
+        // GPIB 在 ABORT 后勿再 flush/clear，直接关句柄
+        if (!isGpiBResource(address))
+            flushSessionBuffers(it->session);
+        else
+            busSettleDelayMs(50, &visaGlobalMutex());
+        viClose(it->session);
+        it->session = VI_NULL;
+        if (isGpiBResource(address))
+            lastGpiBCloseMs().insert(address, QDateTime::currentMSecsSinceEpoch());
+        qDebug() << "VisaChannel: 已作废仪器会话" << address;
+    }
+    sharedInstruments().erase(it);
+    if (holdsSharedInstFlag)
+        *holdsSharedInstFlag = false;
 }
 
 bool ensureSharedRmLocked(QString* errOut) {
@@ -114,8 +288,40 @@ bool ensureSharedRmLocked(QString* errOut) {
     return true;
 }
 
+void logSharedSessionsLocked(const QString& tag) {
+    const Qt::HANDLE tid = QThread::currentThreadId();
+    if (sharedInstruments().isEmpty()) {
+        qDebug().noquote() << "VisaChannel[" << tag << "] thread=" << tid << " 无共享会话";
+        return;
+    }
+    for (auto it = sharedInstruments().constBegin(); it != sharedInstruments().constEnd(); ++it) {
+        qDebug().noquote() << "VisaChannel[" << tag << "] thread=" << tid << "addr=" << it.key()
+                           << "ref=" << it.value().refCount
+                           << "session=" << (it.value().session != VI_NULL ? "open" : "null")
+                           << "lastIoMs=" << it.value().lastIoAtMs;
+    }
+}
+
 } // namespace
 #endif
+
+void VisaChannel::dumpSharedSessions(const QString& tag) {
+#ifdef HAVE_NI_VISA
+    QMutexLocker locker(&visaGlobalMutex());
+    logSharedSessionsLocked(tag);
+#else
+    Q_UNUSED(tag);
+#endif
+}
+
+void VisaChannel::pumpDelayMs(int ms) {
+#ifdef HAVE_NI_VISA
+    busSettleDelayMs(ms, nullptr);
+#else
+    if (ms > 0)
+        QThread::msleep(static_cast<unsigned long>(ms));
+#endif
+}
 
 VisaChannel::VisaChannel(QObject* parent) : QObject(parent) {
 }
@@ -172,7 +378,7 @@ bool VisaChannel::ensureConnected() {
 
     SharedInstrument& slot = sharedInstruments()[address];
     if (slot.session != VI_NULL) {
-        // 已有其它工位/通道打开同一地址：复用句柄，避免多 RM/多会话互抢导致 ABORT
+        // 含 ref=0 的空闲保活会话：直接加引用，禁止再走 viOpen
         if (slot.timeoutMs != config_.timeoutMs) {
             slot.timeoutMs = config_.timeoutMs;
             viSetAttribute(slot.session, VI_ATTR_TMO_VALUE, static_cast<ViAttrState>(config_.timeoutMs));
@@ -184,33 +390,93 @@ bool VisaChannel::ensureConnected() {
     }
 
     const QByteArray addr = address.toLatin1();
-    ViSession inst = VI_NULL;
-    if (isGpiBResource(address))
-        waitGpiBReopenCooldown(address);
-    // 独占打开：NI-488.2 通讯器等占着时直接失败，避免写到一半被 ABORT
-    ViStatus openStatus =
-        viOpen(sharedResourceManager(), (ViRsrc)addr.constData(), VI_EXCLUSIVE_LOCK,
-               static_cast<ViUInt32>(qMax(1000, config_.timeoutMs)), &inst);
-    if (openStatus < VI_SUCCESS) {
-        openStatus = viOpen(sharedResourceManager(), (ViRsrc)addr.constData(), VI_NULL, VI_NULL, &inst);
-    }
-    if (openStatus < VI_SUCCESS) {
-        qDebug() << "VisaChannel: 打开设备失败 address=" << address << visaStatusText(openStatus)
-                 << "（若刚用过 NI-488.2 通讯器请先关掉该窗口）";
-        return false;
-    }
+    const bool gpib = isGpiBResource(address);
+    constexpr int kGpiBOpenAttempts = 2;
 
-    configureSessionAfterOpen(inst, address, config_.timeoutMs);
+    for (int attempt = 1; attempt <= (gpib ? kGpiBOpenAttempts : 1); ++attempt) {
+        if (gpib)
+            waitGpiBReopenCooldown(address);
 
-    slot.session = inst;
-    slot.refCount = 1;
-    slot.timeoutMs = config_.timeoutMs;
-    holdsSharedInst_ = true;
-    qDebug() << "VisaChannel: 已连接" << address;
-    return true;
+        ViSession inst = VI_NULL;
+        ViStatus openStatus = VI_ERROR_SYSTEM_ERROR;
+        // GPIB 与官方示例一致：VI_NULL 打开。独占锁在部分卡上会导致首写 ABORT。
+        if (gpib) {
+            openStatus = viOpen(sharedResourceManager(), (ViRsrc)addr.constData(), VI_NULL, VI_NULL, &inst);
+        } else {
+            openStatus = viOpen(sharedResourceManager(), (ViRsrc)addr.constData(), VI_EXCLUSIVE_LOCK,
+                                static_cast<ViUInt32>(qMax(1000, config_.timeoutMs)), &inst);
+            if (openStatus < VI_SUCCESS)
+                openStatus = viOpen(sharedResourceManager(), (ViRsrc)addr.constData(), VI_NULL, VI_NULL, &inst);
+        }
+        if (openStatus < VI_SUCCESS) {
+            qDebug() << "VisaChannel: 打开设备失败 address=" << address << visaStatusText(openStatus)
+                     << "attempt=" << attempt << "（若刚用过 NI-488.2 通讯器请先关掉该窗口）";
+            if (!gpib || attempt >= kGpiBOpenAttempts)
+                return false;
+            lastGpiBCloseMs().insert(address, QDateTime::currentMSecsSinceEpoch());
+            continue;
+        }
+
+        configureSessionAfterOpen(inst, address, config_.timeoutMs, config_.asrlBaudRate);
+        if (gpib && !warmUpGpiBAfterOpen(inst)) {
+            qDebug() << "VisaChannel: GPIB 预热失败，关闭后冷却重开 attempt=" << attempt << "/" << kGpiBOpenAttempts;
+            viClose(inst);
+            lastGpiBCloseMs().insert(address, QDateTime::currentMSecsSinceEpoch());
+            if (attempt >= kGpiBOpenAttempts) {
+                qDebug() << "VisaChannel: GPIB 预热多次失败 address=" << address
+                         << "（NI 通讯器若能 *IDN?：先关掉通讯器/MAX；再查地址/线缆/电源）";
+                return false;
+            }
+            continue;
+        }
+
+        slot.session = inst;
+        slot.refCount = 1;
+        slot.timeoutMs = config_.timeoutMs;
+        slot.openedAtMs = QDateTime::currentMSecsSinceEpoch();
+        // GPIB 预热成功后已有 I/O，业务首写只需短间隔
+        slot.lastIoAtMs = gpib ? slot.openedAtMs : 0;
+        holdsSharedInst_ = true;
+        qDebug() << "VisaChannel: 已连接" << address << "thread=" << QThread::currentThreadId()
+                 << "attempt=" << attempt;
+        logSharedSessionsLocked(QStringLiteral("ensureConnected"));
+        return true;
+    }
+    return false;
 #else
     qDebug() << "VisaChannel: 未启用 HAVE_NI_VISA";
     return false;
+#endif
+}
+
+void VisaChannel::discardIdleSharedSession(const QString& resourceAddress) {
+#ifdef HAVE_NI_VISA
+    QMutexLocker locker(&visaGlobalMutex());
+    const QString address = resourceAddress.trimmed();
+    if (address.isEmpty())
+        return;
+    auto it = sharedInstruments().find(address);
+    if (it == sharedInstruments().end() || it->session == VI_NULL) {
+        if (it != sharedInstruments().end())
+            sharedInstruments().erase(it);
+        return;
+    }
+    if (it->refCount > 0) {
+        qDebug() << "VisaChannel: 开局作废会话 ref=" << it->refCount << address
+                 << "（强制 viClose，避免 ref=0 保活僵死句柄占用）";
+    }
+    if (isGpiBResource(address))
+        busSettleDelayMs(50, &visaGlobalMutex());
+    else
+        flushSessionBuffers(it->session);
+    viClose(it->session);
+    if (isGpiBResource(address))
+        lastGpiBCloseMs().insert(address, QDateTime::currentMSecsSinceEpoch());
+    sharedInstruments().erase(it);
+    qDebug() << "VisaChannel: 开局作废空闲会话" << address;
+    logSharedSessionsLocked(QStringLiteral("discardIdle"));
+#else
+    Q_UNUSED(resourceAddress);
 #endif
 }
 
@@ -229,15 +495,22 @@ void VisaChannel::close() {
         qDebug() << "VisaChannel: 释放引用" << address << "ref=" << it->refCount;
         return;
     }
+    if (shouldKeepIdleSession(address) && it->session != VI_NULL) {
+        qDebug() << "VisaChannel: 释放引用并保活空闲会话" << address << "ref=0";
+        logSharedSessionsLocked(QStringLiteral("closeKeepAlive"));
+        return;
+    }
     if (it->session != VI_NULL) {
-        flushSessionBuffers(it->session);
-        if (isGpiBResource(address))
-            busSettleDelayMs(30);
+        if (!isGpiBResource(address))
+            flushSessionBuffers(it->session);
+        else
+            busSettleDelayMs(50, &visaGlobalMutex());
         viClose(it->session);
         it->session = VI_NULL;
         if (isGpiBResource(address))
             lastGpiBCloseMs().insert(address, QDateTime::currentMSecsSinceEpoch());
         qDebug() << "VisaChannel: 已关闭仪器会话" << address;
+        logSharedSessionsLocked(QStringLiteral("closeHard"));
     }
     sharedInstruments().erase(it);
     // DefaultRM 进程内常驻，避免反复 viClose(RM) 把其它通道正在进行的 I/O 打成 ABORT
@@ -258,23 +531,77 @@ bool VisaChannel::write(const QByteArray& data) {
         return false;
     }
 
+    const bool gpib = isGpiBResource(address);
+    const bool asrl = isAsrlResource(address);
+    if (gpib)
+        settleGpiBBeforeIoLocked(*it);
+    else if (asrl)
+        // 每次下发前清 RX，避免上次残留导致「发什么都乱回」
+        clearAsrlIoResidue(it->session, "ASRL写前");
+
     qDebug().noquote() << "VISA TX:" << QString::fromLatin1(data.toHex(' ').toUpper());
     ViUInt32 writeCount = 0;
     ViStatus status = VI_SUCCESS;
-    if (!viWriteOnce(it->session, data, &writeCount, &status)) {
+    auto doWrite = [&]() -> bool {
+        return gpib ? viWriteGpiBLocked(it->session, data, &writeCount, &status)
+                    : viWriteOnce(it->session, data, &writeCount, &status);
+    };
+
+    if (!doWrite()) {
+        if (gpib) {
+            // 同会话只快退 1 次，避免重试×冷却把界面堵死
+            qDebug() << "VisaChannel: GPIB 写入失败" << visaStatusText(status) << "retCnt=" << writeCount
+                     << "，同会话重试";
+            busSettleDelayMs(250, &visaGlobalMutex());
+            writeCount = 0;
+            if (doWrite()) {
+                qDebug() << "VisaChannel: GPIB 同会话重试成功 retCnt=" << writeCount;
+                it->lastIoAtMs = QDateTime::currentMSecsSinceEpoch();
+                busSettleDelayMs(80, &visaGlobalMutex());
+                return true;
+            }
+            qDebug() << "VisaChannel: GPIB 同会话重试仍失败" << visaStatusText(status)
+                     << "，作废后重开再写";
+            invalidateSharedSessionLocked(address, it, &holdsSharedInst_);
+            logSharedSessionsLocked(QStringLiteral("writeAbort"));
+            locker.unlock();
+            if (!ensureConnected())
+                return false;
+            locker.relock();
+            it = sharedInstruments().find(address);
+            if (it == sharedInstruments().end() || it->session == VI_NULL) {
+                holdsSharedInst_ = false;
+                return false;
+            }
+            settleGpiBBeforeIoLocked(*it);
+            qDebug().noquote() << "VISA TX(reopen):" << QString::fromLatin1(data.toHex(' ').toUpper());
+            writeCount = 0;
+            if (viWriteGpiBLocked(it->session, data, &writeCount, &status)) {
+                qDebug() << "VisaChannel: GPIB 重开后写入成功 retCnt=" << writeCount;
+                it->lastIoAtMs = QDateTime::currentMSecsSinceEpoch();
+                busSettleDelayMs(80, &visaGlobalMutex());
+                return true;
+            }
+            qDebug() << "VisaChannel: GPIB 重开后仍失败" << visaStatusText(status);
+            invalidateSharedSessionLocked(address, it, &holdsSharedInst_);
+            return false;
+        }
         qDebug() << "VisaChannel: 写入失败" << visaStatusText(status) << "retCnt=" << writeCount
                  << "，尝试 viClear 后重试";
         trySoftViClear(it->session, "写入恢复");
-        busSettleDelayMs(isGpiBResource(address) ? 120 : 50);
+        busSettleDelayMs(50, &visaGlobalMutex());
         writeCount = 0;
         if (!viWriteOnce(it->session, data, &writeCount, &status)) {
-            qDebug() << "VisaChannel: 写入重试仍失败" << visaStatusText(status) << "retCnt=" << writeCount;
+            qDebug() << "VisaChannel: 写入重试仍失败" << visaStatusText(status) << "retCnt=" << writeCount
+                     << "，作废会话以便下次 ensureConnected 重开";
+            invalidateSharedSessionLocked(address, it, &holdsSharedInst_);
             return false;
         }
         qDebug() << "VisaChannel: 写入重试成功 retCnt=" << writeCount;
     }
-    if (isGpiBResource(address))
-        busSettleDelayMs(30);
+    it->lastIoAtMs = QDateTime::currentMSecsSinceEpoch();
+    if (gpib)
+        busSettleDelayMs(120, &visaGlobalMutex());
     return true;
 #else
     Q_UNUSED(data);
@@ -297,16 +624,34 @@ bool VisaChannel::read(QByteArray* out, int maxBytes) {
         return false;
     }
 
+    const bool gpib = isGpiBResource(address);
+    if (gpib)
+        settleGpiBBeforeIoLocked(*it);
+
     QByteArray buffer(maxBytes, '\0');
     ViUInt32 readCount = 0;
-    const ViStatus status =
-        viRead(it->session, reinterpret_cast<ViBuf>(buffer.data()), static_cast<ViUInt32>(maxBytes - 1), &readCount);
-    if (status < VI_SUCCESS) {
-        qDebug() << "VisaChannel: 读取失败" << visaStatusText(status);
+    ViStatus status = VI_SUCCESS;
+    bool ok = false;
+    if (gpib) {
+        ok = viReadGpiBLocked(it->session, reinterpret_cast<ViBuf>(buffer.data()),
+                              static_cast<ViUInt32>(maxBytes - 1), &readCount, &status);
+    } else {
+        status = viRead(it->session, reinterpret_cast<ViBuf>(buffer.data()), static_cast<ViUInt32>(maxBytes - 1),
+                        &readCount);
+        ok = status >= VI_SUCCESS;
+    }
+    if (!ok) {
+        if (gpib) {
+            qDebug() << "VisaChannel: GPIB 读取失败" << visaStatusText(status) << "，保持会话由上层再试";
+            return false;
+        }
+        qDebug() << "VisaChannel: 读取失败" << visaStatusText(status) << "，作废会话以便下次重开";
+        invalidateSharedSessionLocked(address, it, &holdsSharedInst_);
         return false;
     }
     buffer.resize(static_cast<int>(readCount));
     *out = buffer;
+    it->lastIoAtMs = QDateTime::currentMSecsSinceEpoch();
     return true;
 #else
     Q_UNUSED(maxBytes);

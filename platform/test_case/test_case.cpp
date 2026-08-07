@@ -1301,6 +1301,13 @@ void supplementMissingGateFromLibrary(const QString& stationKey, const QString& 
                 && !profileIni.value(QStringLiteral("Gate/Enabled")).toBool()) {
                 return;
             }
+            // 工站覆盖层已写了自己的单字段卡控（如读取版本号 Expected）时不得再用步骤库回冲，
+            // 否则界面在工站里改的期望值每次加载都会被库值盖掉；多字段库仍保留补齐能力
+            const bool profileHasOwnGate =
+                !profileIni.value(QStringLiteral("Gate/ReportType")).toString().trimmed().isEmpty()
+                || !profileIni.value(QStringLiteral("Gate/Field")).toString().trimmed().isEmpty();
+            if (profileHasOwnGate && !libraryHasMultiGates)
+                return;
         }
     }
 
@@ -2063,6 +2070,9 @@ void rebuildCloudItemNameMap() {
         registerCloudItemNameAlias(&map, nameInIni, display);
         registerCloudItemNameAlias(&map, caseName, display);
     }
+    // 杰理蓝牙盒子多字段卡控拆项后的 MES 键 → 云端中文名
+    registerCloudItemNameAlias(&map, QStringLiteral("BT_RSSI"), QStringLiteral("RSSI(dBm)"));
+    registerCloudItemNameAlias(&map, QStringLiteral("BT_FREQ_OFFSET"), QStringLiteral("频偏"));
     cloudItemNameMapLoaded() = true;
 }
 
@@ -2771,12 +2781,14 @@ void writeSendParamLeaf(QSettings& s, const QString& leafKey, const QVariant& va
 QVariant normalizeScpiModbusParamFromMap(const QVariantMap& map) {
     if (map.isEmpty())
         return QVariant();
-    if (map.contains(QStringLiteral("int")) && map.size() == 1)
-        return map.value(QStringLiteral("int"));
-    if (map.contains(QStringLiteral("value")) && map.size() == 1)
-        return map.value(QStringLiteral("value"));
-    if (map.size() == 1)
-        return map.constBegin().value();
+    // 只有 int/uint/value/string 这类叶子键才还原成标量；具名参数（如 comPort）即使只有一个
+    // 也必须保持 map，否则单参数步骤会被折叠成裸值，UI 回显与执行按键名取参都拿不到
+    if (map.size() == 1) {
+        const QString leaf = map.constBegin().key();
+        if (leaf == QLatin1String("int") || leaf == QLatin1String("uint") || leaf == QLatin1String("value")
+            || leaf == QLatin1String("string"))
+            return map.constBegin().value();
+    }
     return map;
 }
 
@@ -3804,7 +3816,8 @@ QStringList ModbusPeriphCmdCatalog::allDeviceKeys() {
             ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::GcSeriesTcp),
             ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::HqAmmeterRtu),
             ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::LxAmmeterRtu),
-            ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::MultiTempLoggerRtu)};
+            ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::MultiTempLoggerRtu),
+            ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::XinjiePlcRtu)};
 }
 
 QString ModbusPeriphCmdCatalog::deviceUiLabel(ModbusDeviceRoute device) {

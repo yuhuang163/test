@@ -10,9 +10,11 @@
 #pragma execution_character_set(push, "utf-8")
 #endif
 
-QModbusManager::QModbusManager(QObject* parent) : QObject(parent), h5uDevice_(this), gcDevice_(this) {
+QModbusManager::QModbusManager(QObject* parent)
+    : QObject(parent), h5uDevice_(this), gcDevice_(this), xinjiePlcDevice_(this) {
     syncH5uDeviceBindings();
     syncGcDeviceBindings();
+    syncXinjiePlcDeviceBindings();
     syncRtuDeviceBindings();
 }
 
@@ -29,6 +31,12 @@ void QModbusManager::syncGcDeviceBindings() {
     gcDevice_.setLogFn(log_);
 }
 
+void QModbusManager::syncXinjiePlcDeviceBindings() {
+    xinjiePlcDevice_.setSerialChannel(serialChannel_);
+    xinjiePlcDevice_.setStationIndex(stationIndex_);
+    xinjiePlcDevice_.setLogFn(log_);
+}
+
 void QModbusManager::syncRtuDeviceBindings() {
     lxAmmeterRtu_.setMachineId(luxshareMachineId_);
 }
@@ -37,6 +45,7 @@ void QModbusManager::setStationIndex(int stationIndex) {
     stationIndex_ = qMax(1, stationIndex);
     syncH5uDeviceBindings();
     syncGcDeviceBindings();
+    syncXinjiePlcDeviceBindings();
 }
 
 int QModbusManager::stationIndex() const {
@@ -47,6 +56,7 @@ void QModbusManager::setLogFn(LogFn fn) {
     log_ = std::move(fn);
     syncH5uDeviceBindings();
     syncGcDeviceBindings();
+    syncXinjiePlcDeviceBindings();
 }
 
 void QModbusManager::setIsContinueFn(IsContinueFn fn) {
@@ -78,6 +88,14 @@ GcSeriesTcpDevice* QModbusManager::gcDevice() {
     return &gcDevice_;
 }
 
+XinjePlcRtuDevice* QModbusManager::xinjiePlcDevice() {
+    return &xinjiePlcDevice_;
+}
+
+const XinjePlcRtuDevice* QModbusManager::xinjiePlcDevice() const {
+    return &xinjiePlcDevice_;
+}
+
 PlcModbusSession QModbusManager::makeSession() const {
     return PlcModbusSession(const_cast<InovanceH5uModbusTcp*>(&h5uTcp_), PlcStationConfig::fromSettings(stationIndex_),
                             log_, isContinue_);
@@ -97,6 +115,13 @@ bool QModbusManager::exec(GcPlcCmd cmd, const QVariant& param, QVariant* result,
     return gcDevice_.set(cmd, param, errorMessage);
 }
 
+bool QModbusManager::exec(XinjePlcCmd cmd, const QVariant& param, QVariant* result, QString* errorMessage) {
+    if (XinjePlcRtuDevice::isQueryCmd(cmd)) {
+        return xinjiePlcDevice_.get(cmd, param, result, errorMessage);
+    }
+    return xinjiePlcDevice_.set(cmd, param, errorMessage);
+}
+
 bool QModbusManager::connectPlc(QString* errorMessage) {
     return exec(PlcCmd::Connect, {}, nullptr, errorMessage);
 }
@@ -113,6 +138,7 @@ bool QModbusManager::isPlcConnected() const {
 
 void QModbusManager::attachSerialChannel(SerialChannel* channel) {
     serialChannel_ = channel;
+    syncXinjiePlcDeviceBindings();
 }
 
 SerialChannel* QModbusManager::serialChannel() const {

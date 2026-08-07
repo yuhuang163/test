@@ -21,7 +21,7 @@ const Row kRows[] = {
      u8"单电源：visaAddress；voltage(V)；current(A)\n"
      u8"一拖多共享：sharedPair=true；stationsPerDevice=2|3；visaAddress0/1/2…；可选 scpiChannelSelectCmd=INST OUT%1\n"
      u8"可选 SCPI 模板(含 %1)：scpiSetVoltageCmd / scpiSetCurrentCmd / scpiOutputOnCmd / Off / Read*\n"
-     u8"会凌通道写在 SOURceN/OUTPutN；界面「中文说明」列可对照参数含义",
+     u8"会凌默认短写：SOUR1:VOLT %1 / SOUR1:CURR %1 / OUTP1 ON|OFF / MEAS1:VOLT:DC?；通道号写在 SOURn/OUTPn",
      kSet},
     {ScpiDeviceRoute::HuilingWfp60h, "ProgrammablePowerOutput", u8"源通道输出开关",
      u8"int=1开/0关（须先执行配置步骤；输出 ON/OFF 命令复用配置步的 scpiOutputOnCmd/scpiOutputOffCmd）", kSet},

@@ -25,6 +25,7 @@
 #include <QRegularExpression>
 #include <QSignalBlocker>
 #include <QColor>
+#include <QApplication>
 
 #include <algorithm>
 #include <functional>
@@ -100,6 +101,17 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("line"), QStringLiteral("SCPI 原始行")},
         {QStringLiteral("mLeft"), QStringLiteral("PLC 左工位线圈")},
         {QStringLiteral("mRight"), QStringLiteral("PLC 右工位线圈")},
+        {QStringLiteral("address"), QStringLiteral("信捷 PLC 地址（如 M20、D100、X0）")},
+        {QStringLiteral("value"), QStringLiteral("线圈/寄存器值（true/false 或数字）")},
+        {QStringLiteral("quantity"), QStringLiteral("读取数量")},
+        {QStringLiteral("comPort"), QStringLiteral("信捷 PLC 串口（如 COM4，留空则用工位万用表串口）")},
+        {QStringLiteral("portName"), QStringLiteral("信捷 PLC 串口（如 COM4，留空则用工位万用表串口）")},
+        {QStringLiteral("baudRate"), QStringLiteral("信捷 PLC 波特率")},
+        {QStringLiteral("slaveId"), QStringLiteral("信捷 PLC 从站地址")},
+        {QStringLiteral("requestTimeoutMs"), QStringLiteral("信捷 PLC 应答超时 (ms)")},
+        {QStringLiteral("parity"), QStringLiteral("校验位（even / none / odd，信捷出厂 even）")},
+        {QStringLiteral("expectReply"), QStringLiteral("写入是否等待并校验回包（默认 false 只发不收）")},
+        {QStringLiteral("rtsMode"), QStringLiteral("RTS 模式（rs485 / none / enable）")},
         {QStringLiteral("readChannel"), QStringLiteral("治具读电流通道 CH1/CH2")},
         {QStringLiteral("MachineIndex"), QStringLiteral("治具机号")},
         {QStringLiteral("machineIndex"), QStringLiteral("治具机号")},
@@ -293,13 +305,13 @@ QVariantMap defaultVisaConfigureParamMap(ScpiDeviceRoute route) {
     map.insert(QStringLiteral("visaAddress"), QStringLiteral("TCPIP::localhost::5026::SOCKET"));
     map.insert(QStringLiteral("voltage"), QStringLiteral("12.0"));
     map.insert(QStringLiteral("current"), QStringLiteral("2.5"));
-    map.insert(QStringLiteral("scpiSetVoltageCmd"),
-               QStringLiteral("SOURce1:VOLTage:LEVel:IMMediate:AMPLitude %1"));
-    map.insert(QStringLiteral("scpiSetCurrentCmd"), QStringLiteral("SOURce1:CURRent:LIMit:VALue %1"));
-    map.insert(QStringLiteral("scpiOutputOnCmd"), QStringLiteral("OUTPut1:STATe ON"));
-    map.insert(QStringLiteral("scpiOutputOffCmd"), QStringLiteral("OUTPut1:STATe OFF"));
-    map.insert(QStringLiteral("scpiReadVoltageCmd"), QStringLiteral("MEASure1:VOLTage:DC?"));
-    map.insert(QStringLiteral("scpiReadCurrentCmd"), QStringLiteral("MEASure1:CURRent:DC?"));
+    // 会凌短写，与 huiling_wfp60h_profile::defaults 一致
+    map.insert(QStringLiteral("scpiSetVoltageCmd"), QStringLiteral("SOUR1:VOLT %1"));
+    map.insert(QStringLiteral("scpiSetCurrentCmd"), QStringLiteral("SOUR1:CURR %1"));
+    map.insert(QStringLiteral("scpiOutputOnCmd"), QStringLiteral("OUTP1 ON"));
+    map.insert(QStringLiteral("scpiOutputOffCmd"), QStringLiteral("OUTP1 OFF"));
+    map.insert(QStringLiteral("scpiReadVoltageCmd"), QStringLiteral("MEAS1:VOLT:DC?"));
+    map.insert(QStringLiteral("scpiReadCurrentCmd"), QStringLiteral("MEAS1:CURR:DC?"));
     return map;
 }
 
@@ -310,7 +322,7 @@ QVariantMap defaultVisaReadCurrentParamMap(ScpiDeviceRoute route) {
         map.insert(QStringLiteral("scpiSetCurrentRangeCmd"), QStringLiteral("SENS:CURR:RANG %1"));
         map.insert(QStringLiteral("scpiReadCurrentCmd"), QStringLiteral("MEAS:CURR:DC?"));
     } else {
-        map.insert(QStringLiteral("scpiReadCurrentCmd"), QStringLiteral("MEASure1:CURRent:DC?"));
+        map.insert(QStringLiteral("scpiReadCurrentCmd"), QStringLiteral("MEAS1:CURR:DC?"));
     }
     map.insert(QStringLiteral("sampleDurationMs"), QStringLiteral("3000"));
     map.insert(QStringLiteral("sampleIntervalMs"), QStringLiteral("200"));
@@ -330,7 +342,7 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
                 if (route == ScpiDeviceRoute::Agilent66319d)
                     map.insert(QStringLiteral("scpiReadVoltageCmd"), QStringLiteral("MEAS:VOLT:DC?"));
                 else
-                    map.insert(QStringLiteral("scpiReadVoltageCmd"), QStringLiteral("MEASure1:VOLTage:DC?"));
+                    map.insert(QStringLiteral("scpiReadVoltageCmd"), QStringLiteral("MEAS1:VOLT:DC?"));
                 return map;
             }
             if (cmdName == QLatin1String("SendRawLine")) {
@@ -356,6 +368,33 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
         }
         if (cmdName == QLatin1String("SendRaw")) {
             return QVariantMap{{QStringLiteral("txHex"), QStringLiteral("01 03 00 12 00 02 64 0E")}};
+        }
+        return {};
+    }
+    if (channel == TestCaseSendChannel::Modbus
+        && ModbusPeriphCmdCatalog::deviceFromIni(device) == ModbusDeviceRoute::XinjiePlcRtu) {
+        if (cmdName == QLatin1String("Connect")) {
+            // comPort 留空占位：用户填写后须写入 ini；勿填 COM11 等硬编码以免误保存
+            return QVariantMap{{QStringLiteral("comPort"), QString()},
+                               {QStringLiteral("baudRate"), QStringLiteral("19200")},
+                               {QStringLiteral("slaveId"), QStringLiteral("1")},
+                               {QStringLiteral("parity"), QStringLiteral("even")},
+                               {QStringLiteral("rtsMode"), QStringLiteral("none")}};
+        }
+        if (cmdName == QLatin1String("WriteCoil")) {
+            return QVariantMap{{QStringLiteral("address"), QStringLiteral("M20")},
+                               {QStringLiteral("value"), QStringLiteral("true")},
+                               {QStringLiteral("expectReply"), QStringLiteral("false")}};
+        }
+        if (cmdName == QLatin1String("WriteRegister")) {
+            return QVariantMap{{QStringLiteral("address"), QStringLiteral("D100")},
+                               {QStringLiteral("value"), QStringLiteral("0")},
+                               {QStringLiteral("expectReply"), QStringLiteral("false")}};
+        }
+        if (cmdName == QLatin1String("ReadCoils") || cmdName == QLatin1String("ReadDiscreteInputs")
+            || cmdName == QLatin1String("ReadHoldingRegisters")) {
+            return QVariantMap{{QStringLiteral("address"), QStringLiteral("M20")},
+                               {QStringLiteral("quantity"), QStringLiteral("1")}};
         }
         return {};
     }
@@ -432,6 +471,20 @@ void setSendParamTableFromString(QTableWidget* table, const QString& value) {
     configureSendParamTable(table, false);
     table->insertRow(0);
     table->setItem(0, 0, new QTableWidgetItem(value));
+}
+
+/** 保存/definition 前提交表格内联编辑，避免点「确定」时 Param 仍读旧占位值。 */
+void commitSendParamTableEdits(QTableWidget* table) {
+    if (!table)
+        return;
+    // QTableWidget::closePersistentEditor 只接受 QTableWidgetItem*，不能用 QModelIndex
+    if (QTableWidgetItem* item = table->currentItem())
+        table->closePersistentEditor(item);
+    if (QWidget* fw = QApplication::focusWidget()) {
+        if (fw == table || table->isAncestorOf(fw))
+            fw->clearFocus();
+    }
+    table->clearFocus();
 }
 
 QVariantMap readSendParamMapFromTable(const QTableWidget* table) {
@@ -819,6 +872,15 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
             } else if (devRoute == ModbusDeviceRoute::MultiTempLoggerRtu) {
                 // 开放报文与读温通道均走 Param_* map
                 out.kind = SendCmdParamKind::JsonMap;
+            } else if (devRoute == ModbusDeviceRoute::XinjiePlcRtu) {
+                if (name == QLatin1String("Connect") || name == QLatin1String("WriteCoil")
+                    || name == QLatin1String("ReadCoils") || name == QLatin1String("WriteRegister")
+                    || name == QLatin1String("ReadHoldingRegisters")
+                    || name == QLatin1String("ReadDiscreteInputs")) {
+                    out.kind = SendCmdParamKind::JsonMap;
+                } else {
+                    out.kind = SendCmdParamKind::None;
+                }
             } else {
                 out.kind = SendCmdParamKind::None;
             }
@@ -1872,6 +1934,7 @@ void TestCaseEditDialog::onDeviceCmdChanged(int) {
 }
 
 bool TestCaseEditDialog::saveValidated() {
+    commitSendParamTableEdits(ui->tableWidget_sendParam);
     const TestCaseDefinition def = definition();
     QStringList errors;
     if (!TestCaseValidator::validateCase(def, errors)) {

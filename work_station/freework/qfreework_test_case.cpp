@@ -14,7 +14,9 @@
 #include "qprotocol_types.h"
 #include "shared_instrument.h"
 #include "serial_channel.h"
+#include "visa_channel.h"
 #include "multi_temp_logger_rtu.h"
+#include "xinjie_plc_rtu_types.h"
 #include "qmodbus_pdu.h"
 
 #include <QFile>
@@ -393,6 +395,26 @@ GcPlcCmd gcPlcCmdFromName(const QString& name) {
     if (name == QLatin1String("WriteCoil"))
         return GcPlcCmd::WriteCoil;
     return GcPlcCmd::IsConnected;
+}
+
+XinjePlcCmd xinjiePlcCmdFromName(const QString& name) {
+    if (name == QLatin1String("Connect"))
+        return XinjePlcCmd::Connect;
+    if (name == QLatin1String("Disconnect"))
+        return XinjePlcCmd::Disconnect;
+    if (name == QLatin1String("IsConnected"))
+        return XinjePlcCmd::IsConnected;
+    if (name == QLatin1String("WriteCoil"))
+        return XinjePlcCmd::WriteCoil;
+    if (name == QLatin1String("ReadCoils"))
+        return XinjePlcCmd::ReadCoils;
+    if (name == QLatin1String("WriteRegister"))
+        return XinjePlcCmd::WriteRegister;
+    if (name == QLatin1String("ReadHoldingRegisters"))
+        return XinjePlcCmd::ReadHoldingRegisters;
+    if (name == QLatin1String("ReadDiscreteInputs"))
+        return XinjePlcCmd::ReadDiscreteInputs;
+    return XinjePlcCmd::IsConnected;
 }
 
 HqAmmeterRtuCmd hqAmmeterRtuCmdFromName(const QString& name) {
@@ -905,6 +927,8 @@ void QFreeWork::emitFixtureMultiGateTableRows(const QVector<TestCaseGate>& gates
     if (!rows.isEmpty()) {
         testResultTableUpdate(rows);
         testCaseMultiGateTableEmitted_ = true;
+        // 与结果表同步：RSSI/频偏等分项各写一条 MES，避免整步只上报主字段
+        appendMultiGateTestCaseMes(gates, reportType, payload);
     }
 }
 
@@ -1004,12 +1028,17 @@ void QFreeWork::runScpiProgrammableCurrentSampleAnyMatch(const TestCaseDefinitio
         QString errStr;
         bool ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, commandParam, &errStr);
         if (!ok) {
-            waitWork(150);
+            waitWork(300);
+            ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, commandParam, &errStr);
+        }
+        if (!ok) {
+            waitWork(500);
             ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, commandParam, &errStr);
         }
         if (!ok) {
             waitWork(300);
             resetVisaBackend();
+            waitWork(500);
             ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, commandParam, &errStr);
         }
         if (!ok) {
@@ -1723,6 +1752,25 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             } else {
                 ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
             }
+        } else if (devRoute == ModbusDeviceRoute::XinjiePlcRtu) {
+            XinjePlcCmd xjCmd = xinjiePlcCmdFromName(def.send.deviceCmd);
+            QVariant resultVal;
+            bool ok = ctx->modbusManager.exec(xjCmd, resolvedParam, &resultVal, &errStr);
+            if (!ok) {
+                ctx->showlog(QStringLiteral("信捷 PLC 指令 [%1] 执行失败: %2").arg(def.send.deviceCmd, errStr));
+                ctx->markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
+            } else if (def.send.action == TestCaseSendAction::Get) {
+                ProtocolMeasureData measureData;
+                measureData.deviceName = deviceKey;
+                measureData.type = QStringLiteral("XinjiePlc");
+                measureData.valueText = resultVal.toString();
+                measureData.value = resultVal.toDouble();
+                measureData.isOk = true;
+                ctx->onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolMeasureData"),
+                                                          QVariant::fromValue(measureData)));
+            } else {
+                ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
+            }
         } else if (devRoute == ModbusDeviceRoute::HqAmmeterRtu) {
             if (def.send.action == TestCaseSendAction::Get && def.gate.enabled) {
                 ctx->runModbusAmmeterCurrentSampleAnyMatch(def, devRoute);
@@ -1927,6 +1975,12 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                 ctx->markActiveTestCaseStepDone(false, QStringLiteral("visaAddress缺失"), QStringLiteral("失败"));
                 return;
             }
+            // GPIB：勿用 waitWork（会泵 Socket→dongle AT）；用 pumpDelayMs 保界面可刷新
+            if (resolvedVisaAddr.startsWith(QStringLiteral("GPIB"), Qt::CaseInsensitive)) {
+                ctx->suppressProductBleAutoReconnect_ = true;
+                ctx->scpiVisaManager()->ensureConnected();
+                VisaChannel::pumpDelayMs(200);
+            }
             if (!stepParams.linkMap.value(QStringLiteral("visaAddress")).toString().trimmed().isEmpty()
                 || !visaLoadMap.value(QStringLiteral("visaAddress")).toString().trimmed().isEmpty()) {
                 ctx->updateHuilingVisaLinkCache(huilingVisaLinkKeysFromMap(visaLoadMap));
@@ -1938,13 +1992,26 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                 return;
             }
             bool ok = ctx->scpiVisaManager()->exec(cmd, stepParams.commandParam, &errStr);
+            const bool gpibAddr = resolvedVisaAddr.startsWith(QStringLiteral("GPIB"), Qt::CaseInsensitive);
             if (!ok) {
-                ctx->waitWork(150);
+                if (gpibAddr)
+                    VisaChannel::pumpDelayMs(300);
+                else
+                    ctx->waitWork(300);
                 ok = ctx->scpiVisaManager()->exec(cmd, stepParams.commandParam, &errStr);
             }
             if (!ok) {
+                if (gpibAddr) {
+                    VisaChannel::pumpDelayMs(800);
+                } else {
+                    ctx->waitWork(500);
+                }
+                ok = ctx->scpiVisaManager()->exec(cmd, stepParams.commandParam, &errStr);
+            }
+            if (!ok && !gpibAddr) {
                 ctx->waitWork(300);
                 ctx->resetVisaBackend();
+                ctx->waitWork(500);
                 ok = ctx->scpiVisaManager()->exec(cmd, stepParams.commandParam, &errStr);
             }
             if (!ok) {

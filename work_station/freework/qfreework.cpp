@@ -28,6 +28,8 @@
 #include <QThread>
 #include <QtGlobal>
 #include "dongle_at_types.h"
+#include "shared_instrument.h"
+#include "visa_channel.h"
 #include "qcustomplot.h"
 #include "qproduct.h"
 #include "test_data_upload_service.h"
@@ -252,6 +254,27 @@ bool isDongleBleConnectStepName(const QString& name) {
     return name.contains(QStringLiteral("直连接蓝牙")) || name.contains(QStringLiteral("扫描连接蓝牙"));
 }
 
+
+QString firstFlowGpiBVisaAddress(const QString& stationKey, const QStringList& stepNames) {
+    for (const QString& stepName : stepNames) {
+        TestCaseDefinition def;
+        if (!TestCaseRunner::loadCaseForStation(stationKey, stepName, def))
+            continue;
+        if (def.send.channel != TestCaseSendChannel::Scpi)
+            continue;
+        QVariantMap map;
+        if (def.send.param.canConvert<QVariantMap>())
+            map = def.send.param.toMap();
+        QString addr = map.value(QStringLiteral("visaAddress")).toString().trimmed();
+        if (addr.isEmpty())
+            addr = SharedInstrument::visaAddressFromParam(map, 0);
+        if (addr.startsWith(QStringLiteral("GPIB"), Qt::CaseInsensitive))
+            return addr;
+    }
+    return {};
+}
+
+
 constexpr int kFreeWorkTabMain = 0;
 constexpr int kFreeWorkTabExpand = 1;
 constexpr int kFreeWorkTabChart = 2;
@@ -359,6 +382,67 @@ void QFreeWork::appendTestCaseMes(const TestCaseDefinition& def, bool pass, cons
         }
     }
     appendOneMesStep(&freeWorkMesSegments_, tag, value, maxVal, minVal, stdVal, unit, resultVal);
+}
+
+void QFreeWork::appendMultiGateTestCaseMes(const QVector<TestCaseGate>& gates, const QString& reportType,
+                                           const QVariant& payload) {
+    const QString baseTag =
+        activeTestCase_.meta.mesTag.trimmed().isEmpty() ? activeTestCase_.meta.name.trimmed()
+                                                        : activeTestCase_.meta.mesTag.trimmed();
+    for (const TestCaseGate& g : gates) {
+        if (!g.enabled)
+            continue;
+        TestCaseGate ge = g;
+        ge.reportType = reportType;
+        bool subPass = true;
+        QString subDetail;
+        GateRegistry::evaluate(ge, reportType, payload, subPass, subDetail);
+        Q_UNUSED(subDetail);
+
+        // 与单字段 appendTestCaseMes 一致：VALUE 取实测值，UNIT 单独带上下限
+        const GateStepDisplay disp =
+            GateRegistry::formatStepDisplay(ge, QVector<TestCaseGate>{ge}, reportType, payload, false);
+        QString value = disp.testData.trimmed();
+        QString unit = GateRegistry::unitFor(reportType, ge.field, payload);
+        if (!unit.isEmpty() && value.endsWith(unit))
+            value = value.left(value.size() - unit.size()).trimmed();
+
+        QString maxVal, minVal, stdVal;
+        switch (ge.op) {
+        case TestCaseGateOp::Range: {
+            double low = ge.low;
+            double high = ge.high;
+            GateRegistry::resolveRangeBounds(ge, low, high);
+            maxVal = QString::number(high);
+            minVal = QString::number(low);
+            break;
+        }
+        case TestCaseGateOp::Gt:
+            stdVal = QStringLiteral(">") + QString::number(ge.low);
+            break;
+        case TestCaseGateOp::Lt:
+            stdVal = QStringLiteral("<") + QString::number(ge.high);
+            break;
+        case TestCaseGateOp::Eq:
+        case TestCaseGateOp::CompareVersions:
+            stdVal = ge.expected;
+            break;
+        }
+
+        // 杰理蓝牙盒子：拆成 BT_RSSI / BT_FREQ_OFFSET，避免整步只报一项 RSSI
+        QString itemName;
+        if (reportType == QStringLiteral("ProtocolJieliBtBoxData")) {
+            if (ge.field == QStringLiteral("rssi"))
+                itemName = QStringLiteral("BT_RSSI");
+            else if (ge.field == QStringLiteral("freqOffset"))
+                itemName = QStringLiteral("BT_FREQ_OFFSET");
+        }
+        if (itemName.isEmpty())
+            itemName = QStringLiteral("%1_%2").arg(baseTag, ge.field);
+
+        appendOneMesStep(&freeWorkMesSegments_, itemName, value, maxVal, minVal, stdVal, unit,
+                         subPass ? QStringLiteral("PASS") : QStringLiteral("FAIL"));
+    }
 }
 
 #if _MSC_VER >= 1600
@@ -645,7 +729,19 @@ void QFreeWork::runTestFlowBootstrap() {
         onTestSessionStarting(sn, mac);
     }
     showlog(QStringLiteral("开始测试"));
-    initData();
+    // 先刷新流程再 initData，避免 seed 缓存与 dongle 动作仍用上一轮工站/队列。
+    refreshOrderedTestIndexes();
+    bool firstStepIsScpi = false;
+    QString firstGpiBAddr;
+    if (!orderedTestCaseNames_.isEmpty()) {
+        TestCaseDefinition firstDef;
+        if (TestCaseRunner::loadCaseForStation(activeFlowStationKey_, orderedTestCaseNames_.constFirst(), firstDef)
+            && firstDef.send.channel == TestCaseSendChannel::Scpi) {
+            firstStepIsScpi = true;
+            firstGpiBAddr = firstFlowGpiBVisaAddress(activeFlowStationKey_, orderedTestCaseNames_);
+        }
+    }
+    initData(firstStepIsScpi);
     mesProcessCode_ = processCode.trimmed();
     if (!mesProcessCode_.isEmpty()) {
         pack.sn = mesProcessCode_;
@@ -653,9 +749,17 @@ void QFreeWork::runTestFlowBootstrap() {
     }
     singleStepDebugRun_ = false;
     suppressProductBleAutoReconnect_ = false;
-    // 每次开始测试都重新读取配置，避免设置页调整后本页仍使用旧队列。
-    refreshOrderedTestIndexes();
-    waitWork(1000);
+    // 首步 SCPI/VISA：不 waitWork 泵 AT；作废僵死 GPIB 空闲句柄
+    if (firstStepIsScpi) {
+        suppressProductBleAutoReconnect_ = true;
+        scpiVisaManager()->closeConnection();
+        if (!firstGpiBAddr.isEmpty())
+            VisaChannel::discardIdleSharedSession(firstGpiBAddr);
+        VisaChannel::dumpSharedSessions(QStringLiteral("runTestFlowBootstrap"));
+        VisaChannel::pumpDelayMs(200);
+    } else {
+        waitWork(1000);
+    }
     showlog(QStringLiteral("MAC地址为：") + ui->macInput->text());
     teststate = 0;
 }
@@ -1904,7 +2008,7 @@ void QFreeWork::runDongleSuctionSampleSingleStep() {
                                QStringLiteral("peakDiff<=%1").arg(suctionPeakDiffMaxKpa_, 0, 'f', 2));
 }
 
-void QFreeWork::initData() {
+void QFreeWork::initData(bool deferDongleAtForVisa) {
     ui->product_sn->setText("芯片存储的整机sn:");
     ui->bleStatusLabel->setText("蓝牙连接：");
     rssitestcount = 0;
@@ -1921,7 +2025,11 @@ void QFreeWork::initData() {
     dongleSuctionCh1Samples_.clear();
     dongleSuctionCh2Samples_.clear();
     resetSuctionChart();
-    setDongleSuctionReadEnabled(false);
+    // 首步 GPIB 时勿发 AT+SUCTION=0，与单步一致，避免 USB 与 GPIB 并发 ABORT
+    if (deferDongleAtForVisa)
+        dongleSuctionReadEnabled_ = false;
+    else
+        setDongleSuctionReadEnabled(false);
     // 逻辑缓存每轮清空；GPIB/TCPIP 物理会话尽量复用，避免第二次 MAC 开测立刻 viOpen 触发 ABORT
     huilingVisaLinkCache_.clear();
     seedHuilingVisaLinkCacheFromFlowOrSettings();

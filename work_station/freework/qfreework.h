@@ -315,6 +315,9 @@ class QFreeWork : public test_base {
                                        const QVariant& payload, bool& allPass, QString& detailOut);
     void applyRuntimeSnGateExpected(QVector<TestCaseGate>& gates);
     void appendTestCaseMes(const TestCaseDefinition& def, bool pass, const QString& testData);
+    /** 多字段卡控（如杰理 RSSI/频偏）按分项各写一条 MES，与结果表行对齐 */
+    void appendMultiGateTestCaseMes(const QVector<TestCaseGate>& gates, const QString& reportType,
+                                    const QVariant& payload);
     void applyFreeWorkExtraTabsVisible(bool visible);
     bool isFreeWorkXwdKeyStation() const;
     void loadSuctionGateSettings();
@@ -386,7 +389,7 @@ class QFreeWork : public test_base {
     QVariantMap huilingVisaLinkCache_;
 
   private slots:
-    void initData();
+    void initData(bool deferDongleAtForVisa = false);
 
     // 协议上行（实现见 qfreework_data.cpp）
     void refreshBleRssi(QString data) override;

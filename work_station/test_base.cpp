@@ -32,6 +32,7 @@
 #include "test_data_upload_service.h"
 #include "test_record_store.h"
 #include "test_case.h"
+#include "visa_channel.h"
 
 #pragma comment(lib, "hid.lib")
 #pragma comment(lib, "setupapi.lib")
@@ -206,8 +207,13 @@ void test_base::resetVisaBackend() {
 
 void test_base::releaseVisaBackendAfterTest() {
     const QString addr = scpiVisaManager_.visaConfig().visaAddress.trimmed();
+    scpiVisaManager_.closeConnection();
     if (addr.startsWith(QStringLiteral("ASRL"), Qt::CaseInsensitive))
-        scpiVisaManager_.closeConnection();
+        return;
+    // GPIB/TCPIP：close 后可能仍保活；测完显式 viClose，下轮 ensureConnected 走冷却重开
+    if (!addr.isEmpty())
+        VisaChannel::discardIdleSharedSession(addr);
+    VisaChannel::dumpSharedSessions(QStringLiteral("releaseVisaBackendAfterTest"));
 }
 
 void test_base::scanSerialPorts() {
