@@ -317,6 +317,8 @@ class test_base : public QWidget {
     QString sessionMacForLog();
     void abortTestSessionAndUpload();
     void closeEvent(QCloseEvent* event) override;
+    void showEvent(QShowEvent* event) override;
+    bool eventFilter(QObject* watched, QEvent* event) override;
     void resetVisaBackend();
     /** 测完释放 VISA：GPIB/TCPIP 保持会话供下次 MAC 开测复用，ASRL 独占串口仍关闭。 */
     void releaseVisaBackendAfterTest();
@@ -324,7 +326,10 @@ class test_base : public QWidget {
   private:
     QString receivedData = "";
     STATE_INDEPENDENT_E independent_state = STATE_INVALID;
+    bool snInputLatinImeReady_ = false;
     void initData();
+    /** SN 扫码框：禁用中文组合输入，获焦时切到英文输入法 */
+    void ensureSnInputLatinIme();
     void saveDongleUartLog(QString data);
     void getMacAddress(const QByteArray& byte);
     bool isCommandRetryResponseAccepted(const QObject* source) const;
