@@ -1583,6 +1583,23 @@
             </property>
            </widget>
           </item>
+          <item row="11" column="0">
+           <widget class="QLabel" name="label_plcPowerKeyMaxPressMs">
+            <property name="text">
+             <string>电源键最大下压(ms)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="11" column="1">
+           <widget class="QLineEdit" name="lineEdit_plcPowerKeyMaxPressMs">
+            <property name="toolTip">
+             <string>电源键(index=6)等待到位上限；超时仍 StepDone/抬起，防止长按关机。0=不限制。</string>
+            </property>
+            <property name="text">
+             <string>500</string>
+            </property>
+           </widget>
+          </item>
           <item row="0" column="0">
            <widget class="QLabel" name="label_plcIp">
             <property name="text">

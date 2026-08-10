@@ -97,6 +97,7 @@ static const Row kSettings[] = {
     LE("lineEdit_plcConnectTimeoutMs", "PLC/ConnectTimeoutMs", "3000"),
     LE("lineEdit_plcRequestTimeoutMs", "PLC/RequestTimeoutMs", "2000"),
     LE("lineEdit_plcCommandGapMs", "PLC/CommandGapMs", "80"),
+    LE("lineEdit_plcPowerKeyMaxPressMs", "PLC/PowerKeyMaxPressMs", "500"),
     LE("lineEdit_plcSwitchDoneResetM", "PLC/SwitchTestDoneResetM", "211"),
     LE("lineEdit_plcSwitchDoneResetPulseMs", "PLC/SwitchTestDoneResetPulseMs", "0"),
     LE("lineEdit_tupleAuthUser", "Tuple/AuthUser", nullptr),
@@ -281,6 +282,7 @@ static const Row kSettings[] = {
     TIP("groupBox_tupleConfig", "三元组 Tuple/*：环境、URL、鉴权、SKU。"),
     TIP("groupBox_keyConfig", "按键 KeyId（ProductInfo/KeyId*）。"),
     TIP("groupBox_plcModbusDebug", "PLC Modbus（PLC/*），治具 PLC 步骤。"),
+    TIP("lineEdit_plcPowerKeyMaxPressMs", "电源键最大下压等待(ms)。超时未到位也抬起，防长按关机；0=不限制。"),
     TIP("groupBox_brushInstrument",
         "BrushInstrument/* 与并联 CMW：BleBrushCmwConcurrent、BleBrushCmwOnStopPer、BlePer/Cmw*（含 "
         "CmwQueryCurrentArbFile 查询 SOURce:GPRF:GEN:ARB:FILE?；另见 CmwBurstPollArbScount…、CmwVisaTrace、"
