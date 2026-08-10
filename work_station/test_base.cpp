@@ -37,6 +37,7 @@
 #include "test_data_upload_service.h"
 #include "test_record_store.h"
 #include "test_case.h"
+#include "visa_channel.h"
 
 #pragma comment(lib, "hid.lib")
 #pragma comment(lib, "setupapi.lib")
@@ -81,6 +82,7 @@ test_base::test_base(QWidget* parent) : QWidget(parent),
                                         at(new QatManager(dongleSerialPort, this)),
                                         usbSerialPort(usbSerialChannel_->port()),
                                         scpiUsbManager_(this),
+                                        scpiVisaManager_(this),
                                         jigSerialPort(jigSerialChannel_->port()),
                                         jig(new XwdFixtureDevice(jigSerialPort)),
                                         productSerialPort(productSerialChannel_->port()),
@@ -232,8 +234,13 @@ void test_base::resetVisaBackend() {
 
 void test_base::releaseVisaBackendAfterTest() {
     const QString addr = scpiVisaManager_.visaConfig().visaAddress.trimmed();
+    scpiVisaManager_.closeConnection();
     if (addr.startsWith(QStringLiteral("ASRL"), Qt::CaseInsensitive))
-        scpiVisaManager_.closeConnection();
+        return;
+    // GPIB/TCPIP：close 后可能仍保活；测完显式 viClose，下次 ensureConnected 走冷却重开
+    if (!addr.isEmpty())
+        VisaChannel::discardIdleSharedSession(addr);
+    VisaChannel::dumpSharedSessions(QStringLiteral("releaseVisaBackendAfterTest"));
 }
 
 void test_base::scanSerialPorts() {
@@ -351,6 +358,8 @@ void test_base::getMacAddress(const QByteArray& byte) {
 }
 
 void test_base::onDongleSerialFrame(const QByteArray& dataTemp) {
+    if (dongleRxPaused_)
+        return;
     at->parseCmd(dataTemp);
     protocolManager.parseCmd(dataTemp);
     getMacAddress(dataTemp); // 搜索设备用
@@ -409,6 +418,11 @@ void test_base::handleDongleSerialPortError(QSerialPort::SerialPortError error, 
                << "port=" << dongleSerialChannel_->portName() << "code=" << error << "detail=" << message;
     if (error == QSerialPort::PermissionError || error == QSerialPort::ResourceError
         || error == QSerialPort::DeviceNotFoundError) {
+        if (dongleRxPaused_) {
+            dongleSerialErrorDeferred_ = true;
+            qDebug() << "DongleSerialPort error deferred during VISA quiet:" << error;
+            return;
+        }
         closeDongleSerialPort();
         if (error == QSerialPort::PermissionError)
             msgEdit()->appendPlainText(QStringLiteral("串口权限问题"));
@@ -668,6 +682,71 @@ void test_base::finishCommandRetryWait(bool success, const QString& logMessage) 
     if (!logMessage.isEmpty()) {
         showlog(logMessage);
     }
+}
+
+void test_base::cancelCommandRetryWait(const QString& reason) {
+    if (!commandRetryTimer && commandRetryFunc_ == nullptr)
+        return;
+    QString msg = reason.trimmed();
+    if (msg.isEmpty())
+        msg = QStringLiteral("取消指令重试等待");
+    if (commandRetryTimer) {
+        disconnect(commandRetryTimer, &QTimer::timeout, this, nullptr);
+        commandRetryTimer->stop();
+        commandRetryTimer->deleteLater();
+        commandRetryTimer = nullptr;
+    }
+    commandRetryFunc_ = nullptr;
+    commandRetryCount = 0;
+    commandRetrySendCount = 0;
+    commandRetryDeadlineMs_ = 0;
+    commandRetryTimeoutMs_ = 0;
+    commandWaitSource_ = CommandWaitSource::Any;
+    getRespone = 0;
+    // 不改 canGoNext，避免误推进与 VISA 无关的步骤状态机
+    qDebug().noquote() << QStringLiteral("cancelCommandRetryWait: ") + msg;
+}
+
+void test_base::ensureDongleSerialOpenAfterVisaQuiet() {
+    if (dongleSerialPort && dongleSerialPort->isOpen())
+        return;
+    const QString port = getComNameCombo()->currentText().trimmed();
+    if (port.isEmpty()) {
+        qDebug() << "ensureDongleSerialOpenAfterVisaQuiet: COM 未配置";
+        return;
+    }
+    qDebug() << "ensureDongleSerialOpenAfterVisaQuiet: reopen" << port
+             << (dongleSerialErrorDeferred_ ? "(deferred error)" : "(was closed)");
+    dongleSerialErrorDeferred_ = false;
+    openDongleSerialPort();
+}
+
+void test_base::setDongleRxPaused(bool paused) {
+    if (dongleRxPaused_ == paused)
+        return;
+    dongleRxPaused_ = paused;
+    if (paused) {
+        cancelCommandRetryWait(QStringLiteral("GPIB/VISA 临界区"));
+        if (at)
+            at->setTxBlocked(true);
+        if (dongleSerialChannel_)
+            dongleSerialChannel_->clearReceiveBuffer();
+        if (scanSerialPortsTimer) {
+            scanSerialPortsWasActive_ = scanSerialPortsTimer->isActive();
+            scanSerialPortsTimer->stop();
+        }
+    } else {
+        if (at)
+            at->setTxBlocked(false);
+        if (dongleSerialChannel_)
+            dongleSerialChannel_->clearReceiveBuffer();
+        if (scanSerialPortsTimer && scanSerialPortsWasActive_) {
+            scanSerialPortsTimer->start(1000);
+            scanSerialPortsWasActive_ = false;
+        }
+        ensureDongleSerialOpenAfterVisaQuiet();
+    }
+    qDebug() << "Dongle RX" << (paused ? "paused (VISA)" : "resumed");
 }
 
 void test_base::onProtocolReport(const ProtocolReport& report) {
