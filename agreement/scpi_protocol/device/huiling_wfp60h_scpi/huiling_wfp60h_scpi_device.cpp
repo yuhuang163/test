@@ -140,6 +140,12 @@ bool HuilingWfp60hScpiDevice::set(HuilingScpiCmd cmd, const QVariant& data) {
         }
         const QString voltLine = voltTmpl.arg(QString::number(voltageV, 'f', 3));
         const QString currLine = currTmpl.arg(QString::number(currentA, 'f', 3));
+        // VISA/GPIB：两笔连续写易第二笔 ABORT；SCPI 分号合并为一次总线事务
+        if (visaSync) {
+            const QString combined = voltLine + QLatin1Char(';') + currLine;
+            qDebug().noquote() << "[Scpi] TX volt+curr:" << combined;
+            return transport_->writeLine(combined);
+        }
         qDebug().noquote() << "[Scpi] TX volt:" << voltLine;
         if (!transport_->writeLine(voltLine))
             return false;

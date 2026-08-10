@@ -28,6 +28,9 @@ class DongleAtDevice : public QObject {
     bool getwifiConnected() const { return iswifiConnected; }
     void resetwifiConnected() { iswifiConnected = false; }
     void setwifiConnected() { iswifiConnected = true; }
+    /** GPIB/VISA 临界区：禁止下发 AT，避免 USB 与 GPIB 并发导致 viWrite ABORT */
+    void setTxBlocked(bool blocked) { txBlocked_ = blocked; }
+    bool isTxBlocked() const { return txBlocked_; }
     // clang-format on
 
   signals:
@@ -61,6 +64,7 @@ class DongleAtDevice : public QObject {
     std::map<QString, std::function<void(const QString&)>> commandList_;
     bool isConnected = false;
     bool iswifiConnected = false;
+    bool txBlocked_ = false;
 };
 
 #endif // DONGLE_AT_DEVICE_H

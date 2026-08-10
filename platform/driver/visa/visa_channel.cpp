@@ -73,24 +73,27 @@ bool shouldKeepIdleSession(const QString& address) {
     return address.startsWith(QStringLiteral("TCPIP"), Qt::CaseInsensitive);
 }
 
-/** 等待时释放 VISA 锁并泵界面；排除 Socket，避免 dongle AT 插队。不排除用户输入，减轻「卡死」感。 */
+/** 持锁等待：纯 msleep，禁止 processEvents（定时器仍会发 AT，是 GPIB 写失败 ABORT 主因）。
+ *  无锁（pumpDelayMs）：可泵界面，排除 Socket。 */
 void busSettleDelayMs(int ms, QRecursiveMutex* releaseMutex = nullptr) {
     if (ms <= 0)
         return;
-    if (releaseMutex)
+    if (releaseMutex) {
         releaseMutex->unlock();
+        QThread::msleep(static_cast<unsigned long>(ms));
+        releaseMutex->lock();
+        return;
+    }
     QElapsedTimer timer;
     timer.start();
     constexpr QEventLoop::ProcessEventsFlags kPumpFlags = QEventLoop::ExcludeSocketNotifiers;
     while (timer.elapsed() < ms) {
-        QCoreApplication::processEvents(kPumpFlags, 30);
+        QCoreApplication::processEvents(kPumpFlags, 16);
         const int remain = ms - static_cast<int>(timer.elapsed());
         if (remain <= 0)
             break;
-        QThread::msleep(static_cast<unsigned long>(qMin(30, remain)));
+        QThread::msleep(static_cast<unsigned long>(qMin(16, remain)));
     }
-    if (releaseMutex)
-        releaseMutex->lock();
 }
 
 void waitGpiBReopenCooldown(const QString& address) {
@@ -99,7 +102,7 @@ void waitGpiBReopenCooldown(const QString& address) {
         return;
     const qint64 elapsed = QDateTime::currentMSecsSinceEpoch() - closedAt;
     // 冷却缩短，避免重试链把界面堵死
-    constexpr int kMinReopenMs = 1200;
+    constexpr int kMinReopenMs = 400;
     if (elapsed < kMinReopenMs)
         busSettleDelayMs(static_cast<int>(kMinReopenMs - elapsed), &visaGlobalMutex());
 }
@@ -167,12 +170,14 @@ bool tryGpiBIdnOnce(ViSession inst, int round) {
  * 失败再 REN_ASSERT（总线远程），避免一上来 REN_ASSERT_ADDRESS 就报 NLISTENERS。
  */
 bool warmUpGpiBAfterOpen(ViSession inst) {
-    busSettleDelayMs(200, &visaGlobalMutex());
+    // 冷开后总线需更长静置，过短则 *IDN? 写立刻 ABORT（0xbfff0030）
+    busSettleDelayMs(500, &visaGlobalMutex());
     if (tryGpiBIdnOnce(inst, 1)) {
-        busSettleDelayMs(150, &visaGlobalMutex());
+        // *IDN? 读回后总线需更长静置，过短则紧接 VOLT/CURR 仍 ABORT
+        busSettleDelayMs(250, &visaGlobalMutex());
         return true;
     }
-    busSettleDelayMs(300, &visaGlobalMutex());
+    busSettleDelayMs(400, &visaGlobalMutex());
 
     const ViStatus renSt = viGpibControlREN(inst, VI_GPIB_REN_ASSERT);
     if (renSt < VI_SUCCESS) {
@@ -183,9 +188,9 @@ bool warmUpGpiBAfterOpen(ViSession inst) {
     } else {
         qDebug() << "VisaChannel: GPIB REN 已断言(远程/RMT)";
     }
-    busSettleDelayMs(300, &visaGlobalMutex());
+    busSettleDelayMs(400, &visaGlobalMutex());
     if (tryGpiBIdnOnce(inst, 2)) {
-        busSettleDelayMs(150, &visaGlobalMutex());
+        busSettleDelayMs(250, &visaGlobalMutex());
         return true;
     }
     return false;
@@ -220,6 +225,7 @@ void configureSessionAfterOpen(ViSession inst, const QString& address, int timeo
 void settleGpiBBeforeIoLocked(SharedInstrument& slot) {
     if (slot.lastIoAtMs > 0) {
         const qint64 sinceIo = QDateTime::currentMSecsSinceEpoch() - slot.lastIoAtMs;
+        // 66319D + USB-GPIB：<150ms 连续写易出现第二笔 ABORT（日志：VOLT 过 CURR 挂）
         constexpr qint64 kMinGapMs = 200;
         if (sinceIo < kMinGapMs)
             busSettleDelayMs(static_cast<int>(kMinGapMs - sinceIo), &visaGlobalMutex());
@@ -228,7 +234,7 @@ void settleGpiBBeforeIoLocked(SharedInstrument& slot) {
     const qint64 now = QDateTime::currentMSecsSinceEpoch();
     if (slot.openedAtMs > 0) {
         const qint64 sinceOpen = now - slot.openedAtMs;
-        constexpr qint64 kMinAfterOpenMs = 500;
+        constexpr qint64 kMinAfterOpenMs = 250;
         if (sinceOpen < kMinAfterOpenMs)
             busSettleDelayMs(static_cast<int>(kMinAfterOpenMs - sinceOpen), &visaGlobalMutex());
     }
@@ -321,6 +327,11 @@ void VisaChannel::pumpDelayMs(int ms) {
     if (ms > 0)
         QThread::msleep(static_cast<unsigned long>(ms));
 #endif
+}
+
+void VisaChannel::idleDelayMs(int ms) {
+    if (ms > 0)
+        QThread::msleep(static_cast<unsigned long>(ms));
 }
 
 VisaChannel::VisaChannel(QObject* parent) : QObject(parent) {
@@ -549,23 +560,31 @@ bool VisaChannel::write(const QByteArray& data) {
 
     if (!doWrite()) {
         if (gpib) {
-            // 同会话只快退 1 次，避免重试×冷却把界面堵死
-            qDebug() << "VisaChannel: GPIB 写入失败" << visaStatusText(status) << "retCnt=" << writeCount
-                     << "，同会话重试";
-            busSettleDelayMs(250, &visaGlobalMutex());
-            writeCount = 0;
-            if (doWrite()) {
-                qDebug() << "VisaChannel: GPIB 同会话重试成功 retCnt=" << writeCount;
-                it->lastIoAtMs = QDateTime::currentMSecsSinceEpoch();
-                busSettleDelayMs(80, &visaGlobalMutex());
-                return true;
+            // 目标：尽量写成功。ABORT 时优先同会话拉长间隔多试，避免立刻重开陷入预热死循环
+            static const int kSameSessionGapsMs[] = {200, 350, 500};
+            bool sameOk = false;
+            for (int gap : kSameSessionGapsMs) {
+                qDebug() << "VisaChannel: GPIB 写入失败" << visaStatusText(status) << "retCnt=" << writeCount
+                         << "，同会话重试 gapMs=" << gap;
+                busSettleDelayMs(gap, &visaGlobalMutex());
+                writeCount = 0;
+                if (doWrite()) {
+                    qDebug() << "VisaChannel: GPIB 同会话重试成功 retCnt=" << writeCount;
+                    it->lastIoAtMs = QDateTime::currentMSecsSinceEpoch();
+                    busSettleDelayMs(150, &visaGlobalMutex());
+                    sameOk = true;
+                    break;
+                }
             }
-            qDebug() << "VisaChannel: GPIB 同会话重试仍失败" << visaStatusText(status)
+            if (sameOk)
+                return true;
+            qDebug() << "VisaChannel: GPIB 同会话多次重试仍失败" << visaStatusText(status)
                      << "，作废后重开再写";
             invalidateSharedSessionLocked(address, it, &holdsSharedInst_);
             logSharedSessionsLocked(QStringLiteral("writeAbort"));
             locker.unlock();
-            if (!ensureConnected())
+            const bool reopened = ensureConnected();
+            if (!reopened)
                 return false;
             locker.relock();
             it = sharedInstruments().find(address);
@@ -579,7 +598,7 @@ bool VisaChannel::write(const QByteArray& data) {
             if (viWriteGpiBLocked(it->session, data, &writeCount, &status)) {
                 qDebug() << "VisaChannel: GPIB 重开后写入成功 retCnt=" << writeCount;
                 it->lastIoAtMs = QDateTime::currentMSecsSinceEpoch();
-                busSettleDelayMs(80, &visaGlobalMutex());
+                busSettleDelayMs(150, &visaGlobalMutex());
                 return true;
             }
             qDebug() << "VisaChannel: GPIB 重开后仍失败" << visaStatusText(status);
@@ -601,7 +620,7 @@ bool VisaChannel::write(const QByteArray& data) {
     }
     it->lastIoAtMs = QDateTime::currentMSecsSinceEpoch();
     if (gpib)
-        busSettleDelayMs(120, &visaGlobalMutex());
+        busSettleDelayMs(150, &visaGlobalMutex());
     return true;
 #else
     Q_UNUSED(data);

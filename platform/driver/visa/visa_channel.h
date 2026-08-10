@@ -40,10 +40,12 @@ class VisaChannel : public QObject {
     /** 调试：打印进程内共享 VISA 会话 ref/句柄（无独立 VISA 线程，仅主线程+全局锁）。 */
     static void dumpSharedSessions(const QString& tag);
     /**
-     * GPIB 步骤等待：切片 sleep + 泵界面/定时器事件，排除 Socket（避免 dongle AT 插队）。
-     * 代替裸 QThread::msleep，减轻主线程假死。
+     * 可泵界面的等待（排除 Socket）。GPIB 会话已打开或即将 viWrite 时禁止用：
+     * processEvents 仍可能跑定时器/重入，易把 GPIB 写成 VI_ERROR_ABORT。
      */
     static void pumpDelayMs(int ms);
+    /** GPIB 临界区等待：纯 sleep，不泵事件。 */
+    static void idleDelayMs(int ms);
 
   private:
     Config config_;

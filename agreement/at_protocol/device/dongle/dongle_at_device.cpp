@@ -151,6 +151,10 @@ bool DongleAtDevice::sendCustomMessage(const QVariantMap& map) {
 }
 
 void DongleAtDevice::sendAtLine(const QString& line) {
+    if (txBlocked_) {
+        qDebug().noquote() << "AT TX blocked (VISA):" << line.trimmed();
+        return;
+    }
     qDebug().noquote() << "AT TX:" << line.trimmed();
     if (!serialPort_ || !serialPort_->isOpen()) {
         qWarning() << "DongleAtDevice: 串口未打开，AT TX 失败";

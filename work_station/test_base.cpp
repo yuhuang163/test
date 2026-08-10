@@ -9,16 +9,21 @@
 #include <initguid.h>
 #include <setupapi.h>
 #include <windows.h>
+#include <imm.h>
 #include <QAbstractItemView>
 #include <QApplication>
 #include <QClipboard>
 #include <QDateTime>
 #include <QDebug>
 #include <QElapsedTimer>
+#include <QEvent>
+#include <QFocusEvent>
 #include <QKeySequence>
+#include <QLineEdit>
 #include <QPlainTextEdit>
 #include <QSet>
 #include <QShortcut>
+#include <QShowEvent>
 #include <QString>
 #include <QTimer>
 #include <algorithm>
@@ -32,11 +37,31 @@
 #include "test_data_upload_service.h"
 #include "test_record_store.h"
 #include "test_case.h"
-#include "visa_channel.h"
 
 #pragma comment(lib, "hid.lib")
 #pragma comment(lib, "setupapi.lib")
 #pragma comment(lib, "ole32.lib")
+#pragma comment(lib, "imm32.lib")
+
+namespace {
+
+/** 获焦 SN 框时关闭中文 IME，切到英文/半角，便于扫码枪与手工输 SN。 */
+void forceEnglishImeForHwnd(HWND hwnd) {
+    if (!hwnd)
+        return;
+    const HIMC himc = ImmGetContext(hwnd);
+    if (!himc)
+        return;
+    ImmSetOpenStatus(himc, FALSE);
+    DWORD conv = 0;
+    DWORD sent = 0;
+    if (ImmGetConversionStatus(himc, &conv, &sent)) {
+        ImmSetConversionStatus(himc, conv & ~(IME_CMODE_NATIVE | IME_CMODE_FULLSHAPE), sent);
+    }
+    ImmReleaseContext(hwnd, himc);
+}
+
+} // namespace
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
@@ -207,13 +232,8 @@ void test_base::resetVisaBackend() {
 
 void test_base::releaseVisaBackendAfterTest() {
     const QString addr = scpiVisaManager_.visaConfig().visaAddress.trimmed();
-    scpiVisaManager_.closeConnection();
     if (addr.startsWith(QStringLiteral("ASRL"), Qt::CaseInsensitive))
-        return;
-    // GPIB/TCPIP：close 后可能仍保活；测完显式 viClose，下轮 ensureConnected 走冷却重开
-    if (!addr.isEmpty())
-        VisaChannel::discardIdleSharedSession(addr);
-    VisaChannel::dumpSharedSessions(QStringLiteral("releaseVisaBackendAfterTest"));
+        scpiVisaManager_.closeConnection();
 }
 
 void test_base::scanSerialPorts() {
@@ -1188,6 +1208,35 @@ void test_base::closeEvent(QCloseEvent*) {
     isTestContinue = 0;
     at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00"); // 发送mac地址
     waitWork(50);
+}
+
+void test_base::ensureSnInputLatinIme() {
+    if (snInputLatinImeReady_)
+        return;
+    QLineEdit* le = getMacLineEdit();
+    if (!le)
+        return;
+    snInputLatinImeReady_ = true;
+    // 该控件不走中文组合输入；获焦时再强制 Imm 英文态
+    le->setAttribute(Qt::WA_InputMethodEnabled, false);
+    le->setInputMethodHints(Qt::ImhLatinOnly | Qt::ImhPreferLatin);
+    le->installEventFilter(this);
+}
+
+void test_base::showEvent(QShowEvent* event) {
+    QWidget::showEvent(event);
+    ensureSnInputLatinIme();
+}
+
+bool test_base::eventFilter(QObject* watched, QEvent* event) {
+    if (event && event->type() == QEvent::FocusIn) {
+        if (QLineEdit* le = getMacLineEdit()) {
+            if (watched == le) {
+                forceEnglishImeForHwnd(reinterpret_cast<HWND>(le->winId()));
+            }
+        }
+    }
+    return QWidget::eventFilter(watched, event);
 }
 void test_base::refreshDongleVersion(QString data) {
     showlog(QStringLiteral("当前dongle的版本为：") + data);

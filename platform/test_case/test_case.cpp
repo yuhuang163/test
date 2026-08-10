@@ -102,7 +102,7 @@ bool ensureRootDir() {
         return false;
     QDir(stepsDir()).mkpath(QStringLiteral("."));
     QDir(profilesDir()).mkpath(QStringLiteral("."));
-    return true;
+        return true;
 }
 
 bool isReservedCaseName(const QString& name) {
@@ -564,11 +564,11 @@ bool TestCaseStore::addFlowStation(const QString& displayName, QString* errorOut
     }
     if (!key.isEmpty()) {
         for (const TestFlowStationEntry& entry : catalog) {
-            if (entry.key.compare(key, Qt::CaseInsensitive) == 0) {
+        if (entry.key.compare(key, Qt::CaseInsensitive) == 0) {
                 key = QString();
                 break;
-            }
         }
+    }
     }
     if (key.isEmpty())
         key = allocateCustomFlowStationKey(catalog);
@@ -1106,11 +1106,11 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
                 JieliBtBoxCmdCatalog::paramFromIniGroup(ini, jieliCmd, out.send.param);
             }
         } else {
-            FixturePcbaCmd fixtureCmd;
-            if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(out.send.deviceCmd, fixtureCmd)) {
-                if (!FixturePcbaCmdCatalog::isCmdForAction(fixtureCmd, out.send.action))
-                    out.send.action = FixturePcbaCmdCatalog::actionFor(fixtureCmd);
-                FixturePcbaCmdCatalog::paramFromIniGroup(ini, fixtureCmd, out.send.param);
+        FixturePcbaCmd fixtureCmd;
+        if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(out.send.deviceCmd, fixtureCmd)) {
+            if (!FixturePcbaCmdCatalog::isCmdForAction(fixtureCmd, out.send.action))
+                out.send.action = FixturePcbaCmdCatalog::actionFor(fixtureCmd);
+            FixturePcbaCmdCatalog::paramFromIniGroup(ini, fixtureCmd, out.send.param);
             }
         }
     } else if (out.send.channel == TestCaseSendChannel::Modbus || out.send.channel == TestCaseSendChannel::Scpi) {
@@ -1118,17 +1118,17 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
         if (!paramMap.isEmpty()) {
             out.send.param = normalizeScpiModbusParamFromMap(paramMap);
         } else {
-            QVariant val = ini.value(QStringLiteral("Send/Param"));
-            if (!val.isValid()) {
-                val = readSendScopedParam(ini, QStringLiteral("value"), QVariant());
-            }
-            if (!val.isValid()) {
-                val = readSendScopedParam(ini, QStringLiteral("int"), QVariant());
-            }
-            if (!val.isValid()) {
-                val = readSendScopedParam(ini, QStringLiteral("string"), QVariant());
-            }
-            out.send.param = val;
+        QVariant val = ini.value(QStringLiteral("Send/Param"));
+        if (!val.isValid()) {
+            val = readSendScopedParam(ini, QStringLiteral("value"), QVariant());
+        }
+        if (!val.isValid()) {
+            val = readSendScopedParam(ini, QStringLiteral("int"), QVariant());
+        }
+        if (!val.isValid()) {
+            val = readSendScopedParam(ini, QStringLiteral("string"), QVariant());
+        }
+        out.send.param = val;
         }
     } else {
         DeviceCmd cmd;
@@ -1866,9 +1866,9 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
             if (JieliBtBoxCmdCatalog::jieliBtBoxCmdFromName(def.send.deviceCmd, jieliCmd))
                 JieliBtBoxCmdCatalog::paramToIniGroup(ini, jieliCmd, def.send.param);
         } else {
-            FixturePcbaCmd fixtureCmd;
-            if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd))
-                FixturePcbaCmdCatalog::paramToIniGroup(ini, fixtureCmd, def.send.param);
+        FixturePcbaCmd fixtureCmd;
+        if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd))
+            FixturePcbaCmdCatalog::paramToIniGroup(ini, fixtureCmd, def.send.param);
         }
     } else if (def.send.channel == TestCaseSendChannel::Modbus || def.send.channel == TestCaseSendChannel::Scpi) {
         if (!def.send.device.isEmpty())
@@ -2060,7 +2060,7 @@ void rebuildCloudItemNameMap() {
         const QString legacyPath = TestCasePaths::caseIniPath(caseName);
         const QString iniPath = QFile::exists(libPath) ? libPath : legacyPath;
         QSettings ini(iniPath, QSettings::IniFormat);
-        applyTestCaseIniCodec(ini);
+    applyTestCaseIniCodec(ini);
         const QString nameInIni = ini.value(QStringLiteral("Meta/Name"), caseName).toString().trimmed();
         const QString displayInIni = ini.value(QStringLiteral("Meta/DisplayName")).toString().trimmed();
         const QString mesTag = ini.value(QStringLiteral("Meta/MesTag")).toString().trimmed();
@@ -2258,7 +2258,7 @@ TestCaseSerialUiConfig TestCaseStore::loadStationSerialUiConfig(const QString& s
     if (ini.childGroups().contains(QStringLiteral("SerialUi"))) {
         ini.beginGroup(QStringLiteral("SerialUi"));
         readSerialUiFieldsFromGroup(ini, out);
-        ini.endGroup();
+    ini.endGroup();
     } else {
         readSerialUiFieldsFromGroup(ini, out);
     }
@@ -2346,7 +2346,7 @@ QVector<TestFlowItemEntry> TestCaseStore::loadStationFlowItems(const QString& st
         if (profileIni.contains(QStringLiteral("Items"))) {
             const QVector<TestFlowItemEntry> entries = parseFlowItemsFromSettingsGroup(profileIni);
             profileIni.endGroup();
-            return entries;
+    return entries;
         }
         profileIni.endGroup();
     }
@@ -2510,15 +2510,15 @@ bool TestCaseValidator::validateCase(const TestCaseDefinition& def, QStringList&
         } else if (def.send.fixtureProtocol != TestCaseFixtureProtocol::Pcba) {
             errors.append(QStringLiteral("治具协议类型无效"));
         } else {
-            FixturePcbaCmd fixtureCmd;
-            if (!FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd)) {
-                errors.append(QStringLiteral("治具 PCBA 测试指令无效"));
-            } else if (!FixturePcbaCmdCatalog::isCmdForAction(fixtureCmd, def.send.action)) {
-                errors.append(QStringLiteral("治具指令与操作方式不匹配"));
-            } else {
-                DeviceCmdParamSchema schema;
-                if (!FixturePcbaCmdCatalog::paramSchemaFor(fixtureCmd, schema))
-                    errors.append(QStringLiteral("该治具指令尚未配置参数模板，请联系工程师"));
+        FixturePcbaCmd fixtureCmd;
+        if (!FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd)) {
+            errors.append(QStringLiteral("治具 PCBA 测试指令无效"));
+        } else if (!FixturePcbaCmdCatalog::isCmdForAction(fixtureCmd, def.send.action)) {
+            errors.append(QStringLiteral("治具指令与操作方式不匹配"));
+        } else {
+            DeviceCmdParamSchema schema;
+            if (!FixturePcbaCmdCatalog::paramSchemaFor(fixtureCmd, schema))
+                errors.append(QStringLiteral("该治具指令尚未配置参数模板，请联系工程师"));
             }
         }
     } else if (def.send.channel == TestCaseSendChannel::Modbus) {
@@ -3598,7 +3598,7 @@ QString FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol prot
         return QStringLiteral("JIELI_BT_BOX");
     case TestCaseFixtureProtocol::Pcba:
     default:
-        return QStringLiteral("Pcba");
+    return QStringLiteral("Pcba");
     }
 }
 
@@ -3612,7 +3612,7 @@ QString FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol pr
         return QStringLiteral("杰理蓝牙盒子");
     case TestCaseFixtureProtocol::Pcba:
     default:
-        return QStringLiteral("PCBA测试协议");
+    return QStringLiteral("PCBA测试协议");
     }
 }
 

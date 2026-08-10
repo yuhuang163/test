@@ -29,6 +29,7 @@ class QatManager : public QObject {
     bool getwifiConnected() const { return device_.getwifiConnected(); }
     void resetwifiConnected() { device_.resetwifiConnected(); }
     void setwifiConnected() { device_.setwifiConnected(); }
+    void setTxBlocked(bool blocked) { device_.setTxBlocked(blocked); }
     // clang-format on
   signals:
     void reportReceived(const ProtocolReport& report);
