@@ -104,7 +104,7 @@ static const Row kSettings[] = {
     LE("lineEdit_tupleAuthPassword", "Tuple/AuthPassword", nullptr),
 
     LE("lineEdit_tupleSku", "Tuple/Sku", ""),
-    LE("lineEdit_tuplePosition", "Tuple/Position", "L"),
+    LE("lineEdit_tuplePosition", "Tuple/Position", "1"),
     LE("lineEdit_labelPrinterPageWidthMm", "Printer/PageWidthMm", "10.0"),
     LE("lineEdit_labelPrinterPageHeightMm", "Printer/PageHeightMm", "10.0"),
     LE("rowLineEdit", "User/formRow", nullptr),

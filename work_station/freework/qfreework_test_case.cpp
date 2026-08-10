@@ -2075,6 +2075,11 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             }
 
             ctx->showlog(QStringLiteral("开始搜索广播名称: '%1', 最低信号要求: %2").arg(targetName).arg(rssiThreshold));
+
+            // 本步开始前再清一次，避免沿用开测前或上一步残留的扫描结果
+            ctx->deviceMap.clear();
+            if (ctx->ui && ctx->ui->mac_combo)
+                ctx->ui->mac_combo->clear();
             
             int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
             if (timeoutMs <= 0) timeoutMs = 6000;

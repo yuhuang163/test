@@ -362,7 +362,23 @@ void QTupleService::get(TupleCmd cmd, const QVariant& param) {
     case TupleCmd::ApplyTupleByMac: {
         const QString mac = m.value(QStringLiteral("mac")).toString();
         const QString sku = m.value(QStringLiteral("sku")).toString();
-        const QString position = m.value(QStringLiteral("position"), QStringLiteral("L")).toString();
+        // 云端仅认 1/2/3/F；兼容历史 L/R/S
+        QString position = m.value(QStringLiteral("position"), QStringLiteral("1")).toString().trimmed();
+        const QString upper = position.toUpper();
+        if (upper == QLatin1String("L") || position == QLatin1String("1") || position.contains(QStringLiteral("左")))
+            position = QStringLiteral("1");
+        else if (upper == QLatin1String("R") || position == QLatin1String("2") || position.contains(QStringLiteral("右")))
+            position = QStringLiteral("2");
+        else if (upper == QLatin1String("S") || position == QLatin1String("3") || position.contains(QStringLiteral("单")))
+            position = QStringLiteral("3");
+        else if (upper == QLatin1String("F") || position.contains(QStringLiteral("未指定")))
+            position = QStringLiteral("F");
+        else {
+            lastError_ = QStringLiteral("position 仅允许 1/2/3/F（当前=%1）").arg(position);
+            lastApplyResult_ = TupleApplyResult{};
+            lastApplyResult_.error = lastError_;
+            break;
+        }
         lastApplyResult_ = applyTupleByMacImpl(mac, sku, position);
         if (!lastApplyResult_.success) {
             lastError_ = lastApplyResult_.error;

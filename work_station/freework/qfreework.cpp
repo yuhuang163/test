@@ -637,6 +637,11 @@ QByteArray QFreeWork::resolvedTailSnToWrite() const {
 }
 
 void QFreeWork::runTestFlowBootstrap() {
+    // 每轮开测清空扫描缓存，避免按广播名连到过期 MAC/旧广播名
+    deviceMap.clear();
+    if (ui && ui->mac_combo)
+        ui->mac_combo->clear();
+
     const QString sn = ui->getMac->text().trimmed();
     const QString mac = ui->macInput->text().trimmed();
     // initData 会清成员；开局过程码须跨 init 保留，供 BYD Complete/SFC 使用

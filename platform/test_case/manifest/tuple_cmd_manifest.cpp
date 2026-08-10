@@ -12,8 +12,8 @@ constexpr const char kHintLogin[] =
     u8"Param_baseUrl、Param_userName、Param_password；须在获取三元组之前执行";
 constexpr const char kHintApply[] =
     u8"按 MAC 拉三元组：Param_mac 留空或 $MAC；Param_sku、Param_position 在用例 ini 配置\n"
-    u8"1-左 2-右 3-单只 F-未指定\n"
-    u8"示例：mac=$MAC，sku=PH9，position=L";
+    u8"Param_position 仅允许：1-左 2-右 3-单只 F-未指定（勿传 L/R/S）\n"
+    u8"示例：mac=$MAC，sku=PH9，position=1";
 constexpr const char kHintDebugMac[] =
     u8"上报烧录状态（/api/mac-addresses）：Param_mac=$MAC；Param_status=1 烧录工站、2 蓝牙工站\n"
     u8"可选 Param_sn=$SN；示例：Param_mac=$MAC Param_status=2";
