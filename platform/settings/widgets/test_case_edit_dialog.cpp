@@ -1639,6 +1639,7 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
             timeoutMs = def.gate.enabled ? 8000 : 300;
         ui->spinBox_commandTimeout->setValue(timeoutMs);
     }
+    ui->checkBox_waitReply->setChecked(def.timing.waitReply);
 
     ui->checkBox_gateEnabled->setChecked(def.gate.enabled);
     const int typeIdx = comboIndexByData(ui->comboBox_gateReportType, def.gate.reportType);
@@ -1721,6 +1722,7 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
     def.timing.delayBeforeMs = ui->spinBox_delayBefore->value();
     def.timing.delayAfterMs = ui->spinBox_delayAfter->value();
     def.timing.commandTimeoutMs = ui->spinBox_commandTimeout->value();
+    def.timing.waitReply = ui->checkBox_waitReply->isChecked();
     def.gate.enabled = ui->checkBox_gateEnabled->isChecked();
     def.gate.reportType = comboData(ui->comboBox_gateReportType);
     def.gates.clear();

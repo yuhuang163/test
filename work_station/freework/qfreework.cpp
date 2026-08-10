@@ -2681,11 +2681,20 @@ void QFreeWork::startProductInstrumentResetAndWaitAck(QString stepNameIn) {
     });
 }
 
-void QFreeWork::startProductInstrumentStartReceiveForCatalog(const QString& stepName, int profile) {
+void QFreeWork::startProductInstrumentStartReceiveForCatalog(const QString& stepNameIn, int profile) {
+    // 用例库走 ProductSerial 时传入空名；须落到当前步骤名，否则回包守卫 isCurrentInstrumentStep 失败导致卡死
+    QString stepName = stepNameIn.trimmed();
+    if (stepName.isEmpty()) {
+        stepName = testCaseStepActive_ ? activeTestCaseStepLabel_
+                                       : QStringLiteral("产品串口开始接收");
+    }
+    if (stepName.isEmpty())
+        stepName = QStringLiteral("产品串口开始接收");
     clearProductInstrumentWatch();
     if (!ensureProductSerialForInstrumentStep(stepName)) {
         return;
     }
+    product->clearProductSerialRxAccum();
     const QByteArray frame = brushInstrumentStartCmdForProfile(profile);
     lastBrushInstrumentProfile_ = profile;
     cmwFacade_.clearBurstDoneSinceStartRx();

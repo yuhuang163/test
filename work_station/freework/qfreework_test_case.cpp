@@ -2189,6 +2189,17 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             ctx->protocolManager.set(cmd, wireParam);
     };
 
+    // 进蓝牙非信令等会关机：Timing/WaitReply=false 时只发不收，发完即过步
+    if (!def.timing.waitReply) {
+        sendFn();
+        ctx->canGoNext = true;
+        ctx->sendRetryOver = false;
+        ctx->lastCommandRetryCount = 1;
+        ctx->lastCommandFailReason.clear();
+        ctx->showlog(QStringLiteral("已发送（不等待回包）"));
+        return;
+    }
+
     const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
     ctx->setCommandWaitSource(CommandWaitSource::ProductProtocol);
     ctx->sendCommandWithRetry(sendFn, timeoutMs);
