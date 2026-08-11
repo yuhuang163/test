@@ -492,7 +492,7 @@
                <bool>true</bool>
               </property>
               <property name="currentIndex">
-               <number>19</number>
+               <number>0</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -558,6 +558,13 @@
                       <widget class="QPushButton" name="factory_flag">
                        <property name="text">
                         <string>产测完成写入</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="factory_flag_undone">
+                       <property name="text">
+                        <string>产测未完成写入</string>
                        </property>
                       </widget>
                      </item>

@@ -5156,6 +5156,14 @@ void MainWindow::on_factory_flag_clicked() {
     showlog("已发送产测完成标识写入");
 }
 
+void MainWindow::on_factory_flag_undone_clicked() {
+    // 协议：done=0 表示产测未完成
+    QVariantMap m;
+    m["done"] = 0;
+    protocolManager.set(DeviceCmd::FacResult, m);
+    showlog("已发送产测未完成标识写入(done=0)");
+}
+
 void MainWindow::on_enter_ble_test_clicked() {
     QVariantMap m;
     m["enter"] = 1;
