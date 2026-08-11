@@ -127,8 +127,7 @@ bool RsCmw100ScpiDevice::isQueryCmd(int cmd) const {
     case CmwScpiCmd::GenState:
     case CmwScpiCmd::SystemError:
     case CmwScpiCmd::QueryLine:
-    case CmwScpiCmd::GenOff:
-    case CmwScpiCmd::GenOn:
+        // GenOff/GenOn 虽带 *OPC?，但是写指令：须走 set()→queryLine，勿进 get()（get 无分支会静默失败）
         return true;
     default:
         return false;
