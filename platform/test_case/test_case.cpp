@@ -869,6 +869,10 @@ QString sendParamIniPrefix();
 QString sendParamIniKey(const QString& leafKey);
 void removeSendParamKeys(QSettings& s);
 void writeSendParamMap(QSettings& s, const QVariantMap& map);
+void mergeSendParamMapInto(QVariant& param, const QVariantMap& extra);
+bool hookUsesGenericSendParamMap(const TestCaseDefinition& def);
+void writeGenericHookSendParamMap(QSettings& ini, const TestCaseDefinition& def);
+void supplementMissingHookSendParamsFromLibrary(const QString& stepId, TestCaseDefinition& def);
 void writeSendParamLeaf(QSettings& s, const QString& leafKey, const QVariant& value);
 
 bool overlayHasSendParamKeys(const QSettings& overlay) {
@@ -1137,6 +1141,8 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
                 out.send.action = DeviceCmdCatalog::actionFor(cmd);
             DeviceCmdCatalog::paramFromIniGroup(ini, cmd, out.send.param);
         }
+        // Hook 步骤（如 COUNTDOWN_WAIT）的 Param_seconds 等通用键不在 DeviceCmd  schema 内
+        mergeSendParamMapInto(out.send.param, readSendParamMap(ini));
     }
 
     out.timing.delayBeforeMs = ini.value(QStringLiteral("Timing/DelayBeforeMs"), 0).toInt();
@@ -1271,6 +1277,32 @@ void supplementMissingHookFromLibrary(const QString& stepId, TestCaseDefinition&
         if (!def.hook.enabled)
             def.hook.enabled = library.hook.enabled;
     }
+}
+
+void supplementMissingHookSendParamsFromLibrary(const QString& stepId, TestCaseDefinition& def) {
+    if (!hookUsesGenericSendParamMap(def))
+        return;
+    QVariantMap current;
+    if (def.send.param.canConvert<QVariantMap>())
+        current = def.send.param.toMap();
+    const auto hasSeconds = [&]() {
+        if (current.contains(QStringLiteral("seconds")) && current.value(QStringLiteral("seconds")).toInt() > 0)
+            return true;
+        return current.contains(QStringLiteral("waitSeconds"))
+               && current.value(QStringLiteral("waitSeconds")).toInt() > 0;
+    };
+    if (hasSeconds())
+        return;
+
+    TestCaseDefinition library;
+    const QString libraryPath = TestCasePaths::stepLibraryPath(stepId);
+    const QString legacyPath = TestCasePaths::caseIniPath(stepId);
+    if (!loadCaseDefinitionFromIniFile(libraryPath, stepId, library)
+        && !loadCaseDefinitionFromIniFile(legacyPath, stepId, library)) {
+        return;
+    }
+    if (library.send.param.canConvert<QVariantMap>())
+        mergeSendParamMapInto(def.send.param, library.send.param.toMap());
 }
 
 void supplementMissingGateFromLibrary(const QString& stationKey, const QString& stepId, TestCaseDefinition& def) {
@@ -1790,6 +1822,7 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
             DeviceCmd cmd;
             if (DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd))
                 DeviceCmdCatalog::paramToIniGroup(ini, cmd, def.send.param);
+            writeGenericHookSendParamMap(ini, def);
         }
         ini.setValue(QStringLiteral("Timing/DelayBeforeMs"), def.timing.delayBeforeMs);
         ini.setValue(QStringLiteral("Timing/DelayAfterMs"), def.timing.delayAfterMs);
@@ -1883,6 +1916,7 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
         DeviceCmd cmd;
         if (DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd))
             DeviceCmdCatalog::paramToIniGroup(ini, cmd, def.send.param);
+        writeGenericHookSendParamMap(ini, def);
     }
 
     ini.setValue(QStringLiteral("Timing/DelayBeforeMs"), def.timing.delayBeforeMs);
@@ -1949,6 +1983,7 @@ bool TestCaseStore::loadCaseForStation(const QString& stationKey, const QString&
     }
     if (loaded && !key.isEmpty()) {
         supplementMissingHookFromLibrary(id, out);
+        supplementMissingHookSendParamsFromLibrary(id, out);
         supplementMissingGateFromLibrary(key, id, out);
     }
     return loaded;
@@ -2841,6 +2876,40 @@ QVariantMap readSendParamMap(const QSettings& settings) {
             return doc.object().toVariantMap();
     }
     return map;
+}
+
+void mergeSendParamMapInto(QVariant& param, const QVariantMap& extra) {
+    if (extra.isEmpty())
+        return;
+    QVariantMap merged;
+    if (param.canConvert<QVariantMap>())
+        merged = param.toMap();
+    for (auto it = extra.constBegin(); it != extra.constEnd(); ++it)
+        merged.insert(it.key(), it.value());
+    param = merged;
+}
+
+bool hookUsesGenericSendParamMap(const TestCaseDefinition& def) {
+    if (!def.hook.enabled)
+        return false;
+    return def.hook.hookId.trimmed() == QLatin1String("COUNTDOWN_WAIT");
+}
+
+void writeGenericHookSendParamMap(QSettings& ini, const TestCaseDefinition& def) {
+    if (!def.send.param.canConvert<QVariantMap>())
+        return;
+    const QVariantMap map = def.send.param.toMap();
+    if (map.isEmpty())
+        return;
+    if (hookUsesGenericSendParamMap(def)) {
+        writeSendParamMap(ini, map);
+        return;
+    }
+    if (def.send.channel == TestCaseSendChannel::Product) {
+        DeviceCmd cmd;
+        if (!DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd))
+            writeSendParamMap(ini, map);
+    }
 }
 
 int jsonMapIntValue(const QVariantMap& map, int defaultValue = 0) {

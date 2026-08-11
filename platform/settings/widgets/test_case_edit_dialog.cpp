@@ -87,6 +87,9 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("channels"), QStringLiteral("温度通道列表（如 1,2,3,4,5,6 或 1-6）")},
         {QStringLiteral("channelsPerStation"), QStringLiteral("每工位占用温度通道数（法兰加热填 6）")},
         {QStringLiteral("tempPassMode"), QStringLiteral("多路温度卡控：all=同轮全部达标（默认）；any=任一路达标即过")},
+        {QStringLiteral("seconds"), QStringLiteral("倒计时等待秒数（COUNTDOWN_WAIT）")},
+        {QStringLiteral("waitSeconds"), QStringLiteral("倒计时等待秒数（同 seconds）")},
+        {QStringLiteral("prompt"), QStringLiteral("倒计时弹窗提示文字（可选）")},
         {QStringLiteral("channelLock"), QStringLiteral("锁定通道号（不按工位改）")},
         {QStringLiteral("slaveAddr"), QStringLiteral("Modbus 从站地址")},
         {QStringLiteral("addr"), QStringLiteral("Modbus 从站地址")},
@@ -136,6 +139,36 @@ QString sendParamKeyZhLabel(const QString& key) {
     return k;
 }
 
+/** Hook 步骤是否需在编辑对话框展示 Param_ 参数表（非 Send 指令）。 */
+bool hookUsesSendParamUi(const QString& hookId) {
+    return hookId == QLatin1String("COUNTDOWN_WAIT");
+}
+
+QVariantMap hookSendParamDefaultMap(const QString& hookId) {
+    if (hookId == QLatin1String("COUNTDOWN_WAIT")) {
+        QVariantMap map;
+        map.insert(QStringLiteral("seconds"), QStringLiteral("5"));
+        map.insert(QStringLiteral("prompt"), QStringLiteral("请等待"));
+        return map;
+    }
+    return {};
+}
+
+void setSendCommandFieldRowsVisible(Ui::TestCaseEditDialog* ui, bool visible) {
+    if (!ui)
+        return;
+    ui->label_sendChannel->setVisible(visible);
+    ui->comboBox_sendChannel->setVisible(visible);
+    ui->label_action->setVisible(visible);
+    ui->comboBox_action->setVisible(visible);
+    ui->label_deviceCmd->setVisible(visible);
+    ui->comboBox_deviceCmd->setVisible(visible);
+    if (visible)
+        return;
+    ui->label_productProtocol->setVisible(false);
+    ui->comboBox_productProtocol->setVisible(false);
+}
+
 enum {
     SendParamKeyRole = Qt::UserRole + 31,
     SendParamSavedRole = Qt::UserRole + 32,
@@ -159,7 +192,7 @@ void applySendParamValueCell(QTableWidgetItem* valItem, const QString& text, boo
     valItem->setFont(font);
     if (asPlaceholder) {
         valItem->setForeground(QBrush(QColor(0x88, 0x88, 0x88)));
-        valItem->setToolTip(QStringLiteral("灰色斜体为参考默认值，尚未写入 ini；直接保存不会写入该项。"
+        valItem->setToolTip(QStringLiteral("灰色斜体为参考默认值，尚未写入 ini；保存工站步骤时会将非空参考默认一并写入。"
                                              "若需显式空值：改过后留空保存，或填「-」。"));
     } else {
         valItem->setForeground(QBrush());
@@ -167,6 +200,36 @@ void applySendParamValueCell(QTableWidgetItem* valItem, const QString& text, boo
             valItem->setToolTip(QStringLiteral("已显式保存为空值（Param_键=）"));
         else
             valItem->setToolTip(QString());
+    }
+}
+
+/** 将灰色占位格转为可保存的普通值（编辑确认或保存前 materialize）。 */
+void materializeSendParamValueItem(QTableWidgetItem* valItem) {
+    if (!valItem)
+        return;
+    valItem->setData(SendParamTouchedRole, true);
+    valItem->setData(SendParamPlaceholderRole, false);
+    QFont font = valItem->font();
+    font.setItalic(false);
+    valItem->setFont(font);
+    valItem->setForeground(QBrush());
+    if (valItem->text().trimmed().isEmpty())
+        valItem->setToolTip(QStringLiteral("已显式保存为空值（Param_键=）"));
+    else
+        valItem->setToolTip(QString());
+}
+
+/** 保存工站步骤前：非空灰色参考默认一并写入 ini，便于跨机 profiles 不缺参。 */
+void materializeAllSendParamPlaceholdersForSave(QTableWidget* table) {
+    if (!table || table->columnCount() < 2)
+        return;
+    for (int r = 0; r < table->rowCount(); ++r) {
+        QTableWidgetItem* valItem = table->item(r, 1);
+        if (!valItem || !valItem->data(SendParamPlaceholderRole).toBool())
+            continue;
+        if (valItem->text().trimmed().isEmpty())
+            continue;
+        materializeSendParamValueItem(valItem);
     }
 }
 
@@ -208,7 +271,7 @@ void configureSendParamTable(QTableWidget* table, bool namedKeys) {
     if (namedKeys) {
         table->setColumnCount(2);
         table->setHorizontalHeaderLabels(
-            {QStringLiteral("参数说明 (英文键)"), QStringLiteral("参数值（灰斜体=未写入；改后空=显式空）")});
+            {QStringLiteral("参数说明 (英文键)"), QStringLiteral("参数值（灰斜体=参考默认；保存工站步骤时非空默认会写入 ini）")});
         table->setColumnWidth(0, 320);
     } else {
         table->setColumnCount(1);
@@ -478,7 +541,17 @@ void setSendParamTableFromString(QTableWidget* table, const QString& value) {
 void commitSendParamTableEdits(QTableWidget* table) {
     if (!table)
         return;
-    // QTableWidget::closePersistentEditor 只接受 QTableWidgetItem*，不能用 QModelIndex
+    for (int r = 0; r < table->rowCount(); ++r) {
+        QTableWidgetItem* valItem = table->item(r, 1);
+        if (!valItem)
+            continue;
+        if (table->isPersistentEditorOpen(valItem)) {
+            table->closePersistentEditor(valItem);
+            // 用户打开编辑框后直接确认（文本未变）时 itemChanged 可能不触发，须在此 materialize
+            if (valItem->data(SendParamPlaceholderRole).toBool() && !valItem->text().trimmed().isEmpty())
+                materializeSendParamValueItem(valItem);
+        }
+    }
     if (QTableWidgetItem* item = table->currentItem())
         table->closePersistentEditor(item);
     if (QWidget* fw = QApplication::focusWidget()) {
@@ -937,8 +1010,9 @@ void applySendParamHintToUi(const SendCmdParamUi& uiSchema, bool hasParam, QLabe
     const bool namedMap = uiSchema.valid && uiSchema.kind == SendCmdParamKind::JsonMap;
     if (namedMap) {
         const QString saveNote =
-            QStringLiteral("灰色斜体为参考默认，保存时不写入；改过后留空保存=显式空值（写入 Param_键=）。"
-                           "也可填「-」表示显式空值。误删字段可点「恢复默认参数表」。");
+            QStringLiteral("灰色斜体为参考默认；保存工站步骤时会将非空参考默认一并写入 ini。"
+                           "改过后留空保存=显式空值（写入 Param_键=）；也可填「-」表示显式空值。"
+                           "误删字段可点「恢复默认参数表」。");
         if (!hintText.isEmpty())
             hintText += QStringLiteral("\n") + saveNote;
         else
@@ -959,7 +1033,7 @@ void applySendParamHintToUi(const SendCmdParamUi& uiSchema, bool hasParam, QLabe
         if (uiSchema.valid && !uiSchema.hint.isEmpty())
             paramTable->setToolTip(uiSchema.hint);
         else if (namedMap)
-            paramTable->setToolTip(QStringLiteral("灰色斜体=未写入 ini 的参考默认；改过后空=显式空值。"));
+            paramTable->setToolTip(QStringLiteral("灰色斜体=参考默认；保存工站步骤时非空默认会写入 ini；改过后空=显式空值。"));
         else
             paramTable->setToolTip(QString());
     }
@@ -969,6 +1043,28 @@ void applySendParamHintToUi(const SendCmdParamUi& uiSchema, bool hasParam, QLabe
         else
             spinBox->setToolTip(QString());
     }
+}
+
+void applyHookSendParamUi(Ui::TestCaseEditDialog* ui, const QString& hookId, const QVariantMap& userMap = {}) {
+    if (!ui || !hookUsesSendParamUi(hookId))
+        return;
+    const QVariantMap tmpl = hookSendParamDefaultMap(hookId);
+    const QVariantMap current =
+        userMap.isEmpty() ? readSendParamMapFromTable(ui->tableWidget_sendParam) : userMap;
+    setSendParamTableFromMapWithTemplate(ui->tableWidget_sendParam, current, tmpl);
+    ui->stackedWidget_param->setCurrentWidget(ui->page_paramJson);
+    ui->label_param->setVisible(true);
+    ui->stackedWidget_param->setVisible(true);
+
+    SendCmdParamUi uiSchema;
+    uiSchema.valid = true;
+    uiSchema.kind = SendCmdParamKind::JsonMap;
+    if (hookId == QLatin1String("COUNTDOWN_WAIT")) {
+        uiSchema.hint = QStringLiteral("seconds：倒计时秒数（必填，>0）；prompt：弹窗提示文字（可选）");
+    }
+    applySendParamHintToUi(uiSchema, true, ui->label_sendParamHint, ui->tableWidget_sendParam, ui->spinBox_intParam,
+                           ui->pushButton_addParamRow, ui->pushButton_removeParamRow,
+                           ui->pushButton_restoreParamDefaults, !tmpl.isEmpty());
 }
 
 void applySendParamToUi(const SendCmdParamUi& uiSchema, const QVariant& param, QWidget* pageNone, QWidget* pageInt,
@@ -1147,6 +1243,7 @@ const QHash<QString, QString>& hookDisplayNameMap() {
         {QStringLiteral("MAC_WRITE_ROOT"), QStringLiteral("写入 MAC 地址（Qroot）")},
         {QStringLiteral("PRINT_WHOLE_MACHINE_SN"), QStringLiteral("打印整机 SN 二维码")},
         {QStringLiteral("QR_SN_CONSISTENCY_CHECK"), QStringLiteral("二维码一致性校验（与开局SN比对）")},
+        {QStringLiteral("COUNTDOWN_WAIT"), QStringLiteral("倒计时等待弹窗（到点自动下一步）")},
         {QStringLiteral("PLC_MODBUS_CONN"), QStringLiteral("PLC Modbus 连接")},
         {QStringLiteral("PLC_V3_SWITCH_RIGHT_WHOLE"), QStringLiteral("PLC+V3 旋钮整步右旋")},
         {QStringLiteral("PLC_V3_SWITCH_DONE_RESET_M"), QStringLiteral("PLC+V3 旋钮测试完成 M 复位")},
@@ -1276,15 +1373,10 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
     connect(ui->tableWidget_sendParam, &QTableWidget::itemChanged, this, [this](QTableWidgetItem* item) {
         if (!item || !ui->tableWidget_sendParam || item->column() != 1)
             return;
-        item->setData(SendParamTouchedRole, true);
-        if (item->data(SendParamPlaceholderRole).toBool()) {
-            item->setData(SendParamPlaceholderRole, false);
-            QFont font = item->font();
-            font.setItalic(false);
-            item->setFont(font);
-            item->setForeground(QBrush());
-            item->setToolTip(QString());
-        }
+        if (item->data(SendParamPlaceholderRole).toBool())
+            materializeSendParamValueItem(item);
+        else
+            item->setData(SendParamTouchedRole, true);
     });
     connect(ui->pushButton_removeParamRow, &QPushButton::clicked, this, [this]() {
         if (!ui->tableWidget_sendParam)
@@ -1305,10 +1397,15 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
     connect(ui->pushButton_restoreParamDefaults, &QPushButton::clicked, this, [this]() {
         if (!ui->tableWidget_sendParam || ui->tableWidget_sendParam->columnCount() < 2)
             return;
-        const TestCaseSendChannel channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
-        const QString device = comboData(ui->comboBox_productProtocol);
-        const QString cmdName = comboData(ui->comboBox_deviceCmd);
-        const QVariantMap tmpl = sendParamDefaultMapForCmd(channel, device, cmdName);
+        QVariantMap tmpl;
+        if (ui->checkBox_hookEnabled->isChecked() && hookUsesSendParamUi(comboData(ui->comboBox_hookId))) {
+            tmpl = hookSendParamDefaultMap(comboData(ui->comboBox_hookId));
+        } else {
+            const TestCaseSendChannel channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
+            const QString device = comboData(ui->comboBox_productProtocol);
+            const QString cmdName = comboData(ui->comboBox_deviceCmd);
+            tmpl = sendParamDefaultMapForCmd(channel, device, cmdName);
+        }
         if (tmpl.isEmpty()) {
             QMessageBox::information(this, QStringLiteral("恢复默认参数表"),
                                      QStringLiteral("当前指令没有预置参数模板，请用「添加一行」自行填写。"));
@@ -1580,8 +1677,10 @@ void TestCaseEditDialog::updatePromptFieldsEnabled() {
     ui->plainTextEdit_promptText->setVisible(on);
     if (!on)
         ui->checkBox_promptOnly->setChecked(false);
-    // 纯空白提醒时隐藏测试指令区；Hook 本身也会隐藏，二者互不覆盖
-    if (!ui->checkBox_hookEnabled->isChecked())
+    // 纯空白提醒时隐藏测试指令区；带 Param_ 的 Hook 步骤仍展示参数表
+    if (ui->checkBox_hookEnabled->isChecked())
+        updateHookFieldsEnabled();
+    else
         ui->groupBox_send->setVisible(!on || !ui->checkBox_promptOnly->isChecked());
 }
 
@@ -1589,17 +1688,35 @@ void TestCaseEditDialog::updateHookFieldsEnabled() {
     const bool on = ui->checkBox_hookEnabled->isChecked();
     const bool promptOnly =
         ui->checkBox_promptEnabled->isChecked() && ui->checkBox_promptOnly->isChecked();
+    const QString hookId = comboData(ui->comboBox_hookId);
+    const bool hookParamOnly = on && hookUsesSendParamUi(hookId);
+
     ui->label_hookId->setVisible(on);
     ui->comboBox_hookId->setVisible(on);
-    // Hook 或纯空白提醒时隐藏测试指令区（吸力采样请用 Dongle/SampleSuction* + Gate）
+
+    if (hookParamOnly) {
+        ui->groupBox_send->setVisible(true);
+        ui->groupBox_send->setTitle(QStringLiteral("Hook 参数"));
+        ui->label_param->setText(QStringLiteral("步骤参数"));
+        setSendCommandFieldRowsVisible(ui, false);
+        const QVariantMap current = readSendParamMapFromTable(ui->tableWidget_sendParam);
+        if (!current.contains(QStringLiteral("seconds")) && !current.contains(QStringLiteral("waitSeconds")))
+            applyHookSendParamUi(ui, hookId, QVariantMap());
+        else
+            applyHookSendParamUi(ui, hookId);
+        return;
+    }
+
     ui->groupBox_send->setTitle(QStringLiteral("测试指令"));
     ui->label_param->setText(QStringLiteral("指令参数"));
     ui->groupBox_send->setVisible(!on && !promptOnly);
-    if (!on) {
+    if (!on && !promptOnly) {
+        setSendCommandFieldRowsVisible(ui, true);
         updateProductProtocolRowVisible();
         onDeviceCmdChanged(ui->comboBox_deviceCmd->currentIndex());
         return;
     }
+    setSendCommandFieldRowsVisible(ui, false);
     updateSendParamVisibility(false);
 }
 
@@ -1691,6 +1808,8 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
                            ui->label_sendParamHint, ui->tableWidget_sendParam, ui->spinBox_intParam,
                            ui->pushButton_addParamRow, ui->pushButton_removeParamRow,
                            ui->pushButton_restoreParamDefaults, hasParamTemplate);
+    if (def.hook.enabled && hookUsesSendParamUi(def.hook.hookId))
+        applyHookSendParamUi(ui, def.hook.hookId, sendParamAsJsonMap(paramForUi));
     lastSendParamCmdKey_ = sendChannelComboData(channel) + QLatin1Char('|')
         + comboData(ui->comboBox_productProtocol) + QLatin1Char('|') + def.send.deviceCmd;
 
@@ -1773,14 +1892,18 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
     def.send.deviceCmd = comboData(ui->comboBox_deviceCmd);
     def.hook.enabled = ui->checkBox_hookEnabled->isChecked();
     def.hook.hookId = comboData(ui->comboBox_hookId);
-    const QString protocolCtx =
-        sendParamProtocolContext(def.send.channel, comboData(ui->comboBox_productProtocol));
-    const SendCmdParamUi uiSchema =
-        sendCmdParamUiForName(def.send.deviceCmd, def.send.channel, protocolCtx);
-    def.send.param = readSendParamFromUi(uiSchema, ui->spinBox_intParam, ui->tableWidget_sendParam);
-    if (def.send.channel == TestCaseSendChannel::Fixture && uiSchema.kind == SendCmdParamKind::Int
-        && ui->spinBox_intParam->value() == 0)
-        def.send.param = QStringLiteral("$INDEX");
+    if (def.hook.enabled && hookUsesSendParamUi(def.hook.hookId)) {
+        def.send.param = readSendParamMapFromTable(ui->tableWidget_sendParam);
+    } else {
+        const QString protocolCtx =
+            sendParamProtocolContext(def.send.channel, comboData(ui->comboBox_productProtocol));
+        const SendCmdParamUi uiSchema =
+            sendCmdParamUiForName(def.send.deviceCmd, def.send.channel, protocolCtx);
+        def.send.param = readSendParamFromUi(uiSchema, ui->spinBox_intParam, ui->tableWidget_sendParam);
+        if (def.send.channel == TestCaseSendChannel::Fixture && uiSchema.kind == SendCmdParamKind::Int
+            && ui->spinBox_intParam->value() == 0)
+            def.send.param = QStringLiteral("$INDEX");
+    }
 
     def.timing.delayBeforeMs = ui->spinBox_delayBefore->value();
     def.timing.delayAfterMs = ui->spinBox_delayAfter->value();
@@ -1938,6 +2061,7 @@ void TestCaseEditDialog::onDeviceCmdChanged(int) {
 
 bool TestCaseEditDialog::saveValidated() {
     commitSendParamTableEdits(ui->tableWidget_sendParam);
+    materializeAllSendParamPlaceholdersForSave(ui->tableWidget_sendParam);
     const TestCaseDefinition def = definition();
     QStringList errors;
     if (!TestCaseValidator::validateCase(def, errors)) {
