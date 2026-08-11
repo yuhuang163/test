@@ -963,6 +963,7 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     emit send_end_test(getIndex());
     ui->getMac->clear();
     mesProcessCode_.clear();
+    // 焦点由 box_base::checkAllover 统一处理
 }
 
 void QFreeWork::startTask() {
