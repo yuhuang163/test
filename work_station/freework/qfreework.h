@@ -345,9 +345,6 @@ class QFreeWork : public test_base {
      */
     void runMultiTempLoggerChannelsWindowAllMatch(const TestCaseDefinition& def);
     void setDongleSuctionReadEnabled(bool enabled);
-    /** 流程中连续 GPIB 步之间保持 Dongle 静默，避免步骤间隙 AT 插队 */
-    bool shouldHoldDongleVisaQuietAfterStep() const;
-    bool stepUsesGpiBVisaStep(const QString& stepName) const;
     void initSuctionChart();
     void resetSuctionChart();
     void appendSuctionChartSample(double leftKpa, double rightKpa);

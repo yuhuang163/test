@@ -1022,16 +1022,6 @@ void QFreeWork::runScpiProgrammableCurrentSampleAnyMatch(const TestCaseDefinitio
                 .arg(durationMs)
                 .arg(intervalMs));
 
-    cancelCommandRetryWait(QStringLiteral("读电流采样，取消指令重试"));
-    setDongleRxPaused(true);
-    struct DongleRxPauseGuard {
-        QFreeWork* fw = nullptr;
-        ~DongleRxPauseGuard() {
-            if (fw)
-                fw->setDongleRxPaused(false);
-        }
-    } donglePauseGuard{this};
-
     QElapsedTimer sampleTimer;
     sampleTimer.start();
     while (sampleTimer.elapsed() < durationMs && !isActiveTestCaseStepDone()) {
@@ -1044,11 +1034,11 @@ void QFreeWork::runScpiProgrammableCurrentSampleAnyMatch(const TestCaseDefinitio
         QString errStr;
         bool ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, commandParam, &errStr);
         if (!ok) {
-            VisaChannel::idleDelayMs(200);
+            VisaChannel::waitWork(200);
             ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, commandParam, &errStr);
         }
         if (!ok) {
-            VisaChannel::idleDelayMs(300);
+            VisaChannel::waitWork(300);
             ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, commandParam, &errStr);
         }
         if (!ok) {
@@ -1625,13 +1615,8 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
         return;
     ctx->setActiveTestCase(def);
     ctx->showlog(QStringLiteral("执行 case：%1").arg(stepLabel(def)));
-    const bool gpibScpiStep = ctx->stepUsesGpiBVisaStep(def.meta.name);
-    if (def.timing.delayBeforeMs > 0) {
-        if (gpibScpiStep)
-            VisaChannel::idleDelayMs(def.timing.delayBeforeMs);
-        else
-            ctx->waitWork(def.timing.delayBeforeMs);
-    }
+    if (def.timing.delayBeforeMs > 0)
+        ctx->waitWork(def.timing.delayBeforeMs);
 
     if (def.hook.enabled) {
         TestCaseHookRegistry::invoke(def.hook.hookId, ctx);
@@ -1979,6 +1964,12 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                 ctx->markActiveTestCaseStepDone(false, QStringLiteral("visaAddress无效"), QStringLiteral("失败"));
                 return;
             }
+            // 「配置Visa程控电源」：开局先作废该地址共享句柄，避免上一轮僵死会话占线
+            if (def.send.deviceCmd.compare(QLatin1String("ConfigureProgrammablePower"), Qt::CaseInsensitive) == 0
+                && !resolvedVisaAddr.isEmpty()) {
+                ctx->scpiVisaManager()->closeConnection();
+                VisaChannel::discardIdleSharedSession(resolvedVisaAddr);
+            }
             const bool visaReady =
                 devRoute == ScpiDeviceRoute::Agilent66319d
                     ? ctx->scpiVisaManager()->loadAgilent66319dVisaFromParamMap(visaLoadMap, visaTimeoutMs)
@@ -1991,25 +1982,10 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                 return;
             }
             const bool gpibAddr = resolvedVisaAddr.startsWith(QStringLiteral("GPIB"), Qt::CaseInsensitive);
-            // GPIB：取消 AT 重试、暂停 Dongle 解析，避免与 viWrite 交错导致 ABORT
             if (gpibAddr) {
-                ctx->cancelCommandRetryWait(QStringLiteral("进入 GPIB/VISA 步骤，取消指令重试"));
-                ctx->setDongleRxPaused(true);
                 ctx->suppressProductBleAutoReconnect_ = true;
-            }
-            struct DongleRxPauseGuard {
-                QFreeWork* fw = nullptr;
-                bool active = false;
-                ~DongleRxPauseGuard() {
-                    if (active && fw && !fw->shouldHoldDongleVisaQuietAfterStep())
-                        fw->setDongleRxPaused(false);
-                }
-            } donglePauseGuard{ctx, gpibAddr};
-
-            // GPIB：勿用 waitWork / pumpDelayMs（会泵事件→定时器插队）；纯 idle 等待
-            if (gpibAddr) {
                 ctx->scpiVisaManager()->ensureConnected();
-                VisaChannel::idleDelayMs(200);
+                VisaChannel::waitWork(200);
             }
             if (!stepParams.linkMap.value(QStringLiteral("visaAddress")).toString().trimmed().isEmpty()
                 || !visaLoadMap.value(QStringLiteral("visaAddress")).toString().trimmed().isEmpty()) {
@@ -2021,11 +1997,11 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                 ctx->runScpiProgrammableCurrentSampleAnyMatch(def, stepParams.commandParam);
                 return;
             }
-            // 底层已有同会话/重开恢复；上层 GPIB 再试 1 次（暂停 Dongle 期间），非 GPIB 保留原重试
+            // 底层已有同会话/重开恢复；上层 GPIB 再试 1 次，非 GPIB 保留原重试
             bool ok = ctx->scpiVisaManager()->exec(cmd, stepParams.commandParam, &errStr);
             if (!ok) {
                 if (gpibAddr)
-                    VisaChannel::idleDelayMs(300);
+                    VisaChannel::waitWork(300);
                 else
                     ctx->waitWork(300);
                 ok = ctx->scpiVisaManager()->exec(cmd, stepParams.commandParam, &errStr);
@@ -2107,7 +2083,6 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
 
     DongleCmd dongleCmd = DongleCmd::BleScanConnect;
     if (def.send.channel == TestCaseSendChannel::Dongle) {
-        ctx->ensureDongleSerialOpenAfterVisaQuiet();
         if (!DongleCmdCatalog::dongleCmdFromName(def.send.deviceCmd, dongleCmd)) {
             ctx->showlog(QStringLiteral("未知 Dongle 指令：%1").arg(def.send.deviceCmd));
             ctx->markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
@@ -2224,11 +2199,6 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                     ctx->ui->mac_combo->setCurrentText(bestMac);
                 }
             };
-            ctx->waitWork(200);
-            if (ctx->dongleSerialChannel_)
-                ctx->dongleSerialChannel_->clearReceiveBuffer();
-            if (ctx->at)
-                ctx->at->resetConnected();
             ctx->setCommandWaitSource(CommandWaitSource::DongleAt);
             const int bleTimeoutMs = qMax(timeoutMs > 0 ? timeoutMs : 18000, 18000);
             ctx->sendCommandWithRetry(sendFn, bleTimeoutMs, false);
@@ -2251,17 +2221,10 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                 ctx->at->set(dongleCmd, param);
         };
         int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
-        if (isDongleBleConnectCmd(dongleCmd)) {
-            // GPIB 静默恢复后稍等再发 AT；Dongle 直连/扫描连接须与固件 15s 超时对齐
-            ctx->waitWork(200);
-            if (ctx->dongleSerialChannel_)
-                ctx->dongleSerialChannel_->clearReceiveBuffer();
-            if (ctx->at)
-                ctx->at->resetConnected();
+        if (isDongleBleConnectCmd(dongleCmd))
             timeoutMs = qMax(timeoutMs > 0 ? timeoutMs : 18000, 18000);
-        } else if (timeoutMs <= 0) {
+        else if (timeoutMs <= 0)
             timeoutMs = 3000;
-        }
         ctx->setCommandWaitSource(CommandWaitSource::DongleAt);
         ctx->sendCommandWithRetry(sendFn, timeoutMs, !isDongleBleConnectCmd(dongleCmd));
         return;

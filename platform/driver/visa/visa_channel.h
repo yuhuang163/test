@@ -37,19 +37,12 @@ class VisaChannel : public QObject {
     bool write(const QByteArray& data);
     bool read(QByteArray* out, int maxBytes = 1024);
 
-    /** 正式测开局/测完：强制关闭进程内该地址的空闲 GPIB 句柄。 */
+    /** 「配置Visa程控电源」开局：强制关闭该地址进程内共享句柄，避免僵死会话占线。 */
     static void discardIdleSharedSession(const QString& resourceAddress);
-    /** 调试：打印进程内共享 VISA 会话 ref/句柄（无独立 VISA 线程，仅主线程+全局锁）。 */
+    /** 调试：打印进程内共享 VISA 会话 ref/句柄。 */
     static void dumpSharedSessions(const QString& tag);
-    /**
-     * 可泵界面的等待（排除 Socket）。GPIB 会话已打开或即将 viWrite 时禁止用：
-     * processEvents 仍可能跑定时器/重入，易把 GPIB 写成 VI_ERROR_ABORT。
-     */
-    static void pumpDelayMs(int ms);
-    /** GPIB 临界区等待：Dongle 静默时可泵界面；否则纯 sleep。 */
-    static void idleDelayMs(int ms);
-    /** Dongle 静默期间允许 GPIB 持锁等待泵界面，减轻主线程卡死。 */
-    static void setGpiBQuietAllowsUiPump(bool allow);
+    /** 统一延时：与 test_base::waitWork 同款（processEvents）。 */
+    static void waitWork(int ms);
 
   private:
     Config config_;
