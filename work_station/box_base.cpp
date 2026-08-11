@@ -580,20 +580,33 @@ void box_base::loginMes() {
 
 void box_base::checkAllover(int fixtureNumber) {
     fixtureNumber = fixtureNumber - 1;
-    if (fixtureNumber < 0 || fixtureNumber > testList.size()) {
+    if (fixtureNumber < 0 || fixtureNumber >= testList.size()) {
         return;
     }
     FixTureStates[fixtureNumber] = 1;
-    if (checkStateReady(FixTureStates)) {
+
+    // 焦点唯一出口：全工位结束 → 第一工位；否则 → 刚结束的工位
+    const bool allDone = checkStateReady(FixTureStates);
+    const int focusIndex = allDone ? 0 : fixtureNumber;
+    if (allDone) {
         for (int i = 0; i < testList.size(); ++i) {
             FixTureStates[i] = 0;
         }
-
-        if (pack.factory == "无mes厂")
-            testList[0]->macInputLineEdit()->setFocus();
-        else
-            testList[0]->getMacLineEdit()->setFocus();
     }
+    test_base* station = testList[focusIndex];
+    if (!station) {
+        return;
+    }
+    QLineEdit* target =
+        (pack.factory == QStringLiteral("无mes厂")) ? station->macInputLineEdit() : station->getMacLineEdit();
+    // 延后一拍，避开结束按钮/结果表同轮抢焦点
+    QTimer::singleShot(0, this, [target]() {
+        if (!target) {
+            return;
+        }
+        target->setDisabled(false);
+        target->setFocus(Qt::OtherFocusReason);
+    });
 }
 bool box_base::checkStateReady(std::vector<int> States) {
     for (int i = 0; i < testList.size(); ++i) {

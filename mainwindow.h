@@ -697,6 +697,7 @@ class MainWindow : public QMainWindow {
     void on_openCompensationSet_clicked();
     void on_closeCompensationSet_clicked();
     void on_factory_flag_clicked();
+    void on_factory_flag_undone_clicked();
     void on_get_trim_data_clicked();
     void on_set_trim_data_clicked();
     void on_factory_flag_read_clicked();

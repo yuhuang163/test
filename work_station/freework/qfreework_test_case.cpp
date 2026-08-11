@@ -2144,6 +2144,11 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             }
 
             ctx->showlog(QStringLiteral("开始搜索广播名称: '%1', 最低信号要求: %2").arg(targetName).arg(rssiThreshold));
+
+            // 本步开始前再清一次，避免沿用开测前或上一步残留的扫描结果
+            ctx->deviceMap.clear();
+            if (ctx->ui && ctx->ui->mac_combo)
+                ctx->ui->mac_combo->clear();
             
             int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
             if (timeoutMs <= 0) timeoutMs = 6000;
@@ -2257,6 +2262,17 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
         else
             ctx->protocolManager.set(cmd, wireParam);
     };
+
+    // 进蓝牙非信令等会关机：Timing/WaitReply=false 时只发不收，发完即过步
+    if (!def.timing.waitReply) {
+        sendFn();
+        ctx->canGoNext = true;
+        ctx->sendRetryOver = false;
+        ctx->lastCommandRetryCount = 1;
+        ctx->lastCommandFailReason.clear();
+        ctx->showlog(QStringLiteral("已发送（不等待回包）"));
+        return;
+    }
 
     const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
     ctx->setCommandWaitSource(CommandWaitSource::ProductProtocol);

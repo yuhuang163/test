@@ -1142,6 +1142,8 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
     out.timing.delayBeforeMs = ini.value(QStringLiteral("Timing/DelayBeforeMs"), 0).toInt();
     out.timing.delayAfterMs = ini.value(QStringLiteral("Timing/DelayAfterMs"), 0).toInt();
     out.timing.commandTimeoutMs = ini.value(QStringLiteral("Timing/CommandTimeoutMs"), 0).toInt();
+    // 缺省 true：兼容旧 ini；进非信令等关机场景可写 WaitReply=false
+    out.timing.waitReply = ini.value(QStringLiteral("Timing/WaitReply"), true).toBool();
 
     out.gate.enabled = ini.value(QStringLiteral("Gate/Enabled"), false).toBool();
     out.gate.reportType = ini.value(QStringLiteral("Gate/ReportType")).toString().trimmed();
@@ -1420,6 +1422,8 @@ void applyCaseIniOverlay(QSettings& overlay, TestCaseDefinition& def) {
         def.timing.delayAfterMs = overlay.value(QStringLiteral("Timing/DelayAfterMs")).toInt();
     if (overlay.contains(QStringLiteral("Timing/CommandTimeoutMs")))
         def.timing.commandTimeoutMs = overlay.value(QStringLiteral("Timing/CommandTimeoutMs")).toInt();
+    if (overlay.contains(QStringLiteral("Timing/WaitReply")))
+        def.timing.waitReply = overlay.value(QStringLiteral("Timing/WaitReply")).toBool();
 
     if (overlay.contains(QStringLiteral("Gate/Enabled")) || overlay.contains(QStringLiteral("Gate/ReportType"))
         || overlay.contains(QStringLiteral("Gate/Count"))) {
@@ -1790,6 +1794,7 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
         ini.setValue(QStringLiteral("Timing/DelayBeforeMs"), def.timing.delayBeforeMs);
         ini.setValue(QStringLiteral("Timing/DelayAfterMs"), def.timing.delayAfterMs);
         ini.setValue(QStringLiteral("Timing/CommandTimeoutMs"), def.timing.commandTimeoutMs);
+        ini.setValue(QStringLiteral("Timing/WaitReply"), def.timing.waitReply);
         ini.setValue(QStringLiteral("Gate/Enabled"), def.gate.enabled);
         ini.setValue(QStringLiteral("Gate/ReportType"), def.gate.reportType);
         ini.setValue(QStringLiteral("Gate/Field"), def.gate.field);
@@ -1883,6 +1888,7 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
     ini.setValue(QStringLiteral("Timing/DelayBeforeMs"), def.timing.delayBeforeMs);
     ini.setValue(QStringLiteral("Timing/DelayAfterMs"), def.timing.delayAfterMs);
     ini.setValue(QStringLiteral("Timing/CommandTimeoutMs"), def.timing.commandTimeoutMs);
+    ini.setValue(QStringLiteral("Timing/WaitReply"), def.timing.waitReply);
 
     ini.setValue(QStringLiteral("Gate/Enabled"), def.gate.enabled);
     ini.setValue(QStringLiteral("Gate/ReportType"), def.gate.reportType);

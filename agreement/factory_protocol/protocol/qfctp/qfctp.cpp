@@ -1055,28 +1055,39 @@ bool Qfctp::setCaseAgingExit() {
     return sendTestsServiceTlv(kTlvAgingModeExit, {}, "老化模式退出");
 }
 
+/** enter / on / value：1=进入/开，0=退出/关；缺省按进入(1)，避免旧 None 参数空 map 误发 00 */
+static uint8_t fctpEnterOnFlag(const QVariantMap& map) {
+    if (map.contains(QStringLiteral("enter")))
+        return map.value(QStringLiteral("enter")).toInt() != 0 ? 1u : 0u;
+    if (map.contains(QStringLiteral("on")))
+        return map.value(QStringLiteral("on")).toInt() != 0 ? 1u : 0u;
+    if (map.contains(QStringLiteral("value")))
+        return map.value(QStringLiteral("value")).toInt() != 0 ? 1u : 0u;
+    return 1u;
+}
+
 bool Qfctp::setCaseSuctionMode(const QVariantMap& map) {
-    const uint8_t v = map.value("enter").toInt() != 0 ? 1u : 0u;
+    const uint8_t v = fctpEnterOnFlag(map);
     return sendTestsServiceTlv(kTlvSuctionMode, QByteArray(1, static_cast<char>(v)), "吸力测试模式");
 }
 
 bool Qfctp::setCaseBtSignalMode(const QVariantMap& map) {
-    const uint8_t v = map.value("enter").toInt() != 0 ? 1u : 0u;
+    const uint8_t v = fctpEnterOnFlag(map);
     return sendTestsServiceTlv(kTlvBtSignalMode, QByteArray(1, static_cast<char>(v)), "蓝牙信令测试模式");
 }
 
 bool Qfctp::setCaseBtNoSignalMode(const QVariantMap& map) {
-    const uint8_t v = map.value("enter").toInt() != 0 ? 1u : 0u;
+    const uint8_t v = fctpEnterOnFlag(map);
     return sendTestsServiceTlv(kTlvBtNoSignalMode, QByteArray(1, static_cast<char>(v)), "蓝牙非信令测试模式");
 }
 
 bool Qfctp::setCaseBtFreqMode(const QVariantMap& map) {
-    const uint8_t v = map.value("enter").toInt() != 0 ? 1u : 0u;
+    const uint8_t v = fctpEnterOnFlag(map);
     return sendTestsServiceTlv(kTlvBtFreqMode, QByteArray(1, static_cast<char>(v)), "蓝牙校频测试模式");
 }
 
 bool Qfctp::setCaseStandbyMode(const QVariantMap& map) {
-    const uint8_t v = map.value("enter").toInt() != 0 ? 1u : 0u;
+    const uint8_t v = fctpEnterOnFlag(map);
     return sendTestsServiceTlv(kTlvStandbyMode, QByteArray(1, static_cast<char>(v)), "待机模式");
 }
 

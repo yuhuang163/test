@@ -52,6 +52,8 @@ struct TestCaseTiming {
     int delayBeforeMs = 0;
     int delayAfterMs = 0;
     int commandTimeoutMs = 0;
+    /** false：只发不收，发完即放行（进非信令关机等）；对应 Timing/WaitReply */
+    bool waitReply = true;
 };
 
 // --- 卡控 ---

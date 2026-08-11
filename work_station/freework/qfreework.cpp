@@ -701,6 +701,11 @@ QByteArray QFreeWork::resolvedTailSnToWrite() const {
 }
 
 void QFreeWork::runTestFlowBootstrap() {
+    // 每轮开测清空扫描缓存，避免按广播名连到过期 MAC/旧广播名
+    deviceMap.clear();
+    if (ui && ui->mac_combo)
+        ui->mac_combo->clear();
+
     const QString sn = ui->getMac->text().trimmed();
     const QString mac = ui->macInput->text().trimmed();
     // initData 会清成员；开局过程码须跨 init 保留，供 BYD Complete/SFC 使用
@@ -1018,6 +1023,7 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     emit send_end_test(getIndex());
     ui->getMac->clear();
     mesProcessCode_.clear();
+    // 焦点由 box_base::checkAllover 统一处理
 }
 
 void QFreeWork::startTask() {
@@ -2768,11 +2774,20 @@ void QFreeWork::startProductInstrumentResetAndWaitAck(QString stepNameIn) {
     });
 }
 
-void QFreeWork::startProductInstrumentStartReceiveForCatalog(const QString& stepName, int profile) {
+void QFreeWork::startProductInstrumentStartReceiveForCatalog(const QString& stepNameIn, int profile) {
+    // 用例库走 ProductSerial 时传入空名；须落到当前步骤名，否则回包守卫 isCurrentInstrumentStep 失败导致卡死
+    QString stepName = stepNameIn.trimmed();
+    if (stepName.isEmpty()) {
+        stepName = testCaseStepActive_ ? activeTestCaseStepLabel_
+                                       : QStringLiteral("产品串口开始接收");
+    }
+    if (stepName.isEmpty())
+        stepName = QStringLiteral("产品串口开始接收");
     clearProductInstrumentWatch();
     if (!ensureProductSerialForInstrumentStep(stepName)) {
         return;
     }
+    product->clearProductSerialRxAccum();
     const QByteArray frame = brushInstrumentStartCmdForProfile(profile);
     lastBrushInstrumentProfile_ = profile;
     cmwFacade_.clearBurstDoneSinceStartRx();

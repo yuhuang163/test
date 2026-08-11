@@ -26,7 +26,7 @@ TuplePositionKind parseTuplePositionKind(const QString& raw) {
         return TuplePositionKind::Unspecified;
     }
     const QChar first = position.at(0).toUpper();
-    // 云端位置码历史：1/L 左、2/R 右、3/S 单只、F 未指定（与协议 sideId 0/1/2 不同）
+    // 兼容输入：1/L/左、2/R/右、3/S/单、F/未指定；上传统一写成 1/2/3/F
     if (position == QStringLiteral("1") || first == QLatin1Char('L') || position.contains(QStringLiteral("左"))) {
         return TuplePositionKind::Left;
     }
@@ -58,13 +58,14 @@ QString tuplePositionKindText(TuplePositionKind kind) {
 }
 
 QString tuplePositionCode(TuplePositionKind kind) {
+    // 云端 applyTupleByMac 仅认 1/2/3/F（不再传 L/R/S）
     switch (kind) {
     case TuplePositionKind::Left:
-        return QStringLiteral("L");
+        return QStringLiteral("1");
     case TuplePositionKind::Right:
-        return QStringLiteral("R");
+        return QStringLiteral("2");
     case TuplePositionKind::Single:
-        return QStringLiteral("S");
+        return QStringLiteral("3");
     case TuplePositionKind::Unspecified:
         return QStringLiteral("F");
     default:
@@ -154,11 +155,11 @@ void QFreeWork::loadAndApplyStationDeviceSide() {
     QString position = cfg.position.trimmed();
     if (position.isEmpty() && cfg.sideId >= 0 && cfg.sideId <= 2) {
         if (cfg.sideId == 0)
-            position = QStringLiteral("L");
+            position = QStringLiteral("1");
         else if (cfg.sideId == 1)
-            position = QStringLiteral("R");
+            position = QStringLiteral("2");
         else
-            position = QStringLiteral("S");
+            position = QStringLiteral("3");
     }
     if (position.isEmpty())
         position = SETTINGS.value(QStringLiteral("Tuple/Position")).toString().trimmed();
@@ -1056,11 +1057,24 @@ void QFreeWork::applyTupleByMac() {
     if (position.isEmpty())
         position = SETTINGS.value(QStringLiteral("Tuple/Position")).toString().trimmed();
     if (position.isEmpty())
-        position = QStringLiteral("L");
+        position = QStringLiteral("1");
+
+    // 上传只允许 1/2/3/F；L/R/S/中文等先归一，非法值直接失败
+    const TuplePositionKind posKind = parseTuplePositionKind(position);
+    if (posKind == TuplePositionKind::Unknown) {
+        stepRuntime_.done = true;
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = QStringLiteral("position非法:");
+        stepRuntime_.testData += position;
+        TestResult = failValue;
+        showlog(QStringLiteral("三元组获取失败：position 仅允许 1/2/3/F（当前=%1）").arg(position));
+        return;
+    }
+    position = tuplePositionCode(posKind);
 
     updateTuplePositionHighlight(position);
     showlog(QStringLiteral("三元组获取：当前位置=%1（%2）")
-                .arg(position, tuplePositionKindText(parseTuplePositionKind(position))));
+                .arg(position, tuplePositionKindText(posKind)));
 
     QString tupleMac = macFromParam;
     if (tupleMac.isEmpty())
