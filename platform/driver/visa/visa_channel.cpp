@@ -119,34 +119,39 @@ bool ensureSharedRm(QString* errOut) {
 
 /** 写/读失败后作废句柄，下次 ensureConnected 再开。 */
 void invalidateSession(const QString& address, bool* holdsSharedInstFlag) {
+    qDebug().noquote() << "VisaChannel: 作废会话开始 address=" << address
+                       << "holdsFlag=" << (holdsSharedInstFlag && *holdsSharedInstFlag);
     auto it = sharedInstruments().find(address);
     if (it == sharedInstruments().end()) {
+        qDebug().noquote() << "VisaChannel: 作废会话 — 共享表无此地址" << address;
         if (holdsSharedInstFlag)
             *holdsSharedInstFlag = false;
         return;
     }
+    const int refBefore = it->refCount;
+    const bool sessionOpen = (it->session != VI_NULL);
+    qDebug().noquote() << "VisaChannel: 作废会话 — 关闭前 ref=" << refBefore
+                       << "session=" << (sessionOpen ? "open" : "null")
+                       << "lastIoMs=" << it->lastIoAtMs
+                       << (isGpiBResource(address) ? "GPIB" : (isAsrlResource(address) ? "ASRL" : "USB/其它"));
     if (it->session != VI_NULL) {
-        if (!isGpiBResource(address))
+        if (!isGpiBResource(address)) {
             flushSessionBuffers(it->session);
-        viClose(it->session);
+            qDebug() << "VisaChannel: 作废会话 — 已 flush 缓冲" << address;
+        } else {
+            qDebug() << "VisaChannel: 作废会话 — GPIB 跳过 flush，直接 viClose" << address;
+        }
+        const ViStatus closeSt = viClose(it->session);
         it->session = VI_NULL;
-        qDebug() << "VisaChannel: 已作废会话" << address;
+        qDebug().noquote() << "VisaChannel: 已作废会话" << address << visaStatusText(closeSt);
+    } else {
+        qDebug() << "VisaChannel: 作废会话 — 句柄已空，仅从表删除" << address;
     }
     sharedInstruments().erase(it);
     if (holdsSharedInstFlag)
         *holdsSharedInstFlag = false;
-}
-
-void logSharedSessions(const QString& tag) {
-    if (sharedInstruments().isEmpty()) {
-        qDebug().noquote() << "VisaChannel[" << tag << "] 无共享会话";
-        return;
-    }
-    for (auto it = sharedInstruments().constBegin(); it != sharedInstruments().constEnd(); ++it) {
-        qDebug().noquote() << "VisaChannel[" << tag << "] addr=" << it.key() << "ref=" << it.value().refCount
-                           << "session=" << (it.value().session != VI_NULL ? "open" : "null")
-                           << "lastIoMs=" << it.value().lastIoAtMs;
-    }
+    qDebug().noquote() << "VisaChannel: 作废会话结束 address=" << address
+                       << "表剩余条数=" << sharedInstruments().size();
 }
 
 /** USB-GPIB 上连续写间隔过短易 ABORT，写前补到至少 200ms。 */
@@ -161,14 +166,6 @@ void settleGpiBBeforeIo(SharedInstrument& slot) {
 
 } // namespace
 #endif
-
-void VisaChannel::dumpSharedSessions(const QString& tag) {
-#ifdef HAVE_NI_VISA
-    logSharedSessions(tag);
-#else
-    Q_UNUSED(tag);
-#endif
-}
 
 void VisaChannel::waitWork(int ms) {
     // 与 test_base::waitWork 同款：泵事件等待

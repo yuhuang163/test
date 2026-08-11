@@ -39,8 +39,6 @@ class VisaChannel : public QObject {
 
     /** 「配置Visa程控电源」开局：强制关闭该地址进程内共享句柄，避免僵死会话占线。 */
     static void discardIdleSharedSession(const QString& resourceAddress);
-    /** 调试：打印进程内共享 VISA 会话 ref/句柄。 */
-    static void dumpSharedSessions(const QString& tag);
     /** 统一延时：与 test_base::waitWork 同款（processEvents）。 */
     static void waitWork(int ms);
 

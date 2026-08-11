@@ -621,6 +621,8 @@ double huilingParamDouble(const QVariantMap& map, const QString& key, double fal
     return map.contains(key) ? map.value(key).toDouble() : fallback;
 }
 
+/** 是否为「等待蓝牙连上」类 Dongle 指令（扫连/直连/按名/OTA/App/主连）。
+ *  这类指令超时宜 ≥18s，且 sendCommandWithRetry 的 needCaseDone 应为 false。 */
 bool isDongleBleConnectCmd(DongleCmd cmd) {
     return cmd == DongleCmd::BleScanConnect || cmd == DongleCmd::BleDirectConnect
         || cmd == DongleCmd::BleScanConnectByName || cmd == DongleCmd::BleOtaConnect
@@ -2226,11 +2228,13 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                 ctx->at->set(dongleCmd, param);
         };
         int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+        // 连接类：至少 18s，对齐固件约 15s 连接窗口；其它 AT 未配超时则默认 3s
         if (isDongleBleConnectCmd(dongleCmd))
             timeoutMs = qMax(timeoutMs > 0 ? timeoutMs : 18000, 18000);
         else if (timeoutMs <= 0)
             timeoutMs = 3000;
         ctx->setCommandWaitSource(CommandWaitSource::DongleAt);
+        // 连接类 needCaseDone=false：等连上/超时另判，不因普通指令 FAIL 立刻结案
         ctx->sendCommandWithRetry(sendFn, timeoutMs, !isDongleBleConnectCmd(dongleCmd));
         return;
     }
