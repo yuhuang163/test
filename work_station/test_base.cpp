@@ -725,12 +725,19 @@ void test_base::setDongleRxPaused(bool paused) {
     if (dongleRxPaused_ == paused)
         return;
     dongleRxPaused_ = paused;
+    VisaChannel::setGpiBQuietAllowsUiPump(paused);
     if (paused) {
         cancelCommandRetryWait(QStringLiteral("GPIB/VISA 临界区"));
         if (at)
             at->setTxBlocked(true);
         if (dongleSerialChannel_)
             dongleSerialChannel_->clearReceiveBuffer();
+        // 硬关 Dongle USB 串口：仅暂停解析仍会与 GPIB-USB 争总线导致 ABORT；静默期勿发 AT
+        if (dongleSerialPort && dongleSerialPort->isOpen()) {
+            dongleSerialChannel_->close();
+            emit send_dongle_serialPort_state(0);
+            qDebug() << "Dongle serial closed for VISA quiet (no AT)";
+        }
         if (scanSerialPortsTimer) {
             scanSerialPortsWasActive_ = scanSerialPortsTimer->isActive();
             scanSerialPortsTimer->stop();
@@ -738,13 +745,15 @@ void test_base::setDongleRxPaused(bool paused) {
     } else {
         if (at)
             at->setTxBlocked(false);
-        if (dongleSerialChannel_)
-            dongleSerialChannel_->clearReceiveBuffer();
         if (scanSerialPortsTimer && scanSerialPortsWasActive_) {
             scanSerialPortsTimer->start(1000);
             scanSerialPortsWasActive_ = false;
         }
         ensureDongleSerialOpenAfterVisaQuiet();
+        if (dongleSerialChannel_)
+            dongleSerialChannel_->clearReceiveBuffer();
+        // 重开后稍等 USB 枚举/驱动稳定，再给后续蓝牙步发 AT
+        VisaChannel::idleDelayMs(150);
     }
     qDebug() << "Dongle RX" << (paused ? "paused (VISA)" : "resumed");
 }
@@ -937,7 +946,7 @@ void test_base::onCommandRetryTimerTimeout() {
     }
 }
 
-int test_base::sendCommandWithRetry(std::function<void()> commandFunc, int timeoutMs) {
+int test_base::sendCommandWithRetry(std::function<void()> commandFunc, int timeoutMs, bool allowResend) {
     if (commandRetryTimer) {
         disconnect(commandRetryTimer, &QTimer::timeout, this, nullptr);
         commandRetryTimer->stop();
@@ -957,11 +966,14 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc, int timeo
     // timeoutMs：步骤「指令超时」总时长（不是重试间隔）
     const int totalMs = qMax(100, timeoutMs);
     commandRetryTimeoutMs_ = totalMs;
-    // 窗口内按间隔补发；间隔夹在 [200, 2000]，且约 total/3
-    const int thirdMs = totalMs / 3;
-    int intervalMs = qBound(200, thirdMs > 0 ? thirdMs : 200, 2000);
-    if (intervalMs >= totalMs)
-        intervalMs = totalMs;
+    // 窗口内按间隔补发；蓝牙连接类指令只发一次，避免 DCON 重入打断 Dongle 连接流程
+    int intervalMs = totalMs;
+    if (allowResend) {
+        const int thirdMs = totalMs / 3;
+        intervalMs = qBound(200, thirdMs > 0 ? thirdMs : 200, 2000);
+        if (intervalMs >= totalMs)
+            intervalMs = totalMs;
+    }
     commandRetryDeadlineMs_ = QDateTime::currentMSecsSinceEpoch() + totalMs;
 
     if (commandRetryFunc_) {

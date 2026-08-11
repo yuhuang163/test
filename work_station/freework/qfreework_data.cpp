@@ -1496,7 +1496,6 @@ void QFreeWork::refreshDongleSuctionData(ProtocolDongleSuctionData data) {
     dongleSuctionLastCh1Kpa_ = data.ch1Kpa;
     dongleSuctionLastCh2Kpa_ = data.ch2Kpa;
     dongleSuctionLastCh3Kpa_ = data.ch3Kpa;
-    qDebug() << getIndex() << "Dongle吸力：CH1" << data.ch1Kpa << "CH2" << data.ch2Kpa << "CH3" << data.ch3Kpa << "kPa";
     if (dongleSuctionSampleActive_) {
         dongleSuctionCh1Samples_.append(data.ch1Kpa);
         dongleSuctionCh2Samples_.append(data.ch2Kpa);

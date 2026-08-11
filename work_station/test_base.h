@@ -92,7 +92,7 @@ class test_base : public QWidget {
     // --- 通用工具 ---
     void waitWork(int ms);
     void updateMainStyle(QString style);
-    int sendCommandWithRetry(std::function<void()> commandFunc, int timeoutMs = 300);
+    int sendCommandWithRetry(std::function<void()> commandFunc, int timeoutMs = 300, bool allowResend = true);
     void setCommandWaitSource(CommandWaitSource source) {
         commandWaitSource_ = source;
     }
@@ -317,7 +317,7 @@ class test_base : public QWidget {
     void finishCommandRetryWait(bool success, const QString& logMessage);
     /** 取消进行中的指令重试等待（进 GPIB 前调用，避免定时器重入发 AT） */
     void cancelCommandRetryWait(const QString& reason = QString());
-    /** GPIB/VISA 期间暂停解析 Dongle，降低写失败 ABORT */
+    /** GPIB/VISA 期间暂停 Dongle：硬关 USB 串口，控制完再重开 */
     void setDongleRxPaused(bool paused);
     bool isDongleRxPaused() const { return dongleRxPaused_; }
     /** VISA 静默结束后若 Dongle 串口被误关，尝试按当前 COM 重开 */

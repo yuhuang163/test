@@ -621,6 +621,12 @@ double huilingParamDouble(const QVariantMap& map, const QString& key, double fal
     return map.contains(key) ? map.value(key).toDouble() : fallback;
 }
 
+bool isDongleBleConnectCmd(DongleCmd cmd) {
+    return cmd == DongleCmd::BleScanConnect || cmd == DongleCmd::BleDirectConnect
+        || cmd == DongleCmd::BleScanConnectByName || cmd == DongleCmd::BleOtaConnect
+        || cmd == DongleCmd::BleAppConnect || cmd == DongleCmd::BleMainConnect;
+}
+
 } // namespace
 
 int QFreeWork::resolveFixtureMachineIndex(const QVariant& param) const {
@@ -2218,8 +2224,14 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                     ctx->ui->mac_combo->setCurrentText(bestMac);
                 }
             };
+            ctx->waitWork(200);
+            if (ctx->dongleSerialChannel_)
+                ctx->dongleSerialChannel_->clearReceiveBuffer();
+            if (ctx->at)
+                ctx->at->resetConnected();
             ctx->setCommandWaitSource(CommandWaitSource::DongleAt);
-            ctx->sendCommandWithRetry(sendFn, timeoutMs);
+            const int bleTimeoutMs = qMax(timeoutMs > 0 ? timeoutMs : 18000, 18000);
+            ctx->sendCommandWithRetry(sendFn, bleTimeoutMs, false);
             return;
         }
 
@@ -2238,9 +2250,20 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             else
                 ctx->at->set(dongleCmd, param);
         };
-        const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+        int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+        if (isDongleBleConnectCmd(dongleCmd)) {
+            // GPIB 静默恢复后稍等再发 AT；Dongle 直连/扫描连接须与固件 15s 超时对齐
+            ctx->waitWork(200);
+            if (ctx->dongleSerialChannel_)
+                ctx->dongleSerialChannel_->clearReceiveBuffer();
+            if (ctx->at)
+                ctx->at->resetConnected();
+            timeoutMs = qMax(timeoutMs > 0 ? timeoutMs : 18000, 18000);
+        } else if (timeoutMs <= 0) {
+            timeoutMs = 3000;
+        }
         ctx->setCommandWaitSource(CommandWaitSource::DongleAt);
-        ctx->sendCommandWithRetry(sendFn, timeoutMs);
+        ctx->sendCommandWithRetry(sendFn, timeoutMs, !isDongleBleConnectCmd(dongleCmd));
         return;
     }
 

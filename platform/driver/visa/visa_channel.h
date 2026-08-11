@@ -44,8 +44,10 @@ class VisaChannel : public QObject {
      * processEvents 仍可能跑定时器/重入，易把 GPIB 写成 VI_ERROR_ABORT。
      */
     static void pumpDelayMs(int ms);
-    /** GPIB 临界区等待：纯 sleep，不泵事件。 */
+    /** GPIB 临界区等待：Dongle 静默时可泵界面；否则纯 sleep。 */
     static void idleDelayMs(int ms);
+    /** Dongle 静默期间允许 GPIB 持锁等待泵界面，减轻主线程卡死。 */
+    static void setGpiBQuietAllowsUiPump(bool allow);
 
   private:
     Config config_;

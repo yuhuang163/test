@@ -270,6 +270,26 @@ QString resolvedGpiBVisaAddressForStep(const QString& stationKey, const QString&
     return addr.startsWith(QStringLiteral("GPIB"), Qt::CaseInsensitive) ? addr : QString{};
 }
 
+/** 打开/关闭 Visa 步 ini 常无 Param_visaAddress，须合并配置步 link 缓存再判 GPIB。 */
+QString resolvedGpiBVisaAddressForStepWithLink(const QString& stationKey, const QString& stepName,
+                                               const QVariantMap& visaLinkCache) {
+    QString addr = resolvedGpiBVisaAddressForStep(stationKey, stepName);
+    if (!addr.isEmpty())
+        return addr;
+    TestCaseDefinition def;
+    if (!TestCaseRunner::loadCaseForStation(stationKey, stepName, def))
+        return {};
+    if (def.send.channel != TestCaseSendChannel::Scpi)
+        return {};
+    const ScpiDeviceRoute route = ScpiPeriphCmdCatalog::deviceFromIni(def.send.device);
+    if (route != ScpiDeviceRoute::HuilingWfp60h && route != ScpiDeviceRoute::Agilent66319d)
+        return {};
+    addr = visaLinkCache.value(QStringLiteral("visaAddress")).toString().trimmed();
+    if (addr.isEmpty())
+        addr = SharedInstrument::visaAddressFromParam(visaLinkCache, 0);
+    return addr.startsWith(QStringLiteral("GPIB"), Qt::CaseInsensitive) ? addr : QString{};
+}
+
 bool stepUsesGpiBVisa(const QString& stationKey, const QString& stepName) {
     return !resolvedGpiBVisaAddressForStep(stationKey, stepName).isEmpty();
 }
@@ -965,9 +985,8 @@ bool QFreeWork::tickOrderedTestStepLoop() {
         testCaseMultiGateTableEmitted_ = false;
         appendTestCaseMes(caseDef, stepRuntime_.pass, stepRuntime_.testData);
         if (caseDef.timing.delayAfterMs > 0) {
-            if (stepUsesGpiBVisa(activeFlowStationKey_, caseName)
-                || (teststate + 1 < stepCount
-                    && stepUsesGpiBVisa(activeFlowStationKey_, orderedNames.at(teststate + 1)))) {
+            if (stepUsesGpiBVisaStep(caseName)
+                || (teststate + 1 < stepCount && stepUsesGpiBVisaStep(orderedNames.at(teststate + 1)))) {
                 VisaChannel::idleDelayMs(caseDef.timing.delayAfterMs);
             } else {
                 waitWork(caseDef.timing.delayAfterMs);
@@ -1583,6 +1602,8 @@ void QFreeWork::resetSuctionChart() {
     suctionChartLeftKpa_.clear();
     suctionChartRightKpa_.clear();
     suctionChartTimerStarted_ = false;
+    suctionChartLastUiMs_ = 0;
+    suctionChartPlottedCount_ = 0;
     suctionLeftPeakInit_ = false;
     suctionRightPeakInit_ = false;
     suctionLeftPeakHigh_ = 0.0;
@@ -1610,7 +1631,7 @@ void QFreeWork::resetSuctionChart() {
         suctionPlot_->graph(1)->data()->clear();
         suctionPlot_->xAxis->setRange(0, 10);
         suctionPlot_->yAxis->setRange(-40, 0);
-        suctionPlot_->replot();
+        suctionPlot_->replot(QCustomPlot::rpQueuedReplot);
     }
 }
 
@@ -1650,6 +1671,8 @@ void QFreeWork::appendSuctionChartSample(double leftKpa, double rightKpa) {
     if (!suctionChartTimerStarted_) {
         suctionChartTimer_.start();
         suctionChartTimerStarted_ = true;
+        suctionChartLastUiMs_ = 0;
+        suctionChartPlottedCount_ = 0;
     }
     const double tSec = suctionChartTimer_.elapsed() / 1000.0;
     suctionChartTimeSec_.append(tSec);
@@ -1673,6 +1696,13 @@ void QFreeWork::appendSuctionChartSample(double leftKpa, double rightKpa) {
         suctionRightPeakLow_ = qMin(suctionRightPeakLow_, rightKpa);
     }
 
+    // 约 5Hz 刷 Label/曲线（仅 UI）；向量已按每个 AT 点全量入库，不降采样频率
+    constexpr qint64 kUiThrottleMs = 200;
+    const qint64 nowMs = suctionChartTimer_.elapsed();
+    if (nowMs - suctionChartLastUiMs_ < kUiThrottleMs)
+        return;
+    suctionChartLastUiMs_ = nowMs;
+
     if (ui->suctionLiveLeftLabel)
         ui->suctionLiveLeftLabel->setText(QStringLiteral("CH1实时：%1 kPa").arg(leftKpa, 0, 'f', 3));
     if (ui->suctionLiveRightLabel)
@@ -1682,24 +1712,45 @@ void QFreeWork::appendSuctionChartSample(double leftKpa, double rightKpa) {
     if (!suctionPlot_)
         return;
 
-    suctionPlot_->graph(0)->setData(suctionChartTimeSec_, suctionChartLeftKpa_);
-    suctionPlot_->graph(1)->setData(suctionChartTimeSec_, suctionChartRightKpa_);
-
+    const int n = suctionChartTimeSec_.size();
+    if (suctionChartPlottedCount_ < n && suctionChartPlottedCount_ >= 0) {
+        for (int i = suctionChartPlottedCount_; i < n; ++i) {
+            suctionPlot_->graph(0)->addData(suctionChartTimeSec_.at(i), suctionChartLeftKpa_.at(i));
+            suctionPlot_->graph(1)->addData(suctionChartTimeSec_.at(i), suctionChartRightKpa_.at(i));
+        }
+        suctionChartPlottedCount_ = n;
+    }
     const double xMax = qMax(10.0, tSec + 1.0);
     suctionPlot_->xAxis->setRange(0, xMax);
-
-    double yMin = qMin(leftKpa, rightKpa);
-    double yMax = qMax(leftKpa, rightKpa);
-    for (double v : suctionChartLeftKpa_) {
-        yMin = qMin(yMin, v);
-        yMax = qMax(yMax, v);
-    }
-    for (double v : suctionChartRightKpa_) {
-        yMin = qMin(yMin, v);
-        yMax = qMax(yMax, v);
-    }
+    const double yMin = qMin(suctionLeftPeakLow_, suctionRightPeakLow_);
+    const double yMax = qMax(suctionLeftPeakHigh_, suctionRightPeakHigh_);
     const double yPad = qMax(0.5, (yMax - yMin) * 0.1);
     suctionPlot_->yAxis->setRange(yMin - yPad, yMax + yPad);
+    suctionPlot_->replot(QCustomPlot::rpQueuedReplot);
+}
+
+void QFreeWork::finalizeSuctionChartPlot() {
+    if (ui->suctionLiveLeftLabel && !suctionChartLeftKpa_.isEmpty())
+        ui->suctionLiveLeftLabel->setText(
+            QStringLiteral("CH1实时：%1 kPa").arg(suctionChartLeftKpa_.constLast(), 0, 'f', 3));
+    if (ui->suctionLiveRightLabel && !suctionChartRightKpa_.isEmpty())
+        ui->suctionLiveRightLabel->setText(
+            QStringLiteral("CH2实时：%1 kPa").arg(suctionChartRightKpa_.constLast(), 0, 'f', 3));
+    updateSuctionPeakLabels();
+
+    if (!suctionPlot_)
+        return;
+    suctionPlot_->graph(0)->setData(suctionChartTimeSec_, suctionChartLeftKpa_);
+    suctionPlot_->graph(1)->setData(suctionChartTimeSec_, suctionChartRightKpa_);
+    suctionChartPlottedCount_ = suctionChartTimeSec_.size();
+    const double tSec = suctionChartTimeSec_.isEmpty() ? 0.0 : suctionChartTimeSec_.constLast();
+    suctionPlot_->xAxis->setRange(0, qMax(10.0, tSec + 1.0));
+    if (suctionLeftPeakInit_ && suctionRightPeakInit_) {
+        const double yMin = qMin(suctionLeftPeakLow_, suctionRightPeakLow_);
+        const double yMax = qMax(suctionLeftPeakHigh_, suctionRightPeakHigh_);
+        const double yPad = qMax(0.5, (yMax - yMin) * 0.1);
+        suctionPlot_->yAxis->setRange(yMin - yPad, yMax + yPad);
+    }
     suctionPlot_->replot();
 }
 
@@ -1723,11 +1774,12 @@ bool QFreeWork::shouldHoldDongleVisaQuietAfterStep() const {
     const int nextIdx = teststate + 1;
     if (nextIdx < 0 || nextIdx >= names.count())
         return false;
-    return stepUsesGpiBVisa(activeFlowStationKey_, names.at(nextIdx));
+    return stepUsesGpiBVisaStep(names.at(nextIdx));
 }
 
 bool QFreeWork::stepUsesGpiBVisaStep(const QString& stepName) const {
-    return stepUsesGpiBVisa(activeFlowStationKey_, stepName);
+    return !resolvedGpiBVisaAddressForStepWithLink(activeFlowStationKey_, stepName, huilingVisaLinkCache_)
+                .isEmpty();
 }
 
 void QFreeWork::runDongleSuctionSampleStep() {
@@ -1758,21 +1810,30 @@ void QFreeWork::runDongleSuctionSampleStep() {
     dongleSuctionCh1Samples_.clear();
     dongleSuctionCh2Samples_.clear();
     dongleSuctionCh3Samples_.clear();
+    const int reserveN = durationMs / 20 + 64;
+    dongleSuctionCh1Samples_.reserve(reserveN);
+    dongleSuctionCh2Samples_.reserve(reserveN);
+    dongleSuctionCh3Samples_.reserve(reserveN);
     dongleSuctionLastCh1Kpa_ = 0.0;
     dongleSuctionLastCh2Kpa_ = 0.0;
     dongleSuctionLastCh3Kpa_ = 0.0;
-    resetSuctionChart();
     setDongleSuctionReadEnabled(true);
+    // setDongleSuctionReadEnabled 可能 reset 曲线；reserve 放其后
+    suctionChartTimeSec_.reserve(reserveN);
+    suctionChartLeftKpa_.reserve(reserveN);
+    suctionChartRightKpa_.reserve(reserveN);
 
     dongleSuctionSampleActive_ = true;
     QElapsedTimer sampleTimer;
     sampleTimer.start();
-    int lastLoggedCount = 0;
+    // 取样点密度由 AT+SUCTION_DATA 决定；waitWork(intervalMs) 只泵事件，不丢点。
+    // 流畅优化只节流曲线/日志刷新，不节流入库。
     while (sampleTimer.elapsed() < durationMs) {
         if (!isTestContinue) {
             dongleSuctionSampleActive_ = false;
             if (restoreOff)
                 setDongleSuctionReadEnabled(false);
+            finalizeSuctionChartPlot();
             stepRuntime_.done = true;
             stepRuntime_.pass = false;
             stepRuntime_.testData = QStringLiteral("测试中止");
@@ -1781,19 +1842,12 @@ void QFreeWork::runDongleSuctionSampleStep() {
             markActiveTestCaseStepDone(false, stepRuntime_.testData, QStringLiteral("失败"));
             return;
         }
-        const int sampleCount = dongleSuctionCh1Samples_.size();
-        if (sampleCount > 0 && sampleCount % 10 == 0 && sampleCount != lastLoggedCount) {
-            lastLoggedCount = sampleCount;
-            showlog(QStringLiteral("[%1] CH1: %2Kpa | CH2: %3Kpa")
-                        .arg(sampleCount)
-                        .arg(dongleSuctionLastCh1Kpa_, 0, 'f', 2)
-                        .arg(dongleSuctionLastCh2Kpa_, 0, 'f', 2));
-        }
         waitWork(qMin(intervalMs, durationMs - static_cast<int>(sampleTimer.elapsed())));
     }
     dongleSuctionSampleActive_ = false;
     if (restoreOff)
         setDongleSuctionReadEnabled(false);
+    finalizeSuctionChartPlot();
 
     if (dongleSuctionCh1Samples_.isEmpty() || dongleSuctionCh2Samples_.isEmpty()) {
         showlog(QStringLiteral("采集双通道吸力失败：采样窗口内未收到 CH1/CH2 AT+SUCTION_DATA"));
@@ -1881,21 +1935,28 @@ void QFreeWork::runDongleSuctionSampleSingleStep() {
     dongleSuctionCh1Samples_.clear();
     dongleSuctionCh2Samples_.clear();
     dongleSuctionCh3Samples_.clear();
+    const int reserveN = durationMs / 20 + 64;
+    dongleSuctionCh1Samples_.reserve(reserveN);
+    dongleSuctionCh2Samples_.reserve(reserveN);
+    dongleSuctionCh3Samples_.reserve(reserveN);
     dongleSuctionLastCh1Kpa_ = 0.0;
     dongleSuctionLastCh2Kpa_ = 0.0;
     dongleSuctionLastCh3Kpa_ = 0.0;
-    resetSuctionChart();
     setDongleSuctionReadEnabled(true);
+    suctionChartTimeSec_.reserve(reserveN);
+    suctionChartLeftKpa_.reserve(reserveN);
+    suctionChartRightKpa_.reserve(reserveN);
 
     dongleSuctionSampleActive_ = true;
     QElapsedTimer sampleTimer;
     sampleTimer.start();
-    int lastLoggedCount = 0;
+    // 同双通道：入库跟 AT 帧；intervalMs 只用于泵事件，不降采样
     while (sampleTimer.elapsed() < durationMs) {
         if (!isTestContinue) {
             dongleSuctionSampleActive_ = false;
             if (restoreOff)
                 setDongleSuctionReadEnabled(false);
+            finalizeSuctionChartPlot();
             stepRuntime_.done = true;
             stepRuntime_.pass = false;
             stepRuntime_.testData = QStringLiteral("测试中止");
@@ -1904,25 +1965,12 @@ void QFreeWork::runDongleSuctionSampleSingleStep() {
             markActiveTestCaseStepDone(false, stepRuntime_.testData, QStringLiteral("失败"));
             return;
         }
-        const QVector<double>* live = &dongleSuctionCh1Samples_;
-        double liveKpa = dongleSuctionLastCh1Kpa_;
-        if (chIndex == 1) {
-            live = &dongleSuctionCh2Samples_;
-            liveKpa = dongleSuctionLastCh2Kpa_;
-        } else if (chIndex == 2) {
-            live = &dongleSuctionCh3Samples_;
-            liveKpa = dongleSuctionLastCh3Kpa_;
-        }
-        const int sampleCount = live->size();
-        if (sampleCount > 0 && sampleCount % 10 == 0 && sampleCount != lastLoggedCount) {
-            lastLoggedCount = sampleCount;
-            showlog(QStringLiteral("[%1] %2: %3Kpa").arg(sampleCount).arg(channelName).arg(liveKpa, 0, 'f', 2));
-        }
         waitWork(qMin(intervalMs, durationMs - static_cast<int>(sampleTimer.elapsed())));
     }
     dongleSuctionSampleActive_ = false;
     if (restoreOff)
         setDongleSuctionReadEnabled(false);
+    finalizeSuctionChartPlot();
 
     const QVector<double>* samplesPtr = &dongleSuctionCh1Samples_;
     if (chIndex == 1)

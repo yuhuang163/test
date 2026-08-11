@@ -351,6 +351,8 @@ class QFreeWork : public test_base {
     void initSuctionChart();
     void resetSuctionChart();
     void appendSuctionChartSample(double leftKpa, double rightKpa);
+    /** 采样结束做一次完整 setData + 轴范围 + replot，避免过程中每帧全量重绘 */
+    void finalizeSuctionChartPlot();
     void updateSuctionPeakLabels();
 
     double suctionPeakTargetKpa_ = -36.0;
@@ -382,6 +384,9 @@ class QFreeWork : public test_base {
     QVector<double> suctionChartRightKpa_;
     QElapsedTimer suctionChartTimer_;
     bool suctionChartTimerStarted_ = false;
+    /** 曲线/标签 UI 节流：约 5Hz，减轻 AT 高频回调卡顿 */
+    qint64 suctionChartLastUiMs_ = 0;
+    int suctionChartPlottedCount_ = 0;
     bool suctionLeftPeakInit_ = false;
     bool suctionRightPeakInit_ = false;
     double suctionLeftPeakHigh_ = 0.0;
