@@ -304,16 +304,16 @@ bool CmwGprfFacade::runSingleBurstAtMhz(int freqMhz, const QString& scenarioLabe
     }
     cmwSet(CmwScpiCmd::ClearStatus);
     cmwSet(CmwScpiCmd::FrequencyMhz, freqMhz);
-    if (!cfg.useGuiRfConfig) {
-        cmwSet(CmwScpiCmd::ArbRepetition, cfg.arbRepetition);
-        cmwSet(CmwScpiCmd::ArbCycles, qMax(1, cfg.arbCycles));
-    }
+    // 与 cmw100rx「一」对齐：TRIG 前紧挨着下发 REPetition/CYCLes（每频重装，避免仅初始化写一次后失效）
+    cmwSet(CmwScpiCmd::ArbRepetition, cfg.arbRepetition);
+    cmwSet(CmwScpiCmd::ArbCycles, qMax(1, cfg.arbCycles));
     if (cfg.queryCurrentArbFile) {
         QString arbCur;
         if (cmwGet(CmwScpiCmd::ArbFilePath, {}, &arbCur)) {
             log_(QStringLiteral("[%1] 仪侧当前波形：%2").arg(scenarioLabel).arg(arbCur.trimmed()));
         }
     }
+    // 顺序与参考一致：Manual EXECute → STATe ON（见 docs/开发参考资料/cmw100rx.txt）
     if (!cmwSet(CmwScpiCmd::ManualArbTrigger)) {
         if (errorMessage) {
             *errorMessage = QStringLiteral("%1 CMW100触发发包失败").arg(scenarioLabel);
@@ -321,7 +321,13 @@ bool CmwGprfFacade::runSingleBurstAtMhz(int freqMhz, const QString& scenarioLabe
         stopGen();
         return false;
     }
-    cmwSet(CmwScpiCmd::GenOn);
+    if (!cmwSet(CmwScpiCmd::GenOn)) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("%1 CMW100打开发射失败").arg(scenarioLabel);
+        }
+        stopGen();
+        return false;
+    }
 
     const int holdMs = cfg.holdMsAfterTrigger(postTrigHoldMsOverride);
     if (cfg.waitArbScountOnly) {

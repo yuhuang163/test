@@ -173,6 +173,11 @@ constexpr const char kHintFacMode[] =
 constexpr const char kHintSuctionMode[] =
     u8"FCTP 吸力测试模式：enter=1 进入，0 退出\r\n示例：Param_enter=1 或 {\"enter\":1}\r\n"
     u8"注意：Qroot 开泵档位请改用「吸力测试(档位)」+ switch/mode/level";
+constexpr const char kHintBtRfMode[] =
+    u8"蓝牙 RF 测试模式开关：Param_enter 或 Param_on，1=开/进入，0=关/退出\r\n"
+    u8"示例：进入 Param_enter=1；退出 Param_enter=0（或 Param_on=1/0）\r\n"
+    u8"进非信令后设备可能关机：步骤 Timing/WaitReply=false（发完即过，不等回包）\r\n"
+    u8"Qfctp：TLV 单字节；Qaiot：CID 射频测试 enable 字节";
 constexpr const char kHintWifiConnect[] =
     u8"WiFi：name=SSID，password=密码\r\n示例：name=TestAP\r\npassword=12345678";
 constexpr const char kHintRssiRead[] = u8"RSSI：mode=0 读 BLE，mode=1 读 BT\r\n示例：{\"mode\":0}";
@@ -281,9 +286,9 @@ const Row kRows[] = {
     {DeviceCmd::SevorMotorParam, "SevorMotorParam", u8"舵机参数", DeviceCmdParamKind::None, nullptr, kSet},
     // FCTP TLV 进/退吸力测试模式；「进入吸力测试模式」步骤应选本项 + Param_enter=1
     {DeviceCmd::SuctionMode, "SuctionMode", u8"吸力模式(进/退)", DeviceCmdParamKind::JsonMap, kHintSuctionMode, kSet},
-    {DeviceCmd::BtSignalMode, "BtSignalMode", u8"蓝牙信号模式", DeviceCmdParamKind::None, nullptr, kSet},
-    {DeviceCmd::BtNoSignalMode, "BtNoSignalMode", u8"蓝牙无信号模式", DeviceCmdParamKind::None, nullptr, kSet},
-    {DeviceCmd::BtFreqMode, "BtFreqMode", u8"蓝牙定频模式", DeviceCmdParamKind::None, nullptr, kSet},
+    {DeviceCmd::BtSignalMode, "BtSignalMode", u8"蓝牙信号模式", DeviceCmdParamKind::JsonMap, kHintBtRfMode, kSet},
+    {DeviceCmd::BtNoSignalMode, "BtNoSignalMode", u8"蓝牙无信号模式", DeviceCmdParamKind::JsonMap, kHintBtRfMode, kSet},
+    {DeviceCmd::BtFreqMode, "BtFreqMode", u8"蓝牙定频模式", DeviceCmdParamKind::JsonMap, kHintBtRfMode, kSet},
     {DeviceCmd::WriteKey, "WriteKey", u8"密钥", DeviceCmdParamKind::JsonMap, kHintWriteKey, kSet},
     {DeviceCmd::TrimSet, "TrimSet", u8"微调值", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::MacWrite, "MacWrite", u8"蓝牙mac地址", DeviceCmdParamKind::JsonMap, kHintMacWrite, kSet},

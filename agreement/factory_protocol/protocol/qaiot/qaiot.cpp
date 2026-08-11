@@ -1686,7 +1686,12 @@ void Qaiot::set(DeviceCmd cmd, const QVariant& data) {
             rfType = 0x02;
             modeName = QStringLiteral("蓝牙定频模式");
         }
-        const int enable = map.value(QStringLiteral("on"), 1).toInt();
+        const int enable = map.contains(QStringLiteral("on"))
+                               ? map.value(QStringLiteral("on")).toInt()
+                               : map.contains(QStringLiteral("enter"))
+                                     ? map.value(QStringLiteral("enter")).toInt()
+                                     : map.contains(QStringLiteral("value")) ? map.value(QStringLiteral("value")).toInt()
+                                                                            : 1;
         QList<TlvNode> children;
         children.append(makeLeaf(0x02, u8(rfType)));
         children.append(makeLeaf(0x03, u8(enable ? 0x01 : 0x00)));

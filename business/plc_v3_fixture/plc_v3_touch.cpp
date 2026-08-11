@@ -120,12 +120,16 @@ PlcV3TouchResult runPlcV3TouchKey(PlcModbusSession& session, int keyIndex0To6, c
     const int posTimeout = SETTINGS.value(QStringLiteral("PLC/PositionReadyTimeoutMs"),
                                           SETTINGS.value(QStringLiteral("PLC/KeyDoneTimeoutMs"), 8000).toInt())
                                .toInt();
+    // 与会话摘要一致：默认跟 KeyDonePollMs，再回退 50ms（勿用 1000，否则到位检测偏慢、按键下压偏久）
     const int posPoll = SETTINGS.value(QStringLiteral("PLC/PositionReadyPollMs"),
-                                       SETTINGS.value(QStringLiteral("PLC/KeyDonePollMs"), 1000).toInt())
+                                       SETTINGS.value(QStringLiteral("PLC/KeyDonePollMs"), 50).toInt())
                             .toInt();
     const int keyDoneTimeout = SETTINGS.value(QStringLiteral("PLC/KeyDoneTimeoutMs"), 8000).toInt();
     const int keyDonePoll = SETTINGS.value(QStringLiteral("PLC/KeyDonePollMs"), 50).toInt();
     const int keyResetTimeout = SETTINGS.value(QStringLiteral("PLC/KeyDoneResetTimeoutMs"), 1500).toInt();
+    // 电源键(index=6)长按易关机：限制到位等待上限，并跳过按下态 settle
+    const bool isPowerKey = (keyIndex0To6 == 6);
+    const int powerMaxPressMs = SETTINGS.value(QStringLiteral("PLC/PowerKeyMaxPressMs"), 500).toInt();
 
     const int keyM = cfg.mBase + keyIndex0To6;
     const int posReadyM = cfg.positionReadyBase + keyIndex0To6;
@@ -200,22 +204,36 @@ PlcV3TouchResult runPlcV3TouchKey(PlcModbusSession& session, int keyIndex0To6, c
     }
 
     if (useHandshake) {
-        session.logLine(QStringLiteral("PLC等待位置到位哈哈: M%1(addr=%2)=1 TimeoutMs=%3 PollMs=%4")
+        int waitPosTimeout = posTimeout;
+        if (isPowerKey && powerMaxPressMs > 0) {
+            waitPosTimeout = qMin(posTimeout, powerMaxPressMs);
+            session.logLine(QStringLiteral("PLC电源键：限制最大下压等待 %1ms（防长按关机）").arg(waitPosTimeout));
+        }
+        session.logLine(QStringLiteral("PLC等待位置到位: M%1(addr=%2)=1 TimeoutMs=%3 PollMs=%4")
                             .arg(posReadyM)
                             .arg(posReadyM + offset)
-                            .arg(posTimeout)
+                            .arg(waitPosTimeout)
                             .arg(posPoll));
-        if (!session.waitCoilTrue(posReadyM, posTimeout, posPoll, &err)) {
-            fail(QStringLiteral("等待位置到位 M%1: %2").arg(posReadyM).arg(err));
-            return result;
+        if (!session.waitCoilTrue(posReadyM, waitPosTimeout, posPoll, &err)) {
+            if (isPowerKey && powerMaxPressMs > 0) {
+                // 未等到到位也继续 StepDone/抬起，避免气缸按住电源键过久
+                session.logLine(QStringLiteral("PLC电源键：到位未完成（%1），继续 StepDone/抬起以防关机").arg(err));
+                err.clear();
+            } else {
+                fail(QStringLiteral("等待位置到位 M%1: %2").arg(posReadyM).arg(err));
+                return result;
+            }
         }
     }
 
-    if (posSettle > 0) {
-        QThread::msleep(static_cast<unsigned long>(posSettle));
-    }
-    if (actionSettle > 0) {
-        QThread::msleep(static_cast<unsigned long>(actionSettle));
+    // 电源键跳过按下态 settle，尽快进入 StepDone/抬起
+    if (!isPowerKey) {
+        if (posSettle > 0) {
+            QThread::msleep(static_cast<unsigned long>(posSettle));
+        }
+        if (actionSettle > 0) {
+            QThread::msleep(static_cast<unsigned long>(actionSettle));
+        }
     }
 
     QString capSummary;

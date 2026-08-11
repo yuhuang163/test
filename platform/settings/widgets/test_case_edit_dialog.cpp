@@ -86,6 +86,7 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("channel"), QStringLiteral("温度/采样通道号")},
         {QStringLiteral("channels"), QStringLiteral("温度通道列表（如 1,2,3,4,5,6 或 1-6）")},
         {QStringLiteral("channelsPerStation"), QStringLiteral("每工位占用温度通道数（法兰加热填 6）")},
+        {QStringLiteral("tempPassMode"), QStringLiteral("多路温度卡控：all=同轮全部达标（默认）；any=任一路达标即过")},
         {QStringLiteral("channelLock"), QStringLiteral("锁定通道号（不按工位改）")},
         {QStringLiteral("slaveAddr"), QStringLiteral("Modbus 从站地址")},
         {QStringLiteral("addr"), QStringLiteral("Modbus 从站地址")},
@@ -1701,6 +1702,7 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
             timeoutMs = def.gate.enabled ? 8000 : 300;
         ui->spinBox_commandTimeout->setValue(timeoutMs);
     }
+    ui->checkBox_waitReply->setChecked(def.timing.waitReply);
 
     ui->checkBox_gateEnabled->setChecked(def.gate.enabled);
     const int typeIdx = comboIndexByData(ui->comboBox_gateReportType, def.gate.reportType);
@@ -1783,6 +1785,7 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
     def.timing.delayBeforeMs = ui->spinBox_delayBefore->value();
     def.timing.delayAfterMs = ui->spinBox_delayAfter->value();
     def.timing.commandTimeoutMs = ui->spinBox_commandTimeout->value();
+    def.timing.waitReply = ui->checkBox_waitReply->isChecked();
     def.gate.enabled = ui->checkBox_gateEnabled->isChecked();
     def.gate.reportType = comboData(ui->comboBox_gateReportType);
     def.gates.clear();

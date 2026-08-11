@@ -1052,11 +1052,12 @@ void test_base::testResultTableUpdate(QVector<TestItem>& testItems) {
         QTableWidgetItem* testDataCell = new QTableWidgetItem(item.testData);
         QTableWidgetItem* resultItem = new QTableWidgetItem(item.testResult);
         QTableWidgetItem* askItem = new QTableWidgetItem(item.ask);
-        const auto selectable = Qt::ItemIsSelectable | Qt::ItemIsEnabled;
-        testItemCell->setFlags(selectable);
-        testDataCell->setFlags(selectable);
-        resultItem->setFlags(selectable);
-        askItem->setFlags(selectable);
+        // 含 Editable：双击可进编辑框查看被截断的完整内容（Ctrl+C 复制仍可用）
+        const auto cellFlags = Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsEditable;
+        testItemCell->setFlags(cellFlags);
+        testDataCell->setFlags(cellFlags);
+        resultItem->setFlags(cellFlags);
+        askItem->setFlags(cellFlags);
         testItemCell->setTextAlignment(Qt::AlignCenter);
         testDataCell->setTextAlignment(Qt::AlignCenter);
         resultItem->setTextAlignment(Qt::AlignCenter);
@@ -1135,7 +1136,7 @@ void test_base::solveMesData(const int mechines, QString msg) {
         macInputLineEdit()->setDisabled(0);
 
         getMacLineEdit()->clear();
-        getMacLineEdit()->setFocus();
+        // 焦点由 box_base::checkAllover 统一处理（全结束→第一工位，否则→本工位）
         emit send_end_test(getIndex());
     }
 }
@@ -1164,11 +1165,12 @@ void test_base::testResultTableInit() {
     // 列宽随表格尺寸变化，拖拽外部大小时同步缩放
     table->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     table->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    // 支持点选/框选后 Ctrl+C 复制（制表符分隔，便于粘贴到 Excel）
-    table->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    // 双击查看完整内容；点选/框选后 Ctrl+C 复制（制表符分隔，便于粘贴到 Excel）
+    table->setEditTriggers(QAbstractItemView::DoubleClicked);
     table->setSelectionMode(QAbstractItemView::ExtendedSelection);
     table->setSelectionBehavior(QAbstractItemView::SelectItems);
-    table->setFocusPolicy(Qt::StrongFocus);
+    // ClickFocus：点选后可 Ctrl+C；避免 StrongFocus + scrollToBottom 抢走 SN 输入栏焦点
+    table->setFocusPolicy(Qt::ClickFocus);
     if (!table->property("copyShortcutInstalled").toBool()) {
         auto* copyShortcut = new QShortcut(QKeySequence::Copy, table);
         copyShortcut->setContext(Qt::WidgetWithChildrenShortcut);

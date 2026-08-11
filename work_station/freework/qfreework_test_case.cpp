@@ -1331,14 +1331,20 @@ void QFreeWork::runMultiTempLoggerChannelsWindowAllMatch(const TestCaseDefinitio
     if (highC < lowC)
         qSwap(lowC, highC);
 
+    // any：同轮任一路落入范围即过；all（默认）：同轮全部通道落入范围才过
+    const QString passMode =
+        map.value(QStringLiteral("tempPassMode"), QStringLiteral("all")).toString().trimmed().toLower();
+    const bool anyChannelPass = (passMode == QLatin1String("any") || passMode == QLatin1String("one"));
+
     QStringList chNames;
     for (int ch : channels)
         chNames.append(QStringLiteral("CH%1").arg(ch));
-    showlog(QStringLiteral("多路温度卡控：通道[%1]，窗口 %2ms，间隔 %3ms，单通道超时 %4ms，要求同轮全部落在 [%5,%6]℃")
+    showlog(QStringLiteral("多路温度卡控：通道[%1]，窗口 %2ms，间隔 %3ms，单通道超时 %4ms，%5 [%6,%7]℃")
                 .arg(chNames.join(QLatin1Char(',')))
                 .arg(durationMs)
                 .arg(intervalMs)
                 .arg(readTimeoutMs)
+                .arg(anyChannelPass ? QStringLiteral("任一路落入") : QStringLiteral("要求同轮全部落在"))
                 .arg(lowC, 0, 'f', 1)
                 .arg(highC, 0, 'f', 1));
 
@@ -1467,7 +1473,9 @@ void QFreeWork::runMultiTempLoggerChannelsWindowAllMatch(const TestCaseDefinitio
         }
         ++round;
         QStringList parts;
+        QString firstPassText;
         bool allOk = true;
+        bool anyInRange = false;
         bool anyFailRead = false;
         for (int ch : channels) {
             double c = 0.0;
@@ -1485,23 +1493,43 @@ void QFreeWork::runMultiTempLoggerChannelsWindowAllMatch(const TestCaseDefinitio
                              .arg(ch)
                              .arg(c, 0, 'f', 2)
                              .arg(inRange ? QString() : QStringLiteral("(超)")));
-            if (!inRange)
+            if (inRange) {
+                anyInRange = true;
+                // 任一路模式：结果表只保留最先达标的一路
+                if (firstPassText.isEmpty())
+                    firstPassText = QStringLiteral("CH%1=%2℃").arg(ch).arg(c, 0, 'f', 2);
+            } else {
                 allOk = false;
+            }
             if (interReadDelayMs > 0)
                 QThread::msleep(interReadDelayMs);
         }
         lastRoundText = parts.join(QLatin1Char(' '));
-        showlog(QStringLiteral("多路温度采样#%1：%2 → %3")
-                    .arg(round)
-                    .arg(lastRoundText)
-                    .arg(allOk ? QStringLiteral("全部达标")
-                               : (anyFailRead ? QStringLiteral("有读失败(继续)")
-                                              : QStringLiteral("未全达标(继续)"))));
-        if (allOk) {
+        const bool roundPass = anyChannelPass ? anyInRange : allOk;
+        if (anyChannelPass) {
+            showlog(QStringLiteral("多路温度采样#%1：%2")
+                        .arg(round)
+                        .arg(roundPass ? (firstPassText + QStringLiteral(" → 达标"))
+                                       : (anyFailRead ? QStringLiteral("有读失败(继续)")
+                                                      : QStringLiteral("均未达标(继续)"))));
+        } else {
+            showlog(QStringLiteral("多路温度采样#%1：%2 → %3")
+                        .arg(round)
+                        .arg(lastRoundText)
+                        .arg(roundPass ? QStringLiteral("全部达标")
+                                       : (anyFailRead ? QStringLiteral("有读失败(继续)")
+                                                      : QStringLiteral("未全达标(继续)"))));
+        }
+        if (roundPass) {
             const QString ask =
                 QStringLiteral("[%1,%2]℃").arg(QString::number(lowC, 'f', 1)).arg(QString::number(highC, 'f', 1));
-            markActiveTestCaseStepDone(true, lastRoundText, ask);
-            showlog(QStringLiteral("多路温度卡控通过：%1 点全部落入 %2").arg(channels.size()).arg(ask));
+            const QString passData =
+                (anyChannelPass && !firstPassText.isEmpty()) ? firstPassText : lastRoundText;
+            markActiveTestCaseStepDone(true, passData, ask);
+            if (anyChannelPass)
+                showlog(QStringLiteral("多路温度卡控通过：%1 落入 %2").arg(passData, ask));
+            else
+                showlog(QStringLiteral("多路温度卡控通过：%1 点全部落入 %2").arg(channels.size()).arg(ask));
             return;
         }
         const int remain = durationMs - static_cast<int>(sampleTimer.elapsed());
@@ -1515,10 +1543,17 @@ void QFreeWork::runMultiTempLoggerChannelsWindowAllMatch(const TestCaseDefinitio
     const QString ask =
         QStringLiteral("[%1,%2]℃").arg(QString::number(lowC, 'f', 1)).arg(QString::number(highC, 'f', 1));
     const QString failData = lastRoundText.isEmpty() ? QStringLiteral("无有效读数") : lastRoundText;
-    showlog(QStringLiteral("多路温度卡控失败：窗口 %1ms 内未出现「全部通道」同时落入 %2；末轮 %3")
-                .arg(durationMs)
-                .arg(ask)
-                .arg(failData));
+    if (anyChannelPass) {
+        showlog(QStringLiteral("多路温度卡控失败：窗口 %1ms 内无一通道落入 %2；末轮 %3")
+                    .arg(durationMs)
+                    .arg(ask)
+                    .arg(failData));
+    } else {
+        showlog(QStringLiteral("多路温度卡控失败：窗口 %1ms 内未出现「全部通道」同时落入 %2；末轮 %3")
+                    .arg(durationMs)
+                    .arg(ask)
+                    .arg(failData));
+    }
     markActiveTestCaseStepDone(false, failData, ask);
 }
 
@@ -2169,7 +2204,12 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             }
 
             ctx->showlog(QStringLiteral("开始搜索广播名称: '%1', 最低信号要求: %2").arg(targetName).arg(rssiThreshold));
-            
+
+            // 本步开始前再清一次，避免沿用开测前或上一步残留的扫描结果
+            ctx->deviceMap.clear();
+            if (ctx->ui && ctx->ui->mac_combo)
+                ctx->ui->mac_combo->clear();
+
             int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
             if (timeoutMs <= 0) timeoutMs = 6000;
             

@@ -340,8 +340,8 @@ class QFreeWork : public test_base {
     /** HQ/LX Modbus 电流表：连续读数，Gate 任一合格即通过。 */
     void runModbusAmmeterCurrentSampleAnyMatch(const TestCaseDefinition& def, ModbusDeviceRoute route);
     /**
-     * 多路温度仪多通道窗口：在 sampleDurationMs 内轮询本工位通道列表，
-     * 某一轮全部通道落入 Gate 温度范围则通过（法兰加热 6 点 41±2℃）。
+     * 多路温度仪多通道窗口：在 sampleDurationMs 内轮询本工位通道列表。
+     * 默认同轮全部通道落入 Gate 才通过；Param_tempPassMode=any 时任一路达标即通过。
      */
     void runMultiTempLoggerChannelsWindowAllMatch(const TestCaseDefinition& def);
     void setDongleSuctionReadEnabled(bool enabled);
