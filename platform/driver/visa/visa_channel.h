@@ -5,6 +5,8 @@
 #include <QObject>
 #include <QString>
 
+// 用相对路径：Cursor/clangd 无 qmake INCLUDEPATH 时也能解析到宏，避免 #ifdef 整段发灰
+#include "../../../lib/visa/have_ni_visa.h"
 #ifdef HAVE_NI_VISA
 #include <visa.h>
 #endif
