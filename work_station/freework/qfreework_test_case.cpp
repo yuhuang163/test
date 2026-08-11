@@ -836,11 +836,18 @@ bool QFreeWork::prepareTailSnWriteForTestCase(const TestCaseDefinition& def, Dev
 }
 
 QString QFreeWork::currentMacAddress() const {
-    if (!macAddress.trimmed().isEmpty() && macAddress != QStringLiteral("没有mac地址"))
-        return macAddress.trimmed();
-    if (ui && ui->macInput)
+    // 单步/连蓝牙优先用界面当前值，避免成员 macAddress 残留覆盖空的输入框
+    auto usable = [](const QString& s) {
+        const QString t = s.trimmed();
+        return !t.isEmpty() && t != QStringLiteral("没有mac地址");
+    };
+    if (ui && ui->macInput && usable(ui->macInput->text()))
         return ui->macInput->text().trimmed();
-    return macAddress.trimmed();
+    if (ui && ui->mac_combo && usable(ui->mac_combo->currentText()))
+        return ui->mac_combo->currentText().trimmed();
+    if (usable(macAddress))
+        return macAddress.trimmed();
+    return {};
 }
 
 bool QFreeWork::useTestCaseFlow(const QString& stationKey) const {
@@ -2200,42 +2207,73 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                             .arg(bestRssi));
             
             ctx->stepRuntime_.testData = bestMac;
+            ctx->macAddress = bestMac;
+            if (ctx->ui && ctx->ui->macInput)
+                ctx->ui->macInput->setText(bestMac);
             const auto sendFn = [ctx, bestMac]() {
                 ctx->at->set(DongleCmd::BleScanConnect, bestMac);
                 if (ctx->ui && ctx->ui->mac_combo) {
                     ctx->ui->mac_combo->setCurrentText(bestMac);
                 }
             };
+            // 连接前清 RX / 本地连接态，避免单步复用脏缓冲或误判已连接
+            if (ctx->dongleSerialChannel_)
+                ctx->dongleSerialChannel_->clearReceiveBuffer();
+            if (ctx->at)
+                ctx->at->resetConnected();
             ctx->setCommandWaitSource(CommandWaitSource::DongleAt);
             const int bleTimeoutMs = qMax(timeoutMs > 0 ? timeoutMs : 18000, 18000);
             ctx->sendCommandWithRetry(sendFn, bleTimeoutMs, false);
             return;
         }
 
+        if (isDongleBleConnectCmd(dongleCmd)) {
+            if (!ctx->dongleSerialPort || !ctx->dongleSerialPort->isOpen()) {
+                ctx->markActiveTestCaseStepDone(false, QStringLiteral("Dongle串口未打开"), QStringLiteral("失败"));
+                ctx->showlog(QStringLiteral("蓝牙连接失败：请先打开 Dongle 串口后再单步/开测"));
+                return;
+            }
+            QVariant param = ctx->resolveTestCaseSendParamTree(def.send.param);
+            QString mac = param.toString().trimmed();
+            if (mac.isEmpty() && param.canConvert<QVariantMap>())
+                mac = param.toMap().value(QStringLiteral("string")).toString().trimmed();
+            if (mac.isEmpty() || mac == QStringLiteral("没有mac地址"))
+                mac = ctx->currentMacAddress();
+            if (mac.isEmpty() || mac == QStringLiteral("没有mac地址")) {
+                ctx->markActiveTestCaseStepDone(false, QStringLiteral("MAC为空"), QStringLiteral("失败"));
+                ctx->showlog(QStringLiteral("蓝牙连接失败：MAC 为空，请在界面填写/选择 MAC，或步骤 Param 填写目标地址"));
+                return;
+            }
+            ctx->macAddress = mac;
+            if (ctx->ui && ctx->ui->macInput && ctx->ui->macInput->text().trimmed().isEmpty())
+                ctx->ui->macInput->setText(mac);
+            // 连接前清 RX / 本地连接态，避免单步时误判已连接或 AT 应答错乱
+            if (ctx->dongleSerialChannel_)
+                ctx->dongleSerialChannel_->clearReceiveBuffer();
+            if (ctx->at)
+                ctx->at->resetConnected();
+            ctx->showlog(QStringLiteral("发起蓝牙连接：%1").arg(mac));
+            const auto sendFn = [ctx, dongleCmd, mac]() { ctx->at->set(dongleCmd, mac); };
+            int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+            timeoutMs = qMax(timeoutMs > 0 ? timeoutMs : 18000, 18000);
+            ctx->setCommandWaitSource(CommandWaitSource::DongleAt);
+            // needCaseDone=false：等 AT+CONNECT_SUCCESS / getConnected，不因普通 FAIL 立刻结案
+            ctx->sendCommandWithRetry(sendFn, timeoutMs, false);
+            return;
+        }
+
         const auto sendFn = [ctx, def, dongleCmd]() {
             QVariant param = ctx->resolveTestCaseSendParamTree(def.send.param);
-            if (param.toString().trimmed().isEmpty()
-                && (dongleCmd == DongleCmd::BleDirectConnect || dongleCmd == DongleCmd::BleScanConnect
-                    || dongleCmd == DongleCmd::BleOtaConnect || dongleCmd == DongleCmd::BleAppConnect
-                    || dongleCmd == DongleCmd::BleMainConnect)) {
-                const QString mac = ctx->currentMacAddress();
-                if (!mac.isEmpty() && mac != QStringLiteral("没有mac地址"))
-                    param = mac;
-            }
             if (def.send.action == TestCaseSendAction::Get)
                 ctx->at->get(dongleCmd, param);
             else
                 ctx->at->set(dongleCmd, param);
         };
         int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
-        // 连接类：至少 18s，对齐固件约 15s 连接窗口；其它 AT 未配超时则默认 3s
-        if (isDongleBleConnectCmd(dongleCmd))
-            timeoutMs = qMax(timeoutMs > 0 ? timeoutMs : 18000, 18000);
-        else if (timeoutMs <= 0)
+        if (timeoutMs <= 0)
             timeoutMs = 3000;
         ctx->setCommandWaitSource(CommandWaitSource::DongleAt);
-        // 连接类 needCaseDone=false：等连上/超时另判，不因普通指令 FAIL 立刻结案
-        ctx->sendCommandWithRetry(sendFn, timeoutMs, !isDongleBleConnectCmd(dongleCmd));
+        ctx->sendCommandWithRetry(sendFn, timeoutMs, true);
         return;
     }
 

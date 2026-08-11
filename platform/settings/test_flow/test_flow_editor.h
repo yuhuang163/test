@@ -36,7 +36,7 @@ class TestCaseBlock : public QCheckBox {
         return caseName_.isEmpty();
     }
     void setSelected(bool selected);
-    /** 自由工站设置页才显示右键「运行」 */
+    /** 自由工站设置页才允许单步：右键「运行」/双击功能块 */
     void setRunMenuVisible(bool visible);
     bool isRunMenuVisible() const {
         return runMenuVisible_;
@@ -54,6 +54,7 @@ class TestCaseBlock : public QCheckBox {
   protected:
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
+    void mouseDoubleClickEvent(QMouseEvent* event) override;
     void paintEvent(QPaintEvent* event) override;
     void dragEnterEvent(QDragEnterEvent* event) override;
     void dragMoveEvent(QDragMoveEvent* event) override;
@@ -88,14 +89,14 @@ class TestFlowEditor : public QObject {
     bool hasUnsavedChanges() const;
     /** 有未保存改动时弹窗：保存 / 取消（不保存并继续离开）。返回 true 表示可离开。 */
     bool confirmDiscardOrSaveOnLeave();
-    /** 仅自由工站为 true 时，功能块右键显示「运行」 */
+    /** 仅自由工站为 true 时，功能块可右键「运行」或双击单步执行 */
     void setSingleStepRunEnabled(bool enabled);
     bool isSingleStepRunEnabled() const {
         return singleStepRunEnabled_;
     }
 
   signals:
-    /** 功能块右键「运行」：请求自由工站单步执行 */
+    /** 功能块右键「运行」/双击：请求自由工站单步执行 */
     void runStepRequested(const QString& stationKey, const QString& caseName);
 
   private:
