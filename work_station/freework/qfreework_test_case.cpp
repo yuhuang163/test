@@ -621,6 +621,8 @@ double huilingParamDouble(const QVariantMap& map, const QString& key, double fal
     return map.contains(key) ? map.value(key).toDouble() : fallback;
 }
 
+/** 是否为「等待蓝牙连上」类 Dongle 指令（扫连/直连/按名/OTA/App/主连）。
+ *  这类指令超时宜 ≥18s，且 sendCommandWithRetry 的 needCaseDone 应为 false。 */
 bool isDongleBleConnectCmd(DongleCmd cmd) {
     return cmd == DongleCmd::BleScanConnect || cmd == DongleCmd::BleDirectConnect
         || cmd == DongleCmd::BleScanConnectByName || cmd == DongleCmd::BleOtaConnect
@@ -834,11 +836,18 @@ bool QFreeWork::prepareTailSnWriteForTestCase(const TestCaseDefinition& def, Dev
 }
 
 QString QFreeWork::currentMacAddress() const {
-    if (!macAddress.trimmed().isEmpty() && macAddress != QStringLiteral("没有mac地址"))
-        return macAddress.trimmed();
-    if (ui && ui->macInput)
+    // 单步/连蓝牙优先用界面当前值，避免成员 macAddress 残留覆盖空的输入框
+    auto usable = [](const QString& s) {
+        const QString t = s.trimmed();
+        return !t.isEmpty() && t != QStringLiteral("没有mac地址");
+    };
+    if (ui && ui->macInput && usable(ui->macInput->text()))
         return ui->macInput->text().trimmed();
-    return macAddress.trimmed();
+    if (ui && ui->mac_combo && usable(ui->mac_combo->currentText()))
+        return ui->mac_combo->currentText().trimmed();
+    if (usable(macAddress))
+        return macAddress.trimmed();
+    return {};
 }
 
 bool QFreeWork::useTestCaseFlow(const QString& stationKey) const {
@@ -1022,16 +1031,6 @@ void QFreeWork::runScpiProgrammableCurrentSampleAnyMatch(const TestCaseDefinitio
                 .arg(durationMs)
                 .arg(intervalMs));
 
-    cancelCommandRetryWait(QStringLiteral("读电流采样，取消指令重试"));
-    setDongleRxPaused(true);
-    struct DongleRxPauseGuard {
-        QFreeWork* fw = nullptr;
-        ~DongleRxPauseGuard() {
-            if (fw)
-                fw->setDongleRxPaused(false);
-        }
-    } donglePauseGuard{this};
-
     QElapsedTimer sampleTimer;
     sampleTimer.start();
     while (sampleTimer.elapsed() < durationMs && !isActiveTestCaseStepDone()) {
@@ -1044,11 +1043,11 @@ void QFreeWork::runScpiProgrammableCurrentSampleAnyMatch(const TestCaseDefinitio
         QString errStr;
         bool ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, commandParam, &errStr);
         if (!ok) {
-            VisaChannel::idleDelayMs(200);
+            VisaChannel::waitWork(200);
             ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, commandParam, &errStr);
         }
         if (!ok) {
-            VisaChannel::idleDelayMs(300);
+            VisaChannel::waitWork(300);
             ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, commandParam, &errStr);
         }
         if (!ok) {
@@ -1660,13 +1659,8 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
         return;
     ctx->setActiveTestCase(def);
     ctx->showlog(QStringLiteral("执行 case：%1").arg(stepLabel(def)));
-    const bool gpibScpiStep = ctx->stepUsesGpiBVisaStep(def.meta.name);
-    if (def.timing.delayBeforeMs > 0) {
-        if (gpibScpiStep)
-            VisaChannel::idleDelayMs(def.timing.delayBeforeMs);
-        else
-            ctx->waitWork(def.timing.delayBeforeMs);
-    }
+    if (def.timing.delayBeforeMs > 0)
+        ctx->waitWork(def.timing.delayBeforeMs);
 
     if (def.hook.enabled) {
         TestCaseHookRegistry::invoke(def.hook.hookId, ctx);
@@ -2014,6 +2008,12 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                 ctx->markActiveTestCaseStepDone(false, QStringLiteral("visaAddress无效"), QStringLiteral("失败"));
                 return;
             }
+            // 「配置Visa程控电源」：开局先作废该地址共享句柄，避免上一轮僵死会话占线
+            if (def.send.deviceCmd.compare(QLatin1String("ConfigureProgrammablePower"), Qt::CaseInsensitive) == 0
+                && !resolvedVisaAddr.isEmpty()) {
+                ctx->scpiVisaManager()->closeConnection();
+                VisaChannel::discardIdleSharedSession(resolvedVisaAddr);
+            }
             const bool visaReady =
                 devRoute == ScpiDeviceRoute::Agilent66319d
                     ? ctx->scpiVisaManager()->loadAgilent66319dVisaFromParamMap(visaLoadMap, visaTimeoutMs)
@@ -2026,25 +2026,10 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                 return;
             }
             const bool gpibAddr = resolvedVisaAddr.startsWith(QStringLiteral("GPIB"), Qt::CaseInsensitive);
-            // GPIB：取消 AT 重试、暂停 Dongle 解析，避免与 viWrite 交错导致 ABORT
             if (gpibAddr) {
-                ctx->cancelCommandRetryWait(QStringLiteral("进入 GPIB/VISA 步骤，取消指令重试"));
-                ctx->setDongleRxPaused(true);
                 ctx->suppressProductBleAutoReconnect_ = true;
-            }
-            struct DongleRxPauseGuard {
-                QFreeWork* fw = nullptr;
-                bool active = false;
-                ~DongleRxPauseGuard() {
-                    if (active && fw && !fw->shouldHoldDongleVisaQuietAfterStep())
-                        fw->setDongleRxPaused(false);
-                }
-            } donglePauseGuard{ctx, gpibAddr};
-
-            // GPIB：勿用 waitWork / pumpDelayMs（会泵事件→定时器插队）；纯 idle 等待
-            if (gpibAddr) {
                 ctx->scpiVisaManager()->ensureConnected();
-                VisaChannel::idleDelayMs(200);
+                VisaChannel::waitWork(200);
             }
             if (!stepParams.linkMap.value(QStringLiteral("visaAddress")).toString().trimmed().isEmpty()
                 || !visaLoadMap.value(QStringLiteral("visaAddress")).toString().trimmed().isEmpty()) {
@@ -2056,11 +2041,11 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                 ctx->runScpiProgrammableCurrentSampleAnyMatch(def, stepParams.commandParam);
                 return;
             }
-            // 底层已有同会话/重开恢复；上层 GPIB 再试 1 次（暂停 Dongle 期间），非 GPIB 保留原重试
+            // 底层已有同会话/重开恢复；上层 GPIB 再试 1 次，非 GPIB 保留原重试
             bool ok = ctx->scpiVisaManager()->exec(cmd, stepParams.commandParam, &errStr);
             if (!ok) {
                 if (gpibAddr)
-                    VisaChannel::idleDelayMs(300);
+                    VisaChannel::waitWork(300);
                 else
                     ctx->waitWork(300);
                 ok = ctx->scpiVisaManager()->exec(cmd, stepParams.commandParam, &errStr);
@@ -2142,7 +2127,6 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
 
     DongleCmd dongleCmd = DongleCmd::BleScanConnect;
     if (def.send.channel == TestCaseSendChannel::Dongle) {
-        ctx->ensureDongleSerialOpenAfterVisaQuiet();
         if (!DongleCmdCatalog::dongleCmdFromName(def.send.deviceCmd, dongleCmd)) {
             ctx->showlog(QStringLiteral("未知 Dongle 指令：%1").arg(def.send.deviceCmd));
             ctx->markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
@@ -2209,7 +2193,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             ctx->deviceMap.clear();
             if (ctx->ui && ctx->ui->mac_combo)
                 ctx->ui->mac_combo->clear();
-
+            
             int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
             if (timeoutMs <= 0) timeoutMs = 6000;
             
@@ -2258,13 +2242,16 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                             .arg(bestRssi));
             
             ctx->stepRuntime_.testData = bestMac;
+            ctx->macAddress = bestMac;
+            if (ctx->ui && ctx->ui->macInput)
+                ctx->ui->macInput->setText(bestMac);
             const auto sendFn = [ctx, bestMac]() {
                 ctx->at->set(DongleCmd::BleScanConnect, bestMac);
                 if (ctx->ui && ctx->ui->mac_combo) {
                     ctx->ui->mac_combo->setCurrentText(bestMac);
                 }
             };
-            ctx->waitWork(200);
+            // 连接前清 RX / 本地连接态，避免单步复用脏缓冲或误判已连接
             if (ctx->dongleSerialChannel_)
                 ctx->dongleSerialChannel_->clearReceiveBuffer();
             if (ctx->at)
@@ -2275,35 +2262,69 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             return;
         }
 
+        if (isDongleBleConnectCmd(dongleCmd)) {
+            if (!ctx->dongleSerialPort || !ctx->dongleSerialPort->isOpen()) {
+                ctx->markActiveTestCaseStepDone(false, QStringLiteral("Dongle串口未打开"), QStringLiteral("失败"));
+                ctx->showlog(QStringLiteral("蓝牙连接失败：请先打开 Dongle 串口后再单步/开测"));
+                return;
+            }
+            QVariant param = ctx->resolveTestCaseSendParamTree(def.send.param);
+            QString mac = param.toString().trimmed();
+            if (mac.isEmpty() && param.canConvert<QVariantMap>())
+                mac = param.toMap().value(QStringLiteral("string")).toString().trimmed();
+            if (mac.isEmpty() || mac == QStringLiteral("没有mac地址"))
+                mac = ctx->currentMacAddress();
+            if (mac.isEmpty() || mac == QStringLiteral("没有mac地址")) {
+                ctx->markActiveTestCaseStepDone(false, QStringLiteral("MAC为空"), QStringLiteral("失败"));
+                ctx->showlog(QStringLiteral("蓝牙连接失败：MAC 为空，请在界面填写/选择 MAC，或步骤 Param 填写目标地址"));
+                return;
+            }
+            ctx->macAddress = mac;
+            if (ctx->ui && ctx->ui->macInput && ctx->ui->macInput->text().trimmed().isEmpty())
+                ctx->ui->macInput->setText(mac);
+            // 连接前清 RX / 本地连接态，避免单步时误判已连接或 AT 应答错乱
+            if (ctx->dongleSerialChannel_)
+                ctx->dongleSerialChannel_->clearReceiveBuffer();
+            if (ctx->at)
+                ctx->at->resetConnected();
+            ctx->showlog(QStringLiteral("发起蓝牙连接：%1").arg(mac));
+            const auto sendFn = [ctx, dongleCmd, mac]() { ctx->at->set(dongleCmd, mac); };
+            int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+            timeoutMs = qMax(timeoutMs > 0 ? timeoutMs : 18000, 18000);
+            ctx->setCommandWaitSource(CommandWaitSource::DongleAt);
+            // needCaseDone=false：等 AT+CONNECT_SUCCESS / getConnected，不因普通 FAIL 立刻结案
+            ctx->sendCommandWithRetry(sendFn, timeoutMs, false);
+            return;
+        }
+
         const auto sendFn = [ctx, def, dongleCmd]() {
             QVariant param = ctx->resolveTestCaseSendParamTree(def.send.param);
-            if (param.toString().trimmed().isEmpty()
-                && (dongleCmd == DongleCmd::BleDirectConnect || dongleCmd == DongleCmd::BleScanConnect
-                    || dongleCmd == DongleCmd::BleOtaConnect || dongleCmd == DongleCmd::BleAppConnect
-                    || dongleCmd == DongleCmd::BleMainConnect)) {
-                const QString mac = ctx->currentMacAddress();
-                if (!mac.isEmpty() && mac != QStringLiteral("没有mac地址"))
-                    param = mac;
-            }
             if (def.send.action == TestCaseSendAction::Get)
                 ctx->at->get(dongleCmd, param);
             else
                 ctx->at->set(dongleCmd, param);
         };
-        int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
-        if (isDongleBleConnectCmd(dongleCmd)) {
-            // GPIB 静默恢复后稍等再发 AT；Dongle 直连/扫描连接须与固件 15s 超时对齐
-            ctx->waitWork(200);
-            if (ctx->dongleSerialChannel_)
-                ctx->dongleSerialChannel_->clearReceiveBuffer();
-            if (ctx->at)
-                ctx->at->resetConnected();
-            timeoutMs = qMax(timeoutMs > 0 ? timeoutMs : 18000, 18000);
-        } else if (timeoutMs <= 0) {
-            timeoutMs = 3000;
+        // AT+BLEMTU / AT+HSADC / AT+BOMB / AT+GMAC 等 dongle 侧无应答解析：
+        // Timing/WaitReply=false 时只发不收，发完即过步；此时没有回包可判失败，故先卡串口是否已打开
+        if (!def.timing.waitReply) {
+            if (!ctx->dongleSerialPort || !ctx->dongleSerialPort->isOpen()) {
+                ctx->markActiveTestCaseStepDone(false, QStringLiteral("Dongle串口未打开"), QStringLiteral("失败"));
+                ctx->showlog(QStringLiteral("发送失败：请先打开 Dongle 串口后再单步/开测"));
+                return;
+            }
+            sendFn();
+            ctx->canGoNext = true;
+            ctx->sendRetryOver = false;
+            ctx->lastCommandRetryCount = 1;
+            ctx->lastCommandFailReason.clear();
+            ctx->showlog(QStringLiteral("已发送（不等待回包）"));
+            return;
         }
+        int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+        if (timeoutMs <= 0)
+            timeoutMs = 3000;
         ctx->setCommandWaitSource(CommandWaitSource::DongleAt);
-        ctx->sendCommandWithRetry(sendFn, timeoutMs, !isDongleBleConnectCmd(dongleCmd));
+        ctx->sendCommandWithRetry(sendFn, timeoutMs, true);
         return;
     }
 
@@ -2334,6 +2355,17 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
         else
             ctx->protocolManager.set(cmd, wireParam);
     };
+
+    // 进蓝牙非信令等会关机：Timing/WaitReply=false 时只发不收，发完即过步
+    if (!def.timing.waitReply) {
+        sendFn();
+        ctx->canGoNext = true;
+        ctx->sendRetryOver = false;
+        ctx->lastCommandRetryCount = 1;
+        ctx->lastCommandFailReason.clear();
+        ctx->showlog(QStringLiteral("已发送（不等待回包）"));
+        return;
+    }
 
     const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
     ctx->setCommandWaitSource(CommandWaitSource::ProductProtocol);

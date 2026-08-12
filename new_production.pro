@@ -481,6 +481,7 @@ HEADERS += \
     lib/qcustomplot/qcustomplot.h \
     mainwindow.h \
     my_set/AbIni.h \
+    my_set/host_ota_version.h \
     my_set/my_typedef.h \
     qlog/qlog.h \
     qlog/qlog_win.h \
@@ -650,28 +651,11 @@ win32 {
 }
 
 win32 {
-    # NI-VISA / IVI：依赖统一放在 lib/visa/，换电脑无需本机 IVI 安装路径。
-    # 启用/关闭后须重新 qmake 并全量构建，以重建预编译头。
+    # NI-VISA：头文件/库在 lib/visa；HAVE_NI_VISA 见 lib/visa/have_ni_visa.h（改后须重新 qmake）
     VISA_DIR = $$PWD/lib/visa
-    exists($$VISA_DIR/visa.h):exists($$VISA_DIR/visatype.h):exists($$VISA_DIR/visa64.lib):exists($$VISA_DIR/visa64.dll):exists($$VISA_DIR/visaConfMgr.dll) {
-        INCLUDEPATH += $$VISA_DIR
-        LIBS += -L$$shell_path($$VISA_DIR) -lvisa64
-        DEFINES += HAVE_NI_VISA
-        VISA_DLLS = visa64.dll visaConfMgr.dll
-        exists($$VISA_DIR/visaUtilities.dll) {
-            VISA_DLLS += visaUtilities.dll
-        }
-        # 勿用 escape_expand(\\r\n\\t)：nmake 链接规则 @<< 后换行会破坏 Makefile
-        VISA_POST_CMD =
-        for(VISA_DLL, VISA_DLLS) {
-            !isEmpty(VISA_POST_CMD): VISA_POST_CMD += " && "
-            VISA_POST_CMD += copy /Y \"$$shell_path($$VISA_DIR/$$VISA_DLL)\" \"$$shell_path($$OUT_PWD/$$DESTDIR/$$VISA_DLL)\"
-        }
-        QMAKE_POST_LINK += $$quote(cmd /c $$VISA_POST_CMD)
-        message("NI-VISA enabled from lib/visa.")
-    } else {
-        message("NI-VISA lib/visa incomplete — build without VISA. Required: visa.h, visatype.h, visa64.lib, visa64.dll, visaConfMgr.dll (optional: visaUtilities.dll)")
-    }
+    INCLUDEPATH += $$VISA_DIR
+    LIBS += -L$$shell_path($$VISA_DIR) -lvisa64
+    QMAKE_POST_LINK += $$quote(cmd /c copy /Y \"$$shell_path($$VISA_DIR/visa64.dll)\" \"$$shell_path($$OUT_PWD/$$DESTDIR/visa64.dll)\" && copy /Y \"$$shell_path($$VISA_DIR/visaConfMgr.dll)\" \"$$shell_path($$OUT_PWD/$$DESTDIR/visaConfMgr.dll)\")
 }
 
 

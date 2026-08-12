@@ -32,6 +32,8 @@ class bydmes : public Qmes {
     bool ensureExternalMesConfig(const MesPacketData& pack);
     QJsonArray buildBydTestDataList(const MesPacketData& pack, const QString& testTime) const;
     QJsonObject buildBydTestDataCollectParam(const MesPacketData& pack) const;
+    QJsonObject buildBydSerializableStartCollectCompleteParam(const MesPacketData& pack) const;
+    bool shouldUseBydSerializableComplete(const MesPacketData& pack, bool isPassResult) const;
     /// 「按过程码返回值中解析 SN」。
     QString parseSnFromGetSnByProcessCodeResponse(const QByteArray& responseData) const;
     bool isSuccessResponse(const QByteArray& responseData, QString* responseText, QString* errorMessage) const;

@@ -1309,7 +1309,7 @@ bool QFreeWork::tryCompleteActiveTestCaseTupleCompare(const ProtocolTupleData& d
     if (activeTestCase_.gate.enabled)
         return false;
 
-    // Param_dataType / Param_type，或步骤名含 productKey/deviceName/deviceSecret → 只比对应字段
+    // Param_dataType / Param_type，或步骤名含 productID/deviceId/deviceSecret → 只比对应字段
     int onlyType = 0;
     if (activeTestCase_.send.param.canConvert<QVariantMap>()) {
         const QVariantMap map = activeTestCase_.send.param.toMap();
@@ -1323,9 +1323,12 @@ bool QFreeWork::tryCompleteActiveTestCaseTupleCompare(const ProtocolTupleData& d
                                   ? (activeTestCase_.meta.name.trimmed().isEmpty() ? activeTestCase_.meta.mesTag
                                                                                   : activeTestCase_.meta.name)
                                   : activeTestCase_.meta.displayName;
-        if (label.contains(QStringLiteral("productKey"), Qt::CaseInsensitive))
+        // 兼容旧步骤名 productKey/deviceName
+        if (label.contains(QStringLiteral("productID"), Qt::CaseInsensitive)
+            || label.contains(QStringLiteral("productKey"), Qt::CaseInsensitive))
             onlyType = 2;
-        else if (label.contains(QStringLiteral("deviceName"), Qt::CaseInsensitive))
+        else if (label.contains(QStringLiteral("deviceId"), Qt::CaseInsensitive)
+                 || label.contains(QStringLiteral("deviceName"), Qt::CaseInsensitive))
             onlyType = 3;
         else if (label.contains(QStringLiteral("deviceSecret"), Qt::CaseInsensitive))
             onlyType = 4;
@@ -1348,9 +1351,9 @@ bool QFreeWork::tryCompleteActiveTestCaseTupleCompare(const ProtocolTupleData& d
         markActiveTestCaseStepDone(pass, testData, ask);
         if (!pass) {
             TestResult = failValue;
-            showlog(QStringLiteral("productKey比较失败，设备=%1，云端=%2").arg(testData, ask));
+            showlog(QStringLiteral("productID比较失败，设备=%1，云端=%2").arg(testData, ask));
         } else {
-            showlog(QStringLiteral("productKey比较通过：%1").arg(testData));
+            showlog(QStringLiteral("productID比较通过：%1").arg(testData));
         }
         return true;
     }
@@ -1361,9 +1364,9 @@ bool QFreeWork::tryCompleteActiveTestCaseTupleCompare(const ProtocolTupleData& d
         markActiveTestCaseStepDone(pass, testData, ask);
         if (!pass) {
             TestResult = failValue;
-            showlog(QStringLiteral("deviceName比较失败，设备=%1，云端=%2").arg(testData, ask));
+            showlog(QStringLiteral("deviceId比较失败，设备=%1，云端=%2").arg(testData, ask));
         } else {
-            showlog(QStringLiteral("deviceName比较通过：%1").arg(testData));
+            showlog(QStringLiteral("deviceId比较通过：%1").arg(testData));
         }
         return true;
     }

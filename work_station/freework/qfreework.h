@@ -162,6 +162,8 @@ class QFreeWork : public test_base {
     // --- 计时与本轮结论 ---
     QTimer* waittime = new QTimer(this);
     QTimer* comparewaittime = new QTimer(this);
+    /** 界面计时独立刷新：吸力采样等步骤会在一次 startTask 里阻塞十几秒，靠主任务环刷会停表 */
+    QTimer* testTimeTicker_ = new QTimer(this);
     QElapsedTimer TestTime;
     QString productName;
     QString softwareVersionForReport_;
@@ -345,9 +347,6 @@ class QFreeWork : public test_base {
      */
     void runMultiTempLoggerChannelsWindowAllMatch(const TestCaseDefinition& def);
     void setDongleSuctionReadEnabled(bool enabled);
-    /** 流程中连续 GPIB 步之间保持 Dongle 静默，避免步骤间隙 AT 插队 */
-    bool shouldHoldDongleVisaQuietAfterStep() const;
-    bool stepUsesGpiBVisaStep(const QString& stepName) const;
     void initSuctionChart();
     void resetSuctionChart();
     void appendSuctionChartSample(double leftKpa, double rightKpa);

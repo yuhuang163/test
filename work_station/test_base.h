@@ -148,11 +148,6 @@ class test_base : public QWidget {
     SerialChannel* dongleSerialChannel_ = nullptr;
     QStringList dongleUiLogPending_;
     bool dongleUiLogFlushScheduled_ = false;
-    /** true 时 Dongle 进入 VISA 静默：不解析 RX、不发 AT */
-    bool dongleRxPaused_ = false;
-    bool scanSerialPortsWasActive_ = false;
-    /** VISA 静默期间串口 ResourceError 暂不 close，恢复后再重开 */
-    bool dongleSerialErrorDeferred_ = false;
     SerialChannel* usbSerialChannel_ = nullptr;
     SerialChannel* jigSerialChannel_ = nullptr;
     SerialChannel* productSerialChannel_ = nullptr;
@@ -315,13 +310,6 @@ class test_base : public QWidget {
     virtual void onJigInstrumentReport(const ProtocolReport& report);
     /** 结束一次 sendCommandWithRetry 等待；success=false 时 sendRetryOver=1 供工站判失败 */
     void finishCommandRetryWait(bool success, const QString& logMessage);
-    /** 取消进行中的指令重试等待（进 GPIB 前调用，避免定时器重入发 AT） */
-    void cancelCommandRetryWait(const QString& reason = QString());
-    /** GPIB/VISA 期间暂停 Dongle：硬关 USB 串口，控制完再重开 */
-    void setDongleRxPaused(bool paused);
-    bool isDongleRxPaused() const { return dongleRxPaused_; }
-    /** VISA 静默结束后若 Dongle 串口被误关，尝试按当前 COM 重开 */
-    void ensureDongleSerialOpenAfterVisaQuiet();
     /** 测试结束：本地入库 + 云端上报；useMes 为真时再触发 MES 过站 */
     void finishTestRecord(const MesPacketData& pack, bool useMes);
 
@@ -332,8 +320,6 @@ class test_base : public QWidget {
     void showEvent(QShowEvent* event) override;
     bool eventFilter(QObject* watched, QEvent* event) override;
     void resetVisaBackend();
-    /** 测完释放 VISA：GPIB/TCPIP 保持会话供下次 MAC 开测复用，ASRL 独占串口仍关闭。 */
-    void releaseVisaBackendAfterTest();
 
   private:
     QString receivedData = "";

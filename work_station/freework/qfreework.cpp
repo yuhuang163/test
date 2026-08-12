@@ -255,54 +255,6 @@ bool isDongleBleConnectStepName(const QString& name) {
 }
 
 
-QString resolvedGpiBVisaAddressForStep(const QString& stationKey, const QString& stepName) {
-    TestCaseDefinition def;
-    if (!TestCaseRunner::loadCaseForStation(stationKey, stepName, def))
-        return {};
-    if (def.send.channel != TestCaseSendChannel::Scpi)
-        return {};
-    QVariantMap map;
-    if (def.send.param.canConvert<QVariantMap>())
-        map = def.send.param.toMap();
-    QString addr = map.value(QStringLiteral("visaAddress")).toString().trimmed();
-    if (addr.isEmpty())
-        addr = SharedInstrument::visaAddressFromParam(map, 0);
-    return addr.startsWith(QStringLiteral("GPIB"), Qt::CaseInsensitive) ? addr : QString{};
-}
-
-/** 打开/关闭 Visa 步 ini 常无 Param_visaAddress，须合并配置步 link 缓存再判 GPIB。 */
-QString resolvedGpiBVisaAddressForStepWithLink(const QString& stationKey, const QString& stepName,
-                                               const QVariantMap& visaLinkCache) {
-    QString addr = resolvedGpiBVisaAddressForStep(stationKey, stepName);
-    if (!addr.isEmpty())
-        return addr;
-    TestCaseDefinition def;
-    if (!TestCaseRunner::loadCaseForStation(stationKey, stepName, def))
-        return {};
-    if (def.send.channel != TestCaseSendChannel::Scpi)
-        return {};
-    const ScpiDeviceRoute route = ScpiPeriphCmdCatalog::deviceFromIni(def.send.device);
-    if (route != ScpiDeviceRoute::HuilingWfp60h && route != ScpiDeviceRoute::Agilent66319d)
-        return {};
-    addr = visaLinkCache.value(QStringLiteral("visaAddress")).toString().trimmed();
-    if (addr.isEmpty())
-        addr = SharedInstrument::visaAddressFromParam(visaLinkCache, 0);
-    return addr.startsWith(QStringLiteral("GPIB"), Qt::CaseInsensitive) ? addr : QString{};
-}
-
-bool stepUsesGpiBVisa(const QString& stationKey, const QString& stepName) {
-    return !resolvedGpiBVisaAddressForStep(stationKey, stepName).isEmpty();
-}
-
-QString firstFlowGpiBVisaAddress(const QString& stationKey, const QStringList& stepNames) {
-    for (const QString& stepName : stepNames) {
-        if (stepUsesGpiBVisa(stationKey, stepName))
-            return resolvedGpiBVisaAddressForStep(stationKey, stepName);
-    }
-    return {};
-}
-
-
 constexpr int kFreeWorkTabMain = 0;
 constexpr int kFreeWorkTabExpand = 1;
 constexpr int kFreeWorkTabChart = 2;
@@ -519,6 +471,14 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
         iscompareovertime = 1;
         comparewaittime->stop();
     });
+
+    // 阻塞步骤里 waitWork 仍在泵事件，QTimer 照常触发，计时不再停在采样前的数值
+    testTimeTicker_->setInterval(200);
+    connect(testTimeTicker_, &QTimer::timeout, this, [this]() {
+        if (isTestContinue && teststate >= 0)
+            ui->test_time->setText(CommonUtils::formatElapsedSeconds(TestTime));
+    });
+    testTimeTicker_->start();
 
     HighRssi = SETTINGS.value("WIFI/HighRssi").toDouble();
     LowRssi = SETTINGS.value("WIFI/LowRssi").toDouble();
@@ -764,17 +724,7 @@ void QFreeWork::runTestFlowBootstrap() {
     showlog(QStringLiteral("开始测试"));
     // 先刷新流程再 initData，避免 seed 缓存与 dongle 动作仍用上一轮工站/队列。
     refreshOrderedTestIndexes();
-    bool firstStepIsScpi = false;
-    QString firstGpiBAddr;
-    if (!orderedTestCaseNames_.isEmpty()) {
-        TestCaseDefinition firstDef;
-        if (TestCaseRunner::loadCaseForStation(activeFlowStationKey_, orderedTestCaseNames_.constFirst(), firstDef)
-            && firstDef.send.channel == TestCaseSendChannel::Scpi) {
-            firstStepIsScpi = true;
-            firstGpiBAddr = firstFlowGpiBVisaAddress(activeFlowStationKey_, orderedTestCaseNames_);
-        }
-    }
-    initData(firstStepIsScpi);
+    initData();
     mesProcessCode_ = processCode.trimmed();
     if (!mesProcessCode_.isEmpty()) {
         pack.sn = mesProcessCode_;
@@ -782,21 +732,7 @@ void QFreeWork::runTestFlowBootstrap() {
     }
     singleStepDebugRun_ = false;
     suppressProductBleAutoReconnect_ = false;
-    // 首步 GPIB/SCPI：与单步一致，复用已打开会话。开局 close/discard 后再冷开，
-    // *IDN? 预热易立刻 VI_ERROR_ABORT（日志「传输已被用户中止」），表现为「visa未连接」。
-    if (firstStepIsScpi) {
-        suppressProductBleAutoReconnect_ = true;
-        VisaChannel::dumpSharedSessions(QStringLiteral("runTestFlowBootstrap"));
-        if (!firstGpiBAddr.isEmpty()) {
-            cancelCommandRetryWait(QStringLiteral("首步 GPIB，进入 Dongle 静默"));
-            setDongleRxPaused(true);
-            VisaChannel::idleDelayMs(100);
-        } else {
-            VisaChannel::pumpDelayMs(100);
-        }
-    } else {
-        waitWork(1000);
-    }
+    waitWork(1000);
     showlog(QStringLiteral("MAC地址为：") + ui->macInput->text());
     teststate = 0;
 }
@@ -989,17 +925,8 @@ bool QFreeWork::tickOrderedTestStepLoop() {
         }
         testCaseMultiGateTableEmitted_ = false;
         appendTestCaseMes(caseDef, stepRuntime_.pass, stepRuntime_.testData);
-        if (caseDef.timing.delayAfterMs > 0) {
-            if (stepUsesGpiBVisaStep(caseName)
-                || (teststate + 1 < stepCount && stepUsesGpiBVisaStep(orderedNames.at(teststate + 1)))) {
-                VisaChannel::idleDelayMs(caseDef.timing.delayAfterMs);
-            } else {
-                waitWork(caseDef.timing.delayAfterMs);
-            }
-        }
-        // 离开连续 GPIB 段后恢复 Dongle（配置Visa→打开Visa 之间 guard 不恢复，此处兜底）
-        if (!shouldHoldDongleVisaQuietAfterStep() && isDongleRxPaused())
-            setDongleRxPaused(false);
+        if (caseDef.timing.delayAfterMs > 0)
+            waitWork(caseDef.timing.delayAfterMs);
         closeTestCasePrompt();
         closeKeyWaitPrompt();
         clearActiveTestCase();
@@ -1096,12 +1023,7 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     ui->getMac->setDisabled(0);
     // 先退出本工位测试态；最后一个工位结束时才能安全释放共享 ASD 串口。
     isTestContinue = false;
-    cancelCommandRetryWait(QStringLiteral("测试收尾，取消指令重试"));
-    setDongleRxPaused(false);
-    VisaChannel::pumpDelayMs(50);
     on_disconnectButton_clicked();
-    // GPIB/TCPIP 保持连接供下次开测；仅 ASRL 独占串口在测完关闭
-    releaseVisaBackendAfterTest();
     if (auto* box = qobject_cast<QFreeWorkBox*>(window())) {
         box->releaseSharedAsd9026aIfIdle();
         box->releaseSharedTempLoggerIfIdle();
@@ -1125,8 +1047,7 @@ void QFreeWork::startTask() {
     }
     if (canRunOrderedTestStepLoop()) {
         tickOrderedTestStepLoop();
-    } else if (teststate >= 0 && teststate < activeOrderedCaseNames().count() && !at->getConnected()
-               && !isDongleRxPaused()) {
+    } else if (teststate >= 0 && teststate < activeOrderedCaseNames().count() && !at->getConnected()) {
         // 流程里下一步要蓝牙，但当前未连接且没有扫描连接步骤时会静默停住
         TestCaseDefinition nextDef;
         if (TestCaseRunner::loadCaseForStation(activeFlowStationKey_, activeOrderedCaseNames().at(teststate), nextDef)
@@ -1769,23 +1690,8 @@ void QFreeWork::setDongleSuctionReadEnabled(bool enabled) {
     dongleSuctionReadEnabled_ = enabled;
     if (enabled && !wasEnabled)
         resetSuctionChart();
-    if (isDongleRxPaused())
-        return;
     if (at && dongleSerialPort && dongleSerialPort->isOpen())
         at->set(DongleCmd::GetSuction, enabled ? 1 : 0);
-}
-
-bool QFreeWork::shouldHoldDongleVisaQuietAfterStep() const {
-    const QStringList& names = activeOrderedCaseNames();
-    const int nextIdx = teststate + 1;
-    if (nextIdx < 0 || nextIdx >= names.count())
-        return false;
-    return stepUsesGpiBVisaStep(names.at(nextIdx));
-}
-
-bool QFreeWork::stepUsesGpiBVisaStep(const QString& stepName) const {
-    return !resolvedGpiBVisaAddressForStepWithLink(activeFlowStationKey_, stepName, huilingVisaLinkCache_)
-                .isEmpty();
 }
 
 void QFreeWork::runDongleSuctionSampleStep() {
