@@ -310,6 +310,8 @@ class QFreeWork : public test_base {
     bool eventFilter(QObject* watched, QEvent* event) override;
     void reportBydSfcKey(const QString& dataName, const QVariant& dataValue, int qty = 1);
     void reportBydBluetoothMesKeyMaterials();
+    /** MES GetCustomData：取 DATA 中 NAME=ROOTSKU 的 VALUE，写入 pack.sku */
+    void fetchMesRootSku();
     bool failTupleWriteIfNoValidField(const QString& stepName, bool fieldOk, const QString& emptyReason);
     void reportTupleWriteRecord();
     void debugUpdateTupleMacStatus(const TestCaseDefinition& def);

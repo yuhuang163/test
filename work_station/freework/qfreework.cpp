@@ -2069,6 +2069,7 @@ void QFreeWork::initData(bool deferDongleAtForVisa) {
     deviceTailSnFromDevice = "";
     wholeMachineSn_.clear();
     mesProcessCode_.clear();
+    pack.sku.clear();
     tupleData_ = TupleApplyResult{};
     QTupleService::clearSharedSession();
     resetTuplePositionHighlight();
@@ -2546,6 +2547,11 @@ void QFreeWork::on_snbanding_returnPressed() {
 }
 
 void QFreeWork::getTestValue(const int mechines, const QString value) {
+    if (pack.iskeydata == 2 && mechines == getIndex()) {
+        pack.sku = value.trimmed();
+        showlog(QStringLiteral("MES GetCustomData 已取到 ROOTSKU=%1").arg(pack.sku));
+        return;
+    }
     // showlog(value);
     QString mesmacAddress;
     if (pack.factory == "hq") {

@@ -151,6 +151,10 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
                          : QStringLiteral("二维码一致性校验失败：扫描=%1，开局SN=%2").arg(scanned, expectedSn));
         return;
     }
+    if (hookId == QStringLiteral("MES_GET_ROOT_SKU")) {
+        fw->fetchMesRootSku();
+        return;
+    }
     if (hookId == QStringLiteral("COUNTDOWN_WAIT")) {
         // Param_seconds（或 Param_waitSeconds）配置等待秒数；可选 Param_prompt / Meta PromptText 作提示文案
         const TestCaseDefinition& def = fw->activeTestCase();
@@ -365,6 +369,7 @@ void QFreeWorkTestCaseHookRegistrar::registerAll() {
     registerHook(QStringLiteral("PRINT_WHOLE_MACHINE_SN"));
     registerHook(QStringLiteral("QR_SN_CONSISTENCY_CHECK"));
     registerHook(QStringLiteral("COUNTDOWN_WAIT"));
+    registerHook(QStringLiteral("MES_GET_ROOT_SKU"));
     registerHook(QStringLiteral("MAC_WRITE_ROOT"));
     registerHook(QStringLiteral("BLE_CONNECT_BY_NAME"));
     registerHook(QStringLiteral("PLC_MODBUS_CONN"));

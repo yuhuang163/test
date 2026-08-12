@@ -36,6 +36,8 @@ class bydmes : public Qmes {
     bool shouldUseBydSerializableComplete(const MesPacketData& pack, bool isPassResult) const;
     /// 「按过程码返回值中解析 SN」。
     QString parseSnFromGetSnByProcessCodeResponse(const QByteArray& responseData) const;
+    /// GetCustomData 的 DATA 列表按 NAME 取 VALUE（如 ROOTSKU）。
+    QString parseCustomDataValueByName(const QByteArray& responseData, const QString& name) const;
     bool isSuccessResponse(const QByteArray& responseData, QString* responseText, QString* errorMessage) const;
     QByteArray sendRequest(const QString& method, const QJsonObject& param, QString* errorMessage) const;
     /// NET 与 LoginID/CLIENT_ID 缺失时 qWarning + operateMesError，返回 true 表示应中止请求（非 const：需 emit 信号）

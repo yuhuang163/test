@@ -1005,6 +1005,32 @@ void QFreeWork::reportBydSfcKey(const QString& dataName, const QVariant& dataVal
     emit send_mes_test_value(p);
 }
 
+void QFreeWork::fetchMesRootSku() {
+    pack.sku.clear();
+    if (!ui || !ui->isusemes->isChecked()) {
+        markActiveTestCaseStepDone(false, QStringLiteral("未勾选MES"), QStringLiteral("失败"));
+        showlog(QStringLiteral("获取 MES SKU 失败：请先勾选「MES」"));
+        return;
+    }
+    MesPacketData p = pack;
+    p.mechines = getIndex();
+    p.iskeydata = 2;
+    p.instruct_num = QStringLiteral("ROOTSKU");
+    pack.iskeydata = 2;
+    showlog(QStringLiteral("MES：GetCustomData 获取 ROOTSKU"));
+    emit send_mes_test_value(p);
+    pack.iskeydata = 0;
+    if (!isTestContinue)
+        return;
+    if (pack.sku.trimmed().isEmpty()) {
+        markActiveTestCaseStepDone(false, QStringLiteral("ROOTSKU为空"), QStringLiteral("失败"));
+        showlog(QStringLiteral("获取 MES SKU 失败：未从 GetCustomData 解析到 ROOTSKU"));
+        return;
+    }
+    showlog(QStringLiteral("获取 MES SKU 成功：ROOTSKU=%1").arg(pack.sku));
+    markActiveTestCaseStepDone(true, pack.sku, QStringLiteral("通过"));
+}
+
 void QFreeWork::reportBydBluetoothMesKeyMaterials() {
     if (!ui->isusemes->isChecked()) {
         return;
@@ -1051,7 +1077,10 @@ void QFreeWork::applyTupleByMac() {
             macFromParam = resolved.toString().trimmed();
         }
     }
-    if (sku.isEmpty())
+    // pack.sku 有值（前置「获取 MES SKU」）则优先；否则步骤 Param_sku / 设置页 Tuple/Sku
+    if (!pack.sku.trimmed().isEmpty())
+        sku = pack.sku.trimmed();
+    else if (sku.isEmpty())
         sku = SETTINGS.value(QStringLiteral("Tuple/Sku"), QString()).toString().trimmed();
     // 步骤未写 position 时跟主界面 / SETTINGS（由「三元组位置」点击写入）
     if (position.isEmpty())
@@ -1073,8 +1102,11 @@ void QFreeWork::applyTupleByMac() {
     position = tuplePositionCode(posKind);
 
     updateTuplePositionHighlight(position);
-    showlog(QStringLiteral("三元组获取：当前位置=%1（%2）")
-                .arg(position, tuplePositionKindText(posKind)));
+    showlog(QStringLiteral("三元组获取：sku=%1（%2） 位置=%3（%4）")
+                .arg(sku,
+                     pack.sku.trimmed().isEmpty() ? QStringLiteral("步骤Param_sku")
+                                                  : QStringLiteral("MES ROOTSKU"),
+                     position, tuplePositionKindText(posKind)));
 
     QString tupleMac = macFromParam;
     if (tupleMac.isEmpty())
@@ -1090,7 +1122,7 @@ void QFreeWork::applyTupleByMac() {
         stepRuntime_.pass = false;
         stepRuntime_.testData = QStringLiteral("SKU未配置");
         TestResult = failValue;
-        showlog(QStringLiteral("三元组获取失败：请在用例 ini 配置 Param/sku（及 Param/position）"));
+        showlog(QStringLiteral("三元组获取失败：请先执行「获取 MES SKU」或在步骤 Param_sku 填写 SKU"));
         return;
     }
     if (tupleMac.isEmpty() || tupleMac == QStringLiteral("没有MAC地址")) {

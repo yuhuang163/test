@@ -375,20 +375,49 @@ bool isUsableBydWholeMachineSnValue(const QString& value) {
     return !v.isEmpty() && v != QStringLiteral("整机SN为空");
 }
 
-} // namespace
+/** pack.product 优先；空则回退界面 Mes/Product_Name（与设置页产品型号下拉一致） */
+QString resolvedMesUiProductModel(const MesPacketData& pack) {
+    QString product = pack.product.trimmed();
+    if (product.isEmpty())
+        product = SETTINGS.value(QStringLiteral("Mes/Product_Name")).toString().trimmed();
+    if (product.isEmpty())
+        product = SETTINGS.value(QStringLiteral("MES/Product_Name")).toString().trimmed();
+    return product;
+}
 
-bool bydmes::shouldUseBydSerializableComplete(const MesPacketData& pack, bool isPassResult) const {
-    Q_UNUSED(pack);
-    if (!isPassResult || pack.factory.trimmed().compare(QLatin1String("byd"), Qt::CaseInsensitive) != 0)
+/** W1 Lite / Wellness Warm 等需走 SerializableStartCollectComplete 的界面产品型号 */
+bool isSerializableCompleteUiProductModel(const QString& product) {
+    const QString p = product.trimmed();
+    if (p.isEmpty())
         return false;
-    // 工站判定只读 SETTINGS（TestOrderMeta 存 local.ini），不依赖工站额外传 pack 字段
+    if (p.contains(QStringLiteral("W1 Lite"), Qt::CaseInsensitive)
+        || p.compare(QStringLiteral("W1Lite"), Qt::CaseInsensitive) == 0)
+        return true;
+    // W1 Lite 后续改名为 Wellness Warm，与旧名并行兼容
+    return p.contains(QStringLiteral("Wellness Warm"), Qt::CaseInsensitive);
+}
+
+/** 组装蓝牙测试工站（W1 Lite / Wellness Warm 工站键或显示名） */
+bool isSerializableCompleteBluetoothTestStation() {
     const QString stationKey =
         SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString().trimmed();
-    if (stationKey == QStringLiteral("FLOW_ST_0019"))
+    if (stationKey == QStringLiteral("FLOW_ST_0019") || stationKey == QStringLiteral("FLOW_ST_0032"))
         return true;
     const QString stationName =
         SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStationName")).toString().trimmed();
-    return stationName.contains(QStringLiteral("W1 Lite组装蓝牙测试"));
+    return stationName.contains(QStringLiteral("W1 Lite组装蓝牙测试"))
+           || stationName.contains(QStringLiteral("Wellness Warm组装蓝牙测试"));
+}
+
+} // namespace
+
+bool bydmes::shouldUseBydSerializableComplete(const MesPacketData& pack, bool isPassResult) const {
+    if (!isPassResult || pack.factory.trimmed().compare(QLatin1String("byd"), Qt::CaseInsensitive) != 0)
+        return false;
+    const QString product = resolvedMesUiProductModel(pack);
+    if (!isSerializableCompleteUiProductModel(product))
+        return false;
+    return isSerializableCompleteBluetoothTestStation();
 }
 
 QJsonObject bydmes::buildBydSerializableStartCollectCompleteParam(const MesPacketData& pack) const {
@@ -431,7 +460,7 @@ QJsonObject bydmes::buildBydTestDataCollectParam(const MesPacketData& pack) cons
     QJsonObject param;
     param["LOGIN_ID"] = settingsValue("LoginID");
     param["CLIENT_ID"] = settingsValue("ClientID");
-    param["PROJECT_NAME"] = settingsValue("PROJECT");
+    param["PROJECT_NAME"] = settingsValue("PROJECT"); // mes_config 项目名；界面产品型号见 pack.product
     param["TEST_STATION"] = settingsValue(QStringLiteral("Operation"));
     param["TDS_NAME"] = "VH_C5";
     param["SHOPORDER_NO"] = settingsValue("Resource");
@@ -490,6 +519,41 @@ QString bydmes::parseSnFromGetSnByProcessCodeResponse(const QByteArray& response
             qDebug() << QStringLiteral("[BYD MES] DATA 行 name=主板，解析 value(SN)=%1").arg(val);
             return val;
         }
+    }
+    return {};
+}
+
+QString bydmes::parseCustomDataValueByName(const QByteArray& responseData, const QString& name) const {
+    const QString want = name.trimmed();
+    if (want.isEmpty())
+        return {};
+    QJsonParseError parseError;
+    const QJsonDocument doc = QJsonDocument::fromJson(responseData, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !doc.isObject())
+        return {};
+    const QJsonValue dataV = doc.object().value(QStringLiteral("DATA"));
+    QJsonArray rows;
+    if (dataV.isArray()) {
+        rows = dataV.toArray();
+    } else if (dataV.isObject()) {
+        rows.append(dataV.toObject());
+    } else {
+        return {};
+    }
+    for (const QJsonValue& v : rows) {
+        if (!v.isObject())
+            continue;
+        const QJsonObject o = v.toObject();
+        QString itemName = o.value(QStringLiteral("NAME")).toString().trimmed();
+        if (itemName.isEmpty())
+            itemName = o.value(QStringLiteral("name")).toString().trimmed();
+        if (itemName.compare(want, Qt::CaseInsensitive) != 0)
+            continue;
+        QString val = o.value(QStringLiteral("VALUE")).toString().trimmed();
+        if (val.isEmpty())
+            val = o.value(QStringLiteral("value")).toString().trimmed();
+        if (!val.isEmpty())
+            return val;
     }
     return {};
 }
@@ -658,6 +722,57 @@ void bydmes::ProcessInspection(MesPacketData pack) {
 
 void bydmes::GetTestData(MesPacketData pack) {
     if (pack.factory != "byd") {
+        return;
+    }
+    if (pack.iskeydata == 2) {
+        if (!ensureExternalMesConfig(pack)) {
+            return;
+        }
+        const QString method = QStringLiteral("GetCustomData");
+        QJsonObject param;
+        QString loginId = settingsValue(QStringLiteral("LoginID"));
+        if (loginId.isEmpty())
+            loginId = QStringLiteral("-1");
+        param[QStringLiteral("LOGIN_ID")] = loginId;
+        QString clientId = settingsValue(QStringLiteral("ClientID"));
+        if (clientId.isEmpty())
+            clientId = QStringLiteral("1");
+        param[QStringLiteral("CLIENT_ID")] = clientId;
+        param[QStringLiteral("STATION_ID")] = settingsValue(QStringLiteral("StationID"));
+        param[QStringLiteral("PRODUCT_ID")] = settingsValue(QStringLiteral("PRODUCT_ID"));
+        if (emitIfMissingLoginClientOrNet(pack, param, method)) {
+            return;
+        }
+        if (bydMesJsonStringFieldEmpty(param, QStringLiteral("STATION_ID"))
+            || bydMesJsonStringFieldEmpty(param, QStringLiteral("PRODUCT_ID"))) {
+            emit operateMesError(pack.mechines,
+                                 QStringLiteral("BYD MES %1：STATION_ID 或 PRODUCT_ID 未配置（mes_config.ini）")
+                                     .arg(method));
+            return;
+        }
+        QString networkError;
+        const QByteArray responseData = sendRequest(method, param, &networkError);
+        if (!networkError.isEmpty()) {
+            emit operateMesError(pack.mechines, QStringLiteral("BYD MES %1 请求失败: %2").arg(method, networkError));
+            return;
+        }
+        QString responseText;
+        QString errorMessage;
+        if (!isSuccessResponse(responseData, &responseText, &errorMessage)) {
+            emit operateMesError(pack.mechines, QStringLiteral("BYD MES %1 失败: %2").arg(method, errorMessage));
+            return;
+        }
+        const QString wantName = pack.instruct_num.trimmed().isEmpty() ? QStringLiteral("ROOTSKU")
+                                                                      : pack.instruct_num.trimmed();
+        const QString sku = parseCustomDataValueByName(responseData, wantName);
+        if (sku.isEmpty()) {
+            emit operateMesError(pack.mechines,
+                                 QStringLiteral("BYD MES %1 成功但未解析到 %2（请检查 DATA 中 NAME=%2 且 VALUE 非空）")
+                                     .arg(method, wantName));
+            return;
+        }
+        qDebug() << QStringLiteral("[BYD MES] GetCustomData NAME=%1 VALUE=%2").arg(wantName, sku);
+        emit sendMesTestvalue(pack.mechines, sku);
         return;
     }
     if (pack.iskeydata == 1) {
