@@ -2269,6 +2269,22 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             else
                 ctx->at->set(dongleCmd, param);
         };
+        // AT+BLEMTU / AT+HSADC / AT+BOMB / AT+GMAC 等 dongle 侧无应答解析：
+        // Timing/WaitReply=false 时只发不收，发完即过步；此时没有回包可判失败，故先卡串口是否已打开
+        if (!def.timing.waitReply) {
+            if (!ctx->dongleSerialPort || !ctx->dongleSerialPort->isOpen()) {
+                ctx->markActiveTestCaseStepDone(false, QStringLiteral("Dongle串口未打开"), QStringLiteral("失败"));
+                ctx->showlog(QStringLiteral("发送失败：请先打开 Dongle 串口后再单步/开测"));
+                return;
+            }
+            sendFn();
+            ctx->canGoNext = true;
+            ctx->sendRetryOver = false;
+            ctx->lastCommandRetryCount = 1;
+            ctx->lastCommandFailReason.clear();
+            ctx->showlog(QStringLiteral("已发送（不等待回包）"));
+            return;
+        }
         int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
         if (timeoutMs <= 0)
             timeoutMs = 3000;
