@@ -481,6 +481,7 @@ HEADERS += \
     lib/qcustomplot/qcustomplot.h \
     mainwindow.h \
     my_set/AbIni.h \
+    my_set/host_ota_version.h \
     my_set/my_typedef.h \
     qlog/qlog.h \
     qlog/qlog_win.h \
