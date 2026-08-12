@@ -472,6 +472,14 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
         comparewaittime->stop();
     });
 
+    // 阻塞步骤里 waitWork 仍在泵事件，QTimer 照常触发，计时不再停在采样前的数值
+    testTimeTicker_->setInterval(200);
+    connect(testTimeTicker_, &QTimer::timeout, this, [this]() {
+        if (isTestContinue && teststate >= 0)
+            ui->test_time->setText(CommonUtils::formatElapsedSeconds(TestTime));
+    });
+    testTimeTicker_->start();
+
     HighRssi = SETTINGS.value("WIFI/HighRssi").toDouble();
     LowRssi = SETTINGS.value("WIFI/LowRssi").toDouble();
     BleHighRssi = SETTINGS.value("BLE/HighRssi").toDouble();

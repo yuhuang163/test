@@ -50,6 +50,10 @@ struct SessionState {
     QString processBackgroundDailyRelativePath;
     qint64 processBackgroundOffsetStart = 0;
     qint64 processBackgroundOffsetEnd = 0;
+    QString residentDailyAbsolutePath;
+    QString residentDailyRelativePath;
+    qint64 residentOffsetStart = 0;
+    qint64 residentOffsetEnd = 0;
     QString result;
 };
 
@@ -145,10 +149,20 @@ QString processBackgroundDailyRelativePath() {
     return logRootRelative() + QStringLiteral("/上位机log/进程后台/") + processBackgroundDailyFileName();
 }
 
+QString residentDailyFileName() {
+    return QSysInfo::machineHostName() + QStringLiteral("_常驻监控_") + CommonUtils::formatDateIso() +
+           QStringLiteral(".log");
+}
+
+QString residentDailyRelativePath() {
+    return logRootRelative() + QStringLiteral("/常驻监控/") + residentDailyFileName();
+}
+
 bool appendLineToFile(const QString& absolutePath, const QString& line, bool writeBomIfNew) {
     QFile file(absolutePath);
     const bool isNew = !file.exists() || file.size() == 0;
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
+    // 行尾已显式写 CRLF，不能再开 Text 模式，否则 \n 被二次翻译成 \r\r\n
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Append)) {
         return false;
     }
     QTextStream out(&file);
@@ -255,7 +269,8 @@ QString exportDailyLogSessionSlice(const QString& dailyAbsolutePath, const QStri
         }
     }
     QFile outFile(outAbs);
-    if (!outFile.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+    // 同 appendLineToFile：显式 CRLF，勿开 Text 模式
+    if (!outFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
         if (error) {
             *error = QStringLiteral("无法写入会话切片");
         }
@@ -310,6 +325,10 @@ QlogSessionInfo toPublicInfo(const SessionState& state) {
     info.processBackgroundDailyRelativePath = state.processBackgroundDailyRelativePath;
     info.processBackgroundOffsetStart = state.processBackgroundOffsetStart;
     info.processBackgroundOffsetEnd = state.processBackgroundOffsetEnd;
+    info.residentDailyAbsolutePath = state.residentDailyAbsolutePath;
+    info.residentDailyRelativePath = state.residentDailyRelativePath;
+    info.residentOffsetStart = state.residentOffsetStart;
+    info.residentOffsetEnd = state.residentOffsetEnd;
     info.valid = !state.absolutePath.isEmpty();
     return info;
 }
@@ -452,6 +471,14 @@ void Qlog::beginSession(int slot, const QString& sn, const QString& mac, const Q
         QDir(QCoreApplication::applicationDirPath()).filePath(state.processBackgroundDailyRelativePath);
     state.processBackgroundOffsetStart = fileSizeOrZero(state.processBackgroundDailyAbsolutePath);
 
+    if (!CommonUtils::ensureLogDirectory(logRootRelative() + QStringLiteral("/常驻监控"))) {
+        qDebug() << QStringLiteral("无法创建常驻监控日志目录");
+    }
+    state.residentDailyRelativePath = residentDailyRelativePath();
+    state.residentDailyAbsolutePath =
+        QDir(QCoreApplication::applicationDirPath()).filePath(state.residentDailyRelativePath);
+    state.residentOffsetStart = fileSizeOrZero(state.residentDailyAbsolutePath);
+
     const QString header = QStringLiteral("===== SESSION BEGIN =====\r\n"
                                           "slot=%1\r\n"
                                           "trace=%2\r\n"
@@ -489,6 +516,7 @@ void Qlog::endSession(int slot, const QString& result) {
     state.result = result.trimmed().isEmpty() ? QStringLiteral("NG") : result.trimmed();
     state.dongleOffsetEnd = fileSizeOrZero(state.dongleDailyAbsolutePath);
     state.processBackgroundOffsetEnd = fileSizeOrZero(state.processBackgroundDailyAbsolutePath);
+    state.residentOffsetEnd = fileSizeOrZero(state.residentDailyAbsolutePath);
 
     const QString footer =
         QStringLiteral("===== SESSION END =====\r\n"
@@ -663,9 +691,7 @@ void Qlog::saveResidentLog(const QString& tag, const QString& msg) {
     const QString folderName = logRootRelative() + QStringLiteral("/常驻监控");
     if (!CommonUtils::ensureLogDirectory(folderName))
         return;
-    const QString fileName = QSysInfo::machineHostName() + QStringLiteral("_常驻监控_")
-                             + CommonUtils::formatDateIso() + QStringLiteral(".log");
-    const QString absolutePath = CommonUtils::joinPath(folderName, fileName);
+    const QString absolutePath = CommonUtils::joinPath(folderName, residentDailyFileName());
     const QString line = CommonUtils::formatTimestampMs() + QStringLiteral(" [")
                          + (tag.isEmpty() ? QStringLiteral("-") : tag) + QStringLiteral("] ") + msg;
     appendLineToFile(absolutePath, line, true);
@@ -696,6 +722,19 @@ QString Qlog::exportProcessBackgroundSessionSlice(const QlogSessionInfo& info, Q
     const QString outRel = logRootRelative() + QStringLiteral("/上位机log/进程后台/") + outName;
     return exportDailyLogSessionSlice(info.processBackgroundDailyAbsolutePath, outRel, info,
                                       info.processBackgroundOffsetStart, info.processBackgroundOffsetEnd, error);
+}
+
+QString Qlog::exportResidentSessionSlice(const QlogSessionInfo& info, QString* error) {
+    if (!info.valid || info.residentDailyAbsolutePath.isEmpty()) {
+        if (error) {
+            *error = QStringLiteral("无常驻监控日志文件");
+        }
+        return {};
+    }
+    const QString outName = sessionFileStem(info) + QStringLiteral("_resident.log");
+    const QString outRel = logRootRelative() + QStringLiteral("/常驻监控/") + outName;
+    return exportDailyLogSessionSlice(info.residentDailyAbsolutePath, outRel, info, info.residentOffsetStart,
+                                      info.residentOffsetEnd, error);
 }
 
 void Qlog::saveTestCsv(const QString& ver, const QString& sn, const QString& macAddress,
