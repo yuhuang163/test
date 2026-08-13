@@ -48,17 +48,6 @@ class QModbusManager : public QObject {
     void setLogFn(LogFn fn);
     void setIsContinueFn(IsContinueFn fn);
 
-    InovanceH5uModbusTcp* h5uTcp();
-    const InovanceH5uModbusTcp* h5uTcp() const;
-    InovanceH5uTcpDevice* h5uDevice();
-    const InovanceH5uTcpDevice* h5uDevice() const;
-
-    InovanceH5uModbusTcp* gcTcp();
-    GcSeriesTcpDevice* gcDevice();
-
-    XinjePlcRtuDevice* xinjiePlcDevice();
-    const XinjePlcRtuDevice* xinjiePlcDevice() const;
-
     bool exec(PlcCmd cmd, const QVariant& param = {}, QVariant* result = nullptr, QString* errorMessage = nullptr);
     bool exec(GcPlcCmd cmd, const QVariant& param = {}, QVariant* result = nullptr, QString* errorMessage = nullptr);
     bool exec(XinjePlcCmd cmd, const QVariant& param = {}, QVariant* result = nullptr, QString* errorMessage = nullptr);
@@ -136,10 +125,6 @@ class QModbusManager : public QObject {
 
   private:
     PlcModbusSession makeSession() const;
-    void syncH5uDeviceBindings();
-    void syncGcDeviceBindings();
-    void syncXinjiePlcDeviceBindings();
-    void syncRtuDeviceBindings();
 
     int stationIndex_ = 1;
     InovanceH5uModbusTcp h5uTcp_;

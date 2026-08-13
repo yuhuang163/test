@@ -19,7 +19,7 @@ class VisaChannel : public QObject {
     struct Config {
         QString resourceAddress;
         int timeoutMs = 3000;
-        /** 仅 ASRL 生效；须与仪器一致，默认 9600，可由 VisaPower/BaudRate 覆盖 */
+        /** 仅 ASRL 生效；须与仪器一致，当前无配置项覆盖，固定 9600 */
         int asrlBaudRate = 9600;
     };
 
