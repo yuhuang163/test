@@ -6,6 +6,7 @@
 #include <QHash>
 #include <QPair>
 #include <QElapsedTimer>
+#include <QShowEvent>
 #include <QTimer>
 #include <QWidget>
 
@@ -92,7 +93,7 @@ class QFreeWork : public test_base {
         return activeTestCase_;
     }
     QString currentMacAddress() const;
-    QString parseMacFromSn(const QString& snCode);
+    QString parseMacFromSn(const QString& snCode) const;
     /** 扫码框 / MES 下发的 PCBA SN（非整机 SN） */
     QString resolvedPcbaSnText() const;
     /** 本地整机 SN（三元组申请等写入，可扩展其它来源） */
@@ -308,16 +309,21 @@ class QFreeWork : public test_base {
     /** 按当前工站 flow.ini [SerialUi] 刷新治具/产品/万用表串口行显隐与标签 */
     void applyStationSerialUiConfig();
     bool eventFilter(QObject* watched, QEvent* event) override;
+    void showEvent(QShowEvent* event) override;
     void reportBydSfcKey(const QString& dataName, const QVariant& dataValue, int qty = 1);
     void reportBydBluetoothMesKeyMaterials();
     /** MES GetCustomData：取 DATA 中 NAME=ROOTSKU 的 VALUE，写入 pack.sku */
     void fetchMesRootSku();
+    /** BYD：日志页右侧显示 mes_config.ini 的 Resource（工单） */
+    void refreshBydMesResourceDisplay();
     bool failTupleWriteIfNoValidField(const QString& stepName, bool fieldOk, const QString& emptyReason);
     void reportTupleWriteRecord();
     void debugUpdateTupleMacStatus(const TestCaseDefinition& def);
     void emitFixtureMultiGateTableRows(const QVector<TestCaseGate>& gates, const QString& reportType,
                                        const QVariant& payload, bool& allPass, QString& detailOut);
     void applyRuntimeSnGateExpected(QVector<TestCaseGate>& gates);
+    /** Gate/Expected 中的 $MAC/$SN 等占位符展开为运行时值（$MAC=界面 MAC 框） */
+    void applyRuntimePlaceholderGateExpected(QVector<TestCaseGate>& gates);
     void appendTestCaseMes(const TestCaseDefinition& def, bool pass, const QString& testData);
     /** 多字段卡控（如杰理 RSSI/频偏）按分项各写一条 MES，与结果表行对齐 */
     void appendMultiGateTestCaseMes(const QVector<TestCaseGate>& gates, const QString& reportType,

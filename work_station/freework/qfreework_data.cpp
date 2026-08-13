@@ -9,6 +9,8 @@
 #include "qproduct.h"
 #include "qprotocol_types.h"
 #include "test_case.h"
+#include "agreement/mes_protocol/device/byd_mes/bydmes.h"
+#include "ui_qfreework.h"
 
 namespace {
 
@@ -105,6 +107,31 @@ constexpr char kTuplePosInactiveStyle[] =
 constexpr char kTuplePosActiveStyle[] =
     "font-size: 18px; background-color: #00FF00; color: black; border: 2px solid black; border-radius: 6px; "
     "padding: 4px 12px;";
+
+/** 整机 SN 第 9～11 位（1 起算，共 3 位）须与申请三元组时上传的 sku 一致（如 …BBBBPH9…） */
+bool wholeMachineSnEmbeddedSkuMatches(const QString& wholeSn, const QString& sku, QString* detailOut) {
+    const QString sn = wholeSn.trimmed();
+    const QString expect = sku.trimmed();
+    if (expect.isEmpty()) {
+        if (detailOut)
+            *detailOut = QStringLiteral("SKU为空");
+        return false;
+    }
+    if (sn.size() < 11) {
+        if (detailOut)
+            *detailOut = QStringLiteral("SN长度不足11位");
+        return false;
+    }
+    const QString embedded = sn.mid(8, 3);
+    if (embedded.compare(expect, Qt::CaseInsensitive) != 0) {
+        if (detailOut) {
+            *detailOut =
+                QStringLiteral("SN第9-11位=%1与SKU=%2不一致").arg(embedded, expect);
+        }
+        return false;
+    }
+    return true;
+}
 
 } // namespace
 
@@ -1007,17 +1034,12 @@ void QFreeWork::reportBydSfcKey(const QString& dataName, const QVariant& dataVal
 
 void QFreeWork::fetchMesRootSku() {
     pack.sku.clear();
-    if (!ui || !ui->isusemes->isChecked()) {
-        markActiveTestCaseStepDone(false, QStringLiteral("未勾选MES"), QStringLiteral("失败"));
-        showlog(QStringLiteral("获取 MES SKU 失败：请先勾选「MES」"));
-        return;
-    }
     MesPacketData p = pack;
     p.mechines = getIndex();
     p.iskeydata = 2;
     p.instruct_num = QStringLiteral("ROOTSKU");
     pack.iskeydata = 2;
-    showlog(QStringLiteral("MES：GetCustomData 获取 ROOTSKU"));
+    showlog(QStringLiteral("MES：GetCustomData 获取 ROOTSKU（与「是否过站」开关无关）"));
     emit send_mes_test_value(p);
     pack.iskeydata = 0;
     if (!isTestContinue)
@@ -1029,6 +1051,32 @@ void QFreeWork::fetchMesRootSku() {
     }
     showlog(QStringLiteral("获取 MES SKU 成功：ROOTSKU=%1").arg(pack.sku));
     markActiveTestCaseStepDone(true, pack.sku, QStringLiteral("通过"));
+}
+
+void QFreeWork::refreshBydMesResourceDisplay() {
+    if (!ui || !ui->label_bydMesResource || !ui->label_bydMesResourceCaption) {
+        return;
+    }
+    const bool isByd = pack.factory.trimmed().compare(QStringLiteral("byd"), Qt::CaseInsensitive) == 0;
+    ui->label_bydMesResourceCaption->setVisible(isByd);
+    ui->label_bydMesResource->setVisible(isByd);
+    if (!isByd) {
+        return;
+    }
+    const QString resource = bydmes::externalSettingsValue(QStringLiteral("Resource"));
+    if (resource.isEmpty()) {
+        ui->label_bydMesResource->setText(QStringLiteral("未配置"));
+        ui->label_bydMesResource->setStyleSheet(
+            QStringLiteral("font-size: 22px; font-weight: bold; color: #8c8c8c; "
+                           "background-color: #fafafa; border: 2px dashed #d9d9d9; "
+                           "border-radius: 8px; padding: 10px 8px;"));
+        return;
+    }
+    ui->label_bydMesResource->setText(resource);
+    ui->label_bydMesResource->setStyleSheet(
+        QStringLiteral("font-size: 26px; font-weight: bold; color: #003366; "
+                       "background-color: #E8F4FC; border: 2px solid #1890FF; "
+                       "border-radius: 8px; padding: 10px 8px;"));
 }
 
 void QFreeWork::reportBydBluetoothMesKeyMaterials() {
@@ -1147,22 +1195,40 @@ void QFreeWork::applyTupleByMac() {
     applyMap[QStringLiteral("position")] = position;
     service.get(TupleCmd::ApplyTupleByMac, applyMap);
     tupleData_ = service.lastApplyResult();
-    stepRuntime_.pass = tupleData_.success;
-    stepRuntime_.testData = tupleData_.success
-        ? QString("productKey:%1 deviceName:%2 deviceSecret:%3")
-              .arg(tupleData_.productKey, tupleData_.deviceName, tupleData_.deviceSecret)
-        : tupleData_.error;
+    stepRuntime_.done = true;
+    stepRuntime_.ask = QStringLiteral("获取成功");
     if (!tupleData_.success) {
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = tupleData_.error;
         TestResult = failValue;
-        showlog("三元组获取失败：" + tupleData_.error);
+        showlog(QStringLiteral("三元组获取失败：") + tupleData_.error);
         return;
     }
-    showlog(QStringLiteral("三元组获取成功：sn=%1 productKey=%2 deviceName=%3 deviceSecret=%4 mac=%5")
-                .arg(tupleData_.sn, tupleData_.productKey, tupleData_.deviceName, tupleData_.deviceSecret, tupleData_.mac));
-    if (!tupleData_.sn.trimmed().isEmpty()) {
-        setWholeMachineSn(tupleData_.sn);
-        showlog(QStringLiteral("已替换界面SN：%1").arg(resolvedPcbaSnText()));
+    const QString wholeSn = tupleData_.sn.trimmed();
+    if (wholeSn.isEmpty()) {
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = QStringLiteral("整机SN为空");
+        TestResult = failValue;
+        showlog(QStringLiteral("三元组获取失败：云端返回整机SN为空"));
+        return;
     }
+    QString skuCheckDetail;
+    if (!wholeMachineSnEmbeddedSkuMatches(wholeSn, sku, &skuCheckDetail)) {
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = skuCheckDetail;
+        TestResult = failValue;
+        showlog(QStringLiteral("三元组获取失败：整机SN SKU位校验未通过，%1（SN=%2，上传SKU=%3）")
+                    .arg(skuCheckDetail, wholeSn, sku));
+        return;
+    }
+    stepRuntime_.pass = true;
+    stepRuntime_.testData = QStringLiteral("SN:%1 productKey:%2 deviceName:%3 deviceSecret:%4")
+                                .arg(wholeSn, tupleData_.productKey, tupleData_.deviceName, tupleData_.deviceSecret);
+    showlog(QStringLiteral("三元组获取成功：sn=%1 productKey=%2 deviceName=%3 deviceSecret=%4 mac=%5")
+                .arg(wholeSn, tupleData_.productKey, tupleData_.deviceName, tupleData_.deviceSecret, tupleData_.mac));
+    showlog(QStringLiteral("整机SN SKU位校验通过：第9-11位=%1").arg(wholeSn.mid(8, 3)));
+    setWholeMachineSn(wholeSn);
+    showlog(QStringLiteral("已替换界面SN：%1").arg(resolvedPcbaSnText()));
     // 蓝牙测试关键物料：与 MES「蓝牙测试」工站 SFC 生命周期表一致，各发一条 AddSfcKey（QTY=1）
     reportBydBluetoothMesKeyMaterials();
 }

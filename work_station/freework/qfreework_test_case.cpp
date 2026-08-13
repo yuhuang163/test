@@ -908,6 +908,33 @@ void QFreeWork::applyRuntimeSnGateExpected(QVector<TestCaseGate>& gates) {
     gates[0].expected = resolvedPcbaSnText();
 }
 
+void QFreeWork::applyRuntimePlaceholderGateExpected(QVector<TestCaseGate>& gates) {
+    for (TestCaseGate& g : gates) {
+        const QString expected = g.expected.trimmed();
+        if (expected.isEmpty())
+            continue;
+        if (isRuntimeMacPlaceholder(expected)) {
+            // $MAC = 界面 MAC 框（开局解析 SN / MES 已填入）；不用 macAddress 成员，避免读 MAC 回包后自比自过
+            QString uiMac;
+            if (ui && ui->macInput)
+                uiMac = ui->macInput->text().trimmed();
+            if (uiMac.isEmpty() || uiMac == QStringLiteral("没有mac地址"))
+                g.expected.clear();
+            else
+                g.expected = uiMac;
+            continue;
+        }
+        if (isRuntimePcbaSnPlaceholder(expected) || isRuntimeWholeMachineSnPlaceholder(expected)) {
+            g.expected = resolveTestCaseSendPlaceholder(expected);
+            continue;
+        }
+        if (tuplePlaceholderKind(expected) != TuplePlaceholderKind::None
+            || expected.startsWith(QStringLiteral("$SETTINGS:"))) {
+            g.expected = resolveTestCaseSendPlaceholder(expected);
+        }
+    }
+}
+
 void QFreeWork::emitFixtureMultiGateTableRows(const QVector<TestCaseGate>& gates, const QString& reportType,
                                               const QVariant& payload, bool& allPass, QString& detailOut) {
     allPass = true;
@@ -979,6 +1006,7 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
     }
 
     applyRuntimeSnGateExpected(gatesForEval);
+    applyRuntimePlaceholderGateExpected(gatesForEval);
 
     bool pass = true;
     QString detail;

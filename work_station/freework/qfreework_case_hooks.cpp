@@ -241,17 +241,24 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
     }
 
     if (hookId == QStringLiteral("MAC_WRITE_ROOT")) {
-         fw->showlog(QStringLiteral("MAC_WRITE_ROOT"));
+        fw->showlog(QStringLiteral("MAC_WRITE_ROOT"));
         const QString snText = fw->resolvedPcbaSnText();
         const QString macText = fw->parseMacFromSn(snText);
-        if (macText.isEmpty()) {
+        if (!macText.contains(QLatin1Char(':'))) {
             fw->stepRuntime_.done = true;
             fw->stepRuntime_.pass = false;
-            fw->stepRuntime_.testData = QStringLiteral("从SN解析MAC失败");
+            fw->stepRuntime_.testData = macText.isEmpty() ? QStringLiteral("从SN解析MAC失败") : macText;
             fw->TestResult = fw->failValue;
-            fw->showlog(QStringLiteral("写入MAC码失败：无法从SN解析MAC，请检查SN格式"));
+            fw->showlog(QStringLiteral("写入MAC码失败：无法从SN解析MAC，请检查SN格式（SN=%1，解析=%2）")
+                            .arg(snText, macText.isEmpty() ? QStringLiteral("空") : macText));
             return;
         }
+        // 开局 MAC 框已有 SN 解析值；$MAC 始终取该框。写入可能是新 MAC，须回填框
+        fw->macAddress = macText;
+        if (fw->ui && fw->ui->macInput)
+            fw->ui->macInput->setText(macText);
+        if (fw->ui && fw->ui->macLabel)
+            fw->ui->macLabel->setText(QStringLiteral("蓝牙mac: ") + macText);
         fw->stepRuntime_.testData = macText;
         fw->setCommandWaitSource(CommandWaitSource::ProductProtocol);
         fw->sendCommandWithRetry([fw, macText]() {

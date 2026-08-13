@@ -34,7 +34,9 @@
 #include "qproduct.h"
 #include "test_data_upload_service.h"
 #include "test_record_store.h"
+#include "agreement/mes_protocol/device/byd_mes/bydmes.h"
 #include "ui_qfreework.h"
+#include <QShowEvent>
 
 namespace {
 
@@ -334,9 +336,15 @@ void QFreeWork::appendTestCaseMes(const TestCaseDefinition& def, bool pass, cons
             stdVal = QStringLiteral("<") + QString::number(def.gate.high);
             break;
         case TestCaseGateOp::Eq:
-        case TestCaseGateOp::CompareVersions:
-            stdVal = def.gate.expected;
+        case TestCaseGateOp::CompareVersions: {
+            stdVal = def.gate.expected.trimmed();
+            if (!stdVal.isEmpty()) {
+                const QString resolved = resolveTestCaseSendPlaceholder(stdVal);
+                if (resolved != stdVal)
+                    stdVal = resolved;
+            }
             break;
+        }
         }
     }
     // MES VALUE 保持无单位；UNIT 单独上报（界面 testData 可能已带单位后缀）
@@ -455,6 +463,7 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     ui->mes_state->setText("MES");
     ui->mes_state->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
                                  "padding: 10px; text-align: center; ");
+    refreshBydMesResourceDisplay();
 
     ui->banding_result->setText("绑定:WAIT");
     ui->banding_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
@@ -523,6 +532,12 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     }
     ui->tabWidget->setCurrentIndex(0); // 设置当前页为第一页
 }
+
+void QFreeWork::showEvent(QShowEvent* event) {
+    test_base::showEvent(event);
+    refreshBydMesResourceDisplay();
+}
+
 void QFreeWork::refreshOrderedTestIndexes() {
     const QString stationName = TestCaseStore::loadSelectedFlowStationName();
     const QString tabName = stationName.isEmpty() ? "自由工站" : stationName;
@@ -675,7 +690,7 @@ QString parseMacFromSnXwdRule(const QString& snCode) {
 
 } // namespace
 
-QString QFreeWork::parseMacFromSn(const QString& snCode) {
+QString QFreeWork::parseMacFromSn(const QString& snCode) const {
     // 一律按 SN 长度解析：28=PCBA(offset4)，35=整机(offset11)；板厂长码保留双偏移兜底
     return parseMacFromSnXwdRule(snCode);
 }

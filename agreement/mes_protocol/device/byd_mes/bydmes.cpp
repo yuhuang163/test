@@ -305,32 +305,51 @@ void bydmes::clearExternalMesConfig() {
     g_externalMesResolvedIniPath.clear();
 }
 
-QString bydmes::settingsValue(const QString& key, const QString& fallback) const {
+QString bydmes::externalSettingsValue(const QString& key, const QString& fallback) {
+    const QString k = key.trimmed();
+    if (k.isEmpty()) {
+        return fallback;
+    }
+    loadExternalMesConfig(nullptr);
     QString iniPathCopy;
     {
         QMutexLocker locker(&g_externalMesConfigMutex);
         if (g_externalMesResolvedIniPath.isEmpty()) {
-            if (!key.isEmpty()) {
-                qWarning() << QStringLiteral("[BYD MES 外部配置] 外部 ini 未登记，无法读取键「%1」").arg(key);
-            }
             return fallback;
         }
         iniPathCopy = g_externalMesResolvedIniPath;
-        QTextCodec* iniCodec = bydMesPickIniFileCodec(iniPathCopy);
-        QSettings s(iniPathCopy, QSettings::IniFormat);
-        s.setIniCodec(iniCodec);
-        s.sync();
-        const QString value = bydMesExternalIniValue(s, key);
-        if (!value.isEmpty()) {
-            if (!settingsValueLoggedKeys_.contains(key)) {
-                qDebug() << "BYD MES settingsValue:" << key << "=" << value;
-                settingsValueLoggedKeys_.insert(key);
-            }
-            return value;
-        }
     }
-    qWarning() << QStringLiteral("[BYD MES 外部配置] 外部文件未读到参数「%1」（路径：%2），将使用占位/空值")
-                      .arg(key, iniPathCopy);
+    QTextCodec* iniCodec = bydMesPickIniFileCodec(iniPathCopy);
+    QSettings s(iniPathCopy, QSettings::IniFormat);
+    s.setIniCodec(iniCodec);
+    s.sync();
+    QString value = bydMesExternalIniValue(s, k);
+    if (value.isEmpty() && k.compare(QStringLiteral("Resource"), Qt::CaseInsensitive) == 0) {
+        value = bydMesExternalIniValue(s, QStringLiteral("resouce"));
+    }
+    return value.isEmpty() ? fallback : value;
+}
+
+QString bydmes::settingsValue(const QString& key, const QString& fallback) const {
+    const QString value = bydmes::externalSettingsValue(key, fallback);
+    if (!value.isEmpty() && value != fallback) {
+        if (!settingsValueLoggedKeys_.contains(key)) {
+            qDebug() << "BYD MES settingsValue:" << key << "=" << value;
+            settingsValueLoggedKeys_.insert(key);
+        }
+        return value;
+    }
+    QString iniPathCopy;
+    {
+        QMutexLocker locker(&g_externalMesConfigMutex);
+        iniPathCopy = g_externalMesResolvedIniPath;
+    }
+    if (iniPathCopy.isEmpty() && !key.isEmpty()) {
+        qWarning() << QStringLiteral("[BYD MES 外部配置] 外部 ini 未登记，无法读取键「%1」").arg(key);
+    } else if (!iniPathCopy.isEmpty()) {
+        qWarning() << QStringLiteral("[BYD MES 外部配置] 外部文件未读到参数「%1」（路径：%2），将使用占位/空值")
+                          .arg(key, iniPathCopy);
+    }
     return fallback;
 }
 

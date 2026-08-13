@@ -20,6 +20,8 @@ class bydmes : public Qmes {
     static bool loadExternalMesConfig(QString* errorMessage = nullptr);
     /// 清除已登记的外部 ini 路径
     static void clearExternalMesConfig();
+    /// 从已登记的外部 mes_config.ini 读取键值（如 Resource）；未登记时尝试 loadExternalMesConfig
+    static QString externalSettingsValue(const QString& key, const QString& fallback = QString());
 
     void LogIn(MesPacketData pack) override;
     void ProcessInspection(MesPacketData pack) override;

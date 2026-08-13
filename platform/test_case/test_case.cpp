@@ -5336,6 +5336,15 @@ bool GateRegistry::evaluate(const TestCaseGate& gate, const QString& reportType,
             if (expected.isEmpty()) {
                 passOut = false;
                 detailOut = QStringLiteral("当前=%1, 未配置期望( Gate/Expected 或 MES/UI SN)").arg(actual.isEmpty() ? QStringLiteral("-") : actual);
+            } else if (reportType == QLatin1String("ProtocolMacData") && gate.field == QLatin1String("mac")) {
+                auto normalizeMac = [](QString s) {
+                    s.remove(QLatin1Char(':'));
+                    s.remove(QLatin1Char('-'));
+                    s.remove(QLatin1Char(' '));
+                    return s.toUpper();
+                };
+                passOut = (normalizeMac(actual) == normalizeMac(expected));
+                detailOut = QStringLiteral("当前=%1, 期望=%2").arg(actual, expected);
             } else {
                 passOut = (actual == expected);
                 detailOut = QStringLiteral("当前=%1, 期望=%2").arg(actual, expected);
