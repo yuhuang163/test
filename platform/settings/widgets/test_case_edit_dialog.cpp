@@ -26,6 +26,8 @@
 #include <QSignalBlocker>
 #include <QColor>
 #include <QApplication>
+#include <QComboBox>
+#include <QEvent>
 
 #include <algorithm>
 #include <functional>
@@ -35,6 +37,19 @@
 #endif
 
 namespace {
+
+/** 屏蔽下拉框滚轮改值：产线小屏滚动页面时，滚轮落到下拉框上会误改选中项。 */
+class ComboBoxWheelGuard : public QObject {
+  public:
+    using QObject::QObject;
+
+  protected:
+    bool eventFilter(QObject* watched, QEvent* event) override {
+        if (event->type() == QEvent::Wheel)
+            return true; // 吞掉滚轮：下拉框不再因滚轮改值，只能点击选择
+        return QObject::eventFilter(watched, event);
+    }
+};
 
 QVariantMap sendParamAsJsonMap(const QVariant& param) {
     // DeviceSnPayload 必须先于 canConvert/toMap：payload 的 toMap() 恒为空，UI 会显示成 {}
@@ -119,6 +134,9 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("readChannel"), QStringLiteral("治具读电流通道 CH1/CH2")},
         {QStringLiteral("MachineIndex"), QStringLiteral("治具机号")},
         {QStringLiteral("machineIndex"), QStringLiteral("治具机号")},
+        {QStringLiteral("baseUrl"), QStringLiteral("接口地址")},
+        {QStringLiteral("userName"), QStringLiteral("用户名")},
+        {QStringLiteral("password"), QStringLiteral("密码")},
     };
     if (kMap.contains(k))
         return kMap.value(k);
@@ -283,11 +301,34 @@ void configureSendParamTable(QTableWidget* table, bool namedKeys) {
     table->setSelectionBehavior(QAbstractItemView::SelectRows);
 }
 
-void setSendParamTableFromMap(QTableWidget* table, const QVariantMap& map) {
+/** 三元组云端登录等指令的参数字段固定显示顺序（账号在密码上方）。 */
+QStringList sendParamPreferredOrder(TestCaseSendChannel channel, const QString& cmdName) {
+    if (channel == TestCaseSendChannel::Cloud && cmdName == QLatin1String("Login"))
+        return {QStringLiteral("baseUrl"), QStringLiteral("userName"), QStringLiteral("password")};
+    return {};
+}
+
+void sortSendParamKeys(QStringList& keys, const QStringList& preferredOrder) {
+    QStringList ordered;
+    for (const QString& k : preferredOrder) {
+        if (keys.contains(k))
+            ordered.append(k);
+    }
+    QStringList rest;
+    for (const QString& k : keys) {
+        if (!ordered.contains(k))
+            rest.append(k);
+    }
+    rest.sort(Qt::CaseInsensitive);
+    keys = ordered + rest;
+}
+
+void setSendParamTableFromMap(QTableWidget* table, const QVariantMap& map,
+                              const QStringList& preferredOrder = {}) {
     QSignalBlocker blocker(table);
     configureSendParamTable(table, true);
     QStringList keys = map.keys();
-    keys.sort(Qt::CaseInsensitive);
+    sortSendParamKeys(keys, preferredOrder);
     for (const QString& key : keys) {
         const int r = table->rowCount();
         table->insertRow(r);
@@ -305,7 +346,8 @@ void setSendParamTableFromMap(QTableWidget* table, const QVariantMap& map) {
 
 /** 按模板列出全部参数字段；userMap 覆盖已有值，模板缺省值仅作灰色占位提示。 */
 void setSendParamTableFromMapWithTemplate(QTableWidget* table, const QVariantMap& userMap,
-                                          const QVariantMap& templateMap) {
+                                          const QVariantMap& templateMap,
+                                          const QStringList& preferredOrder = {}) {
     QSignalBlocker blocker(table);
     configureSendParamTable(table, true);
     QStringList ordered;
@@ -320,6 +362,7 @@ void setSendParamTableFromMapWithTemplate(QTableWidget* table, const QVariantMap
     }
     extras.sort(Qt::CaseInsensitive);
     ordered.append(extras);
+    sortSendParamKeys(ordered, preferredOrder);
 
     for (const QString& key : ordered) {
         const int r = table->rowCount();
@@ -517,6 +560,12 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
         }
         return {};
     }
+    if (channel == TestCaseSendChannel::Cloud && cmdName == QLatin1String("Login")) {
+        // 三元组云端登录：提供 baseUrl/userName/password 字段；显示顺序见 sendParamPreferredOrder（账号在密码上方）
+        return QVariantMap{{QStringLiteral("baseUrl"), QString()},
+                           {QStringLiteral("userName"), QString()},
+                           {QStringLiteral("password"), QString()}};
+    }
     return {};
 }
 
@@ -524,11 +573,12 @@ void applySendParamTableWithTemplate(QTableWidget* table, TestCaseSendChannel ch
                                      const QString& cmdName, const QVariantMap& userMap) {
     if (!table)
         return;
+    const QStringList preferred = sendParamPreferredOrder(channel, cmdName);
     const QVariantMap tmpl = sendParamDefaultMapForCmd(channel, device, cmdName);
     if (!tmpl.isEmpty())
-        setSendParamTableFromMapWithTemplate(table, userMap, tmpl);
+        setSendParamTableFromMapWithTemplate(table, userMap, tmpl, preferred);
     else
-        setSendParamTableFromMap(table, userMap);
+        setSendParamTableFromMap(table, userMap, preferred);
 }
 
 void setSendParamTableFromString(QTableWidget* table, const QString& value) {
@@ -1295,6 +1345,12 @@ void fillHookCombo(QComboBox* box) {
 TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(new Ui::TestCaseEditDialog) {
     ui->setupUi(this);
 
+    // 禁用本页面下拉框的滚轮改值，避免小屏滚动页面时误触修改
+    auto* comboWheelGuard = new ComboBoxWheelGuard(this);
+    for (QComboBox* combo : findChildren<QComboBox*>()) {
+        combo->installEventFilter(comboWheelGuard);
+    }
+
     // 主体可滚动，底部保存/取消始终可见，避免矮屏点不到按钮
     auto* scroll = new QScrollArea(this);
     scroll->setWidgetResizable(true);
@@ -1399,6 +1455,7 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
         if (!ui->tableWidget_sendParam || ui->tableWidget_sendParam->columnCount() < 2)
             return;
         QVariantMap tmpl;
+        QStringList preferred;
         if (ui->checkBox_hookEnabled->isChecked() && hookUsesSendParamUi(comboData(ui->comboBox_hookId))) {
             tmpl = hookSendParamDefaultMap(comboData(ui->comboBox_hookId));
         } else {
@@ -1406,6 +1463,7 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
             const QString device = comboData(ui->comboBox_productProtocol);
             const QString cmdName = comboData(ui->comboBox_deviceCmd);
             tmpl = sendParamDefaultMapForCmd(channel, device, cmdName);
+            preferred = sendParamPreferredOrder(channel, cmdName);
         }
         if (tmpl.isEmpty()) {
             QMessageBox::information(this, QStringLiteral("恢复默认参数表"),
@@ -1413,7 +1471,7 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
             return;
         }
         const QVariantMap current = readSendParamMapFromTable(ui->tableWidget_sendParam);
-        setSendParamTableFromMapWithTemplate(ui->tableWidget_sendParam, current, tmpl);
+        setSendParamTableFromMapWithTemplate(ui->tableWidget_sendParam, current, tmpl, preferred);
     });
     // 双击参数名列：修改英文键（界面仍只显示中文）
     connect(ui->tableWidget_sendParam, &QTableWidget::cellDoubleClicked, this, [this](int row, int column) {
