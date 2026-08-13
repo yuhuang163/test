@@ -37,6 +37,7 @@
 #include "test_data_upload_service.h"
 #include "test_record_store.h"
 #include "test_case.h"
+#include "visa_channel.h"
 
 #pragma comment(lib, "hid.lib")
 #pragma comment(lib, "setupapi.lib")
@@ -81,6 +82,7 @@ test_base::test_base(QWidget* parent) : QWidget(parent),
                                         at(new QatManager(dongleSerialPort, this)),
                                         usbSerialPort(usbSerialChannel_->port()),
                                         scpiUsbManager_(this),
+                                        scpiVisaManager_(this),
                                         jigSerialPort(jigSerialChannel_->port()),
                                         jig(new XwdFixtureDevice(jigSerialPort)),
                                         productSerialPort(productSerialChannel_->port()),
@@ -228,12 +230,6 @@ void test_base::signalAndslot() {
 
 void test_base::resetVisaBackend() {
     scpiVisaManager_.closeConnection();
-}
-
-void test_base::releaseVisaBackendAfterTest() {
-    const QString addr = scpiVisaManager_.visaConfig().visaAddress.trimmed();
-    if (addr.startsWith(QStringLiteral("ASRL"), Qt::CaseInsensitive))
-        scpiVisaManager_.closeConnection();
 }
 
 void test_base::scanSerialPorts() {
@@ -858,7 +854,7 @@ void test_base::onCommandRetryTimerTimeout() {
     }
 }
 
-int test_base::sendCommandWithRetry(std::function<void()> commandFunc, int timeoutMs) {
+int test_base::sendCommandWithRetry(std::function<void()> commandFunc, int timeoutMs, bool allowResend) {
     if (commandRetryTimer) {
         disconnect(commandRetryTimer, &QTimer::timeout, this, nullptr);
         commandRetryTimer->stop();
@@ -878,11 +874,14 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc, int timeo
     // timeoutMs：步骤「指令超时」总时长（不是重试间隔）
     const int totalMs = qMax(100, timeoutMs);
     commandRetryTimeoutMs_ = totalMs;
-    // 窗口内按间隔补发；间隔夹在 [200, 2000]，且约 total/3
-    const int thirdMs = totalMs / 3;
-    int intervalMs = qBound(200, thirdMs > 0 ? thirdMs : 200, 2000);
-    if (intervalMs >= totalMs)
-        intervalMs = totalMs;
+    // 窗口内按间隔补发；蓝牙连接类指令只发一次，避免 DCON 重入打断 Dongle 连接流程
+    int intervalMs = totalMs;
+    if (allowResend) {
+        const int thirdMs = totalMs / 3;
+        intervalMs = qBound(200, thirdMs > 0 ? thirdMs : 200, 2000);
+        if (intervalMs >= totalMs)
+            intervalMs = totalMs;
+    }
     commandRetryDeadlineMs_ = QDateTime::currentMSecsSinceEpoch() + totalMs;
 
     if (commandRetryFunc_) {

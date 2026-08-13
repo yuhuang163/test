@@ -5,6 +5,8 @@
 #include <QObject>
 #include <QString>
 
+// 用相对路径：Cursor/clangd 无 qmake INCLUDEPATH 时也能解析到宏，避免 #ifdef 整段发灰
+#include "../../../lib/visa/have_ni_visa.h"
 #ifdef HAVE_NI_VISA
 #include <visa.h>
 #endif
@@ -17,6 +19,8 @@ class VisaChannel : public QObject {
     struct Config {
         QString resourceAddress;
         int timeoutMs = 3000;
+        /** 仅 ASRL 生效；须与仪器一致，当前无配置项覆盖，固定 9600 */
+        int asrlBaudRate = 9600;
     };
 
     explicit VisaChannel(QObject* parent = nullptr);
@@ -26,11 +30,17 @@ class VisaChannel : public QObject {
     Config config() const;
 
     bool ensureConnected();
+    /** 释放本通道引用。TCPIP 可保活；GPIB/ASRL 引用归零时真 viClose。 */
     void close();
     bool isOpen() const;
 
     bool write(const QByteArray& data);
     bool read(QByteArray* out, int maxBytes = 1024);
+
+    /** 「配置Visa程控电源」开局：强制关闭该地址进程内共享句柄，避免僵死会话占线。 */
+    static void discardIdleSharedSession(const QString& resourceAddress);
+    /** 统一延时：与 test_base::waitWork 同款（processEvents）。 */
+    static void waitWork(int ms);
 
   private:
     Config config_;

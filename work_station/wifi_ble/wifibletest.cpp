@@ -243,7 +243,7 @@ bool wifibletest::failTupleWriteIfNoValidField(const QString& stepName, bool fie
 }
 
 void wifibletest::startTupleWriteProductKey() {
-    if (failTupleWriteIfNoValidField(QStringLiteral("写入productKey"), !tupleData_.productKey.isEmpty(), QStringLiteral("productKey为空"))) {
+    if (failTupleWriteIfNoValidField(QStringLiteral("写入productID"), !tupleData_.productKey.isEmpty(), QStringLiteral("productKey为空"))) {
         return;
     }
     sendCommandWithRetry([&]() {
@@ -252,7 +252,7 @@ void wifibletest::startTupleWriteProductKey() {
 }
 
 void wifibletest::startTupleWriteDeviceName() {
-    if (failTupleWriteIfNoValidField(QStringLiteral("写入deviceName"), !tupleData_.deviceName.isEmpty(), QStringLiteral("deviceName为空"))) {
+    if (failTupleWriteIfNoValidField(QStringLiteral("写入deviceId"), !tupleData_.deviceName.isEmpty(), QStringLiteral("deviceName为空"))) {
         return;
     }
     sendCommandWithRetry([&]() {
@@ -1897,7 +1897,7 @@ void wifibletest::startTask() {
             } else if (canGoNext) {
                 const bool ok = !sendRetryOver;
                 appendTupleMesSegment(QStringLiteral("WRITE_PRODUCT_KEY"), ok ? tupleData_.productKey : QStringLiteral("FAIL"));
-                appendTupleTestResult(QStringLiteral("写入productKey"), ok ? tupleData_.productKey : QStringLiteral("超时"), ok ? passValue : failValue);
+                appendTupleTestResult(QStringLiteral("写入productID"), ok ? tupleData_.productKey : QStringLiteral("超时"), ok ? passValue : failValue);
                 if (!ok) {
                     TestResult = failValue;
                     state = STATE_SAVE_RESULT;
@@ -1915,7 +1915,7 @@ void wifibletest::startTask() {
             } else if (canGoNext) {
                 const bool ok = !sendRetryOver;
                 appendTupleMesSegment(QStringLiteral("WRITE_DEVICE_NAME"), ok ? tupleData_.deviceName : QStringLiteral("FAIL"));
-                appendTupleTestResult(QStringLiteral("写入deviceName"), ok ? tupleData_.deviceName : QStringLiteral("超时"), ok ? passValue : failValue);
+                appendTupleTestResult(QStringLiteral("写入deviceId"), ok ? tupleData_.deviceName : QStringLiteral("超时"), ok ? passValue : failValue);
                 if (!ok) {
                     TestResult = failValue;
                     state = STATE_SAVE_RESULT;

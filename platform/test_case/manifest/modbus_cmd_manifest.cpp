@@ -42,6 +42,18 @@ const Row kRows[] = {
      u8"例读寄存器0起4个：01 03 00 00 00 04 44 09\r\n"
      u8"设置只下发；读取下发后等回包（FC03 且≥4字节数据时解析为 ℃）",
      kBoth},
+    {ModbusDeviceRoute::XinjiePlcRtu, "Connect", u8"连接信捷 PLC RTU",
+     u8"Param：comPort（可空，默认工位万用表串口或 XINJE_PLC/ComPort）、baudRate（默认19200）、slaveId、parity（默认even）", kSet},
+    {ModbusDeviceRoute::XinjiePlcRtu, "Disconnect", u8"断开信捷 PLC RTU", nullptr, kSet},
+    {ModbusDeviceRoute::XinjiePlcRtu, "IsConnected", u8"信捷 PLC 是否已连接", nullptr, kGet},
+    {ModbusDeviceRoute::XinjiePlcRtu, "WriteCoil", u8"写线圈(M/Y/S/T/C)",
+     u8"Param：address（如 M100、Y0）、value=true/false、expectReply（默认false只发不收）", kSet},
+    {ModbusDeviceRoute::XinjiePlcRtu, "ReadCoils", u8"读线圈", u8"Param：address、quantity（默认1）", kGet},
+    {ModbusDeviceRoute::XinjiePlcRtu, "ReadDiscreteInputs", u8"读离散输入(X)", u8"Param：address（如 X0）、quantity", kGet},
+    {ModbusDeviceRoute::XinjiePlcRtu, "WriteRegister", u8"写保持寄存器(D/T/C)",
+     u8"Param：address（如 D100）、value、expectReply（默认false只发不收）", kSet},
+    {ModbusDeviceRoute::XinjiePlcRtu, "ReadHoldingRegisters", u8"读保持寄存器",
+     u8"Param：address（如 D100）、quantity（默认1）", kGet},
 };
 
 } // namespace

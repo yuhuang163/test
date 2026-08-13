@@ -192,7 +192,7 @@ def main() -> None:
         ),
         ("获取整机SN码", dict(action="Get", cmd="Sn", timeout=2000, mes="TAIL_SN_READ")),
         (
-            "读取productKey并比较",
+            "读取productID并比较",
             dict(
                 action="Get",
                 cmd="TupleRead",
@@ -202,7 +202,7 @@ def main() -> None:
             ),
         ),
         (
-            "读取deviceName并比较",
+            "读取deviceId并比较",
             dict(
                 action="Get",
                 cmd="TupleRead",
@@ -232,7 +232,7 @@ def main() -> None:
             ),
         ),
         (
-            "写入productKey",
+            "写入productID",
             dict(
                 action="Set",
                 cmd="WriteKey",
@@ -242,7 +242,7 @@ def main() -> None:
             ),
         ),
         (
-            "写入deviceName",
+            "写入deviceId",
             dict(
                 action="Set",
                 cmd="WriteKey",

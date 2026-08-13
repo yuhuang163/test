@@ -28,11 +28,15 @@
 #include <QThread>
 #include <QtGlobal>
 #include "dongle_at_types.h"
+#include "shared_instrument.h"
+#include "visa_channel.h"
 #include "qcustomplot.h"
 #include "qproduct.h"
 #include "test_data_upload_service.h"
 #include "test_record_store.h"
+#include "agreement/mes_protocol/device/byd_mes/bydmes.h"
 #include "ui_qfreework.h"
+#include <QShowEvent>
 
 namespace {
 
@@ -252,6 +256,7 @@ bool isDongleBleConnectStepName(const QString& name) {
     return name.contains(QStringLiteral("直连接蓝牙")) || name.contains(QStringLiteral("扫描连接蓝牙"));
 }
 
+
 constexpr int kFreeWorkTabMain = 0;
 constexpr int kFreeWorkTabExpand = 1;
 constexpr int kFreeWorkTabChart = 2;
@@ -331,9 +336,15 @@ void QFreeWork::appendTestCaseMes(const TestCaseDefinition& def, bool pass, cons
             stdVal = QStringLiteral("<") + QString::number(def.gate.high);
             break;
         case TestCaseGateOp::Eq:
-        case TestCaseGateOp::CompareVersions:
-            stdVal = def.gate.expected;
+        case TestCaseGateOp::CompareVersions: {
+            stdVal = def.gate.expected.trimmed();
+            if (!stdVal.isEmpty()) {
+                const QString resolved = resolveTestCaseSendPlaceholder(stdVal);
+                if (resolved != stdVal)
+                    stdVal = resolved;
+            }
             break;
+        }
         }
     }
     // MES VALUE 保持无单位；UNIT 单独上报（界面 testData 可能已带单位后缀）
@@ -359,6 +370,67 @@ void QFreeWork::appendTestCaseMes(const TestCaseDefinition& def, bool pass, cons
         }
     }
     appendOneMesStep(&freeWorkMesSegments_, tag, value, maxVal, minVal, stdVal, unit, resultVal);
+}
+
+void QFreeWork::appendMultiGateTestCaseMes(const QVector<TestCaseGate>& gates, const QString& reportType,
+                                           const QVariant& payload) {
+    const QString baseTag =
+        activeTestCase_.meta.mesTag.trimmed().isEmpty() ? activeTestCase_.meta.name.trimmed()
+                                                        : activeTestCase_.meta.mesTag.trimmed();
+    for (const TestCaseGate& g : gates) {
+        if (!g.enabled)
+            continue;
+        TestCaseGate ge = g;
+        ge.reportType = reportType;
+        bool subPass = true;
+        QString subDetail;
+        GateRegistry::evaluate(ge, reportType, payload, subPass, subDetail);
+        Q_UNUSED(subDetail);
+
+        // 与单字段 appendTestCaseMes 一致：VALUE 取实测值，UNIT 单独带上下限
+        const GateStepDisplay disp =
+            GateRegistry::formatStepDisplay(ge, QVector<TestCaseGate>{ge}, reportType, payload, false);
+        QString value = disp.testData.trimmed();
+        QString unit = GateRegistry::unitFor(reportType, ge.field, payload);
+        if (!unit.isEmpty() && value.endsWith(unit))
+            value = value.left(value.size() - unit.size()).trimmed();
+
+        QString maxVal, minVal, stdVal;
+        switch (ge.op) {
+        case TestCaseGateOp::Range: {
+            double low = ge.low;
+            double high = ge.high;
+            GateRegistry::resolveRangeBounds(ge, low, high);
+            maxVal = QString::number(high);
+            minVal = QString::number(low);
+            break;
+        }
+        case TestCaseGateOp::Gt:
+            stdVal = QStringLiteral(">") + QString::number(ge.low);
+            break;
+        case TestCaseGateOp::Lt:
+            stdVal = QStringLiteral("<") + QString::number(ge.high);
+            break;
+        case TestCaseGateOp::Eq:
+        case TestCaseGateOp::CompareVersions:
+            stdVal = ge.expected;
+            break;
+        }
+
+        // 杰理蓝牙盒子：拆成 BT_RSSI / BT_FREQ_OFFSET，避免整步只报一项 RSSI
+        QString itemName;
+        if (reportType == QStringLiteral("ProtocolJieliBtBoxData")) {
+            if (ge.field == QStringLiteral("rssi"))
+                itemName = QStringLiteral("BT_RSSI");
+            else if (ge.field == QStringLiteral("freqOffset"))
+                itemName = QStringLiteral("BT_FREQ_OFFSET");
+        }
+        if (itemName.isEmpty())
+            itemName = QStringLiteral("%1_%2").arg(baseTag, ge.field);
+
+        appendOneMesStep(&freeWorkMesSegments_, itemName, value, maxVal, minVal, stdVal, unit,
+                         subPass ? QStringLiteral("PASS") : QStringLiteral("FAIL"));
+    }
 }
 
 #if _MSC_VER >= 1600
@@ -391,6 +463,7 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     ui->mes_state->setText("MES");
     ui->mes_state->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
                                  "padding: 10px; text-align: center; ");
+    refreshBydMesResourceDisplay();
 
     ui->banding_result->setText("绑定:WAIT");
     ui->banding_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
@@ -407,6 +480,14 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
         iscompareovertime = 1;
         comparewaittime->stop();
     });
+
+    // 阻塞步骤里 waitWork 仍在泵事件，QTimer 照常触发，计时不再停在采样前的数值
+    testTimeTicker_->setInterval(200);
+    connect(testTimeTicker_, &QTimer::timeout, this, [this]() {
+        if (isTestContinue && teststate >= 0)
+            ui->test_time->setText(CommonUtils::formatElapsedSeconds(TestTime));
+    });
+    testTimeTicker_->start();
 
     HighRssi = SETTINGS.value("WIFI/HighRssi").toDouble();
     LowRssi = SETTINGS.value("WIFI/LowRssi").toDouble();
@@ -451,6 +532,12 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     }
     ui->tabWidget->setCurrentIndex(0); // 设置当前页为第一页
 }
+
+void QFreeWork::showEvent(QShowEvent* event) {
+    test_base::showEvent(event);
+    refreshBydMesResourceDisplay();
+}
+
 void QFreeWork::refreshOrderedTestIndexes() {
     const QString stationName = TestCaseStore::loadSelectedFlowStationName();
     const QString tabName = stationName.isEmpty() ? "自由工站" : stationName;
@@ -603,7 +690,7 @@ QString parseMacFromSnXwdRule(const QString& snCode) {
 
 } // namespace
 
-QString QFreeWork::parseMacFromSn(const QString& snCode) {
+QString QFreeWork::parseMacFromSn(const QString& snCode) const {
     // 一律按 SN 长度解析：28=PCBA(offset4)，35=整机(offset11)；板厂长码保留双偏移兜底
     return parseMacFromSnXwdRule(snCode);
 }
@@ -650,6 +737,8 @@ void QFreeWork::runTestFlowBootstrap() {
         onTestSessionStarting(sn, mac);
     }
     showlog(QStringLiteral("开始测试"));
+    // 先刷新流程再 initData，避免 seed 缓存与 dongle 动作仍用上一轮工站/队列。
+    refreshOrderedTestIndexes();
     initData();
     mesProcessCode_ = processCode.trimmed();
     if (!mesProcessCode_.isEmpty()) {
@@ -658,8 +747,6 @@ void QFreeWork::runTestFlowBootstrap() {
     }
     singleStepDebugRun_ = false;
     suppressProductBleAutoReconnect_ = false;
-    // 每次开始测试都重新读取配置，避免设置页调整后本页仍使用旧队列。
-    refreshOrderedTestIndexes();
     waitWork(1000);
     showlog(QStringLiteral("MAC地址为：") + ui->macInput->text());
     teststate = 0;
@@ -767,8 +854,8 @@ bool QFreeWork::tickOrderedTestStepLoop() {
                                        : lastCommandFailReason.trimmed();
             lastCommandFailReason.clear();
             if (!stepRuntime_.done) {
-                stepRuntime_.done = true;
-                stepRuntime_.pass = false;
+            stepRuntime_.done = true;
+            stepRuntime_.pass = false;
             } else {
                 stepRuntime_.pass = false;
             }
@@ -809,7 +896,7 @@ bool QFreeWork::tickOrderedTestStepLoop() {
             } else if (dongleBleConnect && at->getConnected()) {
                 stepRuntime_.done = true;
                 stepRuntime_.pass = true;
-                stepRuntime_.testData = QStringLiteral("已连接");
+                    stepRuntime_.testData = QStringLiteral("已连接");
             } else if (productGet && lastCommandRetryCount > 0) {
                 // 无 Gate 的 Product Get：协议层已应答即可过步（有 Gate 时由 evaluateActiveTestCaseGate 收尾）
                 stepRuntime_.done = true;
@@ -853,9 +940,8 @@ bool QFreeWork::tickOrderedTestStepLoop() {
         }
         testCaseMultiGateTableEmitted_ = false;
         appendTestCaseMes(caseDef, stepRuntime_.pass, stepRuntime_.testData);
-        if (caseDef.timing.delayAfterMs > 0) {
+        if (caseDef.timing.delayAfterMs > 0)
             waitWork(caseDef.timing.delayAfterMs);
-        }
         closeTestCasePrompt();
         closeKeyWaitPrompt();
         clearActiveTestCase();
@@ -869,7 +955,7 @@ bool QFreeWork::tickOrderedTestStepLoop() {
                 teststate = 0;
             } else {
                 showlog(QStringLiteral("测试失败，按流程设置结束后续步骤（失败区为空）"));
-                teststate = orderedTestCaseNames_.count();
+            teststate = orderedTestCaseNames_.count();
             }
         }
         stepRuntime_.reset();
@@ -952,10 +1038,7 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     ui->getMac->setDisabled(0);
     // 先退出本工位测试态；最后一个工位结束时才能安全释放共享 ASD 串口。
     isTestContinue = false;
-    waitWork(50);
     on_disconnectButton_clicked();
-    // GPIB/TCPIP 保持连接供下次开测；仅 ASRL 独占串口在测完关闭
-    releaseVisaBackendAfterTest();
     if (auto* box = qobject_cast<QFreeWorkBox*>(window())) {
         box->releaseSharedAsd9026aIfIdle();
         box->releaseSharedTempLoggerIfIdle();
@@ -1304,9 +1387,9 @@ void QFreeWork::showTestCasePromptForStep(const TestCaseDefinition& def) {
     testCasePrompt_ = new QMessageBox(QMessageBox::Information, title, text,
                                       waitReportGate ? QMessageBox::NoButton : QMessageBox::Yes, this);
     if (!waitReportGate) {
-        if (QAbstractButton* yesBtn = testCasePrompt_->button(QMessageBox::Yes))
-            yesBtn->setText(QStringLiteral("是"));
-        testCasePrompt_->setDefaultButton(QMessageBox::Yes);
+    if (QAbstractButton* yesBtn = testCasePrompt_->button(QMessageBox::Yes))
+        yesBtn->setText(QStringLiteral("是"));
+    testCasePrompt_->setDefaultButton(QMessageBox::Yes);
     } else {
         QPushButton* hiddenCloseButton = testCasePrompt_->addButton(QString(), QMessageBox::RejectRole);
         if (hiddenCloseButton)
@@ -1461,6 +1544,8 @@ void QFreeWork::resetSuctionChart() {
     suctionChartLeftKpa_.clear();
     suctionChartRightKpa_.clear();
     suctionChartTimerStarted_ = false;
+    suctionChartLastUiMs_ = 0;
+    suctionChartPlottedCount_ = 0;
     suctionLeftPeakInit_ = false;
     suctionRightPeakInit_ = false;
     suctionLeftPeakHigh_ = 0.0;
@@ -1488,7 +1573,7 @@ void QFreeWork::resetSuctionChart() {
         suctionPlot_->graph(1)->data()->clear();
         suctionPlot_->xAxis->setRange(0, 10);
         suctionPlot_->yAxis->setRange(-40, 0);
-        suctionPlot_->replot();
+        suctionPlot_->replot(QCustomPlot::rpQueuedReplot);
     }
 }
 
@@ -1528,6 +1613,8 @@ void QFreeWork::appendSuctionChartSample(double leftKpa, double rightKpa) {
     if (!suctionChartTimerStarted_) {
         suctionChartTimer_.start();
         suctionChartTimerStarted_ = true;
+        suctionChartLastUiMs_ = 0;
+        suctionChartPlottedCount_ = 0;
     }
     const double tSec = suctionChartTimer_.elapsed() / 1000.0;
     suctionChartTimeSec_.append(tSec);
@@ -1551,6 +1638,13 @@ void QFreeWork::appendSuctionChartSample(double leftKpa, double rightKpa) {
         suctionRightPeakLow_ = qMin(suctionRightPeakLow_, rightKpa);
     }
 
+    // 约 5Hz 刷 Label/曲线（仅 UI）；向量已按每个 AT 点全量入库，不降采样频率
+    constexpr qint64 kUiThrottleMs = 200;
+    const qint64 nowMs = suctionChartTimer_.elapsed();
+    if (nowMs - suctionChartLastUiMs_ < kUiThrottleMs)
+        return;
+    suctionChartLastUiMs_ = nowMs;
+
     if (ui->suctionLiveLeftLabel)
         ui->suctionLiveLeftLabel->setText(QStringLiteral("CH1实时：%1 kPa").arg(leftKpa, 0, 'f', 3));
     if (ui->suctionLiveRightLabel)
@@ -1560,24 +1654,45 @@ void QFreeWork::appendSuctionChartSample(double leftKpa, double rightKpa) {
     if (!suctionPlot_)
         return;
 
-    suctionPlot_->graph(0)->setData(suctionChartTimeSec_, suctionChartLeftKpa_);
-    suctionPlot_->graph(1)->setData(suctionChartTimeSec_, suctionChartRightKpa_);
-
+    const int n = suctionChartTimeSec_.size();
+    if (suctionChartPlottedCount_ < n && suctionChartPlottedCount_ >= 0) {
+        for (int i = suctionChartPlottedCount_; i < n; ++i) {
+            suctionPlot_->graph(0)->addData(suctionChartTimeSec_.at(i), suctionChartLeftKpa_.at(i));
+            suctionPlot_->graph(1)->addData(suctionChartTimeSec_.at(i), suctionChartRightKpa_.at(i));
+        }
+        suctionChartPlottedCount_ = n;
+    }
     const double xMax = qMax(10.0, tSec + 1.0);
     suctionPlot_->xAxis->setRange(0, xMax);
-
-    double yMin = qMin(leftKpa, rightKpa);
-    double yMax = qMax(leftKpa, rightKpa);
-    for (double v : suctionChartLeftKpa_) {
-        yMin = qMin(yMin, v);
-        yMax = qMax(yMax, v);
-    }
-    for (double v : suctionChartRightKpa_) {
-        yMin = qMin(yMin, v);
-        yMax = qMax(yMax, v);
-    }
+    const double yMin = qMin(suctionLeftPeakLow_, suctionRightPeakLow_);
+    const double yMax = qMax(suctionLeftPeakHigh_, suctionRightPeakHigh_);
     const double yPad = qMax(0.5, (yMax - yMin) * 0.1);
     suctionPlot_->yAxis->setRange(yMin - yPad, yMax + yPad);
+    suctionPlot_->replot(QCustomPlot::rpQueuedReplot);
+}
+
+void QFreeWork::finalizeSuctionChartPlot() {
+    if (ui->suctionLiveLeftLabel && !suctionChartLeftKpa_.isEmpty())
+        ui->suctionLiveLeftLabel->setText(
+            QStringLiteral("CH1实时：%1 kPa").arg(suctionChartLeftKpa_.constLast(), 0, 'f', 3));
+    if (ui->suctionLiveRightLabel && !suctionChartRightKpa_.isEmpty())
+        ui->suctionLiveRightLabel->setText(
+            QStringLiteral("CH2实时：%1 kPa").arg(suctionChartRightKpa_.constLast(), 0, 'f', 3));
+    updateSuctionPeakLabels();
+
+    if (!suctionPlot_)
+        return;
+    suctionPlot_->graph(0)->setData(suctionChartTimeSec_, suctionChartLeftKpa_);
+    suctionPlot_->graph(1)->setData(suctionChartTimeSec_, suctionChartRightKpa_);
+    suctionChartPlottedCount_ = suctionChartTimeSec_.size();
+    const double tSec = suctionChartTimeSec_.isEmpty() ? 0.0 : suctionChartTimeSec_.constLast();
+    suctionPlot_->xAxis->setRange(0, qMax(10.0, tSec + 1.0));
+    if (suctionLeftPeakInit_ && suctionRightPeakInit_) {
+        const double yMin = qMin(suctionLeftPeakLow_, suctionRightPeakLow_);
+        const double yMax = qMax(suctionLeftPeakHigh_, suctionRightPeakHigh_);
+        const double yPad = qMax(0.5, (yMax - yMin) * 0.1);
+        suctionPlot_->yAxis->setRange(yMin - yPad, yMax + yPad);
+    }
     suctionPlot_->replot();
 }
 
@@ -1622,21 +1737,30 @@ void QFreeWork::runDongleSuctionSampleStep() {
     dongleSuctionCh1Samples_.clear();
     dongleSuctionCh2Samples_.clear();
     dongleSuctionCh3Samples_.clear();
+    const int reserveN = durationMs / 20 + 64;
+    dongleSuctionCh1Samples_.reserve(reserveN);
+    dongleSuctionCh2Samples_.reserve(reserveN);
+    dongleSuctionCh3Samples_.reserve(reserveN);
     dongleSuctionLastCh1Kpa_ = 0.0;
     dongleSuctionLastCh2Kpa_ = 0.0;
     dongleSuctionLastCh3Kpa_ = 0.0;
-    resetSuctionChart();
     setDongleSuctionReadEnabled(true);
+    // setDongleSuctionReadEnabled 可能 reset 曲线；reserve 放其后
+    suctionChartTimeSec_.reserve(reserveN);
+    suctionChartLeftKpa_.reserve(reserveN);
+    suctionChartRightKpa_.reserve(reserveN);
 
     dongleSuctionSampleActive_ = true;
     QElapsedTimer sampleTimer;
     sampleTimer.start();
-    int lastLoggedCount = 0;
+    // 取样点密度由 AT+SUCTION_DATA 决定；waitWork(intervalMs) 只泵事件，不丢点。
+    // 流畅优化只节流曲线/日志刷新，不节流入库。
     while (sampleTimer.elapsed() < durationMs) {
         if (!isTestContinue) {
             dongleSuctionSampleActive_ = false;
             if (restoreOff)
                 setDongleSuctionReadEnabled(false);
+            finalizeSuctionChartPlot();
             stepRuntime_.done = true;
             stepRuntime_.pass = false;
             stepRuntime_.testData = QStringLiteral("测试中止");
@@ -1645,19 +1769,12 @@ void QFreeWork::runDongleSuctionSampleStep() {
             markActiveTestCaseStepDone(false, stepRuntime_.testData, QStringLiteral("失败"));
             return;
         }
-        const int sampleCount = dongleSuctionCh1Samples_.size();
-        if (sampleCount > 0 && sampleCount % 10 == 0 && sampleCount != lastLoggedCount) {
-            lastLoggedCount = sampleCount;
-            showlog(QStringLiteral("[%1] CH1: %2Kpa | CH2: %3Kpa")
-                        .arg(sampleCount)
-                        .arg(dongleSuctionLastCh1Kpa_, 0, 'f', 2)
-                        .arg(dongleSuctionLastCh2Kpa_, 0, 'f', 2));
-        }
         waitWork(qMin(intervalMs, durationMs - static_cast<int>(sampleTimer.elapsed())));
     }
     dongleSuctionSampleActive_ = false;
     if (restoreOff)
         setDongleSuctionReadEnabled(false);
+    finalizeSuctionChartPlot();
 
     if (dongleSuctionCh1Samples_.isEmpty() || dongleSuctionCh2Samples_.isEmpty()) {
         showlog(QStringLiteral("采集双通道吸力失败：采样窗口内未收到 CH1/CH2 AT+SUCTION_DATA"));
@@ -1745,21 +1862,28 @@ void QFreeWork::runDongleSuctionSampleSingleStep() {
     dongleSuctionCh1Samples_.clear();
     dongleSuctionCh2Samples_.clear();
     dongleSuctionCh3Samples_.clear();
+    const int reserveN = durationMs / 20 + 64;
+    dongleSuctionCh1Samples_.reserve(reserveN);
+    dongleSuctionCh2Samples_.reserve(reserveN);
+    dongleSuctionCh3Samples_.reserve(reserveN);
     dongleSuctionLastCh1Kpa_ = 0.0;
     dongleSuctionLastCh2Kpa_ = 0.0;
     dongleSuctionLastCh3Kpa_ = 0.0;
-    resetSuctionChart();
     setDongleSuctionReadEnabled(true);
+    suctionChartTimeSec_.reserve(reserveN);
+    suctionChartLeftKpa_.reserve(reserveN);
+    suctionChartRightKpa_.reserve(reserveN);
 
     dongleSuctionSampleActive_ = true;
     QElapsedTimer sampleTimer;
     sampleTimer.start();
-    int lastLoggedCount = 0;
+    // 同双通道：入库跟 AT 帧；intervalMs 只用于泵事件，不降采样
     while (sampleTimer.elapsed() < durationMs) {
         if (!isTestContinue) {
             dongleSuctionSampleActive_ = false;
             if (restoreOff)
                 setDongleSuctionReadEnabled(false);
+            finalizeSuctionChartPlot();
             stepRuntime_.done = true;
             stepRuntime_.pass = false;
             stepRuntime_.testData = QStringLiteral("测试中止");
@@ -1768,25 +1892,12 @@ void QFreeWork::runDongleSuctionSampleSingleStep() {
             markActiveTestCaseStepDone(false, stepRuntime_.testData, QStringLiteral("失败"));
             return;
         }
-        const QVector<double>* live = &dongleSuctionCh1Samples_;
-        double liveKpa = dongleSuctionLastCh1Kpa_;
-        if (chIndex == 1) {
-            live = &dongleSuctionCh2Samples_;
-            liveKpa = dongleSuctionLastCh2Kpa_;
-        } else if (chIndex == 2) {
-            live = &dongleSuctionCh3Samples_;
-            liveKpa = dongleSuctionLastCh3Kpa_;
-        }
-        const int sampleCount = live->size();
-        if (sampleCount > 0 && sampleCount % 10 == 0 && sampleCount != lastLoggedCount) {
-            lastLoggedCount = sampleCount;
-            showlog(QStringLiteral("[%1] %2: %3Kpa").arg(sampleCount).arg(channelName).arg(liveKpa, 0, 'f', 2));
-        }
         waitWork(qMin(intervalMs, durationMs - static_cast<int>(sampleTimer.elapsed())));
     }
     dongleSuctionSampleActive_ = false;
     if (restoreOff)
         setDongleSuctionReadEnabled(false);
+    finalizeSuctionChartPlot();
 
     const QVector<double>* samplesPtr = &dongleSuctionCh1Samples_;
     if (chIndex == 1)
@@ -1910,7 +2021,7 @@ void QFreeWork::runDongleSuctionSampleSingleStep() {
                                QStringLiteral("peakDiff<=%1").arg(suctionPeakDiffMaxKpa_, 0, 'f', 2));
 }
 
-void QFreeWork::initData() {
+void QFreeWork::initData(bool deferDongleAtForVisa) {
     ui->product_sn->setText("芯片存储的整机sn:");
     ui->bleStatusLabel->setText("蓝牙连接：");
     rssitestcount = 0;
@@ -1927,7 +2038,11 @@ void QFreeWork::initData() {
     dongleSuctionCh1Samples_.clear();
     dongleSuctionCh2Samples_.clear();
     resetSuctionChart();
-    setDongleSuctionReadEnabled(false);
+    // 首步 GPIB 时勿发 AT+SUCTION=0，与单步一致，避免 USB 与 GPIB 并发 ABORT
+    if (deferDongleAtForVisa)
+        dongleSuctionReadEnabled_ = false;
+    else
+        setDongleSuctionReadEnabled(false);
     // 逻辑缓存每轮清空；GPIB/TCPIP 物理会话尽量复用，避免第二次 MAC 开测立刻 viOpen 触发 ABORT
     huilingVisaLinkCache_.clear();
     seedHuilingVisaLinkCacheFromFlowOrSettings();
@@ -1969,6 +2084,7 @@ void QFreeWork::initData() {
     deviceTailSnFromDevice = "";
     wholeMachineSn_.clear();
     mesProcessCode_.clear();
+    pack.sku.clear();
     tupleData_ = TupleApplyResult{};
     QTupleService::clearSharedSession();
     resetTuplePositionHighlight();
@@ -2446,6 +2562,11 @@ void QFreeWork::on_snbanding_returnPressed() {
 }
 
 void QFreeWork::getTestValue(const int mechines, const QString value) {
+    if (pack.iskeydata == 2 && mechines == getIndex()) {
+        pack.sku = value.trimmed();
+        showlog(QStringLiteral("MES GetCustomData 已取到 ROOTSKU=%1").arg(pack.sku));
+        return;
+    }
     // showlog(value);
     QString mesmacAddress;
     if (pack.factory == "hq") {

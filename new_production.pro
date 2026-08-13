@@ -152,6 +152,7 @@ INCLUDEPATH += agreement/modbus_protocol/device/gc_series_tcp
 INCLUDEPATH += agreement/modbus_protocol/device/hq_ammeter_rtu
 INCLUDEPATH += agreement/modbus_protocol/device/lx_ammeter_rtu
 INCLUDEPATH += agreement/modbus_protocol/device/multi_temp_logger_rtu
+INCLUDEPATH += agreement/modbus_protocol/device/xinjie_plc_rtu
 INCLUDEPATH += agreement/scpi_protocol/codec
 INCLUDEPATH += agreement/scpi_protocol/device/huiling_wfp60h_scpi
 INCLUDEPATH += agreement/scpi_protocol/device/agilent_66319d_scpi
@@ -207,6 +208,9 @@ SOURCES += \
     agreement/modbus_protocol/device/multi_temp_logger_rtu/multi_temp_logger_rtu.cpp \
     agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp_device.cpp \
     agreement/modbus_protocol/device/gc_series_tcp/gc_series_tcp_device.cpp \
+    agreement/modbus_protocol/device/xinjie_plc_rtu/xinjie_plc_address.cpp \
+    agreement/modbus_protocol/device/xinjie_plc_rtu/xinjie_plc_rtu_types.cpp \
+    agreement/modbus_protocol/device/xinjie_plc_rtu/xinjie_plc_rtu_device.cpp \
     platform/driver/process/process_channel.cpp \
     agreement/factory_protocol/codec/fctp/comm_protocol_builder.cpp \
     agreement/factory_protocol/codec/fctp/comm_protocol_parser.cpp \
@@ -351,6 +355,9 @@ HEADERS += \
     agreement/modbus_protocol/device/lx_ammeter_rtu/lx_ammeter_rtu_types.h \
     agreement/modbus_protocol/device/multi_temp_logger_rtu/multi_temp_logger_rtu.h \
     agreement/modbus_protocol/device/multi_temp_logger_rtu/multi_temp_logger_rtu_types.h \
+    agreement/modbus_protocol/device/xinjie_plc_rtu/xinjie_plc_address.h \
+    agreement/modbus_protocol/device/xinjie_plc_rtu/xinjie_plc_rtu_types.h \
+    agreement/modbus_protocol/device/xinjie_plc_rtu/xinjie_plc_rtu_device.h \
     platform/driver/process/process_channel.h \
     agreement/factory_protocol/codec/fctp/comm_protocol.h \
     agreement/factory_protocol/codec/fctp/comm_protocol_builder.h \
@@ -474,6 +481,7 @@ HEADERS += \
     lib/qcustomplot/qcustomplot.h \
     mainwindow.h \
     my_set/AbIni.h \
+    my_set/host_ota_version.h \
     my_set/my_typedef.h \
     qlog/qlog.h \
     qlog/qlog_win.h \
@@ -643,28 +651,11 @@ win32 {
 }
 
 win32 {
-    # NI-VISA / IVI：依赖统一放在 lib/visa/，换电脑无需本机 IVI 安装路径。
-    # 启用/关闭后须重新 qmake 并全量构建，以重建预编译头。
+    # NI-VISA：头文件/库在 lib/visa；HAVE_NI_VISA 见 lib/visa/have_ni_visa.h（改后须重新 qmake）
     VISA_DIR = $$PWD/lib/visa
-    exists($$VISA_DIR/visa.h):exists($$VISA_DIR/visatype.h):exists($$VISA_DIR/visa64.lib):exists($$VISA_DIR/visa64.dll):exists($$VISA_DIR/visaConfMgr.dll) {
-        INCLUDEPATH += $$VISA_DIR
-        LIBS += -L$$shell_path($$VISA_DIR) -lvisa64
-        DEFINES += HAVE_NI_VISA
-        VISA_DLLS = visa64.dll visaConfMgr.dll
-        exists($$VISA_DIR/visaUtilities.dll) {
-            VISA_DLLS += visaUtilities.dll
-        }
-        # 勿用 escape_expand(\\r\n\\t)：nmake 链接规则 @<< 后换行会破坏 Makefile
-        VISA_POST_CMD =
-        for(VISA_DLL, VISA_DLLS) {
-            !isEmpty(VISA_POST_CMD): VISA_POST_CMD += " && "
-            VISA_POST_CMD += copy /Y \"$$shell_path($$VISA_DIR/$$VISA_DLL)\" \"$$shell_path($$OUT_PWD/$$DESTDIR/$$VISA_DLL)\"
-        }
-        QMAKE_POST_LINK += $$quote(cmd /c $$VISA_POST_CMD)
-        message("NI-VISA enabled from lib/visa.")
-    } else {
-        message("NI-VISA lib/visa incomplete — build without VISA. Required: visa.h, visatype.h, visa64.lib, visa64.dll, visaConfMgr.dll (optional: visaUtilities.dll)")
-    }
+    INCLUDEPATH += $$VISA_DIR
+    LIBS += -L$$shell_path($$VISA_DIR) -lvisa64
+    QMAKE_POST_LINK += $$quote(cmd /c copy /Y \"$$shell_path($$VISA_DIR/visa64.dll)\" \"$$shell_path($$OUT_PWD/$$DESTDIR/visa64.dll)\" && copy /Y \"$$shell_path($$VISA_DIR/visaConfMgr.dll)\" \"$$shell_path($$OUT_PWD/$$DESTDIR/visaConfMgr.dll)\")
 }
 
 

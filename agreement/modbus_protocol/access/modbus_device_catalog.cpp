@@ -13,6 +13,7 @@ constexpr ModbusDeviceBinding kBindings[] = {
     {ModbusDeviceRoute::LxAmmeterRtu, ModbusLinkKind::Rtu, "lx_ammeter_rtu", "LxAmmeterRtuCmd", u8"立讯 RTU 电流表"},
     {ModbusDeviceRoute::MultiTempLoggerRtu, ModbusLinkKind::Rtu, "multi_temp_logger_rtu", "MultiTempLoggerRtuCmd",
      u8"多路温度记录仪 RTU"},
+    {ModbusDeviceRoute::XinjiePlcRtu, ModbusLinkKind::Rtu, "xinjie_plc_rtu", "XinjePlcCmd", u8"信捷 PLC RTU"},
 };
 
 } // namespace
@@ -59,6 +60,8 @@ QString deviceRouteToIni(ModbusDeviceRoute route) {
         return QStringLiteral("LxAmmeterRtu");
     case ModbusDeviceRoute::MultiTempLoggerRtu:
         return QStringLiteral("MultiTempLoggerRtu");
+    case ModbusDeviceRoute::XinjiePlcRtu:
+        return QStringLiteral("XinjiePlcRtu");
     default:
         return QStringLiteral("None");
     }
@@ -80,6 +83,9 @@ ModbusDeviceRoute deviceRouteFromIni(const QString& text) {
     }
     if (t.compare(QStringLiteral("MultiTempLoggerRtu"), Qt::CaseInsensitive) == 0) {
         return ModbusDeviceRoute::MultiTempLoggerRtu;
+    }
+    if (t.compare(QStringLiteral("XinjiePlcRtu"), Qt::CaseInsensitive) == 0) {
+        return ModbusDeviceRoute::XinjiePlcRtu;
     }
     return ModbusDeviceRoute::None;
 }

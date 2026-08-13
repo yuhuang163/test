@@ -310,12 +310,14 @@ typedef struct MesPacketData {
     QString test_station;   //制程名称
     QString error;          //错误
     QString instruct_num;   //指令标识
-    QString product;        //产品名字
+    QString product;        // 界面产品型号（Mes/Product_Name，如 V3/W1 Lite/M8）；非 mes_config 的 PROJECT
     QString lotName;        //工单号码
     QString mac;            // mac地址
+    /** 三元组 SKU（GetCustomData ROOTSKU 或步骤 Param_sku） */
+    QString sku;
     int elapseTime = 1;     //测试耗时（默认 1，单位由 MES 接口定义）
     int testCount = 1;      //测试次数（默认 1）
-    int iskeydata = 0;      // GetTestData 入口分流：0=常规取数，1=BYD AddSfcKey
+    int iskeydata = 0;      // GetTestData 入口分流：0=GetSfcKeyBySfc，1=AddSfcKey，2=GetCustomData(ROOTSKU)
 
 } MesPacketData;
 

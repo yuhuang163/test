@@ -9,6 +9,8 @@
 #include "qproduct.h"
 #include "qprotocol_types.h"
 #include "test_case.h"
+#include "agreement/mes_protocol/device/byd_mes/bydmes.h"
+#include "ui_qfreework.h"
 
 namespace {
 
@@ -105,6 +107,31 @@ constexpr char kTuplePosInactiveStyle[] =
 constexpr char kTuplePosActiveStyle[] =
     "font-size: 18px; background-color: #00FF00; color: black; border: 2px solid black; border-radius: 6px; "
     "padding: 4px 12px;";
+
+/** 整机 SN 第 9～11 位（1 起算，共 3 位）须与申请三元组时上传的 sku 一致（如 …BBBBPH9…） */
+bool wholeMachineSnEmbeddedSkuMatches(const QString& wholeSn, const QString& sku, QString* detailOut) {
+    const QString sn = wholeSn.trimmed();
+    const QString expect = sku.trimmed();
+    if (expect.isEmpty()) {
+        if (detailOut)
+            *detailOut = QStringLiteral("SKU为空");
+        return false;
+    }
+    if (sn.size() < 11) {
+        if (detailOut)
+            *detailOut = QStringLiteral("SN长度不足11位");
+        return false;
+    }
+    const QString embedded = sn.mid(8, 3);
+    if (embedded.compare(expect, Qt::CaseInsensitive) != 0) {
+        if (detailOut) {
+            *detailOut =
+                QStringLiteral("SN第9-11位=%1与SKU=%2不一致").arg(embedded, expect);
+        }
+        return false;
+    }
+    return true;
+}
 
 } // namespace
 
@@ -1005,6 +1032,53 @@ void QFreeWork::reportBydSfcKey(const QString& dataName, const QVariant& dataVal
     emit send_mes_test_value(p);
 }
 
+void QFreeWork::fetchMesRootSku() {
+    pack.sku.clear();
+    MesPacketData p = pack;
+    p.mechines = getIndex();
+    p.iskeydata = 2;
+    p.instruct_num = QStringLiteral("ROOTSKU");
+    pack.iskeydata = 2;
+    showlog(QStringLiteral("MES：GetCustomData 获取 ROOTSKU（与「是否过站」开关无关）"));
+    emit send_mes_test_value(p);
+    pack.iskeydata = 0;
+    if (!isTestContinue)
+        return;
+    if (pack.sku.trimmed().isEmpty()) {
+        markActiveTestCaseStepDone(false, QStringLiteral("ROOTSKU为空"), QStringLiteral("失败"));
+        showlog(QStringLiteral("获取 MES SKU 失败：未从 GetCustomData 解析到 ROOTSKU"));
+        return;
+    }
+    showlog(QStringLiteral("获取 MES SKU 成功：ROOTSKU=%1").arg(pack.sku));
+    markActiveTestCaseStepDone(true, pack.sku, QStringLiteral("通过"));
+}
+
+void QFreeWork::refreshBydMesResourceDisplay() {
+    if (!ui || !ui->label_bydMesResource || !ui->label_bydMesResourceCaption) {
+        return;
+    }
+    const bool isByd = pack.factory.trimmed().compare(QStringLiteral("byd"), Qt::CaseInsensitive) == 0;
+    ui->label_bydMesResourceCaption->setVisible(isByd);
+    ui->label_bydMesResource->setVisible(isByd);
+    if (!isByd) {
+        return;
+    }
+    const QString resource = bydmes::externalSettingsValue(QStringLiteral("Resource"));
+    if (resource.isEmpty()) {
+        ui->label_bydMesResource->setText(QStringLiteral("未配置"));
+        ui->label_bydMesResource->setStyleSheet(
+            QStringLiteral("font-size: 22px; font-weight: bold; color: #8c8c8c; "
+                           "background-color: #fafafa; border: 2px dashed #d9d9d9; "
+                           "border-radius: 8px; padding: 10px 8px;"));
+        return;
+    }
+    ui->label_bydMesResource->setText(resource);
+    ui->label_bydMesResource->setStyleSheet(
+        QStringLiteral("font-size: 26px; font-weight: bold; color: #003366; "
+                       "background-color: #E8F4FC; border: 2px solid #1890FF; "
+                       "border-radius: 8px; padding: 10px 8px;"));
+}
+
 void QFreeWork::reportBydBluetoothMesKeyMaterials() {
     if (!ui->isusemes->isChecked()) {
         return;
@@ -1051,7 +1125,10 @@ void QFreeWork::applyTupleByMac() {
             macFromParam = resolved.toString().trimmed();
         }
     }
-    if (sku.isEmpty())
+    // pack.sku 有值（前置「获取 MES SKU」）则优先；否则步骤 Param_sku / 设置页 Tuple/Sku
+    if (!pack.sku.trimmed().isEmpty())
+        sku = pack.sku.trimmed();
+    else if (sku.isEmpty())
         sku = SETTINGS.value(QStringLiteral("Tuple/Sku"), QString()).toString().trimmed();
     // 步骤未写 position 时跟主界面 / SETTINGS（由「三元组位置」点击写入）
     if (position.isEmpty())
@@ -1073,8 +1150,11 @@ void QFreeWork::applyTupleByMac() {
     position = tuplePositionCode(posKind);
 
     updateTuplePositionHighlight(position);
-    showlog(QStringLiteral("三元组获取：当前位置=%1（%2）")
-                .arg(position, tuplePositionKindText(posKind)));
+    showlog(QStringLiteral("三元组获取：sku=%1（%2） 位置=%3（%4）")
+                .arg(sku,
+                     pack.sku.trimmed().isEmpty() ? QStringLiteral("步骤Param_sku")
+                                                  : QStringLiteral("MES ROOTSKU"),
+                     position, tuplePositionKindText(posKind)));
 
     QString tupleMac = macFromParam;
     if (tupleMac.isEmpty())
@@ -1090,7 +1170,7 @@ void QFreeWork::applyTupleByMac() {
         stepRuntime_.pass = false;
         stepRuntime_.testData = QStringLiteral("SKU未配置");
         TestResult = failValue;
-        showlog(QStringLiteral("三元组获取失败：请在用例 ini 配置 Param/sku（及 Param/position）"));
+        showlog(QStringLiteral("三元组获取失败：请先执行「获取 MES SKU」或在步骤 Param_sku 填写 SKU"));
         return;
     }
     if (tupleMac.isEmpty() || tupleMac == QStringLiteral("没有MAC地址")) {
@@ -1115,22 +1195,40 @@ void QFreeWork::applyTupleByMac() {
     applyMap[QStringLiteral("position")] = position;
     service.get(TupleCmd::ApplyTupleByMac, applyMap);
     tupleData_ = service.lastApplyResult();
-    stepRuntime_.pass = tupleData_.success;
-    stepRuntime_.testData = tupleData_.success
-        ? QString("productKey:%1 deviceName:%2 deviceSecret:%3")
-              .arg(tupleData_.productKey, tupleData_.deviceName, tupleData_.deviceSecret)
-        : tupleData_.error;
+    stepRuntime_.done = true;
+    stepRuntime_.ask = QStringLiteral("获取成功");
     if (!tupleData_.success) {
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = tupleData_.error;
         TestResult = failValue;
-        showlog("三元组获取失败：" + tupleData_.error);
+        showlog(QStringLiteral("三元组获取失败：") + tupleData_.error);
         return;
     }
-    showlog(QStringLiteral("三元组获取成功：sn=%1 productKey=%2 deviceName=%3 deviceSecret=%4 mac=%5")
-                .arg(tupleData_.sn, tupleData_.productKey, tupleData_.deviceName, tupleData_.deviceSecret, tupleData_.mac));
-    if (!tupleData_.sn.trimmed().isEmpty()) {
-        setWholeMachineSn(tupleData_.sn);
-        showlog(QStringLiteral("已替换界面SN：%1").arg(resolvedPcbaSnText()));
+    const QString wholeSn = tupleData_.sn.trimmed();
+    if (wholeSn.isEmpty()) {
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = QStringLiteral("整机SN为空");
+        TestResult = failValue;
+        showlog(QStringLiteral("三元组获取失败：云端返回整机SN为空"));
+        return;
     }
+    QString skuCheckDetail;
+    if (!wholeMachineSnEmbeddedSkuMatches(wholeSn, sku, &skuCheckDetail)) {
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = skuCheckDetail;
+        TestResult = failValue;
+        showlog(QStringLiteral("三元组获取失败：整机SN SKU位校验未通过，%1（SN=%2，上传SKU=%3）")
+                    .arg(skuCheckDetail, wholeSn, sku));
+        return;
+    }
+    stepRuntime_.pass = true;
+    stepRuntime_.testData = QStringLiteral("SN:%1 productKey:%2 deviceName:%3 deviceSecret:%4")
+                                .arg(wholeSn, tupleData_.productKey, tupleData_.deviceName, tupleData_.deviceSecret);
+    showlog(QStringLiteral("三元组获取成功：sn=%1 productKey=%2 deviceName=%3 deviceSecret=%4 mac=%5")
+                .arg(wholeSn, tupleData_.productKey, tupleData_.deviceName, tupleData_.deviceSecret, tupleData_.mac));
+    showlog(QStringLiteral("整机SN SKU位校验通过：第9-11位=%1").arg(wholeSn.mid(8, 3)));
+    setWholeMachineSn(wholeSn);
+    showlog(QStringLiteral("已替换界面SN：%1").arg(resolvedPcbaSnText()));
     // 蓝牙测试关键物料：与 MES「蓝牙测试」工站 SFC 生命周期表一致，各发一条 AddSfcKey（QTY=1）
     reportBydBluetoothMesKeyMaterials();
 }
@@ -1309,7 +1407,7 @@ bool QFreeWork::tryCompleteActiveTestCaseTupleCompare(const ProtocolTupleData& d
     if (activeTestCase_.gate.enabled)
         return false;
 
-    // Param_dataType / Param_type，或步骤名含 productKey/deviceName/deviceSecret → 只比对应字段
+    // Param_dataType / Param_type，或步骤名含 productID/deviceId/deviceSecret → 只比对应字段
     int onlyType = 0;
     if (activeTestCase_.send.param.canConvert<QVariantMap>()) {
         const QVariantMap map = activeTestCase_.send.param.toMap();
@@ -1323,9 +1421,12 @@ bool QFreeWork::tryCompleteActiveTestCaseTupleCompare(const ProtocolTupleData& d
                                   ? (activeTestCase_.meta.name.trimmed().isEmpty() ? activeTestCase_.meta.mesTag
                                                                                   : activeTestCase_.meta.name)
                                   : activeTestCase_.meta.displayName;
-        if (label.contains(QStringLiteral("productKey"), Qt::CaseInsensitive))
+        // 兼容旧步骤名 productKey/deviceName
+        if (label.contains(QStringLiteral("productID"), Qt::CaseInsensitive)
+            || label.contains(QStringLiteral("productKey"), Qt::CaseInsensitive))
             onlyType = 2;
-        else if (label.contains(QStringLiteral("deviceName"), Qt::CaseInsensitive))
+        else if (label.contains(QStringLiteral("deviceId"), Qt::CaseInsensitive)
+                 || label.contains(QStringLiteral("deviceName"), Qt::CaseInsensitive))
             onlyType = 3;
         else if (label.contains(QStringLiteral("deviceSecret"), Qt::CaseInsensitive))
             onlyType = 4;
@@ -1348,9 +1449,9 @@ bool QFreeWork::tryCompleteActiveTestCaseTupleCompare(const ProtocolTupleData& d
         markActiveTestCaseStepDone(pass, testData, ask);
         if (!pass) {
             TestResult = failValue;
-            showlog(QStringLiteral("productKey比较失败，设备=%1，云端=%2").arg(testData, ask));
+            showlog(QStringLiteral("productID比较失败，设备=%1，云端=%2").arg(testData, ask));
         } else {
-            showlog(QStringLiteral("productKey比较通过：%1").arg(testData));
+            showlog(QStringLiteral("productID比较通过：%1").arg(testData));
         }
         return true;
     }
@@ -1361,9 +1462,9 @@ bool QFreeWork::tryCompleteActiveTestCaseTupleCompare(const ProtocolTupleData& d
         markActiveTestCaseStepDone(pass, testData, ask);
         if (!pass) {
             TestResult = failValue;
-            showlog(QStringLiteral("deviceName比较失败，设备=%1，云端=%2").arg(testData, ask));
+            showlog(QStringLiteral("deviceId比较失败，设备=%1，云端=%2").arg(testData, ask));
         } else {
-            showlog(QStringLiteral("deviceName比较通过：%1").arg(testData));
+            showlog(QStringLiteral("deviceId比较通过：%1").arg(testData));
         }
         return true;
     }
@@ -1510,7 +1611,6 @@ void QFreeWork::refreshDongleSuctionData(ProtocolDongleSuctionData data) {
     dongleSuctionLastCh1Kpa_ = data.ch1Kpa;
     dongleSuctionLastCh2Kpa_ = data.ch2Kpa;
     dongleSuctionLastCh3Kpa_ = data.ch3Kpa;
-    qDebug() << getIndex() << "Dongle吸力：CH1" << data.ch1Kpa << "CH2" << data.ch2Kpa << "CH3" << data.ch3Kpa << "kPa";
     if (dongleSuctionSampleActive_) {
         dongleSuctionCh1Samples_.append(data.ch1Kpa);
         dongleSuctionCh2Samples_.append(data.ch2Kpa);

@@ -20,6 +20,8 @@ class bydmes : public Qmes {
     static bool loadExternalMesConfig(QString* errorMessage = nullptr);
     /// 清除已登记的外部 ini 路径
     static void clearExternalMesConfig();
+    /// 从已登记的外部 mes_config.ini 读取键值（如 Resource）；未登记时尝试 loadExternalMesConfig
+    static QString externalSettingsValue(const QString& key, const QString& fallback = QString());
 
     void LogIn(MesPacketData pack) override;
     void ProcessInspection(MesPacketData pack) override;
@@ -32,8 +34,12 @@ class bydmes : public Qmes {
     bool ensureExternalMesConfig(const MesPacketData& pack);
     QJsonArray buildBydTestDataList(const MesPacketData& pack, const QString& testTime) const;
     QJsonObject buildBydTestDataCollectParam(const MesPacketData& pack) const;
+    QJsonObject buildBydSerializableStartCollectCompleteParam(const MesPacketData& pack) const;
+    bool shouldUseBydSerializableComplete(const MesPacketData& pack, bool isPassResult) const;
     /// 「按过程码返回值中解析 SN」。
     QString parseSnFromGetSnByProcessCodeResponse(const QByteArray& responseData) const;
+    /// GetCustomData 的 DATA 列表按 NAME 取 VALUE（如 ROOTSKU）。
+    QString parseCustomDataValueByName(const QByteArray& responseData, const QString& name) const;
     bool isSuccessResponse(const QByteArray& responseData, QString* responseText, QString* errorMessage) const;
     QByteArray sendRequest(const QString& method, const QJsonObject& param, QString* errorMessage) const;
     /// NET 与 LoginID/CLIENT_ID 缺失时 qWarning + operateMesError，返回 true 表示应中止请求（非 const：需 emit 信号）

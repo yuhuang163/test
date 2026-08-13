@@ -211,6 +211,17 @@ void TestCaseBlock::mousePressEvent(QMouseEvent* event) {
     QCheckBox::mousePressEvent(event);
 }
 
+void TestCaseBlock::mouseDoubleClickEvent(QMouseEvent* event) {
+    // 自由工站：双击功能块 = 单步运行（与右键「运行」相同）
+    if (event->button() == Qt::LeftButton && runMenuVisible_ && !isBlank()) {
+        emit blockSelected(this);
+        emit runRequested(this);
+        event->accept();
+        return;
+    }
+    QCheckBox::mouseDoubleClickEvent(event);
+}
+
 void TestCaseBlock::mouseMoveEvent(QMouseEvent* event) {
     if ((event->buttons() & Qt::LeftButton) && (event->pos() - startPos_).manhattanLength() >= QApplication::startDragDistance())
         performDrag();

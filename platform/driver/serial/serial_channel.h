@@ -31,6 +31,8 @@ class SerialChannel : public QObject {
         int readDebounceMs = 10;
         QSerialPort::FlowControl flowControl = QSerialPort::NoFlowControl;
         RtsDtrMode rtsDtrMode = RtsDtrMode::ToggleReset;
+        /** 多数设备为 8-N-1；信捷 PLC 等出厂 8-E-1 的设备需显式指定 */
+        QSerialPort::Parity parity = QSerialPort::NoParity;
     };
 
     explicit SerialChannel(QObject* parent = nullptr);

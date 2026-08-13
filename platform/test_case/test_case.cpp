@@ -102,7 +102,7 @@ bool ensureRootDir() {
         return false;
     QDir(stepsDir()).mkpath(QStringLiteral("."));
     QDir(profilesDir()).mkpath(QStringLiteral("."));
-    return true;
+        return true;
 }
 
 bool isReservedCaseName(const QString& name) {
@@ -564,11 +564,11 @@ bool TestCaseStore::addFlowStation(const QString& displayName, QString* errorOut
     }
     if (!key.isEmpty()) {
         for (const TestFlowStationEntry& entry : catalog) {
-            if (entry.key.compare(key, Qt::CaseInsensitive) == 0) {
+        if (entry.key.compare(key, Qt::CaseInsensitive) == 0) {
                 key = QString();
                 break;
-            }
         }
+    }
     }
     if (key.isEmpty())
         key = allocateCustomFlowStationKey(catalog);
@@ -869,6 +869,10 @@ QString sendParamIniPrefix();
 QString sendParamIniKey(const QString& leafKey);
 void removeSendParamKeys(QSettings& s);
 void writeSendParamMap(QSettings& s, const QVariantMap& map);
+void mergeSendParamMapInto(QVariant& param, const QVariantMap& extra);
+bool hookUsesGenericSendParamMap(const TestCaseDefinition& def);
+void writeGenericHookSendParamMap(QSettings& ini, const TestCaseDefinition& def);
+void supplementMissingHookSendParamsFromLibrary(const QString& stepId, TestCaseDefinition& def);
 void writeSendParamLeaf(QSettings& s, const QString& leafKey, const QVariant& value);
 
 bool overlayHasSendParamKeys(const QSettings& overlay) {
@@ -1106,11 +1110,11 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
                 JieliBtBoxCmdCatalog::paramFromIniGroup(ini, jieliCmd, out.send.param);
             }
         } else {
-            FixturePcbaCmd fixtureCmd;
-            if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(out.send.deviceCmd, fixtureCmd)) {
-                if (!FixturePcbaCmdCatalog::isCmdForAction(fixtureCmd, out.send.action))
-                    out.send.action = FixturePcbaCmdCatalog::actionFor(fixtureCmd);
-                FixturePcbaCmdCatalog::paramFromIniGroup(ini, fixtureCmd, out.send.param);
+        FixturePcbaCmd fixtureCmd;
+        if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(out.send.deviceCmd, fixtureCmd)) {
+            if (!FixturePcbaCmdCatalog::isCmdForAction(fixtureCmd, out.send.action))
+                out.send.action = FixturePcbaCmdCatalog::actionFor(fixtureCmd);
+            FixturePcbaCmdCatalog::paramFromIniGroup(ini, fixtureCmd, out.send.param);
             }
         }
     } else if (out.send.channel == TestCaseSendChannel::Modbus || out.send.channel == TestCaseSendChannel::Scpi) {
@@ -1118,17 +1122,17 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
         if (!paramMap.isEmpty()) {
             out.send.param = normalizeScpiModbusParamFromMap(paramMap);
         } else {
-            QVariant val = ini.value(QStringLiteral("Send/Param"));
-            if (!val.isValid()) {
-                val = readSendScopedParam(ini, QStringLiteral("value"), QVariant());
-            }
-            if (!val.isValid()) {
-                val = readSendScopedParam(ini, QStringLiteral("int"), QVariant());
-            }
-            if (!val.isValid()) {
-                val = readSendScopedParam(ini, QStringLiteral("string"), QVariant());
-            }
-            out.send.param = val;
+        QVariant val = ini.value(QStringLiteral("Send/Param"));
+        if (!val.isValid()) {
+            val = readSendScopedParam(ini, QStringLiteral("value"), QVariant());
+        }
+        if (!val.isValid()) {
+            val = readSendScopedParam(ini, QStringLiteral("int"), QVariant());
+        }
+        if (!val.isValid()) {
+            val = readSendScopedParam(ini, QStringLiteral("string"), QVariant());
+        }
+        out.send.param = val;
         }
     } else {
         DeviceCmd cmd;
@@ -1137,6 +1141,8 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
                 out.send.action = DeviceCmdCatalog::actionFor(cmd);
             DeviceCmdCatalog::paramFromIniGroup(ini, cmd, out.send.param);
         }
+        // Hook 步骤（如 COUNTDOWN_WAIT）的 Param_seconds 等通用键不在 DeviceCmd  schema 内
+        mergeSendParamMapInto(out.send.param, readSendParamMap(ini));
     }
 
     out.timing.delayBeforeMs = ini.value(QStringLiteral("Timing/DelayBeforeMs"), 0).toInt();
@@ -1273,6 +1279,32 @@ void supplementMissingHookFromLibrary(const QString& stepId, TestCaseDefinition&
     }
 }
 
+void supplementMissingHookSendParamsFromLibrary(const QString& stepId, TestCaseDefinition& def) {
+    if (!hookUsesGenericSendParamMap(def))
+        return;
+    QVariantMap current;
+    if (def.send.param.canConvert<QVariantMap>())
+        current = def.send.param.toMap();
+    const auto hasSeconds = [&]() {
+        if (current.contains(QStringLiteral("seconds")) && current.value(QStringLiteral("seconds")).toInt() > 0)
+            return true;
+        return current.contains(QStringLiteral("waitSeconds"))
+               && current.value(QStringLiteral("waitSeconds")).toInt() > 0;
+    };
+    if (hasSeconds())
+        return;
+
+    TestCaseDefinition library;
+    const QString libraryPath = TestCasePaths::stepLibraryPath(stepId);
+    const QString legacyPath = TestCasePaths::caseIniPath(stepId);
+    if (!loadCaseDefinitionFromIniFile(libraryPath, stepId, library)
+        && !loadCaseDefinitionFromIniFile(legacyPath, stepId, library)) {
+        return;
+    }
+    if (library.send.param.canConvert<QVariantMap>())
+        mergeSendParamMapInto(def.send.param, library.send.param.toMap());
+}
+
 void supplementMissingGateFromLibrary(const QString& stationKey, const QString& stepId, TestCaseDefinition& def) {
     // 仅补「工站缺多字段卡控」；单字段 Expected 等必须以工站 steps 为准，禁止被步骤库盖掉
     const bool defHasMultiGates = def.gates.size() > 1
@@ -1303,6 +1335,13 @@ void supplementMissingGateFromLibrary(const QString& stationKey, const QString& 
                 && !profileIni.value(QStringLiteral("Gate/Enabled")).toBool()) {
                 return;
             }
+            // 工站覆盖层已写了自己的单字段卡控（如读取版本号 Expected）时不得再用步骤库回冲，
+            // 否则界面在工站里改的期望值每次加载都会被库值盖掉；多字段库仍保留补齐能力
+            const bool profileHasOwnGate =
+                !profileIni.value(QStringLiteral("Gate/ReportType")).toString().trimmed().isEmpty()
+                || !profileIni.value(QStringLiteral("Gate/Field")).toString().trimmed().isEmpty();
+            if (profileHasOwnGate && !libraryHasMultiGates)
+                return;
         }
     }
 
@@ -1783,6 +1822,7 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
             DeviceCmd cmd;
             if (DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd))
                 DeviceCmdCatalog::paramToIniGroup(ini, cmd, def.send.param);
+            writeGenericHookSendParamMap(ini, def);
         }
         ini.setValue(QStringLiteral("Timing/DelayBeforeMs"), def.timing.delayBeforeMs);
         ini.setValue(QStringLiteral("Timing/DelayAfterMs"), def.timing.delayAfterMs);
@@ -1864,9 +1904,9 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
             if (JieliBtBoxCmdCatalog::jieliBtBoxCmdFromName(def.send.deviceCmd, jieliCmd))
                 JieliBtBoxCmdCatalog::paramToIniGroup(ini, jieliCmd, def.send.param);
         } else {
-            FixturePcbaCmd fixtureCmd;
-            if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd))
-                FixturePcbaCmdCatalog::paramToIniGroup(ini, fixtureCmd, def.send.param);
+        FixturePcbaCmd fixtureCmd;
+        if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd))
+            FixturePcbaCmdCatalog::paramToIniGroup(ini, fixtureCmd, def.send.param);
         }
     } else if (def.send.channel == TestCaseSendChannel::Modbus || def.send.channel == TestCaseSendChannel::Scpi) {
         if (!def.send.device.isEmpty())
@@ -1876,6 +1916,7 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
         DeviceCmd cmd;
         if (DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd))
             DeviceCmdCatalog::paramToIniGroup(ini, cmd, def.send.param);
+        writeGenericHookSendParamMap(ini, def);
     }
 
     ini.setValue(QStringLiteral("Timing/DelayBeforeMs"), def.timing.delayBeforeMs);
@@ -1942,6 +1983,7 @@ bool TestCaseStore::loadCaseForStation(const QString& stationKey, const QString&
     }
     if (loaded && !key.isEmpty()) {
         supplementMissingHookFromLibrary(id, out);
+        supplementMissingHookSendParamsFromLibrary(id, out);
         supplementMissingGateFromLibrary(key, id, out);
     }
     return loaded;
@@ -2059,7 +2101,7 @@ void rebuildCloudItemNameMap() {
         const QString legacyPath = TestCasePaths::caseIniPath(caseName);
         const QString iniPath = QFile::exists(libPath) ? libPath : legacyPath;
         QSettings ini(iniPath, QSettings::IniFormat);
-        applyTestCaseIniCodec(ini);
+    applyTestCaseIniCodec(ini);
         const QString nameInIni = ini.value(QStringLiteral("Meta/Name"), caseName).toString().trimmed();
         const QString displayInIni = ini.value(QStringLiteral("Meta/DisplayName")).toString().trimmed();
         const QString mesTag = ini.value(QStringLiteral("Meta/MesTag")).toString().trimmed();
@@ -2069,6 +2111,9 @@ void rebuildCloudItemNameMap() {
         registerCloudItemNameAlias(&map, nameInIni, display);
         registerCloudItemNameAlias(&map, caseName, display);
     }
+    // 杰理蓝牙盒子多字段卡控拆项后的 MES 键 → 云端中文名
+    registerCloudItemNameAlias(&map, QStringLiteral("BT_RSSI"), QStringLiteral("RSSI(dBm)"));
+    registerCloudItemNameAlias(&map, QStringLiteral("BT_FREQ_OFFSET"), QStringLiteral("频偏"));
     cloudItemNameMapLoaded() = true;
 }
 
@@ -2254,7 +2299,7 @@ TestCaseSerialUiConfig TestCaseStore::loadStationSerialUiConfig(const QString& s
     if (ini.childGroups().contains(QStringLiteral("SerialUi"))) {
         ini.beginGroup(QStringLiteral("SerialUi"));
         readSerialUiFieldsFromGroup(ini, out);
-        ini.endGroup();
+    ini.endGroup();
     } else {
         readSerialUiFieldsFromGroup(ini, out);
     }
@@ -2342,7 +2387,7 @@ QVector<TestFlowItemEntry> TestCaseStore::loadStationFlowItems(const QString& st
         if (profileIni.contains(QStringLiteral("Items"))) {
             const QVector<TestFlowItemEntry> entries = parseFlowItemsFromSettingsGroup(profileIni);
             profileIni.endGroup();
-            return entries;
+    return entries;
         }
         profileIni.endGroup();
     }
@@ -2506,15 +2551,15 @@ bool TestCaseValidator::validateCase(const TestCaseDefinition& def, QStringList&
         } else if (def.send.fixtureProtocol != TestCaseFixtureProtocol::Pcba) {
             errors.append(QStringLiteral("治具协议类型无效"));
         } else {
-            FixturePcbaCmd fixtureCmd;
-            if (!FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd)) {
-                errors.append(QStringLiteral("治具 PCBA 测试指令无效"));
-            } else if (!FixturePcbaCmdCatalog::isCmdForAction(fixtureCmd, def.send.action)) {
-                errors.append(QStringLiteral("治具指令与操作方式不匹配"));
-            } else {
-                DeviceCmdParamSchema schema;
-                if (!FixturePcbaCmdCatalog::paramSchemaFor(fixtureCmd, schema))
-                    errors.append(QStringLiteral("该治具指令尚未配置参数模板，请联系工程师"));
+        FixturePcbaCmd fixtureCmd;
+        if (!FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd)) {
+            errors.append(QStringLiteral("治具 PCBA 测试指令无效"));
+        } else if (!FixturePcbaCmdCatalog::isCmdForAction(fixtureCmd, def.send.action)) {
+            errors.append(QStringLiteral("治具指令与操作方式不匹配"));
+        } else {
+            DeviceCmdParamSchema schema;
+            if (!FixturePcbaCmdCatalog::paramSchemaFor(fixtureCmd, schema))
+                errors.append(QStringLiteral("该治具指令尚未配置参数模板，请联系工程师"));
             }
         }
     } else if (def.send.channel == TestCaseSendChannel::Modbus) {
@@ -2777,12 +2822,14 @@ void writeSendParamLeaf(QSettings& s, const QString& leafKey, const QVariant& va
 QVariant normalizeScpiModbusParamFromMap(const QVariantMap& map) {
     if (map.isEmpty())
         return QVariant();
-    if (map.contains(QStringLiteral("int")) && map.size() == 1)
-        return map.value(QStringLiteral("int"));
-    if (map.contains(QStringLiteral("value")) && map.size() == 1)
-        return map.value(QStringLiteral("value"));
-    if (map.size() == 1)
-        return map.constBegin().value();
+    // 只有 int/uint/value/string 这类叶子键才还原成标量；具名参数（如 comPort）即使只有一个
+    // 也必须保持 map，否则单参数步骤会被折叠成裸值，UI 回显与执行按键名取参都拿不到
+    if (map.size() == 1) {
+        const QString leaf = map.constBegin().key();
+        if (leaf == QLatin1String("int") || leaf == QLatin1String("uint") || leaf == QLatin1String("value")
+            || leaf == QLatin1String("string"))
+            return map.constBegin().value();
+    }
     return map;
 }
 
@@ -2829,6 +2876,40 @@ QVariantMap readSendParamMap(const QSettings& settings) {
             return doc.object().toVariantMap();
     }
     return map;
+}
+
+void mergeSendParamMapInto(QVariant& param, const QVariantMap& extra) {
+    if (extra.isEmpty())
+        return;
+    QVariantMap merged;
+    if (param.canConvert<QVariantMap>())
+        merged = param.toMap();
+    for (auto it = extra.constBegin(); it != extra.constEnd(); ++it)
+        merged.insert(it.key(), it.value());
+    param = merged;
+}
+
+bool hookUsesGenericSendParamMap(const TestCaseDefinition& def) {
+    if (!def.hook.enabled)
+        return false;
+    return def.hook.hookId.trimmed() == QLatin1String("COUNTDOWN_WAIT");
+}
+
+void writeGenericHookSendParamMap(QSettings& ini, const TestCaseDefinition& def) {
+    if (!def.send.param.canConvert<QVariantMap>())
+        return;
+    const QVariantMap map = def.send.param.toMap();
+    if (map.isEmpty())
+        return;
+    if (hookUsesGenericSendParamMap(def)) {
+        writeSendParamMap(ini, map);
+        return;
+    }
+    if (def.send.channel == TestCaseSendChannel::Product) {
+        DeviceCmd cmd;
+        if (!DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd))
+            writeSendParamMap(ini, map);
+    }
 }
 
 int jsonMapIntValue(const QVariantMap& map, int defaultValue = 0) {
@@ -3592,7 +3673,7 @@ QString FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol prot
         return QStringLiteral("JIELI_BT_BOX");
     case TestCaseFixtureProtocol::Pcba:
     default:
-        return QStringLiteral("Pcba");
+    return QStringLiteral("Pcba");
     }
 }
 
@@ -3606,7 +3687,7 @@ QString FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol pr
         return QStringLiteral("杰理蓝牙盒子");
     case TestCaseFixtureProtocol::Pcba:
     default:
-        return QStringLiteral("PCBA测试协议");
+    return QStringLiteral("PCBA测试协议");
     }
 }
 
@@ -3810,7 +3891,8 @@ QStringList ModbusPeriphCmdCatalog::allDeviceKeys() {
             ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::GcSeriesTcp),
             ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::HqAmmeterRtu),
             ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::LxAmmeterRtu),
-            ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::MultiTempLoggerRtu)};
+            ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::MultiTempLoggerRtu),
+            ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::XinjiePlcRtu)};
 }
 
 QString ModbusPeriphCmdCatalog::deviceUiLabel(ModbusDeviceRoute device) {
@@ -5254,6 +5336,15 @@ bool GateRegistry::evaluate(const TestCaseGate& gate, const QString& reportType,
             if (expected.isEmpty()) {
                 passOut = false;
                 detailOut = QStringLiteral("当前=%1, 未配置期望( Gate/Expected 或 MES/UI SN)").arg(actual.isEmpty() ? QStringLiteral("-") : actual);
+            } else if (reportType == QLatin1String("ProtocolMacData") && gate.field == QLatin1String("mac")) {
+                auto normalizeMac = [](QString s) {
+                    s.remove(QLatin1Char(':'));
+                    s.remove(QLatin1Char('-'));
+                    s.remove(QLatin1Char(' '));
+                    return s.toUpper();
+                };
+                passOut = (normalizeMac(actual) == normalizeMac(expected));
+                detailOut = QStringLiteral("当前=%1, 期望=%2").arg(actual, expected);
             } else {
                 passOut = (actual == expected);
                 detailOut = QStringLiteral("当前=%1, 期望=%2").arg(actual, expected);

@@ -14,7 +14,9 @@
 #include "qprotocol_types.h"
 #include "shared_instrument.h"
 #include "serial_channel.h"
+#include "visa_channel.h"
 #include "multi_temp_logger_rtu.h"
+#include "xinjie_plc_rtu_types.h"
 #include "qmodbus_pdu.h"
 
 #include <QFile>
@@ -395,6 +397,26 @@ GcPlcCmd gcPlcCmdFromName(const QString& name) {
     return GcPlcCmd::IsConnected;
 }
 
+XinjePlcCmd xinjiePlcCmdFromName(const QString& name) {
+    if (name == QLatin1String("Connect"))
+        return XinjePlcCmd::Connect;
+    if (name == QLatin1String("Disconnect"))
+        return XinjePlcCmd::Disconnect;
+    if (name == QLatin1String("IsConnected"))
+        return XinjePlcCmd::IsConnected;
+    if (name == QLatin1String("WriteCoil"))
+        return XinjePlcCmd::WriteCoil;
+    if (name == QLatin1String("ReadCoils"))
+        return XinjePlcCmd::ReadCoils;
+    if (name == QLatin1String("WriteRegister"))
+        return XinjePlcCmd::WriteRegister;
+    if (name == QLatin1String("ReadHoldingRegisters"))
+        return XinjePlcCmd::ReadHoldingRegisters;
+    if (name == QLatin1String("ReadDiscreteInputs"))
+        return XinjePlcCmd::ReadDiscreteInputs;
+    return XinjePlcCmd::IsConnected;
+}
+
 HqAmmeterRtuCmd hqAmmeterRtuCmdFromName(const QString& name) {
     if (name == QLatin1String("ReadMeasurement"))
         return HqAmmeterRtuCmd::ReadMeasurement;
@@ -597,6 +619,14 @@ HuilingScpiStepParams splitHuilingScpiStepParam(const QVariant& resolved, const 
 
 double huilingParamDouble(const QVariantMap& map, const QString& key, double fallback) {
     return map.contains(key) ? map.value(key).toDouble() : fallback;
+}
+
+/** 是否为「等待蓝牙连上」类 Dongle 指令（扫连/直连/按名/OTA/App/主连）。
+ *  这类指令超时宜 ≥18s，且 sendCommandWithRetry 的 needCaseDone 应为 false。 */
+bool isDongleBleConnectCmd(DongleCmd cmd) {
+    return cmd == DongleCmd::BleScanConnect || cmd == DongleCmd::BleDirectConnect
+        || cmd == DongleCmd::BleScanConnectByName || cmd == DongleCmd::BleOtaConnect
+        || cmd == DongleCmd::BleAppConnect || cmd == DongleCmd::BleMainConnect;
 }
 
 } // namespace
@@ -806,11 +836,18 @@ bool QFreeWork::prepareTailSnWriteForTestCase(const TestCaseDefinition& def, Dev
 }
 
 QString QFreeWork::currentMacAddress() const {
-    if (!macAddress.trimmed().isEmpty() && macAddress != QStringLiteral("没有mac地址"))
-        return macAddress.trimmed();
-    if (ui && ui->macInput)
+    // 单步/连蓝牙优先用界面当前值，避免成员 macAddress 残留覆盖空的输入框
+    auto usable = [](const QString& s) {
+        const QString t = s.trimmed();
+        return !t.isEmpty() && t != QStringLiteral("没有mac地址");
+    };
+    if (ui && ui->macInput && usable(ui->macInput->text()))
         return ui->macInput->text().trimmed();
-    return macAddress.trimmed();
+    if (ui && ui->mac_combo && usable(ui->mac_combo->currentText()))
+        return ui->mac_combo->currentText().trimmed();
+    if (usable(macAddress))
+        return macAddress.trimmed();
+    return {};
 }
 
 bool QFreeWork::useTestCaseFlow(const QString& stationKey) const {
@@ -871,6 +908,33 @@ void QFreeWork::applyRuntimeSnGateExpected(QVector<TestCaseGate>& gates) {
     gates[0].expected = resolvedPcbaSnText();
 }
 
+void QFreeWork::applyRuntimePlaceholderGateExpected(QVector<TestCaseGate>& gates) {
+    for (TestCaseGate& g : gates) {
+        const QString expected = g.expected.trimmed();
+        if (expected.isEmpty())
+            continue;
+        if (isRuntimeMacPlaceholder(expected)) {
+            // $MAC = 界面 MAC 框（开局解析 SN / MES 已填入）；不用 macAddress 成员，避免读 MAC 回包后自比自过
+            QString uiMac;
+            if (ui && ui->macInput)
+                uiMac = ui->macInput->text().trimmed();
+            if (uiMac.isEmpty() || uiMac == QStringLiteral("没有mac地址"))
+                g.expected.clear();
+            else
+                g.expected = uiMac;
+            continue;
+        }
+        if (isRuntimePcbaSnPlaceholder(expected) || isRuntimeWholeMachineSnPlaceholder(expected)) {
+            g.expected = resolveTestCaseSendPlaceholder(expected);
+            continue;
+        }
+        if (tuplePlaceholderKind(expected) != TuplePlaceholderKind::None
+            || expected.startsWith(QStringLiteral("$SETTINGS:"))) {
+            g.expected = resolveTestCaseSendPlaceholder(expected);
+        }
+    }
+}
+
 void QFreeWork::emitFixtureMultiGateTableRows(const QVector<TestCaseGate>& gates, const QString& reportType,
                                               const QVariant& payload, bool& allPass, QString& detailOut) {
     allPass = true;
@@ -905,6 +969,8 @@ void QFreeWork::emitFixtureMultiGateTableRows(const QVector<TestCaseGate>& gates
     if (!rows.isEmpty()) {
         testResultTableUpdate(rows);
         testCaseMultiGateTableEmitted_ = true;
+        // 与结果表同步：RSSI/频偏等分项各写一条 MES，避免整步只上报主字段
+        appendMultiGateTestCaseMes(gates, reportType, payload);
     }
 }
 
@@ -940,6 +1006,7 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
     }
 
     applyRuntimeSnGateExpected(gatesForEval);
+    applyRuntimePlaceholderGateExpected(gatesForEval);
 
     bool pass = true;
     QString detail;
@@ -1004,12 +1071,11 @@ void QFreeWork::runScpiProgrammableCurrentSampleAnyMatch(const TestCaseDefinitio
         QString errStr;
         bool ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, commandParam, &errStr);
         if (!ok) {
-            waitWork(150);
+            VisaChannel::waitWork(200);
             ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, commandParam, &errStr);
         }
         if (!ok) {
-            waitWork(300);
-            resetVisaBackend();
+            VisaChannel::waitWork(300);
             ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, commandParam, &errStr);
         }
         if (!ok) {
@@ -1292,14 +1358,20 @@ void QFreeWork::runMultiTempLoggerChannelsWindowAllMatch(const TestCaseDefinitio
     if (highC < lowC)
         qSwap(lowC, highC);
 
+    // any：同轮任一路落入范围即过；all（默认）：同轮全部通道落入范围才过
+    const QString passMode =
+        map.value(QStringLiteral("tempPassMode"), QStringLiteral("all")).toString().trimmed().toLower();
+    const bool anyChannelPass = (passMode == QLatin1String("any") || passMode == QLatin1String("one"));
+
     QStringList chNames;
     for (int ch : channels)
         chNames.append(QStringLiteral("CH%1").arg(ch));
-    showlog(QStringLiteral("多路温度卡控：通道[%1]，窗口 %2ms，间隔 %3ms，单通道超时 %4ms，要求同轮全部落在 [%5,%6]℃")
+    showlog(QStringLiteral("多路温度卡控：通道[%1]，窗口 %2ms，间隔 %3ms，单通道超时 %4ms，%5 [%6,%7]℃")
                 .arg(chNames.join(QLatin1Char(',')))
                 .arg(durationMs)
                 .arg(intervalMs)
                 .arg(readTimeoutMs)
+                .arg(anyChannelPass ? QStringLiteral("任一路落入") : QStringLiteral("要求同轮全部落在"))
                 .arg(lowC, 0, 'f', 1)
                 .arg(highC, 0, 'f', 1));
 
@@ -1428,7 +1500,9 @@ void QFreeWork::runMultiTempLoggerChannelsWindowAllMatch(const TestCaseDefinitio
         }
         ++round;
         QStringList parts;
+        QString firstPassText;
         bool allOk = true;
+        bool anyInRange = false;
         bool anyFailRead = false;
         for (int ch : channels) {
             double c = 0.0;
@@ -1446,23 +1520,43 @@ void QFreeWork::runMultiTempLoggerChannelsWindowAllMatch(const TestCaseDefinitio
                              .arg(ch)
                              .arg(c, 0, 'f', 2)
                              .arg(inRange ? QString() : QStringLiteral("(超)")));
-            if (!inRange)
+            if (inRange) {
+                anyInRange = true;
+                // 任一路模式：结果表只保留最先达标的一路
+                if (firstPassText.isEmpty())
+                    firstPassText = QStringLiteral("CH%1=%2℃").arg(ch).arg(c, 0, 'f', 2);
+            } else {
                 allOk = false;
+            }
             if (interReadDelayMs > 0)
                 QThread::msleep(interReadDelayMs);
         }
         lastRoundText = parts.join(QLatin1Char(' '));
-        showlog(QStringLiteral("多路温度采样#%1：%2 → %3")
-                    .arg(round)
-                    .arg(lastRoundText)
-                    .arg(allOk ? QStringLiteral("全部达标")
-                               : (anyFailRead ? QStringLiteral("有读失败(继续)")
-                                              : QStringLiteral("未全达标(继续)"))));
-        if (allOk) {
+        const bool roundPass = anyChannelPass ? anyInRange : allOk;
+        if (anyChannelPass) {
+            showlog(QStringLiteral("多路温度采样#%1：%2")
+                        .arg(round)
+                        .arg(roundPass ? (firstPassText + QStringLiteral(" → 达标"))
+                                       : (anyFailRead ? QStringLiteral("有读失败(继续)")
+                                                      : QStringLiteral("均未达标(继续)"))));
+        } else {
+            showlog(QStringLiteral("多路温度采样#%1：%2 → %3")
+                        .arg(round)
+                        .arg(lastRoundText)
+                        .arg(roundPass ? QStringLiteral("全部达标")
+                                       : (anyFailRead ? QStringLiteral("有读失败(继续)")
+                                                      : QStringLiteral("未全达标(继续)"))));
+        }
+        if (roundPass) {
             const QString ask =
                 QStringLiteral("[%1,%2]℃").arg(QString::number(lowC, 'f', 1)).arg(QString::number(highC, 'f', 1));
-            markActiveTestCaseStepDone(true, lastRoundText, ask);
-            showlog(QStringLiteral("多路温度卡控通过：%1 点全部落入 %2").arg(channels.size()).arg(ask));
+            const QString passData =
+                (anyChannelPass && !firstPassText.isEmpty()) ? firstPassText : lastRoundText;
+            markActiveTestCaseStepDone(true, passData, ask);
+            if (anyChannelPass)
+                showlog(QStringLiteral("多路温度卡控通过：%1 落入 %2").arg(passData, ask));
+            else
+                showlog(QStringLiteral("多路温度卡控通过：%1 点全部落入 %2").arg(channels.size()).arg(ask));
             return;
         }
         const int remain = durationMs - static_cast<int>(sampleTimer.elapsed());
@@ -1476,10 +1570,17 @@ void QFreeWork::runMultiTempLoggerChannelsWindowAllMatch(const TestCaseDefinitio
     const QString ask =
         QStringLiteral("[%1,%2]℃").arg(QString::number(lowC, 'f', 1)).arg(QString::number(highC, 'f', 1));
     const QString failData = lastRoundText.isEmpty() ? QStringLiteral("无有效读数") : lastRoundText;
-    showlog(QStringLiteral("多路温度卡控失败：窗口 %1ms 内未出现「全部通道」同时落入 %2；末轮 %3")
-                .arg(durationMs)
-                .arg(ask)
-                .arg(failData));
+    if (anyChannelPass) {
+        showlog(QStringLiteral("多路温度卡控失败：窗口 %1ms 内无一通道落入 %2；末轮 %3")
+                    .arg(durationMs)
+                    .arg(ask)
+                    .arg(failData));
+    } else {
+        showlog(QStringLiteral("多路温度卡控失败：窗口 %1ms 内未出现「全部通道」同时落入 %2；末轮 %3")
+                    .arg(durationMs)
+                    .arg(ask)
+                    .arg(failData));
+    }
     markActiveTestCaseStepDone(false, failData, ask);
 }
 
@@ -1723,6 +1824,25 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             } else {
                 ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
             }
+        } else if (devRoute == ModbusDeviceRoute::XinjiePlcRtu) {
+            XinjePlcCmd xjCmd = xinjiePlcCmdFromName(def.send.deviceCmd);
+            QVariant resultVal;
+            bool ok = ctx->modbusManager.exec(xjCmd, resolvedParam, &resultVal, &errStr);
+            if (!ok) {
+                ctx->showlog(QStringLiteral("信捷 PLC 指令 [%1] 执行失败: %2").arg(def.send.deviceCmd, errStr));
+                ctx->markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
+            } else if (def.send.action == TestCaseSendAction::Get) {
+                ProtocolMeasureData measureData;
+                measureData.deviceName = deviceKey;
+                measureData.type = QStringLiteral("XinjiePlc");
+                measureData.valueText = resultVal.toString();
+                measureData.value = resultVal.toDouble();
+                measureData.isOk = true;
+                ctx->onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolMeasureData"),
+                                                          QVariant::fromValue(measureData)));
+            } else {
+                ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
+            }
         } else if (devRoute == ModbusDeviceRoute::HqAmmeterRtu) {
             if (def.send.action == TestCaseSendAction::Get && def.gate.enabled) {
                 ctx->runModbusAmmeterCurrentSampleAnyMatch(def, devRoute);
@@ -1916,6 +2036,12 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                 ctx->markActiveTestCaseStepDone(false, QStringLiteral("visaAddress无效"), QStringLiteral("失败"));
                 return;
             }
+            // 「配置Visa程控电源」：开局先作废该地址共享句柄，避免上一轮僵死会话占线
+            if (def.send.deviceCmd.compare(QLatin1String("ConfigureProgrammablePower"), Qt::CaseInsensitive) == 0
+                && !resolvedVisaAddr.isEmpty()) {
+                ctx->scpiVisaManager()->closeConnection();
+                VisaChannel::discardIdleSharedSession(resolvedVisaAddr);
+            }
             const bool visaReady =
                 devRoute == ScpiDeviceRoute::Agilent66319d
                     ? ctx->scpiVisaManager()->loadAgilent66319dVisaFromParamMap(visaLoadMap, visaTimeoutMs)
@@ -1927,6 +2053,12 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                 ctx->markActiveTestCaseStepDone(false, QStringLiteral("visaAddress缺失"), QStringLiteral("失败"));
                 return;
             }
+            const bool gpibAddr = resolvedVisaAddr.startsWith(QStringLiteral("GPIB"), Qt::CaseInsensitive);
+            if (gpibAddr) {
+                ctx->suppressProductBleAutoReconnect_ = true;
+                ctx->scpiVisaManager()->ensureConnected();
+                VisaChannel::waitWork(200);
+            }
             if (!stepParams.linkMap.value(QStringLiteral("visaAddress")).toString().trimmed().isEmpty()
                 || !visaLoadMap.value(QStringLiteral("visaAddress")).toString().trimmed().isEmpty()) {
                 ctx->updateHuilingVisaLinkCache(huilingVisaLinkKeysFromMap(visaLoadMap));
@@ -1937,14 +2069,23 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                 ctx->runScpiProgrammableCurrentSampleAnyMatch(def, stepParams.commandParam);
                 return;
             }
+            // 底层已有同会话/重开恢复；上层 GPIB 再试 1 次，非 GPIB 保留原重试
             bool ok = ctx->scpiVisaManager()->exec(cmd, stepParams.commandParam, &errStr);
             if (!ok) {
-                ctx->waitWork(150);
+                if (gpibAddr)
+                    VisaChannel::waitWork(300);
+                else
+                    ctx->waitWork(300);
                 ok = ctx->scpiVisaManager()->exec(cmd, stepParams.commandParam, &errStr);
             }
-            if (!ok) {
+            if (!ok && !gpibAddr) {
+                ctx->waitWork(500);
+                ok = ctx->scpiVisaManager()->exec(cmd, stepParams.commandParam, &errStr);
+            }
+            if (!ok && !gpibAddr) {
                 ctx->waitWork(300);
                 ctx->resetVisaBackend();
+                ctx->waitWork(500);
                 ok = ctx->scpiVisaManager()->exec(cmd, stepParams.commandParam, &errStr);
             }
             if (!ok) {
@@ -2129,35 +2270,89 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                             .arg(bestRssi));
             
             ctx->stepRuntime_.testData = bestMac;
+            ctx->macAddress = bestMac;
+            if (ctx->ui && ctx->ui->macInput)
+                ctx->ui->macInput->setText(bestMac);
             const auto sendFn = [ctx, bestMac]() {
                 ctx->at->set(DongleCmd::BleScanConnect, bestMac);
                 if (ctx->ui && ctx->ui->mac_combo) {
                     ctx->ui->mac_combo->setCurrentText(bestMac);
                 }
             };
+            // 连接前清 RX / 本地连接态，避免单步复用脏缓冲或误判已连接
+            if (ctx->dongleSerialChannel_)
+                ctx->dongleSerialChannel_->clearReceiveBuffer();
+            if (ctx->at)
+                ctx->at->resetConnected();
             ctx->setCommandWaitSource(CommandWaitSource::DongleAt);
-            ctx->sendCommandWithRetry(sendFn, timeoutMs);
+            const int bleTimeoutMs = qMax(timeoutMs > 0 ? timeoutMs : 18000, 18000);
+            ctx->sendCommandWithRetry(sendFn, bleTimeoutMs, false);
+            return;
+        }
+
+        if (isDongleBleConnectCmd(dongleCmd)) {
+            if (!ctx->dongleSerialPort || !ctx->dongleSerialPort->isOpen()) {
+                ctx->markActiveTestCaseStepDone(false, QStringLiteral("Dongle串口未打开"), QStringLiteral("失败"));
+                ctx->showlog(QStringLiteral("蓝牙连接失败：请先打开 Dongle 串口后再单步/开测"));
+                return;
+            }
+            QVariant param = ctx->resolveTestCaseSendParamTree(def.send.param);
+            QString mac = param.toString().trimmed();
+            if (mac.isEmpty() && param.canConvert<QVariantMap>())
+                mac = param.toMap().value(QStringLiteral("string")).toString().trimmed();
+            if (mac.isEmpty() || mac == QStringLiteral("没有mac地址"))
+                mac = ctx->currentMacAddress();
+            if (mac.isEmpty() || mac == QStringLiteral("没有mac地址")) {
+                ctx->markActiveTestCaseStepDone(false, QStringLiteral("MAC为空"), QStringLiteral("失败"));
+                ctx->showlog(QStringLiteral("蓝牙连接失败：MAC 为空，请在界面填写/选择 MAC，或步骤 Param 填写目标地址"));
+                return;
+            }
+            ctx->macAddress = mac;
+            if (ctx->ui && ctx->ui->macInput && ctx->ui->macInput->text().trimmed().isEmpty())
+                ctx->ui->macInput->setText(mac);
+            // 连接前清 RX / 本地连接态，避免单步时误判已连接或 AT 应答错乱
+            if (ctx->dongleSerialChannel_)
+                ctx->dongleSerialChannel_->clearReceiveBuffer();
+            if (ctx->at)
+                ctx->at->resetConnected();
+            ctx->showlog(QStringLiteral("发起蓝牙连接：%1").arg(mac));
+            const auto sendFn = [ctx, dongleCmd, mac]() { ctx->at->set(dongleCmd, mac); };
+            int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+            timeoutMs = qMax(timeoutMs > 0 ? timeoutMs : 18000, 18000);
+            ctx->setCommandWaitSource(CommandWaitSource::DongleAt);
+            // needCaseDone=false：等 AT+CONNECT_SUCCESS / getConnected，不因普通 FAIL 立刻结案
+            ctx->sendCommandWithRetry(sendFn, timeoutMs, false);
             return;
         }
 
         const auto sendFn = [ctx, def, dongleCmd]() {
             QVariant param = ctx->resolveTestCaseSendParamTree(def.send.param);
-            if (param.toString().trimmed().isEmpty()
-                && (dongleCmd == DongleCmd::BleDirectConnect || dongleCmd == DongleCmd::BleScanConnect
-                    || dongleCmd == DongleCmd::BleOtaConnect || dongleCmd == DongleCmd::BleAppConnect
-                    || dongleCmd == DongleCmd::BleMainConnect)) {
-                const QString mac = ctx->currentMacAddress();
-                if (!mac.isEmpty() && mac != QStringLiteral("没有mac地址"))
-                    param = mac;
-            }
             if (def.send.action == TestCaseSendAction::Get)
                 ctx->at->get(dongleCmd, param);
             else
                 ctx->at->set(dongleCmd, param);
         };
-        const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+        // AT+BLEMTU / AT+HSADC / AT+BOMB / AT+GMAC 等 dongle 侧无应答解析：
+        // Timing/WaitReply=false 时只发不收，发完即过步；此时没有回包可判失败，故先卡串口是否已打开
+        if (!def.timing.waitReply) {
+            if (!ctx->dongleSerialPort || !ctx->dongleSerialPort->isOpen()) {
+                ctx->markActiveTestCaseStepDone(false, QStringLiteral("Dongle串口未打开"), QStringLiteral("失败"));
+                ctx->showlog(QStringLiteral("发送失败：请先打开 Dongle 串口后再单步/开测"));
+                return;
+            }
+            sendFn();
+            ctx->canGoNext = true;
+            ctx->sendRetryOver = false;
+            ctx->lastCommandRetryCount = 1;
+            ctx->lastCommandFailReason.clear();
+            ctx->showlog(QStringLiteral("已发送（不等待回包）"));
+            return;
+        }
+        int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+        if (timeoutMs <= 0)
+            timeoutMs = 3000;
         ctx->setCommandWaitSource(CommandWaitSource::DongleAt);
-        ctx->sendCommandWithRetry(sendFn, timeoutMs);
+        ctx->sendCommandWithRetry(sendFn, timeoutMs, true);
         return;
     }
 

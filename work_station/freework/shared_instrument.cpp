@@ -12,15 +12,16 @@ namespace SharedInstrument {
 namespace {
 
 bool looksLikeHuilingChannelCmd(const QString& text) {
-    return text.contains(QStringLiteral("SOURce"), Qt::CaseInsensitive)
-           || text.contains(QStringLiteral("OUTPut"), Qt::CaseInsensitive)
-           || text.contains(QStringLiteral("MEASure"), Qt::CaseInsensitive);
+    // 仅识别带通道号的会凌写法（SOUR1/OUTP1/MEAS1），勿把 Agilent 的 OUTP ON / MEAS:VOLT 当成会凌
+    static const QRegularExpression re(QStringLiteral(R"((SOURce|SOUR|OUTPut|OUTP|MEASure|MEAS)\d+)"),
+                                       QRegularExpression::CaseInsensitiveOption);
+    return re.match(text).hasMatch();
 }
 
 QString rewriteHuilingChannelDigit(QString cmd, int channel) {
     if (cmd.isEmpty() || channel < 1)
         return cmd;
-    static const QRegularExpression re(QStringLiteral(R"((SOURce|OUTPut|MEASure|SENS)(\d+))"),
+    static const QRegularExpression re(QStringLiteral(R"((SOURce|SOUR|OUTPut|OUTP|MEASure|MEAS|SENS)(\d+))"),
                                        QRegularExpression::CaseInsensitiveOption);
     QString out = cmd;
     QRegularExpressionMatchIterator it = re.globalMatch(cmd);

@@ -38,6 +38,10 @@ struct QlogSessionInfo {
     QString processBackgroundDailyRelativePath;
     qint64 processBackgroundOffsetStart = 0;
     qint64 processBackgroundOffsetEnd = 0;
+    QString residentDailyAbsolutePath;
+    QString residentDailyRelativePath;
+    qint64 residentOffsetStart = 0;
+    qint64 residentOffsetEnd = 0;
     bool valid = false;
 };
 
@@ -89,6 +93,8 @@ class Qlog {
     static QString logRootAbsolute();
     static QString exportDongleSessionSlice(const QlogSessionInfo& info, QString* error);
     static QString exportProcessBackgroundSessionSlice(const QlogSessionInfo& info, QString* error);
+    /** 本轮测试时间窗内的常驻监控切片（心跳/串口扫描等），供测完上传使用 */
+    static QString exportResidentSessionSlice(const QlogSessionInfo& info, QString* error);
 };
 
 #endif // QLOG_H

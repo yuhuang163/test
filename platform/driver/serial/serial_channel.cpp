@@ -409,7 +409,7 @@ void SerialChannel::applyLineSettings() {
     port_->setPortName(params_.portName);
     port_->setBaudRate(params_.baudRate);
     port_->setDataBits(QSerialPort::Data8);
-    port_->setParity(QSerialPort::NoParity);
+    port_->setParity(params_.parity);
     port_->setStopBits(QSerialPort::OneStop);
     port_->setReadBufferSize(params_.readBufferSize);
     port_->setFlowControl(params_.flowControl);

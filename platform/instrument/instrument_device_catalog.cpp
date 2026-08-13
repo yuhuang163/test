@@ -26,11 +26,11 @@ struct PurposeRow {
 // factoryId: 小写 Mes/FACTORY；"*" 表示各工厂默认/通用项（工厂专属行优先）。
 constexpr PurposeRow kPurposeRows[] = {
     {"*", InstrumentPurposeId::ProgrammablePower, u8"程控电源", RowProtocol::Scpi,
-     static_cast<int>(ScpiDeviceRoute::HuilingWfp60h), "VisaPower/*"},
+     static_cast<int>(ScpiDeviceRoute::HuilingWfp60h), "工站步骤ini Send/Device=HuilingWfp60h"},
     {"*", InstrumentPurposeId::ProgrammablePower, u8"程控电源(Agilent66319D)", RowProtocol::Scpi,
      static_cast<int>(ScpiDeviceRoute::Agilent66319d), "工站步骤ini Send/Device=Agilent66319d"},
     {"byd", InstrumentPurposeId::ProgrammablePower, u8"程控电源", RowProtocol::Scpi,
-     static_cast<int>(ScpiDeviceRoute::HuilingWfp60h), "VisaPower/*"},
+     static_cast<int>(ScpiDeviceRoute::HuilingWfp60h), "工站步骤ini Send/Device=HuilingWfp60h"},
 
     {"*", InstrumentPurposeId::AmmeterComScpi, u8"COM电流表(SCP)", RowProtocol::Scpi,
      static_cast<int>(ScpiDeviceRoute::HuilingWfp60h), "Current/ProtocolType=scpi"},

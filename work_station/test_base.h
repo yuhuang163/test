@@ -92,7 +92,7 @@ class test_base : public QWidget {
     // --- 通用工具 ---
     void waitWork(int ms);
     void updateMainStyle(QString style);
-    int sendCommandWithRetry(std::function<void()> commandFunc, int timeoutMs = 300);
+    int sendCommandWithRetry(std::function<void()> commandFunc, int timeoutMs = 300, bool allowResend = true);
     void setCommandWaitSource(CommandWaitSource source) {
         commandWaitSource_ = source;
     }
@@ -320,8 +320,6 @@ class test_base : public QWidget {
     void showEvent(QShowEvent* event) override;
     bool eventFilter(QObject* watched, QEvent* event) override;
     void resetVisaBackend();
-    /** 测完释放 VISA：GPIB/TCPIP 保持会话供下次 MAC 开测复用，ASRL 独占串口仍关闭。 */
-    void releaseVisaBackendAfterTest();
 
   private:
     QString receivedData = "";

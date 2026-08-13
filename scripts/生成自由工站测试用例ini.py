@@ -321,14 +321,14 @@ CASES = [
         {"Param_mac": "$MAC", "Param_sku": "PH9", "Param_position": "L"},
     ),
     proto(
-        "写入productKey",
+        "写入productID",
         "WRITE_PRODUCT_KEY",
         "Set",
         "Sn",
         {"Param_which_sn": 7, "Param_sn": "$TUPLE_PRODUCT_KEY"},
     ),
     proto(
-        "写入deviceName",
+        "写入deviceId",
         "WRITE_DEVICE_NAME",
         "Set",
         "Sn",

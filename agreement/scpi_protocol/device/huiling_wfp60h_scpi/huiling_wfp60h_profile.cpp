@@ -7,16 +7,16 @@
 #endif
 HuilingWfp60hScpiProfile HuilingWfp60hScpiProfile::defaults() {
     HuilingWfp60hScpiProfile profile;
-    // 与 上位机设置.ini [VisaPower] 缺省一致，暂写死不从 SETTINGS 读取
+    // 会凌短写（SCPI 缩写，与手册最短合法形式一致；勿用全拼长词）
     profile.scpiPowerVoltageV = 12.0;
     profile.scpiPowerCurrentA = 2.5;
-    profile.scpiSetVoltageCmd = QStringLiteral("SOURce1:VOLTage:LEVel:IMMediate:AMPLitude %1");
-    profile.scpiSetCurrentCmd = QStringLiteral("SOURce1:CURRent:LIMit:VALue %1");
-    profile.scpiOutputOnCmd = QStringLiteral("OUTPut1:STATe ON");
-    profile.scpiOutputOffCmd = QStringLiteral("OUTPut1:STATe OFF");
-    profile.scpiReadVoltageCmd = QStringLiteral("MEASure1:VOLTage:DC?");
-    profile.scpiReadCurrentCmd = QStringLiteral("MEASure1:CURRent:DC?");
-    profile.scpiCurrentType = QStringLiteral("CURRent");
+    profile.scpiSetVoltageCmd = QStringLiteral("SOUR1:VOLT %1");
+    profile.scpiSetCurrentCmd = QStringLiteral("SOUR1:CURR %1");
+    profile.scpiOutputOnCmd = QStringLiteral("OUTP1 ON");
+    profile.scpiOutputOffCmd = QStringLiteral("OUTP1 OFF");
+    profile.scpiReadVoltageCmd = QStringLiteral("MEAS1:VOLT:DC?");
+    profile.scpiReadCurrentCmd = QStringLiteral("MEAS1:CURR:DC?");
+    profile.scpiCurrentType = QStringLiteral("CURR");
     profile.scpiCurrentMode = QStringLiteral("DC");
     profile.scpiRange = QStringLiteral("500e-3");
     return profile;
@@ -31,18 +31,17 @@ HuilingWfp60hScpiProfile HuilingWfp60hScpiProfile::fromVisaPowerSettings() {
     profile.scpiPowerVoltageV = SETTINGS.value(QStringLiteral("VisaPower/PowerVoltageV"), 12.0).toDouble();
     profile.scpiPowerCurrentA = SETTINGS.value(QStringLiteral("VisaPower/PowerCurrentLimitA"), 2.5).toDouble();
     profile.scpiSetVoltageCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiSetVoltageCmd"), QStringLiteral("VOLT %1")).toString();
+        SETTINGS.value(QStringLiteral("VisaPower/ScpiSetVoltageCmd"), profile.scpiSetVoltageCmd).toString();
     profile.scpiSetCurrentCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiSetCurrentCmd"), QStringLiteral("CURR %1")).toString();
+        SETTINGS.value(QStringLiteral("VisaPower/ScpiSetCurrentCmd"), profile.scpiSetCurrentCmd).toString();
     profile.scpiOutputOnCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiOutputOnCmd"), QStringLiteral("OUTP ON")).toString();
+        SETTINGS.value(QStringLiteral("VisaPower/ScpiOutputOnCmd"), profile.scpiOutputOnCmd).toString();
     profile.scpiOutputOffCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiOutputOffCmd"), QStringLiteral("OUTP OFF")).toString();
+        SETTINGS.value(QStringLiteral("VisaPower/ScpiOutputOffCmd"), profile.scpiOutputOffCmd).toString();
     profile.scpiReadVoltageCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiReadVoltageCmd"), QStringLiteral("MEASure:VOLTage:DC?")).toString();
+        SETTINGS.value(QStringLiteral("VisaPower/ScpiReadVoltageCmd"), profile.scpiReadVoltageCmd).toString();
     profile.scpiReadCurrentCmd =
-        SETTINGS.value(QStringLiteral("VisaPower/ScpiReadCurrentCmd"), QStringLiteral("MEASure:CURRent:DC? 500e-3"))
-            .toString();
+        SETTINGS.value(QStringLiteral("VisaPower/ScpiReadCurrentCmd"), profile.scpiReadCurrentCmd).toString();
     return profile;
 }
 
@@ -78,11 +77,11 @@ QString HuilingWfp60hScpiProfile::buildConfigureMeasureLine() const {
 }
 
 QString HuilingWfp60hScpiProfile::buildReadMeasureCurrentLine() const {
-    return QStringLiteral("MEASure:CURRent:DC? ") + scpiRange;
+    return QStringLiteral("MEAS:CURR:DC? ") + scpiRange;
 }
 
 QString HuilingWfp60hScpiProfile::buildReadMeasureConfigurationLine() const {
-    return QStringLiteral("CONFigure:FUNCtion?");
+    return QStringLiteral("CONF:FUNC?");
 }
 
 QString HuilingWfp60hScpiProfile::buildSetCurrentRangeLine(const QString& rangeValue) const {

@@ -122,20 +122,48 @@ bool HuilingWfp60hScpiDevice::set(HuilingScpiCmd cmd, const QVariant& data) {
         const QVariantMap m = data.toMap();
         if (!writePowerChannelSelectIfConfigured(profile))
             return false;
-        if (!writeCurrentRangeIfConfigured(profile, data)) {
+        // 仅步骤显式带 currentRange 时才发量程，避免配置电压电流时多塞 SENS/RANG
+        if (m.contains(QStringLiteral("currentRange")) && !writeCurrentRangeIfConfigured(profile, data))
             return false;
-        }
         const double voltageV = m.value(QStringLiteral("voltage"), profile.scpiPowerVoltageV).toDouble();
         const double currentA = m.value(QStringLiteral("current"), profile.scpiPowerCurrentA).toDouble();
-        if (!transport_->writeLine(profile.scpiSetVoltageCmd.arg(QString::number(voltageV, 'f', 3)))) {
+        // 模板须含 %1；勿把 *IDN? 等查询填进设压/设流
+        const QString voltTmpl = profile.scpiSetVoltageCmd.trimmed();
+        const QString currTmpl = profile.scpiSetCurrentCmd.trimmed();
+        if (!voltTmpl.contains(QLatin1String("%1")) || voltTmpl.contains(QLatin1Char('?'))) {
+            qDebug().noquote() << "[Scpi] 设电压模板非法（须含 %1 且非查询）:" << voltTmpl;
             return false;
         }
-        return transport_->writeLine(profile.scpiSetCurrentCmd.arg(QString::number(currentA, 'f', 3)));
+        if (!currTmpl.contains(QLatin1String("%1")) || currTmpl.contains(QLatin1Char('?'))) {
+            qDebug().noquote() << "[Scpi] 设电流模板非法（须含 %1 且非查询）:" << currTmpl;
+            return false;
+        }
+        const QString voltLine = voltTmpl.arg(QString::number(voltageV, 'f', 3));
+        const QString currLine = currTmpl.arg(QString::number(currentA, 'f', 3));
+        // VISA/GPIB：两笔连续写易第二笔 ABORT；SCPI 分号合并为一次总线事务
+        if (visaSync) {
+            const QString combined = voltLine + QLatin1Char(';') + currLine;
+            qDebug().noquote() << "[Scpi] TX volt+curr:" << combined;
+            return transport_->writeLine(combined);
+        }
+        qDebug().noquote() << "[Scpi] TX volt:" << voltLine;
+        if (!transport_->writeLine(voltLine))
+            return false;
+        qDebug().noquote() << "[Scpi] TX curr:" << currLine;
+        return transport_->writeLine(currLine);
     }
-    case HuilingScpiCmd::ProgrammablePowerOutput:
+    case HuilingScpiCmd::ProgrammablePowerOutput: {
         if (!writePowerChannelSelectIfConfigured(profile))
             return false;
-        return transport_->writeLine(data.toBool() ? profile.scpiOutputOnCmd : profile.scpiOutputOffCmd);
+        const QString line =
+            (data.toBool() ? profile.scpiOutputOnCmd : profile.scpiOutputOffCmd).trimmed();
+        if (line.isEmpty() || line.contains(QLatin1Char('?'))) {
+            qDebug().noquote() << "[Scpi] 输出开关指令非法（勿填 *IDN? 等查询）:" << line;
+            return false;
+        }
+        qDebug().noquote() << "[Scpi] TX output:" << line;
+        return transport_->writeLine(line);
+    }
     case HuilingScpiCmd::ReadProgrammableVoltage:
         if (!writePowerChannelSelectIfConfigured(profile))
             return false;
