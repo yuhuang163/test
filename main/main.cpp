@@ -53,7 +53,7 @@ int blelogs = 0;          // 蓝牙信号日志1表示默认开
 int finddevicelogs = 1;   // 蓝牙扫描日志1表示默认开
 int hsadc_data = 0;       // 1表示高量程ADC采集日志
 int lsadc_data = 0;       // 1表示低量程Modbus采样日志开
-String version = "1.1.0"; // 默认的版本号
+String version = "1.1.1"; // 默认的版本号
 int wifistate = 1;
 /**配置区*/
 
@@ -196,6 +196,9 @@ void loop()
   //   checkTaskStatus(processDataTaskHandle, "数据处理任务");
   // Serial.printf("Free heap memory: %lu bytes\r\n", ESP.getFreeHeap());
   // Serial.printf("Max allocatable block size: %lu bytes\r\n", ESP.getMaxAllocHeap());
+
+  // 在安全点应用 processDataTask 登记的连接请求，避免跨任务直接改 BLE 状态
+  ble_process_pending_connect();
 
   switch (get_ble_state())
   {

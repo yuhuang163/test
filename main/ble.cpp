@@ -2,6 +2,7 @@
 #include "config.h"
 #include "esp_gatt_common_api.h"
 #include "esp_gap_ble_api.h"
+#include <strings.h>
 
 // 首选连接间隔（单位 1.25 ms）。目标 5 ms 对应 0x04，但 BLE/ESP-IDF 合法下限为 7.5 ms (0x06)。
 #define BLE_PREFER_CONN_INT_MIN 0x06
@@ -29,6 +30,9 @@ struct BleRuntime
     char scanDeviceAddress[18];
     esp_ble_addr_type_t scanDeviceAddressType;
     int scanDeviceRssi;
+    bool hasPendingConnect;
+    BleConnectMode pendingConnectMode;
+    char connectedAddress[18];
 };
 
 static BleRuntime bleRuntime = {
@@ -40,7 +44,10 @@ static BleRuntime bleRuntime = {
     false,
     "00:00:00:00:00:00",
     BLE_ADDR_TYPE_PUBLIC,
-    0};
+    0,
+    false,
+    CONNECT_BY_SCAN,
+    "00:00:00:00:00:00"};
 
 static BLEScan *pBLEScan;
 
@@ -407,6 +414,9 @@ class MyClientCallback : public BLEClientCallbacks
         Serial.printf("BLE MTU 已请求: %u\r\n", bleMtuSize);
         set_ble_state(BLE_CONNECTED);
         conn_id = pClient->getConnId();
+        String peerAddr = pClient->getPeerAddress().toString();
+        strncpy(bleRuntime.connectedAddress, peerAddr.c_str(), sizeof(bleRuntime.connectedAddress) - 1);
+        bleRuntime.connectedAddress[sizeof(bleRuntime.connectedAddress) - 1] = '\0';
 
         const char *connAddr = (get_ble_connect_mode() == CONNECT_BY_SCAN && bleRuntime.hasScanDevice)
                                    ? bleRuntime.scanDeviceAddress
@@ -416,6 +426,7 @@ class MyClientCallback : public BLEClientCallbacks
     void onDisconnect(BLEClient *ppclient)
     {
         BleState state = get_ble_state();
+        strcpy(bleRuntime.connectedAddress, "00:00:00:00:00:00");
         if (state == BLE_DISCONNECTING && bleRuntime.hasPendingStateAfterDisconnect)
         {
             BleState nextState = bleRuntime.pendingStateAfterDisconnect;
@@ -638,6 +649,11 @@ class MyAdvertisedDeviceCallbacks : public BLEAdvertisedDeviceCallbacks
                 Serial.print(deviceAddress.c_str());
                 Serial.print(", deviceRssi:");
                 Serial.println(rssi);
+            }
+            // 目标地址仍是默认的 00:00:00:00:00:00，说明还没指定要连的设备，只扫描不连接。
+            if (strcmp(targetDeviceAddress, "00:00:00:00:00:00") == 0)
+            {
+                return;
             }
             is_need_reset_adress = true;
                BLEAdvertisedDevice myadvertisedDevice=advertisedDevice;
@@ -1082,6 +1098,47 @@ void clear_ble_scan_device()
     }
 }
 
+// 由 processDataTask 调用：只登记连接请求，不直接改动 BLE 状态，
+// 避免与 loop() 里的连接状态机产生跨任务竞态（服务发现中途强断会打爆 BTU 栈）。
+void ble_request_connect(BleConnectMode mode)
+{
+    bleRuntime.hasPendingConnect = true;
+    bleRuntime.pendingConnectMode = mode;
+    Serial.print("登记连接请求 mode=");
+    Serial.println(mode == CONNECT_DIRECT ? "CONNECT_DIRECT" : "CONNECT_BY_SCAN");
+}
+
+// 由 loop() 在安全点调用：应用登记好的连接请求。返回 true 表示已处理。
+bool ble_process_pending_connect()
+{
+    if (!bleRuntime.hasPendingConnect)
+    {
+        return false;
+    }
+    // 正在断开中，等 DISCONNECT_EVT 回调收敛后再应用，避免状态被硬拽。
+    if (get_ble_state() == BLE_DISCONNECTING)
+    {
+        return false;
+    }
+
+    bleRuntime.hasPendingConnect = false;
+    BleConnectMode mode = bleRuntime.pendingConnectMode;
+    set_ble_connect_mode(mode);
+
+    if (is_ble_connected())
+    {
+        // 先断开，等待异步断开回调后再进入目标状态。
+        deinit_ble(mode == CONNECT_DIRECT ? BLE_CONNECTING : BLE_SCANNING);
+    }
+    else
+    {
+        clear_ble_scan_device();
+        set_ble_state(mode == CONNECT_DIRECT ? BLE_CONNECTING : BLE_SCANNING);
+    }
+    Serial.printf("已应用连接请求 mode=%d ble_state=%d\r\n", (int)mode, (int)get_ble_state());
+    return true;
+}
+
 void send_ble_data(ext_ble_phy_channel_send_e channel, uint8_t *data, size_t length)
 {
     if (StartSendOtaData)
@@ -1212,19 +1269,27 @@ bool connectTobleServer()
     {
         Serial.println("未提供扫描设备信息，尝试按 MAC 直连");
         BLEAddress addr(targetDeviceAddress);
-        // 按用户要求：只尝试一次连接，不做地址类型重试。
-        const uint32_t dconTimeoutMs = 15000;
-        const esp_ble_addr_type_t type = BLE_ADDR_TYPE_RANDOM;
-        Serial.print("直连尝试 addrType=");
-        Serial.print((type == BLE_ADDR_TYPE_PUBLIC) ? "public" : "random");
-        Serial.print(", timeoutMs=");
-        Serial.println(dconTimeoutMs);
-
-        connected = pClient->connect(addr, type, dconTimeoutMs);
-        if (connected && !pClient->isConnected())
+        // 不同设备广播的地址类型不同，先按 public 试，失败再按 random 试一次。
+        const uint32_t dconTimeoutMs = 5000;
+        const esp_ble_addr_type_t types[] = {BLE_ADDR_TYPE_PUBLIC, BLE_ADDR_TYPE_RANDOM};
+        for (size_t i = 0; i < sizeof(types) / sizeof(types[0]) && !connected; ++i)
         {
-            Serial.println("connect() 返回成功但 isConnected() 为 false，视为失败");
-            connected = false;
+            const esp_ble_addr_type_t type = types[i];
+            Serial.print("直连尝试 addrType=");
+            Serial.print((type == BLE_ADDR_TYPE_PUBLIC) ? "public" : "random");
+            Serial.print(", timeoutMs=");
+            Serial.println(dconTimeoutMs);
+
+            connected = pClient->connect(addr, type, dconTimeoutMs);
+            if (connected && !pClient->isConnected())
+            {
+                Serial.println("connect() 返回成功但 isConnected() 为 false，视为失败");
+                connected = false;
+            }
+            if (!connected && i + 1 < sizeof(types) / sizeof(types[0]))
+            {
+                delay(300); // 等 BLE 栈清理失败的那次连接，避免立刻重连触发 gatt_connect wrong state
+            }
         }
     }
     else

@@ -166,21 +166,12 @@ void processATCommand(byte *get_cmd, int length)
             }
             strcpy(targetDeviceAddress, packetString.c_str());
             is_need_reset_adress = false;
-            set_ble_connect_mode(CONNECT_BY_SCAN);
 
             Serial.print("已设置新的目标设备 MAC 地址：");
             Serial.println(targetDeviceAddress);
 
-            if (is_ble_connected())
-            {
-                deinit_ble(BLE_SCANNING); // 等待异步断开回调后再进入扫描
-            }
-            else
-            {
-                clear_ble_scan_device();
-                set_ble_state(BLE_SCANNING);
-            }
-            Serial.printf("状态重置后: ble_state=%d\r\n", get_ble_state());
+            // 允许重复发送同一 MAC 触发重连；只登记请求，由 loop() 状态机在安全点应用
+            ble_request_connect(CONNECT_BY_SCAN);
         }
         break;
 
@@ -194,14 +185,12 @@ void processATCommand(byte *get_cmd, int length)
             }
             strcpy(targetDeviceAddress, packetString.c_str());
             is_need_reset_adress = false;
-            set_ble_connect_mode(CONNECT_DIRECT);
-            clear_ble_scan_device();
 
             Serial.print("AT+DCON 直连目标 MAC：");
             Serial.println(targetDeviceAddress);
 
-            // 不触发后台扫描，直接由 loop 内状态机走直连分支。
-            set_ble_state(BLE_CONNECTING);
+            // 只登记请求，由 loop() 状态机在安全点走直连分支。
+            ble_request_connect(CONNECT_DIRECT);
         }
         break;
 
@@ -384,17 +373,9 @@ void processATCommand(byte *get_cmd, int length)
         Serial.println("伤害距离: " + damageDistance);
         Serial.println("连接间隔时间: " + connectionInterval);
         Serial.println("发送指令: " + sendCommand);
-        set_ble_connect_mode(CONNECT_BY_SCAN);
-        if (is_ble_connected())
-        {
-            deinit_ble(BLE_SCANNING);
-        }
-        else
-        {
-            clear_ble_scan_device();
-            set_ble_state(BLE_SCANNING);
-        }
         StartBombState = true;
+        // 只登记请求，由 loop() 状态机在安全点切换到扫描
+        ble_request_connect(CONNECT_BY_SCAN);
         break;
     }
 
