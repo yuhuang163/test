@@ -12,88 +12,41 @@
 
 QModbusManager::QModbusManager(QObject* parent)
     : QObject(parent), h5uDevice_(this), gcDevice_(this), xinjiePlcDevice_(this) {
-    syncH5uDeviceBindings();
-    syncGcDeviceBindings();
-    syncXinjiePlcDeviceBindings();
-    syncRtuDeviceBindings();
-}
-
-void QModbusManager::syncH5uDeviceBindings() {
     h5uDevice_.setTcp(&h5uTcp_);
     h5uDevice_.setStationIndex(stationIndex_);
     h5uDevice_.setLogFn(log_);
     h5uDevice_.setIsContinueFn(isContinue_);
-}
 
-void QModbusManager::syncGcDeviceBindings() {
     gcDevice_.setTcp(&gcTcp_);
     gcDevice_.setStationIndex(stationIndex_);
     gcDevice_.setLogFn(log_);
-}
 
-void QModbusManager::syncXinjiePlcDeviceBindings() {
     xinjiePlcDevice_.setSerialChannel(serialChannel_);
     xinjiePlcDevice_.setStationIndex(stationIndex_);
     xinjiePlcDevice_.setLogFn(log_);
-}
 
-void QModbusManager::syncRtuDeviceBindings() {
     lxAmmeterRtu_.setMachineId(luxshareMachineId_);
 }
 
 void QModbusManager::setStationIndex(int stationIndex) {
     stationIndex_ = qMax(1, stationIndex);
-    syncH5uDeviceBindings();
-    syncGcDeviceBindings();
-    syncXinjiePlcDeviceBindings();
+    h5uDevice_.setStationIndex(stationIndex_);
+    gcDevice_.setStationIndex(stationIndex_);
+    xinjiePlcDevice_.setStationIndex(stationIndex_);
 }
-
 int QModbusManager::stationIndex() const {
     return stationIndex_;
 }
 
 void QModbusManager::setLogFn(LogFn fn) {
     log_ = std::move(fn);
-    syncH5uDeviceBindings();
-    syncGcDeviceBindings();
-    syncXinjiePlcDeviceBindings();
+    h5uDevice_.setLogFn(log_);
+    gcDevice_.setLogFn(log_);
+    xinjiePlcDevice_.setLogFn(log_);
 }
-
 void QModbusManager::setIsContinueFn(IsContinueFn fn) {
     isContinue_ = std::move(fn);
-    syncH5uDeviceBindings();
-}
-
-InovanceH5uModbusTcp* QModbusManager::h5uTcp() {
-    return &h5uTcp_;
-}
-
-const InovanceH5uModbusTcp* QModbusManager::h5uTcp() const {
-    return &h5uTcp_;
-}
-
-InovanceH5uTcpDevice* QModbusManager::h5uDevice() {
-    return &h5uDevice_;
-}
-
-const InovanceH5uTcpDevice* QModbusManager::h5uDevice() const {
-    return &h5uDevice_;
-}
-
-InovanceH5uModbusTcp* QModbusManager::gcTcp() {
-    return &gcTcp_;
-}
-
-GcSeriesTcpDevice* QModbusManager::gcDevice() {
-    return &gcDevice_;
-}
-
-XinjePlcRtuDevice* QModbusManager::xinjiePlcDevice() {
-    return &xinjiePlcDevice_;
-}
-
-const XinjePlcRtuDevice* QModbusManager::xinjiePlcDevice() const {
-    return &xinjiePlcDevice_;
+    h5uDevice_.setIsContinueFn(isContinue_);
 }
 
 PlcModbusSession QModbusManager::makeSession() const {
@@ -125,11 +78,9 @@ bool QModbusManager::exec(XinjePlcCmd cmd, const QVariant& param, QVariant* resu
 bool QModbusManager::connectPlc(QString* errorMessage) {
     return exec(PlcCmd::Connect, {}, nullptr, errorMessage);
 }
-
 void QModbusManager::disconnectPlc() {
     exec(PlcCmd::Disconnect);
 }
-
 bool QModbusManager::isPlcConnected() const {
     QVariant connected;
     const_cast<QModbusManager*>(this)->exec(PlcCmd::IsConnected, {}, &connected, nullptr);
@@ -138,9 +89,8 @@ bool QModbusManager::isPlcConnected() const {
 
 void QModbusManager::attachSerialChannel(SerialChannel* channel) {
     serialChannel_ = channel;
-    syncXinjiePlcDeviceBindings();
+    xinjiePlcDevice_.setSerialChannel(serialChannel_);
 }
-
 SerialChannel* QModbusManager::serialChannel() const {
     return serialChannel_;
 }
@@ -149,16 +99,14 @@ void QModbusManager::setDeviceRoute(ModbusDeviceRoute route) {
     deviceRoute_ = route;
     resetRtuRxState();
 }
-
 ModbusDeviceRoute QModbusManager::deviceRoute() const {
     return deviceRoute_;
 }
 
 void QModbusManager::setLuxshareMachineId(int machineId1Based) {
     luxshareMachineId_ = machineId1Based;
-    syncRtuDeviceBindings();
+    lxAmmeterRtu_.setMachineId(luxshareMachineId_);
 }
-
 int QModbusManager::luxshareMachineId() const {
     return luxshareMachineId_;
 }

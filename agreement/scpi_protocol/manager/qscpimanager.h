@@ -49,7 +49,8 @@ class QScpiManager : public QObject {
     void clearHuilingProfilePatch();
     HuilingWfp60hScpiProfile huilingActiveProfile() const;
 
-    /** 从 SETTINGS [VisaPower] 加载会凌程控电源（吸力/电流等非 test_case 工站）。 */
+    /** 从 SETTINGS [VisaPower] 加载会凌程控电源；仅吸力/静态电流两个已关闭工站调用，
+     *  上位机设置.ini 已移除该节，如需重新启用须先补回配置。 */
     void loadHuilingVisaFromSettings();
     /** 从测试步骤参数 map 加载会凌程控电源（visaAddress 等），不读 SETTINGS。 */
     bool loadHuilingVisaFromParamMap(const QVariantMap& map, int timeoutMs = 3000);

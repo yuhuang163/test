@@ -83,8 +83,8 @@ PlcV3RunResult PlcV3Fixture::run(PlcV3Command command, const PlcV3RunParams& par
                         .arg(verifyM)
                         .arg(verifyM + offset)
                         .arg(reqMs));
-                QVector<bool> bits;
-                if (!modbus->h5uTcp()->readMCoils(verifyM, 1, offset, cfg.unitId, reqMs, &bits, &err)) {
+                bool verifyBit = false;
+                if (!session.readCoil(verifyM, &verifyBit, &err)) {
                     ok = false;
                     connectResult.summary = QStringLiteral("连接验证读失败: M%1(addr=%2) %3")
                                                 .arg(verifyM)
@@ -99,7 +99,7 @@ PlcV3RunResult PlcV3Fixture::run(PlcV3Command command, const PlcV3RunParams& par
                     log(QStringLiteral("PLC_Modbus连接验证读通过: M%1(addr=%2)=%3")
                             .arg(verifyM)
                             .arg(verifyM + offset)
-                            .arg(bits.value(0) ? 1 : 0));
+                            .arg(verifyBit ? 1 : 0));
                 }
             } else {
                 connectResult.summary = QStringLiteral("已连 %1:%2 UnitId=%3，验证读关闭")

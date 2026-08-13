@@ -69,9 +69,6 @@ class PlcModbusSession {
     PlcModbusSession(InovanceH5uModbusTcp* tcp, const PlcStationConfig& cfg, LogFn log = {},
                      IsContinueFn isContinue = {});
 
-    InovanceH5uModbusTcp* tcp() const {
-        return tcp_;
-    }
     const PlcStationConfig& config() const {
         return cfg_;
     }
