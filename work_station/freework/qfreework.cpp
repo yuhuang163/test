@@ -292,12 +292,12 @@ void setupFreeWorkTabBar(QTabWidget* tabWidget) {
     const int minTabWidth = maxTextWidth + hPad;
     // updateMainStyle 之后覆盖全局 QTabBar 规则
     bar->setStyleSheet(QStringLiteral(
-                           "QTabBar::tab {"
+                           "QTabWidget QTabBar::tab {"
                            "  min-width: %1px;"
                            "  padding: 6px 16px;"
                            "  font-size: 14px;"
                            "}"
-                           "QTabBar::tab:selected {"
+                           "QTabWidget QTabBar::tab:selected {"
                            "  font-weight: bold;"
                            "}")
                            .arg(minTabWidth));
@@ -1639,7 +1639,8 @@ void QFreeWork::appendSuctionChartSample(double leftKpa, double rightKpa) {
     }
 
     // 约 5Hz 刷 Label/曲线（仅 UI）；向量已按每个 AT 点全量入库，不降采样频率
-    constexpr qint64 kUiThrottleMs = 200;
+    // 与主窗口吸力图一致：约 20Hz，避免 200ms 节流成批跳点
+    constexpr qint64 kUiThrottleMs = 50;
     const qint64 nowMs = suctionChartTimer_.elapsed();
     if (nowMs - suctionChartLastUiMs_ < kUiThrottleMs)
         return;

@@ -572,6 +572,15 @@ void test_base::onTestSessionStarting(const QString& sn, const QString& mac) {
     if (product)
         product->setLogSlot(m_index);
     Qlog::beginSession(m_index, sn.trimmed(), mac.trimmed(), station);
+    // 开测写入编译时刻（与状态栏同源：本文件参与编译时的 __DATE__/__TIME__）
+    const QString buildInfo = QStringLiteral("上位机编译：%1 %2 %3")
+                                  .arg(upperComputerVer)
+                                  .arg(QLatin1String(__DATE__))
+                                  .arg(QLatin1String(__TIME__));
+    Qlog::logUi(m_index, buildInfo);
+    if (msgEdit())
+        msgEdit()->appendPlainText(buildInfo);
+    qDebug() << buildInfo;
 }
 
 void test_base::abortTestSessionAndUpload() {

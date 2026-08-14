@@ -192,7 +192,11 @@ class MainWindow : public QMainWindow {
     void appendDongleSuctionChartSample(double ch1Kpa, double ch2Kpa, double ch3Kpa);
     void refreshDongleSuctionData(const ProtocolDongleSuctionData& data);
     void trimDongleSuctionChartToWindow(double tSec); // 兼容旧调用；现已保留全程数据，内部为空实现
+    /** 节流刷新曲线/Label；关闭采集或弹窗打开时可 forceFullReplot 补全未绘制的点 */
+    void flushDongleSuctionChartUi(bool forceFullReplot = false);
+    void appendDongleSuctionPlotIncremental(QCustomPlot* plot, int& plottedCount);
     void updateDongleSuctionPeakLabels();
+    void flushDongleSuctionCsvPending();
     void loadDongleSuctionPeakSettings();
     void setDongleSuctionPeakParamWidgetsEnabled(bool enabled);
     void resetDongleSuctionPeakMonitor();
@@ -205,6 +209,9 @@ class MainWindow : public QMainWindow {
     /** 空图时横轴初始长度；有数据后按全程自动扩展 */
     static constexpr double kDongleSuctionChartWindowSec = 10.0;
     static constexpr int kDongleSuctionChannelCount = 3;
+    // 约 20Hz 刷新：采样常 <50ms，200ms 会成批跳点显得一顿一顿；过低则长测 replot 更重
+    static constexpr int kDongleSuctionUiThrottleMs = 50;
+    static constexpr int kDongleSuctionCsvFlushEveryRows = 32;
     bool dongleSuctionReadEnabled_ = false;
     QCustomPlot* dongleSuctionPlot_ = nullptr;
     QPointer<QDialog> dongleSuctionPlotPopupDlg_;
@@ -215,6 +222,17 @@ class MainWindow : public QMainWindow {
     QVector<double> dongleSuctionChartCh3_;
     QElapsedTimer dongleSuctionChartTimer_;
     bool dongleSuctionChartTimerStarted_ = false;
+    qint64 dongleSuctionChartLastUiMs_ = 0;
+    int dongleSuctionChartPlottedCount_ = 0;
+    int dongleSuctionPopupPlottedCount_ = 0;
+    int dongleSuctionCsvRowsSinceFlush_ = 0;
+    bool dongleSuctionPeakLabelStatsInit_ = false;
+    double dongleSuctionCh1Min_ = 0.0;
+    double dongleSuctionCh1Max_ = 0.0;
+    double dongleSuctionCh2Min_ = 0.0;
+    double dongleSuctionCh2Max_ = 0.0;
+    double dongleSuctionCh3Min_ = 0.0;
+    double dongleSuctionCh3Max_ = 0.0;
     QFile dongleSuctionCsvFile_;
     QTextStream dongleSuctionCsvStream_;
     QString dongleSuctionCsvPath_;
@@ -234,13 +252,11 @@ class MainWindow : public QMainWindow {
     QString chargestate;
     double standbattary = 0;
     int is_battary_test = 0;
-    QString motorresult = "";
     QString passValue = "通过";
     QString failValue = "失败";
     QString stringsn;
     QAudioRecorder* audioRecorder;
     QString generateOutputFilePath();
-    void save_motor_to_csv(QString SN, QString Mac, QString csvresult);
     QMap<QString, QMap<QString, QString>> deviceMap; // 存储设备信息
     QString WIFI_RSSI;
     QString BLE_RSSI;
@@ -275,23 +291,10 @@ class MainWindow : public QMainWindow {
     Qroot* qroot = nullptr;
     Qpb* pb = nullptr;
     QatManager* at = nullptr;
-    typedef enum {
-        STATE_IDLE,            // 休眠状态
-        STATE_WATI_CONNECT,    // 等待连接
-        STATE_DISABLE_SLEEP_1, // 进入禁止休眠
-        MOTOR_CALI1,
-        MOTOR_CALI2,
-        MOTOR_CALI_DATA_SET,
-        MOTOR_TESTING,
-        CAMERA_TEST,
-        STATE_SAVE_RESULT // 保存结果在本地
-    } motorState;
     QButtonGroup* OTAGroup = new QButtonGroup(this);
     qsetting* qsetting_ui = NULL;
     QAction* settingMenuAction = nullptr;
-    bool is_motor_continue = false;
     bool is_need_noisy_data = false;
-    motorState motorstate = STATE_IDLE;
     imu_calibrate* qimuc = nullptr;
     TestModel* basicInfoModel = nullptr;
     TestModel* displaybasicInfoModel = nullptr;
@@ -299,7 +302,6 @@ class MainWindow : public QMainWindow {
     bool isimuCaliContinue = false;
     bool isrssiContinue = false;
     Ui::MainWindow* ui;
-    QString snBinding;
     QString macAddress = "没有mac地址";
     bool isimuCaliOk = 0;       // 是否校准完成
     bool is_start_ium_cali = 0; // 是否开始六轴校准
@@ -390,6 +392,9 @@ class MainWindow : public QMainWindow {
     void saveRssiDataToCsv(int intwifirssi, int intblerssi, QString wifiresult, QString bleresult);
     void updateHIDComboBox(QComboBox* comboBox);
     void saveImuTestDataToCsv(const QString& macAddress, const QString& result);
+    void initDebugTabChrome();
+    void initDebugTabLayout();
+    void applyDebugOtaTabVisibility();
     void initBasicInfo();
     void initPeriphState();
     void bandSnMacToCsv(const QString& macAddress, const QString& sn);
@@ -403,11 +408,8 @@ class MainWindow : public QMainWindow {
     void tryScheduleBleOtaPressTest(bool lastOk);
     void startUsmileBleOtaLegacy();
     void startUsmileBleOtaTransferLegacy();
-    void SendRadomDataPushButton();
     void solveNosiyData(QByteArray dataTemp);
     void waitWork(int ms);
-    void sendBrushData(bool is_random);
-    void sendRecord();
     void refreshPictureSendOver(ProtocolPictureSendOverData data);
     void updateImageOnMainThread();
     void refreshLogData(QString data);
@@ -443,7 +445,6 @@ class MainWindow : public QMainWindow {
     void refreshImuSampleData(ProtocolImuSampleData data);
     void refreshBattaryData(ProtocolBatteryData adc);
     void refreshWifiStateData(ProtocolWifiStateData data);
-    void bindingMacSn(QString bindingMac, QString bindingSn);
     void getMac(QString sn_to_search);
     void refreshInternetOtaData(ProtocolInternetOtaData data);
     void refreshWifiDemand(ProtocolWifiDemandData data);
@@ -508,33 +509,21 @@ class MainWindow : public QMainWindow {
     void on_duty_returnPressed();
     void on_close_motor_clicked();
     void on_start_motor_clicked();
-    void on_setTimePushButton_clicked();
-    void on_resetPushButton_clicked();
-    void on_sendBrushDataPushButton_clicked();
-    void on_sendRandomData_clicked();
-    void on_clearDataPushButton_clicked();
     void on_just_music_clicked();
     void on_start_wifible_test_clicked();
     void on_buruing1_clicked();
     void on_get_device_sn_clicked();
     void on_close_imu_collect_clicked();
     void on_open_imu_collect_clicked();
-    void on_clear_scan_clicked();
-    void on_pushButton_2_clicked();
-    void on_mac_combo_textActivated(const QString& arg1);
     void on_bleTestPushButton_clicked();
     void on_wifiOtaMacInput_returnPressed();
     void on_stopTestPushButton_clicked();
     void on_configWifiPushButton_clicked();
     void on_getInfoPushButton_clicked();
-    void on_snbanding_returnPressed();
     void on_getMac_returnPressed();
     void on_damping_open_clicked();
     void on_otaTestPushButton_clicked();
     void on_damping_close_clicked();
-    void on_motor_cali_clicked();
-    void on_end_motor_cali_clicked();
-    void on_start_scan_clicked();
     void on_enterwhitemode_clicked();
     void on_otaTestPushButton_2_clicked();
     void on_close_camera_clicked();
@@ -619,8 +608,6 @@ class MainWindow : public QMainWindow {
     void on_nfc_close_clicked();
     void on_close_motor_adc_switch_clicked();
     void on_open_motor_adc_switch_clicked();
-    void on_downloadapp_clicked();
-    void on_uploadapp_clicked();
     void on_delefile_clicked();
     void on_startBleOta_clicked();
     void on_bleotamacInput_returnPressed();
@@ -747,6 +734,8 @@ class MainWindow : public QMainWindow {
     void on_btnDongleAtSetValveSec_clicked();
     void on_btnDongleAtSetPumpTotal_clicked();
     void on_btnDongleAtSetFgPrint_clicked();
+    void on_btnDongleAtPumpSetAll_clicked();
+    void on_btnDongleAtPumpStatus_clicked();
     void on_btnDongleAtPumpStart_clicked();
     void on_btnDongleAtPumpStop_clicked();
 

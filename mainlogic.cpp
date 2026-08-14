@@ -1989,14 +1989,6 @@ void MainWindow::refreshColor4() {
     QString styleSheet = QString("QLineEdit { background-color: rgb(%1, %2, %3); }").arg(r).arg(g).arg(b);
     ui->light4->setStyleSheet(styleSheet);
 }
-void MainWindow::bindingMacSn(QString bindingMac, QString bindingSn) {
-    QFile file("mac_sn.txt");                                  // 创建一个文件对象
-    if (file.open(QIODevice::ReadWrite | QIODevice::Append)) { // 打开文件
-        QTextStream out(&file);                                // 创建一个文本流对象
-        out << bindingSn << "," << bindingMac << '\n';         // 将sn和mac写入文件
-        file.close();                                          // 关闭文件
-    }
-}
 void MainWindow::getMac(QString sn_to_search) {
     // 在合适的位置定义变量
     QString fileName = "mac_sn.txt";
@@ -2244,83 +2236,6 @@ void MainWindow::savePressDataToLocalFolder(const ProtocolPressSampleData& x, bo
     qDebug() << ("保存压感文件完成") << timestamp;
 }
 
-void MainWindow::sendBrushData(bool is_random) {
-    int start = ui->startDateTime->date().day();
-    int end = ui->endDateTime->date().day() + 1;
-    int timestamp = ui->startDateTime->dateTime().toSecsSinceEpoch();
-
-    for (int i = start; i < end; i++) {
-        // 设置手柄时间为start time
-        protocolManager.set(DeviceCmd::BrushTime, timestamp);
-        waitWork(WAITTIME);
-        // 设置使用数据
-        uint32_t work_time[6];
-        uint16_t pressure_time[6], horizon_brush[6];
-        FacSetBrushRecord record;
-        int brushtime = timestamp;
-        for (int j = 0; j < ui->brushTimesspinBox->value(); j++) {
-            if (is_random) {
-                SendRadomDataPushButton();
-                waitWork(10);
-            }
-            brushtime += 3600 * 3;
-            record.timestamp = brushtime;
-            record.plaque = ui->spinBox->value();
-
-            QRegularExpression regex("\\d{1,},\\d{1,},\\d{1,},\\d{1,},\\d{1,},\\d{1,}");
-            QRegularExpressionMatch match = regex.match(ui->brushTime->text());
-            int i = 0;
-            if (match.hasMatch()) {
-                QString matchedText = match.captured(0);
-                QStringList numbers = matchedText.split(",");
-                for (const QString& number : numbers) {
-                    work_time[i++] = number.toInt();
-                    qDebug() << "time" << number.toInt();
-                }
-            }
-            match = regex.match(ui->pressureTime->text());
-            i = 0;
-            if (match.hasMatch()) {
-                QString matchedText = match.captured(0);
-                QStringList numbers = matchedText.split(",");
-                for (const QString& number : numbers) {
-                    pressure_time[i++] = number.toInt();
-                    qDebug() << "time" << number.toInt();
-                }
-            }
-            match = regex.match(ui->horizalBrushTime->text());
-            i = 0;
-            if (match.hasMatch()) {
-                QString matchedText = match.captured(0);
-                QStringList numbers = matchedText.split(",");
-                for (const QString& number : numbers) {
-                    horizon_brush[i++] = number.toInt();
-                    qDebug() << "time" << number.toInt();
-                }
-            }
-            record.work_time.size = 24;
-            memcpy(record.work_time.bytes, work_time, 24);
-            record.pressure_time.size = 12;
-            memcpy(record.pressure_time.bytes, pressure_time, 12);
-            record.horizon_brush.size = 12;
-            memcpy(record.horizon_brush.bytes, horizon_brush, 12);
-            protocolManager.set(DeviceCmd::BrushRecord, QVariant::fromValue(record));
-            ui->msgTest->appendPlainText("发送时间:" + QDateTime::currentDateTime().toString(Qt::ISODate));
-            ui->msgTest->appendPlainText("");
-            ui->msgTest->appendPlainText("手柄时间:" + QDateTime::fromSecsSinceEpoch(timestamp).toString(Qt::ISODate));
-            ui->msgTest->appendPlainText("使用记录时间:" +
-                                         QDateTime::fromSecsSinceEpoch(record.timestamp).toString(Qt::ISODate));
-            ui->msgTest->appendPlainText(QString("菌斑指标:%1").arg(ui->spinBox->value()));
-            ui->msgTest->appendPlainText("使用时长:" + ui->brushTime->text());
-            ui->msgTest->appendPlainText("过压时长:" + ui->pressureTime->text());
-            ui->msgTest->appendPlainText("横向动作时长:" + ui->horizalBrushTime->text());
-            ui->msgTest->appendPlainText("\n");
-            waitWork(500);
-        }
-        timestamp += 86400; // 增加一天
-    }
-}
-
 void MainWindow::saveRssiDataToCsv(int intwifirssi, int intblerssi, QString wifiresult, QString bleresult) {
     QString folderPath = "D:/测试结果";
 
@@ -2490,102 +2405,7 @@ void MainWindow::writePeripheralDataToCSVFile() {
     // 调用函数写入 CSV 文件
     writeDataToCSV(filePath, peripheralHeaders, peripheralData);
 }
-void MainWindow::sendRecord() {
-    uint32_t work_time[6];
-    uint16_t pressure_time[6], horizon_brush[6];
-    FacSetBrushRecord record;
-    // record.timestamp = ui->dateTimeTest->dateTime().toSecsSinceEpoch();
-    record.plaque = ui->spinBox->value();
 
-    QRegularExpression regex("\\d{1,},\\d{1,},\\d{1,},\\d{1,},\\d{1,},\\d{1,}");
-    QRegularExpressionMatch match = regex.match(ui->brushTime->text());
-    int i = 0;
-    if (match.hasMatch()) {
-        QString matchedText = match.captured(0);
-        QStringList numbers = matchedText.split(",");
-        for (const QString& number : numbers) {
-            work_time[i++] = number.toInt();
-            qDebug() << "time" << number.toInt();
-        }
-    }
-
-    match = regex.match(ui->pressureTime->text());
-    i = 0;
-    if (match.hasMatch()) {
-        QString matchedText = match.captured(0);
-        QStringList numbers = matchedText.split(",");
-        for (const QString& number : numbers) {
-            pressure_time[i++] = number.toInt();
-            qDebug() << "time" << number.toInt();
-        }
-    }
-
-    match = regex.match(ui->horizalBrushTime->text());
-    i = 0;
-    if (match.hasMatch()) {
-        QString matchedText = match.captured(0);
-        QStringList numbers = matchedText.split(",");
-        for (const QString& number : numbers) {
-            horizon_brush[i++] = number.toInt();
-            qDebug() << "time" << number.toInt();
-        }
-    }
-
-    record.work_time.size = 24;
-    memcpy(record.work_time.bytes, work_time, 24);
-
-    record.pressure_time.size = 12;
-    memcpy(record.pressure_time.bytes, pressure_time, 12);
-
-    record.horizon_brush.size = 12;
-    memcpy(record.horizon_brush.bytes, horizon_brush, 12);
-
-    protocolManager.set(DeviceCmd::BrushRecord, QVariant::fromValue(record));
-
-    ui->msgTest->appendPlainText("发送时间:" + QDateTime::currentDateTime().toString(Qt::ISODate));
-    ui->msgTest->appendPlainText("记录生成时间:" + ui->dateTimeBrushSet->dateTime().toString(Qt::ISODate));
-    ui->msgTest->appendPlainText(QString("菌斑指标:%1").arg(ui->spinBox->value()));
-    ui->msgTest->appendPlainText("使用时长:" + ui->brushTime->text());
-    ui->msgTest->appendPlainText("过压时长:" + ui->pressureTime->text());
-    ui->msgTest->appendPlainText("横向动作时长:" + ui->horizalBrushTime->text());
-    ui->msgTest->appendPlainText("\n");
-}
-
-void MainWindow::SendRadomDataPushButton() {
-    QString work_time;
-    for (int i = 0; i < 6; i++) {
-        int randomNumber = QRandomGenerator::global()->bounded(30000, 100001);
-        work_time += QString("%1").arg(randomNumber);
-        if (i != 5) {
-            work_time += QString(",");
-        }
-    }
-
-    ui->brushTime->setText(work_time);
-
-    QString pressure_time;
-    for (int i = 0; i < 6; i++) {
-        int randomNumber = QRandomGenerator::global()->bounded(1000, 30000);
-        pressure_time += QString("%1").arg(randomNumber);
-        if (i != 5) {
-            pressure_time += QString(",");
-        }
-    }
-
-    ui->pressureTime->setText(pressure_time);
-
-    QString horizantol_time;
-    for (int i = 0; i < 6; i++) {
-        int randomNumber = QRandomGenerator::global()->bounded(1000, 30000);
-        horizantol_time += QString("%1").arg(randomNumber);
-        if (i != 5) {
-            horizantol_time += QString(",");
-        }
-    }
-
-    ui->horizalBrushTime->setText(horizantol_time);
-    ui->spinBox->setValue(QRandomGenerator::global()->bounded(0, 100));
-}
 QString MainWindow::getValueBySN(const QString& sn) {
     QString truncatedSN;
 
@@ -2637,57 +2457,6 @@ void MainWindow::refreshLogData(QString data) {
     ui->log->appendPlainText(data);
 }
 
-void MainWindow::save_motor_to_csv(QString SN, QString Mac, QString csvresult) {
-    // 构建 "测试结果" 文件夹的完整路径，这里选择保存到D盘
-    QString folderPath = "D:/测试结果";
-
-    // 如果 "测试结果" 文件夹不存在，则创建它
-    if (!QDir(folderPath).exists()) {
-        QDir().mkpath(folderPath);
-    }
-
-    // 获取当前日期
-    QDate currentDate = QDate::currentDate();
-
-    // 构建年、月、日的文件夹结构
-    QString yearFolder = QString::number(currentDate.year());
-    QString monthFolder = currentDate.toString("MM");
-    QString dayFolder = currentDate.toString("dd");
-
-    // 构建完整的文件路径，加上日期
-    QString fileName = currentDate.toString("yyyy-MM-dd") + "_电机测试报告.csv";
-    QString filePath = QDir(folderPath).filePath(fileName);
-
-    QFile file(filePath);
-    if (file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
-        QTextStream stream(&file);
-
-        // 写入表头
-        QStringList headers;
-        headers << "sn"
-                << "上位机版本"
-                << "mac地址"
-                << "时间戳"
-                << "测试项"
-                << "测试结果";
-
-        // 获取当前时间戳
-        QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss");
-
-        stream << headers.join(",") << "\n";
-
-        // 写入数据
-        QStringList rowData;
-        rowData << SN << Mac << timestamp << "电机测试" << csvresult;
-        stream << rowData.join(",") << "\n";
-        rowData.clear(); // 清空rowData，以便添加新的数据
-        file.close();
-        qDebug() << "Data appended to" << filePath;
-    } else {
-        qDebug() << "Error appending to file";
-    }
-}
-
 void MainWindow::showlog(QString msg) {
     if (!ui || !ui->msgEdit) {
         qDebug() << "showlog: ui 或 msgEdit 未初始化";
@@ -2706,29 +2475,9 @@ void MainWindow::updateComboBox() {
         // qDebug() << "设备地址：" << deviceName<<deviceAddress<<deviceRssi;
         if (deviceName.contains(ui->name_range->currentText()) && deviceRssi.toInt() > ui->rssi_range->value() &&
             deviceAddress.length() == 17) {
-            int index = ui->mac_combo->findText(deviceAddress);
-            if (index == -1) {
-                ui->mac_combo->addItem(deviceAddress);
-
-                if (ui->is_scan_connect->checkState())
-
-                {
-                    pb->setNeedAes(false);
-                    at->set(DongleCmd::BleScanConnect, deviceAddress); // 发送mac地址
-                    qDebug() << "开启了扫描到就连接的功能";
-                }
-            }
-            index = ui->pick_device->findText(deviceAddress);
-
+            const int index = ui->pick_device->findText(deviceAddress);
             if (index == -1) {
                 ui->pick_device->addItem(deviceAddress);
-                if (ui->is_scan_connect->checkState()) {
-                    pb->setNeedAes(false);
-                    at->set(DongleCmd::BleScanConnect, deviceAddress); // 发送mac地址
-                    pb->setPbMode(1);
-                    qDebug() << "开启了扫描到就连接的功能";
-                }
-                // qDebug() << "有新增" << deviceAddress;
             }
         }
     }
@@ -2990,19 +2739,6 @@ void MainWindow::initBasicInfo() {
                              ->setData(QString("%1").arg(baseInfo.ble_version), Qt::DisplayRole);
 
                          writeDataToCSVFile();
-
-                         if (algorithmVersion.contains(baseInfo.algo_version) && hardwareVersion.contains(baseInfo.hw_version) &&
-                             pressureSenseVersion.contains(baseInfo.presure_version) &&
-                             fsensorVersion.contains(baseInfo.fsensor_version) && productName.contains(baseInfo.product_name) &&
-                             appProtocolVersion.contains(QString::number(baseInfo.pb_phone_ver)) &&
-                             factoryProtocolVersion.contains(QString::number(baseInfo.pb_factory_ver)) &&
-                             softwareVersion.contains(baseInfo.soft_version) && resourceVersion.contains(baseInfo.res_version) &&
-                             motorVersion.contains(baseInfo.motor_version) && imuId.contains(QString::number(baseInfo.imu_id)) &&
-                             bleVersion.contains(baseInfo.ble_version)) {
-                             ;
-                         } else {
-                             motorresult = failValue;
-                         }
                      });
 }
 
@@ -3067,13 +2803,6 @@ void MainWindow::initPeriphState() {
                              peripheralModel->getTestItemByName("press_state")
                                  ->setData(QString("%1").arg(state.press_state), Qt::DisplayRole);
                              writePeripheralDataToCSVFile();
-
-                             if (state.flash_state == flashStatus && state.imu_state == imuStatus && state.press_state == pressureStatus &&
-                                 state.magnet_state == magneticStatus) {
-                                 ;
-                             } else {
-                                 motorresult = failValue;
-                             }
                              return;
                          }
                          if (protocolManager.isQfctpProtocolActive()) {
