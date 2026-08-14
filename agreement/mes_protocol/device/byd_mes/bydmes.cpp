@@ -430,6 +430,15 @@ bool isSerializableCompleteBluetoothTestStation() {
 
 } // namespace
 
+/** NcComplete 不良码：忽略初始化占位 "NULL"，与 TestDataCollect ERROR_CODE 一致。 */
+static QString bydNcCodeFromPack(const MesPacketData& pack) {
+    const QString err = pack.error.trimmed();
+    if (err.isEmpty() || err == QStringLiteral("NULL")) {
+        return QStringLiteral("TEST_ITEM_NG");
+    }
+    return err;
+}
+
 bool bydmes::shouldUseBydSerializableComplete(const MesPacketData& pack, bool isPassResult) const {
     if (!isPassResult || pack.factory.trimmed().compare(QLatin1String("byd"), Qt::CaseInsensitive) != 0)
         return false;
@@ -983,7 +992,7 @@ void bydmes::TestPass(MesPacketData pack) {
     completeParam["SFC"] = pack.sn;
     completeParam["SCHEDULING_ID"] = settingsValue("SchedulingID");
     if (isFailResult) {
-        const QString ncitemname = pack.error.isEmpty() ? QString("TEST_ITEM_NG") : pack.error;
+        const QString ncitemname = bydNcCodeFromPack(pack);
         completeParam["STATION_ID"] = settingsValue("StationID");
         completeParam["NC_CODE"] = ncitemname;
         completeParam["NC_CONTEXT"] = QStringLiteral("不良原因 %1; 测试结果 %2").arg(pack.remark, pack.result);

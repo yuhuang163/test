@@ -35,11 +35,11 @@ const Row kRows[] = {
      u8"AT+SUCTIONOSR=1..4\n1=1024X/8ms 2=2048X/10ms 3=4096X/11ms 4=8192X/16ms（默认）", kSet},
     {DongleCmd::SampleSuctionDual, "SampleSuctionDual", u8"采集双通道吸力", DeviceCmdParamKind::JsonMap,
      u8"可选：sampleDurationMs / sampleIntervalMs\r\nCH1/CH2 峰值与峰差请在 Gate（Dongle吸力峰值）中配置（同 BYD 双通道：两口最低值 + |差|）",
-     kGet},
+     kGet, "ProtocolDongleSuctionPeakData", "peakKpa"},
     {DongleCmd::SampleSuctionSingle, "SampleSuctionSingle", u8"采集单通道吸力", DeviceCmdParamKind::JsonMap,
      u8"可选：channel=1|2|3、sampleDurationMs/IntervalMs；峰识别可选 peakBaselineKpa/peakDipStartKpa\r\n"
      u8"Gate：peakKpa=各周期峰值均须在范围内；peakDiffKpa=最大峰值-最小峰值（不是窗口绝对最高-最低）",
-     kGet},
+     kGet, "ProtocolDongleSuctionPeakData", "peakKpa"},
     {DongleCmd::AdcSwitch, "AdcSwitch", u8"高量程采样开关", DeviceCmdParamKind::Int, u8"0=关 1=开（AT+HSADC）", kSet},
     {DongleCmd::LowRangeAdcSwitch, "LowRangeAdcSwitch", u8"低量程采样开关", DeviceCmdParamKind::Int,
      u8"0=关 1=开（AT+LSADC）", kSet},

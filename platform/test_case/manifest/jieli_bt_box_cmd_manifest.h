@@ -16,6 +16,8 @@ struct Row {
     DeviceCmdParamKind paramKind{};
     const char* paramHint = nullptr;
     uint8_t sendActions = TestCaseCmdManifest::kSendActionGet;
+    const char* gateReportType = nullptr;
+    const char* gateDefaultField = nullptr;
 };
 
 const Row* rows();

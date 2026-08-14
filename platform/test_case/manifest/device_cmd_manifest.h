@@ -22,6 +22,9 @@ struct Row {
     const char* paramHint = nullptr;
     /** kSendActionSet / kSendActionGet / kSendActionBoth */
     uint8_t sendActions = kSendActionSet;
+    /** 卡控回包类型（逗号分隔）；空则编辑器列出全部类型。 */
+    const char* gateReportType = nullptr;
+    const char* gateDefaultField = nullptr;
 };
 
 const Row* rows();

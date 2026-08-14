@@ -409,7 +409,7 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
     if (initialKey.isEmpty())
         initialKey = QStringLiteral("FREE_WORK");
     refreshStationCombo(initialKey);
-    persistSelectedStation(initialKey);
+    persistSelectedStation(currentStationKey());
     reloadCurrentStation();
     stationComboPrevIndex_ = stationCombo_ ? stationCombo_->currentIndex() : 0;
 }
@@ -703,25 +703,67 @@ void TestFlowEditor::refreshStationCombo(const QString& selectKey) {
     QString productName = SETTINGS.value(QStringLiteral("Mes/Product_Name")).toString().trimmed();
     if (productName.isEmpty())
         productName = SETTINGS.value(QStringLiteral("MES/Product_Name")).toString().trimmed();
-    const QVector<TestFlowStationEntry> stations =
+    const QVector<TestFlowStationEntry> filtered =
         TestCaseStore::loadFlowStationCatalogForProduct(productName);
+    const QString resolvedSelect = TestCaseStore::resolveFlowStationKey(keyToSelect);
+    QVector<TestFlowStationEntry> stations = filtered;
+    bool selectInFiltered = false;
+    for (const TestFlowStationEntry& entry : filtered) {
+        if (entry.key == resolvedSelect) {
+            selectInFiltered = true;
+            break;
+        }
+    }
+    // 主界面已选工站若被产品过滤掉，仍插入下拉首项，避免编排页静默落到「默认工站」
+    if (!selectInFiltered && !resolvedSelect.isEmpty()) {
+        const QString displayName = TestCaseStore::flowStationDisplayName(resolvedSelect);
+        if (!displayName.isEmpty()) {
+            stations.prepend({resolvedSelect, displayName});
+        }
+    }
+
     QSignalBlocker blocker(stationCombo_);
     stationCombo_->clear();
     for (const TestFlowStationEntry& entry : stations) {
         stationCombo_->addItem(entry.displayName, entry.key);
-        // 闭合态截断时悬停仍可读全名
-        stationCombo_->setItemData(stationCombo_->count() - 1, entry.displayName, Qt::ToolTipRole);
+        const int row = stationCombo_->count() - 1;
+        QString tip = entry.displayName;
+        if (entry.key == resolvedSelect && !selectInFiltered && !productName.isEmpty()) {
+            tip = QStringLiteral("%1（当前主界面工站，与产品型号 %2 的工站过滤不一致）")
+                      .arg(entry.displayName, productName);
+        }
+        stationCombo_->setItemData(row, tip, Qt::ToolTipRole);
     }
 
-    int idx = stationCombo_->findData(keyToSelect);
+    int idx = stationCombo_->findData(resolvedSelect.isEmpty() ? keyToSelect : resolvedSelect);
     if (idx < 0)
         idx = stationCombo_->findText(TestCaseStore::flowStationDisplayName(keyToSelect));
-    // 当前选中工站不属于本产品时，落到本产品下第一项
     if (idx < 0 && !stations.isEmpty())
         idx = 0;
     if (idx >= 0)
         stationCombo_->setCurrentIndex(idx);
     adjustComboPopupToContents(stationCombo_);
+}
+
+void TestFlowEditor::syncFromPersistedSelection() {
+    if (!uiBound_ || !stationCombo_)
+        return;
+    QString key = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationKey());
+    if (key.isEmpty())
+        key = QStringLiteral("FREE_WORK");
+    refreshStationCombo(key);
+    const QString selectedKey = currentStationKey();
+    if (selectedKey.isEmpty())
+        return;
+    if (selectedKey != lastLoadedStationKey_) {
+        if (hasUnsavedChanges()) {
+            if (!confirmDiscardOrSaveOnLeave())
+                return;
+        }
+        persistSelectedStation(selectedKey);
+        reloadCurrentStation();
+    }
+    stationComboPrevIndex_ = stationCombo_->currentIndex();
 }
 
 void TestFlowEditor::onProductNameChanged() {

@@ -350,10 +350,19 @@ struct GateStepDisplay {
     QString ask;
 };
 
+/** 当前测试指令对应的卡控回包（编辑器按此筛选，不再列出全部类型）。 */
+struct GateSendBinding {
+    QStringList reportTypes;
+    QString defaultField;
+};
+
 class GateRegistry {
   public:
     static QStringList reportTypes();
     static QVector<GateTypeDescriptor> allTypeDescriptors();
+    /** protocolOrDevice：产品协议 / 治具协议 / Modbus·SCPI 设备键。 */
+    static GateSendBinding bindingForSend(TestCaseSendChannel channel, const QString& protocolOrDevice,
+                                          const QString& deviceCmd);
     static bool descriptorFor(const QString& reportType, GateTypeDescriptor& out);
     static QStringList fieldsFor(const QString& reportType);
     /** Gate/Field 为 *、all 或空时，对同一回包内全部已登记字段套用相同判定条件。 */

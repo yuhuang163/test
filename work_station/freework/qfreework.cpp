@@ -9,6 +9,7 @@
 #include <QPushButton>
 #include <QAbstractButton>
 #include <QLabel>
+#include <QTableWidget>
 #include <QFont>
 #include <QComboBox>
 #include <QCoreApplication>
@@ -250,6 +251,104 @@ QString joinFreeWorkMesItemvalue(const QVector<QFreeWorkMesSegment>& segments, c
         parts << QStringLiteral("SUMMARY:") + v + QStringLiteral(":::::");
     }
     return QStringLiteral("|") + parts.join(QStringLiteral("|")) + QStringLiteral("|");
+}
+
+/** 取 MES 分项中首个 FAIL，用于 NcComplete 的 NC_CONTEXT / NC_CODE。 */
+static bool firstFreeWorkMesFailSegment(const QVector<QFreeWorkMesSegment>& segments, QString* outName,
+                                        QString* outValue) {
+    for (const auto& s : segments) {
+        if (s.result.trimmed().compare(QStringLiteral("FAIL"), Qt::CaseInsensitive) != 0) {
+            continue;
+        }
+        const QString name = s.name.trimmed();
+        if (name.isEmpty()) {
+            continue;
+        }
+        if (outName) {
+            *outName = name;
+        }
+        if (outValue) {
+            *outValue = s.value.trimmed();
+        }
+        return true;
+    }
+    return false;
+}
+
+/** 表格兜底：MES 分项未写入时从测试结果表取首个失败行。 */
+static bool firstFailedRowFromResultTable(QTableWidget* table, QString* outName, QString* outValue) {
+    if (!table) {
+        return false;
+    }
+    for (int row = 0; row < table->rowCount(); ++row) {
+        QTableWidgetItem* resultCell = table->item(row, 2);
+        if (!resultCell || resultCell->text().trimmed() != QStringLiteral("失败")) {
+            continue;
+        }
+        QTableWidgetItem* itemCell = table->item(row, 0);
+        QTableWidgetItem* dataCell = table->item(row, 1);
+        const QString name = itemCell ? itemCell->text().trimmed() : QString();
+        if (name.isEmpty()) {
+            continue;
+        }
+        if (outName) {
+            *outName = name;
+        }
+        if (outValue) {
+            *outValue = dataCell ? dataCell->text().trimmed() : QString();
+        }
+        return true;
+    }
+    return false;
+}
+
+/** BYD NcComplete NC_CONTEXT 前半段：测试项 + 失败值（内部分隔用中文逗号，避免与模板分号混淆）。 */
+static QString buildFreeWorkMesFailRemark(const QString& itemName, const QString& failValue) {
+    if (itemName.isEmpty()) {
+        return QString();
+    }
+    if (failValue.isEmpty()) {
+        return QStringLiteral("测试项:%1").arg(itemName);
+    }
+    return QStringLiteral("测试项:%1，失败值:%2").arg(itemName, failValue);
+}
+
+/** MES 分项键（MesTag 等）→ 当前工站步骤中文名（Meta/Name，与界面测试项一致）。 */
+static QString resolveFreeWorkFailStepDisplayName(const QString& stationKey, const QStringList& orderedNames,
+                                                  const QString& itemKey) {
+    const QString key = itemKey.trimmed();
+    if (key.isEmpty()) {
+        return key;
+    }
+    for (const QString& stepId : orderedNames) {
+        TestCaseDefinition def;
+        if (!TestCaseRunner::loadCaseForStation(stationKey, stepId, def)) {
+            continue;
+        }
+        const QString mesTag = def.meta.mesTag.trimmed();
+        const QString stepName = TestCaseRunner::stepLabel(def);
+        if (key == mesTag || key == stepName || key == stepId) {
+            return stepName.isEmpty() ? stepId : stepName;
+        }
+        if (!mesTag.isEmpty() && key.startsWith(mesTag + QLatin1Char('_'))) {
+            return stepName.isEmpty() ? stepId : stepName;
+        }
+        if (!stepName.isEmpty() && key.startsWith(stepName + QLatin1Char('_'))) {
+            return stepName;
+        }
+    }
+    const QString cloud = TestCaseStore::cloudDisplayNameForItemKey(key);
+    if (!cloud.isEmpty() && cloud != key) {
+        return cloud;
+    }
+    const int us = key.lastIndexOf(QLatin1Char('_'));
+    if (us > 0) {
+        const QString cloudBase = TestCaseStore::cloudDisplayNameForItemKey(key.left(us));
+        if (!cloudBase.isEmpty() && cloudBase != key.left(us)) {
+            return cloudBase;
+        }
+    }
+    return key;
 }
 
 bool isDongleBleConnectStepName(const QString& name) {
@@ -1018,6 +1117,20 @@ void QFreeWork::finalizeTestFlowIfComplete() {
             "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
             "border-radius: 10px; padding: 10px; text-align: center; ");
         pack.result = QStringLiteral("NG");
+        QString failMesKey;
+        QString failVal;
+        if (!firstFreeWorkMesFailSegment(freeWorkMesSegments_, &failMesKey, &failVal)) {
+            firstFailedRowFromResultTable(testResultTable(), &failMesKey, &failVal);
+        }
+        const QString failStepName =
+            resolveFreeWorkFailStepDisplayName(activeFlowStationKey_, orderedNames, failMesKey);
+        pack.remark = buildFreeWorkMesFailRemark(failStepName, failVal);
+        if (!failMesKey.isEmpty()) {
+            pack.error = failMesKey;
+        }
+        if (!pack.remark.isEmpty()) {
+            showlog(QStringLiteral("MES 不良原因：%1").arg(pack.remark));
+        }
     } else {
         ui->test_result->setText(QStringLiteral("PASS"));
         ui->test_result->setStyleSheet(

@@ -380,6 +380,13 @@ void qsetting::loadConfig() {
     loadLabelPrinterConfig();
 
     RestoreFacDefaultSetting();
+
+    if (testFlowEditor_) {
+        const int tabTestFlow = ui->tabWidget->indexOf(ui->tab_test_flow);
+        if (tabTestFlow >= 0 && ui->tabWidget->currentIndex() == tabTestFlow) {
+            testFlowEditor_->syncFromPersistedSelection();
+        }
+    }
 }
 void qsetting::updateMainStyle(QString style) {
     applyWidgetStyleSheet(this, style);
@@ -956,6 +963,9 @@ void qsetting::initTestFlowEditorUi() {
                 ui->tabWidget->setCurrentIndex(tabTestFlow);
                 return;
             }
+        }
+        if (tabTestFlow >= 0 && index == tabTestFlow && testFlowEditor_) {
+            testFlowEditor_->syncFromPersistedSelection();
         }
         lastSettingsTabIndex_ = index;
     });
