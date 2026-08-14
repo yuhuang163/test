@@ -2203,7 +2203,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
 
         if (dongleCmd == DongleCmd::BleScanConnectByName) {
             const QVariant param = ctx->resolveTestCaseSendParamTree(def.send.param);
-            QString targetName = QStringLiteral("Pump-E");
+            QString targetName = QStringLiteral("M5 Ultra");
             int rssiThreshold = -50;
             
             if (param.canConvert<QVariantMap>()) {

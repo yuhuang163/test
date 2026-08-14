@@ -34,9 +34,8 @@ class TestCaseEditDialog : public QDialog {
     void onDeviceCmdChanged(int index);
     void onGateReportTypeChanged(int index);
     void updateGateFieldsEnabled();
-    bool isMultiGateTableMode() const;
     bool isPeriphMultiGateMode() const;
-    bool isFixturePcbaMultiGateMode() const;
+    bool isRangeMultiGateMode() const;
     void rebuildMultiGateTable();
     QVector<TestCaseGate> readMultiGatesFromTable() const;
     QVector<TestCaseGate> readPeriphGatesFromTable() const;

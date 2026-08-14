@@ -1066,17 +1066,11 @@ void QFreeWork::refreshBydMesResourceDisplay() {
     const QString resource = bydmes::externalSettingsValue(QStringLiteral("Resource"));
     if (resource.isEmpty()) {
         ui->label_bydMesResource->setText(QStringLiteral("未配置"));
-        ui->label_bydMesResource->setStyleSheet(
-            QStringLiteral("font-size: 22px; font-weight: bold; color: #8c8c8c; "
-                           "background-color: #fafafa; border: 2px dashed #d9d9d9; "
-                           "border-radius: 8px; padding: 10px 8px;"));
+
         return;
     }
     ui->label_bydMesResource->setText(resource);
-    ui->label_bydMesResource->setStyleSheet(
-        QStringLiteral("font-size: 26px; font-weight: bold; color: #003366; "
-                       "background-color: #E8F4FC; border: 2px solid #1890FF; "
-                       "border-radius: 8px; padding: 10px 8px;"));
+
 }
 
 void QFreeWork::reportBydBluetoothMesKeyMaterials() {
@@ -1612,6 +1606,8 @@ void QFreeWork::refreshDongleSuctionData(ProtocolDongleSuctionData data) {
     dongleSuctionLastCh2Kpa_ = data.ch2Kpa;
     dongleSuctionLastCh3Kpa_ = data.ch3Kpa;
     if (dongleSuctionSampleActive_) {
+        dongleSuctionSampleTimeSec_.append(
+            dongleSuctionSampleTimer_.isValid() ? dongleSuctionSampleTimer_.elapsed() / 1000.0 : 0.0);
         dongleSuctionCh1Samples_.append(data.ch1Kpa);
         dongleSuctionCh2Samples_.append(data.ch2Kpa);
         dongleSuctionCh3Samples_.append(data.ch3Kpa);

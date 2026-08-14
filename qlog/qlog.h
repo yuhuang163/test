@@ -95,6 +95,12 @@ class Qlog {
     static QString exportProcessBackgroundSessionSlice(const QlogSessionInfo& info, QString* error);
     /** 本轮测试时间窗内的常驻监控切片（心跳/串口扫描等），供测完上传使用 */
     static QString exportResidentSessionSlice(const QlogSessionInfo& info, QString* error);
+
+    /** 吸力采样序列按工位暂存；测中落盘拿不到 PASS/NG，故留到测完导出 */
+    static void setSuctionSamples(int slot, const QVector<double>& timeSec, const QVector<double>& ch1,
+                                  const QVector<double>& ch2, const QVector<double>& ch3);
+    /** 导出本轮吸力采样 CSV（列同主窗口吸力页），无采样数据时返回空且不置 error */
+    static QString exportSuctionSamplesCsv(const QlogSessionInfo& info, QString* error);
 };
 
 #endif // QLOG_H

@@ -699,6 +699,16 @@ QString LogUploadService::compressSessionArchive(const QlogSessionInfo& info, QS
             *warning = warning->isEmpty() ? residentErr : *warning + QStringLiteral("；") + residentErr;
         }
     }
+    if (SETTINGS.value(QStringLiteral("FactoryCloud/Log/UploadIncludeSuctionCsv"), true).toBool()) {
+        QString suctionErr;
+        const QString suctionRel = Qlog::exportSuctionSamplesCsv(info, &suctionErr);
+        if (!suctionRel.isEmpty()) {
+            absPaths << QDir(QCoreApplication::applicationDirPath()).filePath(suctionRel);
+            relPaths << suctionRel;
+        } else if (!suctionErr.isEmpty() && warning) {
+            *warning = warning->isEmpty() ? suctionErr : *warning + QStringLiteral("；") + suctionErr;
+        }
+    }
     return compressExplicitFiles(absPaths, relPaths, error, warning);
 }
 
