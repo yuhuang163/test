@@ -21,6 +21,17 @@
           <el-option v-for="s in stations" :key="s" :label="s" :value="s" />
         </el-select>
       </el-form-item>
+      <el-form-item label="产品">
+        <el-select
+          v-model="filters.product"
+          clearable
+          filterable
+          placeholder="全部产品"
+          style="width: 160px"
+        >
+          <el-option v-for="p in products" :key="p" :label="p" :value="p" />
+        </el-select>
+      </el-form-item>
       <el-form-item label="日期段">
         <el-date-picker
           v-model="dateRange"
@@ -114,6 +125,7 @@ const { isFactoryScoped, scopedFactoryLabel, applyScopedFactoryFilter } = useFac
 
 const factories = ref([])
 const stations = ref([])
+const products = ref([])
 const stationLoading = ref(false)
 const itemNames = ref([])
 const nameLoading = ref(false)
@@ -122,7 +134,7 @@ const points = ref([])
 const chartRef = ref(null)
 let chartInstance = null
 
-const filters = reactive({ factoryName: '', station: '', itemName: '' })
+const filters = reactive({ factoryName: '', station: '', product: '', itemName: '' })
 const dateRange = ref(defaultDateRange(7))
 const dateShortcuts = DATE_RANGE_SHORTCUTS
 const limit = ref(200)
@@ -150,12 +162,27 @@ async function loadStations() {
   }
 }
 
+async function loadProducts() {
+  try {
+    const data = await api.getAnalyticsProducts({
+      factoryName: filters.factoryName || undefined,
+    })
+    products.value = data.products || []
+    if (filters.product && !products.value.includes(filters.product)) {
+      filters.product = ''
+    }
+  } catch {
+    products.value = []
+  }
+}
+
 async function searchItems(keyword) {
   nameLoading.value = true
   try {
     const data = await api.getCurveItemNames({
       factoryName: filters.factoryName || undefined,
       station: filters.station || undefined,
+      product: filters.product || undefined,
       keyword: keyword || undefined,
       ...toApiTimeRange(dateRange.value),
     })
@@ -183,6 +210,7 @@ async function loadCurve() {
     const data = await api.getCurveData({
       factoryName: filters.factoryName || undefined,
       station: filters.station || undefined,
+      product: filters.product || undefined,
       itemName: filters.itemName,
       limit: limit.value,
       ...toApiTimeRange(dateRange.value),
@@ -302,8 +330,12 @@ function renderChart() {
 watch(() => filters.factoryName, () => {
   itemNames.value = []
   loadStations()
+  loadProducts()
 })
 watch(() => filters.station, () => {
+  itemNames.value = []
+})
+watch(() => filters.product, () => {
   itemNames.value = []
 })
 watch(dateRange, () => {
@@ -314,6 +346,7 @@ onMounted(async () => {
   await loadFactories()
   applyScopedFactoryFilter(filters)
   await loadStations()
+  await loadProducts()
 })
 
 window.addEventListener('resize', () => {

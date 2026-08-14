@@ -121,12 +121,28 @@ def analytics_stations(
     return ok({"stations": stations})
 
 
+@router.get("/products")
+def analytics_products(
+    db: Annotated[Session, Depends(get_db)],
+    user: Annotated[User, Depends(get_current_user)],
+    factoryName: str | None = None,
+):
+    """从测试记录中取已有产品名称（供筛选下拉）。"""
+    q = db.query(TestRecord.product).distinct()
+    q = apply_factory_name_filter(q, TestRecord.factory_name, db, user, factoryName)
+    q = q.filter(TestRecord.product.isnot(None), TestRecord.product != "")
+    rows = q.order_by(TestRecord.product.asc()).limit(200).all()
+    products = [r[0] for r in rows if (r[0] or "").strip()]
+    return ok({"products": products})
+
+
 @router.get("/curve")
 def data_curve(
     db: Annotated[Session, Depends(get_db)],
     user: Annotated[User, Depends(get_current_user)],
     factoryName: str | None = None,
     station: str | None = None,
+    product: str | None = None,
     itemName: str | None = None,
     startTime: str | None = None,
     endTime: str | None = None,
@@ -138,6 +154,8 @@ def data_curve(
     q = apply_factory_name_filter(q, TestRecord.factory_name, db, user, factoryName)
     if station:
         q = q.filter(TestRecord.station.contains(station))
+    if product:
+        q = q.filter(TestRecord.product == product)
     if itemName:
         q = q.filter(TestRecordItem.name.contains(itemName))
     if startTime:
@@ -175,6 +193,7 @@ def curve_item_names(
     user: Annotated[User, Depends(get_current_user)],
     factoryName: str | None = None,
     station: str | None = None,
+    product: str | None = None,
     keyword: str | None = None,
     startTime: str | None = None,
     endTime: str | None = None,
@@ -185,6 +204,8 @@ def curve_item_names(
     q = apply_factory_name_filter(q, TestRecord.factory_name, db, user, factoryName)
     if station:
         q = q.filter(TestRecord.station.contains(station))
+    if product:
+        q = q.filter(TestRecord.product == product)
     if keyword:
         q = q.filter(TestRecordItem.name.contains(keyword))
     if startTime:
@@ -202,6 +223,7 @@ def yield_stats(
     user: Annotated[User, Depends(get_current_user)],
     factoryName: str | None = None,
     station: str | None = None,
+    product: str | None = None,
     startTime: str | None = None,
     endTime: str | None = None,
     groupBy: str = Query("day", regex="^(day|week|month)$"),
@@ -210,6 +232,8 @@ def yield_stats(
     q = apply_factory_name_filter(q, TestRecord.factory_name, db, user, factoryName)
     if station:
         q = q.filter(TestRecord.station.contains(station))
+    if product:
+        q = q.filter(TestRecord.product == product)
     if startTime:
         q = q.filter(TestRecord.created_at >= datetime.fromisoformat(startTime))
     if endTime:
@@ -264,6 +288,8 @@ def yield_stats(
     fail_items_q = apply_factory_name_filter(fail_items_q, TestRecord.factory_name, db, user, factoryName)
     if station:
         fail_items_q = fail_items_q.filter(TestRecord.station.contains(station))
+    if product:
+        fail_items_q = fail_items_q.filter(TestRecord.product == product)
     if startTime:
         fail_items_q = fail_items_q.filter(TestRecord.created_at >= datetime.fromisoformat(startTime))
     if endTime:

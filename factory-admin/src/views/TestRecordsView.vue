@@ -12,6 +12,17 @@
       <el-form-item label="工站">
         <el-input v-model="filters.station" clearable placeholder="工站（模糊）" style="width: 140px" />
       </el-form-item>
+      <el-form-item label="产品">
+        <el-select
+          v-model="filters.product"
+          clearable
+          filterable
+          placeholder="全部产品"
+          style="width: 160px"
+        >
+          <el-option v-for="p in products" :key="p" :label="p" :value="p" />
+        </el-select>
+      </el-form-item>
       <el-form-item label="电脑名字">
         <el-input v-model="filters.hostName" clearable placeholder="电脑名" style="width: 160px" />
       </el-form-item>
@@ -174,7 +185,8 @@ const total = ref(0)
 const page = ref(1)
 const pageSize = 20
 const factories = ref([])
-const filters = reactive({ factoryName: '', station: '', hostName: '', sn: '', mac: '', testResult: '' })
+const products = ref([])
+const filters = reactive({ factoryName: '', station: '', product: '', hostName: '', sn: '', mac: '', testResult: '' })
 const dateRange = ref(null)
 const dateShortcuts = DATE_RANGE_SHORTCUTS
 
@@ -247,6 +259,20 @@ async function loadFactories() {
   factories.value = await http.get('/admin/meta/factories')
 }
 
+async function loadProducts() {
+  try {
+    const data = await http.get('/analytics/products', {
+      params: { factoryName: filters.factoryName || undefined },
+    })
+    products.value = data.products || []
+    if (filters.product && !products.value.includes(filters.product)) {
+      filters.product = ''
+    }
+  } catch {
+    products.value = []
+  }
+}
+
 function search() {
   page.value = 1
   load()
@@ -261,6 +287,7 @@ async function load() {
         pageSize,
         factoryName: filters.factoryName || undefined,
         station: filters.station || undefined,
+        product: filters.product || undefined,
         hostName: filters.hostName || undefined,
         sn: filters.sn || undefined,
         mac: filters.mac || undefined,
@@ -343,9 +370,14 @@ watch(drawerVisible, (visible) => {
   }
 })
 
+watch(() => filters.factoryName, () => {
+  loadProducts()
+})
+
 onMounted(async () => {
   await loadFactories()
   applyScopedFactoryFilter(filters)
+  await loadProducts()
   await load()
 })
 </script>

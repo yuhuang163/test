@@ -179,6 +179,7 @@ def list_test_records(
     user: Annotated[User, Depends(get_current_user)],
     factoryName: str | None = None,
     station: str | None = None,
+    product: str | None = None,
     hostName: str | None = None,
     sn: str | None = None,
     mac: str | None = None,
@@ -192,6 +193,8 @@ def list_test_records(
     q = apply_factory_name_filter(q, TestRecord.factory_name, db, user, factoryName)
     if station:
         q = q.filter(TestRecord.station.contains(station))
+    if product:
+        q = q.filter(TestRecord.product == product)
     if hostName:
         q = q.filter(TestRecord.host_name.contains(hostName))
     if sn:

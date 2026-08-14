@@ -7,7 +7,6 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.models import Factory, User
 from app.response import fail
-from app.security import parse_roles
 from app.services.user_batch import factory_username_slug
 
 
@@ -35,8 +34,8 @@ def infer_factory_code_from_username(db: Session, username: str) -> str | None:
 
 def get_user_factory_scope(db: Session, user: User) -> str | None:
     """
-    返回用户绑定的工厂 code；None 表示平台管理员可看全部工厂。
-    未绑定且无法推断时返回空字符串（查询结果应为空）。
+    返回用户绑定的工厂 code；None 表示可看全部工厂。
+    优先级：显式 factory_code > 默认管理员账号 > 用户名推断（批量账号）> 未绑定则全部可见。
     """
     explicit = (getattr(user, "factory_code", None) or "").strip()
     if explicit:
@@ -49,10 +48,8 @@ def get_user_factory_scope(db: Session, user: User) -> str | None:
     if inferred:
         return inferred
 
-    roles = parse_roles(user.roles or "")
-    if "admin" in roles:
-        return None
-    return ""
+    # 手工创建且未绑定工厂：与工站「全部」一致，可查看全部工厂数据
+    return None
 
 
 def is_platform_admin(db: Session, user: User) -> bool:

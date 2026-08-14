@@ -21,6 +21,17 @@
           <el-option v-for="s in stations" :key="s" :label="s" :value="s" />
         </el-select>
       </el-form-item>
+      <el-form-item label="产品">
+        <el-select
+          v-model="filters.product"
+          clearable
+          filterable
+          placeholder="全部产品"
+          style="width: 160px"
+        >
+          <el-option v-for="p in products" :key="p" :label="p" :value="p" />
+        </el-select>
+      </el-form-item>
       <el-form-item label="日期段">
         <el-date-picker
           v-model="dateRange"
@@ -111,9 +122,10 @@ const { isFactoryScoped, scopedFactoryLabel, applyScopedFactoryFilter } = useFac
 
 const factories = ref([])
 const stations = ref([])
+const products = ref([])
 const stationLoading = ref(false)
 const loading = ref(false)
-const filters = reactive({ factoryName: '', station: '' })
+const filters = reactive({ factoryName: '', station: '', product: '' })
 const dateRange = ref(defaultDateRange(7))
 const dateShortcuts = DATE_RANGE_SHORTCUTS
 const groupBy = ref('day')
@@ -147,12 +159,27 @@ async function loadStations() {
   }
 }
 
+async function loadProducts() {
+  try {
+    const data = await api.getAnalyticsProducts({
+      factoryName: filters.factoryName || undefined,
+    })
+    products.value = data.products || []
+    if (filters.product && !products.value.includes(filters.product)) {
+      filters.product = ''
+    }
+  } catch {
+    products.value = []
+  }
+}
+
 async function loadYield() {
   loading.value = true
   try {
     const data = await api.getYieldStats({
       factoryName: filters.factoryName || undefined,
       station: filters.station || undefined,
+      product: filters.product || undefined,
       groupBy: groupBy.value,
       ...toApiTimeRange(dateRange.value),
     })
@@ -284,12 +311,14 @@ function renderBar() {
 
 watch(() => filters.factoryName, () => {
   loadStations()
+  loadProducts()
 })
 
 onMounted(async () => {
   await loadFactories()
   applyScopedFactoryFilter(filters)
   await loadStations()
+  await loadProducts()
   await loadYield()
 })
 

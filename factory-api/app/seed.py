@@ -20,12 +20,13 @@ FACTORY_SEED = [
 
 
 def seed_factories(db: Session) -> None:
+    """仅补全缺失工厂；已存在的不覆盖 enabled（避免重启把失能工厂重新打开）。"""
     for code, display_name, sort_order in FACTORY_SEED:
         row = db.get(Factory, code)
         if row:
+            # 同步展示名与排序，保留管理员设置的启用/失能状态
             row.display_name = display_name
             row.sort_order = sort_order
-            row.enabled = True
         else:
             db.add(Factory(code=code, display_name=display_name, sort_order=sort_order, enabled=True))
     db.commit()

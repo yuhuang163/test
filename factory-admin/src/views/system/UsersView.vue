@@ -18,6 +18,11 @@
       <el-table-column label="角色" width="200">
         <template #default="{ row }">{{ formatRoleLabels(row.roles) }}</template>
       </el-table-column>
+      <el-table-column label="工厂" width="120">
+        <template #default="{ row }">
+          {{ row.factoryCode ? meta.factoryLabel(row.factoryCode) : '全部' }}
+        </template>
+      </el-table-column>
       <el-table-column label="工站" min-width="160">
         <template #default="{ row }">{{ (row.stationKeys || []).join('、') || '全部' }}</template>
       </el-table-column>
@@ -64,6 +69,16 @@
               </span>
             </el-tooltip>
           </el-checkbox-group>
+        </el-form-item>
+        <el-form-item label="所属工厂">
+          <el-select v-model="form.factoryCode" clearable placeholder="全部工厂" style="width: 100%">
+            <el-option
+              v-for="f in meta.factories"
+              :key="f.code"
+              :label="f.displayName"
+              :value="f.code"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="工站授权">
           <el-select v-model="form.stationKeys" multiple style="width: 100%">
@@ -192,6 +207,7 @@ const form = reactive({
   username: '',
   password: '',
   roles: ['operator'],
+  factoryCode: '',
   stationKeys: [],
   status: 'active',
   remark: '',
@@ -227,6 +243,7 @@ function openCreate() {
     username: '',
     password: '',
     roles: ['operator'],
+    factoryCode: '',
     stationKeys: [],
     status: 'active',
     remark: '',
@@ -240,6 +257,7 @@ function openEdit(row) {
     username: row.username,
     password: '',
     roles: [...(row.roles || [])],
+    factoryCode: row.factoryCode || '',
     stationKeys: [...(row.stationKeys || [])],
     status: row.status || 'active',
     remark: row.remark || '',
@@ -257,6 +275,7 @@ async function onSubmit() {
     if (editId.value) {
       await api.updateUser(editId.value, {
         roles: form.roles,
+        factoryCode: form.factoryCode || '',
         stationKeys: form.stationKeys,
         status: form.status,
         remark: form.remark,
@@ -266,6 +285,7 @@ async function onSubmit() {
         username: form.username,
         password: form.password,
         roles: form.roles,
+        factoryCode: form.factoryCode || '',
         stationKeys: form.stationKeys,
         remark: form.remark,
       })

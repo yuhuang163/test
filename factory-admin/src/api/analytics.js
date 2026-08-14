@@ -4,6 +4,10 @@ export function getAnalyticsStations(params) {
   return http.get('/analytics/stations', { params })
 }
 
+export function getAnalyticsProducts(params) {
+  return http.get('/analytics/products', { params })
+}
+
 export function getCurveData(params) {
   return http.get('/analytics/curve', { params })
 }
