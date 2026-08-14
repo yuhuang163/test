@@ -281,20 +281,15 @@ QTableWidgetItem* makeSendParamNameItem(const QString& key) {
     return item;
 }
 
-void configureSendParamTable(QTableWidget* table, bool namedKeys) {
+void configureSendParamTable(QTableWidget* table) {
     if (!table)
         return;
     table->clear();
     table->setRowCount(0);
-    if (namedKeys) {
-        table->setColumnCount(2);
-        table->setHorizontalHeaderLabels(
-            {QStringLiteral("参数说明 (英文键)"), QStringLiteral("参数值（灰斜体=参考默认；保存工站步骤时非空默认会写入 ini）")});
-        table->setColumnWidth(0, 320);
-    } else {
-        table->setColumnCount(1);
-        table->setHorizontalHeaderLabels({QStringLiteral("参数值")});
-    }
+    table->setColumnCount(2);
+    table->setHorizontalHeaderLabels(
+        {QStringLiteral("参数说明 (英文键)"), QStringLiteral("参数值（灰斜体=参考默认；保存工站步骤时非空默认会写入 ini）")});
+    table->setColumnWidth(0, 320);
     table->horizontalHeader()->setStretchLastSection(true);
     table->verticalHeader()->setVisible(false);
     table->setAlternatingRowColors(true);
@@ -326,7 +321,7 @@ void sortSendParamKeys(QStringList& keys, const QStringList& preferredOrder) {
 void setSendParamTableFromMap(QTableWidget* table, const QVariantMap& map,
                               const QStringList& preferredOrder = {}) {
     QSignalBlocker blocker(table);
-    configureSendParamTable(table, true);
+    configureSendParamTable(table);
     QStringList keys = map.keys();
     sortSendParamKeys(keys, preferredOrder);
     for (const QString& key : keys) {
@@ -349,7 +344,7 @@ void setSendParamTableFromMapWithTemplate(QTableWidget* table, const QVariantMap
                                           const QVariantMap& templateMap,
                                           const QStringList& preferredOrder = {}) {
     QSignalBlocker blocker(table);
-    configureSendParamTable(table, true);
+    configureSendParamTable(table);
     QStringList ordered;
     for (const QString& k : templateMap.keys()) {
         if (!k.isEmpty() && !ordered.contains(k))
@@ -582,9 +577,10 @@ void applySendParamTableWithTemplate(QTableWidget* table, TestCaseSendChannel ch
 }
 
 void setSendParamTableFromString(QTableWidget* table, const QString& value) {
-    configureSendParamTable(table, false);
+    configureSendParamTable(table);
     table->insertRow(0);
-    table->setItem(0, 0, new QTableWidgetItem(value));
+    table->setItem(0, 0, makeSendParamNameItem(QStringLiteral("string")));
+    table->setItem(0, 1, makeSendParamValueItem(value, false, false));
 }
 
 /** 保存/definition 前提交表格内联编辑，避免点「确定」时 Param 仍读旧占位值。 */
@@ -653,7 +649,8 @@ QVariantMap readSendParamMapFromTable(const QTableWidget* table) {
 QString readSendParamStringFromTable(const QTableWidget* table) {
     if (!table || table->rowCount() <= 0)
         return {};
-    const QTableWidgetItem* item = table->item(0, 0);
+    const int col = table->columnCount() >= 2 ? 1 : 0;
+    const QTableWidgetItem* item = table->item(0, col);
     return item ? item->text().trimmed() : QString();
 }
 
@@ -1216,11 +1213,29 @@ TestCaseGateOp gateOpFromTableText(const QString& text) {
     return TestCaseGateOp::Range;
 }
 
+void fillGateOpCombo(QComboBox* box) {
+    box->clear();
+    box->addItem(QStringLiteral("在范围内"), QStringLiteral("range"));
+    box->addItem(QStringLiteral("大于"), QStringLiteral("gt"));
+    box->addItem(QStringLiteral("小于"), QStringLiteral("lt"));
+    box->addItem(QStringLiteral("等于"), QStringLiteral("eq"));
+    box->addItem(QStringLiteral("版本比对"), QStringLiteral("compareVersions"));
+}
+
+/** 多卡控表格「方式」列的中文下拉；currentData 仍是 range/gt/lt/eq，与 ini Op 同源。 */
+QComboBox* gateOpCellCombo(QTableWidget* table, int row) {
+    if (!table)
+        return nullptr;
+    return qobject_cast<QComboBox*>(table->cellWidget(row, 2));
+}
+
 void initPeriphGateTable(QTableWidget* table) {
     GateTypeDescriptor desc;
     if (!GateRegistry::descriptorFor(QStringLiteral("ProtocolPeriphStateData"), desc))
         return;
     table->clear();
+    // clear() 不销毁 cellWidget，先清行避免上一次「方式」列下拉残留
+    table->setRowCount(0);
     table->setColumnCount(2);
     table->setHorizontalHeaderLabels(
         {QStringLiteral("外设项"), QStringLiteral("期望值（等于）")});
@@ -1242,11 +1257,14 @@ void initRangeMultiGateTable(QTableWidget* table, const QString& reportType) {
     if (!GateRegistry::descriptorFor(reportType, desc))
         return;
     table->clear();
+    // clear() 不销毁 cellWidget，先清行避免上一次「方式」列下拉残留
+    table->setRowCount(0);
     table->setColumnCount(6);
-    table->setHorizontalHeaderLabels({QStringLiteral("启用"), QStringLiteral("判定项"), QStringLiteral("方式(range/gt/lt/eq)"),
+    table->setHorizontalHeaderLabels({QStringLiteral("启用"), QStringLiteral("判定项"), QStringLiteral("方式"),
                                       QStringLiteral("最小值"), QStringLiteral("最大值"),
                                       QStringLiteral("期望值")});
     table->setRowCount(desc.fields.size());
+    table->setColumnWidth(2, 110);
     table->horizontalHeader()->setStretchLastSection(true);
     table->verticalHeader()->setVisible(false);
     table->setSelectionMode(QAbstractItemView::NoSelection);
@@ -1260,7 +1278,10 @@ void initRangeMultiGateTable(QTableWidget* table, const QString& reportType) {
         nameItem->setFlags(nameItem->flags() & ~Qt::ItemIsEditable);
         nameItem->setData(Qt::UserRole, desc.fields.at(i).field);
         table->setItem(i, 1, nameItem);
-        table->setItem(i, 2, new QTableWidgetItem(QStringLiteral("range")));
+        auto* opCombo = new QComboBox(table);
+        fillGateOpCombo(opCombo);
+        opCombo->setCurrentIndex(opCombo->findData(QStringLiteral("range")));
+        table->setCellWidget(i, 2, opCombo);
         table->setItem(i, 3, new QTableWidgetItem(QStringLiteral("0")));
         table->setItem(i, 4, new QTableWidgetItem(QStringLiteral("0")));
         table->setItem(i, 5, new QTableWidgetItem());
@@ -1269,15 +1290,6 @@ void initRangeMultiGateTable(QTableWidget* table, const QString& reportType) {
 
 void initFixturePcbaGateTable(QTableWidget* table) {
     initRangeMultiGateTable(table, QStringLiteral("ProtocolFixturePcbaData"));
-}
-
-void fillGateOpCombo(QComboBox* box) {
-    box->clear();
-    box->addItem(QStringLiteral("在范围内"), QStringLiteral("range"));
-    box->addItem(QStringLiteral("大于"), QStringLiteral("gt"));
-    box->addItem(QStringLiteral("小于"), QStringLiteral("lt"));
-    box->addItem(QStringLiteral("等于"), QStringLiteral("eq"));
-    box->addItem(QStringLiteral("版本比对"), QStringLiteral("compareVersions"));
 }
 
 const QHash<QString, QString>& hookDisplayNameMap() {
@@ -1535,25 +1547,20 @@ void TestCaseEditDialog::showEvent(QShowEvent* event) {
     fitDialogToScreen();
 }
 
-bool TestCaseEditDialog::isFixturePcbaMultiGateMode() const {
+bool TestCaseEditDialog::isRangeMultiGateMode() const {
+    // 6列表格（启用/判定项/方式/最小值/最大值/期望值）：除「外设状态」外的所有回传类型
     return ui->checkBox_gateEnabled->isChecked()
-           && (comboData(ui->comboBox_gateReportType) == QLatin1String("ProtocolFixturePcbaData")
-               || comboData(ui->comboBox_gateReportType) == QLatin1String("ProtocolJieliBtBoxData")
-               || comboData(ui->comboBox_gateReportType) == QLatin1String("ProtocolDongleSuctionPeakData"));
+           && comboData(ui->comboBox_gateReportType) != QLatin1String("ProtocolPeriphStateData");
 }
 
 bool TestCaseEditDialog::isPeriphMultiGateMode() const {
     return ui->checkBox_gateEnabled->isChecked() && comboData(ui->comboBox_gateReportType) == QLatin1String("ProtocolPeriphStateData");
 }
 
-bool TestCaseEditDialog::isMultiGateTableMode() const {
-    return isPeriphMultiGateMode() || isFixturePcbaMultiGateMode();
-}
-
 void TestCaseEditDialog::rebuildMultiGateTable() {
     if (!tableWidget_multiGates_)
         return;
-    if (isFixturePcbaMultiGateMode()) {
+    if (isRangeMultiGateMode()) {
         const QString reportType = comboData(ui->comboBox_gateReportType);
         initRangeMultiGateTable(tableWidget_multiGates_, reportType);
     } else if (isPeriphMultiGateMode())
@@ -1587,7 +1594,7 @@ void TestCaseEditDialog::writePeriphGatesToTable(const QVector<TestCaseGate>& ga
 void TestCaseEditDialog::writeMultiGatesToTable(const QVector<TestCaseGate>& gates) {
     if (!tableWidget_multiGates_)
         return;
-    if (isFixturePcbaMultiGateMode()) {
+    if (isRangeMultiGateMode()) {
         for (int row = 0; row < tableWidget_multiGates_->rowCount(); ++row) {
             QTableWidgetItem* nameItem = tableWidget_multiGates_->item(row, 1);
             if (!nameItem)
@@ -1621,7 +1628,10 @@ void TestCaseEditDialog::writeMultiGatesToTable(const QVector<TestCaseGate>& gat
                 else
                     tableWidget_multiGates_->setItem(row, col, new QTableWidgetItem(text));
             };
-            setCell(2, gateOpToTableText(matched.op));
+            if (QComboBox* opCombo = gateOpCellCombo(tableWidget_multiGates_, row)) {
+                const int opIdx = opCombo->findData(gateOpToTableText(matched.op));
+                opCombo->setCurrentIndex(opIdx >= 0 ? opIdx : 0);
+            }
             // 有 LowSettingsKey/HighSettingsKey 时显示 SETTINGS 解析后的实际卡控范围
             double lowShow = matched.low;
             double highShow = matched.high;
@@ -1661,7 +1671,7 @@ QVector<TestCaseGate> TestCaseEditDialog::readPeriphGatesFromTable() const {
 QVector<TestCaseGate> TestCaseEditDialog::readMultiGatesFromTable() const {
     if (!tableWidget_multiGates_)
         return {};
-    if (isFixturePcbaMultiGateMode()) {
+    if (isRangeMultiGateMode()) {
         QVector<TestCaseGate> gates;
         const QString reportType = comboData(ui->comboBox_gateReportType);
         for (int row = 0; row < tableWidget_multiGates_->rowCount(); ++row) {
@@ -1678,7 +1688,9 @@ QVector<TestCaseGate> TestCaseEditDialog::readMultiGatesFromTable() const {
                     return item->text().trimmed();
                 return QString();
             };
-            const QString opText = cellText(2);
+            QString opText;
+            if (QComboBox* opCombo = gateOpCellCombo(tableWidget_multiGates_, row))
+                opText = opCombo->currentData().toString();
             const QString lowText = cellText(3);
             const QString highText = cellText(4);
             const QString expectedText = cellText(5);
@@ -1697,10 +1709,7 @@ QVector<TestCaseGate> TestCaseEditDialog::readMultiGatesFromTable() const {
             }
             if (g.op == TestCaseGateOp::Eq && g.expected.isEmpty())
                 g.expected = QString::number(static_cast<int>(g.low));
-            const bool unusedDefault =
-                (g.op == TestCaseGateOp::Range && g.expected.isEmpty() && qFuzzyIsNull(g.low) && qFuzzyIsNull(g.high)
-                 && g.lowSettingsKey.isEmpty() && g.highSettingsKey.isEmpty());
-            if (!rowEnabled || unusedDefault)
+            if (!rowEnabled)
                 continue;
             gates.append(g);
         }
@@ -1711,22 +1720,21 @@ QVector<TestCaseGate> TestCaseEditDialog::readMultiGatesFromTable() const {
 
 void TestCaseEditDialog::updateGateFieldsEnabled() {
     const bool on = ui->checkBox_gateEnabled->isChecked();
-    const bool multiTable = on && isMultiGateTableMode();
     ui->label_gateReportType->setVisible(on);
     ui->comboBox_gateReportType->setVisible(on);
     if (tableWidget_multiGates_)
-        tableWidget_multiGates_->setVisible(multiTable);
-    const bool single = on && !multiTable;
-    ui->label_gateField->setVisible(single);
-    ui->comboBox_gateField->setVisible(single);
-    ui->label_gateOp->setVisible(single);
-    ui->comboBox_gateOp->setVisible(single);
-    ui->label_gateLow->setVisible(single);
-    ui->lineEdit_gateLow->setVisible(single);
-    ui->label_gateHigh->setVisible(single);
-    ui->lineEdit_gateHigh->setVisible(single);
-    ui->label_gateExpected->setVisible(single);
-    ui->lineEdit_gateExpected->setVisible(single);
+        tableWidget_multiGates_->setVisible(on);
+    // 单字段控件已统一为表格，全部隐藏
+    ui->label_gateField->setVisible(false);
+    ui->comboBox_gateField->setVisible(false);
+    ui->label_gateOp->setVisible(false);
+    ui->comboBox_gateOp->setVisible(false);
+    ui->label_gateLow->setVisible(false);
+    ui->lineEdit_gateLow->setVisible(false);
+    ui->label_gateHigh->setVisible(false);
+    ui->lineEdit_gateHigh->setVisible(false);
+    ui->label_gateExpected->setVisible(false);
+    ui->lineEdit_gateExpected->setVisible(false);
 }
 
 void TestCaseEditDialog::updatePromptFieldsEnabled() {
@@ -1887,37 +1895,8 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     if (typeIdx >= 0)
         ui->comboBox_gateReportType->setCurrentIndex(typeIdx);
     onGateReportTypeChanged(0);
-    const int fieldIdx = comboIndexByData(ui->comboBox_gateField, def.gate.field);
-    if (fieldIdx >= 0)
-        ui->comboBox_gateField->setCurrentIndex(fieldIdx);
-
-    const QString opKey = def.gate.op == TestCaseGateOp::Gt ? QStringLiteral("gt")
-        : def.gate.op == TestCaseGateOp::Lt                 ? QStringLiteral("lt")
-        : def.gate.op == TestCaseGateOp::Eq                 ? QStringLiteral("eq")
-        : def.gate.op == TestCaseGateOp::CompareVersions    ? QStringLiteral("compareVersions")
-                                                            : QStringLiteral("range");
-    const int opIdx = comboIndexByData(ui->comboBox_gateOp, opKey);
-    if (opIdx >= 0)
-        ui->comboBox_gateOp->setCurrentIndex(opIdx);
-
-    ui->lineEdit_gateLow->setText(QString::number(def.gate.low));
-    ui->lineEdit_gateHigh->setText(QString::number(def.gate.high));
-    ui->lineEdit_gateExpected->setText(def.gate.expected);
-    if ((def.gate.reportType == QLatin1String("ProtocolPeriphStateData")
-         || def.gate.reportType == QLatin1String("ProtocolFixturePcbaData")
-         || def.gate.reportType == QLatin1String("ProtocolJieliBtBoxData")
-         || def.gate.reportType == QLatin1String("ProtocolDongleSuctionPeakData"))
-        && !def.gates.isEmpty()) {
-        rebuildMultiGateTable();
-        writeMultiGatesToTable(def.gates);
-    } else if ((def.gate.reportType == QLatin1String("ProtocolPeriphStateData")
-                || def.gate.reportType == QLatin1String("ProtocolFixturePcbaData")
-                || def.gate.reportType == QLatin1String("ProtocolJieliBtBoxData")
-                || def.gate.reportType == QLatin1String("ProtocolDongleSuctionPeakData"))
-               && def.gate.enabled) {
-        rebuildMultiGateTable();
-        writeMultiGatesToTable({def.gate});
-    }
+    if (def.gate.enabled)
+        writeMultiGatesToTable(def.gates.isEmpty() ? QVector<TestCaseGate>{def.gate} : def.gates);
     ui->checkBox_hookEnabled->setChecked(def.hook.enabled);
     const int hookIdx = comboIndexByData(ui->comboBox_hookId, def.hook.hookId);
     if (hookIdx >= 0)
@@ -1971,7 +1950,7 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
     def.gate.enabled = ui->checkBox_gateEnabled->isChecked();
     def.gate.reportType = comboData(ui->comboBox_gateReportType);
     def.gates.clear();
-    if (def.gate.enabled && isMultiGateTableMode()) {
+    if (def.gate.enabled) {
         def.gates = readMultiGatesFromTable();
         // 工站 profile 保存以表格数值为准，避免 LowSettingsKey 仍读上位机设置导致「改了不生效」
         if (!stationKey_.isEmpty()) {
@@ -1988,19 +1967,6 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
             if (def.gates.size() > 1)
                 def.gate.field = QStringLiteral("multi");
         }
-    } else {
-        def.gate.field = comboData(ui->comboBox_gateField);
-        const QString op = comboData(ui->comboBox_gateOp);
-        def.gate.op = op == QLatin1String("gt")      ? TestCaseGateOp::Gt
-            : op == QLatin1String("lt")              ? TestCaseGateOp::Lt
-            : op == QLatin1String("eq")              ? TestCaseGateOp::Eq
-            : op == QLatin1String("compareVersions") ? TestCaseGateOp::CompareVersions
-                                                     : TestCaseGateOp::Range;
-        def.gate.low = ui->lineEdit_gateLow->text().toDouble();
-        def.gate.high = ui->lineEdit_gateHigh->text().toDouble();
-        def.gate.expected = ui->lineEdit_gateExpected->text();
-        if (def.gate.enabled)
-            def.gates.append(def.gate);
     }
     return def;
 }
@@ -2104,7 +2070,7 @@ void TestCaseEditDialog::onDeviceCmdChanged(int) {
         sendChannelComboData(channel) + QLatin1Char('|') + device + QLatin1Char('|') + cmdName;
     const bool cmdChanged = (cmdKey != lastSendParamCmdKey_);
     lastSendParamCmdKey_ = cmdKey;
-    const int expectCols = (uiSchema.kind == SendCmdParamKind::String) ? 1 : 2;
+    const int expectCols = 2;
     // 指令切换时重置表格；同指令重复进入（如 setDefinition 后再调）则保留已填内容
     if (cmdChanged || ui->tableWidget_sendParam->columnCount() != expectCols) {
         if (uiSchema.kind == SendCmdParamKind::String)

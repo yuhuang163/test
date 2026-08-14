@@ -57,9 +57,18 @@ struct SessionState {
     QString result;
 };
 
+/** 一轮测试的吸力采样序列，四路等长且同索引 */
+struct SuctionSampleBuffer {
+    QVector<double> timeSec;
+    QVector<double> ch1;
+    QVector<double> ch2;
+    QVector<double> ch3;
+};
+
 QMutex g_sessionMutex;
 QHash<int, SessionState> g_activeSessions;
 QHash<int, SessionState> g_lastEndedSessions;
+QHash<int, SuctionSampleBuffer> g_suctionSamples;
 
 bool sessionLogEnabled() {
     return SETTINGS.value(QStringLiteral("FactoryCloud/Log/SessionLogEnabled"), true).toBool();
@@ -735,6 +744,77 @@ QString Qlog::exportResidentSessionSlice(const QlogSessionInfo& info, QString* e
     const QString outRel = logRootRelative() + QStringLiteral("/常驻监控/") + outName;
     return exportDailyLogSessionSlice(info.residentDailyAbsolutePath, outRel, info, info.residentOffsetStart,
                                       info.residentOffsetEnd, error);
+}
+
+void Qlog::setSuctionSamples(int slot, const QVector<double>& timeSec, const QVector<double>& ch1,
+                             const QVector<double>& ch2, const QVector<double>& ch3) {
+    QMutexLocker lock(&g_sessionMutex);
+    if (timeSec.isEmpty()) {
+        g_suctionSamples.remove(slot);
+        return;
+    }
+    SuctionSampleBuffer& buf = g_suctionSamples[slot];
+    buf.timeSec = timeSec;
+    buf.ch1 = ch1;
+    buf.ch2 = ch2;
+    buf.ch3 = ch3;
+}
+
+QString Qlog::exportSuctionSamplesCsv(const QlogSessionInfo& info, QString* error) {
+    if (!info.valid) {
+        return {};
+    }
+    SuctionSampleBuffer buf;
+    {
+        QMutexLocker lock(&g_sessionMutex);
+        if (!g_suctionSamples.contains(info.slot)) {
+            // 非吸力工站属常态，不置 error 以免每轮上传都带无用告警
+            return {};
+        }
+        // take：本轮取走，避免下一轮没采样时又把上一轮数据传一遍
+        buf = g_suctionSamples.take(info.slot);
+    }
+    if (buf.timeSec.isEmpty()) {
+        return {};
+    }
+
+    const QString outRel =
+        logRootRelative() + QStringLiteral("/吸力CSV/") + sessionFileStem(info) + QStringLiteral("_suction.csv");
+    const QString outDirRel = QFileInfo(outRel).path();
+    if (!outDirRel.isEmpty() && outDirRel != QLatin1String(".")) {
+        if (!CommonUtils::ensureLogDirectory(outDirRel)) {
+            if (error) {
+                *error = QStringLiteral("无法创建吸力CSV目录");
+            }
+            return {};
+        }
+    }
+    const QString outAbs = QDir(QCoreApplication::applicationDirPath()).filePath(outRel);
+    QFile outFile(outAbs);
+    // 同会话切片：显式 CRLF，勿开 Text 模式
+    if (!outFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        if (error) {
+            *error = QStringLiteral("无法写入吸力CSV");
+        }
+        return {};
+    }
+    QTextStream out(&outFile);
+    out.setCodec("UTF-8");
+    // 表头与主窗口吸力页一致，两处 CSV 可共用解析脚本
+    out << QStringLiteral("time_s,ch1_kpa,ch2_kpa,ch3_kpa\r\n");
+    const int count = buf.timeSec.size();
+    auto valueAt = [](const QVector<double>& v, int i) { return i < v.size() ? v.at(i) : 0.0; };
+    for (int i = 0; i < count; ++i) {
+        out << QString::number(buf.timeSec.at(i), 'f', 3) << QLatin1Char(',')
+            << QString::number(valueAt(buf.ch1, i), 'f', 3) << QLatin1Char(',')
+            << QString::number(valueAt(buf.ch2, i), 'f', 3) << QLatin1Char(',')
+            << QString::number(valueAt(buf.ch3, i), 'f', 3) << QStringLiteral("\r\n");
+    }
+    outFile.close();
+
+    QString rel = outRel;
+    rel.replace(QLatin1Char('\\'), QLatin1Char('/'));
+    return rel;
 }
 
 void Qlog::saveTestCsv(const QString& ver, const QString& sn, const QString& macAddress,

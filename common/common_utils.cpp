@@ -351,7 +351,7 @@ struct ProductEntry {
     const char* productName;//产品名字
     const char* protocol;//产品协议
     bool inMesCombo;//是否要在mes产品列表中展示
-    const char* donglePattern; // 蓝牙广播名字（比如Pump-E）
+    const char* donglePattern; // 蓝牙广播名字（比如M5 Ultra）
     bool containsMatch;//是否要进行蓝牙广播名字的contains匹配
 };
 
@@ -360,7 +360,7 @@ static const ProductEntry kProductTable[] = {
     {"Air2",     "qaiot", true, "Air2",      true},
     {"V3Pro",    "qfctp", true,  "V3 PRO",   true},
     {"V3",       "qfctp", true,  "V3",       true},
-    {"M8",       "qroot", true,  "Pump-E",   false},
+    {"M8",       "qroot", true,  "M5 Ultra",   false},
     {"Wellness Warm",  "qroot", true, "Wellness Warm",  true},
     {"M8P",      "qaiot", false, "M8P",      false},
     {"W1 Lite",  "qroot", true, "W1 Lite",  true},
@@ -420,7 +420,7 @@ QStringList CommonUtils::dongleBroadcastFilterNames() {
     for (const ProductEntry& entry : kProductTable) {
         if (!hasDonglePattern(entry))
             continue;
-        // 精确匹配类广播名保留原文（如 Pump-E）；contains 类用产品名
+        // 精确匹配类广播名保留原文（如 M5 Ultra）；contains 类用产品名
         if (entry.containsMatch)
             names.append(QString::fromUtf8(entry.productName));
         else

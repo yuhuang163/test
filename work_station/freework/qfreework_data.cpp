@@ -1606,6 +1606,8 @@ void QFreeWork::refreshDongleSuctionData(ProtocolDongleSuctionData data) {
     dongleSuctionLastCh2Kpa_ = data.ch2Kpa;
     dongleSuctionLastCh3Kpa_ = data.ch3Kpa;
     if (dongleSuctionSampleActive_) {
+        dongleSuctionSampleTimeSec_.append(
+            dongleSuctionSampleTimer_.isValid() ? dongleSuctionSampleTimer_.elapsed() / 1000.0 : 0.0);
         dongleSuctionCh1Samples_.append(data.ch1Kpa);
         dongleSuctionCh2Samples_.append(data.ch2Kpa);
         dongleSuctionCh3Samples_.append(data.ch3Kpa);

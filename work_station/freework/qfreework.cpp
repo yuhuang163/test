@@ -1737,10 +1737,12 @@ void QFreeWork::runDongleSuctionSampleStep() {
     dongleSuctionCh1Samples_.clear();
     dongleSuctionCh2Samples_.clear();
     dongleSuctionCh3Samples_.clear();
+    dongleSuctionSampleTimeSec_.clear();
     const int reserveN = durationMs / 20 + 64;
     dongleSuctionCh1Samples_.reserve(reserveN);
     dongleSuctionCh2Samples_.reserve(reserveN);
     dongleSuctionCh3Samples_.reserve(reserveN);
+    dongleSuctionSampleTimeSec_.reserve(reserveN);
     dongleSuctionLastCh1Kpa_ = 0.0;
     dongleSuctionLastCh2Kpa_ = 0.0;
     dongleSuctionLastCh3Kpa_ = 0.0;
@@ -1750,6 +1752,8 @@ void QFreeWork::runDongleSuctionSampleStep() {
     suctionChartLeftKpa_.reserve(reserveN);
     suctionChartRightKpa_.reserve(reserveN);
 
+    // 计时器先于 dongleSuctionSampleActive_ 起，保证首个采样点就有时间
+    dongleSuctionSampleTimer_.start();
     dongleSuctionSampleActive_ = true;
     QElapsedTimer sampleTimer;
     sampleTimer.start();
@@ -1775,6 +1779,9 @@ void QFreeWork::runDongleSuctionSampleStep() {
     if (restoreOff)
         setDongleSuctionReadEnabled(false);
     finalizeSuctionChartPlot();
+    // 交 Qlog 暂存，测完随会话日志包导出 CSV（此时还不知 PASS/NG，不能定文件名）
+    Qlog::setSuctionSamples(getIndex(), dongleSuctionSampleTimeSec_, dongleSuctionCh1Samples_,
+                            dongleSuctionCh2Samples_, dongleSuctionCh3Samples_);
 
     if (dongleSuctionCh1Samples_.isEmpty() || dongleSuctionCh2Samples_.isEmpty()) {
         showlog(QStringLiteral("采集双通道吸力失败：采样窗口内未收到 CH1/CH2 AT+SUCTION_DATA"));
@@ -1862,10 +1869,12 @@ void QFreeWork::runDongleSuctionSampleSingleStep() {
     dongleSuctionCh1Samples_.clear();
     dongleSuctionCh2Samples_.clear();
     dongleSuctionCh3Samples_.clear();
+    dongleSuctionSampleTimeSec_.clear();
     const int reserveN = durationMs / 20 + 64;
     dongleSuctionCh1Samples_.reserve(reserveN);
     dongleSuctionCh2Samples_.reserve(reserveN);
     dongleSuctionCh3Samples_.reserve(reserveN);
+    dongleSuctionSampleTimeSec_.reserve(reserveN);
     dongleSuctionLastCh1Kpa_ = 0.0;
     dongleSuctionLastCh2Kpa_ = 0.0;
     dongleSuctionLastCh3Kpa_ = 0.0;
@@ -1874,6 +1883,8 @@ void QFreeWork::runDongleSuctionSampleSingleStep() {
     suctionChartLeftKpa_.reserve(reserveN);
     suctionChartRightKpa_.reserve(reserveN);
 
+    // 计时器先于 dongleSuctionSampleActive_ 起，保证首个采样点就有时间
+    dongleSuctionSampleTimer_.start();
     dongleSuctionSampleActive_ = true;
     QElapsedTimer sampleTimer;
     sampleTimer.start();
@@ -1898,6 +1909,9 @@ void QFreeWork::runDongleSuctionSampleSingleStep() {
     if (restoreOff)
         setDongleSuctionReadEnabled(false);
     finalizeSuctionChartPlot();
+    // 交 Qlog 暂存，测完随会话日志包导出 CSV（此时还不知 PASS/NG，不能定文件名）
+    Qlog::setSuctionSamples(getIndex(), dongleSuctionSampleTimeSec_, dongleSuctionCh1Samples_,
+                            dongleSuctionCh2Samples_, dongleSuctionCh3Samples_);
 
     const QVector<double>* samplesPtr = &dongleSuctionCh1Samples_;
     if (chIndex == 1)
@@ -2037,6 +2051,9 @@ void QFreeWork::initData(bool deferDongleAtForVisa) {
     dongleSuctionSampleActive_ = false;
     dongleSuctionCh1Samples_.clear();
     dongleSuctionCh2Samples_.clear();
+    dongleSuctionSampleTimeSec_.clear();
+    // 一并清 Qlog 暂存：上一轮若已投递但未被导出取走，本轮中止时会误传上一轮采样
+    Qlog::setSuctionSamples(getIndex(), {}, {}, {}, {});
     resetSuctionChart();
     // 首步 GPIB 时勿发 AT+SUCTION=0，与单步一致，避免 USB 与 GPIB 并发 ABORT
     if (deferDongleAtForVisa)

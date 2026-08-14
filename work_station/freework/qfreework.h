@@ -382,6 +382,10 @@ class QFreeWork : public test_base {
     QVector<double> dongleSuctionCh1Samples_;
     QVector<double> dongleSuctionCh2Samples_;
     QVector<double> dongleSuctionCh3Samples_;
+    /** 与 dongleSuctionCh*Samples_ 同索引的采样相对秒；CSV 勿用 suctionChartTimeSec_，
+     *  后者在「开启dongle吸力读取」步就开始累积，会比采样窗口的点多而错位 */
+    QVector<double> dongleSuctionSampleTimeSec_;
+    QElapsedTimer dongleSuctionSampleTimer_;
     double dongleSuctionLastCh1Kpa_ = 0.0;
     double dongleSuctionLastCh2Kpa_ = 0.0;
     double dongleSuctionLastCh3Kpa_ = 0.0;
