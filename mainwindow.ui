@@ -492,7 +492,7 @@
                <bool>true</bool>
               </property>
               <property name="currentIndex">
-               <number>0</number>
+               <number>7</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -4653,10 +4653,10 @@
                    <item>
                     <widget class="QCheckBox" name="chkDongleAtBleLog">
                      <property name="toolTip">
-                      <string>开启发送 AT+BLELOG=1，关闭发送 AT+BLELOG=0</string>
+                      <string>连接后 RSSI 上报：开启发送 AT+BLERSSILOG=1，关闭发送 AT+BLERSSILOG=0</string>
                      </property>
                      <property name="text">
-                      <string>AT+BLELOG</string>
+                      <string>AT+BLERSSILOG</string>
                      </property>
                     </widget>
                    </item>
@@ -4667,6 +4667,9 @@
                      </property>
                      <property name="text">
                       <string>AT+BLEDEVICELOG</string>
+                     </property>
+                     <property name="checked">
+                      <bool>true</bool>
                      </property>
                     </widget>
                    </item>
@@ -4724,6 +4727,284 @@
                       </size>
                      </property>
                     </spacer>
+                   </item>
+                  </layout>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QGroupBox" name="groupBox_dongle_at_pump">
+                  <property name="title">
+                   <string>泵/阀交替运行</string>
+                  </property>
+                  <layout class="QVBoxLayout" name="verticalLayout_dongle_at_pump">
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_dongle_at_pump_param1">
+                     <item>
+                      <widget class="QLabel" name="label_dongle_at_pump_duty">
+                       <property name="text">
+                        <string>占空比(0~100)</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="DongleAtPumpDuty">
+                       <property name="maximumSize">
+                        <size>
+                         <width>80</width>
+                         <height>16777215</height>
+                        </size>
+                       </property>
+                       <property name="toolTip">
+                        <string>AT+PUMPDUTY=，占空比 0~100</string>
+                       </property>
+                       <property name="text">
+                        <string>50</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="btnDongleAtSetPumpDuty">
+                       <property name="toolTip">
+                        <string>下发 AT+PUMPDUTY=占空比</string>
+                       </property>
+                       <property name="text">
+                        <string>设置</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLabel" name="label_dongle_at_pump_freq">
+                       <property name="text">
+                        <string>PWM频率(Hz)</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="DongleAtPumpFreq">
+                       <property name="maximumSize">
+                        <size>
+                         <width>80</width>
+                         <height>16777215</height>
+                        </size>
+                       </property>
+                       <property name="toolTip">
+                        <string>AT+PUMPFREQ=，PWM 频率 Hz</string>
+                       </property>
+                       <property name="placeholderText">
+                        <string>Hz</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="btnDongleAtSetPumpFreq">
+                       <property name="toolTip">
+                        <string>下发 AT+PUMPFREQ=频率</string>
+                       </property>
+                       <property name="text">
+                        <string>设置</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLabel" name="label_dongle_at_pump_sec">
+                       <property name="text">
+                        <string>泵运行(秒)</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="DongleAtPumpSec">
+                       <property name="maximumSize">
+                        <size>
+                         <width>80</width>
+                         <height>16777215</height>
+                        </size>
+                       </property>
+                       <property name="toolTip">
+                        <string>AT+PUMPSEC=，泵运行秒数（默认 5）</string>
+                       </property>
+                       <property name="text">
+                        <string>5</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="btnDongleAtSetPumpSec">
+                       <property name="toolTip">
+                        <string>下发 AT+PUMPSEC=秒数</string>
+                       </property>
+                       <property name="text">
+                        <string>设置</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <spacer name="horizontalSpacer_dongle_at_pump_param1">
+                       <property name="orientation">
+                        <enum>Qt::Horizontal</enum>
+                       </property>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>40</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                      </spacer>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_dongle_at_pump_param2">
+                     <item>
+                      <widget class="QLabel" name="label_dongle_at_valve_sec">
+                       <property name="text">
+                        <string>阀运行(秒)</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="DongleAtValveSec">
+                       <property name="maximumSize">
+                        <size>
+                         <width>80</width>
+                         <height>16777215</height>
+                        </size>
+                       </property>
+                       <property name="toolTip">
+                        <string>AT+VALVESEC=，阀运行秒数（默认 3）</string>
+                       </property>
+                       <property name="text">
+                        <string>3</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="btnDongleAtSetValveSec">
+                       <property name="toolTip">
+                        <string>下发 AT+VALVESEC=秒数</string>
+                       </property>
+                       <property name="text">
+                        <string>设置</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLabel" name="label_dongle_at_pump_total">
+                       <property name="text">
+                        <string>总运行(秒，0=不限)</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="DongleAtPumpTotal">
+                       <property name="maximumSize">
+                        <size>
+                         <width>80</width>
+                         <height>16777215</height>
+                        </size>
+                       </property>
+                       <property name="toolTip">
+                        <string>AT+PUMPTOTAL=，总运行秒数（0=不限）</string>
+                       </property>
+                       <property name="text">
+                        <string>0</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="btnDongleAtSetPumpTotal">
+                       <property name="toolTip">
+                        <string>下发 AT+PUMPTOTAL=总秒数</string>
+                       </property>
+                       <property name="text">
+                        <string>设置</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLabel" name="label_dongle_at_fg_print">
+                       <property name="text">
+                        <string>FG上报(ms)</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="DongleAtFgPrint">
+                       <property name="maximumSize">
+                        <size>
+                         <width>80</width>
+                         <height>16777215</height>
+                        </size>
+                       </property>
+                       <property name="toolTip">
+                        <string>AT+FGPRINT=，FG 上报间隔 ms（默认 1000）</string>
+                       </property>
+                       <property name="text">
+                        <string>1000</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="btnDongleAtSetFgPrint">
+                       <property name="toolTip">
+                        <string>下发 AT+FGPRINT=间隔</string>
+                       </property>
+                       <property name="text">
+                        <string>设置</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <spacer name="horizontalSpacer_dongle_at_pump_param2">
+                       <property name="orientation">
+                        <enum>Qt::Horizontal</enum>
+                       </property>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>40</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                      </spacer>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_dongle_at_pump_action">
+                     <item>
+                      <widget class="QPushButton" name="btnDongleAtPumpStart">
+                       <property name="toolTip">
+                        <string>AT+PUMPSTART=1，按以上参数开始泵/阀交替运行</string>
+                       </property>
+                       <property name="text">
+                        <string>开始交替运行</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QPushButton" name="btnDongleAtPumpStop">
+                       <property name="toolTip">
+                        <string>AT+PUMPSTOP=1，立即停止</string>
+                       </property>
+                       <property name="text">
+                        <string>立即停止</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <spacer name="horizontalSpacer_dongle_at_pump_action">
+                       <property name="orientation">
+                        <enum>Qt::Horizontal</enum>
+                       </property>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>40</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                      </spacer>
+                     </item>
+                    </layout>
                    </item>
                   </layout>
                  </widget>
@@ -4796,17 +5077,44 @@
                     </layout>
                    </item>
                    <item>
+                    <layout class="QHBoxLayout" name="horizontalLayout_bomb_command">
+                     <item>
+                      <widget class="QLabel" name="label_bomb_command">
+                       <property name="text">
+                        <string>指令</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QLineEdit" name="bombcommand">
+                       <property name="toolTip">
+                        <string>AT+BOMB 第4参数 command（十六进制载荷）</string>
+                       </property>
+                       <property name="text">
+                        <string>0008021a0408051001e6</string>
+                       </property>
+                       <property name="minimumSize">
+                        <size>
+                         <width>220</width>
+                         <height>0</height>
+                        </size>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </item>
+                   <item>
                     <spacer name="horizontalSpacer_dongle_at_bomb">
-                     <property name="orientation">
-                      <enum>Qt::Horizontal</enum>
-                     </property>
-                     <property name="sizeHint" stdset="0">
-                      <size>
-                       <width>40</width>
-                       <height>20</height>
-                      </size>
-                     </property>
-                    </spacer>
+                       <property name="orientation">
+                        <enum>Qt::Horizontal</enum>
+                       </property>
+                       <property name="sizeHint" stdset="0">
+                        <size>
+                         <width>40</width>
+                         <height>20</height>
+                        </size>
+                       </property>
+                      </spacer>
                    </item>
                   </layout>
                  </widget>

@@ -114,6 +114,7 @@ void QFixtureManager::sendPcbaFrame(const QByteArray& frame) {
 void QFixtureManager::writeFixturePort(const QByteArray& data, bool logTx, bool startAction) {
     if (data.isEmpty())
         return;
+    // 独立治具日志落盘；同时打进程后台，便于对照指令时序
     qDebug().noquote() << "FIXTURE TX:" << QString::fromLatin1(data.toHex(' ').toUpper());
     fixtureSerialPort_->write(data);
     if (logTx && log_)
@@ -128,9 +129,6 @@ void QFixtureManager::readFixtureSerialPortData() {
     fixtureSerialPortBuf_.clear();
 
     qDebug().noquote() << "FIXTURE RX:" << QString::fromLatin1(dataTemp.toHex(' ').toUpper());
-    qDebug() << "接收到治具数据" << dataTemp;
-    qDebug() << "开始处理" << dataTemp.size();
-
     hzPcbaDevice_->onRx(dataTemp);
     dispatchTextProtocols(dataTemp);
     if (log_)

@@ -163,6 +163,10 @@ class MainWindow : public QMainWindow {
     RootBleOtaClient rootBleOtaClient_;
     RootBleOta2Client rootBleOta2Client_;
     void saveDongleUartLog(QString data);
+    /** AT 测试页直发 AT 行：串口就绪才下发 AT+<atKey>=<value>，value 为空则不带等号 */
+    bool sendDongleAtLineCmd(const QString& atKey, const QString& value = QString());
+    /** AT 测试页整数参数：text 须为不小于 minValue 的整数，上限交设备端判断 */
+    bool sendDongleAtIntParam(const QString& atKey, const QString& text, int minValue);
     struct DongleSuctionChannelPeakMonitor {
         enum class Phase { AtBaseline, InCycle };
         Phase phase = Phase::AtBaseline;
@@ -737,6 +741,14 @@ class MainWindow : public QMainWindow {
     void on_lineDongleAtCustom_returnPressed();
     void on_btnDongleAtSetBleMtu_clicked();
     void on_btnDongleAtSetOtaPkt_clicked();
+    void on_btnDongleAtSetPumpDuty_clicked();
+    void on_btnDongleAtSetPumpFreq_clicked();
+    void on_btnDongleAtSetPumpSec_clicked();
+    void on_btnDongleAtSetValveSec_clicked();
+    void on_btnDongleAtSetPumpTotal_clicked();
+    void on_btnDongleAtSetFgPrint_clicked();
+    void on_btnDongleAtPumpStart_clicked();
+    void on_btnDongleAtPumpStop_clicked();
 
   signals:
     void send_uart_state(int data);

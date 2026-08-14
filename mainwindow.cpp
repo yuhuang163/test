@@ -4635,7 +4635,10 @@ void MainWindow::on_ship_bomb_clicked() {
     bomb.insert(QStringLiteral("deviceName"), ui->bombname->text());
     bomb.insert(QStringLiteral("rssi"), ui->bombrssi->text());
     bomb.insert(QStringLiteral("connectionInterval"), ui->bombinterval->text());
-    bomb.insert(QStringLiteral("command"), QStringLiteral("0008021a0408051001e6"));
+    // 指令可改：默认保持历史船运载荷；空则不下发空 command
+    const QString command = ui->bombcommand->text().trimmed();
+    bomb.insert(QStringLiteral("command"),
+                command.isEmpty() ? QStringLiteral("0008021a0408051001e6") : command);
     at->set(DongleCmd::Bomb, bomb);
 
     protocolManager.setShipCount(1);
@@ -5943,12 +5946,12 @@ void MainWindow::on_chkDongleAtMainData_stateChanged(int arg1) {
 
 void MainWindow::on_chkDongleAtBleLog_stateChanged(int arg1) {
     if (!at) {
-        showlog(QStringLiteral("AT+BLELOG 发送失败：Dongle 未就绪"));
+        showlog(QStringLiteral("AT+BLERSSILOG 发送失败：Dongle 未就绪"));
         return;
     }
     const int state = arg1 != Qt::Unchecked ? 1 : 0;
     at->set(DongleCmd::BleLog, state);
-    showlog(QStringLiteral("已发送 AT+BLELOG=%1").arg(state));
+    showlog(QStringLiteral("已发送 AT+BLERSSILOG=%1").arg(state));
 }
 
 void MainWindow::on_chkDongleAtBleDeviceLog_stateChanged(int arg1) {
@@ -6029,5 +6032,76 @@ void MainWindow::on_lineDongleAtCustom_returnPressed() {
         return;
     }
     showlog(QStringLiteral("已发送自定义 AT：%1").arg(line.trimmed()));
+}
+
+bool MainWindow::sendDongleAtLineCmd(const QString& atKey, const QString& value) {
+    if (!at) {
+        showlog(QStringLiteral("AT+%1 发送失败：Dongle 未就绪").arg(atKey));
+        return false;
+    }
+    if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
+        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("请先连接 Dongle 串口"));
+        return false;
+    }
+    QVariantMap msg;
+    msg.insert(QStringLiteral("at"), atKey);
+    msg.insert(QStringLiteral("value"), value);
+    if (!at->sendCustomMessage(msg)) {
+        showlog(QStringLiteral("AT+%1 发送失败").arg(atKey));
+        return false;
+    }
+    showlog(value.isEmpty() ? QStringLiteral("已发送 AT+%1").arg(atKey)
+                            : QStringLiteral("已发送 AT+%1=%2").arg(atKey, value));
+    return true;
+}
+
+bool MainWindow::sendDongleAtIntParam(const QString& atKey, const QString& text, int minValue) {
+    bool ok = false;
+    const int value = text.trimmed().toInt(&ok);
+    if (!ok || value < minValue) {
+        QMessageBox::warning(this, QStringLiteral("警告"),
+                             QStringLiteral("AT+%1 参数须为不小于 %2 的整数").arg(atKey).arg(minValue));
+        return false;
+    }
+    return sendDongleAtLineCmd(atKey, QString::number(value));
+}
+
+void MainWindow::on_btnDongleAtSetPumpDuty_clicked() {
+    bool ok = false;
+    const int duty = ui->DongleAtPumpDuty->text().trimmed().toInt(&ok);
+    if (!ok || duty < 0 || duty > 100) {
+        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("占空比须为 0~100 的整数"));
+        return;
+    }
+    sendDongleAtLineCmd(QStringLiteral("PUMPDUTY"), QString::number(duty));
+}
+
+void MainWindow::on_btnDongleAtSetPumpFreq_clicked() {
+    sendDongleAtIntParam(QStringLiteral("PUMPFREQ"), ui->DongleAtPumpFreq->text(), 1);
+}
+
+void MainWindow::on_btnDongleAtSetPumpSec_clicked() {
+    sendDongleAtIntParam(QStringLiteral("PUMPSEC"), ui->DongleAtPumpSec->text(), 1);
+}
+
+void MainWindow::on_btnDongleAtSetValveSec_clicked() {
+    sendDongleAtIntParam(QStringLiteral("VALVESEC"), ui->DongleAtValveSec->text(), 1);
+}
+
+void MainWindow::on_btnDongleAtSetPumpTotal_clicked() {
+    // 0 = 不限总时长，故下限取 0
+    sendDongleAtIntParam(QStringLiteral("PUMPTOTAL"), ui->DongleAtPumpTotal->text(), 0);
+}
+
+void MainWindow::on_btnDongleAtSetFgPrint_clicked() {
+    sendDongleAtIntParam(QStringLiteral("FGPRINT"), ui->DongleAtFgPrint->text(), 1);
+}
+
+void MainWindow::on_btnDongleAtPumpStart_clicked() {
+    sendDongleAtLineCmd(QStringLiteral("PUMPSTART"), QStringLiteral("1"));
+}
+
+void MainWindow::on_btnDongleAtPumpStop_clicked() {
+    sendDongleAtLineCmd(QStringLiteral("PUMPSTOP"), QStringLiteral("1"));
 }
 

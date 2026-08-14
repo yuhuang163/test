@@ -699,6 +699,34 @@ QString LogUploadService::compressSessionArchive(const QlogSessionInfo& info, QS
             *warning = warning->isEmpty() ? residentErr : *warning + QStringLiteral("；") + residentErr;
         }
     }
+    if (SETTINGS.value(QStringLiteral("FactoryCloud/Log/UploadIncludeProduct"), true).toBool()) {
+        QString productErr;
+        const QString productRel = Qlog::exportProductSessionSlice(info, &productErr);
+        if (!productRel.isEmpty()) {
+            absPaths << QDir(QCoreApplication::applicationDirPath()).filePath(productRel);
+            relPaths << productRel;
+        } else if (!productErr.isEmpty() && warning) {
+            *warning = warning->isEmpty() ? productErr : *warning + QStringLiteral("；") + productErr;
+        }
+    }
+    if (SETTINGS.value(QStringLiteral("FactoryCloud/Log/UploadIncludeFixture"), true).toBool()) {
+        QString fixtureErr;
+        const QString fixtureRel = Qlog::exportFixtureSessionSlice(info, &fixtureErr);
+        if (!fixtureRel.isEmpty()) {
+            absPaths << QDir(QCoreApplication::applicationDirPath()).filePath(fixtureRel);
+            relPaths << fixtureRel;
+        } else if (!fixtureErr.isEmpty() && warning) {
+            *warning = warning->isEmpty() ? fixtureErr : *warning + QStringLiteral("；") + fixtureErr;
+        }
+        QString jigErr;
+        const QString jigRel = Qlog::exportJigFixtureSessionSlice(info, &jigErr);
+        if (!jigRel.isEmpty()) {
+            absPaths << QDir(QCoreApplication::applicationDirPath()).filePath(jigRel);
+            relPaths << jigRel;
+        } else if (!jigErr.isEmpty() && warning) {
+            *warning = warning->isEmpty() ? jigErr : *warning + QStringLiteral("；") + jigErr;
+        }
+    }
     if (SETTINGS.value(QStringLiteral("FactoryCloud/Log/UploadIncludeSuctionCsv"), true).toBool()) {
         QString suctionErr;
         const QString suctionRel = Qlog::exportSuctionSamplesCsv(info, &suctionErr);

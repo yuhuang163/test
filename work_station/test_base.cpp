@@ -351,6 +351,10 @@ void test_base::onDongleSerialFrame(const QByteArray& dataTemp) {
     protocolManager.parseCmd(dataTemp);
     getMacAddress(dataTemp); // 搜索设备用
 
+    // 吸力/温度流式帧：已由协议入库/刷曲线，禁止再刷串口 UI 与逐帧落盘（久跑会卡死）
+    if (dataTemp.contains("AT+TEMP_DATA") || dataTemp.contains("AT+SUCTION_DATA"))
+        return;
+
     const QString timestamp = CommonUtils::formatTimestampMs();
     QString payloadText;
     const QByteArray contentMarker = QByteArrayLiteral("内容为:");
@@ -470,7 +474,9 @@ void test_base::closeUsbSerialPort() {
 }
 
 void test_base::onJigSerialFrame(const QByteArray& dataTemp) {
-    qDebug() << getIndex() << "data len : " << dataTemp.size();
+    qDebug().noquote() << getIndex() << "FIXTURE RX:" << QString::fromLatin1(dataTemp.toHex(' ').toUpper());
+    if (log)
+        log->save_jig_uart_log(0, dataTemp);
     jig->parseCmd(dataTemp);
 }
 
@@ -499,9 +505,10 @@ void test_base::closeJigSerialPort() {
 }
 
 void test_base::onProductSerialFrame(const QByteArray& dataTemp) {
-    qDebug() << getIndex() << "product data len : " << dataTemp.size();
-    if (product)
+    if (product) {
+        product->setLogSlot(m_index);
         product->parseCmd(dataTemp);
+    }
     if (isBrushLogGet)
         log->save_brush_log(m_index, macAddress, dataTemp);
     processReceivedData(dataTemp);
@@ -517,8 +524,10 @@ void test_base::handleProductSerialPortError(QSerialPort::SerialPortError error,
 }
 
 void test_base::openProductSerialPort() {
-    if (product)
+    if (product) {
+        product->setLogSlot(m_index);
         product->clearProductSerialRxAccum();
+    }
 
     SerialChannel::OpenParams params;
     params.portName = getProductcomNameCombo()->currentText();
@@ -560,6 +569,8 @@ void test_base::onTestSessionStarting(const QString& sn, const QString& mac) {
     if (station.isEmpty()) {
         station = SETTINGS.value(QStringLiteral("SYSTEM/station")).toString().trimmed();
     }
+    if (product)
+        product->setLogSlot(m_index);
     Qlog::beginSession(m_index, sn.trimmed(), mac.trimmed(), station);
 }
 

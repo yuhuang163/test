@@ -54,6 +54,18 @@ struct SessionState {
     QString residentDailyRelativePath;
     qint64 residentOffsetStart = 0;
     qint64 residentOffsetEnd = 0;
+    QString productDailyAbsolutePath;
+    QString productDailyRelativePath;
+    qint64 productOffsetStart = 0;
+    qint64 productOffsetEnd = 0;
+    QString fixtureDailyAbsolutePath;
+    QString fixtureDailyRelativePath;
+    qint64 fixtureOffsetStart = 0;
+    qint64 fixtureOffsetEnd = 0;
+    QString jigFixtureDailyAbsolutePath;
+    QString jigFixtureDailyRelativePath;
+    qint64 jigFixtureOffsetStart = 0;
+    qint64 jigFixtureOffsetEnd = 0;
     QString result;
 };
 
@@ -165,6 +177,23 @@ QString residentDailyFileName() {
 
 QString residentDailyRelativePath() {
     return logRootRelative() + QStringLiteral("/常驻监控/") + residentDailyFileName();
+}
+
+QString productDailyFileName(int slot) {
+    return QStringLiteral("产品日志_%1_%2.log")
+        .arg(dongleSlotLabel(slot), CommonUtils::dateStampYmd());
+}
+
+QString productDailyRelativePath(int slot) {
+    return logRootRelative() + QStringLiteral("/产品log/") + productDailyFileName(slot);
+}
+
+QString fixtureUartDailyFileName(const QString& fileNamePrefix) {
+    return fileNamePrefix + CommonUtils::dateStampYmd() + QStringLiteral(".log");
+}
+
+QString fixtureUartDailyRelativePath(const QString& fileNamePrefix) {
+    return logRootRelative() + QStringLiteral("/治具log/") + fixtureUartDailyFileName(fileNamePrefix);
 }
 
 bool appendLineToFile(const QString& absolutePath, const QString& line, bool writeBomIfNew) {
@@ -338,6 +367,18 @@ QlogSessionInfo toPublicInfo(const SessionState& state) {
     info.residentDailyRelativePath = state.residentDailyRelativePath;
     info.residentOffsetStart = state.residentOffsetStart;
     info.residentOffsetEnd = state.residentOffsetEnd;
+    info.productDailyAbsolutePath = state.productDailyAbsolutePath;
+    info.productDailyRelativePath = state.productDailyRelativePath;
+    info.productOffsetStart = state.productOffsetStart;
+    info.productOffsetEnd = state.productOffsetEnd;
+    info.fixtureDailyAbsolutePath = state.fixtureDailyAbsolutePath;
+    info.fixtureDailyRelativePath = state.fixtureDailyRelativePath;
+    info.fixtureOffsetStart = state.fixtureOffsetStart;
+    info.fixtureOffsetEnd = state.fixtureOffsetEnd;
+    info.jigFixtureDailyAbsolutePath = state.jigFixtureDailyAbsolutePath;
+    info.jigFixtureDailyRelativePath = state.jigFixtureDailyRelativePath;
+    info.jigFixtureOffsetStart = state.jigFixtureOffsetStart;
+    info.jigFixtureOffsetEnd = state.jigFixtureOffsetEnd;
     info.valid = !state.absolutePath.isEmpty();
     return info;
 }
@@ -363,35 +404,30 @@ bool appendTextLog(const QString& relativeDir, const QString& fileName, const QS
     return true;
 }
 
+void appendUartTxRxLines(const QString& absolutePath, int txrx, const QByteArray& data) {
+    const QString detailedTimestamp = CommonUtils::formatTimestampMs();
+    const QString hexData = CommonUtils::toHexUpperSpaced(data);
+    const QString raw = QString::fromLatin1(data);
+    if (txrx) {
+        appendLineToFile(absolutePath,
+                         detailedTimestamp + QStringLiteral("- tx发送的原始数据为：") + raw, true);
+        appendLineToFile(absolutePath,
+                         detailedTimestamp + QStringLiteral("- tx发送的16进制数据：") + hexData, false);
+    } else {
+        appendLineToFile(absolutePath,
+                         detailedTimestamp + QStringLiteral("- rx接收的原始数据为：") + raw, true);
+        appendLineToFile(absolutePath,
+                         detailedTimestamp + QStringLiteral("- rx接收的16进制数据：") + hexData, false);
+    }
+}
+
 void saveUartRawLogImpl(int txrx, const QByteArray& data, const QString& fileNamePrefix) {
     const QString folderName = logRootRelative() + QStringLiteral("/治具log");
     if (!CommonUtils::ensureLogDirectory(folderName)) {
-        qDebug() << "无法创建目录:" << folderName;
         return;
     }
-
-    const QString fileName = fileNamePrefix + CommonUtils::dateStampYmd() + QStringLiteral(".log");
-    const QString filePath = CommonUtils::joinPath(folderName, fileName);
-
-    QFile logFile(filePath);
-    if (!logFile.open(QIODevice::Append | QIODevice::Text)) {
-        qDebug() << "无法打开治具日志文件：" << fileName;
-        return;
-    }
-
-    QTextStream out(&logFile);
-    out.setCodec("UTF-8");
-    const QString detailedTimestamp = CommonUtils::formatTimestampMs();
-    const QString hexData = CommonUtils::toHexUpperSpaced(data);
-
-    if (txrx) {
-        out << detailedTimestamp << QStringLiteral("- tx发送的原始数据为：") << data << "\n";
-        out << detailedTimestamp << QStringLiteral("- tx发送的16进制数据：") << hexData << "\n";
-    } else {
-        out << detailedTimestamp << QStringLiteral("- rx接收的原始数据为：") << data << "\n";
-        out << detailedTimestamp << QStringLiteral("- rx接收的16进制数据：") << hexData << "\n";
-    }
-    logFile.close();
+    const QString filePath = CommonUtils::joinPath(folderName, fixtureUartDailyFileName(fileNamePrefix));
+    appendUartTxRxLines(filePath, txrx, data);
 }
 
 QString csvEscapeCell(QString value) {
@@ -488,6 +524,26 @@ void Qlog::beginSession(int slot, const QString& sn, const QString& mac, const Q
         QDir(QCoreApplication::applicationDirPath()).filePath(state.residentDailyRelativePath);
     state.residentOffsetStart = fileSizeOrZero(state.residentDailyAbsolutePath);
 
+    if (!CommonUtils::ensureLogDirectory(logRootRelative() + QStringLiteral("/产品log"))) {
+        qDebug() << QStringLiteral("无法创建产品日志目录");
+    }
+    state.productDailyRelativePath = productDailyRelativePath(slot);
+    state.productDailyAbsolutePath =
+        QDir(QCoreApplication::applicationDirPath()).filePath(state.productDailyRelativePath);
+    state.productOffsetStart = fileSizeOrZero(state.productDailyAbsolutePath);
+
+    if (!CommonUtils::ensureLogDirectory(logRootRelative() + QStringLiteral("/治具log"))) {
+        qDebug() << QStringLiteral("无法创建治具日志目录");
+    }
+    state.fixtureDailyRelativePath = fixtureUartDailyRelativePath(QStringLiteral("治具日志"));
+    state.fixtureDailyAbsolutePath =
+        QDir(QCoreApplication::applicationDirPath()).filePath(state.fixtureDailyRelativePath);
+    state.fixtureOffsetStart = fileSizeOrZero(state.fixtureDailyAbsolutePath);
+    state.jigFixtureDailyRelativePath = fixtureUartDailyRelativePath(QStringLiteral("Jig治具日志"));
+    state.jigFixtureDailyAbsolutePath =
+        QDir(QCoreApplication::applicationDirPath()).filePath(state.jigFixtureDailyRelativePath);
+    state.jigFixtureOffsetStart = fileSizeOrZero(state.jigFixtureDailyAbsolutePath);
+
     const QString header = QStringLiteral("===== SESSION BEGIN =====\r\n"
                                           "slot=%1\r\n"
                                           "trace=%2\r\n"
@@ -526,6 +582,9 @@ void Qlog::endSession(int slot, const QString& result) {
     state.dongleOffsetEnd = fileSizeOrZero(state.dongleDailyAbsolutePath);
     state.processBackgroundOffsetEnd = fileSizeOrZero(state.processBackgroundDailyAbsolutePath);
     state.residentOffsetEnd = fileSizeOrZero(state.residentDailyAbsolutePath);
+    state.productOffsetEnd = fileSizeOrZero(state.productDailyAbsolutePath);
+    state.fixtureOffsetEnd = fileSizeOrZero(state.fixtureDailyAbsolutePath);
+    state.jigFixtureOffsetEnd = fileSizeOrZero(state.jigFixtureDailyAbsolutePath);
 
     const QString footer =
         QStringLiteral("===== SESSION END =====\r\n"
@@ -744,6 +803,57 @@ QString Qlog::exportResidentSessionSlice(const QlogSessionInfo& info, QString* e
     const QString outRel = logRootRelative() + QStringLiteral("/常驻监控/") + outName;
     return exportDailyLogSessionSlice(info.residentDailyAbsolutePath, outRel, info, info.residentOffsetStart,
                                       info.residentOffsetEnd, error);
+}
+
+QString Qlog::exportProductSessionSlice(const QlogSessionInfo& info, QString* error) {
+    if (!info.valid || info.productDailyAbsolutePath.isEmpty()) {
+        return {};
+    }
+    if (!QFile::exists(info.productDailyAbsolutePath)) {
+        return {};
+    }
+    const QString outName = sessionFileStem(info) + QStringLiteral("_product.log");
+    const QString outRel = logRootRelative() + QStringLiteral("/产品log/") + outName;
+    return exportDailyLogSessionSlice(info.productDailyAbsolutePath, outRel, info, info.productOffsetStart,
+                                      info.productOffsetEnd, error);
+}
+
+QString Qlog::exportFixtureSessionSlice(const QlogSessionInfo& info, QString* error) {
+    if (!info.valid || info.fixtureDailyAbsolutePath.isEmpty()) {
+        return {};
+    }
+    if (!QFile::exists(info.fixtureDailyAbsolutePath)) {
+        return {};
+    }
+    const QString outName = sessionFileStem(info) + QStringLiteral("_fixture.log");
+    const QString outRel = logRootRelative() + QStringLiteral("/治具log/") + outName;
+    return exportDailyLogSessionSlice(info.fixtureDailyAbsolutePath, outRel, info, info.fixtureOffsetStart,
+                                      info.fixtureOffsetEnd, error);
+}
+
+QString Qlog::exportJigFixtureSessionSlice(const QlogSessionInfo& info, QString* error) {
+    if (!info.valid || info.jigFixtureDailyAbsolutePath.isEmpty()) {
+        return {};
+    }
+    if (!QFile::exists(info.jigFixtureDailyAbsolutePath)) {
+        return {};
+    }
+    const QString outName = sessionFileStem(info) + QStringLiteral("_jig_fixture.log");
+    const QString outRel = logRootRelative() + QStringLiteral("/治具log/") + outName;
+    return exportDailyLogSessionSlice(info.jigFixtureDailyAbsolutePath, outRel, info, info.jigFixtureOffsetStart,
+                                      info.jigFixtureOffsetEnd, error);
+}
+
+void Qlog::saveProductUartLog(int machineIndex, int txrx, const QByteArray& data) {
+    if (data.isEmpty()) {
+        return;
+    }
+    const QString folderName = logRootRelative() + QStringLiteral("/产品log");
+    if (!CommonUtils::ensureLogDirectory(folderName)) {
+        return;
+    }
+    const QString filePath = CommonUtils::joinPath(folderName, productDailyFileName(machineIndex));
+    appendUartTxRxLines(filePath, txrx, data);
 }
 
 void Qlog::setSuctionSamples(int slot, const QVector<double>& timeSec, const QVector<double>& ch1,

@@ -32,7 +32,7 @@ enum class DongleCmd {
 
     MainDataPassthrough,  // AT+MAINDATA= 0/1
 
-    BleLog,               // AT+BLELOG= 0/1
+    BleLog,               // AT+BLERSSILOG= 0/1（连接后 RSSI 上报开关，旧指令 AT+BLELOG）
 
     GetSuction,           // AT+SUCTION= 0/1
 

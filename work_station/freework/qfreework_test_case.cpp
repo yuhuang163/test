@@ -241,6 +241,8 @@ bool sendAndCollectXwdReadOnceReply(SerialChannel* channel, QSerialPort* port, c
             *errorMessage = QStringLiteral("XWD治具串口写入失败");
         return false;
     }
+    qDebug().noquote() << "XWD FIXTURE TX:" << QString::fromLatin1(request.toHex(' ').toUpper());
+    Qlog().save_jig_uart_log(1, request);
     // 直接进入事件循环再等待回包，避免 waitForBytesWritten 内先收到 CH1 并提前触发 loop.quit()。
     timeout.start(qMax(1, timeoutMs));
     loop.exec();
@@ -2819,11 +2821,9 @@ void QFreeWork::executeFixtureXwdCase(const TestCaseDefinition& def) {
     }
 
     if (parsedAsHex)
-        qDebug().noquote() << "XWD FIXTURE TX(十六进制):" << QString::fromLatin1(request.toHex(' ').toUpper());
+        showlog(QStringLiteral("XWD治具读取下发（十六进制）：%1").arg(rawText));
     else
-        qDebug().noquote() << "XWD FIXTURE TX(原文):" << rawText;
-    showlog(parsedAsHex ? QStringLiteral("XWD治具读取下发（十六进制）：%1").arg(rawText)
-                        : QStringLiteral("XWD治具读取下发（原文）：%1").arg(rawText));
+        showlog(QStringLiteral("XWD治具读取下发（原文）：%1").arg(rawText));
 
     int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
     // 该治具实测回包常 >300ms；过短超时会“设备已回、上位机已放弃”
@@ -2872,7 +2872,6 @@ void QFreeWork::executeFixtureXwdCase(const TestCaseDefinition& def) {
     }
 
     const QString replyText = QString::fromUtf8(reply).trimmed();
-    qDebug().noquote() << "XWD FIXTURE RX(text):" << replyText;
     showlog(QStringLiteral("XWD治具已收到回包：%1").arg(replyText));
 
     double ch1Ma = 0;
