@@ -8,6 +8,7 @@
 #include <QDateTime>
 #include <QDebug>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
 #include <QHash>
@@ -181,15 +182,87 @@ bool appendLineToFile(const QString& absolutePath, const QString& line, bool wri
     return true;
 }
 
+/**
+ * 高频日志（dongle 原始帧、qDebug 后台日志）先进内存再批量落盘。
+ * 吸力上报 50Hz 时逐行 open/append/close 会把主线程压在磁盘 IO 上（现场偶发卡顿主因）。
+ * 常规：满 kLogFlushBytes 或距上次落盘超 kLogFlushIntervalMs 才写。
+ * 采样推迟模式：只攒内存，关闭推迟或缓冲超过 kLogFlushBytesDeferred 再写。
+ */
+constexpr int kLogFlushIntervalMs = 200;
+constexpr int kLogFlushBytes = 32 * 1024;
+constexpr int kLogFlushBytesDeferred = 1024 * 1024;
+
+struct BufferedLogFile {
+    QByteArray pending;
+    bool writeBomIfNew = false;
+};
+
+QMutex g_bufferedLogMutex;
+QHash<QString, BufferedLogFile> g_bufferedLogs;
+QElapsedTimer g_bufferedLogClock;
+qint64 g_bufferedLogLastFlushMs = 0;
+bool g_bufferedLogFlushDeferred = false;
+
+void writeBufferedLogToDisk(const QString& absolutePath, BufferedLogFile& buf) {
+    if (buf.pending.isEmpty()) {
+        return;
+    }
+    QFile file(absolutePath);
+    const bool isNew = !file.exists() || file.size() == 0;
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Append)) {
+        // 打不开就丢弃本批，避免缓冲无上限膨胀
+        buf.pending.clear();
+        return;
+    }
+    if (isNew && buf.writeBomIfNew) {
+        file.write("\xEF\xBB\xBF");
+    }
+    file.write(buf.pending);
+    file.close();
+    buf.pending.clear();
+}
+
+void flushBufferedLogsLocked() {
+    for (auto it = g_bufferedLogs.begin(); it != g_bufferedLogs.end(); ++it) {
+        writeBufferedLogToDisk(it.key(), it.value());
+    }
+    if (g_bufferedLogClock.isValid()) {
+        g_bufferedLogLastFlushMs = g_bufferedLogClock.elapsed();
+    }
+}
+
+void appendLineBuffered(const QString& absolutePath, const QString& line, bool writeBomIfNew) {
+    QMutexLocker lock(&g_bufferedLogMutex);
+    if (!g_bufferedLogClock.isValid()) {
+        g_bufferedLogClock.start();
+    }
+    auto it = g_bufferedLogs.find(absolutePath);
+    if (it == g_bufferedLogs.end()) {
+        // 只在首次写该文件时建目录，避免每行都 mkpath
+        QDir().mkpath(QFileInfo(absolutePath).path());
+        it = g_bufferedLogs.insert(absolutePath, BufferedLogFile{});
+        it->writeBomIfNew = writeBomIfNew;
+    }
+    it->pending += line.toUtf8();
+    it->pending += "\r\n";
+    const qint64 nowMs = g_bufferedLogClock.elapsed();
+    const int flushBytes = g_bufferedLogFlushDeferred ? kLogFlushBytesDeferred : kLogFlushBytes;
+    const bool timeDue =
+        !g_bufferedLogFlushDeferred && nowMs - g_bufferedLogLastFlushMs >= kLogFlushIntervalMs;
+    if (it->pending.size() >= flushBytes || timeDue) {
+        flushBufferedLogsLocked();
+    }
+}
+
 void appendProcessBackgroundLog(const QString& line) {
     if (!qtDebugToProcessLog()) {
         return;
     }
     const QString relDir = logRootRelative() + QStringLiteral("/上位机log/进程后台");
-    if (!CommonUtils::ensureLogDirectory(relDir)) {
-        return;
-    }
-    appendLineToFile(CommonUtils::joinPath(relDir, processBackgroundDailyFileName()), line, true);
+    appendLineBuffered(
+        QDir(QCoreApplication::applicationDirPath())
+            .filePath(CommonUtils::joinPath(relDir, processBackgroundDailyFileName())),
+        line, true);
 }
 
 QString exportDailyLogSessionSlice(const QString& dailyAbsolutePath, const QString& outputRelPath,
@@ -432,6 +505,10 @@ void qlogQtMessageHandler(QtMsgType type, const QMessageLogContext& context, con
 
 void Qlog::installQtMessageHandler() {
     qInstallMessageHandler(qlogQtMessageHandler);
+    // 缓冲日志最多滞留 kLogFlushIntervalMs，退出前补一次落盘
+    if (QCoreApplication* app = QCoreApplication::instance()) {
+        QObject::connect(app, &QCoreApplication::aboutToQuit, app, []() { Qlog::flushLogBuffers(); });
+    }
 }
 
 QString Qlog::logRootAbsolute() {
@@ -443,6 +520,8 @@ void Qlog::beginSession(int slot, const QString& sn, const QString& mac, const Q
         return;
     }
     QMutexLocker lock(&g_sessionMutex);
+    // offset 取的是磁盘字节数，先把缓冲写完再量
+    flushLogBuffers();
     SessionState state;
     state.active = true;
     state.slot = slot;
@@ -523,6 +602,8 @@ void Qlog::endSession(int slot, const QString& result) {
     state.active = false;
     state.endedAt = QDateTime::currentDateTime();
     state.result = result.trimmed().isEmpty() ? QStringLiteral("NG") : result.trimmed();
+    // offset 取的是磁盘字节数，先把缓冲写完再量
+    flushLogBuffers();
     state.dongleOffsetEnd = fileSizeOrZero(state.dongleDailyAbsolutePath);
     state.processBackgroundOffsetEnd = fileSizeOrZero(state.processBackgroundDailyAbsolutePath);
     state.residentOffsetEnd = fileSizeOrZero(state.residentDailyAbsolutePath);
@@ -642,6 +723,10 @@ void Qlog::handleQtMessage(QtMsgType type, const QMessageLogContext& context, co
 
     if (sessionLogEnabled()) {
         appendProcessBackgroundLog(message);
+        // 只有 DBG 走缓冲；警告及以上是异常路径且频率低，立刻落盘以防崩溃丢掉最后几条
+        if (type != QtDebugMsg) {
+            flushLogBuffers();
+        }
         return;
     }
 
@@ -673,7 +758,23 @@ void Qlog::saveDongleUartLog(int machineIndex, const QString& data) {
     const QString fileName = dongleDailyFileName(machineIndex);
     const QString line = CommonUtils::formatTimestampMs() + QLatin1Char(' ') + data;
     // dongle 原始串口仅落盘到日文件；会话主文件只保留 [UI]，上传时另按时间窗导出 dongle 切片
-    appendTextLog(folderName, fileName, line, false);
+    // 吸力上报期间这里是 50Hz 级调用，必须走缓冲批量落盘
+    appendLineBuffered(QDir(QCoreApplication::applicationDirPath())
+                           .filePath(CommonUtils::joinPath(folderName, fileName)),
+                       line, false);
+}
+
+void Qlog::flushLogBuffers() {
+    QMutexLocker lock(&g_bufferedLogMutex);
+    flushBufferedLogsLocked();
+}
+
+void Qlog::setBufferedLogFlushDeferred(bool deferred) {
+    QMutexLocker lock(&g_bufferedLogMutex);
+    g_bufferedLogFlushDeferred = deferred;
+    if (!deferred) {
+        flushBufferedLogsLocked();
+    }
 }
 
 void Qlog::saveDongleUartLogMain(const QString& data) {

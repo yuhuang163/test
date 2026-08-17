@@ -128,7 +128,8 @@ const QVector<GateTypeDescriptor> kTypes = {
       {QStringLiteral("peakDiffKpa"), QStringLiteral("单通道峰值差(最大峰-最小峰)")},
       {QStringLiteral("ch1PeakKpa"), QStringLiteral("CH1峰值(最低kPa)")},
       {QStringLiteral("ch2PeakKpa"), QStringLiteral("CH2峰值(最低kPa)")},
-      {QStringLiteral("sideDiffKpa"), QStringLiteral("CH1-CH2峰差(kPa)")}}},
+      {QStringLiteral("sideDiffKpa"), QStringLiteral("CH1-CH2峰差(kPa)")},
+      {QStringLiteral("peakCount"), QStringLiteral("完整周期峰个数")}}},
 };
 
 double fieldValueFromVariant(const QString& reportType, const QString& field, const QVariant& payload, bool& ok) {
@@ -632,6 +633,10 @@ double fieldValueFromVariant(const QString& reportType, const QString& field, co
             ok = true;
             return d.sideDiffKpa;
         }
+        if (field == QLatin1String("peakCount")) {
+            ok = true;
+            return d.peakCount;
+        }
     }
     return 0.0;
 }
@@ -1093,6 +1098,10 @@ QString fieldStringFromVariant(const QString& reportType, const QString& field, 
         if (field == QLatin1String("sideDiffKpa") || field == QLatin1String("peakSpanKpa")) {
             ok = true;
             return QString::number(d.sideDiffKpa, 'f', 3);
+        }
+        if (field == QLatin1String("peakCount")) {
+            ok = true;
+            return QString::number(d.peakCount);
         }
     }
     return {};

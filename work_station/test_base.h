@@ -91,6 +91,12 @@ class test_base : public QWidget {
 
     // --- 通用工具 ---
     void waitWork(int ms);
+    /**
+     * 低 CPU 占用等待：同样泵事件（不丢串口/协议回调），但空闲时阻塞在事件循环上。
+     * waitWork 是忙等 processEvents，长采样窗口会把一个核占满并放大卡顿，
+     * 吸力这类持续几秒到十几秒的采样循环用本函数。
+     */
+    void waitWorkIdle(int ms);
     void updateMainStyle(QString style);
     int sendCommandWithRetry(std::function<void()> commandFunc, int timeoutMs = 300, bool allowResend = true);
     void setCommandWaitSource(CommandWaitSource source) {

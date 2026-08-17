@@ -17,6 +17,7 @@
 #include <QDebug>
 #include <QElapsedTimer>
 #include <QEvent>
+#include <QEventLoop>
 #include <QFocusEvent>
 #include <QKeySequence>
 #include <QLineEdit>
@@ -353,23 +354,30 @@ void test_base::onDongleSerialFrame(const QByteArray& dataTemp) {
 
     const QString timestamp = CommonUtils::formatTimestampMs();
     QString payloadText;
-    const QByteArray contentMarker = QByteArrayLiteral("内容为:");
-    const int contentPos = dataTemp.indexOf(contentMarker);
-    if (contentPos >= 0) {
-        const QByteArray before = dataTemp.left(contentPos + contentMarker.size());
-        const QByteArray after = dataTemp.mid(contentPos + contentMarker.size()).trimmed();
-        payloadText = CommonUtils::formatUartPayloadForUi(before, 512);
-        if (!after.isEmpty()) {
-            const int n = qMin(after.size(), 256);
-            payloadText += CommonUtils::toHexUpperSpaced(after.left(n));
-            if (after.size() > n)
-                payloadText += QStringLiteral(" ...(+%1 bytes)").arg(after.size() - n);
-        }
+    // 吸力 50Hz：界面不刷，原文完整进 dongle log，采样结束再落盘
+    const bool highFreqSuction = dataTemp.contains("AT+SUCTION_DATA");
+    if (highFreqSuction) {
+        payloadText = QString::fromUtf8(dataTemp.constData(), dataTemp.size());
     } else {
-        payloadText = CommonUtils::formatUartPayloadForUi(dataTemp);
+        const QByteArray contentMarker = QByteArrayLiteral("内容为:");
+        const int contentPos = dataTemp.indexOf(contentMarker);
+        if (contentPos >= 0) {
+            const QByteArray before = dataTemp.left(contentPos + contentMarker.size());
+            const QByteArray after = dataTemp.mid(contentPos + contentMarker.size()).trimmed();
+            payloadText = CommonUtils::formatUartPayloadForUi(before, 512);
+            if (!after.isEmpty()) {
+                const int n = qMin(after.size(), 256);
+                payloadText += CommonUtils::toHexUpperSpaced(after.left(n));
+                if (after.size() > n)
+                    payloadText += QStringLiteral(" ...(+%1 bytes)").arg(after.size() - n);
+            }
+        } else {
+            payloadText = CommonUtils::formatUartPayloadForUi(dataTemp);
+        }
     }
     const QString logEntry = QStringLiteral("[%1]\r\n%2").arg(timestamp, payloadText);
-    enqueueDongleUiLog(logEntry);
+    if (!highFreqSuction)
+        enqueueDongleUiLog(logEntry);
     saveDongleUartLog(logEntry);
 }
 
@@ -382,7 +390,8 @@ void test_base::enqueueDongleUiLog(const QString& line) {
     if (dongleUiLogFlushScheduled_)
         return;
     dongleUiLogFlushScheduled_ = true;
-    QTimer::singleShot(0, this, [this]() { flushDongleUiLog(); });
+    // 采样步骤在忙等里泵事件，singleShot(0) 会被立刻执行等于没节流；固定 200ms 攒批
+    QTimer::singleShot(200, this, [this]() { flushDongleUiLog(); });
 }
 
 void test_base::flushDongleUiLog() {
@@ -606,6 +615,16 @@ void test_base::waitWork(int ms) {
     t.start();
     while (t.elapsed() < ms)
         QCoreApplication::processEvents();
+}
+
+void test_base::waitWorkIdle(int ms) {
+    if (ms <= 0) {
+        QCoreApplication::processEvents();
+        return;
+    }
+    QEventLoop loop;
+    QTimer::singleShot(ms, &loop, &QEventLoop::quit);
+    loop.exec();
 }
 
 void test_base::updateMainStyle(QString style) {

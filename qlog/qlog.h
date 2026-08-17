@@ -72,6 +72,16 @@ class Qlog {
 
     static void saveDongleUartLog(int machineIndex, const QString& data);
     static void saveDongleUartLogMain(const QString& data);
+    /**
+     * 把高频日志（dongle 原始帧、qDebug 后台日志）的内存缓冲立即写盘。
+     * 取会话 offset、退出与崩溃前必须调用，否则切片会缺尾部内容。
+     */
+    static void flushLogBuffers();
+    /**
+     * 吸力采样等高频段：日志只进内存，关闭时再一次性落盘。
+     * 缓冲超过约 1MB 仍会中途写盘，避免异常退出时内存无上限。
+     */
+    static void setBufferedLogFlushDeferred(bool deferred);
     static void saveBlackboxLog(const QByteArray& data);
     static void saveOtaStressLog(const QString& msg);
     /**

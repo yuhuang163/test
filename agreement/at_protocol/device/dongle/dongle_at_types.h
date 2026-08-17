@@ -48,7 +48,7 @@ enum class DongleCmd {
 
     GetGmac,              // get: AT+GMAC
 
-    /** 双通道吸力采样（CH1/CH2，同 BYD），结果 ProtocolDongleSuctionPeakData + Gate */
+    /** 双通道吸力采样（CH1/CH2 完整周期峰 + 峰差），结果 ProtocolDongleSuctionPeakData + Gate */
 
     SampleSuctionDual,
 

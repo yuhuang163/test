@@ -62,7 +62,9 @@ void AtLineCodec::feed(const QByteArray& chunk, const FrameHandler& onFrame) {
                 cangonext_ = 0;
                 const QString atLine = parameter_.isEmpty() ? cmd_ + "\r\n" : cmd_ + "=" + parameter_ + "\r\n";
                 if (isPrintableAtLine(atLine)) {
-                    qDebug().noquote() << "AT RX:" << atLine.trimmed();
+                    // 吸力上报 50Hz，逐行 qDebug 会把主线程压在日志落盘上；原始字节另存 dongle 的log
+                    if (cmd_ != QStringLiteral("AT+SUCTION_DATA"))
+                        qDebug().noquote() << "AT RX:" << atLine.trimmed();
                     if (onFrame)
                         onFrame({cmd_, parameter_});
                 }
@@ -87,7 +89,8 @@ void AtLineCodec::feed(const QByteArray& chunk, const FrameHandler& onFrame) {
                 cangonext_ = 0;
                 const QString atLine = parameter_.isEmpty() ? cmd_ + "\r\n" : cmd_ + "=" + parameter_ + "\r\n";
                 if (isPrintableAtLine(atLine)) {
-                    qDebug().noquote() << "AT RX:" << atLine.trimmed();
+                    if (cmd_ != QStringLiteral("AT+SUCTION_DATA"))
+                        qDebug().noquote() << "AT RX:" << atLine.trimmed();
                     if (onFrame)
                         onFrame({cmd_, parameter_});
                 }

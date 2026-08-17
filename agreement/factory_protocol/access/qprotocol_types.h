@@ -456,12 +456,13 @@ struct ProtocolDongleSuctionData {
 
 /** Dongle 吸力采样窗口汇总（SampleSuctionDual/Single），供 Gate 卡控 */
 struct ProtocolDongleSuctionPeakData {
-    double peakKpa = 0.0;     // 单通道：各周期峰值中最强（数值最小）
-    double highKpa = 0.0;     // 单通道：各周期峰值中最弱（数值最大，勿与采样窗口绝对值最高混淆）
+    double peakKpa = 0.0;     // 单通道：各完整周期峰值中最强（数值最小）
+    double highKpa = 0.0;     // 单通道：各完整周期峰值中最弱（数值最大）
     double peakDiffKpa = 0.0; // 单通道：峰值差=各周期峰值中最大-最小
-    double ch1PeakKpa = 0.0;  // 双通道 CH1 窗口最低（原左口）
-    double ch2PeakKpa = 0.0;  // 双通道 CH2 窗口最低（原右口）
-    double sideDiffKpa = 0.0; // 双通道：|CH1峰值-CH2峰值|（原左右峰差）
+    double ch1PeakKpa = 0.0;  // 双通道：CH1 各完整周期峰值中最强（最低 kPa）
+    double ch2PeakKpa = 0.0;  // 双通道：CH2 各完整周期峰值中最强
+    double sideDiffKpa = 0.0; // 双通道：|CH1峰值-CH2峰值|
+    int peakCount = 0;        // 完整周期峰个数（双通道取两口较少者）
 };
 
 /** USB 电流表 / 治具振幅仪上行 */
