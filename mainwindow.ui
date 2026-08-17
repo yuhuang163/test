@@ -4508,6 +4508,16 @@
                        </widget>
                       </item>
                       <item>
+                       <widget class="QLabel" name="dongleSuctionPacketIntervalLabel">
+                        <property name="toolTip">
+                         <string>相邻两包 AT+SUCTION_DATA 到达上位机的间隔；「均」为指数滑动平均</string>
+                        </property>
+                        <property name="text">
+                         <string>包间隔：-- ms</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
                        <spacer name="horizontalSpacer_dongle_suction">
                         <property name="orientation">
                          <enum>Qt::Horizontal</enum>
@@ -4993,7 +5003,7 @@
                       <property name="minimumSize">
                        <size>
                         <width>320</width>
-                        <height>160</height>
+                        <height>360</height>
                        </size>
                       </property>
                      </widget>

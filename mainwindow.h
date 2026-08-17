@@ -196,6 +196,8 @@ class MainWindow : public QMainWindow {
     void flushDongleSuctionChartUi(bool forceFullReplot = false);
     void appendDongleSuctionPlotIncremental(QCustomPlot* plot, int& plottedCount);
     void updateDongleSuctionPeakLabels();
+    /** 把实时/高低/峰检合并进图例通道名（参考产测曲线图例写法） */
+    void updateDongleSuctionPlotOverlay(QCustomPlot* plot);
     void flushDongleSuctionCsvPending();
     void loadDongleSuctionPeakSettings();
     void setDongleSuctionPeakParamWidgetsEnabled(bool enabled);
@@ -203,6 +205,7 @@ class MainWindow : public QMainWindow {
     void updateDongleSuctionPeakMonitor(double ch1Kpa, double ch2Kpa, double ch3Kpa, double tSec, QString& eventOut);
     void updateDongleSuctionChannelPeakMonitor(int chIndex, double kpa, double tSec, QString& eventOut);
     void updateDongleSuctionPeakMonitorLabels();
+    void updateDongleSuctionPacketIntervalLabel();
     bool startDongleSuctionCsvLog();
     void stopDongleSuctionCsvLog();
     void writeDongleSuctionCsvRow(double tSec, double ch1Kpa, double ch2Kpa, double ch3Kpa);
@@ -223,6 +226,10 @@ class MainWindow : public QMainWindow {
     QElapsedTimer dongleSuctionChartTimer_;
     bool dongleSuctionChartTimerStarted_ = false;
     qint64 dongleSuctionChartLastUiMs_ = 0;
+    qint64 dongleSuctionLastPacketArrivalMs_ = -1;
+    double dongleSuctionPacketIntervalMs_ = 0.0;
+    double dongleSuctionPacketIntervalAvgMs_ = 0.0;
+    bool dongleSuctionPacketIntervalReady_ = false;
     int dongleSuctionChartPlottedCount_ = 0;
     int dongleSuctionPopupPlottedCount_ = 0;
     int dongleSuctionCsvRowsSinceFlush_ = 0;

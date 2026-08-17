@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 
+#include <QAbstractItemView>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QGroupBox>
@@ -132,6 +133,27 @@ void pinDebugTabPageToTop(QTabWidget* tabWidget) {
     }
 }
 
+/** SetMinAndMaxSize 会把 ComboBox 压到极窄，下拉列表宽度跟随控件导致选项被省略。 */
+void fitDebugComboBoxWidths(QWidget* root) {
+    if (!root)
+        return;
+    for (QComboBox* combo : root->findChildren<QComboBox*>()) {
+        if (combo->count() <= 0)
+            continue;
+        combo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+        const QFontMetrics fm(combo->font());
+        int maxTextWidth = 0;
+        for (int i = 0; i < combo->count(); ++i)
+            maxTextWidth = qMax(maxTextWidth, fm.horizontalAdvance(combo->itemText(i)));
+        const int minWidth = maxTextWidth + 36; // 下拉箭头与左右留白
+        combo->setMinimumWidth(minWidth);
+        if (QAbstractItemView* view = combo->view()) {
+            view->setMinimumWidth(minWidth);
+            view->setTextElideMode(Qt::ElideNone);
+        }
+    }
+}
+
 } // namespace
 
 void MainWindow::initDebugTabChrome() {
@@ -205,6 +227,7 @@ void MainWindow::initDebugTabLayout() {
                                                      kDebugCompactMargin, kDebugCompactMargin);
         ui->groupBox_7->layout()->setSpacing(kDebugCompactSpacing);
     }
+    fitDebugComboBoxWidths(ui->tabWidget);
 }
 
 void MainWindow::applyDebugOtaTabVisibility() {
@@ -5193,6 +5216,8 @@ void MainWindow::updateDongleSuctionPeakMonitorLabels() {
                                .arg(m.missedPeakCount)
                                .arg(m.weakPeakCount));
     }
+    updateDongleSuctionPlotOverlay(dongleSuctionPlot_);
+    updateDongleSuctionPlotOverlay(dongleSuctionPlotPopup_);
 }
 
 void MainWindow::updateDongleSuctionChannelPeakMonitor(int chIndex, double kpa, double tSec, QString& eventOut) {
@@ -5351,15 +5376,36 @@ void MainWindow::writeDongleSuctionCsvRow(double tSec, double ch1Kpa, double ch2
 void MainWindow::setupDongleSuctionPlotWidget(QCustomPlot* plot) {
     if (!plot)
         return;
-    plot->legend->setVisible(true);
     while (plot->graphCount() < 3)
         plot->addGraph();
     plot->graph(0)->setPen(QPen(QColor(30, 120, 220), 2));
-    plot->graph(0)->setName(QStringLiteral("第一通道"));
+    plot->graph(0)->setName(QStringLiteral("CH1"));
     plot->graph(1)->setPen(QPen(QColor(220, 80, 50), 2));
-    plot->graph(1)->setName(QStringLiteral("第二通道"));
+    plot->graph(1)->setName(QStringLiteral("CH2"));
     plot->graph(2)->setPen(QPen(QColor(50, 160, 80), 2));
-    plot->graph(2)->setName(QStringLiteral("第三通道"));
+    plot->graph(2)->setName(QStringLiteral("CH3"));
+
+    // 图例放到曲线区下方，避免遮挡波形
+    if (plot->legend && plot->axisRect() && plot->plotLayout()) {
+        if (plot->legend->layout() == plot->axisRect()->insetLayout()) {
+            plot->axisRect()->insetLayout()->take(plot->legend);
+            plot->plotLayout()->addElement(1, 0, plot->legend);
+            plot->plotLayout()->setRowStretchFactor(0, 1);
+            plot->plotLayout()->setRowStretchFactor(1, 0.01);
+        }
+        plot->legend->setVisible(true);
+        plot->legend->setBorderPen(QPen(QColor(120, 120, 120, 50)));
+        // 高透明底，避免挡视线
+        plot->legend->setBrush(QBrush(QColor(255, 255, 255, 40)));
+        plot->legend->setSelectedBrush(QBrush(QColor(255, 255, 255, 40)));
+        plot->legend->setFillOrder(QCPLegend::foColumnsFirst, true);
+        plot->legend->setWrap(3);
+        QFont f = font();
+        f.setPointSize(8);
+        plot->legend->setFont(f);
+        plot->legend->setTextColor(QColor(20, 20, 20, 200));
+    }
+
     const double xInit = dongleSuctionXWindowSec();
     double yMin = -40.0;
     double yMax = 0.0;
@@ -5506,15 +5552,80 @@ void MainWindow::flushDongleSuctionChartUi(bool forceFullReplot) {
             ui->dongleSuctionLiveCh3Label->setText(QStringLiteral("第三通道实时：%1 kPa").arg(ch3Kpa, 0, 'f', 3));
     }
     updateDongleSuctionPeakLabels();
+    updateDongleSuctionPlotOverlay(dongleSuctionPlot_);
+    updateDongleSuctionPlotOverlay(dongleSuctionPlotPopup_);
 
     if (forceFullReplot) {
         refreshDongleSuctionPlotWidget(dongleSuctionPlot_);
         refreshDongleSuctionPlotWidget(dongleSuctionPlotPopup_);
+        updateDongleSuctionPlotOverlay(dongleSuctionPlot_);
+        updateDongleSuctionPlotOverlay(dongleSuctionPlotPopup_);
         return;
     }
 
     appendDongleSuctionPlotIncremental(dongleSuctionPlot_, dongleSuctionChartPlottedCount_);
     appendDongleSuctionPlotIncremental(dongleSuctionPlotPopup_, dongleSuctionPopupPlottedCount_);
+}
+
+void MainWindow::updateDongleSuctionPacketIntervalLabel() {
+    const QString text =
+        dongleSuctionPacketIntervalReady_
+            ? QStringLiteral("包间隔：%1 ms（均 %2 ms）")
+                  .arg(dongleSuctionPacketIntervalMs_, 0, 'f', 1)
+                  .arg(dongleSuctionPacketIntervalAvgMs_, 0, 'f', 1)
+            : QStringLiteral("包间隔：-- ms");
+    if (ui->dongleSuctionPacketIntervalLabel)
+        ui->dongleSuctionPacketIntervalLabel->setText(text);
+}
+
+void MainWindow::updateDongleSuctionPlotOverlay(QCustomPlot* plot) {
+    if (!plot || plot->graphCount() < 3)
+        return;
+
+    // 去掉此前独立文字框
+    for (int i = plot->itemCount() - 1; i >= 0; --i) {
+        auto* item = qobject_cast<QCPItemText*>(plot->item(i));
+        if (item && item->objectName() == QLatin1String("dongleSuctionOverlay"))
+            plot->removeItem(item);
+    }
+
+    // 图例在曲线下方：带中文标签，避免看不懂缩写
+    auto fmtName = [](const QString& name, double live, double hi, double lo, bool ok,
+                      const DongleSuctionChannelPeakMonitor& m) {
+        if (!ok)
+            return QStringLiteral("%1 实时-- 最高-- 最低-- 有效0 漏峰0 弱峰0").arg(name);
+        return QStringLiteral("%1 实时%2 最高%3 最低%4 有效%5 漏峰%6 弱峰%7")
+            .arg(name)
+            .arg(live, 0, 'f', 2)
+            .arg(hi, 0, 'f', 2)
+            .arg(lo, 0, 'f', 2)
+            .arg(m.validPeakCount)
+            .arg(m.missedPeakCount)
+            .arg(m.weakPeakCount);
+    };
+
+    const bool ok = dongleSuctionPeakLabelStatsInit_;
+    const double live1 = (!dongleSuctionChartCh1_.isEmpty()) ? dongleSuctionChartCh1_.last() : 0.0;
+    const double live2 = (!dongleSuctionChartCh2_.isEmpty()) ? dongleSuctionChartCh2_.last() : 0.0;
+    const double live3 = (!dongleSuctionChartCh3_.isEmpty()) ? dongleSuctionChartCh3_.last() : 0.0;
+
+    plot->graph(0)->setName(fmtName(QStringLiteral("CH1"), live1, dongleSuctionCh1Max_, dongleSuctionCh1Min_, ok,
+                                    dongleSuctionPeakMonitors_[0]));
+    plot->graph(1)->setName(fmtName(QStringLiteral("CH2"), live2, dongleSuctionCh2Max_, dongleSuctionCh2Min_, ok,
+                                    dongleSuctionPeakMonitors_[1]));
+    plot->graph(2)->setName(fmtName(QStringLiteral("CH3"), live3, dongleSuctionCh3Max_, dongleSuctionCh3Min_, ok,
+                                    dongleSuctionPeakMonitors_[2]));
+
+    if (plot->legend) {
+        plot->legend->setVisible(true);
+        QFont f = font();
+        f.setPointSize(8);
+        plot->legend->setFont(f);
+        plot->legend->setBorderPen(QPen(QColor(120, 120, 120, 50)));
+        plot->legend->setBrush(QBrush(QColor(255, 255, 255, 40)));
+        plot->legend->setSelectedBrush(QBrush(QColor(255, 255, 255, 40)));
+        plot->legend->setTextColor(QColor(20, 20, 20, 200));
+    }
 }
 
 void MainWindow::openDongleSuctionChartPopup() {
@@ -5527,7 +5638,7 @@ void MainWindow::openDongleSuctionChartPopup() {
     auto* dlg = new QDialog(this);
     dlg->setAttribute(Qt::WA_DeleteOnClose, true);
     dlg->setWindowTitle(QStringLiteral("Dongle 吸力曲线（双击原图可再次打开）"));
-    dlg->resize(1200, 720);
+    dlg->resize(1400, 900);
     dlg->setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::WindowSystemMenuHint | Qt::WindowMinMaxButtonsHint |
                         Qt::WindowCloseButtonHint);
 
@@ -5536,6 +5647,7 @@ void MainWindow::openDongleSuctionChartPopup() {
     auto* plot = new QCustomPlot(dlg);
     setupDongleSuctionPlotWidget(plot);
     refreshDongleSuctionPlotWidget(plot);
+    updateDongleSuctionPlotOverlay(plot);
     layout->addWidget(plot, 1);
 
     dongleSuctionPlotPopupDlg_ = dlg;
@@ -5544,7 +5656,7 @@ void MainWindow::openDongleSuctionChartPopup() {
         dongleSuctionPlotPopupDlg_.clear();
         dongleSuctionPlotPopup_.clear();
     });
-    dlg->show();
+    dlg->showMaximized();
 }
 
 void MainWindow::initDongleSuctionChart() {
@@ -5556,10 +5668,40 @@ void MainWindow::initDongleSuctionChart() {
     dongleSuctionPlot_ = new QCustomPlot(ui->dongleSuctionPlotHost);
     layout->addWidget(dongleSuctionPlot_);
     setupDongleSuctionPlotWidget(dongleSuctionPlot_);
+    updateDongleSuctionPlotOverlay(dongleSuctionPlot_);
     dongleSuctionPlot_->setToolTip(QStringLiteral("双击放大查看"));
     connect(dongleSuctionPlot_, &QCustomPlot::mouseDoubleClick, this, [this](QMouseEvent*) {
         openDongleSuctionChartPopup();
     });
+
+    // 统计已叠到图内：隐藏上方大块标签，把高度让给曲线
+    const QList<QWidget*> hideLive = {
+        ui->dongleSuctionLiveCh1Label,       ui->dongleSuctionLiveCh2Label,       ui->dongleSuctionLiveCh3Label,
+        ui->dongleSuctionCh1PeakHighLabel,   ui->dongleSuctionCh2PeakHighLabel,   ui->dongleSuctionCh3PeakHighLabel,
+        ui->dongleSuctionCh1PeakLowLabel,    ui->dongleSuctionCh2PeakLowLabel,    ui->dongleSuctionCh3PeakLowLabel,
+        ui->dongleSuctionCh1PeakStatLabel,   ui->dongleSuctionCh2PeakStatLabel,   ui->dongleSuctionCh3PeakStatLabel,
+    };
+    for (QWidget* w : hideLive) {
+        if (w)
+            w->hide();
+    }
+    if (ui->dongleSuctionPlotHost) {
+        ui->dongleSuctionPlotHost->setMinimumHeight(360);
+        QSizePolicy sp = ui->dongleSuctionPlotHost->sizePolicy();
+        sp.setVerticalStretch(10);
+        ui->dongleSuctionPlotHost->setSizePolicy(sp);
+    }
+    if (ui->verticalLayout_dongle_suction && ui->dongleSuctionPlotHost) {
+        for (int i = 0; i < ui->verticalLayout_dongle_suction->count(); ++i) {
+            QLayoutItem* it = ui->verticalLayout_dongle_suction->itemAt(i);
+            if (!it)
+                continue;
+            if (it->widget() == ui->dongleSuctionPlotHost)
+                ui->verticalLayout_dongle_suction->setStretch(i, 10);
+            else
+                ui->verticalLayout_dongle_suction->setStretch(i, 0);
+        }
+    }
 
     // 轴窗口/刻度分辨率改动立即作用于主图/弹窗
     auto bindAxisValue = [this](QDoubleSpinBox* spin) {
@@ -5609,6 +5751,10 @@ void MainWindow::resetDongleSuctionChart() {
     dongleSuctionChartCh3_.clear();
     dongleSuctionChartTimerStarted_ = false;
     dongleSuctionChartLastUiMs_ = 0;
+    dongleSuctionLastPacketArrivalMs_ = -1;
+    dongleSuctionPacketIntervalMs_ = 0.0;
+    dongleSuctionPacketIntervalAvgMs_ = 0.0;
+    dongleSuctionPacketIntervalReady_ = false;
     dongleSuctionChartPlottedCount_ = 0;
     dongleSuctionPopupPlottedCount_ = 0;
     dongleSuctionPeakLabelStatsInit_ = false;
@@ -5633,6 +5779,7 @@ void MainWindow::resetDongleSuctionChart() {
     if (ui->dongleSuctionCh3PeakLowLabel)
         ui->dongleSuctionCh3PeakLowLabel->setText(QStringLiteral("第三通道最低：--"));
 
+    updateDongleSuctionPacketIntervalLabel();
     refreshDongleSuctionPlotWidget(dongleSuctionPlot_);
     refreshDongleSuctionPlotWidget(dongleSuctionPlotPopup_);
 }
@@ -5677,10 +5824,24 @@ void MainWindow::appendDongleSuctionChartSample(double ch1Kpa, double ch2Kpa, do
         dongleSuctionChartTimer_.start();
         dongleSuctionChartTimerStarted_ = true;
         dongleSuctionChartLastUiMs_ = 0;
+        dongleSuctionLastPacketArrivalMs_ = -1;
         dongleSuctionChartPlottedCount_ = 0;
         dongleSuctionPopupPlottedCount_ = 0;
     }
-    const double tSec = dongleSuctionChartTimer_.elapsed() / 1000.0;
+    const qint64 packetNowMs = dongleSuctionChartTimer_.elapsed();
+    if (dongleSuctionLastPacketArrivalMs_ >= 0) {
+        dongleSuctionPacketIntervalMs_ = static_cast<double>(packetNowMs - dongleSuctionLastPacketArrivalMs_);
+        if (!dongleSuctionPacketIntervalReady_)
+            dongleSuctionPacketIntervalAvgMs_ = dongleSuctionPacketIntervalMs_;
+        else
+            dongleSuctionPacketIntervalAvgMs_ =
+                dongleSuctionPacketIntervalAvgMs_ * 0.85 + dongleSuctionPacketIntervalMs_ * 0.15;
+        dongleSuctionPacketIntervalReady_ = true;
+        updateDongleSuctionPacketIntervalLabel();
+    }
+    dongleSuctionLastPacketArrivalMs_ = packetNowMs;
+
+    const double tSec = packetNowMs / 1000.0;
     dongleSuctionChartTimeSec_.append(tSec);
     dongleSuctionChartCh1_.append(ch1Kpa);
     dongleSuctionChartCh2_.append(ch2Kpa);

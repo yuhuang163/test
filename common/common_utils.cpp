@@ -367,7 +367,7 @@ static const ProductEntry kProductTable[] = {
 };
 
 /** 主窗口 BLE 扫描过滤名补充项（无产品映射，仅作筛选提示）。 */
-static const char* kDongleFilterExtras[] = {"W1", "W2"};
+static const char* kDongleFilterExtras[] = {"W1", "W2", "Pump-E"};
 // clang-format on
 
 bool hasDonglePattern(const ProductEntry& entry) {
