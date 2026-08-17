@@ -57,6 +57,7 @@ class QAction;
 #include <QPointer>
 
 class QCustomPlot;
+class QCPRange;
 class QDialog;
 class qsetting;
 
@@ -186,12 +187,16 @@ class MainWindow : public QMainWindow {
     void openDongleSuctionChartPopup();
     void applyDongleSuctionAxisSettings();
     void applyDongleSuctionAxisTickResolution(QCustomPlot* plot);
+    /** 采集跟随时按 X 窗口滑动；用户拖拽/缩放横轴后不再自动改范围，可左滑看全程 */
+    void bindDongleSuctionPlotXRangeFollow(QCustomPlot* plot);
+    void applyDongleSuctionPlotXRange(QCustomPlot* plot, double tSec);
+    void setDongleSuctionChartFollowLatest(bool follow);
+    void syncDongleSuctionFollowStateFromUserRange(const QCPRange& range);
     double dongleSuctionXWindowSec() const;
     void dongleSuctionYAxisRange(double& yMin, double& yMax) const;
     void resetDongleSuctionChart();
     void appendDongleSuctionChartSample(double ch1Kpa, double ch2Kpa, double ch3Kpa);
     void refreshDongleSuctionData(const ProtocolDongleSuctionData& data);
-    void trimDongleSuctionChartToWindow(double tSec); // 兼容旧调用；现已保留全程数据，内部为空实现
     /** 节流刷新曲线/Label；关闭采集或弹窗打开时可 forceFullReplot 补全未绘制的点 */
     void flushDongleSuctionChartUi(bool forceFullReplot = false);
     void appendDongleSuctionPlotIncremental(QCustomPlot* plot, int& plottedCount);
@@ -209,7 +214,7 @@ class MainWindow : public QMainWindow {
     bool startDongleSuctionCsvLog();
     void stopDongleSuctionCsvLog();
     void writeDongleSuctionCsvRow(double tSec, double ch1Kpa, double ch2Kpa, double ch3Kpa);
-    /** 空图时横轴初始长度；有数据后按全程自动扩展 */
+    /** 横轴滑动窗口宽度(s)；跟随时显示 [t-窗口, t]，可拖拽查看更早数据 */
     static constexpr double kDongleSuctionChartWindowSec = 10.0;
     static constexpr int kDongleSuctionChannelCount = 3;
     // 约 20Hz 刷新：采样常 <50ms，200ms 会成批跳点显得一顿一顿；过低则长测 replot 更重
@@ -230,6 +235,8 @@ class MainWindow : public QMainWindow {
     double dongleSuctionPacketIntervalMs_ = 0.0;
     double dongleSuctionPacketIntervalAvgMs_ = 0.0;
     bool dongleSuctionPacketIntervalReady_ = false;
+    bool dongleSuctionChartFollowLatest_ = true;
+    bool dongleSuctionApplyingXRange_ = false;
     int dongleSuctionChartPlottedCount_ = 0;
     int dongleSuctionPopupPlottedCount_ = 0;
     int dongleSuctionCsvRowsSinceFlush_ = 0;
@@ -718,6 +725,7 @@ class MainWindow : public QMainWindow {
     void on_dongle_suction_open_clicked();
     void on_dongle_suction_close_clicked();
     void on_dongle_suction_clear_chart_clicked();
+    void on_dongle_suction_follow_latest_clicked();
     void on_dongle_suction_set_osr_clicked();
     void on_checkBox_adcSwitch_stateChanged(int arg1);
     void on_checkBox_lsAdcSwitch_stateChanged(int arg1);

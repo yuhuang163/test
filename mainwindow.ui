@@ -4446,6 +4446,16 @@
                        </widget>
                       </item>
                       <item>
+                       <widget class="QPushButton" name="dongle_suction_follow_latest">
+                        <property name="toolTip">
+                         <string>恢复横轴滑动跟随最新数据（滚轮/拖拽查看历史后点此恢复）</string>
+                        </property>
+                        <property name="text">
+                         <string>跟随最新</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
                        <widget class="QLabel" name="label_dongle_suction_osr">
                         <property name="text">
                          <string>OSR档位</string>
@@ -4842,7 +4852,7 @@
                       <item>
                        <widget class="QDoubleSpinBox" name="dongleSuctionXWindowSpin">
                         <property name="toolTip">
-                         <string>尚无数据时横轴初始长度；有数据后自动显示从开始到当前的全程曲线</string>
+                         <string>采集跟随时横轴滑动窗口宽度；滚轮/拖拽可查看历史，点「跟随最新」或拖回实时右缘恢复</string>
                         </property>
                         <property name="decimals">
                          <number>1</number>

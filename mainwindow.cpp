@@ -5410,13 +5410,70 @@ void MainWindow::setupDongleSuctionPlotWidget(QCustomPlot* plot) {
     double yMin = -40.0;
     double yMax = 0.0;
     dongleSuctionYAxisRange(yMin, yMax);
-    // 全程曲线：横轴为从开始计时起的绝对时间，不再裁「最近 N 秒」
+    // 横轴为绝对时间；跟随时滑动 X 窗口，拖拽/滚轮后可查看全程
     plot->xAxis->setLabel(QStringLiteral("时间(s)"));
     plot->yAxis->setLabel(QStringLiteral("吸力(kPa)"));
     plot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
     plot->xAxis->setRange(0, xInit);
     plot->yAxis->setRange(yMin, yMax);
+    bindDongleSuctionPlotXRangeFollow(plot);
     applyDongleSuctionAxisTickResolution(plot);
+}
+
+void MainWindow::bindDongleSuctionPlotXRangeFollow(QCustomPlot* plot) {
+    if (!plot)
+        return;
+    // 避免重复 connect（弹窗 plot 每次新建，主图只绑一次）
+    if (plot->property("dongleSuctionXFollowBound").toBool())
+        return;
+    plot->setProperty("dongleSuctionXFollowBound", true);
+    connect(plot->xAxis, QOverload<const QCPRange&>::of(&QCPAxis::rangeChanged), this,
+            [this](const QCPRange& range) { syncDongleSuctionFollowStateFromUserRange(range); });
+}
+
+void MainWindow::syncDongleSuctionFollowStateFromUserRange(const QCPRange& range) {
+    if (dongleSuctionApplyingXRange_)
+        return;
+    if (dongleSuctionChartTimeSec_.isEmpty()) {
+        dongleSuctionChartFollowLatest_ = true;
+        return;
+    }
+    const double tSec = dongleSuctionChartTimeSec_.last();
+    const double win = dongleSuctionXWindowSec();
+    const double followUpper = tSec > win ? tSec : win;
+    const double eps = qMax(0.2, win * 0.03);
+    const bool atLiveEdge = range.upper >= followUpper - eps;
+    const bool nearWindowWidth = range.size() <= win * 1.2 && range.size() >= win * 0.8;
+    if (atLiveEdge && nearWindowWidth)
+        dongleSuctionChartFollowLatest_ = true;
+    else if (!atLiveEdge)
+        dongleSuctionChartFollowLatest_ = false;
+}
+
+void MainWindow::setDongleSuctionChartFollowLatest(bool follow) {
+    dongleSuctionChartFollowLatest_ = follow;
+    if (!follow || dongleSuctionChartTimeSec_.isEmpty())
+        return;
+    const double tSec = dongleSuctionChartTimeSec_.last();
+    if (dongleSuctionPlot_)
+        applyDongleSuctionPlotXRange(dongleSuctionPlot_, tSec);
+    if (dongleSuctionPlotPopup_)
+        applyDongleSuctionPlotXRange(dongleSuctionPlotPopup_, tSec);
+}
+
+void MainWindow::applyDongleSuctionPlotXRange(QCustomPlot* plot, double tSec) {
+    if (!plot || !dongleSuctionChartFollowLatest_)
+        return;
+    const double win = dongleSuctionXWindowSec();
+    double xLower = 0.0;
+    double xUpper = win;
+    if (tSec > win) {
+        xLower = tSec - win;
+        xUpper = tSec;
+    }
+    dongleSuctionApplyingXRange_ = true;
+    plot->xAxis->setRange(xLower, xUpper);
+    dongleSuctionApplyingXRange_ = false;
 }
 
 void MainWindow::applyDongleSuctionAxisTickResolution(QCustomPlot* plot) {
@@ -5506,10 +5563,9 @@ void MainWindow::refreshDongleSuctionPlotWidget(QCustomPlot* plot) {
     plot->graph(2)->setData(dongleSuctionChartTimeSec_, dongleSuctionChartCh3_);
     if (plot == dongleSuctionPlot_)
         dongleSuctionChartPlottedCount_ = dongleSuctionChartTimeSec_.size();
-    else if (plot == dongleSuctionPlotPopup_)
+    else     if (plot == dongleSuctionPlotPopup_)
         dongleSuctionPopupPlottedCount_ = dongleSuctionChartTimeSec_.size();
-    // 有数据后横轴覆盖全程（可拖拽/滚轮缩放查看细节）
-    plot->xAxis->setRange(0, qMax(xInit, tSec));
+    applyDongleSuctionPlotXRange(plot, tSec);
     plot->yAxis->setRange(yMin, yMax);
     plot->replot(QCustomPlot::rpQueuedReplot);
 }
@@ -5529,12 +5585,11 @@ void MainWindow::appendDongleSuctionPlotIncremental(QCustomPlot* plot, int& plot
         plottedCount = n;
     }
 
-    const double xInit = dongleSuctionXWindowSec();
     double yMin = -40.0;
     double yMax = 0.0;
     dongleSuctionYAxisRange(yMin, yMax);
     const double tSec = dongleSuctionChartTimeSec_.isEmpty() ? 0.0 : dongleSuctionChartTimeSec_.last();
-    plot->xAxis->setRange(0, qMax(xInit, tSec));
+    applyDongleSuctionPlotXRange(plot, tSec);
     plot->yAxis->setRange(yMin, yMax);
     plot->replot(QCustomPlot::rpQueuedReplot);
 }
@@ -5669,7 +5724,7 @@ void MainWindow::initDongleSuctionChart() {
     layout->addWidget(dongleSuctionPlot_);
     setupDongleSuctionPlotWidget(dongleSuctionPlot_);
     updateDongleSuctionPlotOverlay(dongleSuctionPlot_);
-    dongleSuctionPlot_->setToolTip(QStringLiteral("双击放大查看"));
+    dongleSuctionPlot_->setToolTip(QStringLiteral("双击放大；滚轮/拖拽看历史后点「跟随最新」恢复滑动"));
     connect(dongleSuctionPlot_, &QCustomPlot::mouseDoubleClick, this, [this](QMouseEvent*) {
         openDongleSuctionChartPopup();
     });
@@ -5755,6 +5810,7 @@ void MainWindow::resetDongleSuctionChart() {
     dongleSuctionPacketIntervalMs_ = 0.0;
     dongleSuctionPacketIntervalAvgMs_ = 0.0;
     dongleSuctionPacketIntervalReady_ = false;
+    dongleSuctionChartFollowLatest_ = true;
     dongleSuctionChartPlottedCount_ = 0;
     dongleSuctionPopupPlottedCount_ = 0;
     dongleSuctionPeakLabelStatsInit_ = false;
@@ -5782,10 +5838,6 @@ void MainWindow::resetDongleSuctionChart() {
     updateDongleSuctionPacketIntervalLabel();
     refreshDongleSuctionPlotWidget(dongleSuctionPlot_);
     refreshDongleSuctionPlotWidget(dongleSuctionPlotPopup_);
-}
-
-void MainWindow::trimDongleSuctionChartToWindow(double /*tSec*/) {
-    // 保留全程采样点，不再按「最近 N 秒」丢弃历史数据
 }
 
 void MainWindow::updateDongleSuctionPeakLabels() {
@@ -5846,7 +5898,6 @@ void MainWindow::appendDongleSuctionChartSample(double ch1Kpa, double ch2Kpa, do
     dongleSuctionChartCh1_.append(ch1Kpa);
     dongleSuctionChartCh2_.append(ch2Kpa);
     dongleSuctionChartCh3_.append(ch3Kpa);
-    trimDongleSuctionChartToWindow(tSec);
 
     if (!dongleSuctionPeakLabelStatsInit_) {
         dongleSuctionCh1Min_ = dongleSuctionCh1Max_ = ch1Kpa;
@@ -5925,6 +5976,11 @@ void MainWindow::on_dongle_suction_close_clicked() {
 
 void MainWindow::on_dongle_suction_clear_chart_clicked() {
     resetDongleSuctionChart();
+}
+
+void MainWindow::on_dongle_suction_follow_latest_clicked() {
+    setDongleSuctionChartFollowLatest(true);
+    flushDongleSuctionChartUi(false);
 }
 
 void MainWindow::on_dongle_suction_set_osr_clicked() {
