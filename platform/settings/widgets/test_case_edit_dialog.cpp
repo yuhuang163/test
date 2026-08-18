@@ -101,6 +101,7 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("minPeakCount"), QStringLiteral("最少完整周期峰数")},
         {QStringLiteral("peakBaselineKpa"), QStringLiteral("回基线阈值 (kPa)")},
         {QStringLiteral("peakDipStartKpa"), QStringLiteral("入峰阈值 (kPa)")},
+        {QStringLiteral("offsetKpa"), QStringLiteral("吸力修正值 (kPa)，最终值=原始值+本项（填负数为减）")},
         {QStringLiteral("channel"), QStringLiteral("温度/采样通道号")},
         {QStringLiteral("channels"), QStringLiteral("温度通道列表（如 1,2,3,4,5,6 或 1-6）")},
         {QStringLiteral("channelsPerStation"), QStringLiteral("每工位占用温度通道数（法兰加热填 6）")},
@@ -306,12 +307,12 @@ QStringList sendParamPreferredOrder(TestCaseSendChannel channel, const QString& 
     if (channel == TestCaseSendChannel::Dongle && cmdName == QLatin1String("SampleSuctionDual")) {
         return {QStringLiteral("sampleDurationMs"), QStringLiteral("sampleIntervalMs"),
                 QStringLiteral("minPeakCount"), QStringLiteral("peakBaselineKpa"),
-                QStringLiteral("peakDipStartKpa")};
+                QStringLiteral("peakDipStartKpa"), QStringLiteral("offsetKpa")};
     }
     if (channel == TestCaseSendChannel::Dongle && cmdName == QLatin1String("SampleSuctionSingle")) {
         return {QStringLiteral("sampleDurationMs"), QStringLiteral("sampleIntervalMs"), QStringLiteral("channel"),
                 QStringLiteral("minPeakCount"), QStringLiteral("peakBaselineKpa"),
-                QStringLiteral("peakDipStartKpa")};
+                QStringLiteral("peakDipStartKpa"), QStringLiteral("offsetKpa")};
     }
     return {};
 }
@@ -531,14 +532,16 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
                                {QStringLiteral("channel"), QStringLiteral("1")},
                                {QStringLiteral("minPeakCount"), QStringLiteral("3")},
                                {QStringLiteral("peakBaselineKpa"), QStringLiteral("-8")},
-                               {QStringLiteral("peakDipStartKpa"), QStringLiteral("-10")}};
+                               {QStringLiteral("peakDipStartKpa"), QStringLiteral("-10")},
+                               {QStringLiteral("offsetKpa"), QStringLiteral("0")}};
         }
         if (cmdName == QLatin1String("SampleSuctionDual")) {
             return QVariantMap{{QStringLiteral("sampleDurationMs"), QStringLiteral("10000")},
                                {QStringLiteral("sampleIntervalMs"), QStringLiteral("20")},
                                {QStringLiteral("minPeakCount"), QStringLiteral("3")},
                                {QStringLiteral("peakBaselineKpa"), QStringLiteral("-8")},
-                               {QStringLiteral("peakDipStartKpa"), QStringLiteral("-10")}};
+                               {QStringLiteral("peakDipStartKpa"), QStringLiteral("-10")},
+                               {QStringLiteral("offsetKpa"), QStringLiteral("0")}};
         }
         return {};
     }

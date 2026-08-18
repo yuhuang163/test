@@ -1228,9 +1228,12 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
 }
 
 void supplementMissingHookFromLibrary(const QString& stepId, TestCaseDefinition& def) {
-    if (def.hook.enabled && !def.hook.hookId.isEmpty())
+    // 工站已写 HookId（含主动 Enabled=false）一律不改，避免「关掉特殊步骤改成 Dongle 指令」保存后再打开又变回 Hook
+    if (!def.hook.hookId.isEmpty())
         return;
-    if (!isLegacyHookDeviceCmdPlaceholder(def.send.deviceCmd) && def.hook.hookId.isEmpty())
+    if (def.hook.enabled)
+        return;
+    if (!isLegacyHookDeviceCmdPlaceholder(def.send.deviceCmd))
         return;
 
     TestCaseDefinition library;
@@ -1242,8 +1245,7 @@ void supplementMissingHookFromLibrary(const QString& stepId, TestCaseDefinition&
     }
     if (!library.hook.hookId.isEmpty()) {
         def.hook.hookId = library.hook.hookId;
-        if (!def.hook.enabled)
-            def.hook.enabled = library.hook.enabled;
+        def.hook.enabled = library.hook.enabled;
     }
 }
 

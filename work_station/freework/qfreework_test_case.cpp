@@ -1720,9 +1720,9 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
     }
 
     if (def.send.channel == TestCaseSendChannel::Product && !ctx->at->getConnected() && !TestCaseRunner::stepRequiresProductBle(def)) {
-        ctx->showlog(QStringLiteral("本步不要求蓝牙连接，已跳过产品协议，请点「是」或关闭弹窗后继续"));
-        if (!TestCaseRunner::stepWaitsForPromptAck(def))
-            ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
+        ctx->showlog(QStringLiteral("本步不要求蓝牙连接，已跳过产品协议"));
+        // 无卡控提示步此时已点过「是」才进入 beginStep；有卡控则弹窗与发送同时，跳过协议后直接过步
+        ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
         return;
     }
 

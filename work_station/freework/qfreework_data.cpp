@@ -1602,6 +1602,9 @@ void QFreeWork::refreshAmmeterData(QString data) {
 }
 
 void QFreeWork::refreshDongleSuctionData(ProtocolDongleSuctionData data) {
+    data.ch1Kpa += suctionOffsetKpa_;
+    data.ch2Kpa += suctionOffsetKpa_;
+    data.ch3Kpa += suctionOffsetKpa_;
     dongleSuctionLastCh1Kpa_ = data.ch1Kpa;
     dongleSuctionLastCh2Kpa_ = data.ch2Kpa;
     dongleSuctionLastCh3Kpa_ = data.ch3Kpa;

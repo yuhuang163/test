@@ -1573,11 +1573,10 @@ QString TestCaseRunner::stepLabel(const TestCaseDefinition& def) {
 }
 
 bool TestCaseRunner::stepWaitsForPromptAck(const TestCaseDefinition& def) {
+    // 有卡控：弹窗只提示、指令立刻发，同步等上报。无卡控：先确认再发，避免弹窗还在指令已出去。
     if (!def.meta.promptEnabled || def.hook.enabled || def.gate.enabled)
         return false;
-    if (isDongleBleConnectStep(def))
-        return false;
-    if (def.send.action == TestCaseSendAction::Get)
+    if (def.meta.promptText.trimmed().isEmpty())
         return false;
     return true;
 }

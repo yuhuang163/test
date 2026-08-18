@@ -48,6 +48,7 @@ class QFreeWork : public test_base {
     explicit QFreeWork(int index, QWidget* parent = nullptr);
     ~QFreeWork();
     void startTask() override;
+    void startTest() override;
     /**
      * 设置页功能块右键「运行」：只执行指定步骤（不过站、结束后不断开连接）。
      * @return false 时 errorOut 为原因（如正在测试中、步骤不存在）
@@ -220,6 +221,7 @@ class QFreeWork : public test_base {
     } stepRuntime_;
     bool currentOrderedStepIsDongleBleConnect() const;
     bool canRunOrderedTestStepLoop() const;
+    void beginUiStartTest();
     /** 主动 BleDisconnect 后禁止 startTask 里用当前 MAC 自动重连，直到显式扫描/直连或新一轮测试 */
     bool suppressProductBleAutoReconnect_ = false;
     void runTestFlowBootstrap();
@@ -240,6 +242,7 @@ class QFreeWork : public test_base {
     QMessageBox* testCasePrompt_ = nullptr;
     bool testCasePromptAcknowledged_ = false;
     bool testCasePromptProgrammaticClose_ = false;
+    bool testCaseCommandBegun_ = false;
     bool freeWorkKeyWaiting_ = false;
     bool keyWaitPromptProgrammaticClose_ = false;
     quint64 plcKeyBleWaitSeq_ = 0;
@@ -376,6 +379,8 @@ class QFreeWork : public test_base {
     double suctionPeakDipStartKpa_ = -10.0;
     /** 采样窗口内至少需要的完整「吸→回放」周期峰个数（单/双通道共用，默认 3）。 */
     int suctionMinPeakCount_ = 3;
+    /** 吸力修正：界面/曲线/判定 = 原始 kPa + 本值，步骤 Param_offsetKpa，默认 0 */
+    double suctionOffsetKpa_ = 0.0;
     bool dongleSuctionReadEnabled_ = false;
     bool dongleSuctionSampleActive_ = false;
     /** 读电流连续采样：窗口内任一卡控合格即通过，不合格不立刻结束步骤。 */

@@ -33,6 +33,9 @@ QFreeWorkBox::QFreeWorkBox(QWidget* parent) : box_base(parent), ui(new Ui::QFree
         Fixture_uart_ui->show();
         Fixture_uart_ui->activateWindow();
     });
+
+    QAction* startTest_act = ui->menubar->addAction("开始测试");
+    connect(startTest_act, &QAction::triggered, this, &QFreeWorkBox::startTest);
 }
 
 QFreeWorkBox::~QFreeWorkBox() {
@@ -45,7 +48,8 @@ QFreeWorkBox::~QFreeWorkBox() {
 }
 
 void QFreeWorkBox::startTest() {
-    startAllReturnPressed();
+    for (int i = 0; i < testList.size(); i++)
+        testList[i]->startTest();
 }
 
 QString QFreeWorkBox::resolvedFixtureComName(int stationIndex) {
