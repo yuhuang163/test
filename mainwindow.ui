@@ -4819,16 +4819,6 @@
                         </property>
                        </widget>
                       </item>
-                      <item row="4" column="0" colspan="3">
-                       <widget class="QLabel" name="dongleSuctionCsvPathLabel">
-                        <property name="text">
-                         <string>CSV：未开始记录</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
-                        </property>
-                       </widget>
-                      </item>
                      </layout>
                     </item>
                     <item>

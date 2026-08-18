@@ -5337,8 +5337,6 @@ bool MainWindow::startDongleSuctionCsvLog() {
     dongleSuctionCsvRowsSinceFlush_ = 0;
     flushDongleSuctionCsvPending();
 
-    if (ui->dongleSuctionCsvPathLabel)
-        ui->dongleSuctionCsvPathLabel->setText(QStringLiteral("CSV：%1").arg(dongleSuctionCsvPath_));
     showlog(QStringLiteral("Dongle 吸力 CSV 已开始记录：%1").arg(dongleSuctionCsvPath_));
     return true;
 }
@@ -5353,8 +5351,6 @@ void MainWindow::stopDongleSuctionCsvLog() {
     dongleSuctionCsvRowsSinceFlush_ = 0;
 
     showlog(QStringLiteral("Dongle 吸力 CSV 已保存：%1（有效峰/漏峰/弱峰 见页内统计）").arg(dongleSuctionCsvPath_));
-    if (ui->dongleSuctionCsvPathLabel)
-        ui->dongleSuctionCsvPathLabel->setText(QStringLiteral("CSV 已保存：%1").arg(dongleSuctionCsvPath_));
 }
 
 void MainWindow::flushDongleSuctionCsvPending() {
