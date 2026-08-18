@@ -755,6 +755,46 @@ bool QFreeWork::currentOrderedStepIsDongleBleConnect() const {
     return isDongleBleConnectStepName(caseDef.meta.name);
 }
 
+void QFreeWork::beginUiStartTest() {
+    if (!dongleSerialPort->isOpen())
+        on_connectButton_clicked();
+    if (pack.factory == "lx" || pack.factory == "jj") {
+        if (!usbSerialPort->isOpen())
+            openUsbSerialPort();
+    }
+    if (!macAddress.isEmpty() && macAddress != QStringLiteral("没有mac地址"))
+        ui->macLabel->setText("蓝牙mac: " + macAddress);
+
+    ui->test_result->setText("WAIT");
+    ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: "
+                                   "10px; padding: 10px; text-align: center; ");
+
+    isTestContinue = true;
+    teststate = -1;
+    ui->test_time->setText(QStringLiteral("0.0 s"));
+
+    emit send_go_next_focus();
+    ui->getMac->setDisabled(1);
+    ui->macInput->setDisabled(1);
+}
+
+void QFreeWork::startTest() {
+    if (isTestContinue)
+        return;
+    testResultTableInit();
+    ui->log->clear();
+    ui->msgEdit->clear();
+    ui->mes_state->setText("MES");
+    ui->mes_state->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
+                                 "padding: 10px; text-align: center; ");
+    const QString snText = ui->getMac->text().trimmed();
+    if (!snText.isEmpty()) {
+        mesProcessCode_ = snText;
+        pack.sn = mesProcessCode_;
+    }
+    beginUiStartTest();
+}
+
 bool QFreeWork::canRunOrderedTestStepLoop() const {
     if (at->getConnected()) {
         return true;
@@ -976,9 +1016,19 @@ bool QFreeWork::tickOrderedTestStepLoop() {
             lastCommandFailReason.clear();
             testCasePromptAcknowledged_ = false;
             testCasePromptProgrammaticClose_ = false;
+            testCaseCommandBegun_ = false;
             showlog((runningFailFlow_ ? QStringLiteral("失败区开始：") : QStringLiteral("开始测试内容："))
                     + functionName);
+            setActiveTestCase(caseDef);
             showTestCasePromptForStep(caseDef);
+            // 无卡控的提示：先卡住等「是」，点完再 beginStep；有卡控则立刻发、弹窗只提示
+            if (TestCaseRunner::stepWaitsForPromptAck(caseDef)) {
+                canGoNext = false;
+                showlog(QStringLiteral("等待确认后再发送指令"));
+                qDebug() << "程序在跑" << teststate << stepCount << (runningFailFlow_ ? "failFlow" : "mainFlow");
+                break;
+            }
+            testCaseCommandBegun_ = true;
             TestCaseRunner::beginStep(this, caseDef);
             qDebug() << "程序在跑" << teststate << stepCount << (runningFailFlow_ ? "failFlow" : "mainFlow");
             break;
@@ -1537,8 +1587,8 @@ void QFreeWork::showTestCasePromptForStep(const TestCaseDefinition& def) {
         return;
     const QString title = def.meta.name.trimmed();
     // 弹窗两种形态：
-    // 1) 下方 Gate 已开：只提示、同步等上报卡控，无「是」防误点，通过/超时后关窗
-    // 2) Gate 未开：点「是」确认（纯 PromptOnly 确认过步，或提示同时发指令时的确认）
+    // 1) 卡控已开：只提示、立刻发指令并等上报，无「是」防误点，通过/超时后关窗
+    // 2) 卡控未开：先点「是」再发指令（或纯 PromptOnly 确认过步）
     const bool waitReportGate = def.gate.enabled;
     testCasePrompt_ = new QMessageBox(QMessageBox::Information, title, text,
                                       waitReportGate ? QMessageBox::NoButton : QMessageBox::Yes, this);
@@ -1571,10 +1621,23 @@ void QFreeWork::onTestCasePromptAcknowledged() {
         return;
     if (!TestCaseRunner::stepWaitsForPromptAck(activeTestCase_))
         return;
-    stepRuntime_.done = true;
-    stepRuntime_.pass = true;
-    if (stepRuntime_.testData == QLatin1String("-"))
-        stepRuntime_.testData = QStringLiteral("已确认");
+    // 纯提示：确认即过步。有指令：点「是」后再下发，避免未操作产品就已发出。
+    if (activeTestCase_.meta.promptOnly) {
+        if (!testCaseCommandBegun_) {
+            testCaseCommandBegun_ = true;
+            TestCaseRunner::beginStep(this, activeTestCase_);
+        }
+        stepRuntime_.done = true;
+        stepRuntime_.pass = true;
+        if (stepRuntime_.testData == QLatin1String("-"))
+            stepRuntime_.testData = QStringLiteral("已确认");
+        canGoNext = true;
+        return;
+    }
+    if (testCaseCommandBegun_)
+        return;
+    testCaseCommandBegun_ = true;
+    TestCaseRunner::beginStep(this, activeTestCase_);
 }
 
 void QFreeWork::closeTestCasePrompt() {
@@ -1625,6 +1688,7 @@ void QFreeWork::loadSuctionGateSettings() {
     suctionPeakBaselineKpa_ = -8.0;
     suctionPeakDipStartKpa_ = -10.0;
     suctionMinPeakCount_ = 3;
+    suctionOffsetKpa_ = 0.0;
 }
 
 void QFreeWork::applySuctionGateFromStepParam(const QVariant& param) {
@@ -1656,6 +1720,8 @@ void QFreeWork::applySuctionGateFromStepParam(const QVariant& param) {
         suctionPeakDipStartKpa_ = map.value(QStringLiteral("peakDipStartKpa")).toDouble();
     if (map.contains(QStringLiteral("minPeakCount")))
         suctionMinPeakCount_ = qMax(1, map.value(QStringLiteral("minPeakCount")).toInt());
+    if (map.contains(QStringLiteral("offsetKpa")))
+        suctionOffsetKpa_ = map.value(QStringLiteral("offsetKpa")).toDouble();
     // channel：1/2/3（兼容旧 left/right → CH1/CH2）
     auto parseChannelIndex = [](const QString& raw) -> int {
         const QString ch = raw.trimmed().toLower();
@@ -1887,12 +1953,15 @@ void QFreeWork::runDongleSuctionSampleStep() {
     const bool restoreOff = !dongleSuctionReadEnabled_;
 
     // 与 BYD suction 工站一致：两口采样最低值为峰值，卡控范围 + |峰差|
-    showlog(QStringLiteral("双通道吸力(Dongle)：采样 %1ms，间隔 %2ms，最少完整周期峰 %3（基线≥%4，入峰<%5）")
+    showlog(QStringLiteral("双通道吸力(Dongle)：采样 %1ms，间隔 %2ms，最少完整周期峰 %3（基线≥%4，入峰<%5）%6")
                 .arg(durationMs)
                 .arg(intervalMs)
                 .arg(qMax(1, suctionMinPeakCount_))
                 .arg(suctionPeakBaselineKpa_, 0, 'f', 1)
-                .arg(suctionPeakDipStartKpa_, 0, 'f', 1));
+                .arg(suctionPeakDipStartKpa_, 0, 'f', 1)
+                .arg(qFuzzyIsNull(suctionOffsetKpa_)
+                         ? QString()
+                         : QStringLiteral("，修正 %1 kPa（显示/判定=原始+修正）").arg(suctionOffsetKpa_, 0, 'f', 3)));
 
     dongleSuctionCh1Samples_.clear();
     dongleSuctionCh2Samples_.clear();
@@ -1951,8 +2020,8 @@ void QFreeWork::runDongleSuctionSampleStep() {
     }
 
     // 与单通道相同：完整「吸→回基线」周期才记峰，拦截一直保持吸力不放气
-    const double baseline = suctionPeakBaselineKpa_;
-    const double dipStart = suctionPeakDipStartKpa_;
+    const double baseline = suctionPeakBaselineKpa_ + suctionOffsetKpa_;
+    const double dipStart = suctionPeakDipStartKpa_ + suctionOffsetKpa_;
     const QVector<double> ch1Peaks = extractSuctionCyclePeaks(dongleSuctionCh1Samples_, baseline, dipStart);
     const QVector<double> ch2Peaks = extractSuctionCyclePeaks(dongleSuctionCh2Samples_, baseline, dipStart);
     const int minPeaks = qMax(1, suctionMinPeakCount_);
@@ -2067,13 +2136,16 @@ void QFreeWork::runDongleSuctionSampleSingleStep() {
     const int chIndex = qBound(0, suctionSingleChannelIndex_, 2);
     const QString channelName = QStringLiteral("CH%1").arg(chIndex + 1);
 
-    showlog(QStringLiteral("单通道吸力(Dongle/%1)：采样 %2ms，间隔 %3ms，最少完整周期峰 %4（基线≥%5，入峰<%6）")
+    showlog(QStringLiteral("单通道吸力(Dongle/%1)：采样 %2ms，间隔 %3ms，最少完整周期峰 %4（基线≥%5，入峰<%6）%7")
                 .arg(channelName)
                 .arg(durationMs)
                 .arg(intervalMs)
                 .arg(qMax(1, suctionMinPeakCount_))
                 .arg(suctionPeakBaselineKpa_, 0, 'f', 1)
-                .arg(suctionPeakDipStartKpa_, 0, 'f', 1));
+                .arg(suctionPeakDipStartKpa_, 0, 'f', 1)
+                .arg(qFuzzyIsNull(suctionOffsetKpa_)
+                         ? QString()
+                         : QStringLiteral("，修正 %1 kPa（显示/判定=原始+修正）").arg(suctionOffsetKpa_, 0, 'f', 3)));
 
     dongleSuctionCh1Samples_.clear();
     dongleSuctionCh2Samples_.clear();
@@ -2137,8 +2209,8 @@ void QFreeWork::runDongleSuctionSampleSingleStep() {
 
     // 周期峰值：吸气回基线后取本周期最低点（真正的吸力峰）；峰值差=各峰中最大-最小，
     // 切勿用窗口绝对值最高-最低（会把基线≈0 算进去，diff≈40+）
-    const double baseline = suctionPeakBaselineKpa_;
-    const double dipStart = suctionPeakDipStartKpa_;
+    const double baseline = suctionPeakBaselineKpa_ + suctionOffsetKpa_;
+    const double dipStart = suctionPeakDipStartKpa_ + suctionOffsetKpa_;
     const QVector<double> cyclePeaks = extractSuctionCyclePeaks(samples, baseline, dipStart);
     const int minPeaks = qMax(1, suctionMinPeakCount_);
 
@@ -2457,19 +2529,7 @@ void QFreeWork::on_macInput_returnPressed() {
             return;
         }
 
-        ui->macLabel->setText("蓝牙mac: " + macAddress);
-
-        ui->test_result->setText("WAIT");
-        ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: "
-                                       "10px; padding: 10px; text-align: center; ");
-
-        isTestContinue = true;
-        teststate = -1;
-        ui->test_time->setText(QStringLiteral("0.0 s"));
-
-        emit send_go_next_focus();
-        ui->getMac->setDisabled(1);
-        ui->macInput->setDisabled(1);
+        beginUiStartTest();
     }
 }
 
