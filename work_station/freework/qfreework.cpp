@@ -1809,7 +1809,7 @@ void QFreeWork::appendSuctionChartSample(double leftKpa, double rightKpa) {
     // 与主窗口吸力图一致：约 20Hz，避免 200ms 节流成批跳点
     constexpr qint64 kUiThrottleMs = 50;
     const qint64 nowMs = suctionChartTimer_.elapsed();
-    if (nowMs - suctionChartLastUiMs_ < kLabelThrottleMs)
+    if (nowMs - suctionChartLastUiMs_ < kUiThrottleMs)
         return;
     suctionChartLastUiMs_ = nowMs;
 

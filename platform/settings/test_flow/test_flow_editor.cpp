@@ -688,13 +688,13 @@ bool TestFlowEditor::eventFilter(QObject* watched, QEvent* event) {
     return QObject::eventFilter(watched, event);
 }
 
-void TestFlowEditor::refreshStationCombo(const QString& selectKey) {
+void TestFlowEditor::refreshStationCombo(const QString& selectKey, bool keepOutOfProductStation) {
     if (!stationCombo_)
         return;
     QString keyToSelect = selectKey.trimmed();
-    if (keyToSelect.isEmpty())
+    if (keyToSelect.isEmpty() && keepOutOfProductStation)
         keyToSelect = currentStationKey();
-    if (keyToSelect.isEmpty())
+    if (keyToSelect.isEmpty() && keepOutOfProductStation)
         keyToSelect = TestCaseStore::loadSelectedFlowStationKey();
     if (keyToSelect.isEmpty())
         keyToSelect = QStringLiteral("FREE_WORK");
@@ -714,8 +714,8 @@ void TestFlowEditor::refreshStationCombo(const QString& selectKey) {
             break;
         }
     }
-    // 主界面已选工站若被产品过滤掉，仍插入下拉首项，避免编排页静默落到「默认工站」
-    if (!selectInFiltered && !resolvedSelect.isEmpty()) {
+    // 主界面已选工站若被产品过滤掉，仍插入下拉首项（切换产品时不保留，见 onProductNameChanged）
+    if (keepOutOfProductStation && !selectInFiltered && !resolvedSelect.isEmpty()) {
         const QString displayName = TestCaseStore::flowStationDisplayName(resolvedSelect);
         if (!displayName.isEmpty()) {
             stations.prepend({resolvedSelect, displayName});
@@ -769,7 +769,7 @@ void TestFlowEditor::syncFromPersistedSelection() {
 void TestFlowEditor::onProductNameChanged() {
     if (!uiBound_ || !stationCombo_)
         return;
-    refreshStationCombo(QString());
+    refreshStationCombo(QString(), false);
     persistSelectedStation(currentStationKey());
     reloadCurrentStation();
     stationComboPrevIndex_ = stationCombo_->currentIndex();
