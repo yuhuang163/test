@@ -10,6 +10,7 @@
 #include <cstdint>
 
 #include "aiot_link_codec.h"
+#include "dongle_phy_codec.h"
 #include "qprotocol.h"
 
 /**
@@ -42,8 +43,7 @@ class Qaiot : public qProtocol {
         QList<TlvNode> tlvs;
     };
 
-    /** Dongle 收包：8×AA → Channel → Len → Payload（与发：8×CC → Len → Channel 不同） */
-    enum PhyState { PhyIdle, PhyHeader, PhyChannel, PhyLen, PhyPayload };
+    /** Dongle 收包：8×AA → Channel → Len → Payload（见 dongle_phy_codec.h） */
 
     bool parseMessage(const QByteArray& frame, Message* message, QString* errorMessage) const;
     bool parseTlvs(const QByteArray& data, int start, int end, QList<TlvNode>* out, QString* errorMessage) const;
@@ -82,12 +82,7 @@ class Qaiot : public qProtocol {
     bool reassembling_ = false;
     uint8_t expectFsn_ = 0;
 
-    // Dongle PHY 状态机（与 Qfctp 一致：TX=[CC*][len][ch][payload]）
-    PhyState phyState_ = PhyIdle;
-    int phyHeaderHits_ = 0;
-    int phyExpectedLen_ = 0;
-    uint8_t phyChannel_ = 0;
-    QByteArray phyPayload_;
+    DonglePhyRxCodec phyRx_{kDonglePhyRxAcceptFacAppMain, "[QAIOT]"};
 
     quint8 pendingService_ = 0;
     quint8 pendingCommand_ = 0;

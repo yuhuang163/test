@@ -4,13 +4,14 @@
 #include <QByteArray>
 #include <functional>
 
+#include "dongle_phy_codec.h"
 #include "qprotocol_types.h"
 
 /** Dongle AT 行：AT+SUCTION_DATA=左,右,...；Pico 兼容：$左 右 ...; */
 bool parseAtSuctionDataLine(const QString& line, double* leftKpa, double* rightKpa, double* thirdKpa = nullptr);
 bool parseDualChannelSuctionFrame(const QString& data, double* leftKpa, double* rightKpa, double* thirdKpa = nullptr);
 
-/** Dongle 吸力原始帧流式组帧 */
+/** Dongle 吸力上行：二进制 PHY（channel=4）+ Pico 文本 $...; */
 class AtSuctionFrameCodec {
   public:
     using FrameHandler = std::function<void(const ProtocolDongleSuctionData& data)>;
@@ -19,7 +20,11 @@ class AtSuctionFrameCodec {
     void feed(const QByteArray& chunk, const FrameHandler& onFrame);
 
   private:
-    QString buffer_;
+    void appendTextByte(char c);
+    void flushTextFrames(const FrameHandler& onFrame);
+
+    DonglePhyRxCodec phyRx_{0, nullptr};
+    QString textBuffer_;
 };
 
 #endif // AT_SUCTION_FRAME_CODEC_H

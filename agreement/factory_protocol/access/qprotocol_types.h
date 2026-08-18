@@ -447,7 +447,7 @@ struct ProtocolDongleScanResultData {
     QString deviceRssi;
 };
 
-/** Dongle AT+SUCTION=1 后上报：AT+SUCTION_DATA=CH1,CH2,CH3,... */
+/** Dongle AT+SUCTION=1 后上报：AT+SUCTION_DATA=CH1,CH2,CH3（kPa）或 PHY 通道 4 二进制帧 */
 struct ProtocolDongleSuctionData {
     double ch1Kpa = 0.0;
     double ch2Kpa = 0.0;

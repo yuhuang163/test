@@ -2,6 +2,7 @@
 
 #include "Abini.h"
 #include "aiot_link_defs.h"
+#include "dongle_phy_codec.h"
 
 #include <QDateTime>
 #include <QDebug>
@@ -17,10 +18,6 @@
 #endif
 
 namespace {
-constexpr int kPhyHeaderSize = 8;
-constexpr uint8_t kPhyTxHeaderByte = 0xCC; // 上位机→Dongle
-constexpr uint8_t kPhyRxHeaderByte = 0xAA; // Dongle→上位机（产测设备数据包）
-constexpr uint8_t kPhyChannelFac = 1;
 
 QString hexText(const QByteArray& data) {
     return QString::fromLatin1(data.toHex(' ').toUpper());
@@ -2568,73 +2565,13 @@ bool Qaiot::sendAppPdu(const QByteArray& appPdu) {
 }
 
 QByteArray Qaiot::wrapPhyPacket(const QByteArray& innerPacket) const {
-    if (innerPacket.isEmpty() || innerPacket.size() > 0xFF)
-        return {};
-    QByteArray out;
-    out.reserve(kPhyHeaderSize + 2 + innerPacket.size());
-    out.append(QByteArray(kPhyHeaderSize, static_cast<char>(kPhyTxHeaderByte)));
-    out.append(static_cast<char>(innerPacket.size()));
-    out.append(static_cast<char>(kPhyChannelFac));
-    out.append(innerPacket);
-    return out;
+    return wrapDonglePhyTxPacket(innerPacket, kDonglePhyChannelFac);
 }
 
 bool Qaiot::tryUnwrapPhyPacket(const QByteArray& packet, QList<QByteArray>& outPackets) {
-    const auto resetPhy = [this]() {
-        phyState_ = PhyIdle;
-        phyHeaderHits_ = 0;
-        phyExpectedLen_ = 0;
-        phyChannel_ = 0;
-        phyPayload_.clear();
-    };
-
-    for (unsigned char x : packet) {
-        switch (phyState_) {
-        case PhyIdle:
-            if (x == kPhyRxHeaderByte) {
-                phyHeaderHits_ = 1;
-                phyState_ = PhyHeader;
-            }
-            break;
-        case PhyHeader:
-            if (x == kPhyRxHeaderByte) {
-                if (++phyHeaderHits_ == kPhyHeaderSize)
-                    phyState_ = PhyChannel; // 收包：通道在前（见 dongle协议.md）
-            } else {
-                resetPhy();
-            }
-            break;
-        case PhyChannel:
-            phyChannel_ = x;
-            phyState_ = PhyLen;
-            break;
-        case PhyLen:
-            phyExpectedLen_ = static_cast<int>(x);
-            if (phyExpectedLen_ <= 0) {
-                qWarning() << "[QAIOT] dongle 外层包长度非法:" << phyExpectedLen_;
-                resetPhy();
-                break;
-            }
-            phyPayload_.clear();
-            phyPayload_.reserve(phyExpectedLen_);
-            phyState_ = PhyPayload;
-            break;
-        case PhyPayload:
-            phyPayload_.append(static_cast<char>(x));
-            if (phyPayload_.size() >= phyExpectedLen_) {
-                if (phyChannel_ == kPhyChannelFac || phyChannel_ == 2 || phyChannel_ == 3)
-                    outPackets.append(phyPayload_);
-                else
-                    qWarning() << "[QAIOT] dongle 通道异常 channel=" << phyChannel_;
-                resetPhy();
-            }
-            break;
-        default:
-            resetPhy();
-            break;
-        }
-    }
-    return !outPackets.isEmpty();
+    const int before = outPackets.size();
+    phyRx_.feed(packet, outPackets);
+    return outPackets.size() > before;
 }
 
 Qaiot::TlvNode Qaiot::makeLeaf(quint8 type, const QByteArray& value) const {

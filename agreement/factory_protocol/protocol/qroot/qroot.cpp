@@ -1,6 +1,7 @@
 #include "qroot.h"
 
 #include "common_utils.h"
+#include "dongle_phy_codec.h"
 
 #include <QDebug>
 #include <QVariantMap>
@@ -14,10 +15,6 @@ namespace {
 constexpr quint8 kSop0 = 0xAA;
 constexpr quint8 kSop1 = 0x55;
 constexpr int kHeaderSize = 5; // SOP(2)+CT+CID+CAL
-constexpr quint8 kPhyTxHeaderByte = 0xCC;
-constexpr quint8 kPhyRxHeaderByte = 0xAA;
-constexpr int kPhyHeaderSize = 8;
-constexpr quint8 kPhyChannelFac = 1;
 /** 0x9A 开/关按键上报的 Ack body：0xFF=已接收（旧固件曾为 0x00） */
 constexpr quint8 kKeyNotifySwitchAck = 0xFF;
 /** 内层 body 合理上限；串口噪声偶发伪帧头 + 超大 CAL 会卡住后续合法应答 */
@@ -26,73 +23,11 @@ constexpr int kMaxFrameBodyLen = 64;
 } // namespace
 
 QByteArray Qroot::wrapPhyPacket(const QByteArray& innerPacket) {
-    if (innerPacket.isEmpty() || innerPacket.size() > 0xFF)
-        return {};
-    QByteArray phy;
-    phy.reserve(kPhyHeaderSize + 2 + innerPacket.size());
-    phy.append(QByteArray(kPhyHeaderSize, static_cast<char>(kPhyTxHeaderByte)));
-    phy.append(static_cast<char>(innerPacket.size()));
-    phy.append(static_cast<char>(kPhyChannelFac));
-    phy.append(innerPacket);
-    return phy;
+    return wrapDonglePhyTxPacket(innerPacket, kDonglePhyChannelFac);
 }
 
 void Qroot::feedPhyRx(const QByteArray& data, QList<QByteArray>& outInnerPackets) {
-    const auto resetPhy = [this]() {
-        phyState_ = PhyIdle;
-        phyHeaderHits_ = 0;
-        phyExpectedLen_ = 0;
-        phyChannel_ = 0;
-        phyPayload_.clear();
-    };
-
-    for (const char ch : data) {
-        const quint8 x = static_cast<quint8>(ch);
-        switch (phyState_) {
-        case PhyIdle:
-            if (x == kPhyRxHeaderByte) {
-                phyHeaderHits_ = 1;
-                phyState_ = PhyHeader;
-            }
-            break;
-        case PhyHeader:
-            if (x == kPhyRxHeaderByte) {
-                if (++phyHeaderHits_ == kPhyHeaderSize)
-                    phyState_ = PhyChannel;
-            } else {
-                resetPhy();
-            }
-            break;
-        case PhyChannel:
-            phyChannel_ = x;
-            phyState_ = PhyLen;
-            break;
-        case PhyLen:
-            phyExpectedLen_ = static_cast<int>(x);
-            if (phyExpectedLen_ <= 0) {
-                qWarning() << "[Qroot] dongle 外层包长度非法:" << phyExpectedLen_;
-                resetPhy();
-                break;
-            }
-            phyPayload_.clear();
-            phyPayload_.reserve(phyExpectedLen_);
-            phyState_ = PhyPayload;
-            break;
-        case PhyPayload:
-            phyPayload_.append(static_cast<char>(x));
-            if (phyPayload_.size() >= phyExpectedLen_) {
-                if (phyChannel_ == kPhyChannelFac)
-                    outInnerPackets.append(phyPayload_);
-                else
-                    qWarning() << "[Qroot] dongle 通道异常 channel=" << phyChannel_;
-                resetPhy();
-            }
-            break;
-        default:
-            resetPhy();
-            break;
-        }
-    }
+    phyRx_.feed(data, outInnerPackets);
 }
 
 Qroot::Qroot(QSerialPort* port) : qProtocol(port), serialPort_(port) {

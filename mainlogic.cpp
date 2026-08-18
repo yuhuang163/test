@@ -502,7 +502,7 @@ void MainWindow::onDongleSerialFrame(const QByteArray& dataTemp) {
     protocolManager.parseCmd(dataTemp);
     getMacAddress(dataTemp); // 搜索设备用
 
-    // 吸力/温度流式帧：协议已处理，勿刷主窗口串口 UI / 逐帧落盘
+    // 吸力/温度流式 AT 文本：协议已处理，勿刷主窗口串口 UI / 逐帧落盘
     if (dataTemp.contains("AT+TEMP_DATA") || dataTemp.contains("AT+SUCTION_DATA"))
         return;
 
