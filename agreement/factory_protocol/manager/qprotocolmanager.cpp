@@ -117,9 +117,8 @@ bool QProtocolManager::hasActiveProtocol() const {
 }
 
 bool QProtocolManager::parseCmd(const QByteArray& byte) const {
-    if (!active_) {
+    if (!active_ || byte.isEmpty())
         return false;
-    }
     active_->parseCmd(byte);
     return true;
 }

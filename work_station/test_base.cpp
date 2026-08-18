@@ -35,6 +35,7 @@
 #include "qaiot.h"
 #include "qroot.h"
 #include "common_utils.h"
+#include "dongle_phy.h"
 #include "test_data_upload_service.h"
 #include "test_record_store.h"
 #include "test_case.h"
@@ -352,36 +353,29 @@ void test_base::onDongleSerialFrame(const QByteArray& dataTemp) {
     protocolManager.parseCmd(dataTemp);
     getMacAddress(dataTemp); // 搜索设备用
 
-    // 吸力/温度流式帧：已由协议入库/刷曲线，禁止再刷串口 UI 与逐帧落盘（久跑会卡死）
-    if (dataTemp.contains("AT+TEMP_DATA") || dataTemp.contains("AT+SUCTION_DATA"))
+    // 吸力/温度流式 AT 文本与 channel=4 二进制：已由协议入库/刷曲线，禁止再刷串口 UI 与逐帧落盘
+    if (shouldSkipDongleStreamUartLog(dataTemp))
         return;
 
     const QString timestamp = CommonUtils::formatTimestampMs();
     QString payloadText;
-    // 吸力 50Hz：界面不刷，原文完整进 dongle log，采样结束再落盘
-    const bool highFreqSuction = dataTemp.contains("AT+SUCTION_DATA");
-    if (highFreqSuction) {
-        payloadText = QString::fromUtf8(dataTemp.constData(), dataTemp.size());
-    } else {
-        const QByteArray contentMarker = QByteArrayLiteral("内容为:");
-        const int contentPos = dataTemp.indexOf(contentMarker);
-        if (contentPos >= 0) {
-            const QByteArray before = dataTemp.left(contentPos + contentMarker.size());
-            const QByteArray after = dataTemp.mid(contentPos + contentMarker.size()).trimmed();
-            payloadText = CommonUtils::formatUartPayloadForUi(before, 512);
-            if (!after.isEmpty()) {
-                const int n = qMin(after.size(), 256);
-                payloadText += CommonUtils::toHexUpperSpaced(after.left(n));
-                if (after.size() > n)
-                    payloadText += QStringLiteral(" ...(+%1 bytes)").arg(after.size() - n);
-            }
-        } else {
-            payloadText = CommonUtils::formatUartPayloadForUi(dataTemp);
+    const QByteArray contentMarker = QByteArrayLiteral("内容为:");
+    const int contentPos = dataTemp.indexOf(contentMarker);
+    if (contentPos >= 0) {
+        const QByteArray before = dataTemp.left(contentPos + contentMarker.size());
+        const QByteArray after = dataTemp.mid(contentPos + contentMarker.size()).trimmed();
+        payloadText = CommonUtils::formatUartPayloadForUi(before, 512);
+        if (!after.isEmpty()) {
+            const int n = qMin(after.size(), 256);
+            payloadText += CommonUtils::toHexUpperSpaced(after.left(n));
+            if (after.size() > n)
+                payloadText += QStringLiteral(" ...(+%1 bytes)").arg(after.size() - n);
         }
+    } else {
+        payloadText = CommonUtils::formatUartPayloadForUi(dataTemp);
     }
     const QString logEntry = QStringLiteral("[%1]\r\n%2").arg(timestamp, payloadText);
-    if (!highFreqSuction)
-        enqueueDongleUiLog(logEntry);
+    enqueueDongleUiLog(logEntry);
     saveDongleUartLog(logEntry);
 }
 

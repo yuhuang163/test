@@ -6,6 +6,7 @@
 #include <QSerialPort>
 #include "qprotocol.h"
 #include "qprotocol_types.h"
+#include "dongle_phy_codec.h"
 
 #include "ble_protocol/fx_ble_msg.pb.h"
 #include "factory_protocol/factory_msg.pb.h"
@@ -136,12 +137,11 @@ class Qpb : public qProtocol, public IDevice {
     void waitWork(int ms);
     DataPackage getBlePack() const;
     void setBlePack(const DataPackage& newBlePack);
+    void feedPbPhyPayload(quint8 channel, const QByteArray& payload);
+    void dispatchDecodedPbPack();
 
     typedef enum {
         STATE_IDLE,
-        STATE_HEADER,
-        STATE_CHANNEL,
-        STATE_LEN,
         STATE_STAGE,
         STATE_PB_HEADER,
         STATE_UNPACK
@@ -159,10 +159,10 @@ class Qpb : public qProtocol, public IDevice {
 
     ext_ble_phy_channel_e pbChannel = PHY_CHANNEL_INVALID;
     State state = STATE_IDLE;
-    int hitTimes = 0;
     int len = 1;
 
     QSerialPort* serialPort;
+    DonglePhyRxCodec phyRx_{kDonglePhyRxAcceptFacAppMain, "[Qpb]"};
     std::vector<uint8_t> ibuffer, ipack;
     FactoryDataPackage recievePack = FactoryDataPackage_init_default;
     DataPackage blePack = DataPackage_init_default;

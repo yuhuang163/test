@@ -127,7 +127,6 @@ static QByteArray qfctpParseValueString(const QString& text, bool* ok) {
     return QByteArray::fromHex(compact.toLatin1());
 }
 
-
 static constexpr uint16_t kTestsService = COMM_PROTOCOL_TESTS_SERVICE;
 static constexpr uint16_t kSystemConfigService = COMM_PROTOCOL_SYSTEM_CONFIG_SERVICE;
 static constexpr uint16_t kAlgoService = COMM_PROTOCOL_ALGO_SERVICE;

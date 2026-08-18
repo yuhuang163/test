@@ -68,7 +68,7 @@ void AtSuctionFrameCodec::reset() {
 }
 
 void AtSuctionFrameCodec::appendTextByte(char c) {
-    // 可打印 ASCII 与常见换行；二进制 PHY 字节丢弃（由 DonglePhyRxCodec 解析）
+    // 可打印 ASCII 与常见换行；channel=4 二进制由 phyRx_ 解析
     const uchar u = static_cast<uchar>(c);
     if (u == '\r' || u == '\n' || u == '\t' || (u >= 0x20 && u <= 0x7E))
         textBuffer_.append(QLatin1Char(c));
@@ -122,7 +122,7 @@ void AtSuctionFrameCodec::flushTextFrames(const FrameHandler& onFrame) {
 
         const QString frame = textBuffer_.left(semicolonIndex + 1).trimmed();
         textBuffer_.remove(0, semicolonIndex + 1);
-        if (frame.isEmpty())
+        if (frame.isEmpty() || !frame.startsWith(QLatin1Char('$')))
             continue;
 
         double left = 0.0;
@@ -147,6 +147,18 @@ void AtSuctionFrameCodec::feed(const QByteArray& chunk, const FrameHandler& onFr
     phyRx_.setSuctionHandler(onFrame);
     QList<QByteArray> unused;
     phyRx_.feed(chunk, unused);
+    // 二进制 PHY chunk 里的可打印字节会污染 textBuffer_，遇帧头则清空
+    if (chunk.size() >= kDonglePhyHeaderSize) {
+        bool phyHeader = true;
+        for (int i = 0; i < kDonglePhyHeaderSize; ++i) {
+            if (static_cast<quint8>(chunk.at(i)) != kDonglePhyRxHeaderByte) {
+                phyHeader = false;
+                break;
+            }
+        }
+        if (phyHeader)
+            textBuffer_.clear();
+    }
     for (char c : chunk)
         appendTextByte(c);
     flushTextFrames(onFrame);

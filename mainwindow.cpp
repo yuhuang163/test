@@ -436,7 +436,6 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     otaSourceSet(1); // 一开机锁住
     otaFwSet(1);     // 一开机锁住
 
-
     // 设置菜单栏样式
     ui->menubar->setStyleSheet("QMenuBar { "
                                "    background-color: white; " // 设置菜单栏背景颜色为白色
@@ -451,7 +450,6 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
                                "    color: black; "                // 设置选中菜单项的文字颜色
                                "}");
 
-
     ui->statusbar->addPermanentWidget(board_sn);
     ui->statusbar->addPermanentWidget(product_sn);
     ui->statusbar->addPermanentWidget(sub_pid);
@@ -463,7 +461,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     ui->statusbar->addPermanentWidget(uartStatusLabel);
     ui->statusbar->addPermanentWidget(new QLabel(DEBUG_VER + QString(__DATE__) + " " + QString(__TIME__)));
     ui->statusbar->addPermanentWidget(cloudLoginLabel);
-   
+
     refreshCloudLoginState();
     {
         QTimer* timer = new QTimer(this);
@@ -582,8 +580,6 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
 
     ui->progressBar->hide();
     applyDebugOtaTabVisibility();
-
-
 
     ui->high_speed_tp->installEventFilter(this);
     ui->high_speed_tp->setAcceptDrops(true);
@@ -959,7 +955,6 @@ void MainWindow::refreshTupleData(ProtocolTupleData data) {
     showlog(QStringLiteral("三元组：productId=%1 deviceId=%2 key=%3")
                 .arg(data.productId, data.deviceId, data.key));
 }
-
 
 void MainWindow::initQaiotFeatureButtons() {
     // 专用测试页 groupBox_qaiot_feature：仅填充下拉 itemData（通信走设置页当前协议）
@@ -6333,4 +6328,3 @@ void MainWindow::on_btnDongleAtPumpStart_clicked() {
 void MainWindow::on_btnDongleAtPumpStop_clicked() {
     sendDongleAtLineCmd(QStringLiteral("PUMPSTOP"), QStringLiteral("1"));
 }
-

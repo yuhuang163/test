@@ -17,7 +17,7 @@ bool parseDongleSuctionUplinkPayload(const QByteArray& payload, ProtocolDongleSu
 
 /**
  * Dongle 串口 PHY 收包（8×0xAA → channel → len → payload）。
- * 通道 4（吸力）可设 suctionHandler_ 解析；其它通道按 acceptedChannelMask_ 输出内层包。
+ * 通道 4（吸力）可设 suctionHandler_ 解析（QAT 层）；其它通道按 acceptedChannelMask_ 输出内层包。
  */
 class DonglePhyRxCodec {
   public:
@@ -31,8 +31,8 @@ class DonglePhyRxCodec {
     quint8 acceptedChannelMask() const;
     void setSuctionHandler(SuctionHandler handler);
 
-    /** 流式喂入；完整内层包追加到 outInnerPackets */
-    void feed(const QByteArray& chunk, QList<QByteArray>& outInnerPackets);
+    /** 流式喂入；完整内层包追加到 outInnerPackets；outChannels 与内层包一一对应 */
+    void feed(const QByteArray& chunk, QList<QByteArray>& outInnerPackets, QList<quint8>* outChannels = nullptr);
 
   private:
     enum State { Idle, Header, Channel, Len, Payload };

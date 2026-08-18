@@ -59,8 +59,9 @@ void DonglePhyRxCodec::resetState() {
     outInnerPackets_ = nullptr;
 }
 
-void DonglePhyRxCodec::feed(const QByteArray& chunk, QList<QByteArray>& outInnerPackets) {
+void DonglePhyRxCodec::feed(const QByteArray& chunk, QList<QByteArray>& outInnerPackets, QList<quint8>* outChannels) {
     outInnerPackets_ = &outInnerPackets;
+    QList<quint8>* outChannels_ = outChannels;
     for (char ch : chunk) {
         const quint8 x = static_cast<quint8>(ch);
         switch (state_) {
@@ -77,6 +78,11 @@ void DonglePhyRxCodec::feed(const QByteArray& chunk, QList<QByteArray>& outInner
             } else {
                 resetState();
                 outInnerPackets_ = &outInnerPackets;
+                // 帧头中断：当前字节可能是下一帧首个 0xAA
+                if (x == kDonglePhyRxHeaderByte) {
+                    headerHits_ = 1;
+                    state_ = Header;
+                }
             }
             break;
         case Channel:
@@ -100,13 +106,17 @@ void DonglePhyRxCodec::feed(const QByteArray& chunk, QList<QByteArray>& outInner
             payload_.append(static_cast<char>(x));
             if (payload_.size() >= expectedLen_) {
                 if (channel_ == kDonglePhyChannelSuction) {
-                    if (expectedLen_ == kDongleSuctionUplinkPayloadLen && suctionHandler_) {
+                    // channel=4 一律走吸力分支；payload 只要可解析即上报
+                    if (suctionHandler_) {
                         ProtocolDongleSuctionData data;
                         if (parseDongleSuctionUplinkPayload(payload_, &data))
                             suctionHandler_(data);
                     }
+                    // 无 suctionHandler_ 时静默丢弃（channel=4 由 QAT AtSuctionFrameCodec 注册）
                 } else if (channel_ < 8 && (acceptedChannelMask_ & quint8(1u << channel_)) != 0) {
                     outInnerPackets.append(payload_);
+                    if (outChannels_)
+                        outChannels_->append(channel_);
                 } else if (warnLogTag_) {
                     qWarning() << warnLogTag_ << "dongle 通道异常 channel=" << channel_;
                 }
