@@ -751,56 +751,36 @@ QString gateOpToString(TestCaseGateOp op) {
     }
 }
 
+bool iniHasMultiGateItems(const QSettings& ini) {
+    return ini.value(QStringLiteral("Gate/Count"), 0).toInt() > 0;
+}
+
+/** 多项卡控只认 [Gate] 下 Count + ItemN_Field / ItemN_Low …，与 saveMultiGatesToIni 同一套键。 */
 void loadMultiGatesFromIni(QSettings& ini, TestCaseDefinition& out) {
     out.gates.clear();
-    const int count = ini.value(QStringLiteral("Gate/Count"), 0).toInt();
     const QString reportType = out.gate.reportType;
-    if (count > 0) {
-        for (int i = 1; i <= count; ++i) {
-            ini.beginGroup(QStringLiteral("Gate/%1").arg(i));
-            TestCaseGate g;
-            g.enabled = ini.value(QStringLiteral("Enabled"), true).toBool();
-            g.reportType = reportType;
-            g.field = ini.value(QStringLiteral("Field")).toString().trimmed();
-            g.op = gateOpFromString(ini.value(QStringLiteral("Op"), QStringLiteral("eq")).toString());
-            g.expected = ini.value(QStringLiteral("Expected")).toString().trimmed();
-            g.low = ini.value(QStringLiteral("Low"), g.expected.toDouble()).toDouble();
-            g.high = ini.value(QStringLiteral("High"), g.low).toDouble();
-            g.lowSettingsKey = ini.value(QStringLiteral("LowSettingsKey")).toString();
-            g.highSettingsKey = ini.value(QStringLiteral("HighSettingsKey")).toString();
-            g.expectedSettingsKey = ini.value(QStringLiteral("ExpectedSettingsKey")).toString();
-            ini.endGroup();
-            if (!g.field.isEmpty())
-                out.gates.append(g);
-        }
-        return;
-    }
-    if (count <= 0 && out.gate.field == QLatin1String("multi")) {
-        for (int i = 1; i <= 32; ++i) {
-            ini.beginGroup(QStringLiteral("Gate/%1").arg(i));
-            const QString field = ini.value(QStringLiteral("Field")).toString().trimmed();
-            if (field.isEmpty()) {
-                ini.endGroup();
-                break;
-            }
-            TestCaseGate g;
-            g.enabled = ini.value(QStringLiteral("Enabled"), true).toBool();
-            g.reportType = reportType;
-            g.field = field;
-            g.op = gateOpFromString(ini.value(QStringLiteral("Op"), QStringLiteral("eq")).toString());
-            g.expected = ini.value(QStringLiteral("Expected")).toString().trimmed();
-            g.low = ini.value(QStringLiteral("Low"), g.expected.toDouble()).toDouble();
-            g.high = ini.value(QStringLiteral("High"), g.low).toDouble();
-            g.lowSettingsKey = ini.value(QStringLiteral("LowSettingsKey")).toString();
-            g.highSettingsKey = ini.value(QStringLiteral("HighSettingsKey")).toString();
-            g.expectedSettingsKey = ini.value(QStringLiteral("ExpectedSettingsKey")).toString();
-            ini.endGroup();
+    const int count = ini.value(QStringLiteral("Gate/Count"), 0).toInt();
+    for (int i = 1; i <= count; ++i) {
+        const QString p = QStringLiteral("Gate/Item%1_").arg(i);
+        TestCaseGate g;
+        g.reportType = reportType;
+        g.field = ini.value(p + QStringLiteral("Field")).toString().trimmed();
+        g.enabled = ini.value(p + QStringLiteral("Enabled"), true).toBool();
+        g.op = gateOpFromString(ini.value(p + QStringLiteral("Op"), QStringLiteral("range")).toString());
+        g.expected = ini.value(p + QStringLiteral("Expected")).toString().trimmed();
+        g.low = ini.value(p + QStringLiteral("Low"), 0).toDouble();
+        g.high = ini.value(p + QStringLiteral("High"), 0).toDouble();
+        g.lowSettingsKey = ini.value(p + QStringLiteral("LowSettingsKey")).toString();
+        g.highSettingsKey = ini.value(p + QStringLiteral("HighSettingsKey")).toString();
+        g.expectedSettingsKey = ini.value(p + QStringLiteral("ExpectedSettingsKey")).toString();
+        if (!g.field.isEmpty() && g.field != QLatin1String("multi"))
             out.gates.append(g);
-        }
-        if (!out.gates.isEmpty())
-            return;
     }
-    if (out.gate.enabled && GateRegistry::isAllFieldsGateField(out.gate.field) && reportType == QStringLiteral("ProtocolPeriphStateData")) {
+    if (!out.gates.isEmpty())
+        return;
+
+    if (out.gate.enabled && GateRegistry::isAllFieldsGateField(out.gate.field)
+        && reportType == QStringLiteral("ProtocolPeriphStateData")) {
         for (const QString& f : GateRegistry::fieldsFor(reportType)) {
             TestCaseGate g = out.gate;
             g.field = f;
@@ -810,31 +790,60 @@ void loadMultiGatesFromIni(QSettings& ini, TestCaseDefinition& out) {
         }
         return;
     }
-    if (out.gate.enabled)
+    // field=multi 只是占位，不能当成表格里的判定项，否则界面全是 0/未勾选
+    if (out.gate.enabled && out.gate.field != QLatin1String("multi") && !out.gate.field.isEmpty())
         out.gates.append(out.gate);
 }
 
+bool isMultiFieldGateReportType(const QString& reportType) {
+    return reportType == QLatin1String("ProtocolDongleSuctionPeakData")
+        || reportType == QLatin1String("ProtocolFixturePcbaData")
+        || reportType == QLatin1String("ProtocolJieliBtBoxData");
+}
+
+bool gateRangeLooksLikePlaceholder(const TestCaseGate& g) {
+    return g.field.trimmed().isEmpty() || (qFuzzyIsNull(g.low) && qFuzzyIsNull(g.high));
+}
+
+bool profileHasLoadedMultiGateDetails(const TestCaseDefinition& def) {
+    if (def.gates.size() > 1)
+        return true;
+    if (def.gates.size() == 1) {
+        const TestCaseGate& g = def.gates.first();
+        return !g.field.isEmpty() && g.field != QLatin1String("multi") && !gateRangeLooksLikePlaceholder(g);
+    }
+    return false;
+}
+
 void saveMultiGatesToIni(QSettings& ini, const TestCaseDefinition& def) {
-    for (int i = 1; i <= 32; ++i)
-        ini.remove(QStringLiteral("Gate/%1").arg(i));
-    ini.remove(QStringLiteral("Gate/Count"));
-    if (def.gates.size() <= 1)
+    const QStringList keys = ini.allKeys();
+    for (const QString& key : keys) {
+        if (key == QLatin1String("Gate/Count") || key.startsWith(QLatin1String("Gate/Item")))
+            ini.remove(key);
+        else if (key.startsWith(QLatin1String("Gate/")) && key.size() > 5 && key.at(5).isDigit())
+            ini.remove(key);
+    }
+
+    const bool saveAsMulti = def.gates.size() > 1
+        || def.gate.field.compare(QLatin1String("multi"), Qt::CaseInsensitive) == 0
+        || isMultiFieldGateReportType(def.gate.reportType);
+    if (!saveAsMulti || def.gates.isEmpty())
         return;
+
     ini.setValue(QStringLiteral("Gate/Count"), def.gates.size());
     ini.setValue(QStringLiteral("Gate/Field"), QStringLiteral("multi"));
     for (int i = 0; i < def.gates.size(); ++i) {
-        ini.beginGroup(QStringLiteral("Gate/%1").arg(i + 1));
         const TestCaseGate& g = def.gates.at(i);
-        ini.setValue(QStringLiteral("Field"), g.field);
-        ini.setValue(QStringLiteral("Enabled"), g.enabled);
-        ini.setValue(QStringLiteral("Op"), gateOpToString(g.op));
-        ini.setValue(QStringLiteral("Expected"), g.expected);
-        ini.setValue(QStringLiteral("Low"), g.low);
-        ini.setValue(QStringLiteral("High"), g.high);
-        ini.setValue(QStringLiteral("LowSettingsKey"), g.lowSettingsKey);
-        ini.setValue(QStringLiteral("HighSettingsKey"), g.highSettingsKey);
-        ini.setValue(QStringLiteral("ExpectedSettingsKey"), g.expectedSettingsKey);
-        ini.endGroup();
+        const QString p = QStringLiteral("Gate/Item%1_").arg(i + 1);
+        ini.setValue(p + QStringLiteral("Field"), g.field);
+        ini.setValue(p + QStringLiteral("Enabled"), g.enabled);
+        ini.setValue(p + QStringLiteral("Op"), gateOpToString(g.op));
+        ini.setValue(p + QStringLiteral("Expected"), g.expected);
+        ini.setValue(p + QStringLiteral("Low"), g.low);
+        ini.setValue(p + QStringLiteral("High"), g.high);
+        ini.setValue(p + QStringLiteral("LowSettingsKey"), g.lowSettingsKey);
+        ini.setValue(p + QStringLiteral("HighSettingsKey"), g.highSettingsKey);
+        ini.setValue(p + QStringLiteral("ExpectedSettingsKey"), g.expectedSettingsKey);
     }
 }
 
@@ -1265,10 +1274,12 @@ void supplementMissingHookSendParamsFromLibrary(const QString& stepId, TestCaseD
 }
 
 void supplementMissingGateFromLibrary(const QString& stationKey, const QString& stepId, TestCaseDefinition& def) {
-    // 仅补「工站缺多字段卡控」；单字段 Expected 等必须以工站 steps 为准，禁止被步骤库盖掉
-    const bool defHasMultiGates = def.gates.size() > 1
-        || def.gate.field.compare(QLatin1String("multi"), Qt::CaseInsensitive) == 0;
-    if (defHasMultiGates || def.gate.enabled)
+    if (profileHasLoadedMultiGateDetails(def))
+        return;
+
+    const bool needsMultiFromLibrary =
+        def.gate.enabled && isMultiFieldGateReportType(def.gate.reportType) && !profileHasLoadedMultiGateDetails(def);
+    if (def.gate.enabled && !needsMultiFromLibrary)
         return;
 
     TestCaseDefinition library;
@@ -1294,13 +1305,16 @@ void supplementMissingGateFromLibrary(const QString& stationKey, const QString& 
                 && !profileIni.value(QStringLiteral("Gate/Enabled")).toBool()) {
                 return;
             }
-            // 工站覆盖层已写了自己的单字段卡控（如读取版本号 Expected）时不得再用步骤库回冲，
-            // 否则界面在工站里改的期望值每次加载都会被库值盖掉；多字段库仍保留补齐能力
-            const bool profileHasOwnGate =
-                !profileIni.value(QStringLiteral("Gate/ReportType")).toString().trimmed().isEmpty()
-                || !profileIni.value(QStringLiteral("Gate/Field")).toString().trimmed().isEmpty();
-            if (profileHasOwnGate && !libraryHasMultiGates)
+            const bool profileHasMultiInFile = iniHasMultiGateItems(profileIni);
+            if (profileHasMultiInFile && profileHasLoadedMultiGateDetails(def))
                 return;
+            if (!needsMultiFromLibrary) {
+                const bool profileHasOwnGate =
+                    !profileIni.value(QStringLiteral("Gate/ReportType")).toString().trimmed().isEmpty()
+                    || !profileIni.value(QStringLiteral("Gate/Field")).toString().trimmed().isEmpty();
+                if (profileHasOwnGate && !libraryHasMultiGates)
+                    return;
+            }
         }
     }
 
@@ -1418,10 +1432,9 @@ void applyCaseIniOverlay(QSettings& overlay, TestCaseDefinition& def) {
 
     if (overlay.contains(QStringLiteral("Gate/Enabled")) || overlay.contains(QStringLiteral("Gate/ReportType"))
         || overlay.contains(QStringLiteral("Gate/Count"))) {
-        // 仅「多字段」卡控：覆盖层无 Gate/Count、Gate/1 时不冲掉步骤库明细。
+        // 多项卡控：覆盖层无 Gate/Count 时不冲掉步骤库 ItemN_ 明细。
         // 单字段（如读取版本号 Expected）必须合并，否则工站覆盖层写了也不生效。
-        const bool overlayHasMulti = overlay.value(QStringLiteral("Gate/Count"), 0).toInt() > 0
-            || !overlay.value(QStringLiteral("Gate/1/Field")).toString().trimmed().isEmpty();
+        const bool overlayHasMulti = iniHasMultiGateItems(overlay);
         const bool libraryHasMultiGates = def.gates.size() > 1
             || def.gate.field.compare(QLatin1String("multi"), Qt::CaseInsensitive) == 0;
         if (!overlayHasMulti && libraryHasMultiGates) {

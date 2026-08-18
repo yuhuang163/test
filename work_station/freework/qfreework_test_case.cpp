@@ -1001,7 +1001,7 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
     QVector<TestCaseGate> gatesForEval = TestCaseStore::activeGatesForEvaluation(activeTestCase_);
     if (gatesForEval.isEmpty()) {
         markActiveTestCaseStepDone(false, QStringLiteral("-"), QStringLiteral("失败"));
-        showlog(QStringLiteral("卡控失败：未启用任何判定项（请在 case ini 的 Gate/N/Enabled 勾选）"));
+        showlog(QStringLiteral("卡控失败：未启用任何判定项（请在 case ini 的 Gate/ItemN_Enabled 勾选）"));
         if (commandRetryTimer)
             finishCommandRetryWait(false, QStringLiteral("卡控失败：未启用任何判定项"));
         return true;
