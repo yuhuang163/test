@@ -27,15 +27,16 @@ const Row kRows[] = {
     {ModbusDeviceRoute::GcSeriesTcp, "IsConnected", u8"GC PLC 是否已连接", nullptr, kGet},
     {ModbusDeviceRoute::GcSeriesTcp, "WriteCoil", u8"写 GC 线圈(M)",
      u8"Param：m/value 或 mLeft/mRight；协议地址=M+4096（GC_PLC/MCoilAddressOffset）", kSet},
-    {ModbusDeviceRoute::HqAmmeterRtu, "ReadMeasurement", u8"读电流", nullptr, kGet},
+    {ModbusDeviceRoute::HqAmmeterRtu, "ReadMeasurement", u8"读电流", nullptr, kGet, "ProtocolMeasureData", "value"},
     {ModbusDeviceRoute::HqAmmeterRtu, "SetBaud115200", u8"初始化波特率 115200", nullptr, kSet},
-    {ModbusDeviceRoute::LxAmmeterRtu, "ReadMeasurement", u8"读电流", u8"机台号见 Current/LuxshareMachineId", kGet},
+    {ModbusDeviceRoute::LxAmmeterRtu, "ReadMeasurement", u8"读电流", u8"机台号见 Current/LuxshareMachineId", kGet,
+     "ProtocolMeasureData", "value"},
     {ModbusDeviceRoute::MultiTempLoggerRtu, "ReadChannelTemp", u8"读通道温度",
      u8"Param：channel=1~64，slaveAddr=1~247；或 channels=1,2,3 / 1-6\r\n"
      u8"法兰加热多点：channelsPerStation=6；stationsPerDevice=2 → 工位奇偶映射 CH1-6 / CH7-12\r\n"
      u8"一拖多共享：sharedPair=true；tempComName0/1…；tempBaudRate；sampleDurationMs=20000\r\n"
      u8"Get+Gate 且通道数>1：窗口内某一轮全部通道落入 Gate 温度范围则通过",
-     kGet},
+     kGet, "ProtocolMeasureData", "value"},
     {ModbusDeviceRoute::MultiTempLoggerRtu, "SendRaw", u8"原文/十六进制收发",
      u8"开放报文：Param_txHex 填完整 RTU 帧（含CRC，低字节在前）\r\n"
      u8"例读通道1温度：01 03 00 12 00 02 64 0E\r\n"

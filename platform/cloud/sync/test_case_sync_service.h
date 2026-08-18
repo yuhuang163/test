@@ -54,6 +54,8 @@ class TestCaseSyncService {
     static void pollDeviceCommands();
     /** 启动后台定时心跳（进程内单例） */
     static void startDeviceAgent();
+    /** 关闭/OTA 前停止心跳与命令轮询，避免 120s HTTP 阻塞导致进程无法退出 */
+    static void stopDeviceAgent();
 };
 
 #endif // TEST_CASE_SYNC_SERVICE_H

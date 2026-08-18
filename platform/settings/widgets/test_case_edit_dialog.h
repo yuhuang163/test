@@ -48,6 +48,7 @@ class TestCaseEditDialog : public QDialog {
   private:
     bool saveValidated();
     void refreshDeviceCmdCombo();
+    void syncGateToSendCommand(const QString& preferredReportType, const QString& preferredField = QString());
     void updateProductProtocolRowVisible();
     void updateSendParamVisibility(bool hasParam);
     void fitDialogToScreen();
@@ -63,6 +64,8 @@ class TestCaseEditDialog : public QDialog {
     QVector<TestFlowItemEntry> flowEntries_;
     /** 避免 setDefinition 末尾再进 onDeviceCmdChanged 时冲掉已加载的参数表 */
     QString lastSendParamCmdKey_;
+    bool loadingDefinition_ = false;
+    bool gateReportTypeLocked_ = false;
 };
 
 #endif // TEST_CASE_EDIT_DIALOG_H

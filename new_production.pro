@@ -283,6 +283,9 @@ SOURCES += \
     platform/test_case/manifest/scpi_cmd_manifest.cpp \
     platform/test_case/manifest/tuple_cmd_manifest.cpp \
     platform/test_case/test_case.cpp \
+    platform/test_case/test_case_store.cpp \
+    platform/test_case/test_case_gate.cpp \
+    platform/test_case/test_case_ini_param.cpp \
     platform/instrument/instrument_device_catalog.cpp \
     platform/cloud/test_record/test_record_store.cpp \
     platform/cloud/log_upload/log_upload_service.cpp \
@@ -442,6 +445,7 @@ HEADERS += \
     platform/test_case/manifest/product_serial_cmd_manifest.h \
     platform/test_case/manifest/tuple_cmd_manifest.h \
     platform/test_case/test_case.h \
+    platform/test_case/test_case_ini_param.h \
     platform/cloud/test_record/test_record_store.h \
     platform/cloud/log_upload/log_upload_service.h \
     platform/cloud/client/factory_cloud_client.h \

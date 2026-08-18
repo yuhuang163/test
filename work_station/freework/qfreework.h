@@ -21,6 +21,7 @@
 
 class QMessageBox;
 class QCustomPlot;
+class QCPItemText;
 
 namespace Ui {
 class QFreeWork;
@@ -373,6 +374,8 @@ class QFreeWork : public test_base {
     double suctionPeakBaselineKpa_ = -8.0;
     /** 低于该压力才计入吸气周期，避免噪声误计为峰。 */
     double suctionPeakDipStartKpa_ = -10.0;
+    /** 采样窗口内至少需要的完整「吸→回放」周期峰个数（单/双通道共用，默认 3）。 */
+    int suctionMinPeakCount_ = 3;
     bool dongleSuctionReadEnabled_ = false;
     bool dongleSuctionSampleActive_ = false;
     /** 读电流连续采样：窗口内任一卡控合格即通过，不合格不立刻结束步骤。 */
@@ -390,14 +393,15 @@ class QFreeWork : public test_base {
     double dongleSuctionLastCh2Kpa_ = 0.0;
     double dongleSuctionLastCh3Kpa_ = 0.0;
     QCustomPlot* suctionPlot_ = nullptr;
+    /** 采样中在空图上显示的提示，避免被当成曲线画不出来 */
+    QCPItemText* suctionChartHintText_ = nullptr;
     QVector<double> suctionChartTimeSec_;
     QVector<double> suctionChartLeftKpa_;
     QVector<double> suctionChartRightKpa_;
     QElapsedTimer suctionChartTimer_;
     bool suctionChartTimerStarted_ = false;
-    /** 曲线/标签 UI 节流：约 5Hz，减轻 AT 高频回调卡顿 */
+    /** 实时数值标签节流：约 2Hz（曲线不实时画，测完一次性绘制） */
     qint64 suctionChartLastUiMs_ = 0;
-    int suctionChartPlottedCount_ = 0;
     bool suctionLeftPeakInit_ = false;
     bool suctionRightPeakInit_ = false;
     double suctionLeftPeakHigh_ = 0.0;

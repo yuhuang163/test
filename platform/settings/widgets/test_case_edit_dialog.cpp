@@ -98,6 +98,9 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("enable"), QStringLiteral("输出开关（1开/0关）")},
         {QStringLiteral("sampleDurationMs"), QStringLiteral("连续采样窗口 (ms)")},
         {QStringLiteral("sampleIntervalMs"), QStringLiteral("连续采样间隔 (ms)")},
+        {QStringLiteral("minPeakCount"), QStringLiteral("最少完整周期峰数")},
+        {QStringLiteral("peakBaselineKpa"), QStringLiteral("回基线阈值 (kPa)")},
+        {QStringLiteral("peakDipStartKpa"), QStringLiteral("入峰阈值 (kPa)")},
         {QStringLiteral("channel"), QStringLiteral("温度/采样通道号")},
         {QStringLiteral("channels"), QStringLiteral("温度通道列表（如 1,2,3,4,5,6 或 1-6）")},
         {QStringLiteral("channelsPerStation"), QStringLiteral("每工位占用温度通道数（法兰加热填 6）")},
@@ -300,6 +303,16 @@ void configureSendParamTable(QTableWidget* table) {
 QStringList sendParamPreferredOrder(TestCaseSendChannel channel, const QString& cmdName) {
     if (channel == TestCaseSendChannel::Cloud && cmdName == QLatin1String("Login"))
         return {QStringLiteral("baseUrl"), QStringLiteral("userName"), QStringLiteral("password")};
+    if (channel == TestCaseSendChannel::Dongle && cmdName == QLatin1String("SampleSuctionDual")) {
+        return {QStringLiteral("sampleDurationMs"), QStringLiteral("sampleIntervalMs"),
+                QStringLiteral("minPeakCount"), QStringLiteral("peakBaselineKpa"),
+                QStringLiteral("peakDipStartKpa")};
+    }
+    if (channel == TestCaseSendChannel::Dongle && cmdName == QLatin1String("SampleSuctionSingle")) {
+        return {QStringLiteral("sampleDurationMs"), QStringLiteral("sampleIntervalMs"), QStringLiteral("channel"),
+                QStringLiteral("minPeakCount"), QStringLiteral("peakBaselineKpa"),
+                QStringLiteral("peakDipStartKpa")};
+    }
     return {};
 }
 
@@ -515,11 +528,17 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
         if (cmdName == QLatin1String("SampleSuctionSingle")) {
             return QVariantMap{{QStringLiteral("sampleDurationMs"), QStringLiteral("10000")},
                                {QStringLiteral("sampleIntervalMs"), QStringLiteral("20")},
-                               {QStringLiteral("channel"), QStringLiteral("1")}};
+                               {QStringLiteral("channel"), QStringLiteral("1")},
+                               {QStringLiteral("minPeakCount"), QStringLiteral("3")},
+                               {QStringLiteral("peakBaselineKpa"), QStringLiteral("-8")},
+                               {QStringLiteral("peakDipStartKpa"), QStringLiteral("-10")}};
         }
         if (cmdName == QLatin1String("SampleSuctionDual")) {
             return QVariantMap{{QStringLiteral("sampleDurationMs"), QStringLiteral("10000")},
-                               {QStringLiteral("sampleIntervalMs"), QStringLiteral("20")}};
+                               {QStringLiteral("sampleIntervalMs"), QStringLiteral("20")},
+                               {QStringLiteral("minPeakCount"), QStringLiteral("3")},
+                               {QStringLiteral("peakBaselineKpa"), QStringLiteral("-8")},
+                               {QStringLiteral("peakDipStartKpa"), QStringLiteral("-10")}};
         }
         return {};
     }
@@ -1170,10 +1189,17 @@ QVariant readSendParamFromUi(const SendCmdParamUi& uiSchema, QSpinBox* spinBox, 
     }
 }
 
-void fillGateReportTypeCombo(QComboBox* box) {
+void fillGateReportTypeCombo(QComboBox* box, const QStringList& allowedTypes = {}) {
     box->clear();
-    for (const GateTypeDescriptor& t : GateRegistry::allTypeDescriptors())
+    for (const GateTypeDescriptor& t : GateRegistry::allTypeDescriptors()) {
+        if (!allowedTypes.isEmpty() && !allowedTypes.contains(t.reportType))
+            continue;
         box->addItem(t.displayName, t.reportType);
+    }
+    if (box->count() == 0) {
+        for (const GateTypeDescriptor& t : GateRegistry::allTypeDescriptors())
+            box->addItem(t.displayName, t.reportType);
+    }
 }
 
 void fillGateFieldCombo(QComboBox* box, const QString& reportType) {
@@ -1720,8 +1746,11 @@ QVector<TestCaseGate> TestCaseEditDialog::readMultiGatesFromTable() const {
 
 void TestCaseEditDialog::updateGateFieldsEnabled() {
     const bool on = ui->checkBox_gateEnabled->isChecked();
-    ui->label_gateReportType->setVisible(on);
-    ui->comboBox_gateReportType->setVisible(on);
+    // 与上方指令联动且仅一种回包时，回包类型已固定，不再展示「本步回包」行
+    const bool showReportType = on && !gateReportTypeLocked_;
+    ui->label_gateReportType->setVisible(showReportType);
+    ui->comboBox_gateReportType->setVisible(showReportType);
+    ui->comboBox_gateReportType->setEnabled(showReportType);
     if (tableWidget_multiGates_)
         tableWidget_multiGates_->setVisible(on);
     // 单字段控件已统一为表格，全部隐藏
@@ -1796,6 +1825,41 @@ void TestCaseEditDialog::updateSendParamVisibility(bool hasParam) {
     ui->stackedWidget_param->setVisible(hasParam);
 }
 
+void TestCaseEditDialog::syncGateToSendCommand(const QString& preferredReportType, const QString& preferredField) {
+    const TestCaseSendChannel channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
+    const QString protocolOrDevice = comboData(ui->comboBox_productProtocol);
+    const QString cmdName = comboData(ui->comboBox_deviceCmd);
+    const GateSendBinding binding = GateRegistry::bindingForSend(channel, protocolOrDevice, cmdName);
+
+    gateReportTypeLocked_ = (binding.reportTypes.size() == 1);
+    ui->label_gateReportType->setText(binding.reportTypes.isEmpty() ? QStringLiteral("回传数据类型")
+                                                                    : QStringLiteral("本步回包"));
+
+    {
+        QSignalBlocker blocker(ui->comboBox_gateReportType);
+        fillGateReportTypeCombo(ui->comboBox_gateReportType, binding.reportTypes);
+        QString wantType = preferredReportType.trimmed();
+        if (wantType.isEmpty() || comboIndexByData(ui->comboBox_gateReportType, wantType) < 0) {
+            if (!binding.reportTypes.isEmpty())
+                wantType = binding.reportTypes.constFirst();
+        }
+        const int typeIdx = comboIndexByData(ui->comboBox_gateReportType, wantType);
+        if (typeIdx >= 0)
+            ui->comboBox_gateReportType->setCurrentIndex(typeIdx);
+    }
+
+    fillGateFieldCombo(ui->comboBox_gateField, comboData(ui->comboBox_gateReportType));
+    QString wantField = preferredField.trimmed();
+    if (wantField.isEmpty() || comboIndexByData(ui->comboBox_gateField, wantField) < 0)
+        wantField = binding.defaultField;
+    const int fieldIdx = comboIndexByData(ui->comboBox_gateField, wantField);
+    if (fieldIdx >= 0)
+        ui->comboBox_gateField->setCurrentIndex(fieldIdx);
+
+    rebuildMultiGateTable();
+    updateGateFieldsEnabled();
+}
+
 void TestCaseEditDialog::onGateReportTypeChanged(int) {
     fillGateFieldCombo(ui->comboBox_gateField, comboData(ui->comboBox_gateReportType));
     rebuildMultiGateTable();
@@ -1811,6 +1875,7 @@ void TestCaseEditDialog::setFlowContext(const QVector<TestFlowItemEntry>& entrie
 }
 
 void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QString& storageKey) {
+    loadingDefinition_ = true;
     originalCaseName_ = storageKey.trimmed().isEmpty() ? def.meta.name.trimmed() : storageKey.trimmed();
     ui->lineEdit_caseName->setText(def.meta.name);
     ui->lineEdit_mesTag->setText(def.meta.mesTag);
@@ -1891,12 +1956,36 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     ui->checkBox_waitReply->setChecked(def.timing.waitReply);
 
     ui->checkBox_gateEnabled->setChecked(def.gate.enabled);
-    const int typeIdx = comboIndexByData(ui->comboBox_gateReportType, def.gate.reportType);
-    if (typeIdx >= 0)
-        ui->comboBox_gateReportType->setCurrentIndex(typeIdx);
-    onGateReportTypeChanged(0);
-    if (def.gate.enabled)
-        writeMultiGatesToTable(def.gates.isEmpty() ? QVector<TestCaseGate>{def.gate} : def.gates);
+    loadingDefinition_ = false;
+    syncGateToSendCommand(def.gate.reportType, def.gate.field);
+
+    const QString opKey = def.gate.op == TestCaseGateOp::Gt ? QStringLiteral("gt")
+        : def.gate.op == TestCaseGateOp::Lt                 ? QStringLiteral("lt")
+        : def.gate.op == TestCaseGateOp::Eq                 ? QStringLiteral("eq")
+        : def.gate.op == TestCaseGateOp::CompareVersions    ? QStringLiteral("compareVersions")
+                                                            : QStringLiteral("range");
+    const int opIdx = comboIndexByData(ui->comboBox_gateOp, opKey);
+    if (opIdx >= 0)
+        ui->comboBox_gateOp->setCurrentIndex(opIdx);
+
+    ui->lineEdit_gateLow->setText(QString::number(def.gate.low));
+    ui->lineEdit_gateHigh->setText(QString::number(def.gate.high));
+    ui->lineEdit_gateExpected->setText(def.gate.expected);
+    if ((def.gate.reportType == QLatin1String("ProtocolPeriphStateData")
+         || def.gate.reportType == QLatin1String("ProtocolFixturePcbaData")
+         || def.gate.reportType == QLatin1String("ProtocolJieliBtBoxData")
+         || def.gate.reportType == QLatin1String("ProtocolDongleSuctionPeakData"))
+        && !def.gates.isEmpty()) {
+        rebuildMultiGateTable();
+        writeMultiGatesToTable(def.gates);
+    } else if ((def.gate.reportType == QLatin1String("ProtocolPeriphStateData")
+                || def.gate.reportType == QLatin1String("ProtocolFixturePcbaData")
+                || def.gate.reportType == QLatin1String("ProtocolJieliBtBoxData")
+                || def.gate.reportType == QLatin1String("ProtocolDongleSuctionPeakData"))
+               && def.gate.enabled) {
+        rebuildMultiGateTable();
+        writeMultiGatesToTable({def.gate});
+    }
     ui->checkBox_hookEnabled->setChecked(def.hook.enabled);
     const int hookIdx = comboIndexByData(ui->comboBox_hookId, def.hook.hookId);
     if (hookIdx >= 0)
@@ -2028,6 +2117,8 @@ void TestCaseEditDialog::onDeviceCmdChanged(int) {
     const TestCaseSendChannel channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
     const QString cmdName = comboData(ui->comboBox_deviceCmd);
     const QString device = comboData(ui->comboBox_productProtocol);
+    if (!loadingDefinition_)
+        syncGateToSendCommand(QString());
     const SendCmdParamUi uiSchema = sendCmdParamUiForName(cmdName, channel, device);
     const bool hasParam = uiSchema.valid && uiSchema.kind != SendCmdParamKind::None;
     updateSendParamVisibility(hasParam);

@@ -14,7 +14,8 @@ constexpr uint8_t kGet = TestCaseCmdManifest::kSendActionGet;
 const Row kRows[] = {
     // HuilingWfp60h
     {ScpiDeviceRoute::HuilingWfp60h, "ConfigureMeasure", u8"配置测量参数", nullptr, kSet},
-    {ScpiDeviceRoute::HuilingWfp60h, "ReadMeasureCurrent", u8"读取电流测量值", nullptr, kGet},
+    {ScpiDeviceRoute::HuilingWfp60h, "ReadMeasureCurrent", u8"读取电流测量值", nullptr, kGet, "ProtocolMeasureData",
+     "value"},
     {ScpiDeviceRoute::HuilingWfp60h, "ReadMeasureConfiguration", u8"读取测量配置", nullptr, kSet},
     {ScpiDeviceRoute::HuilingWfp60h, "InitializeDevice", u8"初始化设备", nullptr, kSet},
     {ScpiDeviceRoute::HuilingWfp60h, "ConfigureProgrammablePower", u8"配置源通道属性",
@@ -26,18 +27,19 @@ const Row kRows[] = {
     {ScpiDeviceRoute::HuilingWfp60h, "ProgrammablePowerOutput", u8"源通道输出开关",
      u8"int=1开/0关（须先执行配置步骤；输出 ON/OFF 命令复用配置步的 scpiOutputOnCmd/scpiOutputOffCmd）", kSet},
     {ScpiDeviceRoute::HuilingWfp60h, "ReadProgrammableVoltage", u8"读取源电压测量值",
-     u8"复用配置步骤；可选 scpiReadVoltageCmd / visaAddress", kGet},
+     u8"复用配置步骤；可选 scpiReadVoltageCmd / visaAddress", kGet, "ProtocolMeasureData", "value"},
     {ScpiDeviceRoute::HuilingWfp60h, "ReadProgrammableCurrent", u8"读取工作电流（程控电源源电流）",
      u8"复用配置步骤；可选 scpiReadCurrentCmd / visaAddress\n"
      u8"开 Gate 时连续采样：Param_sampleDurationMs(默认用 CommandTimeoutMs/3000)、Param_sampleIntervalMs(默认200)；期间任一值合格即通过",
-     kGet},
+     kGet, "ProtocolMeasureData", "value"},
     {ScpiDeviceRoute::HuilingWfp60h, "InitializeProgrammablePower", u8"初始化源通道",
      u8"复用配置步骤；或填写 visaAddress、voltage/current 及 SCPI 模板", kGet},
     {ScpiDeviceRoute::HuilingWfp60h, "SendRawLine", u8"发送原始命令", u8"原始文本命令", kSet},
 
     // Agilent66319d（程控电源，指令集与会凌电源相同，SCPI 模板不同）
     {ScpiDeviceRoute::Agilent66319d, "ConfigureMeasure", u8"配置测量参数", nullptr, kSet},
-    {ScpiDeviceRoute::Agilent66319d, "ReadMeasureCurrent", u8"读取电流测量值", nullptr, kGet},
+    {ScpiDeviceRoute::Agilent66319d, "ReadMeasureCurrent", u8"读取电流测量值", nullptr, kGet, "ProtocolMeasureData",
+     "value"},
     {ScpiDeviceRoute::Agilent66319d, "ReadMeasureConfiguration", u8"读取测量配置", nullptr, kSet},
     {ScpiDeviceRoute::Agilent66319d, "InitializeDevice", u8"初始化设备", nullptr, kSet},
     {ScpiDeviceRoute::Agilent66319d, "ConfigureProgrammablePower", u8"配置源通道属性",
@@ -49,12 +51,12 @@ const Row kRows[] = {
     {ScpiDeviceRoute::Agilent66319d, "ProgrammablePowerOutput", u8"源通道输出开关",
      u8"int=1开/0关（须先执行配置步骤；输出 ON/OFF 命令复用配置步的 scpiOutputOnCmd/scpiOutputOffCmd）", kSet},
     {ScpiDeviceRoute::Agilent66319d, "ReadProgrammableVoltage", u8"读取源电压测量值",
-     u8"复用配置步骤；可选 scpiReadVoltageCmd / visaAddress", kGet},
+     u8"复用配置步骤；可选 scpiReadVoltageCmd / visaAddress", kGet, "ProtocolMeasureData", "value"},
     {ScpiDeviceRoute::Agilent66319d, "ReadProgrammableCurrent", u8"读取工作电流（程控电源源电流）",
      u8"复用配置步骤；读前按 currentRange 发 scpiSetCurrentRangeCmd\n"
      u8"Param_currentRange=3(工作)/0.02(休眠)；可选 scpiReadCurrentCmd / scpiSetCurrentRangeCmd\n"
      u8"开 Gate 时连续采样：Param_sampleDurationMs(默认 CommandTimeoutMs/3000)、Param_sampleIntervalMs(默认200)；期间任一值合格即通过",
-     kGet},
+     kGet, "ProtocolMeasureData", "value"},
     {ScpiDeviceRoute::Agilent66319d, "InitializeProgrammablePower", u8"初始化源通道",
      u8"复用配置步骤；或填写 visaAddress、voltage/current 及 SCPI 模板", kGet},
     {ScpiDeviceRoute::Agilent66319d, "SendRawLine", u8"发送原始命令", u8"原始文本命令", kSet},

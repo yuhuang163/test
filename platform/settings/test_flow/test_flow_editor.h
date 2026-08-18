@@ -84,6 +84,8 @@ class TestFlowEditor : public QObject {
     void reloadCurrentStation();
     /** 产品型号切换后，按 Mes/Product_Name 刷新工站下拉并切到可用工站。 */
     void onProductNameChanged();
+    /** 与主界面 TestOrderMeta 对齐：刷新工站下拉并加载对应流程（进入编排页/重开设置时调用）。 */
+    void syncFromPersistedSelection();
 
     /** 当前工站流程相对上次保存/加载是否有改动。 */
     bool hasUnsavedChanges() const;

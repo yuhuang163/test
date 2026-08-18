@@ -15,6 +15,8 @@ struct Row {
     const char* uiLabel = nullptr;
     const char* paramHint = nullptr;
     uint8_t sendActions = TestCaseCmdManifest::kSendActionSet;
+    const char* gateReportType = nullptr;
+    const char* gateDefaultField = nullptr;
 };
 
 const Row* rows();
