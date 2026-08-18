@@ -57,7 +57,7 @@ void DongleAtDevice::set(DongleCmd cmd, const QVariant& data) {
         if (state > 1) {
             state = 1;
         }
-        sendAtLine(QStringLiteral("AT+BLELOG=%1\r\n").arg(state));
+        sendAtLine(QStringLiteral("AT+BLERSSILOG=%1\r\n").arg(state));
         break;
     }
     case DongleCmd::GetSuction: {

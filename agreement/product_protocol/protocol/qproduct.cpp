@@ -3,6 +3,8 @@
 #include <QDebug>
 #include <QSerialPort>
 
+#include "qlog.h"
+
 Qproduct::Qproduct(QSerialPort* port, QObject* parent) : QObject(parent), port_(port) {
 }
 
@@ -35,6 +37,8 @@ bool Qproduct::writeRaw(const QByteArray& frame, QString* errorOut) {
         return false;
     }
     const qint64 n = port_->write(frame);
+    // 独立产品日志落盘；同时打进程后台，便于对照指令时序
+    Qlog::saveProductUartLog(logSlot_, 1, frame);
     qDebug().noquote() << "PRODUCT TX:" << QString::fromLatin1(frame.toHex(' ').toUpper());
     if (n != frame.size()) {
         if (errorOut)
@@ -46,8 +50,6 @@ bool Qproduct::writeRaw(const QByteArray& frame, QString* errorOut) {
             *errorOut = QStringLiteral("waitForBytesWritten timeout");
         return false;
     }
-    // 仪器侧原始发包：打 hex 便于与 docs/测试.md 对照
-    qDebug() << "[Qproduct] writeRaw len=" << frame.size() << "hex=" << bytesToHex(frame);
     return true;
 }
 
@@ -87,9 +89,8 @@ double Qproduct::computePer(int instrumentSendCount, int receivedCount) {
 
 void Qproduct::parseCmd(const QByteArray& data) {
     if (!data.isEmpty()) {
+        Qlog::saveProductUartLog(logSlot_, 0, data);
         qDebug().noquote() << "PRODUCT RX:" << QString::fromLatin1(data.toHex(' ').toUpper());
-        // 仪器侧原始收包：打 hex 便于与 docs/测试.md 对照
-        qDebug() << "[Qproduct] parseCmd len=" << data.size() << "hex=" << bytesToHex(data);
         productSerialRxAccum_.append(data);
         scanRxForInstrumentEvents();
     }

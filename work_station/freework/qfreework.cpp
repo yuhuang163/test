@@ -434,12 +434,12 @@ void setupFreeWorkTabBar(QTabWidget* tabWidget) {
     const int minTabWidth = maxTextWidth + hPad;
     // updateMainStyle 之后覆盖全局 QTabBar 规则
     bar->setStyleSheet(QStringLiteral(
-                           "QTabBar::tab {"
+                           "QTabWidget QTabBar::tab {"
                            "  min-width: %1px;"
                            "  padding: 6px 16px;"
                            "  font-size: 14px;"
                            "}"
-                           "QTabBar::tab:selected {"
+                           "QTabWidget QTabBar::tab:selected {"
                            "  font-weight: bold;"
                            "}")
                            .arg(minTabWidth));
@@ -1805,16 +1805,11 @@ void QFreeWork::appendSuctionChartSample(double leftKpa, double rightKpa) {
         suctionRightPeakLow_ = qMin(suctionRightPeakLow_, rightKpa);
     }
 
-    // 采样期间一律不画曲线：低配机上每次光栅化都压在主线程，采样结束由
-    // finalizeSuctionChartPlot 一次性画完整条。此处只累积数据与极值。
-    // 图形展示页没显示时连数值标签都不用刷
-    if (suctionPlot_ && !suctionPlot_->isVisible())
-        return;
-
-    // 数值标签约 2Hz，仅供操作员确认在采数；向量按每个 AT 点全量入库，不降采样
-    constexpr qint64 kLabelThrottleMs = 500;
+    // 约 5Hz 刷 Label/曲线（仅 UI）；向量已按每个 AT 点全量入库，不降采样频率
+    // 与主窗口吸力图一致：约 20Hz，避免 200ms 节流成批跳点
+    constexpr qint64 kUiThrottleMs = 50;
     const qint64 nowMs = suctionChartTimer_.elapsed();
-    if (nowMs - suctionChartLastUiMs_ < kLabelThrottleMs)
+    if (nowMs - suctionChartLastUiMs_ < kUiThrottleMs)
         return;
     suctionChartLastUiMs_ = nowMs;
 

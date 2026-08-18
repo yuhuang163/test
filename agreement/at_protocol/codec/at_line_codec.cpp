@@ -29,6 +29,11 @@ bool AtLineCodec::isPrintableAtLine(const QString& line) const {
     return true;
 }
 
+bool AtLineCodec::isHighFrequencyAtCmd(const QString& cmd) const {
+    return cmd.compare(QStringLiteral("AT+SUCTION_DATA"), Qt::CaseInsensitive) == 0
+           || cmd.compare(QStringLiteral("AT+TEMP_DATA"), Qt::CaseInsensitive) == 0;
+}
+
 void AtLineCodec::feed(const QByteArray& chunk, const FrameHandler& onFrame) {
     for (char c : chunk) {
         dataQueue_.push_back(c);
@@ -62,8 +67,8 @@ void AtLineCodec::feed(const QByteArray& chunk, const FrameHandler& onFrame) {
                 cangonext_ = 0;
                 const QString atLine = parameter_.isEmpty() ? cmd_ + "\r\n" : cmd_ + "=" + parameter_ + "\r\n";
                 if (isPrintableAtLine(atLine)) {
-                    // 吸力上报 50Hz，逐行 qDebug 会把主线程压在日志落盘上；原始字节另存 dongle 的log
-                    if (cmd_ != QStringLiteral("AT+SUCTION_DATA"))
+                    // 流式数据帧只分发业务，不打 AT RX（否则约 30ms/条刷进程日志导致界面无响应）
+                    if (!isHighFrequencyAtCmd(cmd_))
                         qDebug().noquote() << "AT RX:" << atLine.trimmed();
                     if (onFrame)
                         onFrame({cmd_, parameter_});
@@ -89,7 +94,7 @@ void AtLineCodec::feed(const QByteArray& chunk, const FrameHandler& onFrame) {
                 cangonext_ = 0;
                 const QString atLine = parameter_.isEmpty() ? cmd_ + "\r\n" : cmd_ + "=" + parameter_ + "\r\n";
                 if (isPrintableAtLine(atLine)) {
-                    if (cmd_ != QStringLiteral("AT+SUCTION_DATA"))
+                    if (!isHighFrequencyAtCmd(cmd_))
                         qDebug().noquote() << "AT RX:" << atLine.trimmed();
                     if (onFrame)
                         onFrame({cmd_, parameter_});

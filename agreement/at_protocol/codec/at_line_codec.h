@@ -20,6 +20,8 @@ class AtLineCodec {
 
   private:
     bool isPrintableAtLine(const QString& line) const;
+    /** 吸力/温度流式上报：不打 AT RX 日志，避免久跑刷盘卡 UI */
+    bool isHighFrequencyAtCmd(const QString& cmd) const;
 
     enum class State {
         Idle,

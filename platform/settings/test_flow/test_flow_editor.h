@@ -102,7 +102,7 @@ class TestFlowEditor : public QObject {
     void runStepRequested(const QString& stationKey, const QString& caseName);
 
   private:
-    void refreshStationCombo(const QString& selectKey = QString());
+    void refreshStationCombo(const QString& selectKey = QString(), bool keepOutOfProductStation = true);
     void promptAddFlowStation();
     void promptRenameCurrentFlowStation();
     void promptCopyCurrentFlowStation();

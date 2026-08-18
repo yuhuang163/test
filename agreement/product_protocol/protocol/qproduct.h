@@ -36,6 +36,14 @@ class Qproduct : public QObject {
 
     explicit Qproduct(QSerialPort* port, QObject* parent = nullptr);
 
+    /** 工位号，用于产品串口日志分文件；工站构造后设置 */
+    void setLogSlot(int slot) {
+        logSlot_ = slot;
+    }
+    int logSlot() const {
+        return logSlot_;
+    }
+
     QSerialPort* serialPort() const {
         return port_;
     }
@@ -114,6 +122,7 @@ class Qproduct : public QObject {
     void scanRxForInstrumentEvents();
 
     QSerialPort* port_ = nullptr;
+    int logSlot_ = 0;
     QByteArray productSerialRxAccum_;
     bool emittedAckReset_ = false;
     bool emittedAckStart_ = false;

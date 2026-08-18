@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 
+#include <QAbstractItemView>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QGroupBox>
@@ -14,7 +15,12 @@
 #include <QPushButton>
 #include <QRandomGenerator>
 #include <QSlider>
+#include <QFrame>
+#include <QScrollArea>
+#include <QSet>
 #include <QTabBar>
+#include <QTableView>
+#include <QTabWidget>
 #include <QVBoxLayout>
 #include <QtConcurrent>
 
@@ -43,6 +49,200 @@ extern "C" // 由于是C版的dll文件，在C++中引入其头文件要加exter
 #include "lib/nfc/dcrf32.h"
 }
 QByteArray allPackets;
+
+namespace {
+
+const QSet<QString>& debugTabPagesWithoutScroll() {
+    static const QSet<QString> pages = {
+        QStringLiteral("tab_dongle_suction"),
+        QStringLiteral("tab_11"),
+    };
+    return pages;
+}
+
+void wrapDebugTabPageInScrollArea(QTabWidget* tabWidget) {
+    if (!tabWidget)
+        return;
+    for (int i = 0; i < tabWidget->count(); ++i) {
+        QWidget* page = tabWidget->widget(i);
+        if (!page || page->property("debugScrollWrapped").toBool())
+            continue;
+        if (debugTabPagesWithoutScroll().contains(page->objectName()))
+            continue;
+
+        const QString title = tabWidget->tabText(i);
+        tabWidget->removeTab(i);
+
+        auto* scroll = new QScrollArea(tabWidget);
+        scroll->setObjectName(QStringLiteral("debugTabScrollArea"));
+        scroll->setWidgetResizable(true);
+        scroll->setFrameShape(QFrame::NoFrame);
+        scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+        scroll->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+        scroll->setWidget(page);
+        tabWidget->insertTab(i, scroll, title);
+        page->setProperty("debugScrollWrapped", true);
+    }
+}
+
+constexpr int kDebugCompactMargin = 4;
+constexpr int kDebugCompactMarginTop = 2;
+constexpr int kDebugCompactSpacing = 4;
+
+bool debugGroupBoxKeepsVerticalExpand(const QGroupBox* box) {
+    if (!box)
+        return false;
+    if (box->findChild<QCustomPlot*>() || box->findChild<QSplitter*>())
+        return true;
+    if (box->findChild<QTableView*>())
+        return true;
+    return box->findChild<QWidget*>(QStringLiteral("dongleSuctionPlotHost")) != nullptr;
+}
+
+void compactLayoutsInWidgetTree(QWidget* root) {
+    if (!root)
+        return;
+    for (QLayout* layout : root->findChildren<QLayout*>()) {
+        layout->setContentsMargins(kDebugCompactMargin, kDebugCompactMarginTop, kDebugCompactMargin,
+                                   kDebugCompactMargin);
+        layout->setSpacing(kDebugCompactSpacing);
+    }
+    for (QGroupBox* box : root->findChildren<QGroupBox*>()) {
+        box->setFlat(true);
+        if (!debugGroupBoxKeepsVerticalExpand(box))
+            box->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    }
+}
+
+void pinDebugTabPageToTop(QTabWidget* tabWidget) {
+    if (!tabWidget)
+        return;
+    for (int i = 0; i < tabWidget->count(); ++i) {
+        QWidget* tabPage = tabWidget->widget(i);
+        if (auto* scroll = qobject_cast<QScrollArea*>(tabPage)) {
+            scroll->setWidgetResizable(false);
+            scroll->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+            tabPage = scroll->widget();
+        }
+        if (!tabPage || !tabPage->layout())
+            continue;
+        if (debugTabPagesWithoutScroll().contains(tabPage->objectName()))
+            continue;
+        tabPage->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
+        tabPage->layout()->setSizeConstraint(QLayout::SetMinAndMaxSize);
+    }
+}
+
+/** SetMinAndMaxSize 会把 ComboBox 压到极窄，下拉列表宽度跟随控件导致选项被省略。 */
+void fitDebugComboBoxWidths(QWidget* root) {
+    if (!root)
+        return;
+    for (QComboBox* combo : root->findChildren<QComboBox*>()) {
+        if (combo->count() <= 0)
+            continue;
+        combo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+        const QFontMetrics fm(combo->font());
+        int maxTextWidth = 0;
+        for (int i = 0; i < combo->count(); ++i)
+            maxTextWidth = qMax(maxTextWidth, fm.horizontalAdvance(combo->itemText(i)));
+        const int minWidth = maxTextWidth + 36; // 下拉箭头与左右留白
+        combo->setMinimumWidth(minWidth);
+        if (QAbstractItemView* view = combo->view()) {
+            view->setMinimumWidth(minWidth);
+            view->setTextElideMode(Qt::ElideNone);
+        }
+    }
+}
+
+} // namespace
+
+void MainWindow::initDebugTabChrome() {
+    if (!ui->tabWidget)
+        return;
+    ui->tabWidget->setObjectName(QStringLiteral("tabWidget_debugOuter"));
+    ui->tabWidget->setUsesScrollButtons(true);
+    ui->tabWidget->setDocumentMode(true);
+    QTabBar* outerBar = ui->tabWidget->tabBar();
+    outerBar->setElideMode(Qt::ElideRight);
+    outerBar->setDrawBase(false);
+    outerBar->setExpanding(false);
+
+    for (QTabWidget* inner : ui->tabWidget->findChildren<QTabWidget*>()) {
+        if (inner == ui->tabWidget)
+            continue;
+        inner->setObjectName(QStringLiteral("tabWidget_debugInner"));
+        inner->setDocumentMode(true);
+        inner->setUsesScrollButtons(true);
+        QTabBar* bar = inner->tabBar();
+        bar->setElideMode(Qt::ElideRight);
+        bar->setDrawBase(false);
+        bar->setExpanding(false);
+    }
+}
+
+void MainWindow::initDebugTabLayout() {
+    if (ui->horizontalLayout_45) {
+        ui->horizontalLayout_45->setStretch(0, 1);
+        ui->horizontalLayout_45->setStretch(1, 5);
+    }
+    if (ui->verticalLayout_10) {
+        ui->verticalLayout_10->setStretch(0, 0);
+        ui->verticalLayout_10->setStretch(1, 0);
+        ui->verticalLayout_10->setStretch(2, 1);
+    }
+    if (ui->splitter_3) {
+        ui->splitter_3->setStretchFactor(0, 1);
+        ui->splitter_3->setStretchFactor(1, 4);
+        ui->splitter_3->setSizes({160, 640});
+    }
+    if (ui->splitter_2) {
+        ui->splitter_2->setStretchFactor(0, 3);
+        ui->splitter_2->setStretchFactor(1, 2);
+        ui->splitter_2->setSizes({360, 240});
+    }
+    if (ui->splitter) {
+        ui->splitter->setStretchFactor(0, 1);
+        ui->splitter->setStretchFactor(1, 1);
+    }
+
+    if (!ui->tabWidget)
+        return;
+    for (QTabWidget* inner : ui->tabWidget->findChildren<QTabWidget*>()) {
+        if (inner == ui->tabWidget)
+            continue;
+        wrapDebugTabPageInScrollArea(inner);
+        pinDebugTabPageToTop(inner);
+        inner->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    }
+    ui->tabWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    pinDebugTabPageToTop(ui->tabWidget_ota);
+    compactLayoutsInWidgetTree(ui->tabWidget);
+    compactLayoutsInWidgetTree(ui->groupBox_5);
+    compactLayoutsInWidgetTree(ui->verticalGroupBox);
+    compactLayoutsInWidgetTree(ui->groupBox_11);
+    compactLayoutsInWidgetTree(ui->groupBox_2);
+    if (ui->groupBox_7 && ui->groupBox_7->layout()) {
+        ui->groupBox_7->layout()->setContentsMargins(kDebugCompactMargin, kDebugCompactMarginTop,
+                                                     kDebugCompactMargin, kDebugCompactMargin);
+        ui->groupBox_7->layout()->setSpacing(kDebugCompactSpacing);
+    }
+    fitDebugComboBoxWidths(ui->tabWidget);
+}
+
+void MainWindow::applyDebugOtaTabVisibility() {
+    if (!ui->tabWidget_ota || !ui->tab_7)
+        return;
+    for (int i = 0; i < ui->tabWidget_ota->count(); ++i) {
+        QWidget* tabPage = ui->tabWidget_ota->widget(i);
+        if (auto* scroll = qobject_cast<QScrollArea*>(tabPage))
+            tabPage = scroll->widget();
+        if (tabPage != ui->tab_7)
+            continue;
+        ui->tabWidget_ota->setTabVisible(i, SETTINGS.value("SYSTEM/ShowLocalOTAFunc").toBool());
+        break;
+    }
+}
 
 void MainWindow::on_pushButton_clicked() {
     // int* p = nullptr;
@@ -122,7 +322,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     ui->setupUi(this);
     initDongleSuctionChart();
     initQaiotFeatureButtons();
-    ui->tabWidget->tabBar()->setElideMode(Qt::ElideRight);
+    initDebugTabChrome();
+    initDebugTabLayout();
     protocolManager.bindQpb(pb);
     protocolManager.bindQfctp(qfctp);
     protocolManager.bindQaiot(qaiot);
@@ -164,9 +365,6 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     ui->ble_test_result->setText("BLE:WAIT");
     ui->ble_test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  "
                                        "border-radius: 10px; padding: 10px; text-align: center; ");
-    ui->test_result->setText("WAIT");
-    ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  "
-                                   "border-radius: 10px; padding: 10px; text-align: center; ");
     // this->setCentralWidget(ui->tabWidget);
     ui->local_ota_result->setText("OTA");
     ui->local_ota_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  "
@@ -373,14 +571,6 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     RssiTestTime = SETTINGS.value("BLE/RssiCount").toInt();
 
     standbattary = SETTINGS.value("BATTARY/standbattary").toDouble();
-    QRegExp regExp("[0-9]{1,},[0-9]{1,},[0-9]{1,},[0-9]{1,},[0-9]{1,},[0-9]{1,}");
-    QValidator* validator = new QRegExpValidator(regExp, this);
-    ui->brushTime->setValidator(validator);
-    ui->pressureTime->setValidator(validator);
-    ui->horizalBrushTime->setValidator(validator);
-    ui->dateTimeBrushSet->setDateTime(QDateTime::currentDateTime());
-    ui->startDateTime->setDateTime(QDateTime::currentDateTime());
-    ui->endDateTime->setDateTime(QDateTime::currentDateTime());
     // comNameCombo = new QComboBox(ui->toolBar);
     // ui->toolBar->addWidget(comNameCombo);
     // comNameCombo->clear();
@@ -391,11 +581,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     //  }
 
     ui->progressBar->hide();
-    {
-        const int otaTabIdx = ui->tabWidget->indexOf(ui->tab_7);
-        if (otaTabIdx >= 0)
-            ui->tabWidget->setTabVisible(otaTabIdx, SETTINGS.value("SYSTEM/ShowLocalOTAFunc").toBool());
-    }
+    applyDebugOtaTabVisibility();
 
 
 
@@ -1253,7 +1439,6 @@ void MainWindow::updateImageOnMainThread() {
     processTheDatagram(pictureByteArray); // 显示图片
 }
 MainWindow::~MainWindow() {
-    is_motor_continue = false;
     isimuCaliContinue = false;
     isrssiContinue = false;
     isWifiOtaContinue = false;
@@ -1305,47 +1490,6 @@ void MainWindow::openDongleSerialPort() {
 void MainWindow::closeDongleSerialPort() {
     dongleSerialChannel_->close();
     emit send_dongle_serialPort_state(0);
-}
-
-void MainWindow::on_clear_scan_clicked() {
-    ui->mac_combo->clear();
-    deviceMap.clear();
-}
-
-void MainWindow::on_mac_combo_textActivated(const QString& arg1) {
-    ui->log->clear();
-    ui->msgEdit->clear();
-    if (!dongleSerialPort->isOpen()) {
-        on_connectButton_clicked();
-    }
-    // 检查是否是mac格式
-    QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
-    // 使用正则表达式匹配
-    if (!macRegex.match(arg1).hasMatch()) {
-        QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
-        return;
-    } else {
-        macAddress = arg1;
-        at->set(DongleCmd::BleScanConnect, macAddress); // 发送mac地址
-        qDebug() << macAddress;
-        bindingMacSn(macAddress, snBinding);
-        if (!ui->is_just_banding->checkState())
-            on_motor_cali_clicked();
-    }
-}
-
-void MainWindow::on_snbanding_returnPressed() {
-    qDebug() << "on_snbanding_returnPressed";
-    ui->test_result->setText("WAIT");
-    ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  "
-                                   "border-radius: 10px; padding: 10px; text-align: center; ");
-
-    if (!dongleSerialPort->isOpen()) {
-        on_connectButton_clicked();
-    }
-    snBinding = ui->snbanding->text();
-    at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00"); // 发送mac地址
-    ui->snbanding->clear();
 }
 
 void MainWindow::on_getMac_returnPressed() {
@@ -1528,45 +1672,6 @@ void MainWindow::on_exitBurningMode_clicked() {
     m["switch"] = static_cast<int>(FacSwitch_CLOSE);
     protocolManager.set(DeviceCmd::BurningMode, m);
     showlog("已退出老化模式");
-}
-void MainWindow::on_pushButton_2_clicked() {
-    FacSetBrushRecord record;
-
-    // specialmode 1641600010 0 120000 0 5000 0 0 0 1000 0 0 0 0 1500 1000 0 0 0
-    // 0 1000
-    QRegularExpression regex("(\\d+)");
-    QRegularExpressionMatchIterator matchIterator = regex.globalMatch(ui->lineEdit->text());
-    QList<int> data;
-    while (matchIterator.hasNext()) {
-        QRegularExpressionMatch match = matchIterator.next();
-        QString number = match.captured(1);
-        data << number.toInt();
-    }
-
-    if (data.size() == 20) {
-        record.timestamp = data[0];
-        record.plaque = data[1];
-        int n = 2;
-        for (int i = 0; i < 6; i++) {
-            record.work_time.bytes[i] = data[n++];
-        }
-
-        for (int i = 0; i < 6; i++) {
-            record.pressure_time.bytes[i] = data[n++];
-        }
-
-        for (int i = 0; i < 6; i++) {
-            record.horizon_brush.bytes[i] = data[n++];
-        }
-        record.work_time.size = 24;
-        record.pressure_time.size = 12;
-        record.horizon_brush.size = 12;
-        protocolManager.set(DeviceCmd::BrushRecord, QVariant::fromValue(record));
-
-        ui->msgTest->appendPlainText("发送时间:" + CommonUtils::isoDateTime());
-    } else {
-        ui->msgTest->appendPlainText("输入错误");
-    }
 }
 
 void MainWindow::on_music_play_clicked() {
@@ -1822,25 +1927,6 @@ void MainWindow::on_start_wifible_test_clicked() {
     }
 }
 
-void MainWindow::on_setTimePushButton_clicked() {
-    int timestamp = ui->dateTimeBrushSet->dateTime().toSecsSinceEpoch();
-    protocolManager.set(DeviceCmd::BrushTime, timestamp);
-}
-
-void MainWindow::on_resetPushButton_clicked() {
-    protocolManager.set(DeviceCmd::BrushReset);
-}
-void MainWindow::on_sendBrushDataPushButton_clicked() {
-    sendBrushData(false);
-}
-
-void MainWindow::on_sendRandomData_clicked() {
-    sendBrushData(true);
-}
-
-void MainWindow::on_clearDataPushButton_clicked() {
-    ui->msgTest->clear();
-}
 void MainWindow::on_imuCaliButton_clicked() // 编写六轴校准的代码
 {
     ui->imuCaliButton->setEnabled(false);
@@ -1974,177 +2060,6 @@ void MainWindow::on_close_imu_collect_clicked() {
 
 void MainWindow::on_open_imu_collect_clicked() {
     protocolManager.set(DeviceCmd::ImuCollect, static_cast<int>(FacSwitch_START));
-}
-
-void MainWindow::on_motor_cali_clicked() {
-    QMessageBox::StandardButton reply;
-    is_motor_continue = true;
-    motorstate = STATE_IDLE;
-    uint32_t value;
-    while (is_motor_continue) {
-        switch (motorstate) {
-        case STATE_IDLE: // 复位一切
-            showlog("开始测试");
-            protocolManager.resetAllPb();
-            at->resetConnected();
-            // refreshBleState(0);
-            stringsn = "";
-            motorresult = passValue;
-            motorstate = STATE_WATI_CONNECT;
-            break;
-        case STATE_WATI_CONNECT:
-            if (at->getConnected()) {
-                motorstate = STATE_DISABLE_SLEEP_1;
-                showlog("蓝牙已连接");
-            }
-            break;
-
-        case STATE_DISABLE_SLEEP_1:
-            if (protocolManager.getState(static_cast<int>(Qpb::PbStateType::DisableSleep))) {
-                showlog("已进入禁止休眠模式");
-
-                on_getBasicInfoButton_clicked();
-                waitWork(100);
-                on_getperipheralButton_clicked();
-                waitWork(100);
-
-                if (ui->is_sero_motor->checkState()) {
-                    bool ok = false;
-                    value = ui->pcba_motor_cali_param->text().mid(0, 8).toUInt(&ok, 16); // 将十六进制字符串转换为
-                    if (ok) {
-                        qDebug() << value; // 输出 38822029，即十六进制字符串
-                                           // "003bdf6d" 对应的数值
-                    } else {
-                        qDebug() << "Invalid input string";
-                    }
-
-                    protocolManager.set(DeviceCmd::MotorCaliResultParam, value);
-
-                    motorstate = MOTOR_CALI_DATA_SET;
-
-                } else {
-                    protocolManager.setState(static_cast<int>(Qpb::PbStateType::MotorCaliDataSet), 1);
-                    motorstate = MOTOR_CALI_DATA_SET;
-                }
-
-            } else {
-                waitWork(500);
-                protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
-                showlog("已重发禁止休眠");
-            }
-            break;
-
-        case MOTOR_CALI_DATA_SET:
-            if (protocolManager.getState(static_cast<int>(Qpb::PbStateType::MotorCaliDataSet))) {
-                if (ui->is_test_camera->checkState()) {
-                    motorstate = CAMERA_TEST;
-                    protocolManager.set(DeviceCmd::ScreenCameraState, 1);
-                } else {
-                    if (ui->is_sero_motor->checkState()) {
-                        protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2f, 190}));
-                    } else {
-                        protocolManager.set(DeviceCmd::MotorParam, QVariantList{270, 60});
-                        protocolManager.set(DeviceCmd::MotorState, 1);
-                    }
-                    showlog("已经发送电机测试指令");
-                    motorstate = MOTOR_TESTING;
-                }
-            } else {
-                protocolManager.set(DeviceCmd::MotorCaliResultParam, value);
-                showlog("已重发电机校准参数");
-                waitWork(500);
-            }
-            break;
-
-        case CAMERA_TEST:
-            waitWork(500);
-            if (protocolManager.getState(static_cast<int>(Qpb::PbStateType::CameraControl))) {
-                reply =
-                    QMessageBox::question(this, "摄像头测试", "摄像头正常吗？", QMessageBox::Yes | QMessageBox::No);
-                if (reply == QMessageBox::No) {
-                    motorresult = failValue;
-                }
-                showlog("已经发送电机测试指令");
-                if (ui->is_sero_motor->checkState()) {
-                    protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2f, 190}));
-                } else {
-                    protocolManager.set(DeviceCmd::MotorParam, QVariantList{270, 60});
-                    protocolManager.set(DeviceCmd::MotorState, 1);
-                }
-                motorstate = MOTOR_TESTING;
-            } else {
-                waitWork(500);
-
-                protocolManager.set(DeviceCmd::ScreenCameraState, 1);
-                showlog("已重发开启摄像头");
-            }
-            break;
-        case MOTOR_TESTING:
-            if (protocolManager.getState(static_cast<int>(Qpb::PbStateType::MotorParamSet)) ||
-                protocolManager.getState(static_cast<int>(Qpb::PbStateType::MotorTestState))) {
-                reply = QMessageBox::question(this, "电机测试", "电机正常吗？", QMessageBox::Yes | QMessageBox::No);
-                if (reply == QMessageBox::No) {
-                    motorresult = failValue;
-                }
-                motorstate = STATE_SAVE_RESULT;
-            } else {
-                waitWork(500);
-                if (ui->is_sero_motor->checkState()) {
-                    protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{14, 12, 5.2f, 190}));
-                } else {
-                    protocolManager.set(DeviceCmd::MotorParam, QVariantList{270, 60});
-                    protocolManager.set(DeviceCmd::MotorState, 1);
-                }
-            }
-            break;
-
-        case STATE_SAVE_RESULT:
-
-            if (motorresult == passValue) {
-                QString mesresult = "PASS";
-                save_motor_to_csv(stringsn, macAddress, mesresult);
-                QString itemvalue = QString("|MOTOR_TEST:PASS|");
-                ui->test_result->setText("PASS");
-                ui->test_result->setStyleSheet("font-size: 33px; background-color: #00FF00; color: black; "
-                                               "border: 2px solid #00FF00; border-radius: 10px; padding: "
-                                               "10px; text-align: center;");
-            } else if (motorresult == failValue) {
-                ui->test_result->setText("FAIL");
-                ui->test_result->setStyleSheet("font-size: 33px; background-color: #FF0000; color: black; "
-                                               "border: 2px solid #FF0000; border-radius: 10px; padding: "
-                                               "10px; text-align: center; ");
-            }
-
-            waitWork(500);
-
-            if (ui->is_sero_motor->checkState()) {
-                protocolManager.set(DeviceCmd::SevorMotorParam, QVariant::fromValue(SevorMotorParamPayload{0, 0, 0, 0}));
-            } else {
-                protocolManager.set(DeviceCmd::MotorState, 0);
-            }
-
-            waitWork(500);
-            protocolManager.set(DeviceCmd::Sleep, static_cast<int>(FacSwitch_OPEN));
-            waitWork(500);
-            protocolManager.set(DeviceCmd::Sleep, static_cast<int>(FacSwitch_OPEN));
-            waitWork(500);
-            protocolManager.set(DeviceCmd::Sleep, static_cast<int>(FacSwitch_OPEN));
-            stringsn = "";
-            ui->macInput->clear();
-            // ui->macInput->setFocus();
-            waitWork(500);
-            at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00"); // 发送mac地址
-            waitWork(50);
-            on_disconnectButton_clicked();
-            showlog("测试结束");
-            is_motor_continue = false;
-
-            motorstate = STATE_IDLE;
-            break;
-        }
-
-        QCoreApplication::processEvents();
-    }
 }
 
 void MainWindow::on_bleTestPushButton_clicked() {
@@ -2311,31 +2226,8 @@ void MainWindow::on_otaTestPushButton_clicked() {
 
 void MainWindow::on_configWifiPushButton_clicked() {
 }
-void MainWindow::on_end_motor_cali_clicked() {
-    qDebug() << "on_end_motor_cali_clicked";
-    is_motor_continue = false;
-    motorstate = STATE_IDLE;
-    at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00"); // 发送mac地址
-}
 void MainWindow::on_getInfoPushButton_clicked() {
     protocolManager.get(DeviceCmd::ConnectInfo);
-}
-
-void MainWindow::on_start_scan_clicked() {
-    qDebug() << "on_start_scan_clicked";
-    ui->test_result->setText("WAIT");
-    ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  "
-                                   "border-radius: 10px; padding: 10px; text-align: center; ");
-
-    if (!dongleSerialPort->isOpen()) {
-        on_connectButton_clicked();
-    }
-    snBinding = ui->snbanding->text();
-    at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00"); // 发送mac地址
-    ui->mac_combo->clear();
-    deviceMap.clear();
-    on_motor_cali_clicked();
-    showlog("已经触发");
 }
 
 void MainWindow::on_enterwhitemode_clicked() {
@@ -3853,22 +3745,6 @@ void MainWindow::on_open_motor_adc_switch_clicked() {
     protocolManager.set(DeviceCmd::MotorAdcSwitch, 1);
 }
 
-void MainWindow::on_downloadapp_clicked() {
-    // QString url = "http://163.177.79.53:16888/versions/Readme.md";  // 替换为实际文件的URL
-    // QString fileName = QFileInfo(url).fileName();
-    // QString savePath = "./" + fileName;
-    // downloadMyApp(url, savePath);
-
-    checkAndUpdateFile();
-}
-
-void MainWindow::on_uploadapp_clicked() {
-    QDateTime currentDateTime = QDateTime::currentDateTime();
-
-    uploadFile("./new_production_" + currentDateTime.toString("yyyyMMdd") + ".exe",
-               "http://163.177.79.53:16888/versions/");
-}
-
 void MainWindow::on_delefile_clicked() {
     deleteFile("http://163.177.79.53:16888/Readme.md");
 }
@@ -4635,7 +4511,10 @@ void MainWindow::on_ship_bomb_clicked() {
     bomb.insert(QStringLiteral("deviceName"), ui->bombname->text());
     bomb.insert(QStringLiteral("rssi"), ui->bombrssi->text());
     bomb.insert(QStringLiteral("connectionInterval"), ui->bombinterval->text());
-    bomb.insert(QStringLiteral("command"), QStringLiteral("0008021a0408051001e6"));
+    // 指令可改：默认保持历史船运载荷；空则不下发空 command
+    const QString command = ui->bombcommand->text().trimmed();
+    bomb.insert(QStringLiteral("command"),
+                command.isEmpty() ? QStringLiteral("0008021a0408051001e6") : command);
     at->set(DongleCmd::Bomb, bomb);
 
     protocolManager.setShipCount(1);
@@ -5337,6 +5216,8 @@ void MainWindow::updateDongleSuctionPeakMonitorLabels() {
                                .arg(m.missedPeakCount)
                                .arg(m.weakPeakCount));
     }
+    updateDongleSuctionPlotOverlay(dongleSuctionPlot_);
+    updateDongleSuctionPlotOverlay(dongleSuctionPlotPopup_);
 }
 
 void MainWindow::updateDongleSuctionChannelPeakMonitor(int chIndex, double kpa, double tSec, QString& eventOut) {
@@ -5453,7 +5334,8 @@ bool MainWindow::startDongleSuctionCsvLog() {
     dongleSuctionCsvStream_.setCodec("UTF-8");
     // QTextStream 在 Windows 会把 \n 转成 \r\n，勿再手写 \r\n，否则变成 \r\r\n 空行
     dongleSuctionCsvStream_ << QStringLiteral("time_s,ch1_kpa,ch2_kpa,ch3_kpa\n");
-    dongleSuctionCsvStream_.flush();
+    dongleSuctionCsvRowsSinceFlush_ = 0;
+    flushDongleSuctionCsvPending();
 
     if (ui->dongleSuctionCsvPathLabel)
         ui->dongleSuctionCsvPathLabel->setText(QStringLiteral("CSV：%1").arg(dongleSuctionCsvPath_));
@@ -5465,13 +5347,20 @@ void MainWindow::stopDongleSuctionCsvLog() {
     if (!dongleSuctionCsvFile_.isOpen())
         return;
 
-    dongleSuctionCsvStream_.flush();
+    flushDongleSuctionCsvPending();
     dongleSuctionCsvFile_.close();
     dongleSuctionCsvStream_.setDevice(nullptr);
+    dongleSuctionCsvRowsSinceFlush_ = 0;
 
     showlog(QStringLiteral("Dongle 吸力 CSV 已保存：%1（有效峰/漏峰/弱峰 见页内统计）").arg(dongleSuctionCsvPath_));
     if (ui->dongleSuctionCsvPathLabel)
         ui->dongleSuctionCsvPathLabel->setText(QStringLiteral("CSV 已保存：%1").arg(dongleSuctionCsvPath_));
+}
+
+void MainWindow::flushDongleSuctionCsvPending() {
+    if (dongleSuctionCsvFile_.isOpen())
+        dongleSuctionCsvStream_.flush();
+    dongleSuctionCsvRowsSinceFlush_ = 0;
 }
 
 void MainWindow::writeDongleSuctionCsvRow(double tSec, double ch1Kpa, double ch2Kpa, double ch3Kpa) {
@@ -5480,32 +5369,111 @@ void MainWindow::writeDongleSuctionCsvRow(double tSec, double ch1Kpa, double ch2
     dongleSuctionCsvStream_ << QString::number(tSec, 'f', 3) << QLatin1Char(',') << QString::number(ch1Kpa, 'f', 3)
                               << QLatin1Char(',') << QString::number(ch2Kpa, 'f', 3) << QLatin1Char(',')
                               << QString::number(ch3Kpa, 'f', 3) << QLatin1Char('\n');
-    dongleSuctionCsvStream_.flush();
+    if (++dongleSuctionCsvRowsSinceFlush_ >= kDongleSuctionCsvFlushEveryRows)
+        flushDongleSuctionCsvPending();
 }
 
 void MainWindow::setupDongleSuctionPlotWidget(QCustomPlot* plot) {
     if (!plot)
         return;
-    plot->legend->setVisible(true);
     while (plot->graphCount() < 3)
         plot->addGraph();
     plot->graph(0)->setPen(QPen(QColor(30, 120, 220), 2));
-    plot->graph(0)->setName(QStringLiteral("第一通道"));
+    plot->graph(0)->setName(QStringLiteral("CH1"));
     plot->graph(1)->setPen(QPen(QColor(220, 80, 50), 2));
-    plot->graph(1)->setName(QStringLiteral("第二通道"));
+    plot->graph(1)->setName(QStringLiteral("CH2"));
     plot->graph(2)->setPen(QPen(QColor(50, 160, 80), 2));
-    plot->graph(2)->setName(QStringLiteral("第三通道"));
+    plot->graph(2)->setName(QStringLiteral("CH3"));
+
+    // 图例放到曲线区下方，避免遮挡波形
+    if (plot->legend && plot->axisRect() && plot->plotLayout()) {
+        if (plot->legend->layout() == plot->axisRect()->insetLayout()) {
+            plot->axisRect()->insetLayout()->take(plot->legend);
+            plot->plotLayout()->addElement(1, 0, plot->legend);
+            plot->plotLayout()->setRowStretchFactor(0, 1);
+            plot->plotLayout()->setRowStretchFactor(1, 0.01);
+        }
+        plot->legend->setVisible(true);
+        plot->legend->setBorderPen(QPen(QColor(120, 120, 120, 50)));
+        // 高透明底，避免挡视线
+        plot->legend->setBrush(QBrush(QColor(255, 255, 255, 40)));
+        plot->legend->setSelectedBrush(QBrush(QColor(255, 255, 255, 40)));
+        plot->legend->setFillOrder(QCPLegend::foColumnsFirst, true);
+        plot->legend->setWrap(3);
+        QFont f = font();
+        f.setPointSize(8);
+        plot->legend->setFont(f);
+        plot->legend->setTextColor(QColor(20, 20, 20, 200));
+    }
+
     const double xInit = dongleSuctionXWindowSec();
     double yMin = -40.0;
     double yMax = 0.0;
     dongleSuctionYAxisRange(yMin, yMax);
-    // 全程曲线：横轴为从开始计时起的绝对时间，不再裁「最近 N 秒」
+    // 横轴为绝对时间；跟随时滑动 X 窗口，拖拽/滚轮后可查看全程
     plot->xAxis->setLabel(QStringLiteral("时间(s)"));
     plot->yAxis->setLabel(QStringLiteral("吸力(kPa)"));
     plot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
     plot->xAxis->setRange(0, xInit);
     plot->yAxis->setRange(yMin, yMax);
+    bindDongleSuctionPlotXRangeFollow(plot);
     applyDongleSuctionAxisTickResolution(plot);
+}
+
+void MainWindow::bindDongleSuctionPlotXRangeFollow(QCustomPlot* plot) {
+    if (!plot)
+        return;
+    // 避免重复 connect（弹窗 plot 每次新建，主图只绑一次）
+    if (plot->property("dongleSuctionXFollowBound").toBool())
+        return;
+    plot->setProperty("dongleSuctionXFollowBound", true);
+    connect(plot->xAxis, QOverload<const QCPRange&>::of(&QCPAxis::rangeChanged), this,
+            [this](const QCPRange& range) { syncDongleSuctionFollowStateFromUserRange(range); });
+}
+
+void MainWindow::syncDongleSuctionFollowStateFromUserRange(const QCPRange& range) {
+    if (dongleSuctionApplyingXRange_)
+        return;
+    if (dongleSuctionChartTimeSec_.isEmpty()) {
+        dongleSuctionChartFollowLatest_ = true;
+        return;
+    }
+    const double tSec = dongleSuctionChartTimeSec_.last();
+    const double win = dongleSuctionXWindowSec();
+    const double followUpper = tSec > win ? tSec : win;
+    const double eps = qMax(0.2, win * 0.03);
+    const bool atLiveEdge = range.upper >= followUpper - eps;
+    const bool nearWindowWidth = range.size() <= win * 1.2 && range.size() >= win * 0.8;
+    if (atLiveEdge && nearWindowWidth)
+        dongleSuctionChartFollowLatest_ = true;
+    else if (!atLiveEdge)
+        dongleSuctionChartFollowLatest_ = false;
+}
+
+void MainWindow::setDongleSuctionChartFollowLatest(bool follow) {
+    dongleSuctionChartFollowLatest_ = follow;
+    if (!follow || dongleSuctionChartTimeSec_.isEmpty())
+        return;
+    const double tSec = dongleSuctionChartTimeSec_.last();
+    if (dongleSuctionPlot_)
+        applyDongleSuctionPlotXRange(dongleSuctionPlot_, tSec);
+    if (dongleSuctionPlotPopup_)
+        applyDongleSuctionPlotXRange(dongleSuctionPlotPopup_, tSec);
+}
+
+void MainWindow::applyDongleSuctionPlotXRange(QCustomPlot* plot, double tSec) {
+    if (!plot || !dongleSuctionChartFollowLatest_)
+        return;
+    const double win = dongleSuctionXWindowSec();
+    double xLower = 0.0;
+    double xUpper = win;
+    if (tSec > win) {
+        xLower = tSec - win;
+        xUpper = tSec;
+    }
+    dongleSuctionApplyingXRange_ = true;
+    plot->xAxis->setRange(xLower, xUpper);
+    dongleSuctionApplyingXRange_ = false;
 }
 
 void MainWindow::applyDongleSuctionAxisTickResolution(QCustomPlot* plot) {
@@ -5579,9 +5547,13 @@ void MainWindow::refreshDongleSuctionPlotWidget(QCustomPlot* plot) {
     if (dongleSuctionChartTimeSec_.isEmpty()) {
         for (int i = 0; i < 3; ++i)
             plot->graph(i)->data()->clear();
+        if (plot == dongleSuctionPlot_)
+            dongleSuctionChartPlottedCount_ = 0;
+        else if (plot == dongleSuctionPlotPopup_)
+            dongleSuctionPopupPlottedCount_ = 0;
         plot->xAxis->setRange(0, xInit);
         plot->yAxis->setRange(yMin, yMax);
-        plot->replot();
+        plot->replot(QCustomPlot::rpQueuedReplot);
         return;
     }
 
@@ -5589,10 +5561,126 @@ void MainWindow::refreshDongleSuctionPlotWidget(QCustomPlot* plot) {
     plot->graph(0)->setData(dongleSuctionChartTimeSec_, dongleSuctionChartCh1_);
     plot->graph(1)->setData(dongleSuctionChartTimeSec_, dongleSuctionChartCh2_);
     plot->graph(2)->setData(dongleSuctionChartTimeSec_, dongleSuctionChartCh3_);
-    // 有数据后横轴覆盖全程（可拖拽/滚轮缩放查看细节）
-    plot->xAxis->setRange(0, qMax(xInit, tSec));
+    if (plot == dongleSuctionPlot_)
+        dongleSuctionChartPlottedCount_ = dongleSuctionChartTimeSec_.size();
+    else     if (plot == dongleSuctionPlotPopup_)
+        dongleSuctionPopupPlottedCount_ = dongleSuctionChartTimeSec_.size();
+    applyDongleSuctionPlotXRange(plot, tSec);
     plot->yAxis->setRange(yMin, yMax);
-    plot->replot();
+    plot->replot(QCustomPlot::rpQueuedReplot);
+}
+
+void MainWindow::appendDongleSuctionPlotIncremental(QCustomPlot* plot, int& plottedCount) {
+    if (!plot || plot->graphCount() < 3)
+        return;
+
+    const int n = dongleSuctionChartTimeSec_.size();
+    if (plottedCount < n) {
+        for (int i = plottedCount; i < n; ++i) {
+            const double t = dongleSuctionChartTimeSec_.at(i);
+            plot->graph(0)->addData(t, dongleSuctionChartCh1_.at(i));
+            plot->graph(1)->addData(t, dongleSuctionChartCh2_.at(i));
+            plot->graph(2)->addData(t, dongleSuctionChartCh3_.at(i));
+        }
+        plottedCount = n;
+    }
+
+    double yMin = -40.0;
+    double yMax = 0.0;
+    dongleSuctionYAxisRange(yMin, yMax);
+    const double tSec = dongleSuctionChartTimeSec_.isEmpty() ? 0.0 : dongleSuctionChartTimeSec_.last();
+    applyDongleSuctionPlotXRange(plot, tSec);
+    plot->yAxis->setRange(yMin, yMax);
+    plot->replot(QCustomPlot::rpQueuedReplot);
+}
+
+void MainWindow::flushDongleSuctionChartUi(bool forceFullReplot) {
+    if (!dongleSuctionChartCh1_.isEmpty()) {
+        const double ch1Kpa = dongleSuctionChartCh1_.last();
+        const double ch2Kpa = dongleSuctionChartCh2_.last();
+        const double ch3Kpa = dongleSuctionChartCh3_.last();
+        if (ui->dongleSuctionLiveCh1Label)
+            ui->dongleSuctionLiveCh1Label->setText(QStringLiteral("第一通道实时：%1 kPa").arg(ch1Kpa, 0, 'f', 3));
+        if (ui->dongleSuctionLiveCh2Label)
+            ui->dongleSuctionLiveCh2Label->setText(QStringLiteral("第二通道实时：%1 kPa").arg(ch2Kpa, 0, 'f', 3));
+        if (ui->dongleSuctionLiveCh3Label)
+            ui->dongleSuctionLiveCh3Label->setText(QStringLiteral("第三通道实时：%1 kPa").arg(ch3Kpa, 0, 'f', 3));
+    }
+    updateDongleSuctionPeakLabels();
+    updateDongleSuctionPlotOverlay(dongleSuctionPlot_);
+    updateDongleSuctionPlotOverlay(dongleSuctionPlotPopup_);
+
+    if (forceFullReplot) {
+        refreshDongleSuctionPlotWidget(dongleSuctionPlot_);
+        refreshDongleSuctionPlotWidget(dongleSuctionPlotPopup_);
+        updateDongleSuctionPlotOverlay(dongleSuctionPlot_);
+        updateDongleSuctionPlotOverlay(dongleSuctionPlotPopup_);
+        return;
+    }
+
+    appendDongleSuctionPlotIncremental(dongleSuctionPlot_, dongleSuctionChartPlottedCount_);
+    appendDongleSuctionPlotIncremental(dongleSuctionPlotPopup_, dongleSuctionPopupPlottedCount_);
+}
+
+void MainWindow::updateDongleSuctionPacketIntervalLabel() {
+    const QString text =
+        dongleSuctionPacketIntervalReady_
+            ? QStringLiteral("包间隔：%1 ms（均 %2 ms）")
+                  .arg(dongleSuctionPacketIntervalMs_, 0, 'f', 1)
+                  .arg(dongleSuctionPacketIntervalAvgMs_, 0, 'f', 1)
+            : QStringLiteral("包间隔：-- ms");
+    if (ui->dongleSuctionPacketIntervalLabel)
+        ui->dongleSuctionPacketIntervalLabel->setText(text);
+}
+
+void MainWindow::updateDongleSuctionPlotOverlay(QCustomPlot* plot) {
+    if (!plot || plot->graphCount() < 3)
+        return;
+
+    // 去掉此前独立文字框
+    for (int i = plot->itemCount() - 1; i >= 0; --i) {
+        auto* item = qobject_cast<QCPItemText*>(plot->item(i));
+        if (item && item->objectName() == QLatin1String("dongleSuctionOverlay"))
+            plot->removeItem(item);
+    }
+
+    // 图例在曲线下方：带中文标签，避免看不懂缩写
+    auto fmtName = [](const QString& name, double live, double hi, double lo, bool ok,
+                      const DongleSuctionChannelPeakMonitor& m) {
+        if (!ok)
+            return QStringLiteral("%1 实时-- 最高-- 最低-- 有效0 漏峰0 弱峰0").arg(name);
+        return QStringLiteral("%1 实时%2 最高%3 最低%4 有效%5 漏峰%6 弱峰%7")
+            .arg(name)
+            .arg(live, 0, 'f', 2)
+            .arg(hi, 0, 'f', 2)
+            .arg(lo, 0, 'f', 2)
+            .arg(m.validPeakCount)
+            .arg(m.missedPeakCount)
+            .arg(m.weakPeakCount);
+    };
+
+    const bool ok = dongleSuctionPeakLabelStatsInit_;
+    const double live1 = (!dongleSuctionChartCh1_.isEmpty()) ? dongleSuctionChartCh1_.last() : 0.0;
+    const double live2 = (!dongleSuctionChartCh2_.isEmpty()) ? dongleSuctionChartCh2_.last() : 0.0;
+    const double live3 = (!dongleSuctionChartCh3_.isEmpty()) ? dongleSuctionChartCh3_.last() : 0.0;
+
+    plot->graph(0)->setName(fmtName(QStringLiteral("CH1"), live1, dongleSuctionCh1Max_, dongleSuctionCh1Min_, ok,
+                                    dongleSuctionPeakMonitors_[0]));
+    plot->graph(1)->setName(fmtName(QStringLiteral("CH2"), live2, dongleSuctionCh2Max_, dongleSuctionCh2Min_, ok,
+                                    dongleSuctionPeakMonitors_[1]));
+    plot->graph(2)->setName(fmtName(QStringLiteral("CH3"), live3, dongleSuctionCh3Max_, dongleSuctionCh3Min_, ok,
+                                    dongleSuctionPeakMonitors_[2]));
+
+    if (plot->legend) {
+        plot->legend->setVisible(true);
+        QFont f = font();
+        f.setPointSize(8);
+        plot->legend->setFont(f);
+        plot->legend->setBorderPen(QPen(QColor(120, 120, 120, 50)));
+        plot->legend->setBrush(QBrush(QColor(255, 255, 255, 40)));
+        plot->legend->setSelectedBrush(QBrush(QColor(255, 255, 255, 40)));
+        plot->legend->setTextColor(QColor(20, 20, 20, 200));
+    }
 }
 
 void MainWindow::openDongleSuctionChartPopup() {
@@ -5605,7 +5693,7 @@ void MainWindow::openDongleSuctionChartPopup() {
     auto* dlg = new QDialog(this);
     dlg->setAttribute(Qt::WA_DeleteOnClose, true);
     dlg->setWindowTitle(QStringLiteral("Dongle 吸力曲线（双击原图可再次打开）"));
-    dlg->resize(1200, 720);
+    dlg->resize(1400, 900);
     dlg->setWindowFlags(Qt::Window | Qt::WindowTitleHint | Qt::WindowSystemMenuHint | Qt::WindowMinMaxButtonsHint |
                         Qt::WindowCloseButtonHint);
 
@@ -5614,6 +5702,7 @@ void MainWindow::openDongleSuctionChartPopup() {
     auto* plot = new QCustomPlot(dlg);
     setupDongleSuctionPlotWidget(plot);
     refreshDongleSuctionPlotWidget(plot);
+    updateDongleSuctionPlotOverlay(plot);
     layout->addWidget(plot, 1);
 
     dongleSuctionPlotPopupDlg_ = dlg;
@@ -5622,7 +5711,7 @@ void MainWindow::openDongleSuctionChartPopup() {
         dongleSuctionPlotPopupDlg_.clear();
         dongleSuctionPlotPopup_.clear();
     });
-    dlg->show();
+    dlg->showMaximized();
 }
 
 void MainWindow::initDongleSuctionChart() {
@@ -5634,10 +5723,40 @@ void MainWindow::initDongleSuctionChart() {
     dongleSuctionPlot_ = new QCustomPlot(ui->dongleSuctionPlotHost);
     layout->addWidget(dongleSuctionPlot_);
     setupDongleSuctionPlotWidget(dongleSuctionPlot_);
-    dongleSuctionPlot_->setToolTip(QStringLiteral("双击放大查看"));
+    updateDongleSuctionPlotOverlay(dongleSuctionPlot_);
+    dongleSuctionPlot_->setToolTip(QStringLiteral("双击放大；滚轮/拖拽看历史后点「跟随最新」恢复滑动"));
     connect(dongleSuctionPlot_, &QCustomPlot::mouseDoubleClick, this, [this](QMouseEvent*) {
         openDongleSuctionChartPopup();
     });
+
+    // 统计已叠到图内：隐藏上方大块标签，把高度让给曲线
+    const QList<QWidget*> hideLive = {
+        ui->dongleSuctionLiveCh1Label,       ui->dongleSuctionLiveCh2Label,       ui->dongleSuctionLiveCh3Label,
+        ui->dongleSuctionCh1PeakHighLabel,   ui->dongleSuctionCh2PeakHighLabel,   ui->dongleSuctionCh3PeakHighLabel,
+        ui->dongleSuctionCh1PeakLowLabel,    ui->dongleSuctionCh2PeakLowLabel,    ui->dongleSuctionCh3PeakLowLabel,
+        ui->dongleSuctionCh1PeakStatLabel,   ui->dongleSuctionCh2PeakStatLabel,   ui->dongleSuctionCh3PeakStatLabel,
+    };
+    for (QWidget* w : hideLive) {
+        if (w)
+            w->hide();
+    }
+    if (ui->dongleSuctionPlotHost) {
+        ui->dongleSuctionPlotHost->setMinimumHeight(360);
+        QSizePolicy sp = ui->dongleSuctionPlotHost->sizePolicy();
+        sp.setVerticalStretch(10);
+        ui->dongleSuctionPlotHost->setSizePolicy(sp);
+    }
+    if (ui->verticalLayout_dongle_suction && ui->dongleSuctionPlotHost) {
+        for (int i = 0; i < ui->verticalLayout_dongle_suction->count(); ++i) {
+            QLayoutItem* it = ui->verticalLayout_dongle_suction->itemAt(i);
+            if (!it)
+                continue;
+            if (it->widget() == ui->dongleSuctionPlotHost)
+                ui->verticalLayout_dongle_suction->setStretch(i, 10);
+            else
+                ui->verticalLayout_dongle_suction->setStretch(i, 0);
+        }
+    }
 
     // 轴窗口/刻度分辨率改动立即作用于主图/弹窗
     auto bindAxisValue = [this](QDoubleSpinBox* spin) {
@@ -5652,6 +5771,31 @@ void MainWindow::initDongleSuctionChart() {
     bindAxisValue(ui->dongleSuctionXTickSpin);
     bindAxisValue(ui->dongleSuctionYTickSpin);
 
+    if (ui->tab_dongle_suction) {
+        const int spinWidth = 84;
+        for (QDoubleSpinBox* spin : ui->tab_dongle_suction->findChildren<QDoubleSpinBox*>()) {
+            spin->setMinimumWidth(spinWidth);
+            spin->setMaximumWidth(spinWidth);
+            spin->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+        }
+    }
+    if (ui->gridLayout_dongle_suction_peak_params) {
+        QGridLayout* grid = ui->gridLayout_dongle_suction_peak_params;
+        for (int c = 0; c < 4; ++c)
+            grid->setColumnStretch(c, 0);
+    }
+    if (ui->gridLayout_dongle_suction_live) {
+        QGridLayout* grid = ui->gridLayout_dongle_suction_live;
+        for (int c = 0; c < 3; ++c)
+            grid->setColumnStretch(c, 0);
+    }
+    if (ui->verticalLayout_dongle_suction) {
+        const int last = ui->verticalLayout_dongle_suction->count() - 1;
+        for (int i = 0; i < last; ++i)
+            ui->verticalLayout_dongle_suction->setStretch(i, 0);
+        ui->verticalLayout_dongle_suction->setStretch(last, 1);
+    }
+
     dongleSuctionPlot_->replot();
 }
 
@@ -5661,6 +5805,15 @@ void MainWindow::resetDongleSuctionChart() {
     dongleSuctionChartCh2_.clear();
     dongleSuctionChartCh3_.clear();
     dongleSuctionChartTimerStarted_ = false;
+    dongleSuctionChartLastUiMs_ = 0;
+    dongleSuctionLastPacketArrivalMs_ = -1;
+    dongleSuctionPacketIntervalMs_ = 0.0;
+    dongleSuctionPacketIntervalAvgMs_ = 0.0;
+    dongleSuctionPacketIntervalReady_ = false;
+    dongleSuctionChartFollowLatest_ = true;
+    dongleSuctionChartPlottedCount_ = 0;
+    dongleSuctionPopupPlottedCount_ = 0;
+    dongleSuctionPeakLabelStatsInit_ = false;
     resetDongleSuctionPeakMonitor();
 
     if (ui->dongleSuctionLiveCh1Label)
@@ -5682,58 +5835,38 @@ void MainWindow::resetDongleSuctionChart() {
     if (ui->dongleSuctionCh3PeakLowLabel)
         ui->dongleSuctionCh3PeakLowLabel->setText(QStringLiteral("第三通道最低：--"));
 
+    updateDongleSuctionPacketIntervalLabel();
     refreshDongleSuctionPlotWidget(dongleSuctionPlot_);
     refreshDongleSuctionPlotWidget(dongleSuctionPlotPopup_);
 }
 
-void MainWindow::trimDongleSuctionChartToWindow(double /*tSec*/) {
-    // 保留全程采样点，不再按「最近 N 秒」丢弃历史数据
-}
-
 void MainWindow::updateDongleSuctionPeakLabels() {
-    auto minMax = [](const QVector<double>& values, double& outMin, double& outMax) -> bool {
-        if (values.isEmpty())
-            return false;
-        outMin = outMax = values.first();
-        for (double v : values) {
-            outMin = qMin(outMin, v);
-            outMax = qMax(outMax, v);
-        }
-        return true;
-    };
-
-    double ch1Min = 0.0;
-    double ch1Max = 0.0;
-    double ch2Min = 0.0;
-    double ch2Max = 0.0;
-    double ch3Min = 0.0;
-    double ch3Max = 0.0;
-    const bool ch1Ok = minMax(dongleSuctionChartCh1_, ch1Min, ch1Max);
-    const bool ch2Ok = minMax(dongleSuctionChartCh2_, ch2Min, ch2Max);
-    const bool ch3Ok = minMax(dongleSuctionChartCh3_, ch3Min, ch3Max);
+    const bool ch1Ok = dongleSuctionPeakLabelStatsInit_;
+    const bool ch2Ok = dongleSuctionPeakLabelStatsInit_;
+    const bool ch3Ok = dongleSuctionPeakLabelStatsInit_;
 
     if (ui->dongleSuctionCh1PeakHighLabel) {
-        ui->dongleSuctionCh1PeakHighLabel->setText(ch1Ok ? QStringLiteral("第一通道最高：%1 kPa").arg(ch1Max, 0, 'f', 3)
+        ui->dongleSuctionCh1PeakHighLabel->setText(ch1Ok ? QStringLiteral("第一通道最高：%1 kPa").arg(dongleSuctionCh1Max_, 0, 'f', 3)
                                                          : QStringLiteral("第一通道最高：--"));
     }
     if (ui->dongleSuctionCh1PeakLowLabel) {
-        ui->dongleSuctionCh1PeakLowLabel->setText(ch1Ok ? QStringLiteral("第一通道最低：%1 kPa").arg(ch1Min, 0, 'f', 3)
+        ui->dongleSuctionCh1PeakLowLabel->setText(ch1Ok ? QStringLiteral("第一通道最低：%1 kPa").arg(dongleSuctionCh1Min_, 0, 'f', 3)
                                                         : QStringLiteral("第一通道最低：--"));
     }
     if (ui->dongleSuctionCh2PeakHighLabel) {
-        ui->dongleSuctionCh2PeakHighLabel->setText(ch2Ok ? QStringLiteral("第二通道最高：%1 kPa").arg(ch2Max, 0, 'f', 3)
+        ui->dongleSuctionCh2PeakHighLabel->setText(ch2Ok ? QStringLiteral("第二通道最高：%1 kPa").arg(dongleSuctionCh2Max_, 0, 'f', 3)
                                                          : QStringLiteral("第二通道最高：--"));
     }
     if (ui->dongleSuctionCh2PeakLowLabel) {
-        ui->dongleSuctionCh2PeakLowLabel->setText(ch2Ok ? QStringLiteral("第二通道最低：%1 kPa").arg(ch2Min, 0, 'f', 3)
+        ui->dongleSuctionCh2PeakLowLabel->setText(ch2Ok ? QStringLiteral("第二通道最低：%1 kPa").arg(dongleSuctionCh2Min_, 0, 'f', 3)
                                                         : QStringLiteral("第二通道最低：--"));
     }
     if (ui->dongleSuctionCh3PeakHighLabel) {
-        ui->dongleSuctionCh3PeakHighLabel->setText(ch3Ok ? QStringLiteral("第三通道最高：%1 kPa").arg(ch3Max, 0, 'f', 3)
+        ui->dongleSuctionCh3PeakHighLabel->setText(ch3Ok ? QStringLiteral("第三通道最高：%1 kPa").arg(dongleSuctionCh3Max_, 0, 'f', 3)
                                                          : QStringLiteral("第三通道最高：--"));
     }
     if (ui->dongleSuctionCh3PeakLowLabel) {
-        ui->dongleSuctionCh3PeakLowLabel->setText(ch3Ok ? QStringLiteral("第三通道最低：%1 kPa").arg(ch3Min, 0, 'f', 3)
+        ui->dongleSuctionCh3PeakLowLabel->setText(ch3Ok ? QStringLiteral("第三通道最低：%1 kPa").arg(dongleSuctionCh3Min_, 0, 'f', 3)
                                                         : QStringLiteral("第三通道最低：--"));
     }
 }
@@ -5742,28 +5875,54 @@ void MainWindow::appendDongleSuctionChartSample(double ch1Kpa, double ch2Kpa, do
     if (!dongleSuctionChartTimerStarted_) {
         dongleSuctionChartTimer_.start();
         dongleSuctionChartTimerStarted_ = true;
+        dongleSuctionChartLastUiMs_ = 0;
+        dongleSuctionLastPacketArrivalMs_ = -1;
+        dongleSuctionChartPlottedCount_ = 0;
+        dongleSuctionPopupPlottedCount_ = 0;
     }
-    const double tSec = dongleSuctionChartTimer_.elapsed() / 1000.0;
+    const qint64 packetNowMs = dongleSuctionChartTimer_.elapsed();
+    if (dongleSuctionLastPacketArrivalMs_ >= 0) {
+        dongleSuctionPacketIntervalMs_ = static_cast<double>(packetNowMs - dongleSuctionLastPacketArrivalMs_);
+        if (!dongleSuctionPacketIntervalReady_)
+            dongleSuctionPacketIntervalAvgMs_ = dongleSuctionPacketIntervalMs_;
+        else
+            dongleSuctionPacketIntervalAvgMs_ =
+                dongleSuctionPacketIntervalAvgMs_ * 0.85 + dongleSuctionPacketIntervalMs_ * 0.15;
+        dongleSuctionPacketIntervalReady_ = true;
+        updateDongleSuctionPacketIntervalLabel();
+    }
+    dongleSuctionLastPacketArrivalMs_ = packetNowMs;
+
+    const double tSec = packetNowMs / 1000.0;
     dongleSuctionChartTimeSec_.append(tSec);
     dongleSuctionChartCh1_.append(ch1Kpa);
     dongleSuctionChartCh2_.append(ch2Kpa);
     dongleSuctionChartCh3_.append(ch3Kpa);
-    trimDongleSuctionChartToWindow(tSec);
+
+    if (!dongleSuctionPeakLabelStatsInit_) {
+        dongleSuctionCh1Min_ = dongleSuctionCh1Max_ = ch1Kpa;
+        dongleSuctionCh2Min_ = dongleSuctionCh2Max_ = ch2Kpa;
+        dongleSuctionCh3Min_ = dongleSuctionCh3Max_ = ch3Kpa;
+        dongleSuctionPeakLabelStatsInit_ = true;
+    } else {
+        dongleSuctionCh1Min_ = qMin(dongleSuctionCh1Min_, ch1Kpa);
+        dongleSuctionCh1Max_ = qMax(dongleSuctionCh1Max_, ch1Kpa);
+        dongleSuctionCh2Min_ = qMin(dongleSuctionCh2Min_, ch2Kpa);
+        dongleSuctionCh2Max_ = qMax(dongleSuctionCh2Max_, ch2Kpa);
+        dongleSuctionCh3Min_ = qMin(dongleSuctionCh3Min_, ch3Kpa);
+        dongleSuctionCh3Max_ = qMax(dongleSuctionCh3Max_, ch3Kpa);
+    }
 
     QString peakEvent;
     updateDongleSuctionPeakMonitor(ch1Kpa, ch2Kpa, ch3Kpa, tSec, peakEvent);
     writeDongleSuctionCsvRow(tSec, ch1Kpa, ch2Kpa, ch3Kpa);
 
-    if (ui->dongleSuctionLiveCh1Label)
-        ui->dongleSuctionLiveCh1Label->setText(QStringLiteral("第一通道实时：%1 kPa").arg(ch1Kpa, 0, 'f', 3));
-    if (ui->dongleSuctionLiveCh2Label)
-        ui->dongleSuctionLiveCh2Label->setText(QStringLiteral("第二通道实时：%1 kPa").arg(ch2Kpa, 0, 'f', 3));
-    if (ui->dongleSuctionLiveCh3Label)
-        ui->dongleSuctionLiveCh3Label->setText(QStringLiteral("第三通道实时：%1 kPa").arg(ch3Kpa, 0, 'f', 3));
-    updateDongleSuctionPeakLabels();
-
-    refreshDongleSuctionPlotWidget(dongleSuctionPlot_);
-    refreshDongleSuctionPlotWidget(dongleSuctionPlotPopup_);
+    // 约 5Hz 刷 Label/曲线（仅 UI）；向量与 CSV 仍按每个 AT 点全量入库
+    const qint64 nowMs = dongleSuctionChartTimer_.elapsed();
+    if (nowMs - dongleSuctionChartLastUiMs_ < kDongleSuctionUiThrottleMs)
+        return;
+    dongleSuctionChartLastUiMs_ = nowMs;
+    flushDongleSuctionChartUi(false);
 }
 
 void MainWindow::refreshDongleSuctionData(const ProtocolDongleSuctionData& data) {
@@ -5808,6 +5967,8 @@ void MainWindow::on_dongle_suction_close_clicked() {
     dongleSuctionReadEnabled_ = false;
     if (at)
         at->set(DongleCmd::GetSuction, 0);
+    flushDongleSuctionChartUi(true);
+    flushDongleSuctionCsvPending();
     stopDongleSuctionCsvLog();
     setDongleSuctionPeakParamWidgetsEnabled(true);
     showlog(QStringLiteral("已关闭 Dongle 吸力读取"));
@@ -5815,6 +5976,11 @@ void MainWindow::on_dongle_suction_close_clicked() {
 
 void MainWindow::on_dongle_suction_clear_chart_clicked() {
     resetDongleSuctionChart();
+}
+
+void MainWindow::on_dongle_suction_follow_latest_clicked() {
+    setDongleSuctionChartFollowLatest(true);
+    flushDongleSuctionChartUi(false);
 }
 
 void MainWindow::on_dongle_suction_set_osr_clicked() {
@@ -5943,12 +6109,12 @@ void MainWindow::on_chkDongleAtMainData_stateChanged(int arg1) {
 
 void MainWindow::on_chkDongleAtBleLog_stateChanged(int arg1) {
     if (!at) {
-        showlog(QStringLiteral("AT+BLELOG 发送失败：Dongle 未就绪"));
+        showlog(QStringLiteral("AT+BLERSSILOG 发送失败：Dongle 未就绪"));
         return;
     }
     const int state = arg1 != Qt::Unchecked ? 1 : 0;
     at->set(DongleCmd::BleLog, state);
-    showlog(QStringLiteral("已发送 AT+BLELOG=%1").arg(state));
+    showlog(QStringLiteral("已发送 AT+BLERSSILOG=%1").arg(state));
 }
 
 void MainWindow::on_chkDongleAtBleDeviceLog_stateChanged(int arg1) {
@@ -6029,5 +6195,146 @@ void MainWindow::on_lineDongleAtCustom_returnPressed() {
         return;
     }
     showlog(QStringLiteral("已发送自定义 AT：%1").arg(line.trimmed()));
+}
+
+bool MainWindow::sendDongleAtLineCmd(const QString& atKey, const QString& value) {
+    if (!at) {
+        showlog(QStringLiteral("AT+%1 发送失败：Dongle 未就绪").arg(atKey));
+        return false;
+    }
+    // 串口未开时自动打开当前下拉端口
+    if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
+        openDongleSerialPort();
+        if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
+            showlog(QStringLiteral("AT+%1 发送失败：无法打开 Dongle 串口（请检查端口选择是否正确、是否被占用）")
+                        .arg(atKey));
+            return false;
+        }
+        showlog(QStringLiteral("Dongle 串口未连接，已自动打开：%1").arg(ui->comNameCombo->currentText()));
+        waitWork(500);
+    }
+    QVariantMap msg;
+    msg.insert(QStringLiteral("at"), atKey);
+    msg.insert(QStringLiteral("value"), value);
+    if (!at->sendCustomMessage(msg)) {
+        showlog(QStringLiteral("AT+%1 发送失败").arg(atKey));
+        return false;
+    }
+    showlog(value.isEmpty() ? QStringLiteral("已发送 AT+%1").arg(atKey)
+                            : QStringLiteral("已发送 AT+%1=%2").arg(atKey, value));
+    return true;
+}
+
+bool MainWindow::sendDongleAtIntParam(const QString& atKey, const QString& text, int minValue) {
+    bool ok = false;
+    const int value = text.trimmed().toInt(&ok);
+    if (!ok || value < minValue) {
+        QMessageBox::warning(this, QStringLiteral("警告"),
+                             QStringLiteral("AT+%1 参数须为不小于 %2 的整数").arg(atKey).arg(minValue));
+        return false;
+    }
+    return sendDongleAtLineCmd(atKey, QString::number(value));
+}
+
+void MainWindow::on_btnDongleAtSetPumpDuty_clicked() {
+    bool ok = false;
+    const int duty = ui->DongleAtPumpDuty->text().trimmed().toInt(&ok);
+    if (!ok || duty < 0 || duty > 100) {
+        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("占空比须为 0~100 的整数"));
+        return;
+    }
+    sendDongleAtLineCmd(QStringLiteral("PUMPDUTY"), QString::number(duty));
+}
+
+void MainWindow::on_btnDongleAtSetPumpFreq_clicked() {
+    sendDongleAtIntParam(QStringLiteral("PUMPFREQ"), ui->DongleAtPumpFreq->text(), 1);
+}
+
+void MainWindow::on_btnDongleAtSetPumpSec_clicked() {
+    sendDongleAtIntParam(QStringLiteral("PUMPSEC"), ui->DongleAtPumpSec->text(), 1);
+}
+
+void MainWindow::on_btnDongleAtSetValveSec_clicked() {
+    sendDongleAtIntParam(QStringLiteral("VALVESEC"), ui->DongleAtValveSec->text(), 1);
+}
+
+void MainWindow::on_btnDongleAtSetPumpTotal_clicked() {
+    // 0 = 不限总时长，故下限取 0
+    sendDongleAtIntParam(QStringLiteral("PUMPTOTAL"), ui->DongleAtPumpTotal->text(), 0);
+}
+
+void MainWindow::on_btnDongleAtSetFgPrint_clicked() {
+    sendDongleAtIntParam(QStringLiteral("FGPRINT"), ui->DongleAtFgPrint->text(), 1);
+}
+
+void MainWindow::on_btnDongleAtPumpSetAll_clicked() {
+    bool ok = false;
+    const int duty = ui->DongleAtPumpDuty->text().trimmed().toInt(&ok);
+    if (!ok || duty < 0 || duty > 100) {
+        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("占空比须为 0~100 的整数"));
+        return;
+    }
+    const int freq = ui->DongleAtPumpFreq->text().trimmed().toInt(&ok);
+    if (!ok || freq < 1) {
+        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("PWM 频率须为正整数"));
+        return;
+    }
+    const int pumpSec = ui->DongleAtPumpSec->text().trimmed().toInt(&ok);
+    if (!ok || pumpSec < 1) {
+        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("泵运行秒数须为正整数"));
+        return;
+    }
+    const int valveSec = ui->DongleAtValveSec->text().trimmed().toInt(&ok);
+    if (!ok || valveSec < 1) {
+        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("阀运行秒数须为正整数"));
+        return;
+    }
+    const int totalSec = ui->DongleAtPumpTotal->text().trimmed().toInt(&ok);
+    if (!ok || totalSec < 0) {
+        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("总运行秒数须为不小于 0 的整数（0=不限）"));
+        return;
+    }
+    const int fgPrint = ui->DongleAtFgPrint->text().trimmed().toInt(&ok);
+    if (!ok || fgPrint < 1) {
+        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("FG 上报间隔须为正整数"));
+        return;
+    }
+
+    // 依次下发全部参数；短间隔避免 Dongle AT 粘包
+    if (!sendDongleAtLineCmd(QStringLiteral("PUMPDUTY"), QString::number(duty)))
+        return;
+    waitWork(50);
+    if (!sendDongleAtLineCmd(QStringLiteral("PUMPFREQ"), QString::number(freq)))
+        return;
+    waitWork(50);
+    if (!sendDongleAtLineCmd(QStringLiteral("PUMPSEC"), QString::number(pumpSec)))
+        return;
+    waitWork(50);
+    if (!sendDongleAtLineCmd(QStringLiteral("VALVESEC"), QString::number(valveSec)))
+        return;
+    waitWork(50);
+    if (!sendDongleAtLineCmd(QStringLiteral("PUMPTOTAL"), QString::number(totalSec)))
+        return;
+    waitWork(50);
+    if (!sendDongleAtLineCmd(QStringLiteral("FGPRINT"), QString::number(fgPrint)))
+        return;
+    waitWork(50);
+    // 纯发送，无额外逻辑
+    if (!sendDongleAtLineCmd(QStringLiteral("BLEDEVICELOG"), QStringLiteral("0")))
+        return;
+    showlog(QStringLiteral("泵阀一键全部设置完成"));
+}
+
+void MainWindow::on_btnDongleAtPumpStatus_clicked() {
+    // 无参查询：AT+PUMPSTATUS（回包见 Dongle/进程后台日志）
+    sendDongleAtLineCmd(QStringLiteral("PUMPSTATUS"));
+}
+
+void MainWindow::on_btnDongleAtPumpStart_clicked() {
+    sendDongleAtLineCmd(QStringLiteral("PUMPSTART"), QStringLiteral("1"));
+}
+
+void MainWindow::on_btnDongleAtPumpStop_clicked() {
+    sendDongleAtLineCmd(QStringLiteral("PUMPSTOP"), QStringLiteral("1"));
 }
 

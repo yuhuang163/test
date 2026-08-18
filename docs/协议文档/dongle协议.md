@@ -103,7 +103,7 @@ Dongle 控制指令与异步上报均为 **ASCII 文本行**，以 **`CRLF`（`\
 | `AT+OTAPKTSIZE` | OTA 切包字节数 | 下发 |
 | `AT+BLEMTU` | BLE MTU 字节数 | 下发 |
 | `AT+MAINDATA` | 主通道数据透传开关 | 下发 |
-| `AT+BLELOG` | Dongle BLE 日志开关 | 下发 |
+| `AT+BLERSSILOG` | 连接后 RSSI 上报开关（旧指令 `AT+BLELOG`） | 下发 |
 | `AT+SUCTION` | 双通道吸力读取开关 | 下发 → 持续 `SUCTION_DATA` 上报 |
 | `AT+HSADC` | 高量程 ADC 采样开关 | 下发 |
 | `AT+LSADC` | 低量程 ADC 采样开关 | 下发 |
@@ -226,13 +226,13 @@ Dongle 控制指令与异步上报均为 **ASCII 文本行**，以 **`CRLF`（`\
 
 ---
 
-### 3.7 `AT+BLELOG` / `AT+BLEDEVICELOG` — 日志开关
+### 3.7 `AT+BLERSSILOG` / `AT+BLEDEVICELOG` — 日志开关
 
 **上位机 → Dongle**
 
 | 命令 | 开关 | 说明 |
 |------|------|------|
-| `AT+BLELOG` | `0`、`1` | Dongle 侧 BLE 日志 |
+| `AT+BLERSSILOG` | `0`、`1` | 连接后 RSSI 上报（旧指令 `AT+BLELOG`） |
 | `AT+BLEDEVICELOG` | `0`、`1` | 被连设备 BLE 日志 |
 
 ---
@@ -389,7 +389,7 @@ Dongle 控制指令与异步上报均为 **ASCII 文本行**，以 **`CRLF`（`\
 | `OtaPktSize` | `AT+OTAPKTSIZE=` |
 | `BleMtu` | `AT+BLEMTU=` |
 | `MainDataPassthrough` | `AT+MAINDATA=` |
-| `BleLog` | `AT+BLELOG=` |
+| `BleLog` | `AT+BLERSSILOG=` |
 | `GetSuction` | `AT+SUCTION=` |
 | `AdcSwitch` | `AT+HSADC=` |
 | `LowRangeAdcSwitch` | `AT+LSADC=` |

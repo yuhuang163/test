@@ -42,6 +42,20 @@ struct QlogSessionInfo {
     QString residentDailyRelativePath;
     qint64 residentOffsetStart = 0;
     qint64 residentOffsetEnd = 0;
+    /** 产品串口日文件（所有log/产品log） */
+    QString productDailyAbsolutePath;
+    QString productDailyRelativePath;
+    qint64 productOffsetStart = 0;
+    qint64 productOffsetEnd = 0;
+    /** 治具串口日文件：QFixtureManager → 治具日志；XWD jig → Jig治具日志 */
+    QString fixtureDailyAbsolutePath;
+    QString fixtureDailyRelativePath;
+    qint64 fixtureOffsetStart = 0;
+    qint64 fixtureOffsetEnd = 0;
+    QString jigFixtureDailyAbsolutePath;
+    QString jigFixtureDailyRelativePath;
+    qint64 jigFixtureOffsetStart = 0;
+    qint64 jigFixtureOffsetEnd = 0;
     bool valid = false;
 };
 
@@ -96,6 +110,12 @@ class Qlog {
     void save_fixture_uart_log(int txrx, const QByteArray& data);
     void save_jig_uart_log(int txrx, const QByteArray& data);
 
+    /**
+     * 产品串口 TX/RX 原始帧，独立日文件，不走进程后台。
+     * 路径：所有log/产品log/产品日志_{工位}_{日期}.log；txrx=1 发送，0 接收。
+     */
+    static void saveProductUartLog(int machineIndex, int txrx, const QByteArray& data);
+
     static void writeRow(QTextStream& stream, const QStringList& rowData);
 
     static void handleQtMessage(QtMsgType type, const QMessageLogContext& context, const QString& msg);
@@ -105,6 +125,11 @@ class Qlog {
     static QString exportProcessBackgroundSessionSlice(const QlogSessionInfo& info, QString* error);
     /** 本轮测试时间窗内的常驻监控切片（心跳/串口扫描等），供测完上传使用 */
     static QString exportResidentSessionSlice(const QlogSessionInfo& info, QString* error);
+    /** 本轮产品串口切片，供测完上传 */
+    static QString exportProductSessionSlice(const QlogSessionInfo& info, QString* error);
+    /** 本轮治具串口切片（治具日志 / Jig治具日志各一份，有内容才返回） */
+    static QString exportFixtureSessionSlice(const QlogSessionInfo& info, QString* error);
+    static QString exportJigFixtureSessionSlice(const QlogSessionInfo& info, QString* error);
 
     /** 吸力采样序列按工位暂存；测中落盘拿不到 PASS/NG，故留到测完导出 */
     static void setSuctionSamples(int slot, const QVector<double>& timeSec, const QVector<double>& ch1,

@@ -19,6 +19,12 @@ new_production.pro.*
 .vscode/*
 !.vscode/settings.json
 .qtcreator/
+# Qt Designer / Creator 自动保存，不入库
+*.ui.autosave
+# Python 字节码缓存（含内嵌 Python39、脚本等）
+__pycache__/
+*.py[cod]
+*$py.class
 
 路特上位机运行环境/所有log
 路特上位机运行环境.7z
