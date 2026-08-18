@@ -1805,9 +1805,9 @@ void QFreeWork::appendSuctionChartSample(double leftKpa, double rightKpa) {
         suctionRightPeakLow_ = qMin(suctionRightPeakLow_, rightKpa);
     }
 
-    // 约 5Hz 刷 Label/曲线（仅 UI）；向量已按每个 AT 点全量入库，不降采样频率
-    // 与主窗口吸力图一致：约 20Hz，避免 200ms 节流成批跳点
-    constexpr qint64 kUiThrottleMs = 50;
+    // 采样期间不 replot：只攒向量，结束时 finalizeSuctionChartPlot 一次画完整条。
+    // 图形展示页上的 CH1/CH2 标签仍节流刷新，确认在采数；向量按每个 AT 点全量入库。
+    constexpr qint64 kLabelThrottleMs = 50;
     const qint64 nowMs = suctionChartTimer_.elapsed();
     if (nowMs - suctionChartLastUiMs_ < kUiThrottleMs)
         return;
@@ -1988,26 +1988,20 @@ void QFreeWork::runDongleSuctionSampleStep() {
     for (const TestCaseGate& g : TestCaseStore::activeGatesForEvaluation(activeTestCase_)) {
         if (g.op != TestCaseGateOp::Range)
             continue;
+        double lo = g.low;
+        double hi = g.high;
+        GateRegistry::resolveRangeBounds(g, lo, hi);
         if (g.field == QLatin1String("ch1PeakKpa") || g.field == QLatin1String("leftPeakKpa")) {
-            ch1Lo = g.low;
-            ch1Hi = g.high;
+            ch1Lo = lo;
+            ch1Hi = hi;
         } else if (g.field == QLatin1String("ch2PeakKpa") || g.field == QLatin1String("rightPeakKpa")) {
-            ch2Lo = g.low;
-            ch2Hi = g.high;
+            ch2Lo = lo;
+            ch2Hi = hi;
         }
     }
-    QStringList outOfRange;
-    for (int i = 0; i < ch1Peaks.size(); ++i) {
-        const double p = ch1Peaks.at(i);
-        if (p < ch1Lo || p > ch1Hi)
-            outOfRange.append(QStringLiteral("CH1#%1=%2").arg(i + 1).arg(p, 0, 'f', 3));
-    }
-    for (int i = 0; i < ch2Peaks.size(); ++i) {
-        const double p = ch2Peaks.at(i);
-        if (p < ch2Lo || p > ch2Hi)
-            outOfRange.append(QStringLiteral("CH2#%1=%2").arg(i + 1).arg(p, 0, 'f', 3));
-    }
-    showlog(QStringLiteral("采样完成：点 %1，CH1完整峰 %2（最强=%3 最弱=%4），CH2完整峰 %5（最强=%6 最弱=%7），峰差=%8")
+    // 判定只看各通道最强峰（周期峰里的最低点）；单个周期偶发偏差不判失败，
+    // 「一直吸住不放气」已由上面的完整周期峰数卡住。
+    showlog(QStringLiteral("采样完成：点 %1，CH1完整峰 %2 个 最强=%3（最弱=%4），CH2完整峰 %5 个 最强=%6（最弱=%7），通道峰差=%8")
                 .arg(dongleSuctionCh1Samples_.size())
                 .arg(ch1Peaks.size())
                 .arg(peak.ch1PeakKpa, 0, 'f', 3)
@@ -2016,51 +2010,39 @@ void QFreeWork::runDongleSuctionSampleStep() {
                 .arg(peak.ch2PeakKpa, 0, 'f', 3)
                 .arg(ch2Weak, 0, 'f', 3)
                 .arg(peak.sideDiffKpa, 0, 'f', 3));
-    if (!outOfRange.isEmpty()) {
-        TestResult = failValue;
-        const QString detail = QStringLiteral("周期峰值超范围：%1").arg(outOfRange.join(QLatin1Char(',')));
-        showlog(QStringLiteral("吸力卡控失败：%1").arg(detail));
-        markActiveTestCaseStepDone(false, detail,
-                                   QStringLiteral("CH1[%1,%2] CH2[%3,%4]")
-                                       .arg(ch1Lo, 0, 'f', 2)
-                                       .arg(ch1Hi, 0, 'f', 2)
-                                       .arg(ch2Lo, 0, 'f', 2)
-                                       .arg(ch2Hi, 0, 'f', 2));
-        return;
-    }
 
     const QVariant payload = QVariant::fromValue(peak);
     if (activeTestCase_.gate.enabled
         && evaluateActiveTestCaseGate(QStringLiteral("ProtocolDongleSuctionPeakData"), payload))
         return;
 
-    // 旧 Hook / 未开 Gate：沿用步骤 Param 内联卡控（同 BYD）
-    const double lowerBound = suctionPeakTargetKpa_ - suctionPeakToleranceKpa_;
-    const double upperBound = suctionPeakTargetKpa_ + suctionPeakToleranceKpa_;
-    const bool ch1Pass = peak.ch1PeakKpa >= lowerBound && peak.ch1PeakKpa <= upperBound;
-    const bool ch2Pass = peak.ch2PeakKpa >= lowerBound && peak.ch2PeakKpa <= upperBound;
+    // 未开 Gate：用步骤 Param 的目标±容差，同样只卡最强峰
+    const bool ch1Pass = peak.ch1PeakKpa >= ch1Lo && peak.ch1PeakKpa <= ch1Hi;
+    const bool ch2Pass = peak.ch2PeakKpa >= ch2Lo && peak.ch2PeakKpa <= ch2Hi;
     const bool diffPass = peak.sideDiffKpa <= suctionPeakDiffMaxKpa_;
     const bool pass = ch1Pass && ch2Pass && diffPass;
-    const QString testData = QStringLiteral("CH1=%1,CH2=%2,diff=%3,peaks=%4")
-                                 .arg(peak.ch1PeakKpa, 0, 'f', 3)
-                                 .arg(peak.ch2PeakKpa, 0, 'f', 3)
-                                 .arg(peak.sideDiffKpa, 0, 'f', 3)
-                                 .arg(peak.peakCount);
+    const QString testData =
+        QStringLiteral("CH1=%1,CH2=%2").arg(peak.ch1PeakKpa, 0, 'f', 3).arg(peak.ch2PeakKpa, 0, 'f', 3);
     if (!pass) {
         TestResult = failValue;
-        showlog(QStringLiteral("吸力卡控失败：CH1=%1 CH2=%2 差=%3，允许 [%4,%5] 差≤%6")
+        showlog(QStringLiteral("吸力卡控失败：最强峰 CH1=%1 允许[%2,%3]，CH2=%4 允许[%5,%6]，通道峰差=%7 允许≤%8")
                     .arg(peak.ch1PeakKpa, 0, 'f', 3)
+                    .arg(ch1Lo, 0, 'f', 2)
+                    .arg(ch1Hi, 0, 'f', 2)
                     .arg(peak.ch2PeakKpa, 0, 'f', 3)
+                    .arg(ch2Lo, 0, 'f', 2)
+                    .arg(ch2Hi, 0, 'f', 2)
                     .arg(peak.sideDiffKpa, 0, 'f', 3)
-                    .arg(lowerBound, 0, 'f', 2)
-                    .arg(upperBound, 0, 'f', 2)
                     .arg(suctionPeakDiffMaxKpa_, 0, 'f', 2));
     } else {
         showlog(QStringLiteral("吸力卡控通过：%1").arg(testData));
     }
-    markActiveTestCaseStepDone(pass, testData, QStringLiteral("%1±%2")
-                                                   .arg(suctionPeakTargetKpa_, 0, 'f', 2)
-                                                   .arg(suctionPeakToleranceKpa_, 0, 'f', 2));
+    markActiveTestCaseStepDone(pass, testData,
+                               QStringLiteral("CH1[%1,%2] CH2[%3,%4]")
+                                   .arg(ch1Lo, 0, 'f', 2)
+                                   .arg(ch1Hi, 0, 'f', 2)
+                                   .arg(ch2Lo, 0, 'f', 2)
+                                   .arg(ch2Hi, 0, 'f', 2));
 }
 
 void QFreeWork::runDongleSuctionSampleSingleStep() {
@@ -2198,12 +2180,7 @@ void QFreeWork::runDongleSuctionSampleSingleStep() {
             break;
         }
     }
-    QStringList outOfRange;
-    for (int i = 0; i < cyclePeaks.size(); ++i) {
-        const double p = cyclePeaks.at(i);
-        if (p < peakLo || p > peakHi)
-            outOfRange.append(QStringLiteral("#%1=%2").arg(i + 1).arg(p, 0, 'f', 3));
-    }
+    // 判定只看最强峰（周期峰里的最低点）；单个周期偶发偏差不判失败
     showlog(QStringLiteral("采样完成：点 %1，完整峰 %2 个（要求≥%3），最强=%4 最弱=%5 峰值差=%6")
                 .arg(samples.size())
                 .arg(cyclePeaks.size())
@@ -2211,40 +2188,30 @@ void QFreeWork::runDongleSuctionSampleSingleStep() {
                 .arg(peak.peakKpa, 0, 'f', 3)
                 .arg(peak.highKpa, 0, 'f', 3)
                 .arg(peak.peakDiffKpa, 0, 'f', 3));
-    if (!outOfRange.isEmpty()) {
-        TestResult = failValue;
-        const QString detail = QStringLiteral("峰值超范围：%1，允许[%2,%3]")
-                                   .arg(outOfRange.join(QLatin1Char(',')))
-                                   .arg(peakLo, 0, 'f', 2)
-                                   .arg(peakHi, 0, 'f', 2);
-        showlog(QStringLiteral("吸力卡控失败：%1").arg(detail));
-        markActiveTestCaseStepDone(false, detail, QStringLiteral("[%1,%2]").arg(peakLo, 0, 'f', 2).arg(peakHi, 0, 'f', 2));
-        return;
-    }
 
     const QVariant payload = QVariant::fromValue(peak);
     if (activeTestCase_.gate.enabled
         && evaluateActiveTestCaseGate(QStringLiteral("ProtocolDongleSuctionPeakData"), payload))
         return;
 
+    // 未开 Gate：只卡最强峰是否在范围内
+    const bool peakPass = peak.peakKpa >= peakLo && peak.peakKpa <= peakHi;
     const bool diffPass = peak.peakDiffKpa <= suctionPeakDiffMaxKpa_;
-    const bool pass = diffPass;
-    const QString testData = QStringLiteral("%1 peaks=%2,min=%3,max=%4,diff=%5")
-                                 .arg(channelName)
-                                 .arg(cyclePeaks.size())
-                                 .arg(peak.peakKpa, 0, 'f', 3)
-                                 .arg(peak.highKpa, 0, 'f', 3)
-                                 .arg(peak.peakDiffKpa, 0, 'f', 3);
+    const bool pass = peakPass && diffPass;
+    const QString testData = QStringLiteral("%1=%2").arg(channelName).arg(peak.peakKpa, 0, 'f', 3);
     if (!pass) {
         TestResult = failValue;
-        showlog(QStringLiteral("吸力卡控失败：峰值差=%1，允许≤%2")
+        showlog(QStringLiteral("吸力卡控失败：最强峰=%1 允许[%2,%3]，峰值差=%4 允许≤%5")
+                    .arg(peak.peakKpa, 0, 'f', 3)
+                    .arg(peakLo, 0, 'f', 2)
+                    .arg(peakHi, 0, 'f', 2)
                     .arg(peak.peakDiffKpa, 0, 'f', 3)
                     .arg(suctionPeakDiffMaxKpa_, 0, 'f', 2));
     } else {
         showlog(QStringLiteral("吸力卡控通过：%1").arg(testData));
     }
     markActiveTestCaseStepDone(pass, testData,
-                               QStringLiteral("peakDiff<=%1").arg(suctionPeakDiffMaxKpa_, 0, 'f', 2));
+                               QStringLiteral("[%1,%2]").arg(peakLo, 0, 'f', 2).arg(peakHi, 0, 'f', 2));
 }
 
 void QFreeWork::initData(bool deferDongleAtForVisa) {
