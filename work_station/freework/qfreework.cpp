@@ -1809,7 +1809,7 @@ void QFreeWork::appendSuctionChartSample(double leftKpa, double rightKpa) {
     // 图形展示页上的 CH1/CH2 标签仍节流刷新，确认在采数；向量按每个 AT 点全量入库。
     constexpr qint64 kLabelThrottleMs = 50;
     const qint64 nowMs = suctionChartTimer_.elapsed();
-    if (nowMs - suctionChartLastUiMs_ < kUiThrottleMs)
+    if (nowMs - suctionChartLastUiMs_ < kLabelThrottleMs)
         return;
     suctionChartLastUiMs_ = nowMs;
 
