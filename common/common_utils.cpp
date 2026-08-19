@@ -364,6 +364,7 @@ static const ProductEntry kProductTable[] = {
     {"Wellness Warm",  "qroot", true, "Wellness Warm",  true},
     {"M8P",      "qaiot", false, "M8P",      false},
     {"W1 Lite",  "qroot", true, "W1 Lite",  true},
+    {"W1",       "qroot", true, "W1",       true},  
 };
 
 /** 主窗口 BLE 扫描过滤名补充项（无产品映射，仅作筛选提示）。 */
@@ -383,7 +384,8 @@ const ProductEntry* findProductEntry(const QString& productName) {
     return nullptr;
 }
 
-/** 工站名（大写）是否以该产品名的前缀开头。 */
+/** 工站名（大写）是否以该产品名开头（含去空格形式，如 W1LITE）。
+ * 不用空格前第一段去匹配：否则 W1 Lite 会把 W1组装厂 也算进去，短名 W1 反而筛不到。 */
 bool stationUpperStartsWithProductPrefix(const QString& stationUpper, const QString& productName) {
     const QString pu = productName.trimmed().toUpper();
     if (pu.isEmpty())
@@ -392,9 +394,6 @@ bool stationUpperStartsWithProductPrefix(const QString& stationUpper, const QStr
         return true;
     const QString puNoSpace = QString(pu).remove(QLatin1Char(' '));
     if (puNoSpace != pu && stationUpper.startsWith(puNoSpace))
-        return true;
-    const int spaceIdx = pu.indexOf(QLatin1Char(' '));
-    if (spaceIdx > 0 && stationUpper.startsWith(pu.left(spaceIdx)))
         return true;
     return false;
 }
