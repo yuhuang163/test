@@ -420,7 +420,6 @@ struct ProtocolDongleVersionData {
     QString version;
 };
 
-
 struct ProtocolDongleDeviceNameData {
     QString name;
 };
@@ -447,11 +446,13 @@ struct ProtocolDongleScanResultData {
     QString deviceRssi;
 };
 
-/** Dongle AT+SUCTION=1 后上报：AT+SUCTION_DATA=CH1,CH2,CH3,... */
+/** Dongle AT+SUCTION=1 后上报：AT+SUCTION_DATA=CH1,CH2,CH3（kPa）或 PHY 通道 4 二进制帧 */
 struct ProtocolDongleSuctionData {
     double ch1Kpa = 0.0;
     double ch2Kpa = 0.0;
     double ch3Kpa = 0.0;
+    /** PHY 二进制 payload 前 4B 小端 ms；文本 AT 无此时为 -1 */
+    qint32 dongleTimestampMs = -1;
 };
 
 /** Dongle 吸力采样窗口汇总（SampleSuctionDual/Single），供 Gate 卡控 */
@@ -610,6 +611,8 @@ enum class DeviceCmd {
     LightCalibWrite,    // 【Qfctp】光感校准写（QVariantMap，setCaseLightCalibWrite）
     ChargeCurrentSet,   // 【Qfctp】设置充电电流（QVariantMap{currentMa|value}，uint16 mA，setCaseChargeCurrentSet）
     CompensationSet,    // 【Qfctp】吸力补偿开关（QVariantMap，setCaseCompensationSet）
+    LcdColorTestMode,   // 【Qfctp】LCD 颜色测试模式进/退（TLV 0x0021，enter=1 进入，0 退出）
+    SetLcdColor,        // 【Qfctp】设置 LCD 颜色（TLV 0x0028，需先进入 LcdColorTestMode）
 
     // 【Qroot】吸奶器 PCBA 串口协议
     RootBatteryTempQuery, // 0x80 电池温度查询

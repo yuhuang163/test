@@ -180,6 +180,13 @@ class MainWindow : public QMainWindow {
         int validPeakCount = 0;
         int missedPeakCount = 0;
         int weakPeakCount = 0;
+        int freqPerMin = 0;
+        /** 当前周期开始时刻（下探越过周期开始线），与 cycleEndSec 成对用于算周期时长 */
+        double currentCycleStartSec = -1.0;
+        /** 周期结束时刻（≥基线/周期结束线），与有效峰无关 */
+        QVector<double> cycleEndSec;
+        /** 与 cycleEndSec 一一对应：单次周期时长(s)，频率=60/近期平均周期时长 */
+        QVector<double> cyclePeriodSec;
     };
 
     void initDongleSuctionChart();
@@ -190,13 +197,14 @@ class MainWindow : public QMainWindow {
     void applyDongleSuctionAxisTickResolution(QCustomPlot* plot);
     /** 采集跟随时按 X 窗口滑动；用户拖拽/缩放横轴后不再自动改范围，可左滑看全程 */
     void bindDongleSuctionPlotXRangeFollow(QCustomPlot* plot);
+    void bindDongleSuctionPlotHover(QCustomPlot* plot);
     void applyDongleSuctionPlotXRange(QCustomPlot* plot, double tSec);
     void setDongleSuctionChartFollowLatest(bool follow);
     void syncDongleSuctionFollowStateFromUserRange(const QCPRange& range);
     double dongleSuctionXWindowSec() const;
     void dongleSuctionYAxisRange(double& yMin, double& yMax) const;
     void resetDongleSuctionChart();
-    void appendDongleSuctionChartSample(double ch1Kpa, double ch2Kpa, double ch3Kpa);
+    void appendDongleSuctionChartSample(double ch1Kpa, double ch2Kpa, double ch3Kpa, qint32 dongleTimestampMs);
     void refreshDongleSuctionData(const ProtocolDongleSuctionData& data);
     /** 节流刷新曲线/Label；关闭采集或弹窗打开时可 forceFullReplot 补全未绘制的点 */
     void flushDongleSuctionChartUi(bool forceFullReplot = false);
@@ -204,6 +212,9 @@ class MainWindow : public QMainWindow {
     void updateDongleSuctionPeakLabels();
     /** 把实时/高低/峰检合并进图例通道名（参考产测曲线图例写法） */
     void updateDongleSuctionPlotOverlay(QCustomPlot* plot);
+    /** 峰检参数水平辅助线（目标/容差/基线/下探） */
+    void updateDongleSuctionPeakGuideLines(QCustomPlot* plot);
+    void updateDongleSuctionPeakGuideLinesAll();
     void flushDongleSuctionCsvPending();
     void loadDongleSuctionPeakSettings();
     void setDongleSuctionPeakParamWidgetsEnabled(bool enabled);
@@ -232,7 +243,9 @@ class MainWindow : public QMainWindow {
     QElapsedTimer dongleSuctionChartTimer_;
     bool dongleSuctionChartTimerStarted_ = false;
     qint64 dongleSuctionChartLastUiMs_ = 0;
-    qint64 dongleSuctionLastPacketArrivalMs_ = -1;
+    qint32 dongleSuctionLastDongleTsMs_ = -1;
+    qint64 dongleSuctionLastHostUs_ = -1;
+    double dongleSuctionPlotTimeSecLast_ = -1.0;
     double dongleSuctionPacketIntervalMs_ = 0.0;
     double dongleSuctionPacketIntervalAvgMs_ = 0.0;
     bool dongleSuctionPacketIntervalReady_ = false;

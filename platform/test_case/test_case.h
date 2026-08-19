@@ -435,7 +435,7 @@ class TestCaseRunner {
     static bool isDongleBleConnectStep(const TestCaseDefinition& def);
     /** 本步是否必须通过已连接的产品 BLE 收发协议（仅此类步骤在未连蓝牙时阻塞流程） */
     static bool stepRequiresProductBle(const TestCaseDefinition& def);
-    /** 弹窗提示步：须用户点「是」或关闭窗口后才过步 */
+    /** 无卡控的提示步：先点「是」再发指令；有卡控时弹窗只提示、立刻发并等上报 */
     static bool stepWaitsForPromptAck(const TestCaseDefinition& def);
     /** 本 case 指令等待/重试间隔(ms) */
     static int commandTimeoutMs(const TestCaseDefinition& def);

@@ -524,143 +524,103 @@ uint16_t Qpb::calCrc16(const std::vector<uint8_t>& d) {
     return crc;
 }
 
-void Qpb::parseCmd(const QByteArray& byte) {
-    std::vector<uint8_t> data(byte.begin(), byte.end());
+void Qpb::dispatchDecodedPbPack() {
+    qDebug().noquote() << "PB RX:"
+                       << QString::fromLatin1(QByteArray(reinterpret_cast<const char*>(ipack.data()),
+                                                         static_cast<int>(ipack.size()))
+                                              .toHex(' ')
+                                              .toUpper());
+    if (needAES) {
+        QByteArray byteArray(reinterpret_cast<const char*>(ipack.data()), static_cast<int>(ipack.size()));
+        QByteArray decrypted_data = aes256Decrypt(byteArray);
+        ipack.assign(decrypted_data.begin(), decrypted_data.end());
+    }
 
-    // const char* dataPtr = reinterpret_cast<const char*>(byte.data());
-    // QString output;
-    // for (int i = 0; i < byte.size(); ++i) {
-    //     output += QString("%1 ").arg(static_cast<unsigned char>(dataPtr[i]), 2, 16, QLatin1Char('0'));
-    // }
-    // qDebug() << "收到的pb码为" << output.trimmed();
+    pb_istream_t istream = pb_istream_from_buffer(ipack.data(), ipack.size());
+    if (pbChannel == PHY_CHANNEL_FAC) {
+        if (pb_decode(&istream, FactoryDataPackage_fields, &recievePack)) {
+            auto it = factoryCommandList.find(recievePack.cmd_id);
+            if (it != factoryCommandList.end()) {
+                it->second(recievePack);
+            } else {
+                qDebug() << "factory event not found , cmd id: " << recievePack.cmd_id;
+            }
+        } else {
+            qDebug() << "factory 解码失败原因：" << PB_GET_ERROR(&istream);
+        }
+    } else if (pbChannel == PHY_CHANNEL_APP || pbChannel == PHY_CHANNEL_MAIN) {
+        if (pb_decode(&istream, DataPackage_fields, &blePack)) {
+            qDebug() << "blecommand_id" << blePack.command_id;
 
-    for (auto x : data) {
+            auto it = bleCommandList.find(blePack.command_id);
+            if (it != bleCommandList.end()) {
+                it->second(blePack);
+            } else {
+                qDebug() << "ble event not found , cmd id: " << blePack.command_id << blePack.which_command_data;
+            }
+        } else {
+            qDebug() << "ble 解码失败原因：" << PB_GET_ERROR(&istream);
+        }
+    } else {
+        emitReport(QStringLiteral("ProtocolPbDate"), "通道出错，请更新dongle固件为1.3.3");
+    }
+}
+
+void Qpb::feedPbPhyPayload(quint8 channel, const QByteArray& payload) {
+    // channel=4 吸力二进制由 QAT AtSuctionFrameCodec 解析
+    if (channel == kDonglePhyChannelSuction)
+        return;
+    if (channel == 0 || channel > 3) {
+        emitReport(QStringLiteral("ProtocolPbDate"), "通道出错，请更新dongle固件为1.3.3");
+        return;
+    }
+
+    pbChannel = static_cast<ext_ble_phy_channel_e>(channel);
+    len = payload.size() - 1;
+
+    for (char ch : payload) {
+        const auto x = static_cast<uint8_t>(ch);
         switch (state) {
         case STATE_IDLE:
-            hitTimes = 0;
-            if (x == 0xAA) {
-                hitTimes = 0;
-                ibuffer.clear();
-                state = STATE_HEADER;
-            }
-            break;
-        case STATE_HEADER:
-            if (x == 0xAA) {
-                hitTimes++;
-            } else {
-                state = STATE_IDLE;
-            }
-            if (hitTimes == 7) {
-                state = STATE_CHANNEL;
-            }
-            break;
-
-        case STATE_CHANNEL:
-
-            pbChannel = (ext_ble_phy_channel_e)x;
-
-            if (x > 3 || x == 0) {
-                emitReport(QStringLiteral("ProtocolPbDate"), "通道出错，请更新dongle固件为1.3.3");
-
-                state = STATE_IDLE;
-                break;
-            }
-            state = STATE_LEN;
-
-            break;
-
-        case STATE_LEN:
-            len = x - 1;
-
             state = STATE_PB_HEADER;
-            break;
-
-        case STATE_PB_HEADER: // 0就解包，非0就继续加东西
+            Q_FALLTHROUGH();
+        case STATE_PB_HEADER:
             state = x ? STATE_STAGE : STATE_UNPACK;
             break;
-
         case STATE_STAGE:
             ibuffer.push_back(x);
-            if (ibuffer.size() == len) {
+            if (ibuffer.size() == static_cast<size_t>(len)) {
                 ipack.insert(ipack.end(), ibuffer.begin(), ibuffer.end());
                 state = STATE_IDLE;
             }
             break;
-
         case STATE_UNPACK:
-            // qDebug() << "len" << len << ibuffer.size();
-            if (ibuffer.size() == len - 1) {
+            if (ibuffer.size() == static_cast<size_t>(len - 1)) {
                 ipack.insert(ipack.end(), ibuffer.begin(), ibuffer.end());
-                uint8_t crc16 = calCrc16(ipack);
-
-                // qDebug() << "收到的crc16" << crc16 << x;
-
+                const uint8_t crc16 = calCrc16(ipack);
                 if (crc16 == x) {
-                    qDebug().noquote() << "PB RX:"
-                                       << QString::fromLatin1(QByteArray(reinterpret_cast<const char*>(ipack.data()),
-                                                                         static_cast<int>(ipack.size()))
-                                                                  .toHex(' ')
-                                                                  .toUpper());
-                    if (needAES) {
-                        QByteArray byteArray(reinterpret_cast<const char*>(ipack.data()),
-                                             static_cast<int>(ipack.size()));
-
-                        // 调用解密函数，返回 QByteArray
-                        QByteArray decrypted_data = aes256Decrypt(byteArray);
-
-                        // 把解密后的 QByteArray 转换回 std::vector<uint8_t>
-                        ipack.assign(decrypted_data.begin(), decrypted_data.end());
-                    }
-
-                    pb_istream_t istream = pb_istream_from_buffer(ipack.data(), ipack.size());
-                    if (pbChannel == PHY_CHANNEL_FAC) {
-                        if (pb_decode(&istream, FactoryDataPackage_fields, &recievePack)) {
-                            // qDebug() << "command_id" << recievePack.cmd_id;
-
-                            auto it = factoryCommandList.find(recievePack.cmd_id);
-                            if (it != factoryCommandList.end()) {
-                                it->second(recievePack);
-                            } else {
-                                qDebug() << "factory event not found , cmd id: " << recievePack.cmd_id;
-                            }
-                        } else {
-                            qDebug() << "factory 解码失败原因：" << PB_GET_ERROR(&istream);
-                        }
-                    }
-
-                    else if (pbChannel == PHY_CHANNEL_APP || pbChannel == PHY_CHANNEL_MAIN) {
-                        if (pb_decode(&istream, DataPackage_fields, &blePack)) {
-                            qDebug() << "blecommand_id" << blePack.command_id;
-
-                            auto it = bleCommandList.find(blePack.command_id);
-                            if (it != bleCommandList.end()) {
-                                it->second(blePack);
-                            } else {
-                                qDebug() << "ble event not found , cmd id: " << blePack.command_id
-                                         << blePack.which_command_data;
-                            }
-                        } else {
-                            qDebug() << "ble 解码失败原因：" << PB_GET_ERROR(&istream);
-                        }
-                    } else {
-                        emitReport(QStringLiteral("ProtocolPbDate"), "通道出错，请更新dongle固件为1.3.3");
-                    }
-
+                    dispatchDecodedPbPack();
                 } else {
                     qDebug() << "pb协议的CRC校验失败";
                     qDebug() << "收到的crc16" << crc16 << x;
                 }
-
                 ipack.clear();
                 state = STATE_IDLE;
             }
             ibuffer.push_back(x);
             break;
-
         default:
             break;
         }
     }
+}
+
+void Qpb::parseCmd(const QByteArray& byte) {
+    QList<QByteArray> innerPackets;
+    QList<quint8> channels;
+    phyRx_.feed(byte, innerPackets, &channels);
+    for (int i = 0; i < innerPackets.size(); ++i)
+        feedPbPhyPayload(channels.at(i), innerPackets.at(i));
 }
 
 bool Qpb::sendCustomMessage(const QVariantMap& map) {

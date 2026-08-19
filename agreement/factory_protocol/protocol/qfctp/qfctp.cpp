@@ -7,6 +7,7 @@
 
 #include "comm_protocol_builder.h"
 #include "comm_protocol_parser.h"
+#include "dongle_phy_codec.h"
 
 #include <cstring>
 #include <vector>
@@ -126,13 +127,6 @@ static QByteArray qfctpParseValueString(const QString& text, bool* ok) {
     return QByteArray::fromHex(compact.toLatin1());
 }
 
-static constexpr uint8_t kPhyTxHeaderByte = 0xCC;
-static constexpr uint8_t kPhyRxHeaderByte = 0xAA;
-static constexpr int kPhyHeaderSize = 8;
-// 与 qpb 中通道定义保持一致：INVALID=0, FAC=1, APP=2, MAIN=3
-static constexpr uint8_t kPhyChannelFac = 1;
-static constexpr uint8_t kPhyChannelApp = 2;
-static constexpr uint8_t kPhyChannelMain = 3;
 static constexpr uint16_t kTestsService = COMM_PROTOCOL_TESTS_SERVICE;
 static constexpr uint16_t kSystemConfigService = COMM_PROTOCOL_SYSTEM_CONFIG_SERVICE;
 static constexpr uint16_t kAlgoService = COMM_PROTOCOL_ALGO_SERVICE;
@@ -176,6 +170,8 @@ static constexpr uint16_t kTlvLightCalibWrite = 0x001E;
 static constexpr uint16_t kTlvLightCalibRead = 0x001F;
 static constexpr uint16_t kTlvChargeCurrentRead = 0x0020;
 static constexpr uint16_t kTlvChargeCurrentSet = 0x0022;
+static constexpr uint16_t kTlvLcdColorTestMode = 0x0021;
+static constexpr uint16_t kTlvSetLcdColor = 0x0028;
 
 // SYSTEM CONFIG SERVICE TLV
 static constexpr uint16_t kTlvFwVersionRead = 0x0001;
@@ -793,90 +789,13 @@ bool Qfctp::handleRequestResult(uint8_t seq, const PendingRequest& req, int main
 }
 
 QByteArray Qfctp::wrapPhyPacket(const QByteArray& innerPacket) const {
-    // 外层协议: [8*0xCC][len:1][channel:1][payload:len]
-    if (innerPacket.isEmpty()) {
-        return {};
-    }
-    if (innerPacket.size() > 0xFF) {
-        qWarning() << "FCTP 外层封装失败，内层长度超过 255:" << innerPacket.size();
-        return {};
-    }
-
-    std::vector<uint8_t> newBuffer;
-    newBuffer.reserve(static_cast<size_t>(kPhyHeaderSize + 1 + 1 + innerPacket.size()));
-    newBuffer.insert(newBuffer.end(), kPhyHeaderSize, kPhyTxHeaderByte);
-    newBuffer.push_back(static_cast<uint8_t>(innerPacket.size()));
-    // 默认发送 FAC 通道
-    newBuffer.push_back(kPhyChannelFac);
-    newBuffer.insert(newBuffer.end(),
-                     reinterpret_cast<const uint8_t*>(innerPacket.constData()),
-                     reinterpret_cast<const uint8_t*>(innerPacket.constData()) + innerPacket.size());
-
-    return QByteArray(reinterpret_cast<const char*>(newBuffer.data()), static_cast<int>(newBuffer.size()));
+    return wrapDonglePhyTxPacket(innerPacket, kDonglePhyChannelFac);
 }
 
 bool Qfctp::tryUnwrapPhyPacket(const QByteArray& packet, QList<QByteArray>& outPackets) {
-    const auto resetPhyState = [this]() {
-        m_phyState = PHY_STATE_IDLE;
-        m_phyHeaderHits = 0;
-        m_phyExpectedLen = 0;
-        m_phyChannel = 0;
-        m_phyPayload.clear();
-    };
-
-    std::vector<uint8_t> data(packet.begin(), packet.end());
-    for (auto x : data) {
-        switch (m_phyState) {
-        case PHY_STATE_IDLE:
-            if (x == kPhyRxHeaderByte) {
-                m_phyHeaderHits = 1;
-                m_phyState = PHY_STATE_HEADER;
-            }
-            break;
-        case PHY_STATE_HEADER:
-            if (x == kPhyRxHeaderByte) {
-                ++m_phyHeaderHits;
-                if (m_phyHeaderHits == kPhyHeaderSize) {
-                    m_phyState = PHY_STATE_CHANNEL;
-                }
-            } else {
-                resetPhyState();
-            }
-            break;
-        case PHY_STATE_CHANNEL:
-            m_phyChannel = x;
-            m_phyState = PHY_STATE_LEN;
-            break;
-
-        case PHY_STATE_LEN:
-            m_phyExpectedLen = static_cast<int>(x);
-            if (m_phyExpectedLen <= 0) {
-                qWarning() << "FCTP 外层包长度非法:" << m_phyExpectedLen;
-                resetPhyState();
-                break;
-            }
-            m_phyPayload.clear();
-            m_phyPayload.reserve(m_phyExpectedLen);
-            m_phyState = PHY_STATE_PAYLOAD;
-            break;
-
-        case PHY_STATE_PAYLOAD:
-            m_phyPayload.push_back(static_cast<char>(x));
-            if (m_phyPayload.size() >= m_phyExpectedLen) {
-                if (m_phyChannel == kPhyChannelFac || m_phyChannel == kPhyChannelApp || m_phyChannel == kPhyChannelMain) {
-                    outPackets.push_back(m_phyPayload);
-                } else {
-                    qWarning() << "FCTP 外层包通道异常，channel =" << static_cast<int>(m_phyChannel);
-                }
-                resetPhyState();
-            }
-            break;
-        default:
-            resetPhyState();
-            break;
-        }
-    }
-    return !outPackets.isEmpty();
+    const int before = outPackets.size();
+    phyRx_.feed(packet, outPackets);
+    return outPackets.size() > before;
 }
 
 bool Qfctp::sendPacket(const QByteArray& innerPacket, QByteArray* outPhyPacket) const {
@@ -1197,6 +1116,21 @@ bool Qfctp::setCaseCompensationSet(const QVariantMap& map) {
     return sendTestsServiceTlv(kTlvCompensationSet, QByteArray(1, static_cast<char>(v)), "吸力补偿开关");
 }
 
+bool Qfctp::setCaseLcdColorTestMode(const QVariantMap& map) {
+    const uint8_t v = fctpEnterOnFlag(map);
+    return sendTestsServiceTlv(kTlvLcdColorTestMode, QByteArray(1, static_cast<char>(v)),
+                               v ? "进入LCD颜色测试模式" : "退出LCD颜色测试模式");
+}
+
+bool Qfctp::setCaseSetLcdColor(const QVariantMap& map) {
+    const uint8_t color = static_cast<uint8_t>(map.value("color").toUInt() & 0xFF);
+    if (color < 1 || color > 7) {
+        qWarning() << "Qfctp SetLcdColor 颜色值非法，允许 1~7，当前:" << color;
+        return false;
+    }
+    return sendTestsServiceTlv(kTlvSetLcdColor, QByteArray(1, static_cast<char>(color)), "设置LCD颜色");
+}
+
 bool Qfctp::getCaseRssiRead(const QVariantMap& map) {
     const uint8_t v = static_cast<uint8_t>(map.value("mode").toUInt() & 0xFF);
     return sendTestsServiceTlv(kTlvRssiRead, QByteArray(1, static_cast<char>(v)), "读取RSSI");
@@ -1396,6 +1330,14 @@ void Qfctp::set(DeviceCmd cmd, const QVariant& data) {
     }
     case DeviceCmd::CompensationSet:
         if (setCaseCompensationSet(data.toMap()))
+            return;
+        break;
+    case DeviceCmd::LcdColorTestMode:
+        if (setCaseLcdColorTestMode(data.toMap()))
+            return;
+        break;
+    case DeviceCmd::SetLcdColor:
+        if (setCaseSetLcdColor(data.toMap()))
             return;
         break;
     case DeviceCmd::BaseInfo:

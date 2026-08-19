@@ -8,7 +8,7 @@
 #include <QVariant>
 #include <QVariantMap>
 
-#include "qprotocol.h"
+#include "dongle_phy_codec.h"
 
 /** Root 吸奶器 PCBA 测试协议：帧格式为串口协议，经 Dongle 蓝牙透传收发（同 Qpb）。 */
 class Qroot : public qProtocol {
@@ -77,14 +77,6 @@ class Qroot : public qProtocol {
 
     bool sendSystemControl(quint8 ctrl);
 
-    enum PhyParseState : quint8 {
-        PhyIdle = 0,
-        PhyHeader,
-        PhyChannel,
-        PhyLen,
-        PhyPayload,
-    };
-
     static QByteArray wrapPhyPacket(const QByteArray& innerPacket);
     void feedPhyRx(const QByteArray& data, QList<QByteArray>& outInnerPackets);
 
@@ -130,11 +122,7 @@ class Qroot : public qProtocol {
     /** 最近一次写入的 EncryptionKey，用于 0xF7 KeyTail RC4 解密校验 */
     QByteArray lastEncryptionKey_;
 
-    PhyParseState phyState_ = PhyIdle;
-    int phyHeaderHits_ = 0;
-    int phyExpectedLen_ = 0;
-    quint8 phyChannel_ = 0;
-    QByteArray phyPayload_;
+    DonglePhyRxCodec phyRx_{kDonglePhyRxAcceptFacOnly, "[Qroot]"};
 };
 
 #endif // QROOT_H

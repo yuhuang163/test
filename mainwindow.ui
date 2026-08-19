@@ -4520,7 +4520,7 @@
                       <item>
                        <widget class="QLabel" name="dongleSuctionPacketIntervalLabel">
                         <property name="toolTip">
-                         <string>相邻两包 AT+SUCTION_DATA 到达上位机的间隔；「均」为指数滑动平均</string>
+                         <string>十六进制用包内时间戳间隔，AT 用上位机到达间隔；「均」为指数滑动平均</string>
                         </property>
                         <property name="text">
                          <string>包间隔：-- ms</string>
@@ -4630,7 +4630,7 @@
                        <item row="1" column="0">
                         <widget class="QLabel" name="label_dongle_suction_peak_baseline">
                          <property name="text">
-                          <string>基线阈值(kPa)</string>
+                          <string>周期结束(kPa)</string>
                          </property>
                         </widget>
                        </item>
@@ -4656,7 +4656,7 @@
                        <item row="1" column="2">
                         <widget class="QLabel" name="label_dongle_suction_peak_dip_start">
                          <property name="text">
-                          <string>下探起始(kPa)</string>
+                          <string>周期开始(kPa)</string>
                          </property>
                         </widget>
                        </item>
@@ -4705,10 +4705,20 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="2" column="2" colspan="2">
+                       <item row="2" column="2">
+                        <widget class="QCheckBox" name="dongleSuctionPeakGuideLinesCheck">
+                         <property name="text">
+                          <string>显示峰检辅助线</string>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="3">
                         <widget class="QLabel" name="label_dongle_suction_peak_hint">
                          <property name="text">
-                          <string>开启读取后锁定；关闭后可改。</string>
+                          <string></string>
                          </property>
                         </widget>
                        </item>
@@ -4801,31 +4811,21 @@
                       <item row="3" column="0">
                        <widget class="QLabel" name="dongleSuctionCh1PeakStatLabel">
                         <property name="text">
-                         <string>第一通道峰检：有效0 漏峰0 弱峰0</string>
+                         <string>第一通道峰检：有效0 漏峰0 弱峰0 频率--</string>
                         </property>
                        </widget>
                       </item>
                       <item row="3" column="1">
                        <widget class="QLabel" name="dongleSuctionCh2PeakStatLabel">
                         <property name="text">
-                         <string>第二通道峰检：有效0 漏峰0 弱峰0</string>
+                         <string>第二通道峰检：有效0 漏峰0 弱峰0 频率--</string>
                         </property>
                        </widget>
                       </item>
                       <item row="3" column="2">
                        <widget class="QLabel" name="dongleSuctionCh3PeakStatLabel">
                         <property name="text">
-                         <string>第三通道峰检：有效0 漏峰0 弱峰0</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="4" column="0" colspan="3">
-                       <widget class="QLabel" name="dongleSuctionCsvPathLabel">
-                        <property name="text">
-                         <string>CSV：未开始记录</string>
-                        </property>
-                        <property name="wordWrap">
-                         <bool>true</bool>
+                         <string>第三通道峰检：有效0 漏峰0 弱峰0 频率--</string>
                         </property>
                        </widget>
                       </item>

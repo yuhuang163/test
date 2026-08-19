@@ -224,6 +224,7 @@ SOURCES += \
     agreement/factory_protocol/protocol/qroot/qroot.cpp \
     business/ble_ota/root_ble_ota2.cpp \
     agreement/factory_protocol/access/qprotocol.cpp \
+    agreement/factory_protocol/access/dongle_phy_codec.cpp \
     agreement/factory_protocol/manager/qprotocolmanager.cpp \
     business/ble_ota/root_ble_ota.cpp \
     agreement/adb_protocol/manager/qadbmanager.cpp \
@@ -382,6 +383,8 @@ HEADERS += \
     business/ble_ota/root_ble_ota2.h \
     agreement/factory_protocol/access/qprotocol.h \
     agreement/factory_protocol/access/qprotocol_types.h \
+    agreement/factory_protocol/access/dongle_phy.h \
+    agreement/factory_protocol/access/dongle_phy_codec.h \
     agreement/factory_protocol/manager/qprotocolmanager.h \
     business/ble_ota/root_ble_ota.h \
     agreement/adb_protocol/manager/qadbmanager.h \
