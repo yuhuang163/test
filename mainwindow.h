@@ -179,6 +179,8 @@ class MainWindow : public QMainWindow {
         int validPeakCount = 0;
         int missedPeakCount = 0;
         int weakPeakCount = 0;
+        int freqPerMin = 0;
+        QVector<double> validPeakSec;
     };
 
     void initDongleSuctionChart();
@@ -195,7 +197,7 @@ class MainWindow : public QMainWindow {
     double dongleSuctionXWindowSec() const;
     void dongleSuctionYAxisRange(double& yMin, double& yMax) const;
     void resetDongleSuctionChart();
-    void appendDongleSuctionChartSample(double ch1Kpa, double ch2Kpa, double ch3Kpa);
+    void appendDongleSuctionChartSample(double ch1Kpa, double ch2Kpa, double ch3Kpa, qint32 dongleTimestampMs);
     void refreshDongleSuctionData(const ProtocolDongleSuctionData& data);
     /** 节流刷新曲线/Label；关闭采集或弹窗打开时可 forceFullReplot 补全未绘制的点 */
     void flushDongleSuctionChartUi(bool forceFullReplot = false);
@@ -231,7 +233,9 @@ class MainWindow : public QMainWindow {
     QElapsedTimer dongleSuctionChartTimer_;
     bool dongleSuctionChartTimerStarted_ = false;
     qint64 dongleSuctionChartLastUiMs_ = 0;
-    qint64 dongleSuctionLastPacketArrivalMs_ = -1;
+    qint32 dongleSuctionLastDongleTsMs_ = -1;
+    qint64 dongleSuctionLastHostUs_ = -1;
+    double dongleSuctionPlotTimeSecLast_ = -1.0;
     double dongleSuctionPacketIntervalMs_ = 0.0;
     double dongleSuctionPacketIntervalAvgMs_ = 0.0;
     bool dongleSuctionPacketIntervalReady_ = false;

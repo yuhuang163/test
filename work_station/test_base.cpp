@@ -350,7 +350,9 @@ void test_base::getMacAddress(const QByteArray& byte) {
 
 void test_base::onDongleSerialFrame(const QByteArray& dataTemp) {
     at->parseCmd(dataTemp);
-    protocolManager.parseCmd(dataTemp);
+    // 吸力/温度高频流已由 QAT 解析，跳过产测 phyRx_ 重复解包以免主线程卡顿
+    if (!shouldSkipDongleStreamUartLog(dataTemp))
+        protocolManager.parseCmd(dataTemp);
     getMacAddress(dataTemp); // 搜索设备用
 
     // 吸力/温度流式 AT 文本与 channel=4 二进制：已由协议入库/刷曲线，禁止再刷串口 UI 与逐帧落盘

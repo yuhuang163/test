@@ -4520,7 +4520,7 @@
                       <item>
                        <widget class="QLabel" name="dongleSuctionPacketIntervalLabel">
                         <property name="toolTip">
-                         <string>相邻两包 AT+SUCTION_DATA 到达上位机的间隔；「均」为指数滑动平均</string>
+                         <string>十六进制用包内时间戳间隔，AT 用上位机到达间隔；「均」为指数滑动平均</string>
                         </property>
                         <property name="text">
                          <string>包间隔：-- ms</string>
@@ -4801,21 +4801,21 @@
                       <item row="3" column="0">
                        <widget class="QLabel" name="dongleSuctionCh1PeakStatLabel">
                         <property name="text">
-                         <string>第一通道峰检：有效0 漏峰0 弱峰0</string>
+                         <string>第一通道峰检：有效0 漏峰0 弱峰0 频率0/min</string>
                         </property>
                        </widget>
                       </item>
                       <item row="3" column="1">
                        <widget class="QLabel" name="dongleSuctionCh2PeakStatLabel">
                         <property name="text">
-                         <string>第二通道峰检：有效0 漏峰0 弱峰0</string>
+                         <string>第二通道峰检：有效0 漏峰0 弱峰0 频率0/min</string>
                         </property>
                        </widget>
                       </item>
                       <item row="3" column="2">
                        <widget class="QLabel" name="dongleSuctionCh3PeakStatLabel">
                         <property name="text">
-                         <string>第三通道峰检：有效0 漏峰0 弱峰0</string>
+                         <string>第三通道峰检：有效0 漏峰0 弱峰0 频率0/min</string>
                         </property>
                        </widget>
                       </item>

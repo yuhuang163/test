@@ -24,7 +24,7 @@ bool parseDongleSuctionUplinkPayload(const QByteArray& payload, ProtocolDongleSu
     if (!out || payload.size() < kDongleSuctionUplinkPayloadLen)
         return false;
     const char* p = payload.constData();
-    Q_UNUSED(readLeI32(p)); // timestamp_ms，上位机曲线用本地到达时间
+    out->dongleTimestampMs = readLeI32(p);
     out->ch1Kpa = static_cast<double>(readLeI32(p + 4)) * kCentiKpaToKpa;
     out->ch2Kpa = static_cast<double>(readLeI32(p + 8)) * kCentiKpaToKpa;
     out->ch3Kpa = static_cast<double>(readLeI32(p + 12)) * kCentiKpaToKpa;

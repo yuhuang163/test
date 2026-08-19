@@ -5204,15 +5204,24 @@ void MainWindow::updateDongleSuctionPeakMonitorLabels() {
     for (int i = 0; i < kDongleSuctionChannelCount; ++i) {
         if (!labels[i])
             continue;
-        const auto& m = dongleSuctionPeakMonitors_[i];
-        labels[i]->setText(QStringLiteral("%1峰检：有效%2 漏峰%3 弱峰%4")
+        auto& m = dongleSuctionPeakMonitors_[i];
+        // 近 1 分钟有效峰个数；采集不足 1 分钟时按已过时长折算到每分钟
+        const double nowSec = dongleSuctionPlotTimeSecLast_ < 0.0 ? 0.0 : dongleSuctionPlotTimeSecLast_;
+        int peaksInWindow = 0;
+        const double t0 = nowSec - 60.0;
+        for (double t : m.validPeakSec) {
+            if (t > t0)
+                ++peaksInWindow;
+        }
+        m.freqPerMin =
+            (nowSec > 0.0 && nowSec < 60.0) ? qRound(peaksInWindow * 60.0 / nowSec) : peaksInWindow;
+        labels[i]->setText(QStringLiteral("%1峰检：有效%2 漏峰%3 弱峰%4 频率%5/min")
                                .arg(channelNames[i])
                                .arg(m.validPeakCount)
                                .arg(m.missedPeakCount)
-                               .arg(m.weakPeakCount));
+                               .arg(m.weakPeakCount)
+                               .arg(m.freqPerMin));
     }
-    updateDongleSuctionPlotOverlay(dongleSuctionPlot_);
-    updateDongleSuctionPlotOverlay(dongleSuctionPlotPopup_);
 }
 
 void MainWindow::updateDongleSuctionChannelPeakMonitor(int chIndex, double kpa, double tSec, QString& eventOut) {
@@ -5248,6 +5257,9 @@ void MainWindow::updateDongleSuctionChannelPeakMonitor(int chIndex, double kpa, 
                     m.waitingNextPeak = true;
                     m.lastPeakEndSec = tSec;
                     m.gapMissFlagged = false;
+                    m.validPeakSec.append(tSec);
+                    while (!m.validPeakSec.isEmpty() && m.validPeakSec.first() <= tSec - 60.0)
+                        m.validPeakSec.removeFirst();
                     if (eventOut.isEmpty())
                         eventOut = QStringLiteral("VALID_%1:%2").arg(chTag).arg(peakKpa, 0, 'f', 3);
                     showlog(QStringLiteral("【有效峰】%1：%2 kPa（累计 %3）")
@@ -5597,6 +5609,7 @@ void MainWindow::flushDongleSuctionChartUi(bool forceFullReplot) {
         if (ui->dongleSuctionLiveCh3Label)
             ui->dongleSuctionLiveCh3Label->setText(QStringLiteral("第三通道实时：%1 kPa").arg(ch3Kpa, 0, 'f', 3));
     }
+    updateDongleSuctionPeakMonitorLabels();
     updateDongleSuctionPeakLabels();
     updateDongleSuctionPlotOverlay(dongleSuctionPlot_);
     updateDongleSuctionPlotOverlay(dongleSuctionPlotPopup_);
@@ -5639,15 +5652,16 @@ void MainWindow::updateDongleSuctionPlotOverlay(QCustomPlot* plot) {
     auto fmtName = [](const QString& name, double live, double hi, double lo, bool ok,
                       const DongleSuctionChannelPeakMonitor& m) {
         if (!ok)
-            return QStringLiteral("%1 实时-- 最高-- 最低-- 有效0 漏峰0 弱峰0").arg(name);
-        return QStringLiteral("%1 实时%2 最高%3 最低%4 有效%5 漏峰%6 弱峰%7")
+            return QStringLiteral("%1 实时-- 最高-- 最低-- 有效0 漏峰0 弱峰0 频率0/min").arg(name);
+        return QStringLiteral("%1 实时%2 最高%3 最低%4 有效%5 漏峰%6 弱峰%7 频率%8/min")
             .arg(name)
             .arg(live, 0, 'f', 2)
             .arg(hi, 0, 'f', 2)
             .arg(lo, 0, 'f', 2)
             .arg(m.validPeakCount)
             .arg(m.missedPeakCount)
-            .arg(m.weakPeakCount);
+            .arg(m.weakPeakCount)
+            .arg(m.freqPerMin);
     };
 
     const bool ok = dongleSuctionPeakLabelStatsInit_;
@@ -5797,7 +5811,9 @@ void MainWindow::resetDongleSuctionChart() {
     dongleSuctionChartCh3_.clear();
     dongleSuctionChartTimerStarted_ = false;
     dongleSuctionChartLastUiMs_ = 0;
-    dongleSuctionLastPacketArrivalMs_ = -1;
+    dongleSuctionLastDongleTsMs_ = -1;
+    dongleSuctionLastHostUs_ = -1;
+    dongleSuctionPlotTimeSecLast_ = -1.0;
     dongleSuctionPacketIntervalMs_ = 0.0;
     dongleSuctionPacketIntervalAvgMs_ = 0.0;
     dongleSuctionPacketIntervalReady_ = false;
@@ -5862,29 +5878,54 @@ void MainWindow::updateDongleSuctionPeakLabels() {
     }
 }
 
-void MainWindow::appendDongleSuctionChartSample(double ch1Kpa, double ch2Kpa, double ch3Kpa) {
+void MainWindow::appendDongleSuctionChartSample(double ch1Kpa, double ch2Kpa, double ch3Kpa, qint32 dongleTimestampMs) {
     if (!dongleSuctionChartTimerStarted_) {
         dongleSuctionChartTimer_.start();
         dongleSuctionChartTimerStarted_ = true;
         dongleSuctionChartLastUiMs_ = 0;
-        dongleSuctionLastPacketArrivalMs_ = -1;
+        dongleSuctionLastDongleTsMs_ = -1;
+        dongleSuctionLastHostUs_ = -1;
+        dongleSuctionPlotTimeSecLast_ = -1.0;
         dongleSuctionChartPlottedCount_ = 0;
         dongleSuctionPopupPlottedCount_ = 0;
     }
-    const qint64 packetNowMs = dongleSuctionChartTimer_.elapsed();
-    if (dongleSuctionLastPacketArrivalMs_ >= 0) {
-        dongleSuctionPacketIntervalMs_ = static_cast<double>(packetNowMs - dongleSuctionLastPacketArrivalMs_);
-        if (!dongleSuctionPacketIntervalReady_)
-            dongleSuctionPacketIntervalAvgMs_ = dongleSuctionPacketIntervalMs_;
-        else
-            dongleSuctionPacketIntervalAvgMs_ =
-                dongleSuctionPacketIntervalAvgMs_ * 0.85 + dongleSuctionPacketIntervalMs_ * 0.15;
-        dongleSuctionPacketIntervalReady_ = true;
-        updateDongleSuctionPacketIntervalLabel();
-    }
-    dongleSuctionLastPacketArrivalMs_ = packetNowMs;
+    const qint64 hostUs = dongleSuctionChartTimer_.nsecsElapsed() / 1000;
 
-    const double tSec = packetNowMs / 1000.0;
+    qint32 dongleDtMs = 0;
+    double intervalMs = 0.0;
+    if (dongleTimestampMs >= 0) {
+        if (dongleSuctionLastDongleTsMs_ >= 0) {
+            const qint32 signedDt = dongleTimestampMs - dongleSuctionLastDongleTsMs_;
+            if (signedDt > 0 && signedDt <= 500)
+                dongleDtMs = signedDt;
+        }
+        intervalMs = static_cast<double>(dongleDtMs);
+        dongleSuctionLastDongleTsMs_ = dongleTimestampMs;
+    } else if (dongleSuctionLastHostUs_ >= 0) {
+        intervalMs = (hostUs - dongleSuctionLastHostUs_) / 1000.0;
+    }
+    if (intervalMs > 0) {
+        dongleSuctionPacketIntervalMs_ = intervalMs;
+        if (!dongleSuctionPacketIntervalReady_)
+            dongleSuctionPacketIntervalAvgMs_ = intervalMs;
+        else
+            dongleSuctionPacketIntervalAvgMs_ = dongleSuctionPacketIntervalAvgMs_ * 0.85 + intervalMs * 0.15;
+        dongleSuctionPacketIntervalReady_ = true;
+    }
+
+    double tSec = 0.0;
+    if (dongleSuctionPlotTimeSecLast_ < 0.0) {
+        tSec = 0.0;
+    } else if (dongleTimestampMs >= 0) {
+        const double stepMs = (dongleDtMs > 0) ? dongleDtMs : dongleSuctionPacketIntervalAvgMs_;
+        tSec = dongleSuctionPlotTimeSecLast_ + qMax(1.0, stepMs) / 1000.0;
+    } else {
+        tSec = dongleSuctionPlotTimeSecLast_ + (hostUs - dongleSuctionLastHostUs_) / 1000000.0;
+        if (tSec <= dongleSuctionPlotTimeSecLast_)
+            tSec = dongleSuctionPlotTimeSecLast_ + 0.001;
+    }
+    dongleSuctionLastHostUs_ = hostUs;
+    dongleSuctionPlotTimeSecLast_ = tSec;
     dongleSuctionChartTimeSec_.append(tSec);
     dongleSuctionChartCh1_.append(ch1Kpa);
     dongleSuctionChartCh2_.append(ch2Kpa);
@@ -5913,24 +5954,24 @@ void MainWindow::appendDongleSuctionChartSample(double ch1Kpa, double ch2Kpa, do
     if (nowMs - dongleSuctionChartLastUiMs_ < kDongleSuctionUiThrottleMs)
         return;
     dongleSuctionChartLastUiMs_ = nowMs;
+    updateDongleSuctionPacketIntervalLabel();
     flushDongleSuctionChartUi(false);
 }
 
 void MainWindow::refreshDongleSuctionData(const ProtocolDongleSuctionData& data) {
     if (!dongleSuctionReadEnabled_)
         return;
-    appendDongleSuctionChartSample(data.ch1Kpa, data.ch2Kpa, data.ch3Kpa);
+    appendDongleSuctionChartSample(data.ch1Kpa, data.ch2Kpa, data.ch3Kpa, data.dongleTimestampMs);
 }
 
 void MainWindow::on_dongle_suction_open_clicked() {
-    // 串口未开时自动打开（当前下拉所选端口），不弹窗打断
     if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
-        openDongleSerialPort();
+        if (ui->connectButton && ui->connectButton->isEnabled())
+            ui->connectButton->click();
         if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
-            showlog(QStringLiteral("开启吸力读取失败：无法打开 Dongle 串口（请检查端口选择是否正确、是否被占用）"));
+            QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("请先连接 Dongle 串口"));
             return;
         }
-        showlog(QStringLiteral("Dongle 串口未连接，已自动打开：%1").arg(ui->comNameCombo->currentText()));
     }
     waitWork(200);
     loadDongleSuctionPeakSettings();

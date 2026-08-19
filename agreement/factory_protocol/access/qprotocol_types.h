@@ -420,7 +420,6 @@ struct ProtocolDongleVersionData {
     QString version;
 };
 
-
 struct ProtocolDongleDeviceNameData {
     QString name;
 };
@@ -452,6 +451,8 @@ struct ProtocolDongleSuctionData {
     double ch1Kpa = 0.0;
     double ch2Kpa = 0.0;
     double ch3Kpa = 0.0;
+    /** PHY 二进制 payload 前 4B 小端 ms；文本 AT 无此时为 -1 */
+    qint32 dongleTimestampMs = -1;
 };
 
 /** Dongle 吸力采样窗口汇总（SampleSuctionDual/Single），供 Gate 卡控 */
