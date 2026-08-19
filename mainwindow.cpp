@@ -5205,22 +5205,34 @@ void MainWindow::updateDongleSuctionPeakMonitorLabels() {
         if (!labels[i])
             continue;
         auto& m = dongleSuctionPeakMonitors_[i];
-        // 近 1 分钟有效峰个数；采集不足 1 分钟时按已过时长折算到每分钟
+        // ≥60s：最近 60s 有效峰个数；<60s：按已采时长折算估算（约 N/min）
         const double nowSec = dongleSuctionPlotTimeSecLast_ < 0.0 ? 0.0 : dongleSuctionPlotTimeSecLast_;
+        const double windowStart = (nowSec >= 60.0) ? (nowSec - 60.0) : 0.0;
         int peaksInWindow = 0;
-        const double t0 = nowSec - 60.0;
         for (double t : m.validPeakSec) {
-            if (t > t0)
+            if (t > windowStart)
                 ++peaksInWindow;
         }
-        m.freqPerMin =
-            (nowSec > 0.0 && nowSec < 60.0) ? qRound(peaksInWindow * 60.0 / nowSec) : peaksInWindow;
-        labels[i]->setText(QStringLiteral("%1峰检：有效%2 漏峰%3 弱峰%4 频率%5/min")
+        if (nowSec >= 60.0) {
+            m.freqPerMin = peaksInWindow;
+            m.freqEstimated = false;
+        } else if (nowSec > 0.0) {
+            m.freqPerMin = qRound(peaksInWindow * 60.0 / nowSec);
+            m.freqEstimated = true;
+        } else {
+            m.freqPerMin = -1;
+            m.freqEstimated = false;
+        }
+        const QString freqText =
+            (m.freqPerMin < 0) ? QStringLiteral("--")
+                               : (m.freqEstimated ? QStringLiteral("约%1/min").arg(m.freqPerMin)
+                                                  : QStringLiteral("%1/min").arg(m.freqPerMin));
+        labels[i]->setText(QStringLiteral("%1峰检：有效%2 漏峰%3 弱峰%4 频率%5")
                                .arg(channelNames[i])
                                .arg(m.validPeakCount)
                                .arg(m.missedPeakCount)
                                .arg(m.weakPeakCount)
-                               .arg(m.freqPerMin));
+                               .arg(freqText));
     }
 }
 
@@ -5652,8 +5664,12 @@ void MainWindow::updateDongleSuctionPlotOverlay(QCustomPlot* plot) {
     auto fmtName = [](const QString& name, double live, double hi, double lo, bool ok,
                       const DongleSuctionChannelPeakMonitor& m) {
         if (!ok)
-            return QStringLiteral("%1 实时-- 最高-- 最低-- 有效0 漏峰0 弱峰0 频率0/min").arg(name);
-        return QStringLiteral("%1 实时%2 最高%3 最低%4 有效%5 漏峰%6 弱峰%7 频率%8/min")
+            return QStringLiteral("%1 实时-- 最高-- 最低-- 有效0 漏峰0 弱峰0 频率--").arg(name);
+        const QString freqText =
+            (m.freqPerMin < 0) ? QStringLiteral("--")
+                               : (m.freqEstimated ? QStringLiteral("约%1/min").arg(m.freqPerMin)
+                                                  : QStringLiteral("%1/min").arg(m.freqPerMin));
+        return QStringLiteral("%1 实时%2 最高%3 最低%4 有效%5 漏峰%6 弱峰%7 频率%8")
             .arg(name)
             .arg(live, 0, 'f', 2)
             .arg(hi, 0, 'f', 2)
@@ -5661,7 +5677,7 @@ void MainWindow::updateDongleSuctionPlotOverlay(QCustomPlot* plot) {
             .arg(m.validPeakCount)
             .arg(m.missedPeakCount)
             .arg(m.weakPeakCount)
-            .arg(m.freqPerMin);
+            .arg(freqText);
     };
 
     const bool ok = dongleSuctionPeakLabelStatsInit_;

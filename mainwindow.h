@@ -180,6 +180,7 @@ class MainWindow : public QMainWindow {
         int missedPeakCount = 0;
         int weakPeakCount = 0;
         int freqPerMin = 0;
+        bool freqEstimated = false;
         QVector<double> validPeakSec;
     };
 
