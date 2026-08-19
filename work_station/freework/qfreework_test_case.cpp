@@ -1016,7 +1016,8 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
     const bool fixtureTableMode =
         (reportType == QStringLiteral("ProtocolFixturePcbaData")
          || reportType == QStringLiteral("ProtocolJieliBtBoxData")
-         || reportType == QStringLiteral("ProtocolDongleSuctionPeakData"))
+         || reportType == QStringLiteral("ProtocolDongleSuctionPeakData")
+         || reportType == QStringLiteral("ProtocolScreenInspectData"))
         && multiFieldMode;
     if (fixtureTableMode) {
         emitFixtureMultiGateTableRows(gatesForEval, reportType, payload, pass, detail);
@@ -1727,6 +1728,10 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
     }
 
     if (def.send.channel == TestCaseSendChannel::Fixture) {
+        if (def.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera) {
+            ctx->runScreenInspectStep();
+            return;
+        }
         if (def.send.fixtureProtocol == TestCaseFixtureProtocol::Asd9026a)
             ctx->executeFixtureAsd9026aCase(def);
         else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::Xwd)

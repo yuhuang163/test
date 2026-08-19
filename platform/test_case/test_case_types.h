@@ -18,12 +18,14 @@ struct DeviceCmdParamSchema {
 
 // clang-format off
 enum class TestCaseSendChannel { Product, ProductSerial, Dongle, Cloud, Fixture, Modbus, Scpi };
+enum class UsbCameraCmd { ScreenDeadPixelCheck, ScreenDisplayAnomalyCheck };
 enum class TestCaseProductProtocol { Qfctp, Qpb, Qroot, Qaiot };
 enum class TestCaseFixtureProtocol {
     Pcba,
     Asd9026a,
     Xwd, // 原 XWD_BLE / XWD_SUCTION 同一治具串口物理层
-    JieliBtBox
+    JieliBtBox,
+    UsbCamera
 };
 // clang-format on
 

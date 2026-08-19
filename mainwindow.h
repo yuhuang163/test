@@ -60,6 +60,7 @@ class QCustomPlot;
 class QCPRange;
 class QDialog;
 class qsetting;
+class ScreenInspectWidget;
 
 extern "C" {
 #include "md5.h" // 引入 tiny-AES-c 的头文件
@@ -316,6 +317,7 @@ class MainWindow : public QMainWindow {
     bool isimuCaliContinue = false;
     bool isrssiContinue = false;
     Ui::MainWindow* ui;
+    ScreenInspectWidget* screenInspectPage_ = nullptr;
     QString macAddress = "没有mac地址";
     bool isimuCaliOk = 0;       // 是否校准完成
     bool is_start_ium_cali = 0; // 是否开始六轴校准

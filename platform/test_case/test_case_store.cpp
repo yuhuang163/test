@@ -871,6 +871,10 @@ void applySendChannelIniText(const QString& channelIni, TestCaseDefinition& def)
         def.send.channel = TestCaseSendChannel::Modbus;
     } else if (channelIni.compare(QStringLiteral("Scpi"), Qt::CaseInsensitive) == 0) {
         def.send.channel = TestCaseSendChannel::Scpi;
+    } else if (channelIni.compare(QStringLiteral("UsbCamera"), Qt::CaseInsensitive) == 0) {
+        // 兼容旧 Channel=UsbCamera：并入治具通信
+        def.send.channel = TestCaseSendChannel::Fixture;
+        def.send.fixtureProtocol = TestCaseFixtureProtocol::UsbCamera;
     }
 }
 
@@ -1006,6 +1010,9 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
         out.send.channel = TestCaseSendChannel::Modbus;
     } else if (channelIni.compare(QStringLiteral("Scpi"), Qt::CaseInsensitive) == 0) {
         out.send.channel = TestCaseSendChannel::Scpi;
+    } else if (channelIni.compare(QStringLiteral("UsbCamera"), Qt::CaseInsensitive) == 0) {
+        out.send.channel = TestCaseSendChannel::Fixture;
+        out.send.fixtureProtocol = TestCaseFixtureProtocol::UsbCamera;
     } else {
         FixturePcbaCmd inferFixturePcba;
         Asd9026aCmd inferAsd9026a;
@@ -1014,6 +1021,7 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
         ProductSerialCmd inferSerial;
         TupleCmd inferTuple;
         DongleCmd inferDongle;
+        UsbCameraCmd inferUsbCamera;
         if (Asd9026aCmdCatalog::asd9026aCmdFromName(out.send.deviceCmd, inferAsd9026a)) {
             out.send.channel = TestCaseSendChannel::Fixture;
             out.send.fixtureProtocol = TestCaseFixtureProtocol::Asd9026a;
@@ -1031,8 +1039,20 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
             out.send.channel = TestCaseSendChannel::Cloud;
         } else if (DongleCmdCatalog::dongleCmdFromName(out.send.deviceCmd, inferDongle)) {
             out.send.channel = TestCaseSendChannel::Dongle;
+        } else if (UsbCameraCmdCatalog::usbCameraCmdFromName(out.send.deviceCmd, inferUsbCamera)) {
+            out.send.channel = TestCaseSendChannel::Fixture;
+            out.send.fixtureProtocol = TestCaseFixtureProtocol::UsbCamera;
         } else {
             out.send.channel = TestCaseSendChannel::Product;
+        }
+    }
+    // 旧配置把 USB 摄像头步骤写在产品通道或独立通道，加载时并入治具协议
+    {
+        UsbCameraCmd camCmd;
+        if (UsbCameraCmdCatalog::usbCameraCmdFromName(out.send.deviceCmd, camCmd)
+            && out.send.channel != TestCaseSendChannel::Fixture) {
+            out.send.channel = TestCaseSendChannel::Fixture;
+            out.send.fixtureProtocol = TestCaseFixtureProtocol::UsbCamera;
         }
     }
     if (out.send.channel == TestCaseSendChannel::Dongle) {
@@ -1076,6 +1096,13 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
                 if (!JieliBtBoxCmdCatalog::isCmdForAction(jieliCmd, out.send.action))
                     out.send.action = JieliBtBoxCmdCatalog::actionFor(jieliCmd);
                 JieliBtBoxCmdCatalog::paramFromIniGroup(ini, jieliCmd, out.send.param);
+            }
+        } else if (out.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera) {
+            UsbCameraCmd camCmd;
+            if (UsbCameraCmdCatalog::usbCameraCmdFromName(out.send.deviceCmd, camCmd)) {
+                if (!UsbCameraCmdCatalog::isCmdForAction(camCmd, out.send.action))
+                    out.send.action = UsbCameraCmdCatalog::actionFor(camCmd);
+                UsbCameraCmdCatalog::paramFromIniGroup(ini, camCmd, out.send.param);
             }
         } else {
         FixturePcbaCmd fixtureCmd;
@@ -1365,7 +1392,9 @@ void applyCaseIniOverlay(QSettings& overlay, TestCaseDefinition& def) {
                     merged.insert(it.key(), it.value());
                 }
                 def.send.param = normalizeScpiModbusParamFromMap(merged);
-            } else if (def.send.channel == TestCaseSendChannel::Product) {
+            } else if (def.send.channel == TestCaseSendChannel::Product
+                       || (def.send.channel == TestCaseSendChannel::Fixture
+                           && def.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera)) {
                 // 编辑/存档侧保持 JsonMap；normalizeSendParam（如 Sn→DeviceSnPayload）仅在下发时做
                 QVariantMap merged;
                 if (def.send.param.canConvert<QVariantMap>())
@@ -1406,6 +1435,10 @@ void applyCaseIniOverlay(QSettings& overlay, TestCaseDefinition& def) {
                     JieliBtBoxCmd jieliCmd;
                     if (JieliBtBoxCmdCatalog::jieliBtBoxCmdFromName(def.send.deviceCmd, jieliCmd))
                         JieliBtBoxCmdCatalog::paramFromIniGroup(overlay, jieliCmd, def.send.param);
+                } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera) {
+                    UsbCameraCmd camCmd;
+                    if (UsbCameraCmdCatalog::usbCameraCmdFromName(def.send.deviceCmd, camCmd))
+                        UsbCameraCmdCatalog::paramFromIniGroup(overlay, camCmd, def.send.param);
                 } else {
                     FixturePcbaCmd fixtureCmd;
                     if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd))
@@ -1783,6 +1816,10 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
                 JieliBtBoxCmd jieliCmd;
                 if (JieliBtBoxCmdCatalog::jieliBtBoxCmdFromName(def.send.deviceCmd, jieliCmd))
                     JieliBtBoxCmdCatalog::paramToIniGroup(ini, jieliCmd, def.send.param);
+            } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera) {
+                UsbCameraCmd camCmd;
+                if (UsbCameraCmdCatalog::usbCameraCmdFromName(def.send.deviceCmd, camCmd))
+                    UsbCameraCmdCatalog::paramToIniGroup(ini, camCmd, def.send.param);
             } else {
                 FixturePcbaCmd fixtureCmd;
                 if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd))
@@ -1851,6 +1888,9 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
         } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::JieliBtBox) {
             ini.setValue(QStringLiteral("Send/Device"),
                          def.send.device.isEmpty() ? QStringLiteral("JIELI_BT_BOX") : def.send.device);
+        } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera) {
+            ini.setValue(QStringLiteral("Send/Device"),
+                         def.send.device.isEmpty() ? QStringLiteral("USB_CAMERA") : def.send.device);
         }
     }
     ini.setValue(QStringLiteral("Send/DeviceCmd"), def.send.deviceCmd);
@@ -1875,6 +1915,10 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
             JieliBtBoxCmd jieliCmd;
             if (JieliBtBoxCmdCatalog::jieliBtBoxCmdFromName(def.send.deviceCmd, jieliCmd))
                 JieliBtBoxCmdCatalog::paramToIniGroup(ini, jieliCmd, def.send.param);
+        } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera) {
+            UsbCameraCmd camCmd;
+            if (UsbCameraCmdCatalog::usbCameraCmdFromName(def.send.deviceCmd, camCmd))
+                UsbCameraCmdCatalog::paramToIniGroup(ini, camCmd, def.send.param);
         } else {
         FixturePcbaCmd fixtureCmd;
         if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd))

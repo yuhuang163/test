@@ -177,6 +177,9 @@ void writeGenericHookSendParamMap(QSettings& ini, const TestCaseDefinition& def)
         DeviceCmd cmd;
         if (!DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd))
             writeSendParamMap(ini, map);
+    } else if (def.send.channel == TestCaseSendChannel::Fixture
+               && def.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera) {
+        writeSendParamMap(ini, map);
     }
 }
 

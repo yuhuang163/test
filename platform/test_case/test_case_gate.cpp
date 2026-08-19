@@ -12,6 +12,7 @@
 #include "jieli_bt_box_cmd_manifest.h"
 #include "modbus_cmd_manifest.h"
 #include "scpi_cmd_manifest.h"
+#include "usb_camera_cmd_manifest.h"
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
@@ -130,6 +131,11 @@ const QVector<GateTypeDescriptor> kTypes = {
       {QStringLiteral("ch2PeakKpa"), QStringLiteral("CH2最低峰值")},
       {QStringLiteral("sideDiffKpa"), QStringLiteral("CH1-CH2峰差(kPa)")},
       {QStringLiteral("peakCount"), QStringLiteral("完整周期峰个数")}}},
+    {QStringLiteral("ProtocolScreenInspectData"),
+     QStringLiteral("屏幕检测"),
+     {{QStringLiteral("deadPixels"), QStringLiteral("坏点数")},
+      {QStringLiteral("muraStd"), QStringLiteral("纯色起伏")},
+      {QStringLiteral("ssim"), QStringLiteral("与参考图相似度（0~1）")}}},
 };
 
 double fieldValueFromVariant(const QString& reportType, const QString& field, const QVariant& payload, bool& ok) {
@@ -637,6 +643,20 @@ double fieldValueFromVariant(const QString& reportType, const QString& field, co
             ok = true;
             return d.peakCount;
         }
+    } else if (reportType == QLatin1String("ProtocolScreenInspectData")) {
+        const auto d = payload.value<ProtocolScreenInspectData>();
+        if (field == QLatin1String("deadPixels")) {
+            ok = true;
+            return d.deadPixels;
+        }
+        if (field == QLatin1String("muraStd")) {
+            ok = true;
+            return d.muraStd;
+        }
+        if (field == QLatin1String("ssim") || field == QLatin1String("similarity")) {
+            ok = true;
+            return d.ssim;
+        }
     }
     return 0.0;
 }
@@ -1103,6 +1123,20 @@ QString fieldStringFromVariant(const QString& reportType, const QString& field, 
             ok = true;
             return QString::number(d.peakCount);
         }
+    } else if (reportType == QLatin1String("ProtocolScreenInspectData")) {
+        const auto d = payload.value<ProtocolScreenInspectData>();
+        if (field == QLatin1String("deadPixels")) {
+            ok = true;
+            return QString::number(d.deadPixels);
+        }
+        if (field == QLatin1String("muraStd")) {
+            ok = true;
+            return QString::number(d.muraStd, 'f', 1);
+        }
+        if (field == QLatin1String("ssim") || field == QLatin1String("similarity")) {
+            ok = true;
+            return QString::number(d.ssim, 'f', 3);
+        }
     }
     return {};
 }
@@ -1169,6 +1203,9 @@ GateSendBinding GateRegistry::bindingForSend(TestCaseSendChannel channel, const 
                 applyRow(row->gateReportType, row->gateDefaultField);
         } else if (proto == TestCaseFixtureProtocol::Pcba) {
             if (const FixturePcbaCmdManifest::Row* row = FixturePcbaCmdManifest::findByEnumName(cmd))
+                applyRow(row->gateReportType, row->gateDefaultField);
+        } else if (proto == TestCaseFixtureProtocol::UsbCamera) {
+            if (const UsbCameraCmdManifest::Row* row = UsbCameraCmdManifest::findByEnumName(cmd))
                 applyRow(row->gateReportType, row->gateDefaultField);
         }
         break;
@@ -1437,6 +1474,14 @@ QString defaultUnitForField(const QString& reportType, const QString& field) {
         || reportType == QLatin1String("ProtocolDongleSuctionPeakData")) {
         if (field.endsWith(QLatin1String("Kpa")) || field.endsWith(QLatin1String("kPa")))
             return QStringLiteral("kPa");
+    }
+    if (reportType == QLatin1String("ProtocolScreenInspectData")) {
+        if (field == QLatin1String("deadPixels"))
+            return QStringLiteral("个");
+        if (field == QLatin1String("ssim"))
+            return QStringLiteral("0~1");
+        if (field == QLatin1String("muraStd"))
+            return QStringLiteral("σ");
     }
     if ((reportType == QLatin1String("ProtocolBatteryTempData")
          || reportType == QLatin1String("ProtocolHeatTempData"))

@@ -2025,6 +2025,77 @@
         </item>
        </layout>
       </widget>
+      <widget class="QGroupBox" name="groupBox_screenInspect">
+       <property name="geometry">
+        <rect>
+         <x>732</x>
+         <y>489</y>
+         <width>240</width>
+         <height>280</height>
+        </rect>
+       </property>
+       <property name="title">
+        <string>调试屏幕坏点检测</string>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_screenInspect">
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_screenInspectSsim">
+          <item>
+           <widget class="QLabel" name="label_screenInspectMinSsim">
+            <property name="text">
+             <string>最小相似度</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="lineEdit_screenInspectMinSsim"/>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_screenInspectDead">
+          <item>
+           <widget class="QLabel" name="label_screenInspectDeadDiff">
+            <property name="text">
+             <string>坏点残差</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="lineEdit_screenInspectDeadDiff"/>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_screenInspectMaxDead">
+          <item>
+           <widget class="QLabel" name="label_screenInspectMaxDead">
+            <property name="text">
+             <string>最大坏点数</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="lineEdit_screenInspectMaxDead"/>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout_screenInspectMura">
+          <item>
+           <widget class="QLabel" name="label_screenInspectMura">
+            <property name="text">
+             <string>纯色起伏上限（灰阶勿用）</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLineEdit" name="lineEdit_screenInspectMura"/>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
       <widget class="QGroupBox" name="mainWidget">
        <property name="geometry">
         <rect>

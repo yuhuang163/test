@@ -140,6 +140,13 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("baseUrl"), QStringLiteral("接口地址")},
         {QStringLiteral("userName"), QStringLiteral("用户名")},
         {QStringLiteral("password"), QStringLiteral("密码")},
+        {QStringLiteral("cameraIndex"), QStringLiteral("摄像头序号（从 0）")},
+        {QStringLiteral("cameraName"), QStringLiteral("摄像头名称（可选，优先于序号）")},
+        {QStringLiteral("warmupMs"), QStringLiteral("采集预热 (ms)")},
+        {QStringLiteral("expectedColor"), QStringLiteral("期望纯色（-1自动 0蓝1绿2红3白4黑）")},
+        {QStringLiteral("deadDiff"), QStringLiteral("坏点残差阈值")},
+        {QStringLiteral("referencePath"), QStringLiteral("参考图路径")},
+        {QStringLiteral("saveCapture"), QStringLiteral("保存拍摄图（1开/0关）")},
     };
     if (kMap.contains(k))
         return kMap.value(k);
@@ -313,7 +320,21 @@ QStringList sendParamPreferredOrder(TestCaseSendChannel channel, const QString& 
                 QStringLiteral("minPeakCount"), QStringLiteral("peakBaselineKpa"),
                 QStringLiteral("peakDipStartKpa")};
     }
+    if (channel == TestCaseSendChannel::Fixture
+        && (cmdName == QLatin1String("ScreenDeadPixelCheck")
+            || cmdName == QLatin1String("ScreenDisplayAnomalyCheck"))) {
+        QStringList keys = {QStringLiteral("cameraIndex"), QStringLiteral("cameraName"),
+                            QStringLiteral("warmupMs"), QStringLiteral("expectedColor"),
+                            QStringLiteral("deadDiff"), QStringLiteral("saveCapture")};
+        if (cmdName == QLatin1String("ScreenDisplayAnomalyCheck"))
+            keys.append(QStringLiteral("referencePath"));
+        return keys;
+    }
     return {};
+}
+
+bool isDroppedSendParamKey(const QString& key) {
+    return key.compare(QLatin1String("setScreenColor"), Qt::CaseInsensitive) == 0;
 }
 
 void sortSendParamKeys(QStringList& keys, const QStringList& preferredOrder) {
@@ -336,6 +357,7 @@ void setSendParamTableFromMap(QTableWidget* table, const QVariantMap& map,
     QSignalBlocker blocker(table);
     configureSendParamTable(table);
     QStringList keys = map.keys();
+    keys.erase(std::remove_if(keys.begin(), keys.end(), isDroppedSendParamKey), keys.end());
     sortSendParamKeys(keys, preferredOrder);
     for (const QString& key : keys) {
         const int r = table->rowCount();
@@ -360,12 +382,12 @@ void setSendParamTableFromMapWithTemplate(QTableWidget* table, const QVariantMap
     configureSendParamTable(table);
     QStringList ordered;
     for (const QString& k : templateMap.keys()) {
-        if (!k.isEmpty() && !ordered.contains(k))
+        if (!k.isEmpty() && !isDroppedSendParamKey(k) && !ordered.contains(k))
             ordered.append(k);
     }
     QStringList extras;
     for (const QString& k : userMap.keys()) {
-        if (!k.isEmpty() && !ordered.contains(k))
+        if (!k.isEmpty() && !isDroppedSendParamKey(k) && !ordered.contains(k))
             extras.append(k);
     }
     extras.sort(Qt::CaseInsensitive);
@@ -574,6 +596,22 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
         }
         return {};
     }
+    if (channel == TestCaseSendChannel::Fixture
+        && FixturePcbaCmdCatalog::fixtureProtocolFromIni(device) == TestCaseFixtureProtocol::UsbCamera) {
+        if (cmdName == QLatin1String("ScreenDeadPixelCheck")
+            || cmdName == QLatin1String("ScreenDisplayAnomalyCheck")) {
+            QVariantMap map{{QStringLiteral("cameraIndex"), QStringLiteral("0")},
+                            {QStringLiteral("cameraName"), QString()},
+                            {QStringLiteral("warmupMs"), QStringLiteral("450")},
+                            {QStringLiteral("expectedColor"), QStringLiteral("-1")},
+                            {QStringLiteral("deadDiff"), QStringLiteral("35")},
+                            {QStringLiteral("saveCapture"), QStringLiteral("1")}};
+            if (cmdName == QLatin1String("ScreenDisplayAnomalyCheck"))
+                map.insert(QStringLiteral("referencePath"), QString());
+            return map;
+        }
+        return {};
+    }
     if (channel == TestCaseSendChannel::Cloud && cmdName == QLatin1String("Login")) {
         // 三元组云端登录：提供 baseUrl/userName/password 字段；显示顺序见 sendParamPreferredOrder（账号在密码上方）
         return QVariantMap{{QStringLiteral("baseUrl"), QString()},
@@ -739,6 +777,8 @@ void fillFixtureProtocolCombo(QComboBox* box) {
                  FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::Xwd));
     box->addItem(FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol::JieliBtBox),
                  FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::JieliBtBox));
+    box->addItem(FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol::UsbCamera),
+                 FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::UsbCamera));
 }
 
 void fillProtocolComboForChannel(QComboBox* box, TestCaseSendChannel channel) {
@@ -799,6 +839,10 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
             items.reserve(JieliBtBoxCmdCatalog::allJieliBtBoxCmdNames(action).size());
             for (const QString& name : JieliBtBoxCmdCatalog::allJieliBtBoxCmdNames(action))
                 items.append({JieliBtBoxCmdCatalog::jieliBtBoxCmdUiLabel(name), name});
+        } else if (proto == TestCaseFixtureProtocol::UsbCamera) {
+            items.reserve(UsbCameraCmdCatalog::allUsbCameraCmdNames(action).size());
+            for (const QString& name : UsbCameraCmdCatalog::allUsbCameraCmdNames(action))
+                items.append({UsbCameraCmdCatalog::usbCameraCmdUiLabel(name), name});
         } else {
             items.reserve(FixturePcbaCmdCatalog::allFixturePcbaCmdNames(action).size());
             for (const QString& name : FixturePcbaCmdCatalog::allFixturePcbaCmdNames(action))
@@ -982,6 +1026,18 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
                 if (JieliBtBoxCmdCatalog::paramSchemaFor(jieliCmd, schema)) {
                     out.valid = true;
                     out.hint = JieliBtBoxCmdCatalog::paramUiHint(name);
+                    out.kind = sendParamUiKindFromSchema(schema.kind);
+                }
+            }
+            return out;
+        }
+        if (proto == TestCaseFixtureProtocol::UsbCamera) {
+            UsbCameraCmd camCmd;
+            if (UsbCameraCmdCatalog::usbCameraCmdFromName(name, camCmd)) {
+                DeviceCmdParamSchema schema;
+                if (UsbCameraCmdCatalog::paramSchemaFor(camCmd, schema)) {
+                    out.valid = true;
+                    out.hint = UsbCameraCmdCatalog::paramUiHint(name);
                     out.kind = sendParamUiKindFromSchema(schema.kind);
                 }
             }
@@ -1282,6 +1338,42 @@ void initPeriphGateTable(QTableWidget* table) {
         nameItem->setData(Qt::UserRole, desc.fields.at(i).field);
         table->setItem(i, 0, nameItem);
         table->setItem(i, 1, new QTableWidgetItem(QStringLiteral("0")));
+    }
+}
+
+void applyScreenInspectGatePlaceholders(QTableWidget* table, const QString& reportType,
+                                       const QString& defaultField) {
+    if (!table || reportType != QLatin1String("ProtocolScreenInspectData"))
+        return;
+    for (int i = 0; i < table->rowCount(); ++i) {
+        QTableWidgetItem* nameItem = table->item(i, 1);
+        if (!nameItem)
+            continue;
+        const QString field = nameItem->data(Qt::UserRole).toString();
+        QString low = QStringLiteral("0");
+        QString high = QStringLiteral("0");
+        QString tip;
+        if (field == QLatin1String("deadPixels")) {
+            high = QStringLiteral("8");
+            tip = QStringLiteral("ROI 内判定为坏点的像素个数。良品接近 0，上限可放 8。");
+        } else if (field == QLatin1String("ssim")) {
+            low = QStringLiteral("0.85");
+            high = QStringLiteral("1");
+            tip = QStringLiteral("与参考图结构相似度，1 为完全相同。灰阶/花屏对比只卡这一项。");
+        } else if (field == QLatin1String("muraStd")) {
+            high = QStringLiteral("22");
+            tip = QStringLiteral("整屏灰度标准差。纯色画面才有意义（越小越均匀）。灰阶条纹本身很大，不要勾选。");
+        }
+        nameItem->setToolTip(tip);
+        if (QTableWidgetItem* enableItem = table->item(i, 0)) {
+            enableItem->setToolTip(QStringLiteral("不必三项全勾，只勾本步需要的判定项。"));
+            if (!defaultField.isEmpty() && field == defaultField)
+                enableItem->setCheckState(Qt::Checked);
+        }
+        if (QTableWidgetItem* lo = table->item(i, 3))
+            lo->setText(low);
+        if (QTableWidgetItem* hi = table->item(i, 4))
+            hi->setText(high);
     }
 }
 
@@ -1596,6 +1688,8 @@ void TestCaseEditDialog::rebuildMultiGateTable() {
     if (isRangeMultiGateMode()) {
         const QString reportType = comboData(ui->comboBox_gateReportType);
         initRangeMultiGateTable(tableWidget_multiGates_, reportType);
+        applyScreenInspectGatePlaceholders(tableWidget_multiGates_, reportType,
+                                           comboData(ui->comboBox_gateField));
     } else if (isPeriphMultiGateMode())
         initPeriphGateTable(tableWidget_multiGates_);
 }
@@ -2060,7 +2154,8 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
             if (def.gates.size() > 1
                 || def.gate.reportType == QLatin1String("ProtocolDongleSuctionPeakData")
                 || def.gate.reportType == QLatin1String("ProtocolFixturePcbaData")
-                || def.gate.reportType == QLatin1String("ProtocolJieliBtBoxData"))
+                || def.gate.reportType == QLatin1String("ProtocolJieliBtBoxData")
+                || def.gate.reportType == QLatin1String("ProtocolScreenInspectData"))
                 def.gate.field = QStringLiteral("multi");
         }
     }

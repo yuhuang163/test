@@ -337,6 +337,13 @@ class QFreeWork : public test_base {
     void runDongleSuctionSampleStep();
     /** Dongle 单通道吸力采样；判定走 ProtocolDongleSuctionPeakData Gate。 */
     void runDongleSuctionSampleSingleStep();
+    /** 自由工站屏幕检测：调用 USB 摄像头对屏幕拍照，再分析对比（坏点 / 显示异常）+ Gate。 */
+    void runScreenInspectStep();
+    void rememberScreenInspectImages(const QImage& capture, const QImage& annotated, const QImage& reference,
+                                     const QString& folder);
+    void updateScreenInspectPreview();
+    void showScreenInspectViewer();
+    void openScreenInspectFolder();
     /**
      * 程控电源读电流：连续采样若干秒，期间任一值卡控合格即通过。
      * 每次读数经 ProtocolMeasureData(Current) 上报后由 onUsbInstrumentReport 软判定。
@@ -376,6 +383,10 @@ class QFreeWork : public test_base {
     double suctionPeakDipStartKpa_ = -10.0;
     /** 采样窗口内至少需要的完整「吸→回放」周期峰个数（单/双通道共用，默认 3）。 */
     int suctionMinPeakCount_ = 3;
+    QImage screenInspectCapture_;
+    QImage screenInspectAnnotated_;
+    QImage screenInspectReference_;
+    QString screenInspectFolder_;
     bool dongleSuctionReadEnabled_ = false;
     bool dongleSuctionSampleActive_ = false;
     /** 读电流连续采样：窗口内任一卡控合格即通过，不合格不立刻结束步骤。 */
@@ -484,6 +495,8 @@ class QFreeWork : public test_base {
     void on_stopTest_clicked();
     void on_toggleExtraTabsButton_clicked();
     void on_clearSuctionChartButton_clicked();
+    void on_viewScreenInspectLargeButton_clicked();
+    void on_openScreenInspectFolderButton_clicked();
 
   signals:
     void send_go_next_focus();
