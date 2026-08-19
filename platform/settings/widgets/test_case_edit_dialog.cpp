@@ -101,6 +101,7 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("minPeakCount"), QStringLiteral("最少完整周期峰数")},
         {QStringLiteral("peakBaselineKpa"), QStringLiteral("回基线阈值 (kPa)")},
         {QStringLiteral("peakDipStartKpa"), QStringLiteral("入峰阈值 (kPa)")},
+        {QStringLiteral("offsetKpa"), QStringLiteral("吸力修正值 (kPa)，最终值=原始值+本项（填负数为减）")},
         {QStringLiteral("channel"), QStringLiteral("温度/采样通道号")},
         {QStringLiteral("channels"), QStringLiteral("温度通道列表（如 1,2,3,4,5,6 或 1-6）")},
         {QStringLiteral("channelsPerStation"), QStringLiteral("每工位占用温度通道数（法兰加热填 6）")},
@@ -306,12 +307,12 @@ QStringList sendParamPreferredOrder(TestCaseSendChannel channel, const QString& 
     if (channel == TestCaseSendChannel::Dongle && cmdName == QLatin1String("SampleSuctionDual")) {
         return {QStringLiteral("sampleDurationMs"), QStringLiteral("sampleIntervalMs"),
                 QStringLiteral("minPeakCount"), QStringLiteral("peakBaselineKpa"),
-                QStringLiteral("peakDipStartKpa")};
+                QStringLiteral("peakDipStartKpa"), QStringLiteral("offsetKpa")};
     }
     if (channel == TestCaseSendChannel::Dongle && cmdName == QLatin1String("SampleSuctionSingle")) {
         return {QStringLiteral("sampleDurationMs"), QStringLiteral("sampleIntervalMs"), QStringLiteral("channel"),
                 QStringLiteral("minPeakCount"), QStringLiteral("peakBaselineKpa"),
-                QStringLiteral("peakDipStartKpa")};
+                QStringLiteral("peakDipStartKpa"), QStringLiteral("offsetKpa")};
     }
     return {};
 }
@@ -531,14 +532,16 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
                                {QStringLiteral("channel"), QStringLiteral("1")},
                                {QStringLiteral("minPeakCount"), QStringLiteral("3")},
                                {QStringLiteral("peakBaselineKpa"), QStringLiteral("-8")},
-                               {QStringLiteral("peakDipStartKpa"), QStringLiteral("-10")}};
+                               {QStringLiteral("peakDipStartKpa"), QStringLiteral("-10")},
+                               {QStringLiteral("offsetKpa"), QStringLiteral("0")}};
         }
         if (cmdName == QLatin1String("SampleSuctionDual")) {
             return QVariantMap{{QStringLiteral("sampleDurationMs"), QStringLiteral("10000")},
                                {QStringLiteral("sampleIntervalMs"), QStringLiteral("20")},
                                {QStringLiteral("minPeakCount"), QStringLiteral("3")},
                                {QStringLiteral("peakBaselineKpa"), QStringLiteral("-8")},
-                               {QStringLiteral("peakDipStartKpa"), QStringLiteral("-10")}};
+                               {QStringLiteral("peakDipStartKpa"), QStringLiteral("-10")},
+                               {QStringLiteral("offsetKpa"), QStringLiteral("0")}};
         }
         return {};
     }
@@ -602,7 +605,20 @@ void setSendParamTableFromString(QTableWidget* table, const QString& value) {
     table->setItem(0, 1, makeSendParamValueItem(value, false, false));
 }
 
-/** 保存/definition 前提交表格内联编辑，避免点「确定」时 Param 仍读旧占位值。 */
+/** 关掉单元格内联编辑器，让 item->text() 拿到正在输入的值。 */
+void commitTableInlineEdits(QTableWidget* table) {
+    if (!table)
+        return;
+    if (QTableWidgetItem* item = table->currentItem())
+        table->closePersistentEditor(item);
+    if (QWidget* fw = QApplication::focusWidget()) {
+        if (fw == table || table->isAncestorOf(fw))
+            fw->clearFocus();
+    }
+    table->clearFocus();
+}
+
+/** 保存/definition 前提交发送参数表：先落占位符，再关编辑器。 */
 void commitSendParamTableEdits(QTableWidget* table) {
     if (!table)
         return;
@@ -617,13 +633,7 @@ void commitSendParamTableEdits(QTableWidget* table) {
                 materializeSendParamValueItem(valItem);
         }
     }
-    if (QTableWidgetItem* item = table->currentItem())
-        table->closePersistentEditor(item);
-    if (QWidget* fw = QApplication::focusWidget()) {
-        if (fw == table || table->isAncestorOf(fw))
-            fw->clearFocus();
-    }
-    table->clearFocus();
+    commitTableInlineEdits(table);
 }
 
 QVariantMap readSendParamMapFromTable(const QTableWidget* table) {
@@ -1697,7 +1707,8 @@ QVector<TestCaseGate> TestCaseEditDialog::readPeriphGatesFromTable() const {
 QVector<TestCaseGate> TestCaseEditDialog::readMultiGatesFromTable() const {
     if (!tableWidget_multiGates_)
         return {};
-    if (isRangeMultiGateMode()) {
+    const bool rangeTable = tableWidget_multiGates_->columnCount() >= 6;
+    if (rangeTable || isRangeMultiGateMode()) {
         QVector<TestCaseGate> gates;
         const QString reportType = comboData(ui->comboBox_gateReportType);
         for (int row = 0; row < tableWidget_multiGates_->rowCount(); ++row) {
@@ -1720,6 +1731,9 @@ QVector<TestCaseGate> TestCaseEditDialog::readMultiGatesFromTable() const {
             const QString lowText = cellText(3);
             const QString highText = cellText(4);
             const QString expectedText = cellText(5);
+            // 未勾选但已填数值的行也要落盘（Enabled=false），否则重开后用户填的上下限全丢
+            const bool hasData = !qFuzzyIsNull(lowText.toDouble()) || !qFuzzyIsNull(highText.toDouble())
+                || !expectedText.isEmpty();
             TestCaseGate g;
             g.enabled = rowEnabled;
             g.reportType = reportType;
@@ -1735,7 +1749,7 @@ QVector<TestCaseGate> TestCaseEditDialog::readMultiGatesFromTable() const {
             }
             if (g.op == TestCaseGateOp::Eq && g.expected.isEmpty())
                 g.expected = QString::number(static_cast<int>(g.low));
-            if (!rowEnabled)
+            if (!rowEnabled && !hasData)
                 continue;
             gates.append(g);
         }
@@ -1955,9 +1969,12 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     }
     ui->checkBox_waitReply->setChecked(def.timing.waitReply);
 
+    const QVector<TestCaseGate> gatesForUi = def.gates;
+    const QString gateReportTypeForUi = def.gate.reportType;
+
+    // loadingDefinition_ 需保持到最后：下面的 update* 会经 onDeviceCmdChanged 重建卡控表格
     ui->checkBox_gateEnabled->setChecked(def.gate.enabled);
-    loadingDefinition_ = false;
-    syncGateToSendCommand(def.gate.reportType, def.gate.field);
+    syncGateToSendCommand(gateReportTypeForUi, def.gate.field);
 
     const QString opKey = def.gate.op == TestCaseGateOp::Gt ? QStringLiteral("gt")
         : def.gate.op == TestCaseGateOp::Lt                 ? QStringLiteral("lt")
@@ -1971,21 +1988,6 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     ui->lineEdit_gateLow->setText(QString::number(def.gate.low));
     ui->lineEdit_gateHigh->setText(QString::number(def.gate.high));
     ui->lineEdit_gateExpected->setText(def.gate.expected);
-    if ((def.gate.reportType == QLatin1String("ProtocolPeriphStateData")
-         || def.gate.reportType == QLatin1String("ProtocolFixturePcbaData")
-         || def.gate.reportType == QLatin1String("ProtocolJieliBtBoxData")
-         || def.gate.reportType == QLatin1String("ProtocolDongleSuctionPeakData"))
-        && !def.gates.isEmpty()) {
-        rebuildMultiGateTable();
-        writeMultiGatesToTable(def.gates);
-    } else if ((def.gate.reportType == QLatin1String("ProtocolPeriphStateData")
-                || def.gate.reportType == QLatin1String("ProtocolFixturePcbaData")
-                || def.gate.reportType == QLatin1String("ProtocolJieliBtBoxData")
-                || def.gate.reportType == QLatin1String("ProtocolDongleSuctionPeakData"))
-               && def.gate.enabled) {
-        rebuildMultiGateTable();
-        writeMultiGatesToTable({def.gate});
-    }
     ui->checkBox_hookEnabled->setChecked(def.hook.enabled);
     const int hookIdx = comboIndexByData(ui->comboBox_hookId, def.hook.hookId);
     if (hookIdx >= 0)
@@ -1994,6 +1996,11 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     updateGateFieldsEnabled();
     updatePromptFieldsEnabled();
     updateHookFieldsEnabled();
+
+    // 表格回填必须放在 update* 之后，否则会被 rebuildMultiGateTable 清成 0/未勾选
+    if (ui->checkBox_gateEnabled->isChecked() && !gatesForUi.isEmpty())
+        writeMultiGatesToTable(gatesForUi);
+    loadingDefinition_ = false;
 }
 
 TestCaseDefinition TestCaseEditDialog::definition() const {
@@ -2053,7 +2060,10 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
             def.gate = def.gates.first();
             def.gate.enabled = true;
             def.gate.reportType = comboData(ui->comboBox_gateReportType);
-            if (def.gates.size() > 1)
+            if (def.gates.size() > 1
+                || def.gate.reportType == QLatin1String("ProtocolDongleSuctionPeakData")
+                || def.gate.reportType == QLatin1String("ProtocolFixturePcbaData")
+                || def.gate.reportType == QLatin1String("ProtocolJieliBtBoxData"))
                 def.gate.field = QStringLiteral("multi");
         }
     }
@@ -2177,11 +2187,18 @@ void TestCaseEditDialog::onDeviceCmdChanged(int) {
 
 bool TestCaseEditDialog::saveValidated() {
     commitSendParamTableEdits(ui->tableWidget_sendParam);
+    commitTableInlineEdits(tableWidget_multiGates_);
     materializeAllSendParamPlaceholdersForSave(ui->tableWidget_sendParam);
     const TestCaseDefinition def = definition();
     QStringList errors;
     if (!TestCaseValidator::validateCase(def, errors)) {
         QMessageBox::warning(this, QStringLiteral("保存失败"), errors.join(QStringLiteral("\r\n")));
+        return false;
+    }
+    if (def.gate.enabled && def.gate.reportType == QLatin1String("ProtocolDongleSuctionPeakData")
+        && def.gates.isEmpty()) {
+        QMessageBox::warning(this, QStringLiteral("保存失败"),
+                             QStringLiteral("吸力卡控已启用，请至少在判定表格中勾选一项并填写上下限。"));
         return false;
     }
     if (stationKey_.isEmpty()) {

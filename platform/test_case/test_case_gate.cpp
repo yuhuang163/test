@@ -123,11 +123,11 @@ const QVector<GateTypeDescriptor> kTypes = {
       {QStringLiteral("ch3Kpa"), QStringLiteral("CH3(kPa)")}}},
     {QStringLiteral("ProtocolDongleSuctionPeakData"),
      QStringLiteral("Dongle吸力峰值"),
-     {{QStringLiteral("peakKpa"), QStringLiteral("单通道最强峰值(最低kPa)")},
+     {{QStringLiteral("peakKpa"), QStringLiteral("单通道最低峰值")},
       {QStringLiteral("highKpa"), QStringLiteral("单通道最弱峰值(kPa)")},
       {QStringLiteral("peakDiffKpa"), QStringLiteral("单通道峰值差(最大峰-最小峰)")},
-      {QStringLiteral("ch1PeakKpa"), QStringLiteral("CH1峰值(最低kPa)")},
-      {QStringLiteral("ch2PeakKpa"), QStringLiteral("CH2峰值(最低kPa)")},
+      {QStringLiteral("ch1PeakKpa"), QStringLiteral("CH1最低峰值")},
+      {QStringLiteral("ch2PeakKpa"), QStringLiteral("CH2最低峰值")},
       {QStringLiteral("sideDiffKpa"), QStringLiteral("CH1-CH2峰差(kPa)")},
       {QStringLiteral("peakCount"), QStringLiteral("完整周期峰个数")}}},
 };
@@ -1107,6 +1107,16 @@ QString fieldStringFromVariant(const QString& reportType, const QString& field, 
     return {};
 }
 
+/** 吸力峰判定字段展示用「最低峰值」，其余 Gate 仍用「当前值」。 */
+QString gateActualValueLabel(const QString& reportType, const QString& field) {
+    if (reportType == QLatin1String("ProtocolDongleSuctionPeakData")
+        && (field == QLatin1String("peakKpa") || field == QLatin1String("ch1PeakKpa")
+            || field == QLatin1String("leftPeakKpa") || field == QLatin1String("ch2PeakKpa")
+            || field == QLatin1String("rightPeakKpa")))
+        return QStringLiteral("最低峰值");
+    return QStringLiteral("当前值");
+}
+
 } // namespace
 
 QStringList GateRegistry::reportTypes() {
@@ -1329,14 +1339,18 @@ bool GateRegistry::evaluate(const TestCaseGate& gate, const QString& reportType,
                 expectVal = parsed;
         }
         passOut = qAbs(value - expectVal) < 0.0001;
-        detailOut = QStringLiteral("当前值=%1, 期望=%2").arg(value).arg(expectVal);
+        detailOut = QStringLiteral("%1=%2, 期望=%3").arg(gateActualValueLabel(reportType, gate.field)).arg(value).arg(expectVal);
         return true;
     }
     default:
         passOut = value >= low && value <= high;
         break;
     }
-    detailOut = QStringLiteral("当前值=%1, 允许[%2,%3]").arg(value).arg(low).arg(high);
+    detailOut = QStringLiteral("%1=%2, 允许[%3,%4]")
+                    .arg(gateActualValueLabel(reportType, gate.field))
+                    .arg(value)
+                    .arg(low)
+                    .arg(high);
     return true;
 }
 

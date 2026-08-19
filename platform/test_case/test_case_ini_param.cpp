@@ -48,8 +48,11 @@ void writeJsonMap(QSettings& s, const QString& prefix, const QVariant& value) {
     }
     removeKeysWithPrefix(s, prefix);
     const QVariantMap map = value.toMap();
-    for (auto it = map.cbegin(); it != map.cend(); ++it)
+    for (auto it = map.cbegin(); it != map.cend(); ++it) {
+        if (it.key().trimmed().isEmpty())
+            continue;
         s.setValue(prefix + QLatin1Char('/') + it.key(), it.value());
+    }
 }
 
 QString sendParamIniPrefix() {
@@ -72,8 +75,11 @@ void removeSendParamKeys(QSettings& s) {
 
 void writeSendParamMap(QSettings& s, const QVariantMap& map) {
     removeSendParamKeys(s);
-    for (auto it = map.cbegin(); it != map.cend(); ++it)
+    for (auto it = map.cbegin(); it != map.cend(); ++it) {
+        if (it.key().trimmed().isEmpty())
+            continue;
         s.setValue(sendParamIniKey(it.key()), it.value());
+    }
 }
 
 void writeSendParamLeaf(QSettings& s, const QString& leafKey, const QVariant& value) {
