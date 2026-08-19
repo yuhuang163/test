@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "common_utils.h"
+#include "dongle_phy.h"
 #include "qlog.h"
 #include "qatmanager.h"
 #include "my_set/my_typedef.h"
@@ -499,11 +500,13 @@ void MainWindow::onDongleSerialFrame(const QByteArray& dataTemp) {
     }
 
     at->parseCmd(dataTemp); // at回应用
-    protocolManager.parseCmd(dataTemp);
+    // 吸力/温度高频流已由 QAT 解析，跳过产测 phyRx_ 重复解包以免主线程卡顿
+    if (!shouldSkipDongleStreamUartLog(dataTemp))
+        protocolManager.parseCmd(dataTemp);
     getMacAddress(dataTemp); // 搜索设备用
 
-    // 吸力/温度流式帧：协议已处理，勿刷主窗口串口 UI / 逐帧落盘
-    if (dataTemp.contains("AT+TEMP_DATA") || dataTemp.contains("AT+SUCTION_DATA"))
+    // 吸力/温度流式 AT 文本与 channel=4 二进制：协议已处理，勿刷主窗口串口 UI / 逐帧落盘
+    if (shouldSkipDongleStreamUartLog(dataTemp))
         return;
 
     const QString timestamp = CommonUtils::formatTimestampMs();

@@ -9,6 +9,7 @@
 #include <cstdint>
 
 #include "qprotocol.h"
+#include "dongle_phy_codec.h"
 
 class Qfctp : public qProtocol {
     Q_OBJECT
@@ -31,13 +32,7 @@ class Qfctp : public qProtocol {
         QByteArray requestValue; // 请求 TLV Value（如按键电容的 KK）
     };
 
-    enum PhyParseState {
-        PHY_STATE_IDLE = 0,
-        PHY_STATE_HEADER,
-        PHY_STATE_LEN,
-        PHY_STATE_CHANNEL,
-        PHY_STATE_PAYLOAD,
-    };
+    bool tryUnwrapPhyPacket(const QByteArray& packet, QList<QByteArray>& outPackets);
 
     void handleFullFrame(const uint8_t* frameData, uint16_t frameLen);
     void handleResponseService(uint8_t seq, uint16_t serviceId, const uint8_t* tlvs, uint16_t serviceLen, const QByteArray& frameRaw);
@@ -89,6 +84,8 @@ class Qfctp : public qProtocol {
     bool setCaseLightCalibWrite(const QVariantMap& map);
     bool setCaseChargeCurrentSet(const QVariantMap& map);
     bool setCaseCompensationSet(const QVariantMap& map);
+    bool setCaseLcdColorTestMode(const QVariantMap& map);
+    bool setCaseSetLcdColor(const QVariantMap& map);
 
     bool getCaseTupleRead();
     bool getCaseTrimRead();
@@ -104,8 +101,6 @@ class Qfctp : public qProtocol {
     bool getCasePeriphStateRead();
     bool getCaseBatteryRead();
     bool sendRequest(uint16_t serviceId, uint16_t tlvType, const QByteArray& value, const char* actionName);
-    bool tryUnwrapPhyPacket(const QByteArray& packet, QList<QByteArray>& outPackets);
-
     QByteArray wrapPhyPacket(const QByteArray& innerPacket) const;
     bool sendPacket(const QByteArray& innerPacket, QByteArray* outPhyPacket = nullptr) const;
     bool sendServiceTlv(uint16_t serviceId, uint16_t tlvType, QByteArray value, const char* actionName, uint8_t* outSeq = nullptr);
@@ -113,11 +108,7 @@ class Qfctp : public qProtocol {
     void sendFactoryTestMode(bool enter);
 
     QSerialPort* serialPort = nullptr;
-    PhyParseState m_phyState = PHY_STATE_IDLE;
-    int m_phyHeaderHits = 0;
-    int m_phyExpectedLen = 0;
-    uint8_t m_phyChannel = 0;
-    QByteArray m_phyPayload;
+    DonglePhyRxCodec phyRx_{kDonglePhyRxAcceptFacAppMain, "[FCTP]"};
     uint8_t m_fctpSeq = 0;
     QHash<uint8_t, PendingRequest> m_pendingRequests;
     QHash<uint32_t, ResponseHandler> m_responseHandlers;
