@@ -5165,6 +5165,122 @@ void MainWindow::on_send_custom_msg_clicked() {
     }
 }
 
+namespace {
+
+struct DongleSuctionPeakGuideLineDef {
+    const char* lineName;
+    const char* labelName;
+    QColor color;
+    Qt::PenStyle style;
+    int width;
+};
+
+constexpr DongleSuctionPeakGuideLineDef kDongleSuctionPeakGuideDefs[] = {
+    {"dongleSuctionGuideTarget", "dongleSuctionGuideTargetLbl", QColor(220, 60, 50), Qt::SolidLine, 2},
+    {"dongleSuctionGuideTolLow", "dongleSuctionGuideTolLowLbl", QColor(210, 130, 20), Qt::DashLine, 1},
+    {"dongleSuctionGuideTolHigh", "dongleSuctionGuideTolHighLbl", QColor(210, 130, 20), Qt::DashLine, 1},
+    {"dongleSuctionGuideBaseline", "dongleSuctionGuideBaselineLbl", QColor(40, 110, 210), Qt::DashLine, 1},
+    {"dongleSuctionGuideDipStart", "dongleSuctionGuideDipStartLbl", QColor(130, 70, 190), Qt::DashLine, 1},
+};
+
+QCPItemStraightLine* dongleSuctionFindOrCreateGuideLine(QCustomPlot* plot, const char* name) {
+    if (!plot)
+        return nullptr;
+    for (int i = 0; i < plot->itemCount(); ++i) {
+        if (auto* item = plot->item(i)) {
+            if (item->objectName() == QLatin1String(name))
+                return qobject_cast<QCPItemStraightLine*>(item);
+        }
+    }
+    auto* line = new QCPItemStraightLine(plot);
+    line->setObjectName(QString::fromLatin1(name));
+    line->setClipToAxisRect(true);
+    line->point1->setType(QCPItemPosition::ptPlotCoords);
+    line->point2->setType(QCPItemPosition::ptPlotCoords);
+    if (!plot->layer(QStringLiteral("dongleSuctionPeakGuides")))
+        plot->addLayer(QStringLiteral("dongleSuctionPeakGuides"), plot->layer(QStringLiteral("main")),
+                       QCustomPlot::limBelow);
+    if (plot->layer(QStringLiteral("dongleSuctionPeakGuides")))
+        line->setLayer(QStringLiteral("dongleSuctionPeakGuides"));
+    return line;
+}
+
+QCPItemText* dongleSuctionFindOrCreateGuideLabel(QCustomPlot* plot, const char* name) {
+    if (!plot)
+        return nullptr;
+    for (int i = 0; i < plot->itemCount(); ++i) {
+        if (auto* item = plot->item(i)) {
+            if (item->objectName() == QLatin1String(name))
+                return qobject_cast<QCPItemText*>(item);
+        }
+    }
+    auto* label = new QCPItemText(plot);
+    label->setObjectName(QString::fromLatin1(name));
+    label->setClipToAxisRect(true);
+    label->position->setType(QCPItemPosition::ptPlotCoords);
+    label->setPositionAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    label->setPadding(QMargins(3, 0, 3, 0));
+    label->setBrush(QBrush(QColor(255, 255, 255, 180)));
+    label->setPen(QPen(Qt::NoPen));
+    QFont f;
+    f.setPointSize(7);
+    label->setFont(f);
+    return label;
+}
+
+void dongleSuctionPlaceGuideLine(QCustomPlot* plot, const DongleSuctionPeakGuideLineDef& def, double yKpa,
+                                 const QString& labelText, bool visible, double x0, double x1) {
+    auto* line = dongleSuctionFindOrCreateGuideLine(plot, def.lineName);
+    auto* label = dongleSuctionFindOrCreateGuideLabel(plot, def.labelName);
+    if (!line || !label)
+        return;
+    line->setPen(QPen(def.color, def.width, def.style));
+    line->setVisible(visible);
+    line->point1->setCoords(x0, yKpa);
+    line->point2->setCoords(x1, yKpa);
+    label->setVisible(visible);
+    label->setColor(def.color);
+    label->setText(labelText);
+    label->position->setCoords(x0, yKpa);
+}
+
+} // namespace
+
+void MainWindow::updateDongleSuctionPeakGuideLines(QCustomPlot* plot) {
+    if (!plot || !ui)
+        return;
+    const bool show = ui->dongleSuctionPeakGuideLinesCheck && ui->dongleSuctionPeakGuideLinesCheck->isChecked();
+    const double target = ui->dongleSuctionPeakTargetSpin ? ui->dongleSuctionPeakTargetSpin->value()
+                                                          : dongleSuctionPeakTargetKpa_;
+    const double tolerance = ui->dongleSuctionPeakToleranceSpin ? ui->dongleSuctionPeakToleranceSpin->value()
+                                                                : dongleSuctionPeakToleranceKpa_;
+    const double baseline = ui->dongleSuctionPeakBaselineSpin ? ui->dongleSuctionPeakBaselineSpin->value()
+                                                              : dongleSuctionPeakBaselineKpa_;
+    const double dipStart = ui->dongleSuctionPeakDipStartSpin ? ui->dongleSuctionPeakDipStartSpin->value()
+                                                              : dongleSuctionPeakDipStartKpa_;
+    const double tolLow = target - tolerance;
+    const double tolHigh = target + tolerance;
+    const QCPRange xRange = plot->xAxis->range();
+    const double x0 = xRange.lower;
+    const double x1 = xRange.upper;
+
+    dongleSuctionPlaceGuideLine(plot, kDongleSuctionPeakGuideDefs[0], target,
+                                QStringLiteral("目标 %1").arg(target, 0, 'f', 1), show, x0, x1);
+    dongleSuctionPlaceGuideLine(plot, kDongleSuctionPeakGuideDefs[1], tolLow,
+                                QStringLiteral("容差下 %1").arg(tolLow, 0, 'f', 1), show, x0, x1);
+    dongleSuctionPlaceGuideLine(plot, kDongleSuctionPeakGuideDefs[2], tolHigh,
+                                QStringLiteral("容差上 %1").arg(tolHigh, 0, 'f', 1), show, x0, x1);
+    dongleSuctionPlaceGuideLine(plot, kDongleSuctionPeakGuideDefs[3], baseline,
+                                QStringLiteral("周期结束 %1").arg(baseline, 0, 'f', 1), show, x0, x1);
+    dongleSuctionPlaceGuideLine(plot, kDongleSuctionPeakGuideDefs[4], dipStart,
+                                QStringLiteral("周期开始 %1").arg(dipStart, 0, 'f', 1), show, x0, x1);
+}
+
+void MainWindow::updateDongleSuctionPeakGuideLinesAll() {
+    updateDongleSuctionPeakGuideLines(dongleSuctionPlot_);
+    updateDongleSuctionPeakGuideLines(dongleSuctionPlotPopup_);
+}
+
 void MainWindow::loadDongleSuctionPeakSettings() {
     if (!ui)
         return;
@@ -5205,28 +5321,25 @@ void MainWindow::updateDongleSuctionPeakMonitorLabels() {
         if (!labels[i])
             continue;
         auto& m = dongleSuctionPeakMonitors_[i];
-        // ≥60s：最近 60s 有效峰个数；<60s：按已采时长折算估算（约 N/min）
+        // 按近期完整周期时长均值换算频率，首个周期结束即可显示，避免按总采时长外推导致初期剧烈跳动
         const double nowSec = dongleSuctionPlotTimeSecLast_ < 0.0 ? 0.0 : dongleSuctionPlotTimeSecLast_;
         const double windowStart = (nowSec >= 60.0) ? (nowSec - 60.0) : 0.0;
-        int peaksInWindow = 0;
-        for (double t : m.validPeakSec) {
-            if (t > windowStart)
-                ++peaksInWindow;
+        double periodSum = 0.0;
+        int periodCount = 0;
+        const int n = qMin(m.cycleEndSec.size(), m.cyclePeriodSec.size());
+        for (int j = 0; j < n; ++j) {
+            if (m.cycleEndSec[j] > windowStart && m.cyclePeriodSec[j] > 0.0) {
+                periodSum += m.cyclePeriodSec[j];
+                ++periodCount;
+            }
         }
-        if (nowSec >= 60.0) {
-            m.freqPerMin = peaksInWindow;
-            m.freqEstimated = false;
-        } else if (nowSec > 0.0) {
-            m.freqPerMin = qRound(peaksInWindow * 60.0 / nowSec);
-            m.freqEstimated = true;
+        if (periodCount > 0) {
+            m.freqPerMin = qRound(60.0 * periodCount / periodSum);
         } else {
             m.freqPerMin = -1;
-            m.freqEstimated = false;
         }
         const QString freqText =
-            (m.freqPerMin < 0) ? QStringLiteral("--")
-                               : (m.freqEstimated ? QStringLiteral("约%1/min").arg(m.freqPerMin)
-                                                  : QStringLiteral("%1/min").arg(m.freqPerMin));
+            (m.freqPerMin < 0) ? QStringLiteral("--") : QStringLiteral("%1/min").arg(m.freqPerMin);
         labels[i]->setText(QStringLiteral("%1峰检：有效%2 漏峰%3 弱峰%4 频率%5")
                                .arg(channelNames[i])
                                .arg(m.validPeakCount)
@@ -5269,9 +5382,6 @@ void MainWindow::updateDongleSuctionChannelPeakMonitor(int chIndex, double kpa, 
                     m.waitingNextPeak = true;
                     m.lastPeakEndSec = tSec;
                     m.gapMissFlagged = false;
-                    m.validPeakSec.append(tSec);
-                    while (!m.validPeakSec.isEmpty() && m.validPeakSec.first() <= tSec - 60.0)
-                        m.validPeakSec.removeFirst();
                     if (eventOut.isEmpty())
                         eventOut = QStringLiteral("VALID_%1:%2").arg(chTag).arg(peakKpa, 0, 'f', 3);
                     showlog(QStringLiteral("【有效峰】%1：%2 kPa（累计 %3）")
@@ -5288,8 +5398,21 @@ void MainWindow::updateDongleSuctionChannelPeakMonitor(int chIndex, double kpa, 
                                 .arg(lowerBound, 0, 'f', 2)
                                 .arg(upperBound, 0, 'f', 2));
                 }
-                updateDongleSuctionPeakMonitorLabels();
             }
+            // 周期结束（回到周期结束线）：频率只按周期边界计，弱峰/无效周期也计入
+            if (m.currentCycleStartSec >= 0.0 && tSec > m.currentCycleStartSec) {
+                m.cyclePeriodSec.append(tSec - m.currentCycleStartSec);
+            } else {
+                m.cyclePeriodSec.append(0.0);
+            }
+            m.cycleEndSec.append(tSec);
+            while (!m.cycleEndSec.isEmpty() && m.cycleEndSec.first() <= tSec - 60.0) {
+                m.cycleEndSec.removeFirst();
+                if (!m.cyclePeriodSec.isEmpty())
+                    m.cyclePeriodSec.removeFirst();
+            }
+            m.currentCycleStartSec = -1.0;
+            updateDongleSuctionPeakMonitorLabels();
             m.phase = DongleSuctionChannelPeakMonitor::Phase::AtBaseline;
             m.cycleMinInit = false;
         }
@@ -5299,6 +5422,7 @@ void MainWindow::updateDongleSuctionChannelPeakMonitor(int chIndex, double kpa, 
     if (kpa < dongleSuctionPeakDipStartKpa_) {
         if (m.phase == DongleSuctionChannelPeakMonitor::Phase::AtBaseline) {
             m.phase = DongleSuctionChannelPeakMonitor::Phase::InCycle;
+            m.currentCycleStartSec = tSec;
             m.cycleMinKpa = kpa;
             m.cycleMinInit = true;
             m.gapMissFlagged = false;
@@ -5432,7 +5556,111 @@ void MainWindow::setupDongleSuctionPlotWidget(QCustomPlot* plot) {
     plot->xAxis->setRange(0, xInit);
     plot->yAxis->setRange(yMin, yMax);
     bindDongleSuctionPlotXRangeFollow(plot);
+    bindDongleSuctionPlotHover(plot);
     applyDongleSuctionAxisTickResolution(plot);
+    updateDongleSuctionPeakGuideLines(plot);
+}
+
+void MainWindow::bindDongleSuctionPlotHover(QCustomPlot* plot) {
+    if (!plot || plot->property("dongleSuctionHoverBound").toBool())
+        return;
+    plot->setProperty("dongleSuctionHoverBound", true);
+
+    auto* vLine = new QCPItemStraightLine(plot);
+    vLine->setObjectName(QStringLiteral("dongleSuctionHoverVLine"));
+    vLine->setPen(QPen(QColor(80, 80, 80, 140), 1, Qt::DashLine));
+    vLine->point1->setType(QCPItemPosition::ptPlotCoords);
+    vLine->point2->setType(QCPItemPosition::ptPlotCoords);
+    vLine->setVisible(false);
+
+    QCPItemTracer* tracers[kDongleSuctionChannelCount] = {};
+    for (int i = 0; i < kDongleSuctionChannelCount; ++i) {
+        auto* tracer = new QCPItemTracer(plot);
+        tracer->setObjectName(QStringLiteral("dongleSuctionHoverTracer%1").arg(i));
+        tracer->setGraph(plot->graph(i));
+        tracer->setStyle(QCPItemTracer::tsCircle);
+        tracer->setSize(7);
+        tracer->setPen(plot->graph(i)->pen());
+        tracer->setBrush(QBrush(Qt::white));
+        tracer->setInterpolating(false);
+        tracer->setVisible(false);
+        tracers[i] = tracer;
+    }
+
+    auto* hoverLabel = new QCPItemText(plot);
+    hoverLabel->setObjectName(QStringLiteral("dongleSuctionHoverLabel"));
+    hoverLabel->setVisible(false);
+    hoverLabel->setClipToAxisRect(true);
+    hoverLabel->position->setType(QCPItemPosition::ptPlotCoords);
+    hoverLabel->setPositionAlignment(Qt::AlignLeft | Qt::AlignBottom);
+    hoverLabel->setPadding(QMargins(4, 2, 4, 2));
+    hoverLabel->setBrush(QBrush(QColor(255, 255, 255, 230)));
+    hoverLabel->setPen(QPen(QColor(100, 100, 100)));
+    hoverLabel->setColor(QColor(20, 20, 20));
+    QFont hoverFont = font();
+    hoverFont.setPointSize(8);
+    hoverLabel->setFont(hoverFont);
+
+    connect(plot, &QCustomPlot::mouseMove, this,
+            [this, plot, vLine, tracers, hoverLabel](QMouseEvent* event) {
+                auto hideHover = [&]() {
+                    bool needReplot = vLine->visible() || hoverLabel->visible();
+                    vLine->setVisible(false);
+                    hoverLabel->setVisible(false);
+                    for (int i = 0; i < kDongleSuctionChannelCount; ++i) {
+                        if (tracers[i]->visible())
+                            needReplot = true;
+                        tracers[i]->setVisible(false);
+                    }
+                    if (needReplot)
+                        plot->replot(QCustomPlot::rpQueuedReplot);
+                };
+
+                const QCPAxisRect* axisRect = plot->axisRect();
+                if (!axisRect || !axisRect->rect().contains(event->pos()) || dongleSuctionChartTimeSec_.isEmpty()) {
+                    hideHover();
+                    return;
+                }
+
+                const double tSec = plot->xAxis->pixelToCoord(event->pos().x());
+                const auto& times = dongleSuctionChartTimeSec_;
+                auto it = std::lower_bound(times.constBegin(), times.constEnd(), tSec);
+                int idx = 0;
+                if (it == times.constEnd())
+                    idx = times.size() - 1;
+                else if (it == times.constBegin())
+                    idx = 0;
+                else {
+                    const int i1 = int(it - times.constBegin());
+                    const int i0 = i1 - 1;
+                    idx = (tSec - times.at(i0) <= times.at(i1) - tSec) ? i0 : i1;
+                }
+
+                const double t = times.at(idx);
+                const double ch1 = dongleSuctionChartCh1_.at(idx);
+                const double ch2 = dongleSuctionChartCh2_.at(idx);
+                const double ch3 = dongleSuctionChartCh3_.at(idx);
+                const double yMin = plot->yAxis->range().lower;
+                const double yMax = plot->yAxis->range().upper;
+
+                vLine->point1->setCoords(t, yMin);
+                vLine->point2->setCoords(t, yMax);
+                vLine->setVisible(true);
+                for (int i = 0; i < kDongleSuctionChannelCount; ++i) {
+                    tracers[i]->setGraphKey(t);
+                    tracers[i]->updatePosition();
+                    tracers[i]->setVisible(true);
+                }
+
+                hoverLabel->setText(QStringLiteral("t=%1s  CH1=%2  CH2=%3  CH3=%4 kPa")
+                                        .arg(t, 0, 'f', 3)
+                                        .arg(ch1, 0, 'f', 3)
+                                        .arg(ch2, 0, 'f', 3)
+                                        .arg(ch3, 0, 'f', 3));
+                hoverLabel->position->setCoords(t, ch1);
+                hoverLabel->setVisible(true);
+                plot->replot(QCustomPlot::rpQueuedReplot);
+            });
 }
 
 void MainWindow::bindDongleSuctionPlotXRangeFollow(QCustomPlot* plot) {
@@ -5489,6 +5717,7 @@ void MainWindow::applyDongleSuctionPlotXRange(QCustomPlot* plot, double tSec) {
     dongleSuctionApplyingXRange_ = true;
     plot->xAxis->setRange(xLower, xUpper);
     dongleSuctionApplyingXRange_ = false;
+    updateDongleSuctionPeakGuideLines(plot);
 }
 
 void MainWindow::applyDongleSuctionAxisTickResolution(QCustomPlot* plot) {
@@ -5546,6 +5775,7 @@ void MainWindow::dongleSuctionYAxisRange(double& yMin, double& yMax) const {
 void MainWindow::applyDongleSuctionAxisSettings() {
     refreshDongleSuctionPlotWidget(dongleSuctionPlot_);
     refreshDongleSuctionPlotWidget(dongleSuctionPlotPopup_);
+    updateDongleSuctionPeakGuideLinesAll();
 }
 
 void MainWindow::refreshDongleSuctionPlotWidget(QCustomPlot* plot) {
@@ -5568,6 +5798,7 @@ void MainWindow::refreshDongleSuctionPlotWidget(QCustomPlot* plot) {
             dongleSuctionPopupPlottedCount_ = 0;
         plot->xAxis->setRange(0, xInit);
         plot->yAxis->setRange(yMin, yMax);
+        updateDongleSuctionPeakGuideLines(plot);
         plot->replot(QCustomPlot::rpQueuedReplot);
         return;
     }
@@ -5582,6 +5813,7 @@ void MainWindow::refreshDongleSuctionPlotWidget(QCustomPlot* plot) {
         dongleSuctionPopupPlottedCount_ = dongleSuctionChartTimeSec_.size();
     applyDongleSuctionPlotXRange(plot, tSec);
     plot->yAxis->setRange(yMin, yMax);
+    updateDongleSuctionPeakGuideLines(plot);
     plot->replot(QCustomPlot::rpQueuedReplot);
 }
 
@@ -5606,6 +5838,7 @@ void MainWindow::appendDongleSuctionPlotIncremental(QCustomPlot* plot, int& plot
     const double tSec = dongleSuctionChartTimeSec_.isEmpty() ? 0.0 : dongleSuctionChartTimeSec_.last();
     applyDongleSuctionPlotXRange(plot, tSec);
     plot->yAxis->setRange(yMin, yMax);
+    updateDongleSuctionPeakGuideLines(plot);
     plot->replot(QCustomPlot::rpQueuedReplot);
 }
 
@@ -5666,9 +5899,7 @@ void MainWindow::updateDongleSuctionPlotOverlay(QCustomPlot* plot) {
         if (!ok)
             return QStringLiteral("%1 实时-- 最高-- 最低-- 有效0 漏峰0 弱峰0 频率--").arg(name);
         const QString freqText =
-            (m.freqPerMin < 0) ? QStringLiteral("--")
-                               : (m.freqEstimated ? QStringLiteral("约%1/min").arg(m.freqPerMin)
-                                                  : QStringLiteral("%1/min").arg(m.freqPerMin));
+            (m.freqPerMin < 0) ? QStringLiteral("--") : QStringLiteral("%1/min").arg(m.freqPerMin);
         return QStringLiteral("%1 实时%2 最高%3 最低%4 有效%5 漏峰%6 弱峰%7 频率%8")
             .arg(name)
             .arg(live, 0, 'f', 2)
@@ -5724,6 +5955,7 @@ void MainWindow::openDongleSuctionChartPopup() {
     setupDongleSuctionPlotWidget(plot);
     refreshDongleSuctionPlotWidget(plot);
     updateDongleSuctionPlotOverlay(plot);
+    updateDongleSuctionPeakGuideLines(plot);
     layout->addWidget(plot, 1);
 
     dongleSuctionPlotPopupDlg_ = dlg;
@@ -5791,6 +6023,32 @@ void MainWindow::initDongleSuctionChart() {
     bindAxisValue(ui->dongleSuctionYMaxSpin);
     bindAxisValue(ui->dongleSuctionXTickSpin);
     bindAxisValue(ui->dongleSuctionYTickSpin);
+
+    auto bindPeakGuideRefresh = [this](QDoubleSpinBox* spin) {
+        if (!spin)
+            return;
+        connect(spin, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double) {
+            loadDongleSuctionPeakSettings();
+            updateDongleSuctionPeakGuideLinesAll();
+            if (dongleSuctionPlot_)
+                dongleSuctionPlot_->replot(QCustomPlot::rpQueuedReplot);
+            if (dongleSuctionPlotPopup_)
+                dongleSuctionPlotPopup_->replot(QCustomPlot::rpQueuedReplot);
+        });
+    };
+    bindPeakGuideRefresh(ui->dongleSuctionPeakTargetSpin);
+    bindPeakGuideRefresh(ui->dongleSuctionPeakToleranceSpin);
+    bindPeakGuideRefresh(ui->dongleSuctionPeakBaselineSpin);
+    bindPeakGuideRefresh(ui->dongleSuctionPeakDipStartSpin);
+    if (ui->dongleSuctionPeakGuideLinesCheck) {
+        connect(ui->dongleSuctionPeakGuideLinesCheck, &QCheckBox::toggled, this, [this](bool) {
+            updateDongleSuctionPeakGuideLinesAll();
+            if (dongleSuctionPlot_)
+                dongleSuctionPlot_->replot(QCustomPlot::rpQueuedReplot);
+            if (dongleSuctionPlotPopup_)
+                dongleSuctionPlotPopup_->replot(QCustomPlot::rpQueuedReplot);
+        });
+    }
 
     if (ui->tab_dongle_suction) {
         const int spinWidth = 84;

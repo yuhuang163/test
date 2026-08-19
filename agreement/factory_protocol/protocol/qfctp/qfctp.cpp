@@ -170,6 +170,8 @@ static constexpr uint16_t kTlvLightCalibWrite = 0x001E;
 static constexpr uint16_t kTlvLightCalibRead = 0x001F;
 static constexpr uint16_t kTlvChargeCurrentRead = 0x0020;
 static constexpr uint16_t kTlvChargeCurrentSet = 0x0022;
+static constexpr uint16_t kTlvLcdColorTestMode = 0x0021;
+static constexpr uint16_t kTlvSetLcdColor = 0x0028;
 
 // SYSTEM CONFIG SERVICE TLV
 static constexpr uint16_t kTlvFwVersionRead = 0x0001;
@@ -1114,6 +1116,21 @@ bool Qfctp::setCaseCompensationSet(const QVariantMap& map) {
     return sendTestsServiceTlv(kTlvCompensationSet, QByteArray(1, static_cast<char>(v)), "吸力补偿开关");
 }
 
+bool Qfctp::setCaseLcdColorTestMode(const QVariantMap& map) {
+    const uint8_t v = fctpEnterOnFlag(map);
+    return sendTestsServiceTlv(kTlvLcdColorTestMode, QByteArray(1, static_cast<char>(v)),
+                               v ? "进入LCD颜色测试模式" : "退出LCD颜色测试模式");
+}
+
+bool Qfctp::setCaseSetLcdColor(const QVariantMap& map) {
+    const uint8_t color = static_cast<uint8_t>(map.value("color").toUInt() & 0xFF);
+    if (color < 1 || color > 7) {
+        qWarning() << "Qfctp SetLcdColor 颜色值非法，允许 1~7，当前:" << color;
+        return false;
+    }
+    return sendTestsServiceTlv(kTlvSetLcdColor, QByteArray(1, static_cast<char>(color)), "设置LCD颜色");
+}
+
 bool Qfctp::getCaseRssiRead(const QVariantMap& map) {
     const uint8_t v = static_cast<uint8_t>(map.value("mode").toUInt() & 0xFF);
     return sendTestsServiceTlv(kTlvRssiRead, QByteArray(1, static_cast<char>(v)), "读取RSSI");
@@ -1313,6 +1330,14 @@ void Qfctp::set(DeviceCmd cmd, const QVariant& data) {
     }
     case DeviceCmd::CompensationSet:
         if (setCaseCompensationSet(data.toMap()))
+            return;
+        break;
+    case DeviceCmd::LcdColorTestMode:
+        if (setCaseLcdColorTestMode(data.toMap()))
+            return;
+        break;
+    case DeviceCmd::SetLcdColor:
+        if (setCaseSetLcdColor(data.toMap()))
             return;
         break;
     case DeviceCmd::BaseInfo:

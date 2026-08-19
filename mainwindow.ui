@@ -4630,7 +4630,7 @@
                        <item row="1" column="0">
                         <widget class="QLabel" name="label_dongle_suction_peak_baseline">
                          <property name="text">
-                          <string>基线阈值(kPa)</string>
+                          <string>周期结束(kPa)</string>
                          </property>
                         </widget>
                        </item>
@@ -4656,7 +4656,7 @@
                        <item row="1" column="2">
                         <widget class="QLabel" name="label_dongle_suction_peak_dip_start">
                          <property name="text">
-                          <string>下探起始(kPa)</string>
+                          <string>周期开始(kPa)</string>
                          </property>
                         </widget>
                        </item>
@@ -4705,10 +4705,20 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="2" column="2" colspan="2">
+                       <item row="2" column="2">
+                        <widget class="QCheckBox" name="dongleSuctionPeakGuideLinesCheck">
+                         <property name="text">
+                          <string>显示峰检辅助线</string>
+                         </property>
+                         <property name="checked">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="3">
                         <widget class="QLabel" name="label_dongle_suction_peak_hint">
                          <property name="text">
-                          <string>开启读取后锁定；关闭后可改。</string>
+                          <string></string>
                          </property>
                         </widget>
                        </item>

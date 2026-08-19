@@ -84,6 +84,8 @@ class Qfctp : public qProtocol {
     bool setCaseLightCalibWrite(const QVariantMap& map);
     bool setCaseChargeCurrentSet(const QVariantMap& map);
     bool setCaseCompensationSet(const QVariantMap& map);
+    bool setCaseLcdColorTestMode(const QVariantMap& map);
+    bool setCaseSetLcdColor(const QVariantMap& map);
 
     bool getCaseTupleRead();
     bool getCaseTrimRead();

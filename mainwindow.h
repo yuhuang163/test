@@ -180,8 +180,12 @@ class MainWindow : public QMainWindow {
         int missedPeakCount = 0;
         int weakPeakCount = 0;
         int freqPerMin = 0;
-        bool freqEstimated = false;
-        QVector<double> validPeakSec;
+        /** 当前周期开始时刻（下探越过周期开始线），与 cycleEndSec 成对用于算周期时长 */
+        double currentCycleStartSec = -1.0;
+        /** 周期结束时刻（≥基线/周期结束线），与有效峰无关 */
+        QVector<double> cycleEndSec;
+        /** 与 cycleEndSec 一一对应：单次周期时长(s)，频率=60/近期平均周期时长 */
+        QVector<double> cyclePeriodSec;
     };
 
     void initDongleSuctionChart();
@@ -192,6 +196,7 @@ class MainWindow : public QMainWindow {
     void applyDongleSuctionAxisTickResolution(QCustomPlot* plot);
     /** 采集跟随时按 X 窗口滑动；用户拖拽/缩放横轴后不再自动改范围，可左滑看全程 */
     void bindDongleSuctionPlotXRangeFollow(QCustomPlot* plot);
+    void bindDongleSuctionPlotHover(QCustomPlot* plot);
     void applyDongleSuctionPlotXRange(QCustomPlot* plot, double tSec);
     void setDongleSuctionChartFollowLatest(bool follow);
     void syncDongleSuctionFollowStateFromUserRange(const QCPRange& range);
@@ -206,6 +211,9 @@ class MainWindow : public QMainWindow {
     void updateDongleSuctionPeakLabels();
     /** 把实时/高低/峰检合并进图例通道名（参考产测曲线图例写法） */
     void updateDongleSuctionPlotOverlay(QCustomPlot* plot);
+    /** 峰检参数水平辅助线（目标/容差/基线/下探） */
+    void updateDongleSuctionPeakGuideLines(QCustomPlot* plot);
+    void updateDongleSuctionPeakGuideLinesAll();
     void flushDongleSuctionCsvPending();
     void loadDongleSuctionPeakSettings();
     void setDongleSuctionPeakParamWidgetsEnabled(bool enabled);

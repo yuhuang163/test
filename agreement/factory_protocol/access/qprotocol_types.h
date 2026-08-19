@@ -604,6 +604,8 @@ enum class DeviceCmd {
     LightCalibWrite,    // 【Qfctp】光感校准写（QVariantMap，setCaseLightCalibWrite）
     ChargeCurrentSet,   // 【Qfctp】设置充电电流（QVariantMap{currentMa|value}，uint16 mA，setCaseChargeCurrentSet）
     CompensationSet,    // 【Qfctp】吸力补偿开关（QVariantMap，setCaseCompensationSet）
+    LcdColorTestMode,   // 【Qfctp】LCD 颜色测试模式进/退（TLV 0x0021，enter=1 进入，0 退出）
+    SetLcdColor,        // 【Qfctp】设置 LCD 颜色（TLV 0x0028，需先进入 LcdColorTestMode）
 
     // 【Qroot】吸奶器 PCBA 串口协议
     RootBatteryTempQuery, // 0x80 电池温度查询
