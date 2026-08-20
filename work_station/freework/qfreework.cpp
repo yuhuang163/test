@@ -682,10 +682,6 @@ void QFreeWork::showEvent(QShowEvent* event) {
 
 void QFreeWork::refreshOrderedTestIndexes() {
     const QString stationName = TestCaseStore::loadSelectedFlowStationName();
-    const QString tabName = stationName.isEmpty() ? "自由工站" : stationName;
-    ui->tabWidget->setTabText(0, tabName);
-    setupFreeWorkTabBar(ui->tabWidget);
-    qDebug() << "[FreeWork] refresh tab, SelectedStationName =" << stationName << ", tabName =" << tabName;
 
     orderedTestCaseNames_.clear();
     orderedFailCaseNames_.clear();
@@ -701,6 +697,14 @@ void QFreeWork::refreshOrderedTestIndexes() {
     if (stationKey.isEmpty())
         stationKey = QStringLiteral("default");
     activeFlowStationKey_ = stationKey;
+
+    QString tabName = stationName.isEmpty() ? QStringLiteral("自由工站") : stationName;
+    const int profileVersion = TestCaseStore::loadStationProfileVersion(stationKey);
+    if (profileVersion > 0)
+        tabName += QStringLiteral(" v%1").arg(profileVersion);
+    ui->tabWidget->setTabText(0, tabName);
+    setupFreeWorkTabBar(ui->tabWidget);
+    qDebug() << "[FreeWork] refresh tab, SelectedStationName =" << stationName << ", tabName =" << tabName;
 
     if (!QFile::exists(TestCasePaths::flowIniPath())) {
         showlog(QStringLiteral("未找到测试流程文件，请在设置页「测试流程编排」中配置"));

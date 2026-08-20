@@ -93,6 +93,8 @@ class TestCaseStore {
     /** 工站 flow.ini [DeviceSide]：三元组位置 / device_side_id */
     static TestCaseDeviceSideConfig loadStationDeviceSideConfig(const QString& stationKey);
     static bool saveStationDeviceSideConfig(const QString& stationKey, const TestCaseDeviceSideConfig& config);
+    /** profiles/{工站}/profile.ini [Profile/ProfileVersion]；stationKey 空则当前选中工站，缺失返回 0 */
+    static int loadStationProfileVersion(const QString& stationKey = QString());
     static bool saveStationFlowItems(const QString& stationKey, const QVector<TestFlowItemEntry>& items,
                                      bool stopFlowOnTestFail = true);
     static bool saveStationFlowItems(const QString& stationKey, const QVector<TestFlowItemEntry>& items,

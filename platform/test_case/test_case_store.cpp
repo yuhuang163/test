@@ -2136,6 +2136,20 @@ QString TestCaseStore::loadSelectedFlowStationKey() {
     return SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString().trimmed();
 }
 
+int TestCaseStore::loadStationProfileVersion(const QString& stationKey) {
+    QString key = stationKey.trimmed();
+    if (key.isEmpty())
+        key = loadSelectedFlowStationKey();
+    if (key.isEmpty())
+        return 0;
+    const QString metaPath = TestCasePaths::profileMetaPath(key);
+    if (!QFile::exists(metaPath))
+        return 0;
+    QSettings meta(metaPath, QSettings::IniFormat);
+    applyTestCaseIniCodec(meta);
+    return meta.value(QStringLiteral("Profile/ProfileVersion"), 0).toInt();
+}
+
 QString TestCaseStore::loadSelectedFlowStationName() {
     migrateLegacyFlowMetaToLocalSettings();
     QString name = SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStationName")).toString().trimmed();
@@ -2435,4 +2449,3 @@ QStringList TestCaseStore::listStationKeysFromFlow() {
     }
     return keys;
 }
-

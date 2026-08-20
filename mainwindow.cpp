@@ -1326,6 +1326,7 @@ void MainWindow::refreshCloudLoginState() {
     }
     refreshSettingsMenuVisibility();
 }
+
 void MainWindow::setting_ui() {
     if (!AuthService::canOpenSettings()) {
         QMessageBox::information(this, QStringLiteral("功能设置"),
@@ -6230,7 +6231,6 @@ void MainWindow::on_dongle_suction_open_clicked() {
     loadDongleSuctionPeakSettings();
     setDongleSuctionPeakParamWidgetsEnabled(false);
     dongleSuctionReadEnabled_ = true;
-    resetDongleSuctionChart();
     if (!startDongleSuctionCsvLog()) {
         dongleSuctionReadEnabled_ = false;
         setDongleSuctionPeakParamWidgetsEnabled(true);
