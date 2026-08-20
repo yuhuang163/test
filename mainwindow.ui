@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1667</width>
-    <height>1072</height>
+    <height>1116</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -4575,6 +4575,46 @@
                        <property name="verticalSpacing">
                         <number>2</number>
                        </property>
+                       <item row="1" column="0">
+                        <widget class="QLabel" name="label_dongle_suction_peak_dip_start">
+                         <property name="text">
+                          <string>计频线(kPa)</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="1">
+                        <widget class="QDoubleSpinBox" name="dongleSuctionPeakDipStartSpin">
+                         <property name="decimals">
+                          <number>2</number>
+                         </property>
+                         <property name="minimum">
+                          <double>-100.000000000000000</double>
+                         </property>
+                         <property name="maximum">
+                          <double>0.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>1.000000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>-10.000000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="0" column="2">
+                        <widget class="QLabel" name="label_dongle_suction_peak_tolerance">
+                         <property name="text">
+                          <string>峰值容差(kPa)</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="3">
+                        <widget class="QLabel" name="label_dongle_suction_peak_hint">
+                         <property name="text">
+                          <string/>
+                         </property>
+                        </widget>
+                       </item>
                        <item row="0" column="0">
                         <widget class="QLabel" name="label_dongle_suction_peak_target">
                          <property name="text">
@@ -4601,13 +4641,6 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="0" column="2">
-                        <widget class="QLabel" name="label_dongle_suction_peak_tolerance">
-                         <property name="text">
-                          <string>峰值容差(kPa)</string>
-                         </property>
-                        </widget>
-                       </item>
                        <item row="0" column="3">
                         <widget class="QDoubleSpinBox" name="dongleSuctionPeakToleranceSpin">
                          <property name="decimals">
@@ -4627,66 +4660,7 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="1" column="0">
-                        <widget class="QLabel" name="label_dongle_suction_peak_baseline">
-                         <property name="text">
-                          <string>周期结束(kPa)</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="1">
-                        <widget class="QDoubleSpinBox" name="dongleSuctionPeakBaselineSpin">
-                         <property name="decimals">
-                          <number>2</number>
-                         </property>
-                         <property name="minimum">
-                          <double>-50.000000000000000</double>
-                         </property>
-                         <property name="maximum">
-                          <double>0.000000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>1.000000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>-8.000000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="2">
-                        <widget class="QLabel" name="label_dongle_suction_peak_dip_start">
-                         <property name="text">
-                          <string>周期开始(kPa)</string>
-                         </property>
-                        </widget>
-                       </item>
                        <item row="1" column="3">
-                        <widget class="QDoubleSpinBox" name="dongleSuctionPeakDipStartSpin">
-                         <property name="decimals">
-                          <number>2</number>
-                         </property>
-                         <property name="minimum">
-                          <double>-100.000000000000000</double>
-                         </property>
-                         <property name="maximum">
-                          <double>0.000000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>1.000000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>-10.000000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="2" column="0">
-                        <widget class="QLabel" name="label_dongle_suction_peak_max_gap">
-                         <property name="text">
-                          <string>漏峰间隔(s)</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="2" column="1">
                         <widget class="QDoubleSpinBox" name="dongleSuctionPeakMaxGapSpin">
                          <property name="decimals">
                           <number>1</number>
@@ -4705,20 +4679,20 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="2" column="2">
+                       <item row="1" column="2">
+                        <widget class="QLabel" name="label_dongle_suction_peak_max_gap">
+                         <property name="text">
+                          <string>漏峰间隔(s)</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="0">
                         <widget class="QCheckBox" name="dongleSuctionPeakGuideLinesCheck">
                          <property name="text">
                           <string>显示峰检辅助线</string>
                          </property>
                          <property name="checked">
                           <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="2" column="3">
-                        <widget class="QLabel" name="label_dongle_suction_peak_hint">
-                         <property name="text">
-                          <string></string>
                          </property>
                         </widget>
                        </item>
