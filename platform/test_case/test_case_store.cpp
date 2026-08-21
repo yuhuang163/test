@@ -2061,7 +2061,9 @@ bool TestCaseStore::saveCase(const TestCaseDefinition& def, QString* errorOut) {
 QVector<TestCaseGate> TestCaseStore::effectiveGates(const TestCaseDefinition& def) {
     if (!def.gates.isEmpty())
         return def.gates;
-    if (def.gate.enabled)
+    // Field=multi 只是多项卡控占位，不能当成可评字段（否则会报「无法从上报数据读取字段」）
+    if (def.gate.enabled && def.gate.field.compare(QLatin1String("multi"), Qt::CaseInsensitive) != 0
+        && !def.gate.field.trimmed().isEmpty())
         return {def.gate};
     return {};
 }
@@ -2076,8 +2078,13 @@ QVector<TestCaseGate> TestCaseStore::activeGatesForEvaluation(const TestCaseDefi
     QVector<TestCaseGate> active;
     active.reserve(gates.size());
     for (const TestCaseGate& g : gates) {
-        if (g.enabled)
-            active.append(g);
+        if (!g.enabled)
+            continue;
+        // 过滤占位/空字段，避免单项回退误评 multi
+        if (g.field.trimmed().isEmpty()
+            || g.field.compare(QLatin1String("multi"), Qt::CaseInsensitive) == 0)
+            continue;
+        active.append(g);
     }
     return active;
 }

@@ -1342,6 +1342,13 @@ bool GateRegistry::evaluate(const TestCaseGate& gate, const QString& reportType,
         return true;
     }
 
+    // multi 仅为 ini 占位，须用 Gate/ItemN_Field；误评会得到「无法从上报数据读取字段」
+    if (gate.field.compare(QLatin1String("multi"), Qt::CaseInsensitive) == 0) {
+        passOut = false;
+        detailOut = QStringLiteral("多项卡控未加载分项(请检查 Gate/Count 与 ItemN_Field)");
+        return true;
+    }
+
     bool ok = false;
     double value = fieldValueFromVariant(reportType, gate.field, payload, ok);
     if (gate.op == TestCaseGateOp::CompareVersions) {
