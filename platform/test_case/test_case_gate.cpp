@@ -1393,16 +1393,17 @@ bool GateRegistry::evaluate(const TestCaseGate& gate, const QString& reportType,
             } else if (reportType == QLatin1String("ProtocolScreenInspectData")
                        && (gate.field == QLatin1String("detectedColor")
                            || gate.field == QLatin1String("colorMatch"))) {
-                // 实测 fieldString 已是中文；ini 期望多为数字。按数值判定，展示统一转颜色/是否文字
+                // 实测 fieldString 已是「红」等中文；ini 期望多为 "2"。绝不能 actual==expected 字符串比
                 const double threshold = gateCompareThreshold(gate);
+                const QString expectText = formatGateFieldValue(reportType, gate.field, threshold);
                 if (ok) {
                     passOut = qAbs(value - threshold) < 0.0001;
                     detailOut = QStringLiteral("当前=%1, 期望=%2")
-                                    .arg(formatGateFieldValue(reportType, gate.field, value),
-                                         formatGateFieldValue(reportType, gate.field, threshold));
+                                    .arg(formatGateFieldValue(reportType, gate.field, value), expectText);
                 } else {
-                    passOut = false;
-                    detailOut = QStringLiteral("当前=%1, 期望=%2").arg(actual, expected);
+                    // 数值读不到时退化为中文名比对（期望侧仍转文字，避免弹窗出现「期望=2」）
+                    passOut = (actual == expectText);
+                    detailOut = QStringLiteral("当前=%1, 期望=%2").arg(actual, expectText);
                 }
             } else {
                 passOut = (actual == expected);
