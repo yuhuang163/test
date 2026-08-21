@@ -11,6 +11,7 @@
 #include "modbus_cmd_manifest.h"
 #include "scpi_cmd_manifest.h"
 #include "tuple_cmd_manifest.h"
+#include "usb_camera_cmd_manifest.h"
 #include "huiling_wfp60h_profile.h"
 #include "test_case_ini_param.h"
 
@@ -59,7 +60,7 @@ bool TestCaseValidator::validateCase(const TestCaseDefinition& def, QStringList&
         errors.append(QStringLiteral("该步骤 Send/DeviceCmd=Hook，请在「预置流程」勾选启用并选择流程类型（如 MAC_WRITE_ROOT）"));
     } else if (def.send.deviceCmd.isEmpty()) {
         errors.append(QStringLiteral("请选择测试指令"));
-    } else if (def.send.channel == TestCaseSendChannel::Dongle) {
+        } else if (def.send.channel == TestCaseSendChannel::Dongle) {
         DongleCmd dongleCmd;
         if (!DongleCmdCatalog::dongleCmdFromName(def.send.deviceCmd, dongleCmd)) {
             errors.append(QStringLiteral("Dongle 测试指令无效"));
@@ -121,6 +122,17 @@ bool TestCaseValidator::validateCase(const TestCaseDefinition& def, QStringList&
                 DeviceCmdParamSchema schema;
                 if (!JieliBtBoxCmdCatalog::paramSchemaFor(jieliCmd, schema))
                     errors.append(QStringLiteral("该杰理蓝牙盒子指令尚未配置参数模板，请联系工程师"));
+            }
+        } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera) {
+            UsbCameraCmd camCmd;
+            if (!UsbCameraCmdCatalog::usbCameraCmdFromName(def.send.deviceCmd, camCmd)) {
+                errors.append(QStringLiteral("USB 摄像头测试指令无效"));
+            } else if (!UsbCameraCmdCatalog::isCmdForAction(camCmd, def.send.action)) {
+                errors.append(QStringLiteral("USB 摄像头指令与操作方式不匹配（请选「读取」）"));
+            } else {
+                DeviceCmdParamSchema schema;
+                if (!UsbCameraCmdCatalog::paramSchemaFor(camCmd, schema))
+                    errors.append(QStringLiteral("该 USB 摄像头指令尚未配置参数模板，请联系工程师"));
             }
         } else if (def.send.fixtureProtocol != TestCaseFixtureProtocol::Pcba) {
             errors.append(QStringLiteral("治具协议类型无效"));
@@ -728,6 +740,112 @@ void DongleCmdCatalog::paramToIniGroup(QSettings& settings, DongleCmd cmd, const
     }
 }
 
+// ===================== UsbCameraCmdCatalog =====================
+
+QStringList UsbCameraCmdCatalog::allUsbCameraCmdNames(TestCaseSendAction action) {
+    QStringList names;
+    for (int i = 0; i < UsbCameraCmdManifest::rowCount(); ++i) {
+        const UsbCameraCmdManifest::Row& row = UsbCameraCmdManifest::rows()[i];
+        if (!TestCaseCmdManifest::matchesSendAction(row.sendActions, action))
+            continue;
+        names.append(QString::fromLatin1(row.enumName));
+    }
+    names.sort();
+    return names;
+}
+
+TestCaseSendAction UsbCameraCmdCatalog::actionFor(UsbCameraCmd cmd) {
+    if (const UsbCameraCmdManifest::Row* row = UsbCameraCmdManifest::findByCmd(cmd))
+        return TestCaseCmdManifest::defaultSendAction(row->sendActions);
+    return TestCaseSendAction::Get;
+}
+
+bool UsbCameraCmdCatalog::isCmdForAction(UsbCameraCmd cmd, TestCaseSendAction action) {
+    if (const UsbCameraCmdManifest::Row* row = UsbCameraCmdManifest::findByCmd(cmd))
+        return TestCaseCmdManifest::matchesSendAction(row->sendActions, action);
+    return false;
+}
+
+QString UsbCameraCmdCatalog::usbCameraCmdUiLabel(const QString& enumName) {
+    if (const UsbCameraCmdManifest::Row* row = UsbCameraCmdManifest::findByEnumName(enumName)) {
+        if (row->uiLabel && row->uiLabel[0] != '\0')
+            return cmdPickerDisplayLabel(QString::fromUtf8(row->uiLabel));
+    }
+    return QStringLiteral("未登记 USB 摄像头指令");
+}
+
+bool UsbCameraCmdCatalog::usbCameraCmdFromName(const QString& name, UsbCameraCmd& out) {
+    if (const UsbCameraCmdManifest::Row* row = UsbCameraCmdManifest::findByEnumName(name)) {
+        out = row->cmd;
+        return true;
+    }
+    return false;
+}
+
+QString UsbCameraCmdCatalog::usbCameraCmdToName(UsbCameraCmd cmd) {
+    if (const UsbCameraCmdManifest::Row* row = UsbCameraCmdManifest::findByCmd(cmd))
+        return QString::fromLatin1(row->enumName);
+    return QString::number(static_cast<int>(cmd));
+}
+
+bool UsbCameraCmdCatalog::paramSchemaFor(UsbCameraCmd cmd, DeviceCmdParamSchema& out) {
+    if (const UsbCameraCmdManifest::Row* row = UsbCameraCmdManifest::findByCmd(cmd)) {
+        out.kind = row->paramKind;
+        if (row->paramHint && row->paramHint[0] != '\0')
+            out.hint = QString::fromUtf8(row->paramHint);
+        else
+            out.hint.clear();
+        return true;
+    }
+    return false;
+}
+
+QString UsbCameraCmdCatalog::paramUiHint(const QString& enumName) {
+    if (const UsbCameraCmdManifest::Row* row = UsbCameraCmdManifest::findByEnumName(enumName)) {
+        if (row->paramHint && row->paramHint[0] != '\0')
+            return QString::fromUtf8(row->paramHint);
+    }
+    UsbCameraCmd cmd;
+    if (!usbCameraCmdFromName(enumName, cmd))
+        return QStringLiteral("未知 USB 摄像头指令");
+    return QStringLiteral("该 USB 摄像头指令未登记");
+}
+
+bool UsbCameraCmdCatalog::paramFromIniGroup(const QSettings& settings, UsbCameraCmd cmd, QVariant& out) {
+    DeviceCmdParamSchema schema;
+    if (!paramSchemaFor(cmd, schema))
+        return false;
+    switch (schema.kind) {
+    case DeviceCmdParamKind::None:
+        out = QVariant();
+        return true;
+    case DeviceCmdParamKind::JsonMap: {
+        QVariantMap map = readSendParamMap(settings);
+        map.remove(QStringLiteral("setScreenColor"));
+        out = map;
+        return true;
+    }
+    default:
+        return false;
+    }
+}
+
+void UsbCameraCmdCatalog::paramToIniGroup(QSettings& settings, UsbCameraCmd cmd, const QVariant& value) {
+    removeSendParamKeys(settings);
+    DeviceCmdParamSchema schema;
+    if (!paramSchemaFor(cmd, schema))
+        return;
+    if (schema.kind == DeviceCmdParamKind::JsonMap) {
+        QVariant cleaned = value;
+        if (cleaned.canConvert<QVariantMap>()) {
+            QVariantMap map = cleaned.toMap();
+            map.remove(QStringLiteral("setScreenColor"));
+            cleaned = map;
+        }
+        writeJsonMap(settings, sendParamIniPrefix(), cleaned);
+    }
+}
+
 // ===================== Asd9026aCmdCatalog =====================
 
 QStringList Asd9026aCmdCatalog::allAsd9026aCmdNames(TestCaseSendAction action) {
@@ -1044,6 +1162,9 @@ TestCaseFixtureProtocol FixturePcbaCmdCatalog::fixtureProtocolFromIni(const QStr
     if (text.compare(QStringLiteral("JIELI_BT_BOX"), Qt::CaseInsensitive) == 0
         || text.compare(QStringLiteral("JieliBtBox"), Qt::CaseInsensitive) == 0)
         return TestCaseFixtureProtocol::JieliBtBox;
+    if (text.compare(QStringLiteral("USB_CAMERA"), Qt::CaseInsensitive) == 0
+        || text.compare(QStringLiteral("UsbCamera"), Qt::CaseInsensitive) == 0)
+        return TestCaseFixtureProtocol::UsbCamera;
     if (text.compare(QStringLiteral("Pcba"), Qt::CaseInsensitive) == 0 || text.compare(QStringLiteral("PCBA"), Qt::CaseInsensitive) == 0)
         return TestCaseFixtureProtocol::Pcba;
     return TestCaseFixtureProtocol::Pcba;
@@ -1057,6 +1178,8 @@ QString FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol prot
         return QStringLiteral("XWD");
     case TestCaseFixtureProtocol::JieliBtBox:
         return QStringLiteral("JIELI_BT_BOX");
+    case TestCaseFixtureProtocol::UsbCamera:
+        return QStringLiteral("USB_CAMERA");
     case TestCaseFixtureProtocol::Pcba:
     default:
     return QStringLiteral("Pcba");
@@ -1071,6 +1194,8 @@ QString FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol pr
         return QStringLiteral("XWD治具");
     case TestCaseFixtureProtocol::JieliBtBox:
         return QStringLiteral("杰理蓝牙盒子");
+    case TestCaseFixtureProtocol::UsbCamera:
+        return QStringLiteral("USB摄像头");
     case TestCaseFixtureProtocol::Pcba:
     default:
     return QStringLiteral("PCBA测试协议");
@@ -1643,6 +1768,9 @@ int TestCaseRunner::commandTimeoutMs(const TestCaseDefinition& def) {
         && (def.send.deviceCmd == QStringLiteral("SampleSuctionDual")
             || def.send.deviceCmd == QStringLiteral("SampleSuctionSingle")))
         return 10000;
+    if (def.send.channel == TestCaseSendChannel::Fixture
+        && def.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera)
+        return 15000;
     if (def.send.channel == TestCaseSendChannel::Fixture)
         return def.gate.enabled ? 8000 : 5000;
     if (def.send.channel == TestCaseSendChannel::ProductSerial)

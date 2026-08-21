@@ -87,7 +87,7 @@ class CommonUtils {
     static QStringList mesProductNames();
     static QStringList dongleBroadcastFilterNames();
     static QString protocolForProduct(const QString& productName);
-    /** 工站显示名是否属于指定产品：自由/默认工站通用，其余按工站名前缀匹配产品名。 */
+    /** 工站显示名是否属于指定产品：自由/默认工站通用；其余须以完整产品名开头（W1 Lite 不含仅以 W1 开头的工站）。 */
     static bool stationBelongsToProduct(const QString& stationDisplayName, const QString& productName);
     static bool resolveDongleDeviceMapping(const QString& dongleName, QString* productOut, QString* protocolOut);
 

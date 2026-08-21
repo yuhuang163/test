@@ -3,6 +3,8 @@
 #include "common_utils.h"
 #include "huiling_wfp60h_scpi_types.h"
 #include "qfreeworkbox.h"
+#include "screen_inspect_analyzer.h"
+#include "screen_inspect_capture.h"
 #include "test_case.h"
 
 #include <QMessageBox>
@@ -14,6 +16,8 @@
 #include <QComboBox>
 #include <QCoreApplication>
 #include <QFile>
+#include <QFileInfo>
+#include <QDir>
 #include <QDateTime>
 #include <QElapsedTimer>
 #include <QEventLoop>
@@ -38,6 +42,14 @@
 #include "agreement/mes_protocol/device/byd_mes/bydmes.h"
 #include "ui_qfreework.h"
 #include <QShowEvent>
+#include <QDesktopServices>
+#include <QUrl>
+#include <QDialog>
+#include <QDialogButtonBox>
+#include <QScrollArea>
+#include <QPixmap>
+#include <QHBoxLayout>
+#include <QCursor>
 
 namespace {
 
@@ -398,11 +410,22 @@ bool isDongleBleConnectStepName(const QString& name) {
     return name.contains(QStringLiteral("直连接蓝牙")) || name.contains(QStringLiteral("扫描连接蓝牙"));
 }
 
-
 constexpr int kFreeWorkTabMain = 0;
-constexpr int kFreeWorkTabExpand = 1;
-constexpr int kFreeWorkTabChart = 2;
-constexpr int kFreeWorkTabBleBind = 3;
+
+void fitScreenInspectThumb(QLabel* label, const QImage& img, const QString& emptyText) {
+    if (!label)
+        return;
+    if (img.isNull()) {
+        label->setPixmap(QPixmap());
+        label->setText(emptyText);
+        return;
+    }
+    label->setText(QString());
+    QSize sz = label->size();
+    if (sz.width() < 40 || sz.height() < 40)
+        sz = QSize(280, 180);
+    label->setPixmap(QPixmap::fromImage(img).scaled(sz, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+}
 
 /** 按当前标签文字重算 min-width，覆盖全局 Ubuntu.qss 对 Tab 的裁切。 */
 void setupFreeWorkTabBar(QTabWidget* tabWidget) {
@@ -612,6 +635,19 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
                                       "padding: 10px; text-align: center; ");
     resetTuplePositionHighlight();
     setupTuplePositionClickable();
+    if (ui->label_screenInspectShot) {
+        ui->label_screenInspectShot->setCursor(Qt::PointingHandCursor);
+        ui->label_screenInspectShot->installEventFilter(this);
+    }
+    // 标注图仅内部存盘用，界面不展示（相似度对比的是拍摄图 vs 参考图）
+    if (ui->label_screenInspectMarkCaption)
+        ui->label_screenInspectMarkCaption->hide();
+    if (ui->label_screenInspectMark)
+        ui->label_screenInspectMark->hide();
+    if (ui->label_screenInspectRef) {
+        ui->label_screenInspectRef->setCursor(Qt::PointingHandCursor);
+        ui->label_screenInspectRef->installEventFilter(this);
+    }
 
     connect(waittime, &QTimer::timeout, [=]() {
         isovertime = 1;
@@ -1658,13 +1694,18 @@ void QFreeWork::applyFreeWorkExtraTabsVisible(bool visible) {
     if (!bar)
         return;
 
-    bar->setTabVisible(kFreeWorkTabExpand, visible);
-    bar->setTabVisible(kFreeWorkTabChart, visible);
-    bar->setTabVisible(kFreeWorkTabBleBind, visible);
+    const int expandIdx = ui->tabWidget->indexOf(ui->tab_2);
+    const int chartIdx = ui->tabWidget->indexOf(ui->tab_chart);
+    const int screenIdx = ui->tabWidget->indexOf(ui->tab_screenInspect);
+    const int bleIdx = ui->tabWidget->indexOf(ui->tab_3);
+    bar->setTabVisible(expandIdx, visible);
+    bar->setTabVisible(chartIdx, visible);
+    bar->setTabVisible(screenIdx, visible);
+    bar->setTabVisible(bleIdx, visible);
 
     if (!visible) {
         const int cur = ui->tabWidget->currentIndex();
-        if (cur == kFreeWorkTabExpand || cur == kFreeWorkTabChart || cur == kFreeWorkTabBleBind)
+        if (cur == expandIdx || cur == chartIdx || cur == screenIdx || cur == bleIdx)
             ui->tabWidget->setCurrentIndex(kFreeWorkTabMain);
     }
 
@@ -1678,7 +1719,8 @@ void QFreeWork::on_toggleExtraTabsButton_clicked() {
     QTabBar* bar = ui->tabWidget->tabBar();
     if (!bar)
         return;
-    applyFreeWorkExtraTabsVisible(!bar->isTabVisible(kFreeWorkTabExpand));
+    const int expandIdx = ui->tabWidget->indexOf(ui->tab_2);
+    applyFreeWorkExtraTabsVisible(!bar->isTabVisible(expandIdx));
 }
 
 void QFreeWork::loadSuctionGateSettings() {
@@ -1876,7 +1918,7 @@ void QFreeWork::appendSuctionChartSample(double leftKpa, double rightKpa) {
     }
 
     // 采样期间不 replot：只攒向量，结束时 finalizeSuctionChartPlot 一次画完整条。
-    // 图形展示页上的 CH1/CH2 标签仍节流刷新，确认在采数；向量按每个 AT 点全量入库。
+    // 吸力曲线页上的 CH1/CH2 标签仍节流刷新，确认在采数；向量按每个 AT 点全量入库。
     constexpr qint64 kLabelThrottleMs = 50;
     const qint64 nowMs = suctionChartTimer_.elapsed();
     if (nowMs - suctionChartLastUiMs_ < kLabelThrottleMs)
@@ -1918,6 +1960,78 @@ void QFreeWork::finalizeSuctionChartPlot() {
 
 void QFreeWork::on_clearSuctionChartButton_clicked() {
     resetSuctionChart();
+}
+
+void QFreeWork::rememberScreenInspectImages(const QImage& capture, const QImage& annotated, const QImage& reference,
+                                            const QString& folder) {
+    screenInspectCapture_ = capture;
+    screenInspectAnnotated_ = annotated;
+    screenInspectReference_ = reference;
+    screenInspectFolder_ = folder;
+    updateScreenInspectPreview();
+}
+
+void QFreeWork::updateScreenInspectPreview() {
+    fitScreenInspectThumb(ui->label_screenInspectShot, screenInspectCapture_, QStringLiteral("尚无拍摄图"));
+    fitScreenInspectThumb(ui->label_screenInspectRef, screenInspectReference_, QStringLiteral("尚无参考图"));
+    const bool hasImg = !screenInspectCapture_.isNull();
+    if (ui->viewScreenInspectLargeButton)
+        ui->viewScreenInspectLargeButton->setEnabled(hasImg);
+}
+
+void QFreeWork::showScreenInspectViewer() {
+    if (screenInspectCapture_.isNull()) {
+        showlog(QStringLiteral("还没有屏幕拍照，请先跑 USB 摄像头检测步骤"));
+        return;
+    }
+    auto* dlg = new QDialog(this);
+    dlg->setAttribute(Qt::WA_DeleteOnClose);
+    dlg->setWindowTitle(QStringLiteral("屏幕拍照查看"));
+    dlg->resize(1100, 620);
+    auto* root = new QVBoxLayout(dlg);
+    auto* pics = new QHBoxLayout();
+    auto addPane = [&](const QString& title, const QImage& img) {
+        auto* col = new QVBoxLayout();
+        col->addWidget(new QLabel(title, dlg));
+        auto* scroll = new QScrollArea(dlg);
+        scroll->setWidgetResizable(true);
+        auto* pic = new QLabel(scroll);
+        pic->setAlignment(Qt::AlignCenter);
+        if (img.isNull())
+            pic->setText(QStringLiteral("无"));
+        else
+            pic->setPixmap(QPixmap::fromImage(img).scaled(900, 900, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+        scroll->setWidget(pic);
+        col->addWidget(scroll, 1);
+        pics->addLayout(col, 1);
+    };
+    addPane(QStringLiteral("本次拍摄"), screenInspectCapture_);
+    addPane(QStringLiteral("标准参考图"), screenInspectReference_);
+    root->addLayout(pics, 1);
+    auto* buttons = new QDialogButtonBox(dlg);
+    auto* folderBtn = buttons->addButton(QStringLiteral("打开图片文件夹"), QDialogButtonBox::ActionRole);
+    buttons->addButton(QDialogButtonBox::Close);
+    connect(folderBtn, &QPushButton::clicked, this, &QFreeWork::openScreenInspectFolder);
+    connect(buttons, &QDialogButtonBox::rejected, dlg, &QDialog::close);
+    connect(buttons, &QDialogButtonBox::accepted, dlg, &QDialog::close);
+    root->addWidget(buttons);
+    dlg->show();
+}
+
+void QFreeWork::openScreenInspectFolder() {
+    QString dir = screenInspectFolder_;
+    if (dir.isEmpty())
+        dir = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("screen_inspect"));
+    CommonUtils::ensureDirectory(dir);
+    QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
+}
+
+void QFreeWork::on_viewScreenInspectLargeButton_clicked() {
+    showScreenInspectViewer();
+}
+
+void QFreeWork::on_openScreenInspectFolderButton_clicked() {
+    openScreenInspectFolder();
 }
 
 void QFreeWork::setDongleSuctionReadEnabled(bool enabled) {
@@ -2290,6 +2404,229 @@ void QFreeWork::runDongleSuctionSampleSingleStep() {
                                QStringLiteral("[%1,%2]").arg(peakLo, 0, 'f', 2).arg(peakHi, 0, 'f', 2));
 }
 
+bool QFreeWork::screenInspectAskHumanPassOnAutoFail(const QString& autoFailDetail) {
+    const QString detail = autoFailDetail.trimmed().isEmpty() ? QStringLiteral("未通过") : autoFailDetail.trimmed();
+    QMessageBox box(QMessageBox::Question, QStringLiteral("屏幕检测人工确认"),
+                    QStringLiteral("图像自动识别未通过：%1\n\n是否确认屏幕有问题？\n"
+                                   "点「是」=确认有问题（不通过）\n"
+                                   "点「否」=目视正常（通过）")
+                        .arg(detail),
+                    QMessageBox::Yes | QMessageBox::No, this);
+    if (QAbstractButton* yesBtn = box.button(QMessageBox::Yes))
+        yesBtn->setText(QStringLiteral("是"));
+    if (QAbstractButton* noBtn = box.button(QMessageBox::No))
+        noBtn->setText(QStringLiteral("否"));
+    box.setDefaultButton(QMessageBox::Yes);
+    applyTestItemPromptFont(&box);
+    const int reply = box.exec();
+    return reply == QMessageBox::No;
+}
+
+void QFreeWork::runScreenInspectStep() {
+    const bool deadMode = activeTestCase_.send.deviceCmd == QStringLiteral("ScreenDeadPixelCheck");
+    const bool anomalyMode = activeTestCase_.send.deviceCmd == QStringLiteral("ScreenDisplayAnomalyCheck");
+    if (!deadMode && !anomalyMode) {
+        TestResult = failValue;
+        markActiveTestCaseStepDone(false, QStringLiteral("未知屏幕检测指令"), QStringLiteral("失败"));
+        return;
+    }
+
+    QVariantMap map;
+    if (activeTestCase_.send.param.canConvert<QVariantMap>())
+        map = resolveTestCaseSendParamTree(activeTestCase_.send.param).toMap();
+
+    auto mapInt = [&](const QString& key, int defVal) {
+        if (!map.contains(key) || map.value(key).toString().trimmed().isEmpty())
+            return defVal;
+        bool ok = false;
+        const int v = map.value(key).toInt(&ok);
+        return ok ? v : defVal;
+    };
+
+    const int cameraIndex = mapInt(QStringLiteral("cameraIndex"),
+                                   SETTINGS.value(QStringLiteral("ScreenInspect/CameraIndex"), 0).toInt());
+    const QString cameraName = map.value(QStringLiteral("cameraName")).toString().trimmed();
+    const int warmupMs = qBound(0, mapInt(QStringLiteral("warmupMs"), 450), 8000);
+    const int expectedColor = mapInt(QStringLiteral("expectedColor"), -1);
+    const int deadDiff = mapInt(QStringLiteral("deadDiff"),
+                                SETTINGS.value(QStringLiteral("ScreenInspect/DeadPixelDiff"), 35).toInt());
+    const int saveCapture = mapInt(QStringLiteral("saveCapture"), 1);
+    QString referencePath = map.value(QStringLiteral("referencePath")).toString().trimmed();
+    if (referencePath.isEmpty())
+        referencePath = SETTINGS.value(QStringLiteral("ScreenInspect/ReferencePath")).toString().trimmed();
+
+    showlog(QStringLiteral("本步调用摄像头对屏幕拍照并分析对比（%1）：index=%2%3 预热%4ms 残差%5")
+                .arg(deadMode ? QStringLiteral("坏点分析") : QStringLiteral("显示对比"))
+                .arg(cameraIndex)
+                .arg(cameraName.isEmpty() ? QString() : QStringLiteral(" name=%1").arg(cameraName))
+                .arg(warmupMs)
+                .arg(deadDiff));
+
+    QImage curr;
+    QString captureErr;
+    if (!ScreenInspectCapture::grabStill(cameraIndex, cameraName, warmupMs, &curr, &captureErr)) {
+        TestResult = failValue;
+        showlog(QStringLiteral("屏幕拍照失败：%1").arg(captureErr));
+        markActiveTestCaseStepDone(false, captureErr, QStringLiteral("失败"));
+        return;
+    }
+
+    QImage ref;
+    if (anomalyMode) {
+        QString path = referencePath;
+        if (!path.isEmpty() && !QFileInfo(path).isAbsolute())
+            path = QDir(QCoreApplication::applicationDirPath()).filePath(path);
+        if (path.isEmpty())
+            path = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("screen_inspect/reference.png"));
+        if (!ref.load(path) || ref.isNull()) {
+            TestResult = failValue;
+            showlog(QStringLiteral("显示异常检查失败：未加载参考图（%1）。请在调试页保存参考图或填写 Param_referencePath")
+                        .arg(path));
+            markActiveTestCaseStepDone(false, QStringLiteral("无参考图"), QStringLiteral("失败"));
+            return;
+        }
+    }
+
+    ScreenInspectAnalyzer::Params ap;
+    ap.deadDiff = deadDiff;
+    ap.expectedColor = expectedColor;
+    QString roiText = map.value(QStringLiteral("roi")).toString().trimmed();
+    if (roiText.isEmpty())
+        roiText = SETTINGS.value(QStringLiteral("ScreenInspect/Roi")).toString().trimmed();
+    ap.manualRoi = ScreenInspectAnalyzer::parseManualRoi(roiText);
+    if (!ap.manualRoi.isNull())
+        showlog(QStringLiteral("使用划定检测范围：%1,%2 %3x%4")
+                    .arg(ap.manualRoi.x())
+                    .arg(ap.manualRoi.y())
+                    .arg(ap.manualRoi.width())
+                    .arg(ap.manualRoi.height()));
+    const ScreenInspectAnalyzer::Report report = ScreenInspectAnalyzer::analyze(curr, ref, ap);
+
+    const QString dir = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("screen_inspect"));
+    CommonUtils::ensureDirectory(dir);
+    QStringList uploadImagePaths;
+    // 测完会话上传需要带图：无论 saveCapture 是否开，都落一份带时间戳的证据图并登记到 Qlog
+    {
+        const QString stamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss"));
+        const QString capPath = dir + QLatin1Char('/') + stamp + QStringLiteral("_capture.png");
+        if (curr.save(capPath, "PNG"))
+            uploadImagePaths << capPath;
+        if (!report.annotated.isNull()) {
+            const QString markPath = dir + QLatin1Char('/') + stamp + QStringLiteral("_mark.png");
+            if (report.annotated.save(markPath, "PNG"))
+                uploadImagePaths << markPath;
+        }
+        if (!ref.isNull() && saveCapture) {
+            const QString refPath = dir + QLatin1Char('/') + stamp + QStringLiteral("_reference.png");
+            if (ref.save(refPath, "PNG"))
+                uploadImagePaths << refPath;
+        }
+    }
+    curr.save(dir + QStringLiteral("/last_capture.png"), "PNG");
+    if (!report.annotated.isNull())
+        report.annotated.save(dir + QStringLiteral("/last_mark.png"), "PNG");
+    if (!ref.isNull())
+        ref.save(dir + QStringLiteral("/last_reference.png"), "PNG");
+    if (!uploadImagePaths.isEmpty())
+        Qlog::addScreenInspectImageFiles(getIndex(), uploadImagePaths);
+    rememberScreenInspectImages(curr, report.annotated, ref, dir);
+
+    ProtocolScreenInspectData data;
+    data.deadPixels = report.deadPixels;
+    data.muraStd = report.muraStd;
+    data.ssim = report.ssim;
+    data.detectedColor = report.detectedColor;
+    data.colorMatch = report.colorMatch;
+    const QString ssimText = data.ssim < 0 ? QStringLiteral("未比") : QString::number(data.ssim, 'f', 3);
+    const QString detectedName = ScreenInspectAnalyzer::colorName(report.detectedColor);
+    QString colorLog;
+    if (expectedColor < 0)
+        colorLog = QStringLiteral("未指定期望色，实测%1").arg(detectedName);
+    else if (report.colorMatch == 1)
+        colorLog = QStringLiteral("期望%1，实测%1，颜色匹配")
+                       .arg(ScreenInspectAnalyzer::colorName(expectedColor));
+    else
+        colorLog = QStringLiteral("期望%1，实测%2，颜色不匹配")
+                       .arg(ScreenInspectAnalyzer::colorName(expectedColor), detectedName);
+    showlog(QStringLiteral("拍照完成并已分析对比：%1；坏点=%2 亮度起伏=%3 相似度=%4 ROI=%5x%6")
+                .arg(colorLog)
+                .arg(data.deadPixels)
+                .arg(data.muraStd, 0, 'f', 1)
+                .arg(ssimText)
+                .arg(report.roi.width())
+                .arg(report.roi.height()));
+
+    if (expectedColor >= 0 && data.colorMatch == 0) {
+        showlog(QStringLiteral("屏幕检测自动识别未通过：%1").arg(colorLog));
+        const QString askColor = ScreenInspectAnalyzer::colorName(expectedColor);
+        // 数据=实测颜色，要求=期望颜色；人工点「否」可按通过
+        if (screenInspectAskHumanPassOnAutoFail(colorLog)) {
+            showlog(QStringLiteral("人工确认：目视正常，本步按通过"));
+            markActiveTestCaseStepDone(true, detectedName + QStringLiteral("（人工确认通过）"), askColor);
+        } else {
+            TestResult = failValue;
+            showlog(QStringLiteral("人工确认：有问题，本步不通过"));
+            markActiveTestCaseStepDone(false, detectedName, askColor);
+        }
+        return;
+    }
+
+    const QVariant payload = QVariant::fromValue(data);
+    if (activeTestCase_.gate.enabled
+        && evaluateActiveTestCaseGate(QStringLiteral("ProtocolScreenInspectData"), payload))
+        return;
+
+    bool pass = true;
+    QStringList reasons;
+    if (deadMode) {
+        const int maxDead = SETTINGS.value(QStringLiteral("ScreenInspect/MaxDeadPixels"), 8).toInt();
+        if (data.deadPixels > maxDead) {
+            pass = false;
+            reasons.append(QStringLiteral("坏点%1 超过上限%2").arg(data.deadPixels).arg(maxDead));
+        } else {
+            showlog(QStringLiteral("坏点卡控通过：当前%1，允许≤%2").arg(data.deadPixels).arg(maxDead));
+        }
+    }
+    if (anomalyMode) {
+        const double minSsim = SETTINGS.value(QStringLiteral("ScreenInspect/MinSimilarity"), 0.90).toDouble();
+        if (data.ssim < minSsim) {
+            pass = false;
+            reasons.append(QStringLiteral("相似度%1 低于下限%2")
+                               .arg(data.ssim, 0, 'f', 3)
+                               .arg(minSsim, 0, 'f', 2));
+        } else {
+            showlog(QStringLiteral("相似度卡控通过：当前%1，允许≥%2")
+                        .arg(data.ssim, 0, 'f', 3)
+                        .arg(minSsim, 0, 'f', 2));
+        }
+        // 未开 Gate 时显示对比只卡相似度；灰度标准差仅纯色画面有意义，灰阶条纹勿用
+    }
+
+    const QString testData = deadMode
+                                 ? detectedName
+                                 : (anomalyMode ? ssimText
+                                                : QStringLiteral("坏点=%1 颜色=%2")
+                                                      .arg(data.deadPixels)
+                                                      .arg(detectedName));
+    const QString askText = expectedColor >= 0 ? ScreenInspectAnalyzer::colorName(expectedColor)
+                                               : (anomalyMode ? QStringLiteral("相似度") : QStringLiteral("通过"));
+    if (!pass) {
+        const QString failReason = reasons.join(QStringLiteral("；"));
+        showlog(QStringLiteral("屏幕检测自动识别未通过：%1").arg(failReason));
+        if (screenInspectAskHumanPassOnAutoFail(failReason)) {
+            showlog(QStringLiteral("人工确认：目视正常，本步按通过"));
+            markActiveTestCaseStepDone(true, testData + QStringLiteral("（人工确认通过）"),
+                                       askText.isEmpty() ? QStringLiteral("通过") : askText);
+        } else {
+            TestResult = failValue;
+            showlog(QStringLiteral("人工确认：有问题，本步不通过"));
+            markActiveTestCaseStepDone(false, testData, askText.isEmpty() ? QStringLiteral("失败") : askText);
+        }
+        return;
+    }
+    markActiveTestCaseStepDone(true, testData, askText);
+}
+
 void QFreeWork::initData(bool deferDongleAtForVisa) {
     ui->product_sn->setText("芯片存储的整机sn:");
     ui->bleStatusLabel->setText("蓝牙连接：");
@@ -2307,8 +2644,9 @@ void QFreeWork::initData(bool deferDongleAtForVisa) {
     dongleSuctionCh1Samples_.clear();
     dongleSuctionCh2Samples_.clear();
     dongleSuctionSampleTimeSec_.clear();
-    // 一并清 Qlog 暂存：上一轮若已投递但未被导出取走，本轮中止时会误传上一轮采样
+    // 一并清 Qlog 暂存：上一轮若已投递但未被导出取走，本轮中止时会误传上一轮采样/截图
     Qlog::setSuctionSamples(getIndex(), {}, {}, {}, {});
+    Qlog::addScreenInspectImageFiles(getIndex(), {});
     resetSuctionChart();
     // 首步 GPIB 时勿发 AT+SUCTION=0，与单步一致，避免 USB 与 GPIB 并发 ABORT
     if (deferDongleAtForVisa)
@@ -2455,7 +2793,6 @@ void QFreeWork::runPlcModbusConnectTest() {
     const PlcV3RunResult result = runPlcV3(PlcV3Command::ModbusConnectTest);
     applyPlcStepResult(result, PlcV3Command::ModbusConnectTest);
 }
-
 
 void QFreeWork::runPlcV3TouchKeyFull(int keyIndex0To6, bool finishStepRuntime) {
     const PlcV3RunResult result = runPlcV3(PlcV3Command::TouchKey, keyIndex0To6, finishStepRuntime);

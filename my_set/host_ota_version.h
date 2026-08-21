@@ -10,7 +10,7 @@
  * - buildId 须单调递增，格式与云端比较一致：yyyyMMdd 或 yyyyMMdd-N（同日第 N 次发版）。
  * - appVersion 为展示/比较用语义版本（如 1.6.5）；与工站 DEBUG_VER / FREE_VER 窗口标题无关。
  */
-#define HOST_OTA_APP_VERSION "1.6.33"
+#define HOST_OTA_APP_VERSION "1.6.34"
 #define HOST_OTA_BUILD_ID "2026089"
 
 #endif // HOST_OTA_VERSION_H

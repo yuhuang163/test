@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <QSettings>
 #include <QTextCodec>
+#include <qdebug.h>
 
 #include "Abini.h"
 #include "common_utils.h"
@@ -755,29 +756,47 @@ bool iniHasMultiGateItems(const QSettings& ini) {
     return ini.value(QStringLiteral("Gate/Count"), 0).toInt() > 0;
 }
 
-/** 多项卡控只认 [Gate] 下 Count + ItemN_Field / ItemN_Low …，与 saveMultiGatesToIni 同一套键。 */
+void saveMultiGatesToIni(QSettings& ini, const TestCaseDefinition& def);
+
+/** 多项卡控：优先 ItemN_Field；现场旧包是 Qt 数组键 1\\Field（QSettings 为 Gate/1/Field）。 */
 void loadMultiGatesFromIni(QSettings& ini, TestCaseDefinition& out) {
     out.gates.clear();
     const QString reportType = out.gate.reportType;
     const int count = ini.value(QStringLiteral("Gate/Count"), 0).toInt();
+    bool usedLegacyArray = false;
+    auto itemVal = [&](int i, const QString& name, const QVariant& defVal) {
+        const QString modern = QStringLiteral("Gate/Item%1_%2").arg(i).arg(name);
+        if (ini.contains(modern))
+            return ini.value(modern, defVal);
+        const QString legacy = QStringLiteral("Gate/%1/%2").arg(i).arg(name);
+        if (ini.contains(legacy))
+            usedLegacyArray = true;
+        return ini.value(legacy, defVal);
+    };
     for (int i = 1; i <= count; ++i) {
-        const QString p = QStringLiteral("Gate/Item%1_").arg(i);
         TestCaseGate g;
         g.reportType = reportType;
-        g.field = ini.value(p + QStringLiteral("Field")).toString().trimmed();
-        g.enabled = ini.value(p + QStringLiteral("Enabled"), true).toBool();
-        g.op = gateOpFromString(ini.value(p + QStringLiteral("Op"), QStringLiteral("range")).toString());
-        g.expected = ini.value(p + QStringLiteral("Expected")).toString().trimmed();
-        g.low = ini.value(p + QStringLiteral("Low"), 0).toDouble();
-        g.high = ini.value(p + QStringLiteral("High"), 0).toDouble();
-        g.lowSettingsKey = ini.value(p + QStringLiteral("LowSettingsKey")).toString();
-        g.highSettingsKey = ini.value(p + QStringLiteral("HighSettingsKey")).toString();
-        g.expectedSettingsKey = ini.value(p + QStringLiteral("ExpectedSettingsKey")).toString();
+        g.field = itemVal(i, QStringLiteral("Field"), QVariant()).toString().trimmed();
+        g.enabled = itemVal(i, QStringLiteral("Enabled"), true).toBool();
+        g.op = gateOpFromString(itemVal(i, QStringLiteral("Op"), QStringLiteral("range")).toString());
+        g.expected = itemVal(i, QStringLiteral("Expected"), QVariant()).toString().trimmed();
+        g.low = itemVal(i, QStringLiteral("Low"), 0).toDouble();
+        g.high = itemVal(i, QStringLiteral("High"), 0).toDouble();
+        g.lowSettingsKey = itemVal(i, QStringLiteral("LowSettingsKey"), QVariant()).toString();
+        g.highSettingsKey = itemVal(i, QStringLiteral("HighSettingsKey"), QVariant()).toString();
+        g.expectedSettingsKey = itemVal(i, QStringLiteral("ExpectedSettingsKey"), QVariant()).toString();
         if (!g.field.isEmpty() && g.field != QLatin1String("multi"))
             out.gates.append(g);
     }
-    if (!out.gates.isEmpty())
+    if (!out.gates.isEmpty()) {
+        if (usedLegacyArray) {
+            saveMultiGatesToIni(ini, out);
+            ini.sync();
+            if (ini.status() == QSettings::NoError)
+                qDebug() << QStringLiteral("卡控已从旧数组格式升级：") << ini.fileName();
+        }
         return;
+    }
 
     if (out.gate.enabled && GateRegistry::isAllFieldsGateField(out.gate.field)
         && reportType == QStringLiteral("ProtocolPeriphStateData")) {
@@ -871,6 +890,10 @@ void applySendChannelIniText(const QString& channelIni, TestCaseDefinition& def)
         def.send.channel = TestCaseSendChannel::Modbus;
     } else if (channelIni.compare(QStringLiteral("Scpi"), Qt::CaseInsensitive) == 0) {
         def.send.channel = TestCaseSendChannel::Scpi;
+    } else if (channelIni.compare(QStringLiteral("UsbCamera"), Qt::CaseInsensitive) == 0) {
+        // 兼容旧 Channel=UsbCamera：并入治具通信
+        def.send.channel = TestCaseSendChannel::Fixture;
+        def.send.fixtureProtocol = TestCaseFixtureProtocol::UsbCamera;
     }
 }
 
@@ -1006,6 +1029,9 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
         out.send.channel = TestCaseSendChannel::Modbus;
     } else if (channelIni.compare(QStringLiteral("Scpi"), Qt::CaseInsensitive) == 0) {
         out.send.channel = TestCaseSendChannel::Scpi;
+    } else if (channelIni.compare(QStringLiteral("UsbCamera"), Qt::CaseInsensitive) == 0) {
+        out.send.channel = TestCaseSendChannel::Fixture;
+        out.send.fixtureProtocol = TestCaseFixtureProtocol::UsbCamera;
     } else {
         FixturePcbaCmd inferFixturePcba;
         Asd9026aCmd inferAsd9026a;
@@ -1014,6 +1040,7 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
         ProductSerialCmd inferSerial;
         TupleCmd inferTuple;
         DongleCmd inferDongle;
+        UsbCameraCmd inferUsbCamera;
         if (Asd9026aCmdCatalog::asd9026aCmdFromName(out.send.deviceCmd, inferAsd9026a)) {
             out.send.channel = TestCaseSendChannel::Fixture;
             out.send.fixtureProtocol = TestCaseFixtureProtocol::Asd9026a;
@@ -1031,8 +1058,20 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
             out.send.channel = TestCaseSendChannel::Cloud;
         } else if (DongleCmdCatalog::dongleCmdFromName(out.send.deviceCmd, inferDongle)) {
             out.send.channel = TestCaseSendChannel::Dongle;
+        } else if (UsbCameraCmdCatalog::usbCameraCmdFromName(out.send.deviceCmd, inferUsbCamera)) {
+            out.send.channel = TestCaseSendChannel::Fixture;
+            out.send.fixtureProtocol = TestCaseFixtureProtocol::UsbCamera;
         } else {
             out.send.channel = TestCaseSendChannel::Product;
+        }
+    }
+    // 旧配置把 USB 摄像头步骤写在产品通道或独立通道，加载时并入治具协议
+    {
+        UsbCameraCmd camCmd;
+        if (UsbCameraCmdCatalog::usbCameraCmdFromName(out.send.deviceCmd, camCmd)
+            && out.send.channel != TestCaseSendChannel::Fixture) {
+            out.send.channel = TestCaseSendChannel::Fixture;
+            out.send.fixtureProtocol = TestCaseFixtureProtocol::UsbCamera;
         }
     }
     if (out.send.channel == TestCaseSendChannel::Dongle) {
@@ -1076,6 +1115,13 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
                 if (!JieliBtBoxCmdCatalog::isCmdForAction(jieliCmd, out.send.action))
                     out.send.action = JieliBtBoxCmdCatalog::actionFor(jieliCmd);
                 JieliBtBoxCmdCatalog::paramFromIniGroup(ini, jieliCmd, out.send.param);
+            }
+        } else if (out.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera) {
+            UsbCameraCmd camCmd;
+            if (UsbCameraCmdCatalog::usbCameraCmdFromName(out.send.deviceCmd, camCmd)) {
+                if (!UsbCameraCmdCatalog::isCmdForAction(camCmd, out.send.action))
+                    out.send.action = UsbCameraCmdCatalog::actionFor(camCmd);
+                UsbCameraCmdCatalog::paramFromIniGroup(ini, camCmd, out.send.param);
             }
         } else {
         FixturePcbaCmd fixtureCmd;
@@ -1367,7 +1413,9 @@ void applyCaseIniOverlay(QSettings& overlay, TestCaseDefinition& def) {
                     merged.insert(it.key(), it.value());
                 }
                 def.send.param = normalizeScpiModbusParamFromMap(merged);
-            } else if (def.send.channel == TestCaseSendChannel::Product) {
+            } else if (def.send.channel == TestCaseSendChannel::Product
+                       || (def.send.channel == TestCaseSendChannel::Fixture
+                           && def.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera)) {
                 // 编辑/存档侧保持 JsonMap；normalizeSendParam（如 Sn→DeviceSnPayload）仅在下发时做
                 QVariantMap merged;
                 if (def.send.param.canConvert<QVariantMap>())
@@ -1408,6 +1456,10 @@ void applyCaseIniOverlay(QSettings& overlay, TestCaseDefinition& def) {
                     JieliBtBoxCmd jieliCmd;
                     if (JieliBtBoxCmdCatalog::jieliBtBoxCmdFromName(def.send.deviceCmd, jieliCmd))
                         JieliBtBoxCmdCatalog::paramFromIniGroup(overlay, jieliCmd, def.send.param);
+                } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera) {
+                    UsbCameraCmd camCmd;
+                    if (UsbCameraCmdCatalog::usbCameraCmdFromName(def.send.deviceCmd, camCmd))
+                        UsbCameraCmdCatalog::paramFromIniGroup(overlay, camCmd, def.send.param);
                 } else {
                     FixturePcbaCmd fixtureCmd;
                     if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd))
@@ -1785,6 +1837,10 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
                 JieliBtBoxCmd jieliCmd;
                 if (JieliBtBoxCmdCatalog::jieliBtBoxCmdFromName(def.send.deviceCmd, jieliCmd))
                     JieliBtBoxCmdCatalog::paramToIniGroup(ini, jieliCmd, def.send.param);
+            } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera) {
+                UsbCameraCmd camCmd;
+                if (UsbCameraCmdCatalog::usbCameraCmdFromName(def.send.deviceCmd, camCmd))
+                    UsbCameraCmdCatalog::paramToIniGroup(ini, camCmd, def.send.param);
             } else {
                 FixturePcbaCmd fixtureCmd;
                 if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd))
@@ -1853,6 +1909,9 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
         } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::JieliBtBox) {
             ini.setValue(QStringLiteral("Send/Device"),
                          def.send.device.isEmpty() ? QStringLiteral("JIELI_BT_BOX") : def.send.device);
+        } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera) {
+            ini.setValue(QStringLiteral("Send/Device"),
+                         def.send.device.isEmpty() ? QStringLiteral("USB_CAMERA") : def.send.device);
         }
     }
     ini.setValue(QStringLiteral("Send/DeviceCmd"), def.send.deviceCmd);
@@ -1877,6 +1936,10 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
             JieliBtBoxCmd jieliCmd;
             if (JieliBtBoxCmdCatalog::jieliBtBoxCmdFromName(def.send.deviceCmd, jieliCmd))
                 JieliBtBoxCmdCatalog::paramToIniGroup(ini, jieliCmd, def.send.param);
+        } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera) {
+            UsbCameraCmd camCmd;
+            if (UsbCameraCmdCatalog::usbCameraCmdFromName(def.send.deviceCmd, camCmd))
+                UsbCameraCmdCatalog::paramToIniGroup(ini, camCmd, def.send.param);
         } else {
         FixturePcbaCmd fixtureCmd;
         if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd))
@@ -1998,7 +2061,9 @@ bool TestCaseStore::saveCase(const TestCaseDefinition& def, QString* errorOut) {
 QVector<TestCaseGate> TestCaseStore::effectiveGates(const TestCaseDefinition& def) {
     if (!def.gates.isEmpty())
         return def.gates;
-    if (def.gate.enabled)
+    // Field=multi 只是多项卡控占位，不能当成可评字段（否则会报「无法从上报数据读取字段」）
+    if (def.gate.enabled && def.gate.field.compare(QLatin1String("multi"), Qt::CaseInsensitive) != 0
+        && !def.gate.field.trimmed().isEmpty())
         return {def.gate};
     return {};
 }
@@ -2013,8 +2078,13 @@ QVector<TestCaseGate> TestCaseStore::activeGatesForEvaluation(const TestCaseDefi
     QVector<TestCaseGate> active;
     active.reserve(gates.size());
     for (const TestCaseGate& g : gates) {
-        if (g.enabled)
-            active.append(g);
+        if (!g.enabled)
+            continue;
+        // 过滤占位/空字段，避免单项回退误评 multi
+        if (g.field.trimmed().isEmpty()
+            || g.field.compare(QLatin1String("multi"), Qt::CaseInsensitive) == 0)
+            continue;
+        active.append(g);
     }
     return active;
 }

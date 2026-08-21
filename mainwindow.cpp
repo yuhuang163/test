@@ -37,6 +37,7 @@
 #include "qatmanager.h"
 #include "qcustomplot.h"
 #include "qsetting.h"
+#include "screen_inspect_widget.h"
 
 #include <QComboBox>
 #include <QLabel>
@@ -324,6 +325,12 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     initQaiotFeatureButtons();
     initDebugTabChrome();
     initDebugTabLayout();
+    screenInspectPage_ = new ScreenInspectWidget(this);
+    if (ui->tabWidget_debug_peripheral) {
+        const int afterLights = ui->tabWidget_debug_peripheral->indexOf(ui->tab_13);
+        const int insertAt = afterLights >= 0 ? afterLights + 1 : 0;
+        ui->tabWidget_debug_peripheral->insertTab(insertAt, screenInspectPage_, QStringLiteral("屏幕测试"));
+    }
     protocolManager.bindQpb(pb);
     protocolManager.bindQfctp(qfctp);
     protocolManager.bindQaiot(qaiot);
@@ -1570,7 +1577,6 @@ void MainWindow::on_macInput_returnPressed() {
 }
 
 void MainWindow::on_lcdTestButton_clicked() {
-    // 编写屏幕测试的代码
     static int state = 0;
 
     if (at->getConnected()) {
@@ -1583,6 +1589,11 @@ void MainWindow::on_lcdTestButton_clicked() {
     state++;
     if (state == 5)
         state = 0;
+
+    if (ui->tabWidget && ui->tab_debug_group_peripheral)
+        ui->tabWidget->setCurrentWidget(ui->tab_debug_group_peripheral);
+    if (ui->tabWidget_debug_peripheral && screenInspectPage_)
+        ui->tabWidget_debug_peripheral->setCurrentWidget(screenInspectPage_);
 }
 
 void MainWindow::on_snInput_returnPressed() {

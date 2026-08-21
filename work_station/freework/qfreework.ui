@@ -710,7 +710,7 @@
       </widget>
       <widget class="QWidget" name="tab_chart">
        <attribute name="title">
-        <string>图形展示</string>
+        <string>吸力曲线</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_chart">
         <item row="0" column="0">
@@ -788,6 +788,132 @@
               <string>清空吸力曲线</string>
              </property>
             </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="tab_screenInspect">
+       <attribute name="title">
+        <string>屏幕拍照</string>
+       </attribute>
+       <layout class="QVBoxLayout" name="verticalLayout_tabScreenInspect">
+        <item>
+         <widget class="QGroupBox" name="screenInspectPreviewGroup">
+          <property name="title">
+           <string>屏幕拍照（点击图片看大图）</string>
+          </property>
+          <layout class="QVBoxLayout" name="verticalLayout_screenInspectPreview">
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_screenInspectCaptions">
+             <item>
+              <widget class="QLabel" name="label_screenInspectShotCaption">
+               <property name="text">
+                <string>本次拍摄（对比用）</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="label_screenInspectMarkCaption">
+               <property name="visible">
+                <bool>false</bool>
+               </property>
+               <property name="text">
+                <string>标注图</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="label_screenInspectRefCaption">
+               <property name="text">
+                <string>标准参考图</string>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_screenInspectThumbs">
+             <item>
+              <widget class="QLabel" name="label_screenInspectShot">
+               <property name="minimumSize">
+                <size>
+                 <width>200</width>
+                 <height>200</height>
+                </size>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+               <property name="text">
+                <string>尚无拍摄图</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="label_screenInspectMark">
+               <property name="minimumSize">
+                <size>
+                 <width>200</width>
+                 <height>200</height>
+                </size>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+               <property name="text">
+                <string>尚无标注图</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="label_screenInspectRef">
+               <property name="minimumSize">
+                <size>
+                 <width>200</width>
+                 <height>200</height>
+                </size>
+               </property>
+               <property name="alignment">
+                <set>Qt::AlignCenter</set>
+               </property>
+               <property name="text">
+                <string>尚无参考图</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QHBoxLayout" name="horizontalLayout_screenInspectBtns">
+             <item>
+              <widget class="QPushButton" name="viewScreenInspectLargeButton">
+               <property name="enabled">
+                <bool>false</bool>
+               </property>
+               <property name="text">
+                <string>查看大图</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QPushButton" name="openScreenInspectFolderButton">
+               <property name="text">
+                <string>打开图片文件夹</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
            </item>
           </layout>
          </widget>
