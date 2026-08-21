@@ -22,7 +22,7 @@
   <widget class="QWidget" name="centralwidget">
    <layout class="QGridLayout" name="gridLayout_3">
     <item row="4" column="0">
-     <layout class="QHBoxLayout" name="horizontalLayout_45">
+     <layout class="QHBoxLayout" name="horizontalLayout_45" stretch="1,5">
       <property name="leftMargin">
        <number>0</number>
       </property>
@@ -120,7 +120,7 @@
        </widget>
       </item>
       <item>
-       <layout class="QVBoxLayout" name="verticalLayout_10">
+       <layout class="QVBoxLayout" name="verticalLayout_10" stretch="0,0,1">
         <item>
          <widget class="QGroupBox" name="groupBox_5">
           <property name="sizePolicy">
@@ -489,7 +489,7 @@
                <bool>true</bool>
               </property>
               <property name="currentIndex">
-               <number>2</number>
+               <number>1</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>

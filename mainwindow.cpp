@@ -1,9 +1,7 @@
 #include "mainwindow.h"
 
-#include <QAbstractItemView>
 #include <QCheckBox>
 #include <QComboBox>
-#include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QSpinBox>
@@ -66,7 +64,11 @@ void wrapDebugTabPageInScrollArea(QTabWidget* tabWidget) {
         return;
     for (int i = 0; i < tabWidget->count(); ++i) {
         QWidget* page = tabWidget->widget(i);
-        if (!page || page->property("debugScrollWrapped").toBool())
+        // 已是滚动区则跳过：属性打在内页上，二次调用时 widget(i) 是 QScrollArea，
+        // 若只查属性会把滚动区再包一层，内容被压成左上角一小块。
+        if (!page || qobject_cast<QScrollArea*>(page))
+            continue;
+        if (page->property("debugScrollWrapped").toBool())
             continue;
         if (debugTabPagesWithoutScroll().contains(page->objectName()))
             continue;
@@ -86,72 +88,20 @@ void wrapDebugTabPageInScrollArea(QTabWidget* tabWidget) {
     }
 }
 
-constexpr int kDebugCompactMargin = 4;
-constexpr int kDebugCompactMarginTop = 2;
-constexpr int kDebugCompactSpacing = 4;
-
-bool debugGroupBoxKeepsVerticalExpand(const QGroupBox* box) {
-    if (!box)
-        return false;
-    if (box->findChild<QCustomPlot*>() || box->findChild<QSplitter*>())
-        return true;
-    if (box->findChild<QTableView*>())
-        return true;
-    return box->findChild<QWidget*>(QStringLiteral("dongleSuctionPlotHost")) != nullptr;
-}
-
-void compactLayoutsInWidgetTree(QWidget* root) {
-    if (!root)
-        return;
-    for (QLayout* layout : root->findChildren<QLayout*>()) {
-        layout->setContentsMargins(kDebugCompactMargin, kDebugCompactMarginTop, kDebugCompactMargin,
-                                   kDebugCompactMargin);
-        layout->setSpacing(kDebugCompactSpacing);
-    }
-    for (QGroupBox* box : root->findChildren<QGroupBox*>()) {
-        box->setFlat(true);
-        if (!debugGroupBoxKeepsVerticalExpand(box))
-            box->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
-    }
-}
-
+/** 仅顶对齐滚动内容；不改 sizePolicy / SetMinAndMaxSize，尺寸以 .ui 为准。 */
 void pinDebugTabPageToTop(QTabWidget* tabWidget) {
     if (!tabWidget)
         return;
     for (int i = 0; i < tabWidget->count(); ++i) {
-        QWidget* tabPage = tabWidget->widget(i);
-        if (auto* scroll = qobject_cast<QScrollArea*>(tabPage)) {
-            scroll->setWidgetResizable(false);
-            scroll->setAlignment(Qt::AlignLeft | Qt::AlignTop);
-            tabPage = scroll->widget();
-        }
-        if (!tabPage || !tabPage->layout())
+        auto* scroll = qobject_cast<QScrollArea*>(tabWidget->widget(i));
+        if (!scroll)
             continue;
-        if (debugTabPagesWithoutScroll().contains(tabPage->objectName()))
+        QWidget* inner = scroll->widget();
+        if (inner && debugTabPagesWithoutScroll().contains(inner->objectName()))
             continue;
-        tabPage->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
-        tabPage->layout()->setSizeConstraint(QLayout::SetMinAndMaxSize);
-    }
-}
-
-/** SetMinAndMaxSize 会把 ComboBox 压到极窄，下拉列表宽度跟随控件导致选项被省略。 */
-void fitDebugComboBoxWidths(QWidget* root) {
-    if (!root)
-        return;
-    for (QComboBox* combo : root->findChildren<QComboBox*>()) {
-        if (combo->count() <= 0)
-            continue;
-        combo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-        const QFontMetrics fm(combo->font());
-        int maxTextWidth = 0;
-        for (int i = 0; i < combo->count(); ++i)
-            maxTextWidth = qMax(maxTextWidth, fm.horizontalAdvance(combo->itemText(i)));
-        const int minWidth = maxTextWidth + 36; // 下拉箭头与左右留白
-        combo->setMinimumWidth(minWidth);
-        if (QAbstractItemView* view = combo->view()) {
-            view->setMinimumWidth(minWidth);
-            view->setTextElideMode(Qt::ElideNone);
-        }
+        // false：按内页 sizeHint（来自 .ui）排布，避免把控件竖向撑满视口
+        scroll->setWidgetResizable(false);
+        scroll->setAlignment(Qt::AlignLeft | Qt::AlignTop);
     }
 }
 
@@ -182,15 +132,7 @@ void MainWindow::initDebugTabChrome() {
 }
 
 void MainWindow::initDebugTabLayout() {
-    if (ui->horizontalLayout_45) {
-        ui->horizontalLayout_45->setStretch(0, 1);
-        ui->horizontalLayout_45->setStretch(1, 5);
-    }
-    if (ui->verticalLayout_10) {
-        ui->verticalLayout_10->setStretch(0, 0);
-        ui->verticalLayout_10->setStretch(1, 0);
-        ui->verticalLayout_10->setStretch(2, 1);
-    }
+    // 左右/上下 stretch、间距以 mainwindow.ui 为准；此处只保留 splitter 初始比例（.ui 不便表达）
     if (ui->splitter_3) {
         ui->splitter_3->setStretchFactor(0, 1);
         ui->splitter_3->setStretchFactor(1, 4);
@@ -218,17 +160,6 @@ void MainWindow::initDebugTabLayout() {
     ui->tabWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     pinDebugTabPageToTop(ui->tabWidget_ota);
-    compactLayoutsInWidgetTree(ui->tabWidget);
-    compactLayoutsInWidgetTree(ui->groupBox_5);
-    compactLayoutsInWidgetTree(ui->verticalGroupBox);
-    compactLayoutsInWidgetTree(ui->groupBox_11);
-    compactLayoutsInWidgetTree(ui->groupBox_2);
-    if (ui->groupBox_7 && ui->groupBox_7->layout()) {
-        ui->groupBox_7->layout()->setContentsMargins(kDebugCompactMargin, kDebugCompactMarginTop,
-                                                     kDebugCompactMargin, kDebugCompactMargin);
-        ui->groupBox_7->layout()->setSpacing(kDebugCompactSpacing);
-    }
-    fitDebugComboBoxWidths(ui->tabWidget);
 }
 
 void MainWindow::applyDebugOtaTabVisibility() {
@@ -330,6 +261,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
         const int afterLights = ui->tabWidget_debug_peripheral->indexOf(ui->tab_13);
         const int insertAt = afterLights >= 0 ? afterLights + 1 : 0;
         ui->tabWidget_debug_peripheral->insertTab(insertAt, screenInspectPage_, QStringLiteral("屏幕测试"));
+        // 该页在 initDebugTabLayout 之后才插入；尺寸以 screen_inspect_widget.ui 为准，只补滚动包装
+        wrapDebugTabPageInScrollArea(ui->tabWidget_debug_peripheral);
+        pinDebugTabPageToTop(ui->tabWidget_debug_peripheral);
     }
     protocolManager.bindQpb(pb);
     protocolManager.bindQfctp(qfctp);

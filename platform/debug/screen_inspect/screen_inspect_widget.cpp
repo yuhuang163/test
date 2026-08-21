@@ -24,6 +24,7 @@
 #include <QResizeEvent>
 #include <QShowEvent>
 #include <QTimer>
+#include <QVBoxLayout>
 #include <QtConcurrent>
 
 #if _MSC_VER >= 1600
@@ -44,6 +45,9 @@ ScreenInspectWidget::ScreenInspectWidget(QWidget* parent)
     ui->comboBox_expectedColor->addItem(QStringLiteral("灰"), 5);
 
     viewfinder_ = new QCameraViewfinder(ui->viewfinderHost);
+    // 高度跟 .ui 中 viewfinderHost 的 maximumHeight
+    viewfinder_->setMaximumHeight(ui->viewfinderHost->maximumHeight());
+    viewfinder_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     ui->verticalLayout_viewfinder->addWidget(viewfinder_);
 
     connect(ui->doubleSpinBox_minSsim, &QDoubleSpinBox::editingFinished, this,
