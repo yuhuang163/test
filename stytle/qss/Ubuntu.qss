@@ -653,7 +653,8 @@ QScrollBar:disabled {
 	min-height: 160px;
 }
 #QFreeWork #label_screenInspectShot,
-#QFreeWork #label_screenInspectMark {
+#QFreeWork #label_screenInspectMark,
+#QFreeWork #label_screenInspectRef {
 	background-color: #1a1a1a;
 	border: 1px solid #c0c0c0;
 	border-radius: 4px;

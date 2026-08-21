@@ -466,13 +466,6 @@ struct ProtocolDongleSuctionPeakData {
     int peakCount = 0;        // 完整周期峰个数（双通道取两口较少者）
 };
 
-/** 自由工站屏幕检测（USB 摄像头采集，主机侧分析，不发产品协议） */
-struct ProtocolScreenInspectData {
-    int deadPixels = 0;
-    double muraStd = 0.0;
-    double ssim = -1.0; // 无参考图为 -1
-};
-
 /** USB 电流表 / 治具振幅仪上行 */
 struct ProtocolAmmeterReadingData {
     QString value;
@@ -735,7 +728,6 @@ Q_DECLARE_METATYPE(ProtocolDongleWifiIpData)
 Q_DECLARE_METATYPE(ProtocolDongleScanResultData)
 Q_DECLARE_METATYPE(ProtocolDongleSuctionData)
 Q_DECLARE_METATYPE(ProtocolDongleSuctionPeakData)
-Q_DECLARE_METATYPE(ProtocolScreenInspectData)
 Q_DECLARE_METATYPE(ProtocolAmmeterReadingData)
 Q_DECLARE_METATYPE(ProtocolJigAmplitudeData)
 Q_DECLARE_METATYPE(ProtocolFactoryDoneData)

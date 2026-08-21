@@ -343,6 +343,11 @@ class QFreeWork : public test_base {
     void runDongleSuctionSampleSingleStep();
     /** 自由工站屏幕检测：调用 USB 摄像头对屏幕拍照，再分析对比（坏点 / 显示异常）+ Gate。 */
     void runScreenInspectStep();
+    /**
+     * 图像自动识别未通过时弹窗人工复核。
+     * 点「否」=目视正常→返回 true（步骤按通过）；点「是」=确认有问题→返回 false（不通过）。
+     */
+    bool screenInspectAskHumanPassOnAutoFail(const QString& autoFailDetail);
     void rememberScreenInspectImages(const QImage& capture, const QImage& annotated, const QImage& reference,
                                      const QString& folder);
     void updateScreenInspectPreview();

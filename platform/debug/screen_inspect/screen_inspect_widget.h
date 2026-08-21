@@ -26,6 +26,7 @@ class ScreenInspectWidget : public QWidget {
   protected:
     void showEvent(QShowEvent* event) override;
     void resizeEvent(QResizeEvent* event) override;
+    bool eventFilter(QObject* watched, QEvent* event) override;
 
   private slots:
     void on_btnRefreshCameras_clicked();
@@ -35,6 +36,7 @@ class ScreenInspectWidget : public QWidget {
     void on_btnLoadRef_clicked();
     void on_btnSaveAsRef_clicked();
     void on_btnInspect_clicked();
+    void on_btnClearRoi_clicked();
     void on_btnColorBlue_clicked();
     void on_btnColorGreen_clicked();
     void on_btnColorRed_clicked();
@@ -47,7 +49,8 @@ class ScreenInspectWidget : public QWidget {
         int deadDiff = 35;
         int maxDeadPixels = 8;
         double maxMuraStd = 22.0;
-        int expectedColor = -1; // -1 自动；0~4 同 ScreenColor
+        int expectedColor = -1; // -1 自动；0~5 蓝绿红白黑灰
+        QRect manualRoi;
     };
 
     struct InspectReport {
@@ -79,6 +82,8 @@ class ScreenInspectWidget : public QWidget {
     QString inspectDir() const;
     void applyReferenceImage(const QImage& img, const QString& sourcePath);
     void loadSavedReferenceIfAny();
+    QRect labelPosToImage(const QPoint& pos) const;
+    void saveManualRoi(const QRect& r);
 
     Ui::ScreenInspectWidget* ui = nullptr;
     QCamera* camera_ = nullptr;
@@ -90,6 +95,11 @@ class ScreenInspectWidget : public QWidget {
     bool captureAfterReady_ = false;
     bool inspectAfterCapture_ = false;
     bool inspectRunning_ = false;
+    bool busy_ = false;
+    QRect manualRoi_;
+    QPoint roiDragStart_;
+    QPoint roiDragCur_;
+    bool roiDragging_ = false;
 };
 
 #endif // SCREEN_INSPECT_WIDGET_H

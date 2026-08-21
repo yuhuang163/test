@@ -13,6 +13,7 @@
 #include "modbus_cmd_manifest.h"
 #include "scpi_cmd_manifest.h"
 #include "usb_camera_cmd_manifest.h"
+#include "screen_inspect_analyzer.h"
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
@@ -133,9 +134,11 @@ const QVector<GateTypeDescriptor> kTypes = {
       {QStringLiteral("peakCount"), QStringLiteral("完整周期峰个数")}}},
     {QStringLiteral("ProtocolScreenInspectData"),
      QStringLiteral("屏幕检测"),
-     {{QStringLiteral("deadPixels"), QStringLiteral("坏点数")},
-      {QStringLiteral("muraStd"), QStringLiteral("纯色起伏")},
-      {QStringLiteral("ssim"), QStringLiteral("与参考图相似度（0~1）")}}},
+     {      {QStringLiteral("deadPixels"), QStringLiteral("坏点数")},
+      {QStringLiteral("detectedColor"), QStringLiteral("实测纯色")},
+      {QStringLiteral("colorMatch"), QStringLiteral("是否为期望纯色")},
+      {QStringLiteral("ssim"), QStringLiteral("与参考图相似度（0~1）")},
+      {QStringLiteral("muraStd"), QStringLiteral("亮度起伏σ（灰阶勿勾）")}}},
 };
 
 double fieldValueFromVariant(const QString& reportType, const QString& field, const QVariant& payload, bool& ok) {
@@ -657,6 +660,14 @@ double fieldValueFromVariant(const QString& reportType, const QString& field, co
             ok = true;
             return d.ssim;
         }
+        if (field == QLatin1String("detectedColor")) {
+            ok = true;
+            return d.detectedColor;
+        }
+        if (field == QLatin1String("colorMatch")) {
+            ok = true;
+            return d.colorMatch;
+        }
     }
     return 0.0;
 }
@@ -1137,6 +1148,14 @@ QString fieldStringFromVariant(const QString& reportType, const QString& field, 
             ok = true;
             return QString::number(d.ssim, 'f', 3);
         }
+        if (field == QLatin1String("detectedColor")) {
+            ok = true;
+            return ScreenInspectAnalyzer::colorName(d.detectedColor);
+        }
+        if (field == QLatin1String("colorMatch")) {
+            ok = true;
+            return d.colorMatch == 1 ? QStringLiteral("是") : QStringLiteral("否");
+        }
     }
     return {};
 }
@@ -1263,6 +1282,35 @@ QString GateRegistry::fieldDisplayName(const QString& reportType, const QString&
     return field;
 }
 
+namespace {
+
+/** 卡控数值展示：屏幕纯色等字段用中文，其它保持数字。 */
+QString formatGateFieldValue(const QString& reportType, const QString& field, double value) {
+    if (reportType == QLatin1String("ProtocolScreenInspectData")) {
+        if (field == QLatin1String("detectedColor"))
+            return ScreenInspectAnalyzer::colorName(qRound(value));
+        if (field == QLatin1String("colorMatch"))
+            return qAbs(value - 1.0) < 0.0001 ? QStringLiteral("是") : QStringLiteral("否");
+    }
+    if (qAbs(value - qRound(value)) < 1e-9)
+        return QString::number(qRound(value));
+    return QString::number(value);
+}
+
+/** 大于/小于/等于：优先期望值，兼容旧 ini 只写了 Low。 */
+double gateCompareThreshold(const TestCaseGate& gate) {
+    const QString expected = gate.expected.trimmed();
+    if (!expected.isEmpty()) {
+        bool ok = false;
+        const double parsed = expected.toDouble(&ok);
+        if (ok)
+            return parsed;
+    }
+    return gate.low;
+}
+
+} // namespace
+
 bool GateRegistry::evaluate(const TestCaseGate& gate, const QString& reportType, const QVariant& payload, bool& passOut,
                             QString& detailOut) {
     passOut = true;
@@ -1342,6 +1390,20 @@ bool GateRegistry::evaluate(const TestCaseGate& gate, const QString& reportType,
                 };
                 passOut = (normalizeMac(actual) == normalizeMac(expected));
                 detailOut = QStringLiteral("当前=%1, 期望=%2").arg(actual, expected);
+            } else if (reportType == QLatin1String("ProtocolScreenInspectData")
+                       && (gate.field == QLatin1String("detectedColor")
+                           || gate.field == QLatin1String("colorMatch"))) {
+                // 实测 fieldString 已是中文；ini 期望多为数字。按数值判定，展示统一转颜色/是否文字
+                const double threshold = gateCompareThreshold(gate);
+                if (ok) {
+                    passOut = qAbs(value - threshold) < 0.0001;
+                    detailOut = QStringLiteral("当前=%1, 期望=%2")
+                                    .arg(formatGateFieldValue(reportType, gate.field, value),
+                                         formatGateFieldValue(reportType, gate.field, threshold));
+                } else {
+                    passOut = false;
+                    detailOut = QStringLiteral("当前=%1, 期望=%2").arg(actual, expected);
+                }
             } else {
                 passOut = (actual == expected);
                 detailOut = QStringLiteral("当前=%1, 期望=%2").arg(actual, expected);
@@ -1359,24 +1421,25 @@ bool GateRegistry::evaluate(const TestCaseGate& gate, const QString& reportType,
     double low = gate.low;
     double high = gate.high;
     resolveRangeBounds(gate, low, high);
+    const QString valueText = formatGateFieldValue(reportType, gate.field, value);
+    const double threshold = gateCompareThreshold(gate);
+    const QString thresholdText = formatGateFieldValue(reportType, gate.field, threshold);
 
     switch (gate.op) {
     case TestCaseGateOp::Gt:
-        passOut = value > low;
-        break;
+        passOut = value > threshold;
+        detailOut = QStringLiteral("%1=%2, 要求>%3")
+                        .arg(gateActualValueLabel(reportType, gate.field), valueText, thresholdText);
+        return true;
     case TestCaseGateOp::Lt:
-        passOut = value < low;
-        break;
+        passOut = value < threshold;
+        detailOut = QStringLiteral("%1=%2, 要求<%3")
+                        .arg(gateActualValueLabel(reportType, gate.field), valueText, thresholdText);
+        return true;
     case TestCaseGateOp::Eq: {
-        double expectVal = low;
-        if (!gate.expected.trimmed().isEmpty()) {
-            bool convOk = false;
-            const double parsed = gate.expected.trimmed().toDouble(&convOk);
-            if (convOk)
-                expectVal = parsed;
-        }
-        passOut = qAbs(value - expectVal) < 0.0001;
-        detailOut = QStringLiteral("%1=%2, 期望=%3").arg(gateActualValueLabel(reportType, gate.field)).arg(value).arg(expectVal);
+        passOut = qAbs(value - threshold) < 0.0001;
+        detailOut = QStringLiteral("%1=%2, 期望=%3")
+                        .arg(gateActualValueLabel(reportType, gate.field), valueText, thresholdText);
         return true;
     }
     default:
@@ -1384,10 +1447,9 @@ bool GateRegistry::evaluate(const TestCaseGate& gate, const QString& reportType,
         break;
     }
     detailOut = QStringLiteral("%1=%2, 允许[%3,%4]")
-                    .arg(gateActualValueLabel(reportType, gate.field))
-                    .arg(value)
-                    .arg(low)
-                    .arg(high);
+                    .arg(gateActualValueLabel(reportType, gate.field), valueText,
+                         formatGateFieldValue(reportType, gate.field, low),
+                         formatGateFieldValue(reportType, gate.field, high));
     return true;
 }
 
@@ -1482,6 +1544,8 @@ QString defaultUnitForField(const QString& reportType, const QString& field) {
             return QStringLiteral("0~1");
         if (field == QLatin1String("muraStd"))
             return QStringLiteral("σ");
+        if (field == QLatin1String("colorMatch") || field == QLatin1String("detectedColor"))
+            return {};
     }
     if ((reportType == QLatin1String("ProtocolBatteryTempData")
          || reportType == QLatin1String("ProtocolHeatTempData"))
@@ -1509,11 +1573,22 @@ QString GateRegistry::formatGateAsk(const TestCaseGate& gate, const QString& rep
         double low = gate.low;
         double high = gate.high;
         resolveRangeBounds(gate, low, high);
-        ask = QStringLiteral("[%1,%2]").arg(low).arg(high);
+        ask = QStringLiteral("[%1,%2]")
+                  .arg(formatGateFieldValue(reportType, gate.field, low),
+                       formatGateFieldValue(reportType, gate.field, high));
     } else if (gate.op == TestCaseGateOp::Gt) {
-        ask = QStringLiteral(">%1").arg(gate.low);
+        ask = QStringLiteral(">%1").arg(formatGateFieldValue(reportType, gate.field, gateCompareThreshold(gate)));
     } else if (gate.op == TestCaseGateOp::Lt) {
-        ask = QStringLiteral("<%1").arg(gate.high);
+        ask = QStringLiteral("<%1").arg(formatGateFieldValue(reportType, gate.field, gateCompareThreshold(gate)));
+    } else if (gate.op == TestCaseGateOp::Eq) {
+        const QString expected = gate.expected.trimmed();
+        if (!expected.isEmpty()) {
+            bool ok = false;
+            const double parsed = expected.toDouble(&ok);
+            ask = ok ? formatGateFieldValue(reportType, gate.field, parsed) : expected;
+        } else {
+            ask = formatGateFieldValue(reportType, gate.field, gateCompareThreshold(gate));
+        }
     } else {
         ask = gate.expected.trimmed();
     }
@@ -1531,13 +1606,26 @@ QString GateRegistry::formatMultiFieldAsk(const QVector<TestCaseGate>& gates, co
             double low = g.low;
             double high = g.high;
             resolveRangeBounds(g, low, high);
-            part = QStringLiteral("%1=[%2,%3]").arg(name).arg(low).arg(high);
+            part = QStringLiteral("%1=[%2,%3]")
+                       .arg(name, formatGateFieldValue(reportType, g.field, low),
+                            formatGateFieldValue(reportType, g.field, high));
         } else if (g.op == TestCaseGateOp::Eq) {
-            part = QStringLiteral("%1=%2").arg(name, g.expected);
+            const QString expected = g.expected.trimmed();
+            QString valText;
+            if (!expected.isEmpty()) {
+                bool ok = false;
+                const double parsed = expected.toDouble(&ok);
+                valText = ok ? formatGateFieldValue(reportType, g.field, parsed) : expected;
+            } else {
+                valText = formatGateFieldValue(reportType, g.field, gateCompareThreshold(g));
+            }
+            part = QStringLiteral("%1=%2").arg(name, valText);
         } else if (g.op == TestCaseGateOp::Gt) {
-            part = QStringLiteral("%1>%2").arg(name).arg(g.low);
+            part = QStringLiteral("%1>%2")
+                       .arg(name, formatGateFieldValue(reportType, g.field, gateCompareThreshold(g)));
         } else if (g.op == TestCaseGateOp::Lt) {
-            part = QStringLiteral("%1<%2").arg(name).arg(g.high);
+            part = QStringLiteral("%1<%2")
+                       .arg(name, formatGateFieldValue(reportType, g.field, gateCompareThreshold(g)));
         } else {
             part = QStringLiteral("%1:%2").arg(name, g.expected);
         }
@@ -1592,14 +1680,15 @@ QString agingHistorySummary(const ProtocolRootAgingHistoryData& hist) {
 }
 
 QString primaryFieldTestData(const TestCaseGate& primaryGate, const QString& reportType, const QVariant& payload) {
+    // 优先数值路径：纯色等字段由 formatGateFieldValue 转成文字（避免 fieldString 仍返回 "2"）
+    bool numOk = false;
+    const double fromNum = fieldValueFromVariant(reportType, primaryGate.field, payload, numOk);
+    if (numOk)
+        return formatGateFieldValue(reportType, primaryGate.field, fromNum);
     bool strOk = false;
     const QString fromField = fieldStringFromVariant(reportType, primaryGate.field, payload, strOk);
     if (strOk && !fromField.isEmpty())
         return fromField;
-    bool numOk = false;
-    const double fromNum = fieldValueFromVariant(reportType, primaryGate.field, payload, numOk);
-    if (numOk)
-        return QString::number(fromNum);
     return {};
 }
 

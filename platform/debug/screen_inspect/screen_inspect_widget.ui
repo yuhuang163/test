@@ -196,6 +196,13 @@
          </widget>
         </item>
         <item>
+         <widget class="QPushButton" name="btnClearRoi">
+          <property name="text">
+           <string>清除划定范围</string>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QCheckBox" name="checkBox_autoInspect">
           <property name="text">
            <string>采集后自动检测</string>
@@ -353,7 +360,7 @@
      <item>
       <widget class="QGroupBox" name="groupBox_currImage">
        <property name="title">
-        <string>拍摄图（红圈为疑似坏点）</string>
+        <string>拍摄图（拖拽划定检测范围，红圈为疑似坏点）</string>
        </property>
        <layout class="QVBoxLayout" name="verticalLayout_curr">
         <item>

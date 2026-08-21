@@ -295,7 +295,7 @@ bool QFreeWork::eventFilter(QObject* watched, QEvent* event) {
                 applyTuplePositionSelection(code);
                 return true;
             }
-            if (watched == ui->label_screenInspectShot || watched == ui->label_screenInspectMark) {
+            if (watched == ui->label_screenInspectShot || watched == ui->label_screenInspectRef) {
                 if (!screenInspectCapture_.isNull())
                     showScreenInspectViewer();
                 return true;

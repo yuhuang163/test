@@ -11,6 +11,7 @@
 #include <algorithm>
 #include <QSettings>
 #include <QTextCodec>
+#include <qdebug.h>
 
 #include "Abini.h"
 #include "common_utils.h"
@@ -755,29 +756,47 @@ bool iniHasMultiGateItems(const QSettings& ini) {
     return ini.value(QStringLiteral("Gate/Count"), 0).toInt() > 0;
 }
 
-/** 多项卡控只认 [Gate] 下 Count + ItemN_Field / ItemN_Low …，与 saveMultiGatesToIni 同一套键。 */
+void saveMultiGatesToIni(QSettings& ini, const TestCaseDefinition& def);
+
+/** 多项卡控：优先 ItemN_Field；现场旧包是 Qt 数组键 1\\Field（QSettings 为 Gate/1/Field）。 */
 void loadMultiGatesFromIni(QSettings& ini, TestCaseDefinition& out) {
     out.gates.clear();
     const QString reportType = out.gate.reportType;
     const int count = ini.value(QStringLiteral("Gate/Count"), 0).toInt();
+    bool usedLegacyArray = false;
+    auto itemVal = [&](int i, const QString& name, const QVariant& defVal) {
+        const QString modern = QStringLiteral("Gate/Item%1_%2").arg(i).arg(name);
+        if (ini.contains(modern))
+            return ini.value(modern, defVal);
+        const QString legacy = QStringLiteral("Gate/%1/%2").arg(i).arg(name);
+        if (ini.contains(legacy))
+            usedLegacyArray = true;
+        return ini.value(legacy, defVal);
+    };
     for (int i = 1; i <= count; ++i) {
-        const QString p = QStringLiteral("Gate/Item%1_").arg(i);
         TestCaseGate g;
         g.reportType = reportType;
-        g.field = ini.value(p + QStringLiteral("Field")).toString().trimmed();
-        g.enabled = ini.value(p + QStringLiteral("Enabled"), true).toBool();
-        g.op = gateOpFromString(ini.value(p + QStringLiteral("Op"), QStringLiteral("range")).toString());
-        g.expected = ini.value(p + QStringLiteral("Expected")).toString().trimmed();
-        g.low = ini.value(p + QStringLiteral("Low"), 0).toDouble();
-        g.high = ini.value(p + QStringLiteral("High"), 0).toDouble();
-        g.lowSettingsKey = ini.value(p + QStringLiteral("LowSettingsKey")).toString();
-        g.highSettingsKey = ini.value(p + QStringLiteral("HighSettingsKey")).toString();
-        g.expectedSettingsKey = ini.value(p + QStringLiteral("ExpectedSettingsKey")).toString();
+        g.field = itemVal(i, QStringLiteral("Field"), QVariant()).toString().trimmed();
+        g.enabled = itemVal(i, QStringLiteral("Enabled"), true).toBool();
+        g.op = gateOpFromString(itemVal(i, QStringLiteral("Op"), QStringLiteral("range")).toString());
+        g.expected = itemVal(i, QStringLiteral("Expected"), QVariant()).toString().trimmed();
+        g.low = itemVal(i, QStringLiteral("Low"), 0).toDouble();
+        g.high = itemVal(i, QStringLiteral("High"), 0).toDouble();
+        g.lowSettingsKey = itemVal(i, QStringLiteral("LowSettingsKey"), QVariant()).toString();
+        g.highSettingsKey = itemVal(i, QStringLiteral("HighSettingsKey"), QVariant()).toString();
+        g.expectedSettingsKey = itemVal(i, QStringLiteral("ExpectedSettingsKey"), QVariant()).toString();
         if (!g.field.isEmpty() && g.field != QLatin1String("multi"))
             out.gates.append(g);
     }
-    if (!out.gates.isEmpty())
+    if (!out.gates.isEmpty()) {
+        if (usedLegacyArray) {
+            saveMultiGatesToIni(ini, out);
+            ini.sync();
+            if (ini.status() == QSettings::NoError)
+                qDebug() << QStringLiteral("卡控已从旧数组格式升级：") << ini.fileName();
+        }
         return;
+    }
 
     if (out.gate.enabled && GateRegistry::isAllFieldsGateField(out.gate.field)
         && reportType == QStringLiteral("ProtocolPeriphStateData")) {
@@ -2479,4 +2498,3 @@ QStringList TestCaseStore::listStationKeysFromFlow() {
     }
     return keys;
 }
-

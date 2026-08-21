@@ -6,6 +6,7 @@
 #include <QPoint>
 #include <QVector>
 #include <QtMath>
+#include <algorithm>
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
@@ -134,11 +135,83 @@ double ssimOnGray(const QVector<quint8>& a, const QVector<quint8>& b, int w, int
     return qBound(0.0, sum / n, 1.0);
 }
 
+bool pixelMatchesSolidColor(int r, int g, int b, int gray, int colorIndex) {
+    const int spread = qMax(r, qMax(g, b)) - qMin(r, qMin(g, b));
+    switch (colorIndex) {
+    case 4:
+        return gray < 85 && spread < 55;
+    case 5:
+        return gray >= 85 && gray <= 165 && spread < 50;
+    case 3:
+        return gray > 165 && spread < 55;
+    case 0:
+        return b >= r + 20 && b >= g + 20;
+    case 1:
+        return g >= r + 20 && g >= b + 20;
+    case 2:
+        return r >= g + 20 && r >= b + 20;
+    default:
+        return true;
+    }
+}
+
 int guessExpectedColor(const QImage& rgb, const QRect& roi) {
     const QImage img = toRgb888(rgb);
-    qint64 sr = 0, sg = 0, sb = 0;
-    int n = 0;
     const QRect r = roi.intersected(img.rect());
+    int matchCount[6] = {0, 0, 0, 0, 0, 0};
+    int n = 0;
+    for (int y = r.top(); y <= r.bottom(); ++y) {
+        const uchar* line = img.constScanLine(y);
+        for (int x = r.left(); x <= r.right(); ++x) {
+            const int i = x * 3;
+            const int pr = line[i];
+            const int pg = line[i + 1];
+            const int pb = line[i + 2];
+            const int gray = (77 * pr + 150 * pg + 29 * pb) >> 8;
+            ++n;
+            for (int c = 0; c <= 5; ++c) {
+                if (pixelMatchesSolidColor(pr, pg, pb, gray, c))
+                    ++matchCount[c];
+            }
+        }
+    }
+    if (n <= 0)
+        return -1;
+    QVector<int> grays;
+    grays.reserve(n);
+    for (int y = r.top(); y <= r.bottom(); ++y) {
+        const uchar* line = img.constScanLine(y);
+        for (int x = r.left(); x <= r.right(); ++x) {
+            const int i = x * 3;
+            grays.append((77 * line[i] + 150 * line[i + 1] + 29 * line[i + 2]) >> 8);
+        }
+    }
+    std::sort(grays.begin(), grays.end());
+    const int p25 = grays[grays.size() / 4];
+    const int p75 = grays[grays.size() * 3 / 4];
+
+    int best = -1;
+    int bestN = 0;
+    for (int c = 0; c <= 5; ++c) {
+        if (matchCount[c] > bestN) {
+            bestN = matchCount[c];
+            best = c;
+        }
+    }
+    if (best >= 0 && bestN >= n * 30 / 100) {
+        // 圆屏+矩形 ROI 时灰角易把「白」票拉高，用暗部 p25 纠正黑屏
+        if (best == 3 && matchCount[4] >= n * 30 / 100 && p25 < 70)
+            return 4;
+        if (best == 4 && matchCount[3] >= n * 30 / 100 && p75 > 140)
+            return 3;
+        return best;
+    }
+    if (p25 < 70 && matchCount[4] >= n * 25 / 100)
+        return 4;
+    if (p75 > 130 && matchCount[3] >= n * 25 / 100)
+        return 3;
+
+    qint64 sr = 0, sg = 0, sb = 0;
     for (int y = r.top(); y <= r.bottom(); ++y) {
         const uchar* line = img.constScanLine(y);
         for (int x = r.left(); x <= r.right(); ++x) {
@@ -146,20 +219,21 @@ int guessExpectedColor(const QImage& rgb, const QRect& roi) {
             sr += line[i];
             sg += line[i + 1];
             sb += line[i + 2];
-            ++n;
         }
     }
-    if (n <= 0)
-        return -1;
     const int mr = static_cast<int>(sr / n);
     const int mg = static_cast<int>(sg / n);
     const int mb = static_cast<int>(sb / n);
-    const int mx = qMax(mr, qMax(mg, mb));
-    const int mn = qMin(mr, qMin(mg, mb));
-    if (mx < 45)
-        return 4; // 黑
-    if (mn > 170)
-        return 3; // 白
+    const int spread = qMax(mr, qMax(mg, mb)) - qMin(mr, qMin(mg, mb));
+    const int gray = (77 * mr + 150 * mg + 29 * mb) >> 8;
+    if (spread < 50) {
+        if (gray < 80)
+            return 4;
+        if (gray > 165)
+            return 3;
+        if (gray >= 85)
+            return 5;
+    }
     if (mb >= mr + 25 && mb >= mg + 25)
         return 0;
     if (mg >= mr + 25 && mg >= mb + 25)
@@ -203,9 +277,18 @@ DeadScan scanDeadPixels(const QImage& rgb, const QRect& roi, int deadDiff, int e
     };
 
     for (int y = r.top() + rad; y <= r.bottom() - rad; ++y) {
+        const uchar* line = img.constScanLine(y);
         for (int x = r.left() + rad; x <= r.right() - rad; ++x) {
+            const int i = x * 3;
+            const int pr = line[i];
+            const int pg = line[i + 1];
+            const int pb = line[i + 2];
             const int idx = y * w + x;
             const int g = gray[idx];
+            if (expectedColor >= 0
+                && !pixelMatchesSolidColor(pr, pg, pb, g, expectedColor))
+                continue;
+
             sum += g;
             sum2 += g * g;
             ++n;
@@ -215,10 +298,10 @@ DeadScan scanDeadPixels(const QImage& rgb, const QRect& roi, int deadDiff, int e
             int gmax = 0;
             int cells = 0;
             for (int j = -rad; j <= rad; ++j) {
-                for (int i = -rad; i <= rad; ++i) {
-                    if (i == 0 && j == 0)
+                for (int k = -rad; k <= rad; ++k) {
+                    if (k == 0 && j == 0)
                         continue;
-                    const int v = gray[(y + j) * w + (x + i)];
+                    const int v = gray[(y + j) * w + (x + k)];
                     local += v;
                     gmin = qMin(gmin, v);
                     gmax = qMax(gmax, v);
@@ -226,8 +309,8 @@ DeadScan scanDeadPixels(const QImage& rgb, const QRect& roi, int deadDiff, int e
                 }
             }
             const int mean = local / qMax(1, cells);
-            // 边沿/图标对比度大，不当坏点
-            if (gmax - gmin > deadDiff * 2 + 10)
+            const int edgeThr = expectedColor >= 0 ? deadDiff + 15 : deadDiff * 2 + 10;
+            if (gmax - gmin > edgeThr)
                 continue;
             consider(x, y, qAbs(g - mean) >= deadDiff);
 
@@ -239,14 +322,113 @@ DeadScan scanDeadPixels(const QImage& rgb, const QRect& roi, int deadDiff, int e
     }
 
     if (expectedColor >= 0 && expectedColor <= 2) {
-        const int ch = expectedColor == 0 ? 2 : (expectedColor == 1 ? 1 : 0); // B/G/R 在 RGB888 下标
+        // 旁通道抬升阈值：纯色红/绿/蓝上的发白、粉斑（主通道仍高，灰阶对比易被边沿跳过）
+        const int impurityThr = qMax(70, deadDiff + 30);
         for (int y = r.top() + rad; y <= r.bottom() - rad; ++y) {
             const uchar* line = img.constScanLine(y);
             for (int x = r.left() + rad; x <= r.right() - rad; ++x) {
                 const int i = x * 3;
+                const int pr = line[i];
+                const int pg = line[i + 1];
+                const int pb = line[i + 2];
+                const int gy = gray[y * w + x];
+                if (!pixelMatchesSolidColor(pr, pg, pb, gy, expectedColor))
+                    continue;
+                const int ch = expectedColor == 0 ? 2 : (expectedColor == 1 ? 1 : 0);
                 const int mainCh = line[i + ch];
-                const int other = (line[i] + line[i + 1] + line[i + 2] - mainCh) / 2;
+                const int o1 = line[i + ((ch + 1) % 3)];
+                const int o2 = line[i + ((ch + 2) % 3)];
+                const int other = (o1 + o2) / 2;
+                // 暗坏点：主通道明显偏弱
                 consider(x, y, mainCh + deadDiff < other || (mainCh < 40 && other > 80));
+                // 异色/发白：主通道仍很亮，但两旁通道同时明显抬高（如红底上的白/粉斑）
+                consider(x, y, mainCh >= 200 && o1 >= impurityThr && o2 >= impurityThr);
+            }
+        }
+    }
+
+    // 异色黑点/白斑：仅在 ROI 内缩区检测，避免矩形框里的黑边框连片误报
+    if (expectedColor >= 0) {
+        const int inset = qMax(8, qMin(r.width(), r.height()) / 10);
+        const QRect core = r.adjusted(inset, inset, -inset, -inset);
+        if (core.width() >= 12 && core.height() >= 12) {
+            QVector<QPoint> foreignSeeds;
+            for (int y = core.top() + 1; y <= core.bottom() - 1; ++y) {
+                const uchar* line = img.constScanLine(y);
+                for (int x = core.left() + 1; x <= core.right() - 1; ++x) {
+                    const int i = x * 3;
+                    const int pr = line[i];
+                    const int pg = line[i + 1];
+                    const int pb = line[i + 2];
+                    const int g = gray[y * w + x];
+                    if (pixelMatchesSolidColor(pr, pg, pb, g, expectedColor))
+                        continue;
+
+                    int solidN = 0;
+                    int solidGraySum = 0;
+                    for (int j = -1; j <= 1; ++j) {
+                        for (int k = -1; k <= 1; ++k) {
+                            if (j == 0 && k == 0)
+                                continue;
+                            const int nx = x + k;
+                            const int ny = y + j;
+                            const uchar* nl = img.constScanLine(ny);
+                            const int ni = nx * 3;
+                            const int ng = gray[ny * w + nx];
+                            if (pixelMatchesSolidColor(nl[ni], nl[ni + 1], nl[ni + 2], ng, expectedColor)) {
+                                ++solidN;
+                                solidGraySum += ng;
+                            }
+                        }
+                    }
+                    if (solidN < 5)
+                        continue;
+
+                    const int spread = qMax(pr, qMax(pg, pb)) - qMin(pr, qMin(pg, pb));
+                    const int solidMean = solidGraySum / solidN;
+                    // 邻域纯色也偏暗时多半是边框过渡，不种黑点种子
+                    if (expectedColor <= 2 && solidMean < 50)
+                        continue;
+                    const bool blackSpot = g <= 50 || (solidMean - g) >= deadDiff + 15;
+                    const bool whiteSpot = (g >= 175 && spread <= 55) || (pr >= 200 && pg >= 100 && pb >= 100);
+                    if (!blackSpot && !whiteSpot)
+                        continue;
+                    foreignSeeds.append(QPoint(x, y));
+                }
+            }
+
+            for (const QPoint& seed : foreignSeeds) {
+                const int sg = gray[seed.y() * w + seed.x()];
+                const bool seedDark = sg <= 80;
+                QVector<QPoint> stack;
+                stack.append(seed);
+                while (!stack.isEmpty()) {
+                    const QPoint p = stack.takeLast();
+                    if (!core.contains(p))
+                        continue;
+                    const int idx = p.y() * w + p.x();
+                    if (mark[idx])
+                        continue;
+                    const uchar* line = img.constScanLine(p.y());
+                    const int i = p.x() * 3;
+                    const int pr = line[i];
+                    const int pg = line[i + 1];
+                    const int pb = line[i + 2];
+                    const int g = gray[idx];
+                    if (pixelMatchesSolidColor(pr, pg, pb, g, expectedColor))
+                        continue;
+                    const int spread = qMax(pr, qMax(pg, pb)) - qMin(pr, qMin(pg, pb));
+                    const bool sameKind =
+                        seedDark ? (g <= 70)
+                                 : ((g >= 170 && spread <= 60) || (pr >= 190 && pg >= 95 && pb >= 95));
+                    if (!sameKind)
+                        continue;
+                    consider(p.x(), p.y(), true);
+                    stack.append(QPoint(p.x() + 1, p.y()));
+                    stack.append(QPoint(p.x() - 1, p.y()));
+                    stack.append(QPoint(p.x(), p.y() + 1));
+                    stack.append(QPoint(p.x(), p.y() - 1));
+                }
             }
         }
     }
@@ -279,13 +461,19 @@ namespace ScreenInspectAnalyzer {
 Report analyze(const QImage& currRgb, const QImage& refRgb, const Params& p) {
     Report report;
     const QImage curr = toRgb888(currRgb);
-    const QRect roi = detectScreenRoi(curr);
+    const QRect autoRoi = detectScreenRoi(curr);
+    QRect roi = p.manualRoi.intersected(curr.rect());
+    if (roi.width() < 10 || roi.height() < 10)
+        roi = autoRoi;
     report.roi = roi;
 
     int expected = p.expectedColor;
+    const int detected = guessExpectedColor(curr, roi);
+    report.detectedColor = detected;
     if (expected < 0)
-        expected = guessExpectedColor(curr, roi);
+        expected = detected;
     report.expectedColorUsed = expected;
+    report.colorMatch = p.expectedColor < 0 ? -1 : (detected == p.expectedColor ? 1 : 0);
 
     const DeadScan dead = scanDeadPixels(curr, roi, p.deadDiff, expected);
     report.deadPixels = dead.count;
@@ -303,6 +491,25 @@ Report analyze(const QImage& currRgb, const QImage& refRgb, const Params& p) {
         report.ssim = ssimOnGray(toGrayBytes(a), toGrayBytes(b), a.width(), a.height());
     }
     return report;
+}
+
+QString colorName(int colorIndex) {
+    switch (colorIndex) {
+    case 0:
+        return QStringLiteral("蓝");
+    case 1:
+        return QStringLiteral("绿");
+    case 2:
+        return QStringLiteral("红");
+    case 3:
+        return QStringLiteral("白");
+    case 4:
+        return QStringLiteral("黑");
+    case 5:
+        return QStringLiteral("灰");
+    default:
+        return QStringLiteral("未识别");
+    }
 }
 
 } // namespace ScreenInspectAnalyzer

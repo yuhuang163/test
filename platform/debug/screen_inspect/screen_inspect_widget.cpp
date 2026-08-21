@@ -13,8 +13,12 @@
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
+#include <QEvent>
 #include <QFileDialog>
 #include <QLabel>
+#include <QMouseEvent>
+#include <QPainter>
+#include <QPen>
 #include <QPixmap>
 #include <QPlainTextEdit>
 #include <QResizeEvent>
@@ -37,6 +41,7 @@ ScreenInspectWidget::ScreenInspectWidget(QWidget* parent)
     ui->comboBox_expectedColor->addItem(QStringLiteral("红"), 2);
     ui->comboBox_expectedColor->addItem(QStringLiteral("白"), 3);
     ui->comboBox_expectedColor->addItem(QStringLiteral("黑"), 4);
+    ui->comboBox_expectedColor->addItem(QStringLiteral("灰"), 5);
 
     viewfinder_ = new QCameraViewfinder(ui->viewfinderHost);
     ui->verticalLayout_viewfinder->addWidget(viewfinder_);
@@ -51,9 +56,17 @@ ScreenInspectWidget::ScreenInspectWidget(QWidget* parent)
     loadThresholdsFromSettings();
     refreshCameraList();
     loadSavedReferenceIfAny();
+
+    ui->label_currImage->installEventFilter(this);
+    ui->label_currImage->setMouseTracking(true);
+    ui->label_currImage->setCursor(Qt::CrossCursor);
+    manualRoi_ = ScreenInspectAnalyzer::parseManualRoi(
+        SETTINGS.value(QStringLiteral("ScreenInspect/Roi")).toString());
 }
 
 ScreenInspectWidget::~ScreenInspectWidget() {
+    if (ui && ui->label_currImage)
+        ui->label_currImage->releaseMouse();
     stopPreview();
     delete ui;
 }
@@ -93,6 +106,7 @@ ScreenInspectWidget::InspectParams ScreenInspectWidget::currentParams() const {
     p.maxDeadPixels = ui->spinBox_maxDead->value();
     p.maxMuraStd = ui->doubleSpinBox_mura->value();
     p.expectedColor = ui->comboBox_expectedColor->currentData().toInt();
+    p.manualRoi = manualRoi_;
     return p;
 }
 
@@ -136,6 +150,11 @@ void ScreenInspectWidget::startPreview() {
         capture_->setCaptureDestination(QCameraImageCapture::CaptureToFile);
 
     connect(capture_, &QCameraImageCapture::imageCaptured, this, &ScreenInspectWidget::onStillImage);
+    // CaptureToFile 模式下 imageCaptured 可能不触发，改用 imageSaved 补读图
+    connect(capture_, &QCameraImageCapture::imageSaved, this, [this](int, const QString& path) {
+        if (busy_)
+            onStillImage(0, QImage(path));
+    });
     connect(capture_,
             static_cast<void (QCameraImageCapture::*)(int, QCameraImageCapture::Error, const QString&)>(
                 &QCameraImageCapture::error),
@@ -266,6 +285,14 @@ void ScreenInspectWidget::on_btnInspect_clicked() {
     runInspect();
 }
 
+void ScreenInspectWidget::on_btnClearRoi_clicked() {
+    manualRoi_ = QRect();
+    roiDragging_ = false;
+    SETTINGS.setValue(QStringLiteral("ScreenInspect/Roi"), QString());
+    refreshImageLabels();
+    ui->plainTextEdit_screenInspectLog->setPlainText(QStringLiteral("已清除划定范围，检测改回自动找屏。"));
+}
+
 void ScreenInspectWidget::on_btnColorBlue_clicked() {
     ui->comboBox_expectedColor->setCurrentIndex(ui->comboBox_expectedColor->findData(0));
 }
@@ -287,6 +314,7 @@ void ScreenInspectWidget::on_btnColorBlack_clicked() {
 }
 
 void ScreenInspectWidget::setBusy(bool busy) {
+    busy_ = busy;
     ui->btnCapture->setEnabled(!busy);
     ui->btnInspect->setEnabled(!busy);
     ui->btnOpenPreview->setEnabled(!busy);
@@ -309,9 +337,94 @@ void ScreenInspectWidget::showPixmapOnLabel(const QImage& image, QLabel* label) 
 void ScreenInspectWidget::refreshImageLabels() {
     if (!refImage_.isNull())
         showPixmapOnLabel(refImage_, ui->label_refImage);
-    const QImage& show = annotatedImage_.isNull() ? currImage_ : annotatedImage_;
-    if (!show.isNull())
-        showPixmapOnLabel(show, ui->label_currImage);
+    QImage show = annotatedImage_.isNull() ? currImage_ : annotatedImage_;
+    if (show.isNull())
+        return;
+    QRect overlay;
+    if (roiDragging_)
+        overlay = QRect(roiDragStart_, roiDragCur_).normalized();
+    else
+        overlay = manualRoi_;
+    overlay = overlay.intersected(show.rect());
+    if (overlay.width() >= 4 && overlay.height() >= 4) {
+        show = show.convertToFormat(QImage::Format_RGB32);
+        QPainter p(&show);
+        p.setPen(QPen(QColor(0, 220, 255), 3));
+        p.drawRect(overlay.adjusted(0, 0, -1, -1));
+        p.end();
+    }
+    showPixmapOnLabel(show, ui->label_currImage);
+}
+
+QRect ScreenInspectWidget::labelPosToImage(const QPoint& pos) const {
+    if (currImage_.isNull() || !ui->label_currImage->pixmap() || ui->label_currImage->pixmap()->isNull())
+        return QRect();
+    const QPixmap pm = *ui->label_currImage->pixmap();
+    const QRect cr = ui->label_currImage->contentsRect();
+    const int x0 = cr.x() + (cr.width() - pm.width()) / 2;
+    const int y0 = cr.y() + (cr.height() - pm.height()) / 2;
+    const QRect target(x0, y0, pm.width(), pm.height());
+    if (!target.contains(pos) || pm.width() < 1 || pm.height() < 1)
+        return QRect();
+    const int ix = (pos.x() - x0) * currImage_.width() / pm.width();
+    const int iy = (pos.y() - y0) * currImage_.height() / pm.height();
+    return QRect(ix, iy, 1, 1);
+}
+
+void ScreenInspectWidget::saveManualRoi(const QRect& r) {
+    const QRect clipped = r.normalized().intersected(currImage_.rect());
+    if (clipped.width() < 8 || clipped.height() < 8) {
+        ui->plainTextEdit_screenInspectLog->setPlainText(QStringLiteral("划定范围太小，请在拍摄图上拖出更大的框。"));
+        return;
+    }
+    manualRoi_ = clipped;
+    SETTINGS.setValue(QStringLiteral("ScreenInspect/Roi"), ScreenInspectAnalyzer::formatManualRoi(manualRoi_));
+    ui->plainTextEdit_screenInspectLog->setPlainText(
+        QStringLiteral("已划定检测范围：%1,%2 %3x%4（工站步骤共用此范围）")
+            .arg(manualRoi_.x())
+            .arg(manualRoi_.y())
+            .arg(manualRoi_.width())
+            .arg(manualRoi_.height()));
+}
+
+bool ScreenInspectWidget::eventFilter(QObject* watched, QEvent* event) {
+    if (watched == ui->label_currImage && !currImage_.isNull()) {
+        if (event->type() == QEvent::MouseButtonPress) {
+            const auto* me = static_cast<QMouseEvent*>(event);
+            if (me->button() == Qt::LeftButton) {
+                const QRect hit = labelPosToImage(me->pos());
+                if (hit.isValid()) {
+                    roiDragging_ = true;
+                    roiDragStart_ = hit.topLeft();
+                    roiDragCur_ = roiDragStart_;
+                    ui->label_currImage->grabMouse();
+                    refreshImageLabels();
+                    return true;
+                }
+            }
+        } else if (event->type() == QEvent::MouseMove && roiDragging_) {
+            const auto* me = static_cast<QMouseEvent*>(event);
+            const QRect hit = labelPosToImage(me->pos());
+            if (hit.isValid()) {
+                roiDragCur_ = hit.topLeft();
+                refreshImageLabels();
+            }
+            return true;
+        } else if (event->type() == QEvent::MouseButtonRelease && roiDragging_) {
+            const auto* me = static_cast<QMouseEvent*>(event);
+            if (me->button() == Qt::LeftButton) {
+                const QRect hit = labelPosToImage(me->pos());
+                if (hit.isValid())
+                    roiDragCur_ = hit.topLeft();
+                roiDragging_ = false;
+                ui->label_currImage->releaseMouse();
+                saveManualRoi(QRect(roiDragStart_, roiDragCur_));
+                refreshImageLabels();
+                return true;
+            }
+        }
+    }
+    return QWidget::eventFilter(watched, event);
 }
 
 void ScreenInspectWidget::runInspect() {
@@ -345,6 +458,7 @@ ScreenInspectWidget::InspectReport ScreenInspectWidget::analyze(const QImage& cu
     ScreenInspectAnalyzer::Params ap;
     ap.deadDiff = p.deadDiff;
     ap.expectedColor = p.expectedColor;
+    ap.manualRoi = p.manualRoi;
     const ScreenInspectAnalyzer::Report raw = ScreenInspectAnalyzer::analyze(currRgb, refRgb, ap);
 
     InspectReport report;
@@ -356,6 +470,12 @@ ScreenInspectWidget::InspectReport ScreenInspectWidget::analyze(const QImage& cu
 
     QStringList reasons;
     bool ok = true;
+    if (p.expectedColor >= 0 && raw.colorMatch == 0) {
+        ok = false;
+        reasons.append(QStringLiteral("期望%1，实测%2")
+                           .arg(ScreenInspectAnalyzer::colorName(p.expectedColor),
+                                ScreenInspectAnalyzer::colorName(raw.detectedColor)));
+    }
     if (report.deadPixels > p.maxDeadPixels) {
         ok = false;
         reasons.append(QStringLiteral("坏点%1超过上限%2").arg(report.deadPixels).arg(p.maxDeadPixels));
@@ -375,7 +495,8 @@ ScreenInspectWidget::InspectReport ScreenInspectWidget::analyze(const QImage& cu
 
     report.pass = ok;
     if (ok)
-        report.summary = QStringLiteral("正常：坏点%1，亮度不均%2")
+        report.summary = QStringLiteral("正常：实测%1，坏点%2，亮度起伏%3")
+                             .arg(ScreenInspectAnalyzer::colorName(raw.detectedColor))
                              .arg(report.deadPixels)
                              .arg(report.muraStd, 0, 'f', 1);
     else

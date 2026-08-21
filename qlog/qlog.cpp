@@ -17,6 +17,7 @@
 #include <QMutexLocker>
 #include <QRegularExpression>
 #include <QSysInfo>
+#include <QStringList>
 #include <QTextStream>
 
 #include <cstdio>
@@ -82,6 +83,7 @@ QMutex g_sessionMutex;
 QHash<int, SessionState> g_activeSessions;
 QHash<int, SessionState> g_lastEndedSessions;
 QHash<int, SuctionSampleBuffer> g_suctionSamples;
+QHash<int, QStringList> g_screenInspectFiles;
 
 bool sessionLogEnabled() {
     return SETTINGS.value(QStringLiteral("FactoryCloud/Log/SessionLogEnabled"), true).toBool();
@@ -1026,6 +1028,74 @@ QString Qlog::exportSuctionSamplesCsv(const QlogSessionInfo& info, QString* erro
     QString rel = outRel;
     rel.replace(QLatin1Char('\\'), QLatin1Char('/'));
     return rel;
+}
+
+void Qlog::addScreenInspectImageFiles(int slot, const QStringList& absolutePaths) {
+    QMutexLocker lock(&g_sessionMutex);
+    if (absolutePaths.isEmpty()) {
+        g_screenInspectFiles.remove(slot);
+        return;
+    }
+    QStringList& list = g_screenInspectFiles[slot];
+    for (const QString& path : absolutePaths) {
+        const QString trimmed = path.trimmed();
+        if (trimmed.isEmpty() || !QFile::exists(trimmed) || list.contains(trimmed)) {
+            continue;
+        }
+        list.append(trimmed);
+    }
+}
+
+QStringList Qlog::exportScreenInspectImageFiles(const QlogSessionInfo& info, QString* error) {
+    if (!info.valid) {
+        return {};
+    }
+    QStringList srcPaths;
+    {
+        QMutexLocker lock(&g_sessionMutex);
+        if (!g_screenInspectFiles.contains(info.slot)) {
+            return {};
+        }
+        // take：本轮取走，避免下一轮无拍摄时又把上一轮图传一遍
+        srcPaths = g_screenInspectFiles.take(info.slot);
+    }
+    if (srcPaths.isEmpty()) {
+        return {};
+    }
+
+    const QString outDirRel = logRootRelative() + QStringLiteral("/屏幕检测");
+    if (!CommonUtils::ensureLogDirectory(outDirRel)) {
+        if (error) {
+            *error = QStringLiteral("无法创建屏幕检测图片目录");
+        }
+        return {};
+    }
+    const QString outDirAbs = QDir(QCoreApplication::applicationDirPath()).filePath(outDirRel);
+    const QString stem = sessionFileStem(info);
+    QStringList relOut;
+    int index = 0;
+    for (const QString& srcAbs : srcPaths) {
+        if (!QFile::exists(srcAbs)) {
+            continue;
+        }
+        ++index;
+        const QString baseName = QFileInfo(srcAbs).fileName();
+        const QString outName = stem + QLatin1Char('_') + QString::number(index) + QLatin1Char('_') + baseName;
+        const QString outAbs = resolveUniqueFilePath(outDirAbs, outName);
+        if (QFile::exists(outAbs)) {
+            QFile::remove(outAbs);
+        }
+        if (!QFile::copy(srcAbs, outAbs)) {
+            if (error) {
+                *error = QStringLiteral("无法复制屏幕检测图片：") + baseName;
+            }
+            continue;
+        }
+        QString rel = outDirRel + QLatin1Char('/') + QFileInfo(outAbs).fileName();
+        rel.replace(QLatin1Char('\\'), QLatin1Char('/'));
+        relOut << rel;
+    }
+    return relOut;
 }
 
 void Qlog::saveTestCsv(const QString& ver, const QString& sn, const QString& macAddress,

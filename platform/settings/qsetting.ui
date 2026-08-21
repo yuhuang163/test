@@ -2085,7 +2085,7 @@
           <item>
            <widget class="QLabel" name="label_screenInspectMura">
             <property name="text">
-             <string>纯色起伏上限（灰阶勿用）</string>
+             <string>亮度起伏上限（不是选颜色）</string>
             </property>
            </widget>
           </item>

@@ -322,7 +322,6 @@ bool isRuntimeSnPlaceholder(const QString& text) {
     return isRuntimePcbaSnPlaceholder(text) || isRuntimeWholeMachineSnPlaceholder(text);
 }
 
-
 enum class TuplePlaceholderKind {
     None,
     ProductKey,
@@ -960,7 +959,17 @@ void QFreeWork::emitFixtureMultiGateTableRows(const QVector<TestCaseGate>& gates
         // 多字段卡控分项表格只显示判定项（如 RSSI/频偏），不再重复步骤名前缀
         item.testItem = GateRegistry::fieldDisplayName(reportType, ge.field);
         const QString unit = GateRegistry::unitFor(reportType, ge.field, payload);
-        item.testData = subDetail;
+        // 数据列只显示实测值（纯色为文字）；完整「当前值/允许」细节留在日志 detail
+        const QString curPrefix = QStringLiteral("当前值=");
+        const int curPos = subDetail.indexOf(curPrefix);
+        if (curPos >= 0) {
+            const int start = curPos + curPrefix.size();
+            const int comma = subDetail.indexOf(QLatin1Char(','), start);
+            item.testData = (comma > start) ? subDetail.mid(start, comma - start).trimmed()
+                                            : subDetail.mid(start).trimmed();
+        } else {
+            item.testData = subDetail;
+        }
         if (!unit.isEmpty() && !item.testData.endsWith(unit))
             item.testData += QLatin1Char(' ') + unit;
         item.ask = GateRegistry::formatGateAsk(ge, reportType, payload);
@@ -1032,6 +1041,22 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
     if (display.testData.isEmpty())
         display.testData = detail;
 
+    // 屏幕图像识别：自动卡控失败时弹窗交人工确认（点否=通过，点是=不通过）
+    bool humanOverrodePass = false;
+    if (!pass && reportType == QStringLiteral("ProtocolScreenInspectData")) {
+        const QString failDetail = detail.isEmpty() ? QStringLiteral("未通过") : detail;
+        showlog(QStringLiteral("屏幕检测自动识别未通过：%1").arg(failDetail));
+        if (screenInspectAskHumanPassOnAutoFail(failDetail)) {
+            pass = true;
+            humanOverrodePass = true;
+            if (!display.testData.contains(QStringLiteral("人工确认")))
+                display.testData += QStringLiteral("（人工确认通过）");
+            showlog(QStringLiteral("人工确认：目视正常，本步按通过"));
+        } else {
+            showlog(QStringLiteral("人工确认：有问题，本步不通过"));
+        }
+    }
+
     markActiveTestCaseStepDone(pass, display.testData, display.ask);
     if (commandRetryTimer) {
         finishCommandRetryWait(pass,
@@ -1042,7 +1067,7 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
     if (!pass) {
         result = failValue;
         showlog(QStringLiteral("卡控失败：%1").arg(detail));
-    } else {
+    } else if (!humanOverrodePass) {
         showlog(QStringLiteral("卡控通过：%1").arg(detail));
     }
     return true;
@@ -2212,7 +2237,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             const QVariant param = ctx->resolveTestCaseSendParamTree(def.send.param);
             QString targetName = QStringLiteral("M5 Ultra");
             int rssiThreshold = -50;
-            
+
             if (param.canConvert<QVariantMap>()) {
                 QVariantMap map = param.toMap();
                 if (map.contains(QStringLiteral("name"))) targetName = map.value(QStringLiteral("name")).toString();
@@ -2228,10 +2253,10 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             ctx->deviceMap.clear();
             if (ctx->ui && ctx->ui->mac_combo)
                 ctx->ui->mac_combo->clear();
-            
+
             int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
             if (timeoutMs <= 0) timeoutMs = 6000;
-            
+
             QElapsedTimer timer;
             timer.start();
             QString bestMac;
@@ -2275,7 +2300,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             ctx->showlog(QStringLiteral("按广播名称找到最佳设备，MAC: %1, 信号: %2, 发起连接...")
                             .arg(bestMac)
                             .arg(bestRssi));
-            
+
             ctx->stepRuntime_.testData = bestMac;
             ctx->macAddress = bestMac;
             if (ctx->ui && ctx->ui->macInput)
