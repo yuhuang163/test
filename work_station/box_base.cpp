@@ -451,7 +451,6 @@ void box_base::ShowData(QMainWindow* parent) {
     for (int i = 0; i < testList.size(); ++i)
         testList[i]->msgEdit()->appendPlainText("当前产品为:" + pack.product);
 
-
     QAction* setting = parent->menuBar()->addAction("功能设置");
     settingMenuAction = setting;
     connect(setting, &QAction::triggered, [=]() { setting_ui(); });
@@ -489,6 +488,7 @@ void box_base::refreshCloudLoginState() {
     }
     refreshSettingsMenuVisibility();
 }
+
 void box_base::setting_ui() {
     if (!AuthService::canOpenSettings()) {
         QMessageBox::information(this, QStringLiteral("功能设置"),

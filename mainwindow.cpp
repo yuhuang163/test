@@ -1333,6 +1333,7 @@ void MainWindow::refreshCloudLoginState() {
     }
     refreshSettingsMenuVisibility();
 }
+
 void MainWindow::setting_ui() {
     if (!AuthService::canOpenSettings()) {
         QMessageBox::information(this, QStringLiteral("功能设置"),
@@ -5190,7 +5191,6 @@ constexpr DongleSuctionPeakGuideLineDef kDongleSuctionPeakGuideDefs[] = {
     {"dongleSuctionGuideTarget", "dongleSuctionGuideTargetLbl", QColor(220, 60, 50), Qt::SolidLine, 2},
     {"dongleSuctionGuideTolLow", "dongleSuctionGuideTolLowLbl", QColor(210, 130, 20), Qt::DashLine, 1},
     {"dongleSuctionGuideTolHigh", "dongleSuctionGuideTolHighLbl", QColor(210, 130, 20), Qt::DashLine, 1},
-    {"dongleSuctionGuideBaseline", "dongleSuctionGuideBaselineLbl", QColor(40, 110, 210), Qt::DashLine, 1},
     {"dongleSuctionGuideDipStart", "dongleSuctionGuideDipStartLbl", QColor(130, 70, 190), Qt::DashLine, 1},
 };
 
@@ -5265,8 +5265,6 @@ void MainWindow::updateDongleSuctionPeakGuideLines(QCustomPlot* plot) {
                                                           : dongleSuctionPeakTargetKpa_;
     const double tolerance = ui->dongleSuctionPeakToleranceSpin ? ui->dongleSuctionPeakToleranceSpin->value()
                                                                 : dongleSuctionPeakToleranceKpa_;
-    const double baseline = ui->dongleSuctionPeakBaselineSpin ? ui->dongleSuctionPeakBaselineSpin->value()
-                                                              : dongleSuctionPeakBaselineKpa_;
     const double dipStart = ui->dongleSuctionPeakDipStartSpin ? ui->dongleSuctionPeakDipStartSpin->value()
                                                               : dongleSuctionPeakDipStartKpa_;
     const double tolLow = target - tolerance;
@@ -5281,10 +5279,8 @@ void MainWindow::updateDongleSuctionPeakGuideLines(QCustomPlot* plot) {
                                 QStringLiteral("容差下 %1").arg(tolLow, 0, 'f', 1), show, x0, x1);
     dongleSuctionPlaceGuideLine(plot, kDongleSuctionPeakGuideDefs[2], tolHigh,
                                 QStringLiteral("容差上 %1").arg(tolHigh, 0, 'f', 1), show, x0, x1);
-    dongleSuctionPlaceGuideLine(plot, kDongleSuctionPeakGuideDefs[3], baseline,
-                                QStringLiteral("周期结束 %1").arg(baseline, 0, 'f', 1), show, x0, x1);
-    dongleSuctionPlaceGuideLine(plot, kDongleSuctionPeakGuideDefs[4], dipStart,
-                                QStringLiteral("周期开始 %1").arg(dipStart, 0, 'f', 1), show, x0, x1);
+    dongleSuctionPlaceGuideLine(plot, kDongleSuctionPeakGuideDefs[3], dipStart,
+                                QStringLiteral("计频线 %1").arg(dipStart, 0, 'f', 1), show, x0, x1);
 }
 
 void MainWindow::updateDongleSuctionPeakGuideLinesAll() {
@@ -5297,7 +5293,6 @@ void MainWindow::loadDongleSuctionPeakSettings() {
         return;
     dongleSuctionPeakTargetKpa_ = ui->dongleSuctionPeakTargetSpin->value();
     dongleSuctionPeakToleranceKpa_ = ui->dongleSuctionPeakToleranceSpin->value();
-    dongleSuctionPeakBaselineKpa_ = ui->dongleSuctionPeakBaselineSpin->value();
     dongleSuctionPeakDipStartKpa_ = ui->dongleSuctionPeakDipStartSpin->value();
     dongleSuctionPeakMaxGapSec_ = ui->dongleSuctionPeakMaxGapSpin->value();
 }
@@ -5309,8 +5304,6 @@ void MainWindow::setDongleSuctionPeakParamWidgetsEnabled(bool enabled) {
         ui->dongleSuctionPeakTargetSpin->setEnabled(enabled);
     if (ui->dongleSuctionPeakToleranceSpin)
         ui->dongleSuctionPeakToleranceSpin->setEnabled(enabled);
-    if (ui->dongleSuctionPeakBaselineSpin)
-        ui->dongleSuctionPeakBaselineSpin->setEnabled(enabled);
     if (ui->dongleSuctionPeakDipStartSpin)
         ui->dongleSuctionPeakDipStartSpin->setEnabled(enabled);
     if (ui->dongleSuctionPeakMaxGapSpin)
@@ -5332,20 +5325,26 @@ void MainWindow::updateDongleSuctionPeakMonitorLabels() {
         if (!labels[i])
             continue;
         auto& m = dongleSuctionPeakMonitors_[i];
-        // 按近期完整周期时长均值换算频率，首个周期结束即可显示，避免按总采时长外推导致初期剧烈跳动
-        const double nowSec = dongleSuctionPlotTimeSecLast_ < 0.0 ? 0.0 : dongleSuctionPlotTimeSecLast_;
-        const double windowStart = (nowSec >= 60.0) ? (nowSec - 60.0) : 0.0;
-        double periodSum = 0.0;
-        int periodCount = 0;
-        const int n = qMin(m.cycleEndSec.size(), m.cyclePeriodSec.size());
-        for (int j = 0; j < n; ++j) {
-            if (m.cycleEndSec[j] > windowStart && m.cyclePeriodSec[j] > 0.0) {
-                periodSum += m.cyclePeriodSec[j];
-                ++periodCount;
+        // 频率：相邻两次下穿计频线的间隔均值（≥2 次下穿才可算）
+        constexpr int kFreqRecentIntervals = 3;
+        double periodSec = -1.0;
+        const int startCount = m.cycleStartSec.size();
+        if (startCount >= 2) {
+            const int beginIdx = qMax(1, startCount - kFreqRecentIntervals);
+            double intervalSum = 0.0;
+            int intervalCount = 0;
+            for (int j = beginIdx; j < startCount; ++j) {
+                const double dt = m.cycleStartSec[j] - m.cycleStartSec[j - 1];
+                if (dt > 0.0) {
+                    intervalSum += dt;
+                    ++intervalCount;
+                }
             }
+            if (intervalCount > 0)
+                periodSec = intervalSum / intervalCount;
         }
-        if (periodCount > 0) {
-            m.freqPerMin = qRound(60.0 * periodCount / periodSum);
+        if (periodSec > 0.0) {
+            m.freqPerMin = qRound(60.0 / periodSec);
         } else {
             m.freqPerMin = -1;
         }
@@ -5382,58 +5381,46 @@ void MainWindow::updateDongleSuctionChannelPeakMonitor(int chIndex, double kpa, 
         updateDongleSuctionPeakMonitorLabels();
     }
 
-    if (kpa >= dongleSuctionPeakBaselineKpa_) {
-        if (m.phase == DongleSuctionChannelPeakMonitor::Phase::InCycle) {
-            if (m.cycleMinInit) {
-                const double peakKpa = m.cycleMinKpa;
-                const bool dippedEnough = peakKpa <= dongleSuctionPeakDipStartKpa_;
-                const bool inRange = peakKpa >= lowerBound && peakKpa <= upperBound;
-                if (dippedEnough && inRange) {
-                    m.validPeakCount++;
-                    m.waitingNextPeak = true;
-                    m.lastPeakEndSec = tSec;
-                    m.gapMissFlagged = false;
-                    if (eventOut.isEmpty())
-                        eventOut = QStringLiteral("VALID_%1:%2").arg(chTag).arg(peakKpa, 0, 'f', 3);
-                    showlog(QStringLiteral("【有效峰】%1：%2 kPa（累计 %3）")
-                                .arg(chTag)
-                                .arg(peakKpa, 0, 'f', 3)
-                                .arg(m.validPeakCount));
-                } else if (dippedEnough) {
-                    m.weakPeakCount++;
-                    if (eventOut.isEmpty())
-                        eventOut = QStringLiteral("WEAK_%1:%2").arg(chTag).arg(peakKpa, 0, 'f', 3);
-                    showlog(QStringLiteral("【弱峰】%1：%2 kPa，不在 %3~%4 kPa")
-                                .arg(chTag)
-                                .arg(peakKpa, 0, 'f', 3)
-                                .arg(lowerBound, 0, 'f', 2)
-                                .arg(upperBound, 0, 'f', 2));
-                }
+    if (m.phase == DongleSuctionChannelPeakMonitor::Phase::InCycle && kpa >= dongleSuctionPeakDipStartKpa_) {
+        if (m.cycleMinInit) {
+            const double peakKpa = m.cycleMinKpa;
+            const bool dippedEnough = peakKpa <= dongleSuctionPeakDipStartKpa_;
+            const bool inRange = peakKpa >= lowerBound && peakKpa <= upperBound;
+            if (dippedEnough && inRange) {
+                m.validPeakCount++;
+                m.waitingNextPeak = true;
+                m.lastPeakEndSec = tSec;
+                m.gapMissFlagged = false;
+                if (eventOut.isEmpty())
+                    eventOut = QStringLiteral("VALID_%1:%2").arg(chTag).arg(peakKpa, 0, 'f', 3);
+                showlog(QStringLiteral("【有效峰】%1：%2 kPa（累计 %3）")
+                            .arg(chTag)
+                            .arg(peakKpa, 0, 'f', 3)
+                            .arg(m.validPeakCount));
+            } else if (dippedEnough) {
+                m.weakPeakCount++;
+                if (eventOut.isEmpty())
+                    eventOut = QStringLiteral("WEAK_%1:%2").arg(chTag).arg(peakKpa, 0, 'f', 3);
+                showlog(QStringLiteral("【弱峰】%1：%2 kPa，不在 %3~%4 kPa")
+                            .arg(chTag)
+                            .arg(peakKpa, 0, 'f', 3)
+                            .arg(lowerBound, 0, 'f', 2)
+                            .arg(upperBound, 0, 'f', 2));
             }
-            // 周期结束（回到周期结束线）：频率只按周期边界计，弱峰/无效周期也计入
-            if (m.currentCycleStartSec >= 0.0 && tSec > m.currentCycleStartSec) {
-                m.cyclePeriodSec.append(tSec - m.currentCycleStartSec);
-            } else {
-                m.cyclePeriodSec.append(0.0);
-            }
-            m.cycleEndSec.append(tSec);
-            while (!m.cycleEndSec.isEmpty() && m.cycleEndSec.first() <= tSec - 60.0) {
-                m.cycleEndSec.removeFirst();
-                if (!m.cyclePeriodSec.isEmpty())
-                    m.cyclePeriodSec.removeFirst();
-            }
-            m.currentCycleStartSec = -1.0;
-            updateDongleSuctionPeakMonitorLabels();
-            m.phase = DongleSuctionChannelPeakMonitor::Phase::AtBaseline;
-            m.cycleMinInit = false;
         }
+        updateDongleSuctionPeakMonitorLabels();
+        m.phase = DongleSuctionChannelPeakMonitor::Phase::AtBaseline;
+        m.cycleMinInit = false;
         return;
     }
 
     if (kpa < dongleSuctionPeakDipStartKpa_) {
         if (m.phase == DongleSuctionChannelPeakMonitor::Phase::AtBaseline) {
             m.phase = DongleSuctionChannelPeakMonitor::Phase::InCycle;
-            m.currentCycleStartSec = tSec;
+            m.cycleStartSec.append(tSec);
+            while (!m.cycleStartSec.isEmpty() && m.cycleStartSec.first() <= tSec - 60.0)
+                m.cycleStartSec.removeFirst();
+            updateDongleSuctionPeakMonitorLabels();
             m.cycleMinKpa = kpa;
             m.cycleMinInit = true;
             m.gapMissFlagged = false;
@@ -5442,12 +5429,6 @@ void MainWindow::updateDongleSuctionChannelPeakMonitor(int chIndex, double kpa, 
             m.cycleMinInit = true;
         }
         return;
-    }
-
-    if (m.phase == DongleSuctionChannelPeakMonitor::Phase::InCycle &&
-        (!m.cycleMinInit || kpa < m.cycleMinKpa)) {
-        m.cycleMinKpa = kpa;
-        m.cycleMinInit = true;
     }
 }
 
@@ -6049,7 +6030,6 @@ void MainWindow::initDongleSuctionChart() {
     };
     bindPeakGuideRefresh(ui->dongleSuctionPeakTargetSpin);
     bindPeakGuideRefresh(ui->dongleSuctionPeakToleranceSpin);
-    bindPeakGuideRefresh(ui->dongleSuctionPeakBaselineSpin);
     bindPeakGuideRefresh(ui->dongleSuctionPeakDipStartSpin);
     if (ui->dongleSuctionPeakGuideLinesCheck) {
         connect(ui->dongleSuctionPeakGuideLinesCheck, &QCheckBox::toggled, this, [this](bool) {
@@ -6262,7 +6242,6 @@ void MainWindow::on_dongle_suction_open_clicked() {
     loadDongleSuctionPeakSettings();
     setDongleSuctionPeakParamWidgetsEnabled(false);
     dongleSuctionReadEnabled_ = true;
-    resetDongleSuctionChart();
     if (!startDongleSuctionCsvLog()) {
         dongleSuctionReadEnabled_ = false;
         setDongleSuctionPeakParamWidgetsEnabled(true);

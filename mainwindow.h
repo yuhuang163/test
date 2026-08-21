@@ -181,12 +181,8 @@ class MainWindow : public QMainWindow {
         int missedPeakCount = 0;
         int weakPeakCount = 0;
         int freqPerMin = 0;
-        /** 当前周期开始时刻（下探越过周期开始线），与 cycleEndSec 成对用于算周期时长 */
-        double currentCycleStartSec = -1.0;
-        /** 周期结束时刻（≥基线/周期结束线），与有效峰无关 */
-        QVector<double> cycleEndSec;
-        /** 与 cycleEndSec 一一对应：单次周期时长(s)，频率=60/近期平均周期时长 */
-        QVector<double> cyclePeriodSec;
+        /** 每次下穿计频线的时刻；相邻两次间隔用于频率 */
+        QVector<double> cycleStartSec;
     };
 
     void initDongleSuctionChart();
@@ -267,7 +263,6 @@ class MainWindow : public QMainWindow {
     DongleSuctionChannelPeakMonitor dongleSuctionPeakMonitors_[kDongleSuctionChannelCount];
     double dongleSuctionPeakTargetKpa_ = -36.0;
     double dongleSuctionPeakToleranceKpa_ = 2.6;
-    double dongleSuctionPeakBaselineKpa_ = -8.0;
     double dongleSuctionPeakDipStartKpa_ = -10.0;
     double dongleSuctionPeakMaxGapSec_ = 2.5;
     NewImuCalData calData;
