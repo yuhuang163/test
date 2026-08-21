@@ -105,7 +105,7 @@ class TestCaseStore {
     static QVector<TestFlowStationEntry> loadFlowStationCatalog();
     /**
      * 工站显示名是否属于指定产品（Mes/Product_Name）。
-     * 自由工站/默认工站通用；其余按工站名是否以产品名开头（见 CommonUtils::stationBelongsToProduct）。
+     * 自由工站/默认工站通用；其余须以完整产品名开头（见 CommonUtils::stationBelongsToProduct）。
      */
     static bool stationBelongsToProduct(const QString& stationDisplayName, const QString& productName);
     /** 按产品过滤工站目录；productName 空则不过滤。 */
@@ -171,6 +171,20 @@ class DongleCmdCatalog {
     static QString paramUiHint(const QString& dongleCmdName);
     static bool paramFromIniGroup(const QSettings& settings, DongleCmd cmd, QVariant& out);
     static void paramToIniGroup(QSettings& settings, DongleCmd cmd, const QVariant& value);
+};
+
+class UsbCameraCmdCatalog {
+  public:
+    static QStringList allUsbCameraCmdNames(TestCaseSendAction action);
+    static TestCaseSendAction actionFor(UsbCameraCmd cmd);
+    static bool isCmdForAction(UsbCameraCmd cmd, TestCaseSendAction action);
+    static QString usbCameraCmdUiLabel(const QString& enumName);
+    static bool usbCameraCmdFromName(const QString& name, UsbCameraCmd& out);
+    static QString usbCameraCmdToName(UsbCameraCmd cmd);
+    static bool paramSchemaFor(UsbCameraCmd cmd, DeviceCmdParamSchema& out);
+    static QString paramUiHint(const QString& enumName);
+    static bool paramFromIniGroup(const QSettings& settings, UsbCameraCmd cmd, QVariant& out);
+    static void paramToIniGroup(QSettings& settings, UsbCameraCmd cmd, const QVariant& value);
 };
 
 enum class ProductSerialCmd {

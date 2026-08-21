@@ -5,6 +5,7 @@
 #include <QDateTime>
 #include <QPlainTextEdit>
 #include <QString>
+#include <QStringList>
 #include <QTextStream>
 #include <QVector>
 
@@ -136,6 +137,11 @@ class Qlog {
                                   const QVector<double>& ch2, const QVector<double>& ch3);
     /** 导出本轮吸力采样 CSV（列同主窗口吸力页），无采样数据时返回空且不置 error */
     static QString exportSuctionSamplesCsv(const QlogSessionInfo& info, QString* error);
+
+    /** 屏幕检测拍摄图按工位暂存绝对路径；传空列表清空。测完导出进会话包 */
+    static void addScreenInspectImageFiles(int slot, const QStringList& absolutePaths);
+    /** 复制到 所有log/屏幕检测/ 并返回相对路径列表；无图时返回空且不置 error */
+    static QStringList exportScreenInspectImageFiles(const QlogSessionInfo& info, QString* error);
 };
 
 #endif // QLOG_H

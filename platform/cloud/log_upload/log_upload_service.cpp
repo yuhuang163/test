@@ -737,6 +737,17 @@ QString LogUploadService::compressSessionArchive(const QlogSessionInfo& info, QS
             *warning = warning->isEmpty() ? suctionErr : *warning + QStringLiteral("；") + suctionErr;
         }
     }
+    if (SETTINGS.value(QStringLiteral("FactoryCloud/Log/UploadIncludeScreenInspect"), true).toBool()) {
+        QString screenErr;
+        const QStringList screenRels = Qlog::exportScreenInspectImageFiles(info, &screenErr);
+        for (const QString& screenRel : screenRels) {
+            absPaths << QDir(QCoreApplication::applicationDirPath()).filePath(screenRel);
+            relPaths << screenRel;
+        }
+        if (screenRels.isEmpty() && !screenErr.isEmpty() && warning) {
+            *warning = warning->isEmpty() ? screenErr : *warning + QStringLiteral("；") + screenErr;
+        }
+    }
     return compressExplicitFiles(absPaths, relPaths, error, warning);
 }
 

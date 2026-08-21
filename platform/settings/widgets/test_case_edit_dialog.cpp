@@ -20,11 +20,13 @@
 #include <QItemSelectionModel>
 
 #include <QHash>
+#include <QFileDialog>
 #include <QInputDialog>
 #include <QLineEdit>
 #include <QRegularExpression>
 #include <QSignalBlocker>
 #include <QColor>
+#include <QBrush>
 #include <QApplication>
 #include <QComboBox>
 #include <QEvent>
@@ -141,6 +143,14 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("baseUrl"), QStringLiteral("接口地址")},
         {QStringLiteral("userName"), QStringLiteral("用户名")},
         {QStringLiteral("password"), QStringLiteral("密码")},
+        {QStringLiteral("cameraIndex"), QStringLiteral("摄像头序号（从 0）")},
+        {QStringLiteral("cameraName"), QStringLiteral("摄像头名称（可选，优先于序号）")},
+        {QStringLiteral("warmupMs"), QStringLiteral("采集预热 (ms)")},
+        {QStringLiteral("expectedColor"), QStringLiteral("期望纯色（-1不判断 0蓝1绿2红3白4黑5灰）")},
+        {QStringLiteral("deadDiff"), QStringLiteral("坏点残差阈值")},
+        {QStringLiteral("referencePath"), QStringLiteral("参考图路径（双击选择图片）")},
+        {QStringLiteral("saveCapture"), QStringLiteral("保存拍摄图（1开/0关）")},
+        {QStringLiteral("roi"), QStringLiteral("检测范围 x,y,w,h（空=调试页划定/自动）")},
     };
     if (kMap.contains(k))
         return kMap.value(k);
@@ -314,7 +324,22 @@ QStringList sendParamPreferredOrder(TestCaseSendChannel channel, const QString& 
                 QStringLiteral("minPeakCount"), QStringLiteral("peakBaselineKpa"),
                 QStringLiteral("peakDipStartKpa"), QStringLiteral("offsetKpa")};
     }
+    if (channel == TestCaseSendChannel::Fixture
+        && (cmdName == QLatin1String("ScreenDeadPixelCheck")
+            || cmdName == QLatin1String("ScreenDisplayAnomalyCheck"))) {
+        QStringList keys = {QStringLiteral("cameraIndex"), QStringLiteral("cameraName"),
+                            QStringLiteral("warmupMs"), QStringLiteral("expectedColor"),
+                            QStringLiteral("deadDiff"), QStringLiteral("saveCapture"),
+                            QStringLiteral("roi")};
+        if (cmdName == QLatin1String("ScreenDisplayAnomalyCheck"))
+            keys.append(QStringLiteral("referencePath"));
+        return keys;
+    }
     return {};
+}
+
+bool isDroppedSendParamKey(const QString& key) {
+    return key.compare(QLatin1String("setScreenColor"), Qt::CaseInsensitive) == 0;
 }
 
 void sortSendParamKeys(QStringList& keys, const QStringList& preferredOrder) {
@@ -337,6 +362,7 @@ void setSendParamTableFromMap(QTableWidget* table, const QVariantMap& map,
     QSignalBlocker blocker(table);
     configureSendParamTable(table);
     QStringList keys = map.keys();
+    keys.erase(std::remove_if(keys.begin(), keys.end(), isDroppedSendParamKey), keys.end());
     sortSendParamKeys(keys, preferredOrder);
     for (const QString& key : keys) {
         const int r = table->rowCount();
@@ -361,12 +387,12 @@ void setSendParamTableFromMapWithTemplate(QTableWidget* table, const QVariantMap
     configureSendParamTable(table);
     QStringList ordered;
     for (const QString& k : templateMap.keys()) {
-        if (!k.isEmpty() && !ordered.contains(k))
+        if (!k.isEmpty() && !isDroppedSendParamKey(k) && !ordered.contains(k))
             ordered.append(k);
     }
     QStringList extras;
     for (const QString& k : userMap.keys()) {
-        if (!k.isEmpty() && !ordered.contains(k))
+        if (!k.isEmpty() && !isDroppedSendParamKey(k) && !ordered.contains(k))
             extras.append(k);
     }
     extras.sort(Qt::CaseInsensitive);
@@ -577,6 +603,23 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
         }
         return {};
     }
+    if (channel == TestCaseSendChannel::Fixture
+        && FixturePcbaCmdCatalog::fixtureProtocolFromIni(device) == TestCaseFixtureProtocol::UsbCamera) {
+        if (cmdName == QLatin1String("ScreenDeadPixelCheck")
+            || cmdName == QLatin1String("ScreenDisplayAnomalyCheck")) {
+            QVariantMap map{{QStringLiteral("cameraIndex"), QStringLiteral("0")},
+                            {QStringLiteral("cameraName"), QString()},
+                            {QStringLiteral("warmupMs"), QStringLiteral("450")},
+                            {QStringLiteral("expectedColor"), QStringLiteral("-1")},
+                            {QStringLiteral("deadDiff"), QStringLiteral("35")},
+                            {QStringLiteral("saveCapture"), QStringLiteral("1")},
+                            {QStringLiteral("roi"), QString()}};
+            if (cmdName == QLatin1String("ScreenDisplayAnomalyCheck"))
+                map.insert(QStringLiteral("referencePath"), QString());
+            return map;
+        }
+        return {};
+    }
     if (channel == TestCaseSendChannel::Cloud && cmdName == QLatin1String("Login")) {
         // 三元组云端登录：提供 baseUrl/userName/password 字段；显示顺序见 sendParamPreferredOrder（账号在密码上方）
         return QVariantMap{{QStringLiteral("baseUrl"), QString()},
@@ -742,6 +785,8 @@ void fillFixtureProtocolCombo(QComboBox* box) {
                  FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::Xwd));
     box->addItem(FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol::JieliBtBox),
                  FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::JieliBtBox));
+    box->addItem(FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol::UsbCamera),
+                 FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::UsbCamera));
 }
 
 void fillProtocolComboForChannel(QComboBox* box, TestCaseSendChannel channel) {
@@ -802,6 +847,10 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
             items.reserve(JieliBtBoxCmdCatalog::allJieliBtBoxCmdNames(action).size());
             for (const QString& name : JieliBtBoxCmdCatalog::allJieliBtBoxCmdNames(action))
                 items.append({JieliBtBoxCmdCatalog::jieliBtBoxCmdUiLabel(name), name});
+        } else if (proto == TestCaseFixtureProtocol::UsbCamera) {
+            items.reserve(UsbCameraCmdCatalog::allUsbCameraCmdNames(action).size());
+            for (const QString& name : UsbCameraCmdCatalog::allUsbCameraCmdNames(action))
+                items.append({UsbCameraCmdCatalog::usbCameraCmdUiLabel(name), name});
         } else {
             items.reserve(FixturePcbaCmdCatalog::allFixturePcbaCmdNames(action).size());
             for (const QString& name : FixturePcbaCmdCatalog::allFixturePcbaCmdNames(action))
@@ -985,6 +1034,18 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
                 if (JieliBtBoxCmdCatalog::paramSchemaFor(jieliCmd, schema)) {
                     out.valid = true;
                     out.hint = JieliBtBoxCmdCatalog::paramUiHint(name);
+                    out.kind = sendParamUiKindFromSchema(schema.kind);
+                }
+            }
+            return out;
+        }
+        if (proto == TestCaseFixtureProtocol::UsbCamera) {
+            UsbCameraCmd camCmd;
+            if (UsbCameraCmdCatalog::usbCameraCmdFromName(name, camCmd)) {
+                DeviceCmdParamSchema schema;
+                if (UsbCameraCmdCatalog::paramSchemaFor(camCmd, schema)) {
+                    out.valid = true;
+                    out.hint = UsbCameraCmdCatalog::paramUiHint(name);
                     out.kind = sendParamUiKindFromSchema(schema.kind);
                 }
             }
@@ -1265,6 +1326,44 @@ QComboBox* gateOpCellCombo(QTableWidget* table, int row) {
     return qobject_cast<QComboBox*>(table->cellWidget(row, 2));
 }
 
+void setMultiGateCellEditable(QTableWidgetItem* item, bool editable) {
+    if (!item)
+        return;
+    Qt::ItemFlags flags = item->flags() | Qt::ItemIsEnabled | Qt::ItemIsSelectable;
+    if (editable)
+        flags |= Qt::ItemIsEditable;
+    else
+        flags &= ~Qt::ItemIsEditable;
+    item->setFlags(flags);
+    item->setBackground(editable ? QBrush() : QBrush(QColor(235, 235, 235)));
+}
+
+/** 范围：填最小/最大；大于/小于/等于：只填期望值。 */
+void updateMultiGateRowInputMode(QTableWidget* table, int row) {
+    if (!table || table->columnCount() < 6)
+        return;
+    QComboBox* opCombo = gateOpCellCombo(table, row);
+    if (!opCombo)
+        return;
+    const QString opKey = opCombo->currentData().toString();
+    const bool isRange = (opKey == QLatin1String("range"));
+    const bool useExpected = (opKey == QLatin1String("gt") || opKey == QLatin1String("lt")
+                              || opKey == QLatin1String("eq") || opKey == QLatin1String("compareVersions"));
+    setMultiGateCellEditable(table->item(row, 3), isRange);
+    setMultiGateCellEditable(table->item(row, 4), isRange);
+    setMultiGateCellEditable(table->item(row, 5), useExpected);
+    if (useExpected) {
+        QTableWidgetItem* expectedItem = table->item(row, 5);
+        if (expectedItem && expectedItem->text().trimmed().isEmpty()) {
+            if (QTableWidgetItem* lowItem = table->item(row, 3)) {
+                const QString lowText = lowItem->text().trimmed();
+                if (!lowText.isEmpty())
+                    expectedItem->setText(lowText);
+            }
+        }
+    }
+}
+
 void initPeriphGateTable(QTableWidget* table) {
     GateTypeDescriptor desc;
     if (!GateRegistry::descriptorFor(QStringLiteral("ProtocolPeriphStateData"), desc))
@@ -1285,6 +1384,49 @@ void initPeriphGateTable(QTableWidget* table) {
         nameItem->setData(Qt::UserRole, desc.fields.at(i).field);
         table->setItem(i, 0, nameItem);
         table->setItem(i, 1, new QTableWidgetItem(QStringLiteral("0")));
+    }
+}
+
+void applyScreenInspectGatePlaceholders(QTableWidget* table, const QString& reportType,
+                                       const QString& defaultField) {
+    if (!table || reportType != QLatin1String("ProtocolScreenInspectData"))
+        return;
+    for (int i = 0; i < table->rowCount(); ++i) {
+        QTableWidgetItem* nameItem = table->item(i, 1);
+        if (!nameItem)
+            continue;
+        const QString field = nameItem->data(Qt::UserRole).toString();
+        QString low = QStringLiteral("0");
+        QString high = QStringLiteral("0");
+        QString tip;
+        if (field == QLatin1String("deadPixels")) {
+            high = QStringLiteral("8");
+            tip = QStringLiteral("ROI 内判定为坏点的像素个数。良品接近 0，上限可放 8。");
+        } else if (field == QLatin1String("detectedColor")) {
+            high = QStringLiteral("5");
+            tip = QStringLiteral("主色：结果表显示蓝/绿/红/白/黑/灰。范围填最小最大；等于则只填期望值数字(0蓝1绿2红3白4黑5灰)。");
+        } else if (field == QLatin1String("colorMatch")) {
+            low = QStringLiteral("1");
+            high = QStringLiteral("1");
+            tip = QStringLiteral("步骤写了期望纯色时：是/否。可用范围 1~1，或等于+期望值 1。");
+        } else if (field == QLatin1String("ssim")) {
+            low = QStringLiteral("0.85");
+            high = QStringLiteral("1");
+            tip = QStringLiteral("与参考图结构相似度，1 为完全相同。灰阶/花屏对比只卡这一项。");
+        } else if (field == QLatin1String("muraStd")) {
+            high = QStringLiteral("22");
+            tip = QStringLiteral("整屏灰度标准差。纯色画面才有意义（越小越均匀）。灰阶条纹本身很大，不要勾选。");
+        }
+        nameItem->setToolTip(tip);
+        if (QTableWidgetItem* enableItem = table->item(i, 0)) {
+            enableItem->setToolTip(QStringLiteral("不必三项全勾，只勾本步需要的判定项。"));
+            if (!defaultField.isEmpty() && field == defaultField)
+                enableItem->setCheckState(Qt::Checked);
+        }
+        if (QTableWidgetItem* lo = table->item(i, 3))
+            lo->setText(low);
+        if (QTableWidgetItem* hi = table->item(i, 4))
+            hi->setText(high);
     }
 }
 
@@ -1321,6 +1463,10 @@ void initRangeMultiGateTable(QTableWidget* table, const QString& reportType) {
         table->setItem(i, 3, new QTableWidgetItem(QStringLiteral("0")));
         table->setItem(i, 4, new QTableWidgetItem(QStringLiteral("0")));
         table->setItem(i, 5, new QTableWidgetItem());
+        QObject::connect(opCombo, QOverload<int>::of(&QComboBox::currentIndexChanged), table, [table, i](int) {
+            updateMultiGateRowInputMode(table, i);
+        });
+        updateMultiGateRowInputMode(table, i);
     }
 }
 
@@ -1521,22 +1667,37 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
         const QVariantMap current = readSendParamMapFromTable(ui->tableWidget_sendParam);
         setSendParamTableFromMapWithTemplate(ui->tableWidget_sendParam, current, tmpl, preferred);
     });
-    // 双击参数名列：修改英文键（界面仍只显示中文）
+    // 双击参数名列改英文键；双击「参考图路径」的值列选图片
     connect(ui->tableWidget_sendParam, &QTableWidget::cellDoubleClicked, this, [this](int row, int column) {
-        if (!ui->tableWidget_sendParam || ui->tableWidget_sendParam->columnCount() != 2 || column != 0)
+        if (!ui->tableWidget_sendParam || ui->tableWidget_sendParam->columnCount() != 2)
             return;
         QTableWidgetItem* nameItem = ui->tableWidget_sendParam->item(row, 0);
         if (!nameItem)
             return;
-        const QString oldKey = nameItem->data(SendParamKeyRole).toString();
-        bool ok = false;
-        const QString key = QInputDialog::getText(this, QStringLiteral("修改参数名"),
-                                                  QStringLiteral("英文参数名（保存到步骤 ini）："),
-                                                  QLineEdit::Normal, oldKey, &ok)
-                                .trimmed();
-        if (!ok || key.isEmpty())
+        const QString key = nameItem->data(SendParamKeyRole).toString();
+        if (column == 1 && key == QLatin1String("referencePath")) {
+            QTableWidgetItem* valItem = ui->tableWidget_sendParam->item(row, 1);
+            const QString start = valItem ? valItem->text().trimmed() : QString();
+            const QString path = QFileDialog::getOpenFileName(
+                this, QStringLiteral("选择标准参考图"), start,
+                QStringLiteral("图片 (*.png *.jpg *.jpeg *.bmp);;所有文件 (*.*)"));
+            if (path.isEmpty() || !valItem)
+                return;
+            materializeSendParamValueItem(valItem);
+            valItem->setText(path);
             return;
-        applySendParamNameCell(nameItem, key);
+        }
+        if (column != 0)
+            return;
+        const QString oldKey = key;
+        bool ok = false;
+        const QString newKey = QInputDialog::getText(this, QStringLiteral("修改参数名"),
+                                                     QStringLiteral("英文参数名（保存到步骤 ini）："),
+                                                     QLineEdit::Normal, oldKey, &ok)
+                                   .trimmed();
+        if (!ok || newKey.isEmpty())
+            return;
+        applySendParamNameCell(nameItem, newKey);
     });
 
     tableWidget_multiGates_ = new QTableWidget(ui->groupBox_gate);
@@ -1599,6 +1760,8 @@ void TestCaseEditDialog::rebuildMultiGateTable() {
     if (isRangeMultiGateMode()) {
         const QString reportType = comboData(ui->comboBox_gateReportType);
         initRangeMultiGateTable(tableWidget_multiGates_, reportType);
+        applyScreenInspectGatePlaceholders(tableWidget_multiGates_, reportType,
+                                           comboData(ui->comboBox_gateField));
     } else if (isPeriphMultiGateMode())
         initPeriphGateTable(tableWidget_multiGates_);
 }
@@ -1674,7 +1837,14 @@ void TestCaseEditDialog::writeMultiGatesToTable(const QVector<TestCaseGate>& gat
             GateRegistry::resolveRangeBounds(matched, lowShow, highShow);
             setCell(3, QString::number(lowShow));
             setCell(4, QString::number(highShow));
-            setCell(5, matched.expected);
+            QString expectedShow = matched.expected;
+            if (expectedShow.isEmpty()
+                && (matched.op == TestCaseGateOp::Gt || matched.op == TestCaseGateOp::Lt
+                    || matched.op == TestCaseGateOp::Eq)) {
+                expectedShow = QString::number(lowShow);
+            }
+            setCell(5, expectedShow);
+            updateMultiGateRowInputMode(tableWidget_multiGates_, row);
         }
         return;
     }
@@ -1747,8 +1917,17 @@ QVector<TestCaseGate> TestCaseEditDialog::readMultiGatesFromTable() const {
                 g.highSettingsKey = enableItem->data(Qt::UserRole + 2).toString();
                 g.expectedSettingsKey = enableItem->data(Qt::UserRole + 3).toString();
             }
-            if (g.op == TestCaseGateOp::Eq && g.expected.isEmpty())
-                g.expected = QString::number(static_cast<int>(g.low));
+            // 大于/小于/等于：以期望值为准；兼容旧配置只写了最小值
+            if (g.op == TestCaseGateOp::Gt || g.op == TestCaseGateOp::Lt || g.op == TestCaseGateOp::Eq) {
+                if (g.expected.trimmed().isEmpty())
+                    g.expected = lowText;
+                bool ok = false;
+                const double thr = g.expected.trimmed().toDouble(&ok);
+                if (ok) {
+                    g.low = thr;
+                    g.high = thr;
+                }
+            }
             if (!rowEnabled && !hasData)
                 continue;
             gates.append(g);
@@ -2063,7 +2242,8 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
             if (def.gates.size() > 1
                 || def.gate.reportType == QLatin1String("ProtocolDongleSuctionPeakData")
                 || def.gate.reportType == QLatin1String("ProtocolFixturePcbaData")
-                || def.gate.reportType == QLatin1String("ProtocolJieliBtBoxData"))
+                || def.gate.reportType == QLatin1String("ProtocolJieliBtBoxData")
+                || def.gate.reportType == QLatin1String("ProtocolScreenInspectData"))
                 def.gate.field = QStringLiteral("multi");
         }
     }

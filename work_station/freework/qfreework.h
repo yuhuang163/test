@@ -4,6 +4,7 @@
 #include <QByteArray>
 #include <QEvent>
 #include <QHash>
+#include <QImage>
 #include <QPair>
 #include <QElapsedTimer>
 #include <QShowEvent>
@@ -340,6 +341,18 @@ class QFreeWork : public test_base {
     void runDongleSuctionSampleStep();
     /** Dongle 单通道吸力采样；判定走 ProtocolDongleSuctionPeakData Gate。 */
     void runDongleSuctionSampleSingleStep();
+    /** 自由工站屏幕检测：调用 USB 摄像头对屏幕拍照，再分析对比（坏点 / 显示异常）+ Gate。 */
+    void runScreenInspectStep();
+    /**
+     * 图像自动识别未通过时弹窗人工复核。
+     * 点「否」=目视正常→返回 true（步骤按通过）；点「是」=确认有问题→返回 false（不通过）。
+     */
+    bool screenInspectAskHumanPassOnAutoFail(const QString& autoFailDetail);
+    void rememberScreenInspectImages(const QImage& capture, const QImage& annotated, const QImage& reference,
+                                     const QString& folder);
+    void updateScreenInspectPreview();
+    void showScreenInspectViewer();
+    void openScreenInspectFolder();
     /**
      * 程控电源读电流：连续采样若干秒，期间任一值卡控合格即通过。
      * 每次读数经 ProtocolMeasureData(Current) 上报后由 onUsbInstrumentReport 软判定。
@@ -415,6 +428,11 @@ class QFreeWork : public test_base {
     double suctionRightPeakLow_ = 0.0;
     /** 本轮回放中已配置的会凌 VISA 连接（地址/电压/电流等），开关步骤可复用。 */
     QVariantMap huilingVisaLinkCache_;
+    /** 最近一次 USB 摄像头屏幕拍照，供「屏幕拍照」页预览/大图。 */
+    QImage screenInspectCapture_;
+    QImage screenInspectAnnotated_;
+    QImage screenInspectReference_;
+    QString screenInspectFolder_;
 
   private slots:
     void initData(bool deferDongleAtForVisa = false);
@@ -489,6 +507,8 @@ class QFreeWork : public test_base {
     void on_stopTest_clicked();
     void on_toggleExtraTabsButton_clicked();
     void on_clearSuctionChartButton_clicked();
+    void on_viewScreenInspectLargeButton_clicked();
+    void on_openScreenInspectFolderButton_clicked();
 
   signals:
     void send_go_next_focus();
