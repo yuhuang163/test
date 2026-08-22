@@ -271,12 +271,13 @@ box_base::~box_base() {
 void box_base::closeEvent(QCloseEvent*) {
     qDebug() << "box_base关闭";
     isTestContinue = 0;
+    // 先保存串口，再关子窗口（避免关窗过程中下拉被清空后写空值）
+    saveCustom();
     for (auto x : testList) {
         x->close();
     }
     if (qsetting_ui != NULL)
         qsetting_ui->close();
-    saveCustom();
 }
 void box_base::startAllReturnPressed() {
     for (int i = 0; i < testList.size(); i++) {
@@ -450,7 +451,6 @@ void box_base::ShowData(QMainWindow* parent) {
     }
     for (int i = 0; i < testList.size(); ++i)
         testList[i]->msgEdit()->appendPlainText("当前产品为:" + pack.product);
-
 
     QAction* setting = parent->menuBar()->addAction("功能设置");
     settingMenuAction = setting;

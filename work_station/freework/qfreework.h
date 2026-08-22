@@ -265,7 +265,8 @@ class QFreeWork : public test_base {
     void closeKeyWaitPrompt();
     void showTestCasePromptForStep(const TestCaseDefinition& def);
     void closeTestCasePrompt();
-    void onTestCasePromptAcknowledged();
+    /** accepted=true 点「是」；false 点「否」或关闭 → 纯弹窗判失败。 */
+    void onTestCasePromptAcknowledged(bool accepted = true);
     void onTestCaseStepMarkedDone(bool pass, const QString& testData, const QString& ask);
     void armPlcBleKeyWaitTimeout();
     void waitPlcBleKeyReportBlocking();

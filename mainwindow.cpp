@@ -371,7 +371,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
                                         "border-radius: 10px; padding: 10px; text-align: center; ");
     ui->ble_test_result->setText("BLE:WAIT");
     ui->ble_test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  "
-                                       "border-radius: 10px; padding: 10px; text-align: center; ");
+                                   "border-radius: 10px; padding: 10px; text-align: center; ");
     // this->setCentralWidget(ui->tabWidget);
     ui->local_ota_result->setText("OTA");
     ui->local_ota_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  "
@@ -468,7 +468,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     ui->statusbar->addPermanentWidget(uartStatusLabel);
     ui->statusbar->addPermanentWidget(new QLabel(DEBUG_VER + QString(__DATE__) + " " + QString(__TIME__)));
     ui->statusbar->addPermanentWidget(cloudLoginLabel);
-
+   
     refreshCloudLoginState();
     {
         QTimer* timer = new QTimer(this);
@@ -769,7 +769,7 @@ void MainWindow::refreshDongleDeviceName(const QString& name)
     SETTINGS.setValue("Mes/Product_Name", targetProduct);
     SETTINGS.setValue("SYSTEM/ProtocolType", targetProtocol);
     SETTINGS.sync();
-
+    
     auto selectedType =
         QProtocolManager::protocolTypeFromString(targetProtocol.toStdString());
     protocolManager.setCurrentProtocolType(selectedType);
@@ -1661,10 +1661,10 @@ void MainWindow::on_enterBurningMode_clicked() {
         return;
     }
 
-    QVariantMap m;
-    m["mode"] = mode;
+        QVariantMap m;
+        m["mode"] = mode;
     m["seconds"] = ui->burningModetime->text();
-    protocolManager.set(DeviceCmd::BurningMode, m);
+        protocolManager.set(DeviceCmd::BurningMode, m);
     showlog("已发送老化");
 }
 void MainWindow::on_exitBurningMode_clicked() {
