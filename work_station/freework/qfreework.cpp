@@ -5,7 +5,6 @@
 #include "qfreeworkbox.h"
 #include "screen_inspect_analyzer.h"
 #include "screen_inspect_capture.h"
-#include "screen_inspect_gige_capture.h"
 #include "test_case.h"
 
 #include <QMessageBox>
