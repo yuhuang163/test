@@ -3358,7 +3358,7 @@ QByteArray QFreeWork::brushInstrumentStartCmdForProfile(int profile) {
     }
 }
 
-void QFreeWork::startProductInstrumentResetAndWaitAck(QString stepNameIn) {
+void QFreeWork::startProductInstrumentResetAndWaitAck(QString stepNameIn, int timeoutMs) {
     QString stepName = stepNameIn.trimmed();
     if (stepName.isEmpty()) {
         stepName = testCaseStepActive_ ? activeTestCaseStepLabel_
@@ -3371,18 +3371,23 @@ void QFreeWork::startProductInstrumentResetAndWaitAck(QString stepNameIn) {
         return;
     }
     product->clearProductSerialRxAccum();
-    QString err;
-    if (!product->writeRaw(Qproduct::cmdReset(), &err)) {
-        stepRuntime_.done = true;
-        stepRuntime_.pass = false;
-        stepRuntime_.testData = err;
-        TestResult = failValue;
-        showlog(stepName + QStringLiteral("失败：写串口 ") + err);
-        return;
-    }
     stepRuntime_.done = false;
     stepRuntime_.pass = true;
     stepRuntime_.testData = QStringLiteral("等待040E0405030C00");
+
+    const auto sendFn = [this, stepName]() {
+        QString err;
+        if (!product->writeRaw(Qproduct::cmdReset(), &err))
+            showlog(stepName + QStringLiteral("失败：写串口 ") + err);
+    };
+    // timeoutMs<0：WaitReply=false，只发不等应答
+    if (timeoutMs < 0) {
+        sendFn();
+        stepRuntime_.done = true;
+        stepRuntime_.testData = QStringLiteral("已发送（不等待回包）");
+        showlog(QStringLiteral("已发送（不等待回包）"));
+        return;
+    }
 
     productInstConn_ = connect(product, &Qproduct::instrumentAckResetSeen, this, [this, stepName]() {
         if (!isCurrentInstrumentStep(stepName)) {
@@ -3393,14 +3398,17 @@ void QFreeWork::startProductInstrumentResetAndWaitAck(QString stepNameIn) {
         }
         disconnect(productInstConn_);
         productInstConn_ = QMetaObject::Connection();
+        finishCommandRetryWait(true, QString());
         stepRuntime_.done = true;
         stepRuntime_.pass = true;
         stepRuntime_.testData = QStringLiteral("040E0405030C00");
         showlog(stepName + QStringLiteral("通过"));
     });
+    setCommandWaitSource(CommandWaitSource::ProductSerial);
+    sendCommandWithRetry(sendFn, timeoutMs > 0 ? timeoutMs : 30000);
 }
 
-void QFreeWork::startProductInstrumentStartReceiveForCatalog(const QString& stepNameIn, int profile) {
+void QFreeWork::startProductInstrumentStartReceiveForCatalog(const QString& stepNameIn, int profile, int timeoutMs) {
     // 用例库走 ProductSerial 时传入空名；须落到当前步骤名，否则回包守卫 isCurrentInstrumentStep 失败导致卡死
     QString stepName = stepNameIn.trimmed();
     if (stepName.isEmpty()) {
@@ -3417,18 +3425,22 @@ void QFreeWork::startProductInstrumentStartReceiveForCatalog(const QString& step
     const QByteArray frame = brushInstrumentStartCmdForProfile(profile);
     lastBrushInstrumentProfile_ = profile;
     cmwFacade_.clearBurstDoneSinceStartRx();
-    QString err;
-    if (!product->writeRaw(frame, &err)) {
-        stepRuntime_.done = true;
-        stepRuntime_.pass = false;
-        stepRuntime_.testData = err;
-        TestResult = failValue;
-        showlog(stepName + QStringLiteral("失败：写串口 ") + err);
-        return;
-    }
     stepRuntime_.done = false;
     stepRuntime_.pass = true;
     stepRuntime_.testData = QStringLiteral("Profile=%1 等待040E0405332000").arg(profile);
+
+    const auto sendFn = [this, stepName, frame]() {
+        QString err;
+        if (!product->writeRaw(frame, &err))
+            showlog(stepName + QStringLiteral("失败：写串口 ") + err);
+    };
+    if (timeoutMs < 0) {
+        sendFn();
+        stepRuntime_.done = true;
+        stepRuntime_.testData = QStringLiteral("已发送（不等待回包）");
+        showlog(QStringLiteral("已发送（不等待回包）"));
+        return;
+    }
 
     productInstConn_ = connect(product, &Qproduct::instrumentAckStartReceiveSeen, this, [this, stepName]() {
         if (!isCurrentInstrumentStep(stepName)) {
@@ -3439,14 +3451,17 @@ void QFreeWork::startProductInstrumentStartReceiveForCatalog(const QString& step
         }
         disconnect(productInstConn_);
         productInstConn_ = QMetaObject::Connection();
+        finishCommandRetryWait(true, QString());
         stepRuntime_.done = true;
         stepRuntime_.pass = true;
         stepRuntime_.testData = QStringLiteral("040E0405332000");
         showlog(stepName + QStringLiteral("通过"));
     });
+    setCommandWaitSource(CommandWaitSource::ProductSerial);
+    sendCommandWithRetry(sendFn, timeoutMs > 0 ? timeoutMs : 30000);
 }
 
-void QFreeWork::startProductInstrumentStopReceiveAndPer(QString stepNameIn) {
+void QFreeWork::startProductInstrumentStopReceiveAndPer(QString stepNameIn, int timeoutMs) {
     QString stepName = stepNameIn.trimmed();
     if (stepName.isEmpty()) {
         stepName = testCaseStepActive_ ? activeTestCaseStepLabel_
@@ -3486,40 +3501,23 @@ void QFreeWork::startProductInstrumentStopReceiveAndPer(QString stepNameIn) {
     }
 
     const int delayBeforeStopMs = ranCmwBurst ? 0 : waitPacketMs;
+    const int uartWaitMs = timeoutMs > 0 ? timeoutMs : stopAckTimeout;
     showlog(stepName +
             QStringLiteral("：写停止接收前延时 %1 ms（BrushInstrument/PacketPhaseWaitMs=%2；已实际打并联 CMW 突发则不再追加积包延时）")
                 .arg(delayBeforeStopMs)
                 .arg(waitPacketMs));
 
-    QTimer::singleShot(delayBeforeStopMs, this, [this, stepName, stopAckTimeout]() {
+    QTimer::singleShot(delayBeforeStopMs, this, [this, stepName, uartWaitMs]() {
         if (!isCurrentInstrumentStep(stepName)) {
             return;
         }
-        QString err;
-        if (!product || !product->writeRaw(Qproduct::cmdStopReceive(), &err)) {
-            stepRuntime_.done = true;
-            stepRuntime_.pass = false;
-            stepRuntime_.testData = err.isEmpty() ? QStringLiteral("写停止接收失败") : err;
-            TestResult = failValue;
-            showlog(stepName + QStringLiteral("失败：写停止 ") + stepRuntime_.testData);
-            return;
-        }
-        // 应答由构造函数中 connect 的 onProductInstrumentStopReceiveAckForPer 处理，此处仅登记当前步骤名
         productInstrumentStopWaitStepName_ = stepName;
-        QTimer::singleShot(stopAckTimeout, this, [this, stepName]() {
-            if (!isCurrentInstrumentStep(stepName)) {
-                return;
-            }
-            if (stepRuntime_.done) {
-                return;
-            }
-            productInstrumentStopWaitStepName_.clear();
-            stepRuntime_.done = true;
-            stepRuntime_.pass = false;
-            stepRuntime_.testData = QStringLiteral("超时未收到停止接收应答");
-            TestResult = failValue;
-            showlog(stepName + QStringLiteral("失败：等待停止应答超时"));
-        });
+        setCommandWaitSource(CommandWaitSource::ProductSerial);
+        sendCommandWithRetry([this, stepName]() {
+            QString err;
+            if (!product || !product->writeRaw(Qproduct::cmdStopReceive(), &err))
+                showlog(stepName + QStringLiteral("失败：写停止 ") + (err.isEmpty() ? QStringLiteral("写停止接收失败") : err));
+        }, uartWaitMs);
     });
 }
 

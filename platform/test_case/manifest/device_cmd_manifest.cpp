@@ -142,7 +142,11 @@ constexpr const char kHintRootSystemControl[] =
     u8"卡控（可选）：ReportType=ProtocolResultData，Field=result，Expected=1";
 constexpr const char kHintLedTest[] =
     u8"Qroot：Req 0x93，on=1 全亮 / on=0 全灭\r\n"
+    u8"Qfctp：系统配置 TLV 0x0005，on=1 全亮 / on=0 全灭\r\n"
     u8"示例：Param_on=1 或 {\"on\":1}";
+constexpr const char kHintLcdBacklight[] =
+    u8"Qfctp：测试服务 TLV 0x001C，on=1 开背光 / on=0 关背光\r\n"
+    u8"示例：Param_on=1 或 {\"on\":0}";
 constexpr const char kHintButtonState[] =
     u8"Qaiot：模拟按键 CID=0x10，Param_int/Param_key=0x01~0x0B\r\n"
     u8"01电源 02开始 03模式 04频率 05母乳 06左控 07右控 08恢复出厂 09旅行锁 0A旋钮左 0B旋钮右\r\n"
@@ -310,12 +314,13 @@ const Row kRows[] = {
     {DeviceCmd::MacWrite, "MacWrite", u8"蓝牙mac地址", DeviceCmdParamKind::JsonMap, kHintMacWrite, kSet},
     {DeviceCmd::NightLightSet, "NightLightSet", u8"夜灯", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::LedTest, "LedTest", u8"指示灯测试", DeviceCmdParamKind::JsonMap, kHintLedTest, kSet},
-    {DeviceCmd::LcdBacklight, "LcdBacklight", u8"屏幕背光", DeviceCmdParamKind::None, nullptr, kSet},
+    {DeviceCmd::LcdBacklight, "LcdBacklight", u8"屏幕背光", DeviceCmdParamKind::JsonMap, kHintLcdBacklight, kSet},
     {DeviceCmd::LcdColorTestMode, "LcdColorTestMode", u8"LCD颜色测试模式(进/退)", DeviceCmdParamKind::JsonMap,
      u8"TLV 0x0021：enter=1 进入，0 退出\r\n示例：Param_enter=1", kSet},
     {DeviceCmd::SetLcdColor, "SetLcdColor", u8"设置LCD颜色", DeviceCmdParamKind::JsonMap,
      u8"TLV 0x0028：color=1红 2绿 3蓝 4黑 5白 6灰度条 7灰\r\n需先进入 LcdColorTestMode\r\n示例：Param_color=1", kSet},
-    {DeviceCmd::LightReportControl, "LightReportControl", u8"灯光上报控制", DeviceCmdParamKind::None, nullptr, kSet},
+    {DeviceCmd::LightReportControl, "LightReportControl", u8"光感上报控制", DeviceCmdParamKind::JsonMap,
+     u8"Qfctp 测试服务 TLV 0x001D：start=1 开启上报 / start=0 关闭\r\n示例：Param_start=1", kSet},
     {DeviceCmd::LightCalibWrite, "LightCalibWrite", u8"传感器校准写入", DeviceCmdParamKind::JsonMap, kHintLightCalibWrite, kSet},
     {DeviceCmd::CompensationSet, "CompensationSet", u8"补偿参数", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::NowMusicInfo, "NowMusicInfo", u8"当前音乐信息", DeviceCmdParamKind::None, nullptr, kGet},

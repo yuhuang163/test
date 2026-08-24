@@ -31,6 +31,7 @@ enum class CommandWaitSource {
     Any = 0,
     ProductProtocol,
     DongleAt,
+    ProductSerial,
 };
 
 typedef enum {
