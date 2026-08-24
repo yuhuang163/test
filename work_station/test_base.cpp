@@ -667,6 +667,12 @@ bool test_base::isCommandRetryResponseAccepted(const QObject* source) const {
             return false;
         }
         return true;
+    case CommandWaitSource::ProductSerial:
+        if (source != static_cast<const QObject*>(product)) {
+            qDebug() << QStringLiteral("sendCommandWithRetry: 忽略非产品串口应答");
+            return false;
+        }
+        return true;
     }
     return true;
 }

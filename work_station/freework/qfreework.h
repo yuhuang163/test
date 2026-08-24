@@ -294,9 +294,9 @@ class QFreeWork : public test_base {
     void clearProductInstrumentWatch();
     bool ensureProductSerialForInstrumentStep(const QString& stepName);
     static QByteArray brushInstrumentStartCmdForProfile(int profile);
-    void startProductInstrumentResetAndWaitAck(QString stepName = QString());
-    void startProductInstrumentStartReceiveForCatalog(const QString& stepName, int profile);
-    void startProductInstrumentStopReceiveAndPer(QString stepName = QString());
+    void startProductInstrumentResetAndWaitAck(QString stepName = QString(), int timeoutMs = 0);
+    void startProductInstrumentStartReceiveForCatalog(const QString& stepName, int profile, int timeoutMs = 0);
+    void startProductInstrumentStopReceiveAndPer(QString stepName = QString(), int timeoutMs = 0);
 
     // --- 协议回包 / 三元组 / BYD（部分实现见 qfreework_data.cpp） ---
     void appendPeriphItem(QVector<TestItem>& periphTestItems, bool& pass, const QString& name, const QString& value,

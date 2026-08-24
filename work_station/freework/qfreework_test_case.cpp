@@ -3033,12 +3033,16 @@ void QFreeWork::executeProductSerialCase(const TestCaseDefinition& def) {
         return;
     }
 
+    const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+    // WaitReply=false：只发不等应答；停止接收+PER 必须等收包数，仍走等待
+    const int waitMs = def.timing.waitReply ? timeoutMs : -1;
+
     switch (serialCmd) {
     case ProductSerialCmd::InstrumentReset:
-        startProductInstrumentResetAndWaitAck(QString());
+        startProductInstrumentResetAndWaitAck(QString(), waitMs);
         break;
     case ProductSerialCmd::StopRxAndPer:
-        startProductInstrumentStopReceiveAndPer(QString());
+        startProductInstrumentStopReceiveAndPer(QString(), timeoutMs);
         break;
     default: {
         const int profile = ProductSerialCmdCatalog::brushProfileForCmd(serialCmd);
@@ -3046,7 +3050,7 @@ void QFreeWork::executeProductSerialCase(const TestCaseDefinition& def) {
             markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
             return;
         }
-        startProductInstrumentStartReceiveForCatalog(QString(), profile);
+        startProductInstrumentStartReceiveForCatalog(QString(), profile, waitMs);
         break;
     }
     }

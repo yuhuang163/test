@@ -373,6 +373,7 @@ void QFreeWork::onProductInstrumentStopReceiveAckForPer(int recvPkts) {
         return;
     }
     productInstrumentStopWaitStepName_.clear();
+    finishCommandRetryWait(true, QString());
     const int sendCount = SETTINGS.value(QStringLiteral("BrushInstrument/InstrumentSendPacketCount"), 1000).toInt();
     const double maxPer = SETTINGS.value(QStringLiteral("BrushInstrument/MaxPer"), 0.05).toDouble();
     const double per = Qproduct::computePer(sendCount, recvPkts);
