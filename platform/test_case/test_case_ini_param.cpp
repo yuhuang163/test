@@ -162,6 +162,7 @@ bool hookUsesGenericSendParamMap(const TestCaseDefinition& def) {
         return false;
     const QString id = def.hook.hookId.trimmed();
     return id == QLatin1String("COUNTDOWN_WAIT") || id == QLatin1String("LIGHT_SENSOR_GOLDEN_CALIB")
+        || id == QLatin1String("LIGHT_SENSOR_CALIB_WRITE") || id == QLatin1String("LIGHT_SENSOR_CALIB_READ")
         || id == QLatin1String("VES_CH1_SET_BRIGHTNESS");
 }
 

@@ -571,6 +571,7 @@ QString test_base::sessionMacForLog() {
 }
 
 void test_base::onTestSessionStarting(const QString& sn, const QString& mac) {
+    testCsvAccumItems_.clear();
     QString station = TestCaseStore::loadSelectedFlowStationName();
     if (station.isEmpty()) {
         station = SETTINGS.value(QStringLiteral("SYSTEM/station")).toString().trimmed();
@@ -589,7 +590,16 @@ void test_base::onTestSessionStarting(const QString& sn, const QString& mac) {
     qDebug() << buildInfo;
 }
 
+void test_base::flushPendingTestCsv() {
+    if (testCsvAccumItems_.isEmpty()) {
+        return;
+    }
+    log->saveTestCsv(upperComputerVer, getMacLineEdit()->text(), macInputLineEdit()->text(), testCsvAccumItems_);
+    testCsvAccumItems_.clear();
+}
+
 void test_base::abortTestSessionAndUpload() {
+    flushPendingTestCsv();
     if (!Qlog::hasActiveSession(m_index)) {
         return;
     }
@@ -974,6 +984,7 @@ QString test_base::exportTableContent() {
 }
 
 void test_base::finishTestRecord(const MesPacketData& packIn, bool useMes) {
+    flushPendingTestCsv();
     MesPacketData pack = packIn;
     if (pack.sn.trimmed().isEmpty()) {
         pack.sn = sessionSnForLog();
@@ -1041,7 +1052,11 @@ void test_base::testResultTableUpdate(QVector<TestItem>& testItems) {
         testResultTable()->setItem(row, 2, resultItem);
         testResultTable()->setItem(row, 3, askItem);
     }
-    log->saveTestCsv(upperComputerVer, getMacLineEdit()->text(), macInputLineEdit()->text(), testItems);
+    if (SETTINGS.value(QStringLiteral("SYSTEM/TestCsvOneRowPerTest"), true).toBool()) {
+        testCsvAccumItems_.append(testItems);
+    } else {
+        log->saveTestCsv(upperComputerVer, getMacLineEdit()->text(), macInputLineEdit()->text(), testItems);
+    }
 
     testItems.clear();
 }

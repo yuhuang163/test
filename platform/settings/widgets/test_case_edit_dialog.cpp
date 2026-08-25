@@ -120,8 +120,15 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("waitMs"), QStringLiteral("单次采集光感上报超时毫秒")},
         {QStringLiteral("readRepeat"), QStringLiteral("单点重复读取次数（取中位数）")},
         {QStringLiteral("stableTail"), QStringLiteral("取尾部稳定样本个数")},
-        {QStringLiteral("writeCalib"), QStringLiteral("1=写入光感偏移 0=只读")},
+        {QStringLiteral("writeCalib"), QStringLiteral("1=写入光感平均值 0=只读")},
         {QStringLiteral("verifyRead"), QStringLiteral("1=写后回读校验")},
+        {QStringLiteral("verifyWrite"), QStringLiteral("1=回读值须与本轮写入值一致")},
+        {QStringLiteral("enableFivePointJudge"), QStringLiteral("1=五点齐全后做范围+差值终判（通常只在读取点5开）")},
+        {QStringLiteral("minSamples"), QStringLiteral("采光感最少样本数")},
+        {QStringLiteral("rangeLo"), QStringLiteral("本点回读下限（含）")},
+        {QStringLiteral("rangeHi"), QStringLiteral("本点回读上限")},
+        {QStringLiteral("rangeHiInc"), QStringLiteral("本点上界是否含：1=含 0=不含")},
+        {QStringLiteral("diffMin"), QStringLiteral("本点相对上一点差值下限（判定 >；点1可不写）")},
         {QStringLiteral("channelLock"), QStringLiteral("锁定通道号（不按工位改）")},
         {QStringLiteral("slaveAddr"), QStringLiteral("Modbus 从站地址")},
         {QStringLiteral("addr"), QStringLiteral("Modbus 从站地址")},
@@ -185,6 +192,7 @@ QString sendParamKeyZhLabel(const QString& key) {
 /** Hook 步骤是否需在编辑对话框展示 Param_ 参数表（非 Send 指令）。 */
 bool hookUsesSendParamUi(const QString& hookId) {
     return hookId == QLatin1String("COUNTDOWN_WAIT") || hookId == QLatin1String("LIGHT_SENSOR_GOLDEN_CALIB")
+        || hookId == QLatin1String("LIGHT_SENSOR_CALIB_WRITE") || hookId == QLatin1String("LIGHT_SENSOR_CALIB_READ")
         || hookId == QLatin1String("VES_CH1_SET_BRIGHTNESS");
 }
 
@@ -200,10 +208,28 @@ QVariantMap hookSendParamDefaultMap(const QString& hookId) {
         map.insert(QStringLiteral("index"), QStringLiteral("0"));
         map.insert(QStringLiteral("golden"), QStringLiteral("38"));
         map.insert(QStringLiteral("waitMs"), QStringLiteral("5000"));
-        map.insert(QStringLiteral("readRepeat"), QStringLiteral("3"));
-        map.insert(QStringLiteral("stableTail"), QStringLiteral("5"));
-        map.insert(QStringLiteral("writeCalib"), QStringLiteral("1"));
-        map.insert(QStringLiteral("verifyRead"), QStringLiteral("1"));
+        map.insert(QStringLiteral("minSamples"), QStringLiteral("10"));
+        map.insert(QStringLiteral("verifyWrite"), QStringLiteral("1"));
+        map.insert(QStringLiteral("enableFivePointJudge"), QStringLiteral("1"));
+        return map;
+    }
+    if (hookId == QLatin1String("LIGHT_SENSOR_CALIB_WRITE")) {
+        QVariantMap map;
+        map.insert(QStringLiteral("index"), QStringLiteral("0"));
+        map.insert(QStringLiteral("golden"), QStringLiteral("38"));
+        map.insert(QStringLiteral("waitMs"), QStringLiteral("5000"));
+        map.insert(QStringLiteral("minSamples"), QStringLiteral("10"));
+        return map;
+    }
+    if (hookId == QLatin1String("LIGHT_SENSOR_CALIB_READ")) {
+        QVariantMap map;
+        map.insert(QStringLiteral("index"), QStringLiteral("0"));
+        map.insert(QStringLiteral("verifyWrite"), QStringLiteral("1"));
+        map.insert(QStringLiteral("enableFivePointJudge"), QStringLiteral("0"));
+        map.insert(QStringLiteral("rangeLo"), QStringLiteral("0"));
+        map.insert(QStringLiteral("rangeHi"), QStringLiteral("70"));
+        map.insert(QStringLiteral("rangeHiInc"), QStringLiteral("0"));
+        map.insert(QStringLiteral("diffMin"), QStringLiteral("20"));
         return map;
     }
     if (hookId == QLatin1String("VES_CH1_SET_BRIGHTNESS")) {
@@ -1255,8 +1281,17 @@ void applyHookSendParamUi(Ui::TestCaseEditDialog* ui, const QString& hookId, con
         uiSchema.hint = QStringLiteral("seconds：倒计时秒数（必填，>0）；prompt：弹窗提示文字（可选）");
     } else if (hookId == QLatin1String("LIGHT_SENSOR_GOLDEN_CALIB")) {
         uiSchema.hint = QStringLiteral(
-            "产品协议单点：index 写入下标；golden 金样光感；waitMs/readRepeat/stableTail 采光感；"
-            "writeCalib/verifyRead 写偏移并回读。治具亮度请用前一步 VES SetBrightness");
+            "产品协议单点：index 写入下标；golden 金样光感（仅日志）；waitMs/minSamples 采光感取平均并写回读；"
+            "采齐 index0~4 后自动做范围+差值终判（Param_enableFivePointJudge=0 可关）。治具亮度请用前一步 VES SetBrightness");
+    } else if (hookId == QLatin1String("LIGHT_SENSOR_CALIB_WRITE")) {
+        uiSchema.hint = QStringLiteral(
+            "仅采光感取平均并写入：index/golden/waitMs/minSamples。流程需先「开启光感上报」再 VES 设亮度；"
+            "回读请用 LIGHT_SENSOR_CALIB_READ 步骤");
+    } else if (hookId == QLatin1String("LIGHT_SENSOR_CALIB_READ")) {
+        uiSchema.hint = QStringLiteral(
+            "本点回读：index/verifyWrite；Param_rangeLo/Hi/HiInc 配本点范围；"
+            "index>0 写 Param_diffMin（相对上一点，判定>）；"
+            "读取点5 设 enableFivePointJudge=1 汇总终判");
     } else if (hookId == QLatin1String("VES_CH1_SET_BRIGHTNESS")) {
         uiSchema.hint = QStringLiteral(
             "走工位治具串口，协议固定通道 1；Param_brightness：亮度 0~255（默认 22）");
@@ -1550,7 +1585,9 @@ const QHash<QString, QString>& hookDisplayNameMap() {
         {QStringLiteral("PRINT_WHOLE_MACHINE_SN"), QStringLiteral("打印整机 SN 二维码")},
         {QStringLiteral("QR_SN_CONSISTENCY_CHECK"), QStringLiteral("二维码一致性校验（与开局SN比对）")},
         {QStringLiteral("COUNTDOWN_WAIT"), QStringLiteral("倒计时等待弹窗（到点自动下一步）")},
-        {QStringLiteral("LIGHT_SENSOR_GOLDEN_CALIB"), QStringLiteral("光感单点校准（设亮度→采光感→写偏移）")},
+        {QStringLiteral("LIGHT_SENSOR_GOLDEN_CALIB"), QStringLiteral("光感单点校准（设亮度→采光感→写+回读，旧）")},
+        {QStringLiteral("LIGHT_SENSOR_CALIB_WRITE"), QStringLiteral("光感写入校准值（采光感→写）")},
+        {QStringLiteral("LIGHT_SENSOR_CALIB_READ"), QStringLiteral("光感读取校准值（回读+五点终判）")},
         {QStringLiteral("VES_CH1_SET_BRIGHTNESS"), QStringLiteral("VES光源CH1设亮度")},
         {QStringLiteral("MES_GET_ROOT_SKU"), QStringLiteral("MES 获取 ROOTSKU（三元组 SKU）")},
         {QStringLiteral("PLC_MODBUS_CONN"), QStringLiteral("PLC Modbus 连接")},

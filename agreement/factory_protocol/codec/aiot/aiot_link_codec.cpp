@@ -26,23 +26,33 @@ uint16_t AiotLinkCodec::crc16CcittFalse(const QByteArray& data) {
     return crc16CcittFalse(reinterpret_cast<const uint8_t*>(data.constData()), data.size());
 }
 
-QByteArray AiotLinkCodec::buildFrame(const QByteArray& payload, uint8_t control, uint8_t fsn) {
-    const uint8_t fsnBits = static_cast<uint8_t>(control & AiotLink::kCtrlFsnMask);
-    const bool needFsn = fsnBits != AiotLink::kCtrlFsnNone;
+QByteArray AiotLinkCodec::buildFrame(const QByteArray& payload, uint8_t control, uint8_t fsn, uint8_t fmn,
+                                     uint8_t psn, uint8_t version) {
+    const uint8_t fra = static_cast<uint8_t>(control & AiotLink::kCtrlFsnMask);
+    const bool needVersion = (control & AiotLink::kCtrlVersion) != 0;
+    const bool needFsn = fra != AiotLink::kCtrlFsnNone;
+    // Version 启用且分帧：Header 再带 FMN+PSN（规范 Version=0）
+    const bool needFmnPsn = needVersion && needFsn;
 
-    // Length = Control(+FSN)+Payload，不含 SOF/Length/CRC
-    const int midLen = 1 + (needFsn ? 1 : 0) + payload.size();
+    // Length = Control(+Version)(+FSN)(+FMN+PSN)+Payload，不含 SOF/Length/CRC
+    const int midLen = 1 + (needVersion ? 1 : 0) + (needFsn ? 1 : 0) + (needFmnPsn ? 2 : 0) + payload.size();
     if (midLen > 0xFFFF)
         return {};
 
     QByteArray mid;
     mid.reserve(midLen);
     mid.append(static_cast<char>(control));
+    if (needVersion)
+        mid.append(static_cast<char>(version));
     if (needFsn)
         mid.append(static_cast<char>(fsn));
+    if (needFmnPsn) {
+        mid.append(static_cast<char>(fmn));
+        mid.append(static_cast<char>(psn));
+    }
     mid.append(payload);
 
-    // CRC 覆盖 Length + Control(+FSN) + Payload
+    // CRC 覆盖 Length + Control(+Version/FSN/FMN/PSN) + Payload
     QByteArray crcInput;
     crcInput.reserve(2 + mid.size());
     crcInput.append(static_cast<char>((midLen >> 8) & 0xFF));
@@ -66,12 +76,14 @@ QVector<QByteArray> AiotLinkCodec::buildFramesForPdu(const QByteArray& pdu, int 
     if (maxPayload < 1)
         maxPayload = 512;
     if (pdu.size() <= maxPayload) {
+        // 本机发送仍用 v1.0 单帧（不启 Version）；设备应答可能带 Version=0
         frames.append(buildFrame(pdu, AiotLink::kCtrlFsnNone));
         return frames;
     }
 
     int offset = 0;
     uint8_t fsn = 0;
+    const int totalFrames = (pdu.size() + maxPayload - 1) / maxPayload;
     while (offset < pdu.size()) {
         const int remain = pdu.size() - offset;
         const int chunk = qMin(remain, maxPayload);
@@ -83,7 +95,8 @@ QVector<QByteArray> AiotLinkCodec::buildFramesForPdu(const QByteArray& pdu, int 
         // 多分片时首帧也必须带 FSN
         if (offset == 0 && chunk < pdu.size())
             ctrl = AiotLink::kCtrlFsnStart;
-        frames.append(buildFrame(pdu.mid(offset, chunk), ctrl, fsn++));
+        frames.append(buildFrame(pdu.mid(offset, chunk), ctrl, fsn, static_cast<uint8_t>(totalFrames), 0));
+        ++fsn;
         offset += chunk;
     }
     return frames;
@@ -111,7 +124,7 @@ bool AiotLinkCodec::feed(const QByteArray& chunk, QVector<Frame>* outFrames) {
             break;
         case State::WaitLen1: {
             const uint16_t midLen = static_cast<uint16_t>(expectedBody_ | ch);
-            // body = Control(+FSN)+Payload+CRC(2)
+            // body = Control(+Version/FSN/FMN/PSN)+Payload+CRC(2)
             if (midLen < 1) {
                 reset();
                 break;
@@ -140,21 +153,43 @@ bool AiotLinkCodec::feed(const QByteArray& chunk, QVector<Frame>* outFrames) {
                 crcInput.append(body_.constData(), midLen);
                 const uint16_t expect = crc16CcittFalse(crcInput);
                 const uint16_t gotCrc = static_cast<uint16_t>(
-                    (static_cast<uint8_t>(body_.at(midLen)) << 8) |
-                    static_cast<uint8_t>(body_.at(midLen + 1)));
+                    (static_cast<uint8_t>(body_.at(midLen)) << 8) | static_cast<uint8_t>(body_.at(midLen + 1)));
                 if (expect == gotCrc) {
                     Frame fr;
                     fr.control = static_cast<uint8_t>(body_.at(0));
-                    const uint8_t fsnBits = static_cast<uint8_t>(fr.control & AiotLink::kCtrlFsnMask);
+                    const uint8_t fra = static_cast<uint8_t>(fr.control & AiotLink::kCtrlFsnMask);
+                    const bool needVersion = (fr.control & AiotLink::kCtrlVersion) != 0;
+                    const bool needFsn = fra != AiotLink::kCtrlFsnNone;
+                    const bool needFmnPsn = needVersion && needFsn;
+
                     int payloadOff = 1;
-                    if (fsnBits != AiotLink::kCtrlFsnNone) {
-                        if (midLen < 2) {
+                    if (needVersion) {
+                        if (midLen < payloadOff + 1) {
+                            reset();
+                            break;
+                        }
+                        fr.hasVersion = true;
+                        fr.version = static_cast<uint8_t>(body_.at(payloadOff));
+                        ++payloadOff;
+                    }
+                    if (needFsn) {
+                        if (midLen < payloadOff + 1) {
                             reset();
                             break;
                         }
                         fr.hasFsn = true;
-                        fr.fsn = static_cast<uint8_t>(body_.at(1));
-                        payloadOff = 2;
+                        fr.fsn = static_cast<uint8_t>(body_.at(payloadOff));
+                        ++payloadOff;
+                    }
+                    if (needFmnPsn) {
+                        if (midLen < payloadOff + 2) {
+                            reset();
+                            break;
+                        }
+                        fr.hasFmnPsn = true;
+                        fr.fmn = static_cast<uint8_t>(body_.at(payloadOff));
+                        fr.psn = static_cast<uint8_t>(body_.at(payloadOff + 1));
+                        payloadOff += 2;
                     }
                     fr.payload = body_.mid(payloadOff, midLen - payloadOff);
                     outFrames->append(fr);

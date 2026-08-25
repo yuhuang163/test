@@ -159,6 +159,14 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         fw->runLightSensorGoldenCalibStep();
         return;
     }
+    if (hookId == QStringLiteral("LIGHT_SENSOR_CALIB_WRITE")) {
+        fw->runLightSensorCalibWriteStep();
+        return;
+    }
+    if (hookId == QStringLiteral("LIGHT_SENSOR_CALIB_READ")) {
+        fw->runLightSensorCalibReadStep();
+        return;
+    }
     if (hookId == QStringLiteral("VES_CH1_SET_BRIGHTNESS")) {
         fw->runVesCh1SetBrightnessStep();
         return;
@@ -385,6 +393,8 @@ void QFreeWorkTestCaseHookRegistrar::registerAll() {
     registerHook(QStringLiteral("QR_SN_CONSISTENCY_CHECK"));
     registerHook(QStringLiteral("COUNTDOWN_WAIT"));
     registerHook(QStringLiteral("LIGHT_SENSOR_GOLDEN_CALIB"));
+    registerHook(QStringLiteral("LIGHT_SENSOR_CALIB_WRITE"));
+    registerHook(QStringLiteral("LIGHT_SENSOR_CALIB_READ"));
     registerHook(QStringLiteral("VES_CH1_SET_BRIGHTNESS"));
     registerHook(QStringLiteral("MES_GET_ROOT_SKU"));
     registerHook(QStringLiteral("MAC_WRITE_ROOT"));

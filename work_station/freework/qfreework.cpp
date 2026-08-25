@@ -814,6 +814,7 @@ void QFreeWork::beginUiStartTest() {
     isTestContinue = true;
     teststate = -1;
     ui->test_time->setText(QStringLiteral("0.0 s"));
+    resetLightSensorFivePointState();
 
     emit send_go_next_focus();
     ui->getMac->setDisabled(1);
@@ -1007,6 +1008,7 @@ bool QFreeWork::runSingleTestCaseStep(const QString& stationKey, const QString& 
     testResultTableInit();
     stepRuntime_.reset();
     clearActiveTestCase();
+    resetLightSensorFivePointState();
     canGoNext = true;
     TestResult = passValue;
     ui->test_result->setText(QStringLiteral("WAIT"));
@@ -2415,7 +2417,67 @@ void QFreeWork::runDongleSuctionSampleSingleStep() {
                                QStringLiteral("[%1,%2]").arg(peakLo, 0, 'f', 2).arg(peakHi, 0, 'f', 2));
 }
 
-void QFreeWork::runLightSensorGoldenCalibStep() {
+void QFreeWork::resetLightSensorFivePointState() {
+    for (int i = 0; i < 5; ++i) {
+        lightCalibFivePointValues_[i] = 0;
+        lightCalibWrittenValues_[i] = 0;
+    }
+    // 缺省与产品约定一致；各读取点 ini 再覆盖本点 Param_range*/diffMin
+    const int kLo[5] = {0, 70, 170, 500, 1000};
+    const int kHi[5] = {70, 200, 500, 1200, 1700};
+    const int kHiInc[5] = {0, 0, 0, 0, 1};
+    const int kDiff[4] = {20, 20, 50, 100};
+    for (int i = 0; i < 5; ++i) {
+        lightCalibRangeLo_[i] = kLo[i];
+        lightCalibRangeHi_[i] = kHi[i];
+        lightCalibRangeHiInc_[i] = kHiInc[i];
+    }
+    for (int i = 0; i < 4; ++i)
+        lightCalibDiffMin_[i] = kDiff[i];
+    lightCalibFivePointMask_ = 0;
+}
+
+bool QFreeWork::evaluateLightSensorFivePointRule(QString* detailOut) {
+    // 使用各「产品光感读取点N」步骤缓存的范围/差值阈值
+    QStringList vals;
+    for (int i = 0; i < 5; ++i)
+        vals << QString::number(lightCalibFivePointValues_[i]);
+    const QString valuesText = vals.join(QStringLiteral(","));
+
+    QStringList failParts;
+    for (int i = 0; i < 5; ++i) {
+        const int v = lightCalibFivePointValues_[i];
+        const int lo = lightCalibRangeLo_[i];
+        const int hi = lightCalibRangeHi_[i];
+        const bool hiInclusive = lightCalibRangeHiInc_[i] != 0;
+        const bool inRange = hiInclusive ? (v >= lo && v <= hi) : (v >= lo && v < hi);
+        if (!inRange) {
+            failParts << (hiInclusive ? QStringLiteral("回读[%1]=%2∉[%3,%4]").arg(i).arg(v).arg(lo).arg(hi)
+                                      : QStringLiteral("回读[%1]=%2∉[%3,%4)").arg(i).arg(v).arg(lo).arg(hi));
+        }
+    }
+    for (int i = 0; i < 4; ++i) {
+        const int diff = lightCalibFivePointValues_[i + 1] - lightCalibFivePointValues_[i];
+        if (!(diff > lightCalibDiffMin_[i])) {
+            failParts << QStringLiteral("回读[%1]-回读[%2]=%3≤%4")
+                             .arg(i + 1)
+                             .arg(i)
+                             .arg(diff)
+                             .arg(lightCalibDiffMin_[i]);
+        }
+    }
+
+    const bool pass = failParts.isEmpty();
+    if (detailOut) {
+        if (pass)
+            *detailOut = QStringLiteral("回读[%1] 范围+差值通过").arg(valuesText);
+        else
+            *detailOut = QStringLiteral("回读[%1] 卡控失败：%2").arg(valuesText, failParts.join(QStringLiteral("; ")));
+    }
+    return pass;
+}
+
+bool QFreeWork::runLightSensorCalibStepCore(LightCalibStepKind kind, QString* failReason, QString* lineOut) {
     QVariantMap map;
     if (activeTestCase_.send.param.canConvert<QVariantMap>())
         map = resolveTestCaseSendParamTree(activeTestCase_.send.param).toMap();
@@ -2428,13 +2490,25 @@ void QFreeWork::runLightSensorGoldenCalibStep() {
     const int index = qBound(0, mapInt(QStringLiteral("index"), 0), 19);
     const int waitMs = qMax(500, mapInt(QStringLiteral("waitMs"), 5000));
     const int sampleCount = qBound(1, mapInt(QStringLiteral("minSamples"), 10), 50);
-    const bool writeCalib = mapInt(QStringLiteral("writeCalib"), 1) != 0;
+    const bool verifyWrite = mapInt(QStringLiteral("verifyWrite"), 1) != 0;
+    const bool enableFivePointJudge = mapInt(QStringLiteral("enableFivePointJudge"), 1) != 0;
     const int cmdTimeoutMs =
         qMax(500, activeTestCase_.timing.commandTimeoutMs > 0 ? activeTestCase_.timing.commandTimeoutMs : 3000);
-    showlog(QStringLiteral("产品光感校准 index=%1 采%2点取平均写回%3")
-                .arg(index)
-                .arg(sampleCount)
-                .arg(golden >= 0 ? QStringLiteral(" 金样=%1").arg(golden) : QString()));
+
+    const bool doSampleWrite = kind == LightCalibStepKind::WriteOnly || kind == LightCalibStepKind::WriteAndRead;
+    const bool doRead = kind == LightCalibStepKind::ReadOnly || kind == LightCalibStepKind::WriteAndRead;
+
+    if (doSampleWrite) {
+        showlog(QStringLiteral("产品光感写入 index=%1 采%2点取平均%3")
+                    .arg(index)
+                    .arg(sampleCount)
+                    .arg(golden >= 0 ? QStringLiteral(" 金样=%1").arg(golden) : QString()));
+        if (index == 0)
+            resetLightSensorFivePointState();
+    } else {
+        showlog(QStringLiteral("产品光感回读 index=%1").arg(index));
+    }
+
     const auto waitProductCmd = [&]() -> bool {
         QElapsedTimer t;
         t.start();
@@ -2457,96 +2531,193 @@ void QFreeWork::runLightSensorGoldenCalibStep() {
     };
 
     bool allOk = true;
-    QString failReason;
-    QVariantMap offMap;
-    offMap.insert(QStringLiteral("start"), 0);
+    QString reason;
+    int dutAvg = 0;
+    int readValue = 0;
+
     if (!isTestContinue) {
         allOk = false;
-        failReason = QStringLiteral("测试中止");
-    } else if (!sendProductSet(DeviceCmd::LightReportControl, offMap)) {
-        allOk = false;
-        failReason = QStringLiteral("关闭光感上报失败");
-    } else {
-        QVariantMap onMap;
-        onMap.insert(QStringLiteral("start"), 1);
-        if (!sendProductSet(DeviceCmd::LightReportControl, onMap)) {
-            allOk = false;
-            failReason = QStringLiteral("开启光感上报失败");
-        }
-    }
-
-    int dutAvg = 0;
-    if (allOk) {
-        lightSensorSamples_.clear();
-        lightSensorCollecting_ = true;
-        QElapsedTimer wt;
-        wt.start();
-        while (isTestContinue && wt.elapsed() < waitMs && lightSensorSamples_.size() < sampleCount)
-            waitWork(20);
-        lightSensorCollecting_ = false;
-        if (lightSensorSamples_.size() < sampleCount) {
-            allOk = false;
-            failReason = QStringLiteral("index=%1 光感上报不足 %2 点，实际 %3")
-                             .arg(index)
-                             .arg(sampleCount)
-                             .arg(lightSensorSamples_.size());
-        } else {
-            qint64 sum = 0;
-            QStringList allTxt;
-            for (int i = 0; i < sampleCount; ++i) {
-                sum += lightSensorSamples_.at(i);
-                allTxt << QString::number(lightSensorSamples_.at(i));
-            }
-            dutAvg = static_cast<int>(qRound(static_cast<double>(sum) / sampleCount));
-            showlog(QStringLiteral("index=%1 samples=[%2] avg=%3")
-                        .arg(index)
-                        .arg(allTxt.join(QStringLiteral(", ")))
-                        .arg(dutAvg));
-            if (writeCalib) {
-                QVariantMap wmap;
-                wmap.insert(QStringLiteral("index"), index);
-                wmap.insert(QStringLiteral("value"), dutAvg);
-                showlog(QStringLiteral("写入 LightCalibWrite index=%1 value=%2")
-                            .arg(index)
-                            .arg(dutAvg));
-                if (!sendProductSet(DeviceCmd::LightCalibWrite, wmap)) {
+        reason = QStringLiteral("测试中止");
+    } else if (doSampleWrite) {
+        QVariantMap offMap;
+        offMap.insert(QStringLiteral("start"), 0);
+        // 写入+回读合一（旧 Hook）仍在本步内开关上报；单独写入步骤由流程里「开启/关闭光感上报」负责
+        const bool controlReport = (kind == LightCalibStepKind::WriteAndRead)
+            || mapInt(QStringLiteral("controlReport"), 0) != 0;
+        if (controlReport) {
+            if (!sendProductSet(DeviceCmd::LightReportControl, offMap)) {
+                allOk = false;
+                reason = QStringLiteral("关闭光感上报失败");
+            } else {
+                QVariantMap onMap;
+                onMap.insert(QStringLiteral("start"), 1);
+                if (!sendProductSet(DeviceCmd::LightReportControl, onMap)) {
                     allOk = false;
-                    failReason = QStringLiteral("写入校准失败 index=%1").arg(index);
-                } else {
-                    lightCalibReadValid_ = false;
-                    QVariantMap rmap;
-                    rmap.insert(QStringLiteral("index"), index);
-                    if (!sendProductGet(DeviceCmd::LightCalibRead, rmap) || !lightCalibReadValid_) {
-                        allOk = false;
-                        failReason = QStringLiteral("回读校准失败 index=%1").arg(index);
-                    } else if (lightCalibReadValue_ != dutAvg) {
-                        allOk = false;
-                        failReason = QStringLiteral("回读不一致 index=%1 write=%2 read=%3")
-                                         .arg(index)
-                                         .arg(dutAvg)
-                                         .arg(lightCalibReadValue_);
-                    } else {
-                        showlog(QStringLiteral("回读一致 index=%1 value=%2").arg(index).arg(dutAvg));
-                    }
+                    reason = QStringLiteral("开启光感上报失败");
                 }
             }
         }
-        sendProductSet(DeviceCmd::LightReportControl, offMap);
+
+        if (allOk) {
+            lightSensorSamples_.clear();
+            lightSensorCollecting_ = true;
+            QElapsedTimer wt;
+            wt.start();
+            while (isTestContinue && wt.elapsed() < waitMs && lightSensorSamples_.size() < sampleCount)
+                waitWork(20);
+            lightSensorCollecting_ = false;
+            if (lightSensorSamples_.size() < sampleCount) {
+                allOk = false;
+                reason = QStringLiteral("index=%1 光感上报不足 %2 点，实际 %3（请确认流程已「开启光感上报」）")
+                             .arg(index)
+                             .arg(sampleCount)
+                             .arg(lightSensorSamples_.size());
+            } else {
+                qint64 sum = 0;
+                QStringList allTxt;
+                for (int i = 0; i < sampleCount; ++i) {
+                    sum += lightSensorSamples_.at(i);
+                    allTxt << QString::number(lightSensorSamples_.at(i));
+                }
+                dutAvg = static_cast<int>(qRound(static_cast<double>(sum) / sampleCount));
+                showlog(QStringLiteral("index=%1 samples=[%2] avg=%3")
+                            .arg(index)
+                            .arg(allTxt.join(QStringLiteral(", ")))
+                            .arg(dutAvg));
+                QVariantMap wmap;
+                wmap.insert(QStringLiteral("index"), index);
+                wmap.insert(QStringLiteral("value"), dutAvg);
+                showlog(QStringLiteral("写入 LightCalibWrite index=%1 value=%2").arg(index).arg(dutAvg));
+                if (!sendProductSet(DeviceCmd::LightCalibWrite, wmap)) {
+                    allOk = false;
+                    reason = QStringLiteral("写入校准失败 index=%1").arg(index);
+                } else if (index >= 0 && index < 5) {
+                    lightCalibWrittenValues_[index] = dutAvg;
+                }
+            }
+            if (controlReport)
+                sendProductSet(DeviceCmd::LightReportControl, offMap);
+        }
+        lightSensorCollecting_ = false;
     }
 
-    lightSensorCollecting_ = false;
+    if (allOk && doRead) {
+        lightCalibReadValid_ = false;
+        QVariantMap rmap;
+        rmap.insert(QStringLiteral("index"), index);
+        if (!sendProductGet(DeviceCmd::LightCalibRead, rmap) || !lightCalibReadValid_) {
+            allOk = false;
+            reason = QStringLiteral("回读校准失败 index=%1").arg(index);
+        } else {
+            readValue = lightCalibReadValue_;
+            showlog(QStringLiteral("回读 index=%1 value=%2").arg(index).arg(readValue));
+            if (doSampleWrite && readValue != dutAvg) {
+                allOk = false;
+                reason = QStringLiteral("回读不一致 index=%1 write=%2 read=%3")
+                             .arg(index)
+                             .arg(dutAvg)
+                             .arg(readValue);
+            } else if (!doSampleWrite && verifyWrite && index >= 0 && index < 5
+                       && readValue != lightCalibWrittenValues_[index]) {
+                allOk = false;
+                reason = QStringLiteral("回读与写入不一致 index=%1 write=%2 read=%3")
+                             .arg(index)
+                             .arg(lightCalibWrittenValues_[index])
+                             .arg(readValue);
+            }
+        }
+    }
 
     if (!allOk) {
+        if (failReason)
+            *failReason = reason;
+        return false;
+    }
+
+    QString line = doRead ? QStringLiteral("index=%1 read=%2").arg(index).arg(readValue)
+                          : QStringLiteral("index=%1 write=%2").arg(index).arg(dutAvg);
+    if (doRead && index >= 0 && index < 5) {
+        lightCalibFivePointValues_[index] = readValue;
+        lightCalibFivePointMask_ |= static_cast<quint8>(1u << index);
+        // 本点卡控写在本步 ini：Param_rangeLo/Hi/HiInc；index>0 时 Param_diffMin 相对上一点
+        const int kLoDef[5] = {0, 70, 170, 500, 1000};
+        const int kHiDef[5] = {70, 200, 500, 1200, 1700};
+        const int kHiIncDef[5] = {0, 0, 0, 0, 1};
+        const int kDiffDef[4] = {20, 20, 50, 100};
+        lightCalibRangeLo_[index] = mapInt(QStringLiteral("rangeLo"), kLoDef[index]);
+        lightCalibRangeHi_[index] = mapInt(QStringLiteral("rangeHi"), kHiDef[index]);
+        lightCalibRangeHiInc_[index] = mapInt(QStringLiteral("rangeHiInc"), kHiIncDef[index]);
+        if (index > 0)
+            lightCalibDiffMin_[index - 1] = mapInt(QStringLiteral("diffMin"), kDiffDef[index - 1]);
+        showlog(QStringLiteral("index=%1 卡控缓存 range=[%2,%3%4]%5")
+                    .arg(index)
+                    .arg(lightCalibRangeLo_[index])
+                    .arg(lightCalibRangeHi_[index])
+                    .arg(lightCalibRangeHiInc_[index] ? QStringLiteral("]") : QStringLiteral(")"))
+                    .arg(index > 0 ? QStringLiteral(" diffMin>%1").arg(lightCalibDiffMin_[index - 1]) : QString()));
+    }
+    if (doRead && enableFivePointJudge && lightCalibFivePointMask_ == 0x1F) {
+        QString judgeDetail;
+        const bool judgePass = evaluateLightSensorFivePointRule(&judgeDetail);
+        showlog(judgeDetail);
+        if (!judgePass) {
+            if (failReason)
+                *failReason = judgeDetail;
+            if (lineOut)
+                *lineOut = judgeDetail;
+            return false;
+        }
+        line = judgeDetail;
+    }
+
+    if (lineOut)
+        *lineOut = line;
+    return true;
+}
+
+void QFreeWork::finishLightSensorCalibStep(LightCalibStepKind kind, bool ok, const QString& detail) {
+    if (!ok) {
         TestResult = failValue;
-        markActiveTestCaseStepDone(false, failReason, QStringLiteral("失败"));
-        showlog(QStringLiteral("光感金样校准失败：%1").arg(failReason));
+        markActiveTestCaseStepDone(false, detail, QStringLiteral("失败"));
+        const QString action = kind == LightCalibStepKind::ReadOnly ? QStringLiteral("回读") : QStringLiteral("校准");
+        showlog(QStringLiteral("光感%1失败：%2").arg(action, detail));
         return;
     }
-    const QString line = QStringLiteral("index=%1 avg=%2")
-                             .arg(index)
-                             .arg(dutAvg);
-    showlog(line);
-    markActiveTestCaseStepDone(true, line, QStringLiteral("通过"));
+    showlog(detail);
+    markActiveTestCaseStepDone(true, detail, QStringLiteral("通过"));
+}
+
+void QFreeWork::runLightSensorCalibWriteStep() {
+    QString failReason;
+    QString line;
+    const bool ok = runLightSensorCalibStepCore(LightCalibStepKind::WriteOnly, &failReason, &line);
+    finishLightSensorCalibStep(LightCalibStepKind::WriteOnly, ok, ok ? line : failReason);
+}
+
+void QFreeWork::runLightSensorCalibReadStep() {
+    QString failReason;
+    QString line;
+    const bool ok = runLightSensorCalibStepCore(LightCalibStepKind::ReadOnly, &failReason, &line);
+    if (!ok && failReason.contains(QStringLiteral("卡控失败"))) {
+        TestResult = failValue;
+        markActiveTestCaseStepDone(false, failReason, QStringLiteral("失败"));
+        showlog(QStringLiteral("光感五点终判失败 → 产品不合格"));
+        return;
+    }
+    finishLightSensorCalibStep(LightCalibStepKind::ReadOnly, ok, ok ? line : failReason);
+}
+
+void QFreeWork::runLightSensorGoldenCalibStep() {
+    QString failReason;
+    QString line;
+    const bool ok = runLightSensorCalibStepCore(LightCalibStepKind::WriteAndRead, &failReason, &line);
+    if (!ok && failReason.contains(QStringLiteral("卡控失败"))) {
+        TestResult = failValue;
+        markActiveTestCaseStepDone(false, failReason, QStringLiteral("失败"));
+        showlog(QStringLiteral("光感五点终判失败 → 产品不合格"));
+        return;
+    }
+    finishLightSensorCalibStep(LightCalibStepKind::WriteAndRead, ok, ok ? line : failReason);
 }
 
 void QFreeWork::runVesCh1SetBrightnessStep() {

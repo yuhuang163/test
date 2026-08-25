@@ -145,6 +145,7 @@ class test_base : public QWidget {
     QString upperComputerVer;
     bool isBrushLogGet = 0;
     QVector<TestItem> testItems;
+    QVector<TestItem> testCsvAccumItems_; // 一次测试一行：步骤追加，过站时整行写出
     MesPacketData pack;
     QString snPattern;
     QMap<QString, QMap<QString, QString>> deviceMap;
@@ -325,6 +326,7 @@ class test_base : public QWidget {
     QString sessionSnForLog();
     QString sessionMacForLog();
     void abortTestSessionAndUpload();
+    void flushPendingTestCsv();
     void closeEvent(QCloseEvent* event) override;
     void showEvent(QShowEvent* event) override;
     bool eventFilter(QObject* watched, QEvent* event) override;

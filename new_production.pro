@@ -526,7 +526,6 @@ FORMS += \
     platform/settings/widgets/fixture_uart.ui \
     platform/settings/qsetting.ui \
     platform/settings/widgets/test_case_edit_dialog.ui \
-    platform/debug/screen_inspect/screen_inspect_widget.ui \
     tools/factory_analyzer/factory_analyzer.ui \
     mainwindow.ui \
     work_station/camera/cameratest.ui \

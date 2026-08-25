@@ -123,6 +123,10 @@ class QFreeWork : public test_base {
     void onUsbInstrumentReport(const ProtocolReport& report) override;
 
   private:
+    enum class LightCalibStepKind { WriteOnly, ReadOnly, WriteAndRead };
+    bool runLightSensorCalibStepCore(LightCalibStepKind kind, QString* failReason, QString* lineOut);
+    void finishLightSensorCalibStep(LightCalibStepKind kind, bool ok, const QString& detail);
+
     int teststate = -1;
 
     // --- 扫描 / 绑定 ---
@@ -345,8 +349,19 @@ class QFreeWork : public test_base {
     void runDongleSuctionSampleStep();
     /** Dongle 单通道吸力采样；判定走 ProtocolDongleSuctionPeakData Gate。 */
     void runDongleSuctionSampleSingleStep();
-    /** V3 光感单点校准（产品协议）：采光感 → 写偏移并回读。亮度由前一步治具 VES 设置。 */
+    /** V3 光感单点校准（产品协议）：采光感取平均 → 写平均值并回读。亮度由前一步治具 VES 设置。 */
     void runLightSensorGoldenCalibStep();
+    /** 光感校准：仅采光感取平均并写入（不含回读）。 */
+    void runLightSensorCalibWriteStep();
+    /** 光感校准：仅回读校准值（五点齐全后可做范围+差值终判）。 */
+    void runLightSensorCalibReadStep();
+    /** 清空本轮光感五点回读缓存（开测 / 单步调试 / index=0 写入时调用）。 */
+    void resetLightSensorFivePointState();
+    /**
+     * 光感五点终判：范围 + 相邻差值全部满足才 Pass。
+     * 各点阈值在对应「产品光感读取点N」步骤执行时写入缓存。
+     */
+    bool evaluateLightSensorFivePointRule(QString* detailOut);
     /** VES 四通道光源：固定通道 1，亮度由步骤 Param_brightness 配置（0~255）。 */
     void runVesCh1SetBrightnessStep();
     /** 自由工站屏幕检测：调用 USB 摄像头对屏幕拍照，再分析对比（坏点 / 显示异常）+ Gate。 */
@@ -430,6 +445,15 @@ class QFreeWork : public test_base {
     QVector<int> lightSensorSamples_;
     bool lightCalibReadValid_ = false;
     int lightCalibReadValue_ = 0;
+    /** 本轮五点光感回读值（index0~4）；bit i 表示 lightCalibFivePointValues_[i] 已采到。 */
+    int lightCalibFivePointValues_[5] = {0, 0, 0, 0, 0};
+    int lightCalibWrittenValues_[5] = {0, 0, 0, 0, 0};
+    /** 各读取点 ini 缓存的本点范围；diffMin[i] 对应 回读[i+1]-回读[i]。 */
+    int lightCalibRangeLo_[5] = {0, 70, 170, 500, 1000};
+    int lightCalibRangeHi_[5] = {70, 200, 500, 1200, 1700};
+    int lightCalibRangeHiInc_[5] = {0, 0, 0, 0, 1};
+    int lightCalibDiffMin_[4] = {20, 20, 50, 100};
+    quint8 lightCalibFivePointMask_ = 0;
     /** 实时数值标签节流：约 2Hz（曲线不实时画，测完一次性绘制） */
     qint64 suctionChartLastUiMs_ = 0;
     bool suctionLeftPeakInit_ = false;

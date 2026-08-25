@@ -40,6 +40,7 @@ static const Row kSettings[] = {
     CB("checkBox_ShowLocalOTAFunc", "SYSTEM/ShowLocalOTAFunc", nullptr),
     CB("checkBox_ShowUpperComputerOTAFunc", "SYSTEM/ShowUpperComputerOTAFunc", nullptr),
     CB("checkBox_SaveToothbrushLog", "SYSTEM/SaveToothbrushLog", nullptr),
+    CB("checkBox_TestCsvOneRowPerTest", "SYSTEM/TestCsvOneRowPerTest", "true"),
     CB("checkBox_LockProductUI", "SYSTEM/LockProductUI", nullptr),
     CB("checkBox_SimplePcbaTest", "SYSTEM/SimplePcbaTest", nullptr),
     CB("checkBox_NeedWriteSubpid", "SYSTEM/NeedWriteSubpid", nullptr),
@@ -359,6 +360,8 @@ static const Row kSettings[] = {
     TIP("lineEdit_tupleBaseUrl", "Tuple/BaseUrl。"),
     TIP("lineEdit_imu_status", "外设 imu 状态期望值。"),
     TIP("checkBox_imu_status", "启用 imu 状态比对。"),
+    TIP("checkBox_TestCsvOneRowPerTest",
+        "SYSTEM/TestCsvOneRowPerTest（默认勾选）：D 盘测试结果 CSV 一次测试一行、无表头；前四格为 sn/版本/mac/时间，其后按「数据名,数据,卡控,结果」成组。取消勾选则每个测试项单独一行。"),
     TIP("lineEdit_ageingBurningSeconds", "AGING/BurningSeconds（秒）。"),
     TIP("checkBox_freeInstrumentBleBrushCmwConcurrent",
         "FreeInstrument/BleBrushCmwConcurrent：启用 CMW GPRF；“停止接收/PER…”项见另一勾选（"

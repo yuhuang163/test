@@ -99,9 +99,9 @@ void pinDebugTabPageToTop(QTabWidget* tabWidget) {
         QWidget* inner = scroll->widget();
         if (inner && debugTabPagesWithoutScroll().contains(inner->objectName()))
             continue;
-        // false：按内页 sizeHint（来自 .ui）排布，避免把控件竖向撑满视口
-        scroll->setWidgetResizable(false);
-        scroll->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+        // 铺满视口宽度，避免左侧按 sizeHint 缩成一列、右侧大块空白
+        scroll->setWidgetResizable(true);
+        scroll->setAlignment(Qt::AlignTop);
     }
 }
 
@@ -255,16 +255,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     initDongleSuctionChart();
     initQaiotFeatureButtons();
     initDebugTabChrome();
+    if (ui->screenInspectPage)
+        ui->screenInspectPage->bindDesignerUi();
     initDebugTabLayout();
-    screenInspectPage_ = new ScreenInspectWidget(this);
-    if (ui->tabWidget_debug_peripheral) {
-        const int afterLights = ui->tabWidget_debug_peripheral->indexOf(ui->tab_13);
-        const int insertAt = afterLights >= 0 ? afterLights + 1 : 0;
-        ui->tabWidget_debug_peripheral->insertTab(insertAt, screenInspectPage_, QStringLiteral("屏幕测试"));
-        // 该页在 initDebugTabLayout 之后才插入；尺寸以 screen_inspect_widget.ui 为准，只补滚动包装
-        wrapDebugTabPageInScrollArea(ui->tabWidget_debug_peripheral);
-        pinDebugTabPageToTop(ui->tabWidget_debug_peripheral);
-    }
+    screenInspectPage_ = ui->screenInspectPage;
     protocolManager.bindQpb(pb);
     protocolManager.bindQfctp(qfctp);
     protocolManager.bindQaiot(qaiot);
@@ -1526,8 +1520,17 @@ void MainWindow::on_lcdTestButton_clicked() {
 
     if (ui->tabWidget && ui->tab_debug_group_peripheral)
         ui->tabWidget->setCurrentWidget(ui->tab_debug_group_peripheral);
-    if (ui->tabWidget_debug_peripheral && screenInspectPage_)
-        ui->tabWidget_debug_peripheral->setCurrentWidget(screenInspectPage_);
+    if (ui->tabWidget_debug_peripheral && screenInspectPage_) {
+        QTabWidget* tabs = ui->tabWidget_debug_peripheral;
+        for (int i = 0; i < tabs->count(); ++i) {
+            QWidget* w = tabs->widget(i);
+            auto* scroll = qobject_cast<QScrollArea*>(w);
+            if (w == screenInspectPage_ || (scroll && scroll->widget() == screenInspectPage_)) {
+                tabs->setCurrentIndex(i);
+                break;
+            }
+        }
+    }
 }
 
 void MainWindow::on_snInput_returnPressed() {

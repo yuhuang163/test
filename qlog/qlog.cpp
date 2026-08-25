@@ -1106,31 +1106,100 @@ void Qlog::saveTestCsv(const QString& ver, const QString& sn, const QString& mac
     const QString fileName = CommonUtils::formatDateIso() + QStringLiteral("_%1报告.csv").arg(ver);
     const QString filePath = CommonUtils::joinPath(folderPath, fileName);
 
-    QFile file(filePath);
-    if (file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
+    const auto escapeJoin = [](const QStringList& row) {
+        QStringList escaped;
+        escaped.reserve(row.size());
+        for (const QString& cell : row)
+            escaped.append(csvEscapeCell(cell));
+        return escaped.join(QStringLiteral(","));
+    };
+
+    const auto parseCsvLine = [](const QString& line) {
+        QStringList fields;
+        QString cur;
+        bool inQuotes = false;
+        for (int i = 0; i < line.size(); ++i) {
+            const QChar ch = line.at(i);
+            if (inQuotes) {
+                if (ch == QLatin1Char('"')) {
+                    if (i + 1 < line.size() && line.at(i + 1) == QLatin1Char('"')) {
+                        cur.append(QLatin1Char('"'));
+                        ++i;
+                    } else {
+                        inQuotes = false;
+                    }
+                } else {
+                    cur.append(ch);
+                }
+            } else if (ch == QLatin1Char('"')) {
+                inQuotes = true;
+            } else if (ch == QLatin1Char(',')) {
+                fields.append(cur);
+                cur.clear();
+            } else {
+                cur.append(ch);
+            }
+        }
+        fields.append(cur);
+        return fields;
+    };
+
+    const QString timestamp = CommonUtils::dateTimeStamp();
+    // 默认一次测试一行；取消勾选则每个测试项单独一行（长表）
+    const bool oneRowPerTest = SETTINGS.value(QStringLiteral("SYSTEM/TestCsvOneRowPerTest"), true).toBool();
+
+    if (!oneRowPerTest) {
+        QFile file(filePath);
+        if (!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append))
+            return;
         QTextStream stream(&file);
         const QStringList headers = {QStringLiteral("sn"), QStringLiteral("上位机版本"),
                                      QStringLiteral("mac地址"), QStringLiteral("时间戳"),
                                      QStringLiteral("测试项"), QStringLiteral("测试数据"),
                                      QStringLiteral("测试结果"), QStringLiteral("测试要求")};
-        const QString timestamp = CommonUtils::dateTimeStamp();
-
-        if (file.size() == 0) {
-            stream << headers.join(QStringLiteral(",")) << "\n";
-        }
-
+        if (file.size() == 0)
+            stream << escapeJoin(headers) << "\n";
         for (const TestItem& item : testItems) {
-            const QStringList row = {sn, ver, macAddress, timestamp, item.testItem, item.testData,
-                                     item.testResult, item.ask};
-            QStringList escaped;
-            escaped.reserve(row.size());
-            for (const QString& cell : row) {
-                escaped.append(csvEscapeCell(cell));
-            }
-            stream << escaped.join(QStringLiteral(",")) << "\n";
+            stream << escapeJoin({sn, ver, macAddress, timestamp, item.testItem, item.testData, item.testResult,
+                                  item.ask})
+                   << "\n";
         }
-        file.close();
+        return;
     }
+
+    // 一次测试一行、无表头：sn/版本/mac/时间 后按「数据名,数据,卡控,结果」成组排列
+    QStringList row = {sn, ver, macAddress, timestamp};
+    for (const TestItem& item : testItems) {
+        QString name = item.testItem.trimmed();
+        if (name.isEmpty())
+            name = QStringLiteral("未命名");
+        row << name << item.testData << item.ask << item.testResult;
+    }
+
+    // 若仍是旧版带表头文件，丢掉旧内容，避免空列/错位
+    bool truncate = false;
+    if (QFile::exists(filePath) && QFileInfo(filePath).size() > 0) {
+        QFile in(filePath);
+        if (in.open(QIODevice::ReadOnly | QIODevice::Text)) {
+            QTextStream ts(&in);
+            const QString first = ts.readLine();
+            const QStringList fields = parseCsvLine(first);
+            if (!fields.isEmpty() &&
+                (fields.first() == QStringLiteral("sn") || fields.contains(QStringLiteral("测试项")) ||
+                 fields.contains(QStringLiteral("上位机版本")))) {
+                truncate = true;
+            }
+        }
+    }
+
+    QFile out(filePath);
+    const QIODevice::OpenMode mode =
+        truncate ? (QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)
+                 : (QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append);
+    if (!out.open(mode))
+        return;
+    QTextStream stream(&out);
+    stream << escapeJoin(row) << "\n";
 }
 
 void Qlog::save_brush_log(int m_index, const QString& macAddress, const QString& data) {
