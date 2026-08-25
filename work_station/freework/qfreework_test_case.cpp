@@ -958,21 +958,27 @@ void QFreeWork::emitFixtureMultiGateTableRows(const QVector<TestCaseGate>& gates
         TestItem item;
         // 多字段卡控分项表格只显示判定项（如 RSSI/频偏），不再重复步骤名前缀
         item.testItem = GateRegistry::fieldDisplayName(reportType, ge.field);
-        const QString unit = GateRegistry::unitFor(reportType, ge.field, payload);
-        // 数据列只显示实测值（纯色为文字）；完整「当前值/允许」细节留在日志 detail
-        const QString curPrefix = QStringLiteral("当前值=");
-        const int curPos = subDetail.indexOf(curPrefix);
-        if (curPos >= 0) {
-            const int start = curPos + curPrefix.size();
-            const int comma = subDetail.indexOf(QLatin1Char(','), start);
-            item.testData = (comma > start) ? subDetail.mid(start, comma - start).trimmed()
-                                            : subDetail.mid(start).trimmed();
-        } else {
-            item.testData = subDetail;
+        // 实测/要求统一走 formatStepDisplay（屏幕纯色等会转成中文，避免表里出现 0~5）
+        const GateStepDisplay disp =
+            GateRegistry::formatStepDisplay(ge, QVector<TestCaseGate>{ge}, reportType, payload, false);
+        item.testData = disp.testData;
+        item.ask = disp.ask;
+        if (item.testData.isEmpty()) {
+            // 兼容旧详情句式：当前值= / 当前=
+            const QStringList prefixes = {QStringLiteral("当前值="), QStringLiteral("当前=")};
+            for (const QString& curPrefix : prefixes) {
+                const int curPos = subDetail.indexOf(curPrefix);
+                if (curPos < 0)
+                    continue;
+                const int start = curPos + curPrefix.size();
+                const int comma = subDetail.indexOf(QLatin1Char(','), start);
+                item.testData = (comma > start) ? subDetail.mid(start, comma - start).trimmed()
+                                                : subDetail.mid(start).trimmed();
+                break;
+            }
+            if (item.testData.isEmpty())
+                item.testData = subDetail;
         }
-        if (!unit.isEmpty() && !item.testData.endsWith(unit))
-            item.testData += QLatin1Char(' ') + unit;
-        item.ask = GateRegistry::formatGateAsk(ge, reportType, payload);
         item.testResult = subPass ? passValue : failValue;
         rows.append(item);
     }

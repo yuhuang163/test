@@ -51,6 +51,55 @@ struct Report {
 Report analyze(const QImage& currRgb, const QImage& refRgb, const Params& p);
 QString colorName(int colorIndex);
 
+/**
+ * 清理 screen_inspect 历史抓拍，避免目录无限累积。
+ * 保留 reference* / last_*；带时间戳的 capture/mark/reference 只留最近 keepNewest 份
+ *（默认 48，覆盖一次红蓝绿黑白灰+灰阶各拍 2~3 张），且超过 maxAgeDays 的一律删。
+ */
+void cleanupStoredImages(const QString& dirPath, int keepNewest = 48, int maxAgeDays = 1);
+
+/** 解析期望/卡控颜色：支持 -1/0~5、不判断/自动、蓝绿红白黑灰（及英文）。失败返回 -1。 */
+inline int parseColorIndex(const QString& text, bool* ok = nullptr) {
+    const QString t = text.trimmed();
+    if (t.isEmpty() || t.startsWith(QStringLiteral("不判断")) || t == QStringLiteral("自动")
+        || t == QStringLiteral("未识别") || t == QStringLiteral("未指定")
+        || t.compare(QLatin1String("auto"), Qt::CaseInsensitive) == 0 || t == QLatin1String("-1")) {
+        if (ok)
+            *ok = true;
+        return -1;
+    }
+    auto hit = [&](const QString& cn, const char* en) -> bool {
+        if (t == cn || t.compare(QLatin1String(en), Qt::CaseInsensitive) == 0) {
+            if (ok)
+                *ok = true;
+            return true;
+        }
+        return false;
+    };
+    if (hit(QStringLiteral("蓝"), "blue"))
+        return 0;
+    if (hit(QStringLiteral("绿"), "green"))
+        return 1;
+    if (hit(QStringLiteral("红"), "red"))
+        return 2;
+    if (hit(QStringLiteral("白"), "white"))
+        return 3;
+    if (hit(QStringLiteral("黑"), "black"))
+        return 4;
+    if (hit(QStringLiteral("灰"), "gray") || hit(QStringLiteral("灰"), "grey"))
+        return 5;
+    bool numOk = false;
+    const int v = t.toInt(&numOk);
+    if (numOk && v >= -1 && v <= 5) {
+        if (ok)
+            *ok = true;
+        return v;
+    }
+    if (ok)
+        *ok = false;
+    return -1;
+}
+
 } // namespace ScreenInspectAnalyzer
 
 /**

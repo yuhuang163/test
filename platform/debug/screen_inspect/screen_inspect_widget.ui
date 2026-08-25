@@ -20,11 +20,32 @@
    <item>
     <widget class="QGroupBox" name="groupBox_screenInspectCamera">
      <property name="title">
-      <string>USB 摄像头</string>
+      <string>摄像头（USB / GigE）</string>
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_camera">
       <item>
        <layout class="QHBoxLayout" name="horizontalLayout_cameraBar">
+        <item>
+         <widget class="QLabel" name="label_cameraSource">
+          <property name="text">
+           <string>类型</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QComboBox" name="comboBox_cameraSource">
+          <item>
+           <property name="text">
+            <string>USB</string>
+           </property>
+          </item>
+          <item>
+           <property name="text">
+            <string>GigE</string>
+           </property>
+          </item>
+         </widget>
+        </item>
         <item>
          <widget class="QLabel" name="label_camera">
           <property name="text">
@@ -39,6 +60,26 @@
             <horstretch>0</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="label_gigeIp">
+          <property name="text">
+           <string>IP</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLineEdit" name="lineEdit_gigeIp">
+          <property name="placeholderText">
+           <string>169.254.64.10</string>
+          </property>
+          <property name="minimumSize">
+           <size>
+            <width>120</width>
+            <height>0</height>
+           </size>
           </property>
          </widget>
         </item>
@@ -330,34 +371,6 @@
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout_images">
      <item>
-      <widget class="QGroupBox" name="groupBox_refImage">
-       <property name="title">
-        <string>参考图</string>
-       </property>
-       <layout class="QVBoxLayout" name="verticalLayout_ref">
-        <item>
-         <widget class="QLabel" name="label_refImage">
-          <property name="minimumSize">
-           <size>
-            <width>240</width>
-            <height>160</height>
-           </size>
-          </property>
-          <property name="frameShape">
-           <enum>QFrame::StyledPanel</enum>
-          </property>
-          <property name="alignment">
-           <set>Qt::AlignCenter</set>
-          </property>
-          <property name="text">
-           <string>未加载</string>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </widget>
-     </item>
-     <item>
       <widget class="QGroupBox" name="groupBox_currImage">
        <property name="title">
         <string>拍摄图（拖拽划定检测范围，红圈为疑似坏点）</string>
@@ -379,6 +392,34 @@
           </property>
           <property name="text">
            <string>未采集</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupBox_refImage">
+       <property name="title">
+        <string>参考图（无坏点标注）</string>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_ref">
+        <item>
+         <widget class="QLabel" name="label_refImage">
+          <property name="minimumSize">
+           <size>
+            <width>240</width>
+            <height>160</height>
+           </size>
+          </property>
+          <property name="frameShape">
+           <enum>QFrame::StyledPanel</enum>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+          <property name="text">
+           <string>未加载</string>
           </property>
          </widget>
         </item>

@@ -5,6 +5,7 @@
 #include "manifest/modbus_cmd_manifest.h"
 #include "manifest/scpi_cmd_manifest.h"
 #include "qprotocol_types.h"
+#include "screen_inspect_analyzer.h"
 
 #include <QFile>
 #include <QMessageBox>
@@ -143,10 +144,14 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("baseUrl"), QStringLiteral("接口地址")},
         {QStringLiteral("userName"), QStringLiteral("用户名")},
         {QStringLiteral("password"), QStringLiteral("密码")},
-        {QStringLiteral("cameraIndex"), QStringLiteral("摄像头序号（从 0）")},
-        {QStringLiteral("cameraName"), QStringLiteral("摄像头名称（可选，优先于序号）")},
+        {QStringLiteral("cameraIndex"), QStringLiteral("摄像头序号（从 0，仅 USB）")},
+        {QStringLiteral("cameraName"), QStringLiteral("摄像头名称（可选，仅 USB）")},
+        {QStringLiteral("cameraSource"), QStringLiteral("采集源（空/gige=网口，usb=USB）")},
+        {QStringLiteral("cameraIp"), QStringLiteral("GigE 相机 IP（如 169.254.64.10）")},
+        {QStringLiteral("gigeIp"), QStringLiteral("GigE 相机 IP（同 cameraIp）")},
+        {QStringLiteral("cameraSerial"), QStringLiteral("GigE 序列号（可选，优先于 IP）")},
         {QStringLiteral("warmupMs"), QStringLiteral("采集预热 (ms)")},
-        {QStringLiteral("expectedColor"), QStringLiteral("期望纯色（-1不判断 0蓝1绿2红3白4黑5灰）")},
+        {QStringLiteral("expectedColor"), QStringLiteral("期望纯色（下拉选：不判断/蓝绿红白黑灰）")},
         {QStringLiteral("deadDiff"), QStringLiteral("坏点残差阈值")},
         {QStringLiteral("referencePath"), QStringLiteral("参考图路径（双击选择图片）")},
         {QStringLiteral("saveCapture"), QStringLiteral("保存拍摄图（1开/0关）")},
@@ -327,10 +332,11 @@ QStringList sendParamPreferredOrder(TestCaseSendChannel channel, const QString& 
     if (channel == TestCaseSendChannel::Fixture
         && (cmdName == QLatin1String("ScreenDeadPixelCheck")
             || cmdName == QLatin1String("ScreenDisplayAnomalyCheck"))) {
-        QStringList keys = {QStringLiteral("cameraIndex"), QStringLiteral("cameraName"),
-                            QStringLiteral("warmupMs"), QStringLiteral("expectedColor"),
-                            QStringLiteral("deadDiff"), QStringLiteral("saveCapture"),
-                            QStringLiteral("roi")};
+        QStringList keys = {QStringLiteral("cameraSource"), QStringLiteral("cameraIp"),
+                            QStringLiteral("cameraSerial"), QStringLiteral("cameraIndex"),
+                            QStringLiteral("cameraName"), QStringLiteral("warmupMs"),
+                            QStringLiteral("expectedColor"), QStringLiteral("deadDiff"),
+                            QStringLiteral("saveCapture"), QStringLiteral("roi")};
         if (cmdName == QLatin1String("ScreenDisplayAnomalyCheck"))
             keys.append(QStringLiteral("referencePath"));
         return keys;
@@ -607,10 +613,13 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
         && FixturePcbaCmdCatalog::fixtureProtocolFromIni(device) == TestCaseFixtureProtocol::UsbCamera) {
         if (cmdName == QLatin1String("ScreenDeadPixelCheck")
             || cmdName == QLatin1String("ScreenDisplayAnomalyCheck")) {
-            QVariantMap map{{QStringLiteral("cameraIndex"), QStringLiteral("0")},
+            QVariantMap map{{QStringLiteral("cameraSource"), QString()},
+                            {QStringLiteral("cameraIp"), QStringLiteral("169.254.64.10")},
+                            {QStringLiteral("cameraSerial"), QString()},
+                            {QStringLiteral("cameraIndex"), QStringLiteral("0")},
                             {QStringLiteral("cameraName"), QString()},
                             {QStringLiteral("warmupMs"), QStringLiteral("450")},
-                            {QStringLiteral("expectedColor"), QStringLiteral("-1")},
+                            {QStringLiteral("expectedColor"), QStringLiteral("不判断")},
                             {QStringLiteral("deadDiff"), QStringLiteral("35")},
                             {QStringLiteral("saveCapture"), QStringLiteral("1")},
                             {QStringLiteral("roi"), QString()}};
@@ -629,6 +638,69 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
     return {};
 }
 
+void fillScreenInspectColorCombo(QComboBox* combo, const QString& currentText) {
+    if (!combo)
+        return;
+    combo->clear();
+    // userData 用字符串，避免 findData(-1) 在 Qt 里匹配失败、保存仍落成 -1
+    combo->addItem(QStringLiteral("不判断（自动识别）"), QStringLiteral("-1"));
+    combo->addItem(QStringLiteral("蓝"), QStringLiteral("0"));
+    combo->addItem(QStringLiteral("绿"), QStringLiteral("1"));
+    combo->addItem(QStringLiteral("红"), QStringLiteral("2"));
+    combo->addItem(QStringLiteral("白"), QStringLiteral("3"));
+    combo->addItem(QStringLiteral("黑"), QStringLiteral("4"));
+    combo->addItem(QStringLiteral("灰"), QStringLiteral("5"));
+    bool ok = false;
+    const int idx = ScreenInspectAnalyzer::parseColorIndex(
+        currentText.trimmed().isEmpty() ? QStringLiteral("-1") : currentText, &ok);
+    const QString want = QString::number(ok ? idx : -1);
+    int comboIdx = combo->findData(want, Qt::UserRole, Qt::MatchExactly);
+    if (comboIdx < 0) {
+        for (int i = 0; i < combo->count(); ++i) {
+            if (combo->itemData(i).toString() == want) {
+                comboIdx = i;
+                break;
+            }
+        }
+    }
+    combo->setCurrentIndex(comboIdx >= 0 ? comboIdx : 0);
+}
+
+/** 期望纯色：中文下拉，保存为 -1/0~5（ini 稳定）；界面仍显示中文。 */
+void installScreenInspectExpectedColorCombo(QTableWidget* table) {
+    if (!table)
+        return;
+    for (int r = 0; r < table->rowCount(); ++r) {
+        QTableWidgetItem* nameItem = table->item(r, 0);
+        if (!nameItem)
+            continue;
+        const QString key = nameItem->data(SendParamKeyRole).toString().trimmed();
+        if (key != QLatin1String("expectedColor"))
+            continue;
+        QTableWidgetItem* valItem = table->item(r, 1);
+        const QString cur = valItem ? valItem->text().trimmed() : QString();
+        auto* combo = new QComboBox(table);
+        fillScreenInspectColorCombo(combo, cur);
+        combo->setToolTip(QStringLiteral("选「蓝」等文字即可，无需记数字。"));
+        QObject::connect(combo, QOverload<int>::of(&QComboBox::currentIndexChanged), table, [table, r](int) {
+            QComboBox* cb = qobject_cast<QComboBox*>(table->cellWidget(r, 1));
+            QTableWidgetItem* item = table->item(r, 1);
+            if (!cb || !item)
+                return;
+            item->setText(cb->currentData().toString());
+            item->setData(SendParamTouchedRole, true);
+            item->setData(SendParamPlaceholderRole, false);
+        });
+        table->setCellWidget(r, 1, combo);
+        if (valItem) {
+            valItem->setText(combo->currentData().toString());
+            valItem->setFlags(valItem->flags() & ~Qt::ItemIsEditable);
+            valItem->setData(SendParamTouchedRole, true);
+            valItem->setData(SendParamPlaceholderRole, false);
+        }
+    }
+}
+
 void applySendParamTableWithTemplate(QTableWidget* table, TestCaseSendChannel channel, const QString& device,
                                      const QString& cmdName, const QVariantMap& userMap) {
     if (!table)
@@ -639,6 +711,7 @@ void applySendParamTableWithTemplate(QTableWidget* table, TestCaseSendChannel ch
         setSendParamTableFromMapWithTemplate(table, userMap, tmpl, preferred);
     else
         setSendParamTableFromMap(table, userMap, preferred);
+    installScreenInspectExpectedColorCombo(table);
 }
 
 void setSendParamTableFromString(QTableWidget* table, const QString& value) {
@@ -696,6 +769,16 @@ QVariantMap readSendParamMapFromTable(const QTableWidget* table) {
             continue;
 
         QString val = valItem ? valItem->text().trimmed() : QString();
+        if (QComboBox* combo = qobject_cast<QComboBox*>(table->cellWidget(r, 1))) {
+            bool ok = false;
+            int colorIdx = ScreenInspectAnalyzer::parseColorIndex(combo->currentData().toString(), &ok);
+            if (!ok)
+                colorIdx = ScreenInspectAnalyzer::parseColorIndex(combo->currentText(), &ok);
+            // 写入数字，避免中文 ini 编码或 findData(-1) 导致重开变回 -1
+            val = QString::number(ok ? colorIdx : -1);
+            map.insert(name, val);
+            continue;
+        }
         const bool explicitEmptySentinel = isSendParamExplicitEmptySentinel(val);
         if (explicitEmptySentinel)
             val.clear();
@@ -1403,12 +1486,13 @@ void applyScreenInspectGatePlaceholders(QTableWidget* table, const QString& repo
             high = QStringLiteral("8");
             tip = QStringLiteral("ROI 内判定为坏点的像素个数。良品接近 0，上限可放 8。");
         } else if (field == QLatin1String("detectedColor")) {
-            high = QStringLiteral("5");
-            tip = QStringLiteral("主色：结果表显示蓝/绿/红/白/黑/灰。范围填最小最大；等于则只填期望值数字(0蓝1绿2红3白4黑5灰)。");
+            low = QStringLiteral("蓝");
+            high = QStringLiteral("灰");
+            tip = QStringLiteral("主色：下拉/填写「蓝绿红白黑灰」；范围可填最小最大（也支持数字 0~5）。");
         } else if (field == QLatin1String("colorMatch")) {
-            low = QStringLiteral("1");
-            high = QStringLiteral("1");
-            tip = QStringLiteral("步骤写了期望纯色时：是/否。可用范围 1~1，或等于+期望值 1。");
+            low = QStringLiteral("是");
+            high = QStringLiteral("是");
+            tip = QStringLiteral("步骤写了期望纯色时：是/否。可用范围 是~是，或等于+期望值「是」。");
         } else if (field == QLatin1String("ssim")) {
             low = QStringLiteral("0.85");
             high = QStringLiteral("1");
@@ -1835,13 +1919,32 @@ void TestCaseEditDialog::writeMultiGatesToTable(const QVector<TestCaseGate>& gat
             double lowShow = matched.low;
             double highShow = matched.high;
             GateRegistry::resolveRangeBounds(matched, lowShow, highShow);
-            setCell(3, QString::number(lowShow));
-            setCell(4, QString::number(highShow));
+            if (field == QLatin1String("detectedColor")) {
+                setCell(3, ScreenInspectAnalyzer::colorName(qRound(lowShow)));
+                setCell(4, ScreenInspectAnalyzer::colorName(qRound(highShow)));
+            } else if (field == QLatin1String("colorMatch")) {
+                setCell(3, qAbs(lowShow - 1.0) < 0.0001 ? QStringLiteral("是") : QStringLiteral("否"));
+                setCell(4, qAbs(highShow - 1.0) < 0.0001 ? QStringLiteral("是") : QStringLiteral("否"));
+            } else {
+                setCell(3, QString::number(lowShow));
+                setCell(4, QString::number(highShow));
+            }
             QString expectedShow = matched.expected;
             if (expectedShow.isEmpty()
                 && (matched.op == TestCaseGateOp::Gt || matched.op == TestCaseGateOp::Lt
                     || matched.op == TestCaseGateOp::Eq)) {
                 expectedShow = QString::number(lowShow);
+            }
+            if (field == QLatin1String("detectedColor") && !expectedShow.isEmpty()) {
+                bool cok = false;
+                const int ci = ScreenInspectAnalyzer::parseColorIndex(expectedShow, &cok);
+                if (cok)
+                    expectedShow = ScreenInspectAnalyzer::colorName(ci);
+            } else if (field == QLatin1String("colorMatch") && !expectedShow.isEmpty()) {
+                bool okNum = false;
+                const double v = expectedShow.toDouble(&okNum);
+                if (okNum)
+                    expectedShow = qAbs(v - 1.0) < 0.0001 ? QStringLiteral("是") : QStringLiteral("否");
             }
             setCell(5, expectedShow);
             updateMultiGateRowInputMode(tableWidget_multiGates_, row);
@@ -1901,16 +2004,34 @@ QVector<TestCaseGate> TestCaseEditDialog::readMultiGatesFromTable() const {
             const QString lowText = cellText(3);
             const QString highText = cellText(4);
             const QString expectedText = cellText(5);
+            auto parseBound = [&](const QString& text) -> double {
+                if (field == QLatin1String("detectedColor")) {
+                    bool cok = false;
+                    const int ci = ScreenInspectAnalyzer::parseColorIndex(text, &cok);
+                    if (cok && !text.isEmpty())
+                        return ci;
+                }
+                if (field == QLatin1String("colorMatch")) {
+                    const QString t = text.trimmed();
+                    if (t == QStringLiteral("是") || t == QLatin1String("1"))
+                        return 1.0;
+                    if (t == QStringLiteral("否") || t == QLatin1String("0"))
+                        return 0.0;
+                }
+                return text.toDouble();
+            };
             // 未勾选但已填数值的行也要落盘（Enabled=false），否则重开后用户填的上下限全丢
-            const bool hasData = !qFuzzyIsNull(lowText.toDouble()) || !qFuzzyIsNull(highText.toDouble())
-                || !expectedText.isEmpty();
+            const bool hasData = !qFuzzyIsNull(parseBound(lowText)) || !qFuzzyIsNull(parseBound(highText))
+                || !expectedText.isEmpty()
+                || (field == QLatin1String("detectedColor")
+                    && (!lowText.isEmpty() || !highText.isEmpty()));
             TestCaseGate g;
             g.enabled = rowEnabled;
             g.reportType = reportType;
             g.field = field;
             g.op = gateOpFromTableText(opText.isEmpty() ? QStringLiteral("range") : opText);
-            g.low = lowText.toDouble();
-            g.high = highText.toDouble();
+            g.low = parseBound(lowText);
+            g.high = parseBound(highText);
             g.expected = expectedText;
             if (enableItem) {
                 g.lowSettingsKey = enableItem->data(Qt::UserRole + 1).toString();
@@ -1922,7 +2043,22 @@ QVector<TestCaseGate> TestCaseEditDialog::readMultiGatesFromTable() const {
                 if (g.expected.trimmed().isEmpty())
                     g.expected = lowText;
                 bool ok = false;
-                const double thr = g.expected.trimmed().toDouble(&ok);
+                double thr = g.expected.trimmed().toDouble(&ok);
+                if (!ok && field == QLatin1String("detectedColor")) {
+                    const int ci = ScreenInspectAnalyzer::parseColorIndex(g.expected, &ok);
+                    if (ok)
+                        thr = ci;
+                }
+                if (!ok && field == QLatin1String("colorMatch")) {
+                    const QString t = g.expected.trimmed();
+                    if (t == QStringLiteral("是") || t == QLatin1String("1")) {
+                        thr = 1.0;
+                        ok = true;
+                    } else if (t == QStringLiteral("否") || t == QLatin1String("0")) {
+                        thr = 0.0;
+                        ok = true;
+                    }
+                }
                 if (ok) {
                     g.low = thr;
                     g.high = thr;

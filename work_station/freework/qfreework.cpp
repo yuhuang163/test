@@ -5,6 +5,7 @@
 #include "qfreeworkbox.h"
 #include "screen_inspect_analyzer.h"
 #include "screen_inspect_capture.h"
+#include "screen_inspect_gige_capture.h"
 #include "test_case.h"
 
 #include <QMessageBox>
@@ -2614,8 +2615,7 @@ void QFreeWork::runScreenInspectStep() {
         report.annotated.save(dir + QStringLiteral("/last_mark.jpg"), "JPG", 90);
     if (!ref.isNull())
         ref.save(dir + QStringLiteral("/last_reference.jpg"), "JPG", 90);
-    // 历史时间戳图定时清：只留最近几份，避免 screen_inspect 无限涨
-    ScreenInspectAnalyzer::cleanupStoredImages(dir);
+    // 本步不清理历史图：否则同一次测试前面颜色的 capture/mark 会被删掉，收尾只能拷到最后几张
     const qint64 msSave = phaseT.elapsed();
     if (!uploadImagePaths.isEmpty())
         Qlog::addScreenInspectImageFiles(getIndex(), uploadImagePaths);

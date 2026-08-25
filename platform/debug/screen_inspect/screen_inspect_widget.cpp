@@ -5,6 +5,7 @@
 #include "Abini.h"
 #include "common_utils.h"
 #include "screen_inspect_analyzer.h"
+#include "screen_inspect_gige_capture.h"
 
 #include <QCamera>
 #include <QCameraImageCapture>
@@ -12,7 +13,9 @@
 #include <QCameraViewfinder>
 #include <QCoreApplication>
 #include <QDateTime>
+#include <QDebug>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QEvent>
 #include <QFileDialog>
 #include <QLabel>
@@ -23,6 +26,7 @@
 #include <QPlainTextEdit>
 #include <QResizeEvent>
 #include <QShowEvent>
+#include <QThread>
 #include <QTimer>
 #include <QtConcurrent>
 
@@ -54,8 +58,10 @@ ScreenInspectWidget::ScreenInspectWidget(QWidget* parent)
             &ScreenInspectWidget::saveThresholdsToSettings);
 
     loadThresholdsFromSettings();
+    updateCameraSourceUi();
     refreshCameraList();
     loadSavedReferenceIfAny();
+    ScreenInspectAnalyzer::cleanupStoredImages(inspectDir());
 
     ui->label_currImage->installEventFilter(this);
     ui->label_currImage->setMouseTracking(true);
@@ -74,6 +80,7 @@ ScreenInspectWidget::~ScreenInspectWidget() {
 void ScreenInspectWidget::showEvent(QShowEvent* event) {
     QWidget::showEvent(event);
     loadThresholdsFromSettings();
+    updateCameraSourceUi();
 }
 
 void ScreenInspectWidget::resizeEvent(QResizeEvent* event) {
@@ -86,6 +93,13 @@ void ScreenInspectWidget::loadThresholdsFromSettings() {
     ui->spinBox_deadDiff->setValue(SETTINGS.value("ScreenInspect/DeadPixelDiff", 35).toInt());
     ui->spinBox_maxDead->setValue(SETTINGS.value("ScreenInspect/MaxDeadPixels", 8).toInt());
     ui->doubleSpinBox_mura->setValue(SETTINGS.value("ScreenInspect/MuraStdMax", 22.0).toDouble());
+    const QString src = SETTINGS.value(QStringLiteral("ScreenInspect/CameraSource"), QStringLiteral("usb"))
+                            .toString()
+                            .trimmed()
+                            .toLower();
+    ui->comboBox_cameraSource->setCurrentIndex(src == QLatin1String("gige") ? 1 : 0);
+    ui->lineEdit_gigeIp->setText(
+        SETTINGS.value(QStringLiteral("ScreenInspect/GigEIp"), QStringLiteral("169.254.64.10")).toString());
     const int camIdx = SETTINGS.value("ScreenInspect/CameraIndex", 0).toInt();
     if (camIdx >= 0 && camIdx < ui->comboBox_camera->count())
         ui->comboBox_camera->setCurrentIndex(camIdx);
@@ -97,6 +111,34 @@ void ScreenInspectWidget::saveThresholdsToSettings() {
     SETTINGS.setValue("ScreenInspect/MaxDeadPixels", ui->spinBox_maxDead->value());
     SETTINGS.setValue("ScreenInspect/MuraStdMax", ui->doubleSpinBox_mura->value());
     SETTINGS.setValue("ScreenInspect/CameraIndex", ui->comboBox_camera->currentIndex());
+    SETTINGS.setValue(QStringLiteral("ScreenInspect/CameraSource"),
+                      isGigESource() ? QStringLiteral("gige") : QStringLiteral("usb"));
+    SETTINGS.setValue(QStringLiteral("ScreenInspect/GigEIp"), ui->lineEdit_gigeIp->text().trimmed());
+}
+
+bool ScreenInspectWidget::isGigESource() const {
+    return ui->comboBox_cameraSource->currentIndex() == 1;
+}
+
+void ScreenInspectWidget::updateCameraSourceUi() {
+    const bool gige = isGigESource();
+    ui->label_camera->setVisible(!gige);
+    ui->comboBox_camera->setVisible(!gige);
+    ui->label_gigeIp->setVisible(gige);
+    ui->lineEdit_gigeIp->setVisible(gige);
+    ui->btnOpenPreview->setText(gige ? QStringLiteral("测试采图") : QStringLiteral("打开预览"));
+    ui->btnClosePreview->setEnabled(!gige);
+    if (viewfinder_)
+        viewfinder_->setVisible(!gige);
+    if (gige)
+        stopPreview();
+}
+
+void ScreenInspectWidget::on_comboBox_cameraSource_currentIndexChanged(int) {
+    updateCameraSourceUi();
+    saveThresholdsToSettings();
+    if (!isGigESource())
+        refreshCameraList();
 }
 
 ScreenInspectWidget::InspectParams ScreenInspectWidget::currentParams() const {
@@ -111,6 +153,11 @@ ScreenInspectWidget::InspectParams ScreenInspectWidget::currentParams() const {
 }
 
 void ScreenInspectWidget::refreshCameraList() {
+    if (isGigESource()) {
+        ui->plainTextEdit_screenInspectLog->setPlainText(
+            QStringLiteral("当前为 GigE：填写 IP 后点「测试采图」或「采集」。请先关闭 MVS 客户端以免占用相机。"));
+        return;
+    }
     const int old = ui->comboBox_camera->currentIndex();
     ui->comboBox_camera->clear();
     const QList<QCameraInfo> cams = QCameraInfo::availableCameras();
@@ -132,6 +179,11 @@ void ScreenInspectWidget::on_btnRefreshCameras_clicked() {
 }
 
 void ScreenInspectWidget::startPreview() {
+    if (isGigESource()) {
+        inspectAfterCapture_ = false;
+        captureGigEStill();
+        return;
+    }
     stopPreview();
     const QList<QCameraInfo> cams = QCameraInfo::availableCameras();
     const int idx = ui->comboBox_camera->currentIndex();
@@ -150,7 +202,6 @@ void ScreenInspectWidget::startPreview() {
         capture_->setCaptureDestination(QCameraImageCapture::CaptureToFile);
 
     connect(capture_, &QCameraImageCapture::imageCaptured, this, &ScreenInspectWidget::onStillImage);
-    // CaptureToFile 模式下 imageCaptured 可能不触发，改用 imageSaved 补读图
     connect(capture_, &QCameraImageCapture::imageSaved, this, [this](int, const QString& path) {
         if (busy_)
             onStillImage(0, QImage(path));
@@ -162,7 +213,6 @@ void ScreenInspectWidget::startPreview() {
     connect(camera_, &QCamera::statusChanged, this, [this](QCamera::Status status) {
         if (status == QCamera::ActiveStatus && captureAfterReady_) {
             captureAfterReady_ = false;
-            // 预热几帧，避免首帧发黑/模糊（对应 photo_analysis 读 3 帧）
             QTimer::singleShot(450, this, &ScreenInspectWidget::requestCapture);
         }
     });
@@ -195,7 +245,43 @@ void ScreenInspectWidget::on_btnClosePreview_clicked() {
     ui->plainTextEdit_screenInspectLog->setPlainText(QStringLiteral("已关闭预览。"));
 }
 
+void ScreenInspectWidget::captureGigEStill() {
+    saveThresholdsToSettings();
+    setBusy(true);
+    const QString ip = ui->lineEdit_gigeIp->text().trimmed();
+    ui->plainTextEdit_screenInspectLog->setPlainText(
+        QStringLiteral("GigE 采图中：%1 …（后台线程，请关闭 MVS 客户端）\nUI线程=%2")
+            .arg(ip.isEmpty() ? QStringLiteral("(自动第一台)") : ip)
+            .arg(quintptr(QThread::currentThreadId()), 0, 16));
+    // 枚举/开流/预热会阻塞数秒，放到后台以免调试页卡死
+    QtConcurrent::run([this, ip]() {
+        QElapsedTimer wall;
+        wall.start();
+        QImage img;
+        QString err;
+        QString stages;
+        const bool ok = ScreenInspectGigECapture::grabStill(ip, QString(), 200, &img, &err, &stages);
+        const qint64 wallMs = wall.elapsed();
+        QMetaObject::invokeMethod(
+            this,
+            [this, ok, img, err, stages, wallMs]() {
+                if (!ok) {
+                    onCaptureFailed(err + QStringLiteral("\n") + stages);
+                    return;
+                }
+                onStillImage(0, img);
+                ui->plainTextEdit_screenInspectLog->appendPlainText(
+                    QStringLiteral("[耗时] GigE墙钟=%1ms\n%2").arg(wallMs).arg(stages));
+            },
+            Qt::QueuedConnection);
+    });
+}
+
 void ScreenInspectWidget::requestCapture() {
+    if (isGigESource()) {
+        captureGigEStill();
+        return;
+    }
     if (!camera_ || !capture_) {
         captureAfterReady_ = true;
         startPreview();
@@ -220,22 +306,40 @@ void ScreenInspectWidget::requestCapture() {
 void ScreenInspectWidget::on_btnCapture_clicked() {
     inspectAfterCapture_ = ui->checkBox_autoInspect->isChecked();
     setBusy(true);
+    if (isGigESource()) {
+        ui->plainTextEdit_screenInspectLog->setPlainText(QStringLiteral("正在 GigE 采集…"));
+        captureGigEStill();
+        return;
+    }
     ui->plainTextEdit_screenInspectLog->setPlainText(QStringLiteral("正在采集（预热后抓拍）…"));
     requestCapture();
 }
 
 void ScreenInspectWidget::onStillImage(int, const QImage& image) {
+    QElapsedTimer t;
+    t.start();
     setBusy(false);
     if (image.isNull()) {
         ui->plainTextEdit_screenInspectLog->setPlainText(QStringLiteral("采集失败：空画面。"));
         return;
     }
     currImage_ = image.convertToFormat(QImage::Format_RGB888);
+    const qint64 msConv = t.restart();
     annotatedImage_ = currImage_;
     refreshImageLabels();
+    const qint64 msUi = t.restart();
+    // PNG 压缩高分辨率图很慢，勿堵 UI
     saveCaptureFiles(currImage_, QImage());
-    ui->plainTextEdit_screenInspectLog->setPlainText(
-        QStringLiteral("采集成功 %1x%2").arg(currImage_.width()).arg(currImage_.height()));
+    const qint64 msSaveKick = t.elapsed();
+    const QString uiLog =
+        QStringLiteral("采集成功 %1x%2\n[耗时] UI线程 convert=%3ms 刷新预览=%4ms 触发存盘=%5ms")
+            .arg(currImage_.width())
+            .arg(currImage_.height())
+            .arg(msConv)
+            .arg(msUi)
+            .arg(msSaveKick);
+    qDebug().noquote() << QStringLiteral("[ScreenInspectUI]") << uiLog;
+    ui->plainTextEdit_screenInspectLog->setPlainText(uiLog);
     if (inspectAfterCapture_) {
         inspectAfterCapture_ = false;
         runInspect();
@@ -331,29 +435,56 @@ void ScreenInspectWidget::showPixmapOnLabel(const QImage& image, QLabel* label) 
     const QSize sz = label->size();
     if (sz.width() < 8 || sz.height() < 8)
         return;
-    label->setPixmap(QPixmap::fromImage(image).scaled(sz, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    // 先按控件尺寸缩小再转 QPixmap，避免整幅高分辨率进 UI
+    const Qt::TransformationMode mode =
+        (image.width() * image.height() > 1920 * 1080) ? Qt::FastTransformation : Qt::SmoothTransformation;
+    const QImage scaled = image.scaled(sz, Qt::KeepAspectRatio, mode);
+    label->setPixmap(QPixmap::fromImage(scaled));
+}
+
+/** 在缩略显示图上叠划定 ROI（坐标按原图像素换算）。 */
+QImage paintRoiOverlay(const QImage& src, const QSize& labelSize, const QRect& roiImage) {
+    if (src.isNull() || labelSize.width() < 8 || labelSize.height() < 8)
+        return src;
+    const Qt::TransformationMode mode =
+        (src.width() * src.height() > 1920 * 1080) ? Qt::FastTransformation : Qt::SmoothTransformation;
+    QImage display = src.scaled(labelSize, Qt::KeepAspectRatio, mode);
+    if (display.isNull())
+        return display;
+    QRect overlay = roiImage.intersected(src.rect());
+    if (overlay.width() < 4 || overlay.height() < 4 || src.width() <= 0 || src.height() <= 0)
+        return display;
+    const QRect od(overlay.x() * display.width() / src.width(),
+                   overlay.y() * display.height() / src.height(),
+                   qMax(1, overlay.width() * display.width() / src.width()),
+                   qMax(1, overlay.height() * display.height() / src.height()));
+    display = display.convertToFormat(QImage::Format_RGB32);
+    QPainter p(&display);
+    p.setPen(QPen(QColor(0, 220, 255), 3));
+    p.drawRect(od.adjusted(0, 0, -1, -1));
+    p.end();
+    return display;
 }
 
 void ScreenInspectWidget::refreshImageLabels() {
-    if (!refImage_.isNull())
-        showPixmapOnLabel(refImage_, ui->label_refImage);
-    QImage show = annotatedImage_.isNull() ? currImage_ : annotatedImage_;
-    if (show.isNull())
-        return;
     QRect overlay;
     if (roiDragging_)
         overlay = QRect(roiDragStart_, roiDragCur_).normalized();
     else
         overlay = manualRoi_;
-    overlay = overlay.intersected(show.rect());
-    if (overlay.width() >= 4 && overlay.height() >= 4) {
-        show = show.convertToFormat(QImage::Format_RGB32);
-        QPainter p(&show);
-        p.setPen(QPen(QColor(0, 220, 255), 3));
-        p.drawRect(overlay.adjusted(0, 0, -1, -1));
-        p.end();
-    }
-    showPixmapOnLabel(show, ui->label_currImage);
+
+    // 参考图只显示原图，不叠坏点/划定框（坏点只标在拍摄图上）
+    if (!refImage_.isNull())
+        showPixmapOnLabel(refImage_, ui->label_refImage);
+
+    const QImage src = annotatedImage_.isNull() ? currImage_ : annotatedImage_;
+    if (src.isNull() || !ui->label_currImage)
+        return;
+    const QSize sz = ui->label_currImage->size();
+    if (sz.width() < 8 || sz.height() < 8)
+        return;
+    // 拍摄图：分析结果（绿框/圆/红圈）+ 青色划定框
+    ui->label_currImage->setPixmap(QPixmap::fromImage(paintRoiOverlay(src, sz, overlay)));
 }
 
 QRect ScreenInspectWidget::labelPosToImage(const QPoint& pos) const {
@@ -440,14 +571,21 @@ void ScreenInspectWidget::runInspect() {
     const InspectParams p = currentParams();
     const QImage curr = currImage_.copy();
     const QImage ref = refImage_.copy();
+    ui->plainTextEdit_screenInspectLog->setPlainText(
+        QStringLiteral("正在识别 %1x%2（后台线程）…").arg(curr.width()).arg(curr.height()));
     QtConcurrent::run([this, curr, ref, p]() {
+        QElapsedTimer t;
+        t.start();
         const InspectReport report = analyze(curr, ref, p);
+        const qint64 ms = t.elapsed();
         QMetaObject::invokeMethod(
             this,
-            [this, report]() {
+            [this, report, ms]() {
                 inspectRunning_ = false;
                 setBusy(false);
                 applyReport(report);
+                ui->plainTextEdit_screenInspectLog->appendPlainText(
+                    QStringLiteral("[耗时] 识别墙钟=%1ms（详见进程后台 log 中 [ScreenInspectAnalyze]）").arg(ms));
             },
             Qt::QueuedConnection);
     });
@@ -541,10 +679,24 @@ void ScreenInspectWidget::saveCaptureFiles(const QImage& raw, const QImage& anno
     const QString dir = inspectDir();
     CommonUtils::ensureDirectory(dir);
     const QString stamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss"));
-    if (!raw.isNull())
-        raw.save(dir + QLatin1Char('/') + stamp + QStringLiteral("_capture.png"), "PNG");
-    if (!annotated.isNull())
-        annotated.save(dir + QLatin1Char('/') + stamp + QStringLiteral("_mark.png"), "PNG");
+    // 高分辨率 PNG 压缩极慢，后台写盘
+    QtConcurrent::run([dir, stamp, raw, annotated]() {
+        QElapsedTimer t;
+        t.start();
+        if (!raw.isNull())
+            raw.save(dir + QLatin1Char('/') + stamp + QStringLiteral("_capture.png"), "PNG");
+        const qint64 msRaw = t.restart();
+        if (!annotated.isNull())
+            annotated.save(dir + QLatin1Char('/') + stamp + QStringLiteral("_mark.png"), "PNG");
+        const qint64 msAnno = t.elapsed();
+        ScreenInspectAnalyzer::cleanupStoredImages(dir);
+        qDebug().noquote() << QStringLiteral("[ScreenInspectSave]")
+                           << QStringLiteral("raw=%1ms anno=%2ms size=%3x%4")
+                                  .arg(msRaw)
+                                  .arg(msAnno)
+                                  .arg(raw.width())
+                                  .arg(raw.height());
+    });
 }
 
 QString ScreenInspectWidget::inspectDir() const {

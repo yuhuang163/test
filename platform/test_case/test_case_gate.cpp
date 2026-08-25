@@ -1154,6 +1154,8 @@ QString fieldStringFromVariant(const QString& reportType, const QString& field, 
         }
         if (field == QLatin1String("colorMatch")) {
             ok = true;
+            if (d.colorMatch < 0)
+                return QStringLiteral("未指定");
             return d.colorMatch == 1 ? QStringLiteral("是") : QStringLiteral("否");
         }
     }
@@ -1290,7 +1292,9 @@ QString formatGateFieldValue(const QString& reportType, const QString& field, do
         if (field == QLatin1String("detectedColor"))
             return ScreenInspectAnalyzer::colorName(qRound(value));
         if (field == QLatin1String("colorMatch"))
-            return qAbs(value - 1.0) < 0.0001 ? QStringLiteral("是") : QStringLiteral("否");
+            return qAbs(value + 1.0) < 0.0001
+                       ? QStringLiteral("未指定")
+                       : (qAbs(value - 1.0) < 0.0001 ? QStringLiteral("是") : QStringLiteral("否"));
     }
     if (qAbs(value - qRound(value)) < 1e-9)
         return QString::number(qRound(value));
@@ -1307,6 +1311,32 @@ double gateCompareThreshold(const TestCaseGate& gate) {
             return parsed;
     }
     return gate.low;
+}
+
+/**
+ * 「是否为期望纯色」阈值：支持 1/0、是/否。
+ * Expected 非数字（如「是」）时绝不能回退成 Low=0，否则会误报「期望=否」。
+ * Expected 空时默认期望匹配（1）。
+ */
+double colorMatchThreshold(const TestCaseGate& gate) {
+    const QString e = gate.expected.trimmed();
+    if (!e.isEmpty()) {
+        if (e == QStringLiteral("是") || e.compare(QLatin1String("yes"), Qt::CaseInsensitive) == 0
+            || e.compare(QLatin1String("true"), Qt::CaseInsensitive) == 0)
+            return 1.0;
+        if (e == QStringLiteral("否") || e.compare(QLatin1String("no"), Qt::CaseInsensitive) == 0
+            || e.compare(QLatin1String("false"), Qt::CaseInsensitive) == 0)
+            return 0.0;
+        bool ok = false;
+        const double parsed = e.toDouble(&ok);
+        if (ok)
+            return parsed;
+    }
+    if (qAbs(gate.low - gate.high) < 0.0001 && (qAbs(gate.low) < 0.0001 || qAbs(gate.low - 1.0) < 0.0001))
+        return gate.low;
+    if (qAbs(gate.low - 1.0) < 0.0001 || qAbs(gate.high - 1.0) < 0.0001)
+        return 1.0;
+    return 1.0;
 }
 
 } // namespace
@@ -1344,6 +1374,13 @@ bool GateRegistry::evaluate(const TestCaseGate& gate, const QString& reportType,
 
     bool ok = false;
     double value = fieldValueFromVariant(reportType, gate.field, payload, ok);
+    // 步骤未写 Param_expectedColor 时 colorMatch=-1；展示曾误成「否」且 -1!=0 导致卡控失败
+    if (ok && reportType == QLatin1String("ProtocolScreenInspectData")
+        && gate.field == QLatin1String("colorMatch") && qAbs(value + 1.0) < 0.0001) {
+        passOut = true;
+        detailOut = QStringLiteral("当前=未指定期望色, 本项跳过");
+        return true;
+    }
     if (gate.op == TestCaseGateOp::CompareVersions) {
         bool strOk = false;
         QString actual = fieldStringFromVariant(reportType, gate.field, payload, strOk);
@@ -1393,8 +1430,19 @@ bool GateRegistry::evaluate(const TestCaseGate& gate, const QString& reportType,
             } else if (reportType == QLatin1String("ProtocolScreenInspectData")
                        && (gate.field == QLatin1String("detectedColor")
                            || gate.field == QLatin1String("colorMatch"))) {
-                // 实测 fieldString 已是「红」等中文；ini 期望多为 "2"。绝不能 actual==expected 字符串比
-                const double threshold = gateCompareThreshold(gate);
+                // 实测 fieldString 已是「红」等中文；ini 期望可为 "2" 或「红」
+                double threshold = 0.0;
+                if (gate.field == QLatin1String("colorMatch")) {
+                    threshold = colorMatchThreshold(gate);
+                } else {
+                    bool colorOk = false;
+                    const int colorIdx =
+                        ScreenInspectAnalyzer::parseColorIndex(gate.expected.trimmed(), &colorOk);
+                    if (colorOk && !gate.expected.trimmed().isEmpty())
+                        threshold = colorIdx;
+                    else
+                        threshold = gateCompareThreshold(gate);
+                }
                 const QString expectText = formatGateFieldValue(reportType, gate.field, threshold);
                 if (ok) {
                     passOut = qAbs(value - threshold) < 0.0001;
@@ -1568,6 +1616,10 @@ QString GateRegistry::unitFor(const QString& reportType, const QString& field, c
     return defaultUnitForField(reportType, field);
 }
 
+QString GateRegistry::formatFieldDisplayValue(const QString& reportType, const QString& field, double value) {
+    return formatGateFieldValue(reportType, field, value);
+}
+
 QString GateRegistry::formatGateAsk(const TestCaseGate& gate, const QString& reportType, const QVariant& payload) {
     QString ask;
     if (gate.op == TestCaseGateOp::Range) {
@@ -1583,7 +1635,10 @@ QString GateRegistry::formatGateAsk(const TestCaseGate& gate, const QString& rep
         ask = QStringLiteral("<%1").arg(formatGateFieldValue(reportType, gate.field, gateCompareThreshold(gate)));
     } else if (gate.op == TestCaseGateOp::Eq) {
         const QString expected = gate.expected.trimmed();
-        if (!expected.isEmpty()) {
+        if (reportType == QLatin1String("ProtocolScreenInspectData")
+            && gate.field == QLatin1String("colorMatch")) {
+            ask = formatGateFieldValue(reportType, gate.field, colorMatchThreshold(gate));
+        } else if (!expected.isEmpty()) {
             bool ok = false;
             const double parsed = expected.toDouble(&ok);
             ask = ok ? formatGateFieldValue(reportType, gate.field, parsed) : expected;

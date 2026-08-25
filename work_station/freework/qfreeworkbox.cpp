@@ -1,11 +1,15 @@
 #include "qfreeworkbox.h"
 
 #include <QAction>
+#include <QCoreApplication>
+#include <QDir>
 #include <QLabel>
+#include <QTimer>
 
 #include "Abini.h"
 #include "asd9026a_device.h"
 #include "qfreework.h"
+#include "screen_inspect_analyzer.h"
 #include "shared_instrument.h"
 #include "ui_qfreeworkbox.h"
 
@@ -15,8 +19,13 @@ QFreeWorkBox::QFreeWorkBox(QWidget* parent) : box_base(parent), ui(new Ui::QFree
     CreatWindow<QFreeWork>(this);
     signalAndslot();
     recoverCustom();
+    // 扫口异步完成后可能冲掉选中项，稍后再恢复一次已保存串口
+    QTimer::singleShot(800, this, [this]() { recoverCustom(); });
     ShowData(this);
     setWindowTitle("自由工站");
+    // 启动时清一次历史屏幕检测图
+    ScreenInspectAnalyzer::cleanupStoredImages(
+        QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("screen_inspect")));
     ui->statusbar->addPermanentWidget(new QLabel(FREE_VER + QString(__DATE__) + " " + QString(__TIME__)));
 
     QAction* Fixture_connectl_act = ui->menubar->addAction("连接治具串口");
@@ -39,8 +48,10 @@ QFreeWorkBox::QFreeWorkBox(QWidget* parent) : box_base(parent), ui(new Ui::QFree
 }
 
 QFreeWorkBox::~QFreeWorkBox() {
-    if (Fixture_uart_ui != nullptr)
+    if (Fixture_uart_ui != nullptr) {
         SETTINGS.setValue(QString("mechine/0/masterFixturecomName"), Fixture_uart_ui->ui->FixturecomNameCombo->currentText());
+        SETTINGS.sync();
+    }
     delete Fixture_uart_ui;
     qDeleteAll(sharedTempLoggerMutexes_);
     sharedTempLoggerMutexes_.clear();
