@@ -186,6 +186,7 @@ void test_base::initData() {
     pack.userNo = SETTINGS.value("Mes/M_USERNO").toString();
     pack.lotName = SETTINGS.value("Mes/Work_Order").toString();
     pack.error = "NULL";
+    pack.remark.clear(); // 开测清空，避免上轮 NG 备注带到本轮
 
     isBrushLogGet = SETTINGS.value("SYSTEM/SaveToothbrushLog", 0).toBool();
     snPattern = SETTINGS.value("Regex/SNPattern").toString().trimmed();

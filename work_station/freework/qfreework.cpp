@@ -1274,6 +1274,7 @@ void QFreeWork::finalizeTestFlowIfComplete() {
             "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
             "border-radius: 10px; padding: 10px; text-align: center;");
         pack.result = QStringLiteral("PASS");
+        pack.remark.clear(); // 避免上轮 NG 备注残留
     }
 
     finishTestRecord(pack, ui->isusemes->checkState());
@@ -2862,6 +2863,8 @@ void QFreeWork::initData(bool deferDongleAtForVisa) {
     QTupleService::clearSharedSession();
     resetTuplePositionHighlight();
     freeWorkMesSegments_.clear();
+    pack.remark.clear(); // 开测清空，避免上轮 NG 备注带到本轮
+    pack.error = QStringLiteral("NULL");
     ui->test_time->setText(QStringLiteral("0.0 s"));
     TestTime.start();
 }
