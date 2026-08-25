@@ -160,7 +160,9 @@ void mergeSendParamMapInto(QVariant& param, const QVariantMap& extra) {
 bool hookUsesGenericSendParamMap(const TestCaseDefinition& def) {
     if (!def.hook.enabled)
         return false;
-    return def.hook.hookId.trimmed() == QLatin1String("COUNTDOWN_WAIT");
+    const QString id = def.hook.hookId.trimmed();
+    return id == QLatin1String("COUNTDOWN_WAIT") || id == QLatin1String("LIGHT_SENSOR_GOLDEN_CALIB")
+        || id == QLatin1String("VES_CH1_SET_BRIGHTNESS");
 }
 
 void writeGenericHookSendParamMap(QSettings& ini, const TestCaseDefinition& def) {
@@ -178,7 +180,8 @@ void writeGenericHookSendParamMap(QSettings& ini, const TestCaseDefinition& def)
         if (!DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd))
             writeSendParamMap(ini, map);
     } else if (def.send.channel == TestCaseSendChannel::Fixture
-               && def.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera) {
+               && (def.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera
+                   || def.send.fixtureProtocol == TestCaseFixtureProtocol::VesLight)) {
         writeSendParamMap(ini, map);
     }
 }

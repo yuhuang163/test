@@ -1691,6 +1691,22 @@ void QFreeWork::refreshResultCode(ProtocolResultData data) {
     showlog(QStringLiteral("协议结果码：%1").arg(data.result));
 }
 
+void QFreeWork::refreshPhotosensitiveData(ProtocolPhotosensitiveData data) {
+    if (lightSensorCollecting_) {
+        if (!data.samples.isEmpty())
+            lightSensorSamples_.append(data.samples);
+        else
+            lightSensorSamples_.append(data.lightSensor);
+    }
+    evaluateActiveTestCaseGate(QStringLiteral("ProtocolPhotosensitiveData"), QVariant::fromValue(data));
+}
+
+void QFreeWork::refreshLightCalibData(ProtocolLightCalibData data) {
+    lightCalibReadValid_ = true;
+    lightCalibReadValue_ = static_cast<int>(static_cast<int32_t>(data.calibValue));
+    evaluateActiveTestCaseGate(QStringLiteral("ProtocolLightCalibData"), QVariant::fromValue(data));
+}
+
 void QFreeWork::refreshFlangeStatus(ProtocolTypeData data) {
     if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolFlangeData"), QVariant::fromValue(data)))
         return;

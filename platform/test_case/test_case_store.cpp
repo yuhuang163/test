@@ -1041,6 +1041,7 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
         TupleCmd inferTuple;
         DongleCmd inferDongle;
         UsbCameraCmd inferUsbCamera;
+        VesLightCmd inferVesLight;
         if (Asd9026aCmdCatalog::asd9026aCmdFromName(out.send.deviceCmd, inferAsd9026a)) {
             out.send.channel = TestCaseSendChannel::Fixture;
             out.send.fixtureProtocol = TestCaseFixtureProtocol::Asd9026a;
@@ -1061,6 +1062,9 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
         } else if (UsbCameraCmdCatalog::usbCameraCmdFromName(out.send.deviceCmd, inferUsbCamera)) {
             out.send.channel = TestCaseSendChannel::Fixture;
             out.send.fixtureProtocol = TestCaseFixtureProtocol::UsbCamera;
+        } else if (VesLightCmdCatalog::vesLightCmdFromName(out.send.deviceCmd, inferVesLight)) {
+            out.send.channel = TestCaseSendChannel::Fixture;
+            out.send.fixtureProtocol = TestCaseFixtureProtocol::VesLight;
         } else {
             out.send.channel = TestCaseSendChannel::Product;
         }
@@ -1122,6 +1126,13 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
                 if (!UsbCameraCmdCatalog::isCmdForAction(camCmd, out.send.action))
                     out.send.action = UsbCameraCmdCatalog::actionFor(camCmd);
                 UsbCameraCmdCatalog::paramFromIniGroup(ini, camCmd, out.send.param);
+            }
+        } else if (out.send.fixtureProtocol == TestCaseFixtureProtocol::VesLight) {
+            VesLightCmd vesCmd;
+            if (VesLightCmdCatalog::vesLightCmdFromName(out.send.deviceCmd, vesCmd)) {
+                if (!VesLightCmdCatalog::isCmdForAction(vesCmd, out.send.action))
+                    out.send.action = VesLightCmdCatalog::actionFor(vesCmd);
+                VesLightCmdCatalog::paramFromIniGroup(ini, vesCmd, out.send.param);
             }
         } else {
         FixturePcbaCmd fixtureCmd;
@@ -1415,7 +1426,8 @@ void applyCaseIniOverlay(QSettings& overlay, TestCaseDefinition& def) {
                 def.send.param = normalizeScpiModbusParamFromMap(merged);
             } else if (def.send.channel == TestCaseSendChannel::Product
                        || (def.send.channel == TestCaseSendChannel::Fixture
-                           && def.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera)) {
+                           && (def.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera
+                               || def.send.fixtureProtocol == TestCaseFixtureProtocol::VesLight))) {
                 // 编辑/存档侧保持 JsonMap；normalizeSendParam（如 Sn→DeviceSnPayload）仅在下发时做
                 QVariantMap merged;
                 if (def.send.param.canConvert<QVariantMap>())
@@ -1460,6 +1472,10 @@ void applyCaseIniOverlay(QSettings& overlay, TestCaseDefinition& def) {
                     UsbCameraCmd camCmd;
                     if (UsbCameraCmdCatalog::usbCameraCmdFromName(def.send.deviceCmd, camCmd))
                         UsbCameraCmdCatalog::paramFromIniGroup(overlay, camCmd, def.send.param);
+                } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::VesLight) {
+                    VesLightCmd vesCmd;
+                    if (VesLightCmdCatalog::vesLightCmdFromName(def.send.deviceCmd, vesCmd))
+                        VesLightCmdCatalog::paramFromIniGroup(overlay, vesCmd, def.send.param);
                 } else {
                     FixturePcbaCmd fixtureCmd;
                     if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd))
@@ -1841,6 +1857,10 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
                 UsbCameraCmd camCmd;
                 if (UsbCameraCmdCatalog::usbCameraCmdFromName(def.send.deviceCmd, camCmd))
                     UsbCameraCmdCatalog::paramToIniGroup(ini, camCmd, def.send.param);
+            } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::VesLight) {
+                VesLightCmd vesCmd;
+                if (VesLightCmdCatalog::vesLightCmdFromName(def.send.deviceCmd, vesCmd))
+                    VesLightCmdCatalog::paramToIniGroup(ini, vesCmd, def.send.param);
             } else {
                 FixturePcbaCmd fixtureCmd;
                 if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd))
@@ -1912,6 +1932,9 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
         } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera) {
             ini.setValue(QStringLiteral("Send/Device"),
                          def.send.device.isEmpty() ? QStringLiteral("USB_CAMERA") : def.send.device);
+        } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::VesLight) {
+            ini.setValue(QStringLiteral("Send/Device"),
+                         def.send.device.isEmpty() ? QStringLiteral("VES") : def.send.device);
         }
     }
     ini.setValue(QStringLiteral("Send/DeviceCmd"), def.send.deviceCmd);
@@ -1940,6 +1963,10 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
             UsbCameraCmd camCmd;
             if (UsbCameraCmdCatalog::usbCameraCmdFromName(def.send.deviceCmd, camCmd))
                 UsbCameraCmdCatalog::paramToIniGroup(ini, camCmd, def.send.param);
+        } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::VesLight) {
+            VesLightCmd vesCmd;
+            if (VesLightCmdCatalog::vesLightCmdFromName(def.send.deviceCmd, vesCmd))
+                VesLightCmdCatalog::paramToIniGroup(ini, vesCmd, def.send.param);
         } else {
         FixturePcbaCmd fixtureCmd;
         if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, fixtureCmd))

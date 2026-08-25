@@ -155,6 +155,14 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         fw->fetchMesRootSku();
         return;
     }
+    if (hookId == QStringLiteral("LIGHT_SENSOR_GOLDEN_CALIB")) {
+        fw->runLightSensorGoldenCalibStep();
+        return;
+    }
+    if (hookId == QStringLiteral("VES_CH1_SET_BRIGHTNESS")) {
+        fw->runVesCh1SetBrightnessStep();
+        return;
+    }
     if (hookId == QStringLiteral("COUNTDOWN_WAIT")) {
         // Param_seconds（或 Param_waitSeconds）配置等待秒数；可选 Param_prompt / Meta PromptText 作提示文案
         const TestCaseDefinition& def = fw->activeTestCase();
@@ -376,6 +384,8 @@ void QFreeWorkTestCaseHookRegistrar::registerAll() {
     registerHook(QStringLiteral("PRINT_WHOLE_MACHINE_SN"));
     registerHook(QStringLiteral("QR_SN_CONSISTENCY_CHECK"));
     registerHook(QStringLiteral("COUNTDOWN_WAIT"));
+    registerHook(QStringLiteral("LIGHT_SENSOR_GOLDEN_CALIB"));
+    registerHook(QStringLiteral("VES_CH1_SET_BRIGHTNESS"));
     registerHook(QStringLiteral("MES_GET_ROOT_SKU"));
     registerHook(QStringLiteral("MAC_WRITE_ROOT"));
     registerHook(QStringLiteral("BLE_CONNECT_BY_NAME"));

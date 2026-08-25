@@ -294,6 +294,8 @@ class test_base : public QWidget {
     virtual void refreshRootBatteryTemp(quint8) {}
     virtual void refreshRootHeatTemp(quint8) {}
     virtual void refreshResultCode(ProtocolResultData) {}
+    virtual void refreshPhotosensitiveData(ProtocolPhotosensitiveData) {}
+    virtual void refreshLightCalibData(ProtocolLightCalibData) {}
     virtual void refreshFlangeStatus(ProtocolTypeData) {}
     virtual void refreshPumpStallCurrent(ProtocolPumpStallCurrentData) {}
     virtual void refreshRootAgingHistory(ProtocolRootAgingHistoryData) {}

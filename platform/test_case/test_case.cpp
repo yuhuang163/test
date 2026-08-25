@@ -12,6 +12,7 @@
 #include "scpi_cmd_manifest.h"
 #include "tuple_cmd_manifest.h"
 #include "usb_camera_cmd_manifest.h"
+#include "ves_light_cmd_manifest.h"
 #include "huiling_wfp60h_profile.h"
 #include "test_case_ini_param.h"
 
@@ -133,6 +134,17 @@ bool TestCaseValidator::validateCase(const TestCaseDefinition& def, QStringList&
                 DeviceCmdParamSchema schema;
                 if (!UsbCameraCmdCatalog::paramSchemaFor(camCmd, schema))
                     errors.append(QStringLiteral("该 USB 摄像头指令尚未配置参数模板，请联系工程师"));
+            }
+        } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::VesLight) {
+            VesLightCmd vesCmd;
+            if (!VesLightCmdCatalog::vesLightCmdFromName(def.send.deviceCmd, vesCmd)) {
+                errors.append(QStringLiteral("VES 光源测试指令无效"));
+            } else if (!VesLightCmdCatalog::isCmdForAction(vesCmd, def.send.action)) {
+                errors.append(QStringLiteral("VES 光源指令与操作方式不匹配（请选「设置」）"));
+            } else {
+                DeviceCmdParamSchema schema;
+                if (!VesLightCmdCatalog::paramSchemaFor(vesCmd, schema))
+                    errors.append(QStringLiteral("该 VES 光源指令尚未配置参数模板，请联系工程师"));
             }
         } else if (def.send.fixtureProtocol != TestCaseFixtureProtocol::Pcba) {
             errors.append(QStringLiteral("治具协议类型无效"));
@@ -846,6 +858,99 @@ void UsbCameraCmdCatalog::paramToIniGroup(QSettings& settings, UsbCameraCmd cmd,
     }
 }
 
+// ===================== VesLightCmdCatalog =====================
+
+QStringList VesLightCmdCatalog::allVesLightCmdNames(TestCaseSendAction action) {
+    QStringList names;
+    for (int i = 0; i < VesLightCmdManifest::rowCount(); ++i) {
+        const VesLightCmdManifest::Row& row = VesLightCmdManifest::rows()[i];
+        if (!TestCaseCmdManifest::matchesSendAction(row.sendActions, action))
+            continue;
+        names.append(QString::fromLatin1(row.enumName));
+    }
+    names.sort();
+    return names;
+}
+
+TestCaseSendAction VesLightCmdCatalog::actionFor(VesLightCmd cmd) {
+    if (const VesLightCmdManifest::Row* row = VesLightCmdManifest::findByCmd(cmd))
+        return TestCaseCmdManifest::defaultSendAction(row->sendActions);
+    return TestCaseSendAction::Set;
+}
+
+bool VesLightCmdCatalog::isCmdForAction(VesLightCmd cmd, TestCaseSendAction action) {
+    if (const VesLightCmdManifest::Row* row = VesLightCmdManifest::findByCmd(cmd))
+        return TestCaseCmdManifest::matchesSendAction(row->sendActions, action);
+    return false;
+}
+
+QString VesLightCmdCatalog::vesLightCmdUiLabel(const QString& enumName) {
+    if (const VesLightCmdManifest::Row* row = VesLightCmdManifest::findByEnumName(enumName)) {
+        if (row->uiLabel && row->uiLabel[0] != '\0')
+            return cmdPickerDisplayLabel(QString::fromUtf8(row->uiLabel));
+    }
+    return QStringLiteral("未登记 VES 光源指令");
+}
+
+bool VesLightCmdCatalog::vesLightCmdFromName(const QString& name, VesLightCmd& out) {
+    if (const VesLightCmdManifest::Row* row = VesLightCmdManifest::findByEnumName(name)) {
+        out = row->cmd;
+        return true;
+    }
+    return false;
+}
+
+QString VesLightCmdCatalog::vesLightCmdToName(VesLightCmd cmd) {
+    if (const VesLightCmdManifest::Row* row = VesLightCmdManifest::findByCmd(cmd))
+        return QString::fromLatin1(row->enumName);
+    return QString::number(static_cast<int>(cmd));
+}
+
+bool VesLightCmdCatalog::paramSchemaFor(VesLightCmd cmd, DeviceCmdParamSchema& out) {
+    if (const VesLightCmdManifest::Row* row = VesLightCmdManifest::findByCmd(cmd)) {
+        out.kind = row->paramKind;
+        if (row->paramHint && row->paramHint[0] != '\0')
+            out.hint = QString::fromUtf8(row->paramHint);
+        else
+            out.hint.clear();
+        return true;
+    }
+    return false;
+}
+
+QString VesLightCmdCatalog::paramUiHint(const QString& enumName) {
+    if (const VesLightCmdManifest::Row* row = VesLightCmdManifest::findByEnumName(enumName)) {
+        if (row->paramHint && row->paramHint[0] != '\0')
+            return QString::fromUtf8(row->paramHint);
+    }
+    return QStringLiteral("未知 VES 光源指令");
+}
+
+bool VesLightCmdCatalog::paramFromIniGroup(const QSettings& settings, VesLightCmd cmd, QVariant& out) {
+    DeviceCmdParamSchema schema;
+    if (!paramSchemaFor(cmd, schema))
+        return false;
+    switch (schema.kind) {
+    case DeviceCmdParamKind::None:
+        out = QVariant();
+        return true;
+    case DeviceCmdParamKind::JsonMap:
+        out = readSendParamMap(settings);
+        return true;
+    default:
+        return false;
+    }
+}
+
+void VesLightCmdCatalog::paramToIniGroup(QSettings& settings, VesLightCmd cmd, const QVariant& value) {
+    removeSendParamKeys(settings);
+    DeviceCmdParamSchema schema;
+    if (!paramSchemaFor(cmd, schema))
+        return;
+    if (schema.kind == DeviceCmdParamKind::JsonMap)
+        writeJsonMap(settings, sendParamIniPrefix(), value);
+}
+
 // ===================== Asd9026aCmdCatalog =====================
 
 QStringList Asd9026aCmdCatalog::allAsd9026aCmdNames(TestCaseSendAction action) {
@@ -1165,6 +1270,10 @@ TestCaseFixtureProtocol FixturePcbaCmdCatalog::fixtureProtocolFromIni(const QStr
     if (text.compare(QStringLiteral("USB_CAMERA"), Qt::CaseInsensitive) == 0
         || text.compare(QStringLiteral("UsbCamera"), Qt::CaseInsensitive) == 0)
         return TestCaseFixtureProtocol::UsbCamera;
+    if (text.compare(QStringLiteral("VES"), Qt::CaseInsensitive) == 0
+        || text.compare(QStringLiteral("VES_LIGHT"), Qt::CaseInsensitive) == 0
+        || text.compare(QStringLiteral("VesLight"), Qt::CaseInsensitive) == 0)
+        return TestCaseFixtureProtocol::VesLight;
     if (text.compare(QStringLiteral("Pcba"), Qt::CaseInsensitive) == 0 || text.compare(QStringLiteral("PCBA"), Qt::CaseInsensitive) == 0)
         return TestCaseFixtureProtocol::Pcba;
     return TestCaseFixtureProtocol::Pcba;
@@ -1180,6 +1289,8 @@ QString FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol prot
         return QStringLiteral("JIELI_BT_BOX");
     case TestCaseFixtureProtocol::UsbCamera:
         return QStringLiteral("USB_CAMERA");
+    case TestCaseFixtureProtocol::VesLight:
+        return QStringLiteral("VES");
     case TestCaseFixtureProtocol::Pcba:
     default:
     return QStringLiteral("Pcba");
@@ -1196,6 +1307,8 @@ QString FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol pr
         return QStringLiteral("杰理蓝牙盒子");
     case TestCaseFixtureProtocol::UsbCamera:
         return QStringLiteral("USB摄像头");
+    case TestCaseFixtureProtocol::VesLight:
+        return QStringLiteral("VES光源");
     case TestCaseFixtureProtocol::Pcba:
     default:
     return QStringLiteral("PCBA测试协议");

@@ -13,6 +13,7 @@
 #include "modbus_cmd_manifest.h"
 #include "scpi_cmd_manifest.h"
 #include "usb_camera_cmd_manifest.h"
+#include "ves_light_cmd_manifest.h"
 #include "screen_inspect_analyzer.h"
 
 #if _MSC_VER >= 1600
@@ -30,6 +31,7 @@ const QVector<GateTypeDescriptor> kTypes = {
     {QStringLiteral("ProtocolChargeCurrentData"), QStringLiteral("充电电流"), {{QStringLiteral("currentMa"), QStringLiteral("电流(mA)")}}},
     {QStringLiteral("ProtocolTrimData"), QStringLiteral("Trim微调值"), {{QStringLiteral("trim"), QStringLiteral("微调值")}}},
     {QStringLiteral("ProtocolLightCalibData"), QStringLiteral("光感校准值"), {{QStringLiteral("calibValue"), QStringLiteral("校准值")}}},
+    {QStringLiteral("ProtocolPhotosensitiveData"), QStringLiteral("光感上报"), {{QStringLiteral("lightSensor"), QStringLiteral("光感值")}}},
     {QStringLiteral("ProtocolAiotImuCaliData"), QStringLiteral("Qaiot IMU校准"),
      {{QStringLiteral("kx"), QStringLiteral("kx")},
       {QStringLiteral("ky"), QStringLiteral("ky")},
@@ -243,6 +245,12 @@ double fieldValueFromVariant(const QString& reportType, const QString& field, co
         if (field == QLatin1String("calibValue")) {
             ok = true;
             return static_cast<double>(d.calibValue);
+        }
+    } else if (reportType == QLatin1String("ProtocolPhotosensitiveData")) {
+        const auto d = payload.value<ProtocolPhotosensitiveData>();
+        if (field == QLatin1String("lightSensor") || field == QLatin1String("value")) {
+            ok = true;
+            return static_cast<double>(d.lightSensor);
         }
     } else if (reportType == QLatin1String("ProtocolAiotImuCaliData")) {
         const auto d = payload.value<ProtocolAiotImuCaliData>();
@@ -1225,6 +1233,9 @@ GateSendBinding GateRegistry::bindingForSend(TestCaseSendChannel channel, const 
                 applyRow(row->gateReportType, row->gateDefaultField);
         } else if (proto == TestCaseFixtureProtocol::UsbCamera) {
             if (const UsbCameraCmdManifest::Row* row = UsbCameraCmdManifest::findByEnumName(cmd))
+                applyRow(row->gateReportType, row->gateDefaultField);
+        } else if (proto == TestCaseFixtureProtocol::VesLight) {
+            if (const VesLightCmdManifest::Row* row = VesLightCmdManifest::findByEnumName(cmd))
                 applyRow(row->gateReportType, row->gateDefaultField);
         }
         break;

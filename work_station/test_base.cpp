@@ -629,17 +629,27 @@ int test_base::getIndex() const {
 void test_base::waitWork(int ms) {
     QTime t;
     t.start();
-    while (t.elapsed() < ms)
+    while (t.elapsed() < ms && isTestContinue)
         QCoreApplication::processEvents();
 }
 
 void test_base::waitWorkIdle(int ms) {
-    if (ms <= 0) {
+    if (ms <= 0 || !isTestContinue) {
         QCoreApplication::processEvents();
         return;
     }
     QEventLoop loop;
-    QTimer::singleShot(ms, &loop, &QEventLoop::quit);
+    QTimer done;
+    done.setSingleShot(true);
+    QObject::connect(&done, &QTimer::timeout, &loop, &QEventLoop::quit);
+    QTimer poll;
+    poll.setInterval(50);
+    QObject::connect(&poll, &QTimer::timeout, &loop, [this, &loop]() {
+        if (!isTestContinue)
+            loop.quit();
+    });
+    done.start(ms);
+    poll.start();
     loop.exec();
 }
 
@@ -790,6 +800,12 @@ void test_base::onProtocolReport(const ProtocolReport& report) {
         refreshRootAgingHistory(payload.value<ProtocolRootAgingHistoryData>());
     } else if (reportType == QLatin1String("ProtocolResultData") && payload.canConvert<ProtocolResultData>()) {
         refreshResultCode(payload.value<ProtocolResultData>());
+    } else if (reportType == QLatin1String("ProtocolPhotosensitiveData")
+               && payload.canConvert<ProtocolPhotosensitiveData>()) {
+        refreshPhotosensitiveData(payload.value<ProtocolPhotosensitiveData>());
+    } else if (reportType == QLatin1String("ProtocolLightCalibData")
+               && payload.canConvert<ProtocolLightCalibData>()) {
+        refreshLightCalibData(payload.value<ProtocolLightCalibData>());
     } else if (reportType == QLatin1String("ProtocolTypeData") && payload.canConvert<ProtocolTypeData>()) {
         refreshTypeStatus(payload.value<ProtocolTypeData>());
     }
@@ -1248,8 +1264,13 @@ void test_base::getMac(QString sn_to_search) {
 void test_base::closeEvent(QCloseEvent*) {
     qDebug() << getIndex() << "test_base关闭";
     isTestContinue = 0;
-    at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00"); // 发送mac地址
-    waitWork(50);
+    if (at)
+        at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");
+    // 关窗时 isTestContinue 已清，不能走 waitWork（会立刻返回）
+    QElapsedTimer t;
+    t.start();
+    while (t.elapsed() < 50)
+        QCoreApplication::processEvents();
 }
 
 void test_base::ensureSnInputLatinIme() {

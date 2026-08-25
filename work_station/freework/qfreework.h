@@ -48,6 +48,7 @@ class QFreeWork : public test_base {
   public:
     explicit QFreeWork(int index, QWidget* parent = nullptr);
     ~QFreeWork();
+    void closeEvent(QCloseEvent* event) override;
     void startTask() override;
     void startTest() override;
     /**
@@ -112,6 +113,9 @@ class QFreeWork : public test_base {
     void executeFixtureAsd9026aCase(const TestCaseDefinition& def);
     void executeFixtureXwdCase(const TestCaseDefinition& def);
     void executeFixtureJieliBtBoxCase(const TestCaseDefinition& def);
+    void executeFixtureVesLightCase(const TestCaseDefinition& def);
+    /** VES 单通道指令固定 CH1，brightness 0~255。失败时 failReason 非空。 */
+    bool sendVesCh1BrightnessOnFixture(int brightness, QString* failReason = nullptr);
     int resolveFixtureMachineIndex(const QVariant& param) const;
     QVariantMap cachedHuilingVisaLink() const;
     void updateHuilingVisaLinkCache(const QVariantMap& link);
@@ -341,6 +345,10 @@ class QFreeWork : public test_base {
     void runDongleSuctionSampleStep();
     /** Dongle 单通道吸力采样；判定走 ProtocolDongleSuctionPeakData Gate。 */
     void runDongleSuctionSampleSingleStep();
+    /** V3 光感单点校准（产品协议）：采光感 → 写偏移并回读。亮度由前一步治具 VES 设置。 */
+    void runLightSensorGoldenCalibStep();
+    /** VES 四通道光源：固定通道 1，亮度由步骤 Param_brightness 配置（0~255）。 */
+    void runVesCh1SetBrightnessStep();
     /** 自由工站屏幕检测：调用 USB 摄像头对屏幕拍照，再分析对比（坏点 / 显示异常）+ Gate。 */
     void runScreenInspectStep();
     /**
@@ -418,6 +426,10 @@ class QFreeWork : public test_base {
     QVector<double> suctionChartRightKpa_;
     QElapsedTimer suctionChartTimer_;
     bool suctionChartTimerStarted_ = false;
+    bool lightSensorCollecting_ = false;
+    QVector<int> lightSensorSamples_;
+    bool lightCalibReadValid_ = false;
+    int lightCalibReadValue_ = 0;
     /** 实时数值标签节流：约 2Hz（曲线不实时画，测完一次性绘制） */
     qint64 suctionChartLastUiMs_ = 0;
     bool suctionLeftPeakInit_ = false;
@@ -461,6 +473,8 @@ class QFreeWork : public test_base {
     void refreshRootBatteryTemp(quint8 temp) override;
     void refreshRootHeatTemp(quint8 temp) override;
     void refreshResultCode(ProtocolResultData data) override;
+    void refreshPhotosensitiveData(ProtocolPhotosensitiveData data) override;
+    void refreshLightCalibData(ProtocolLightCalibData data) override;
     void refreshFlangeStatus(ProtocolTypeData data) override;
     void refreshPumpStallCurrent(ProtocolPumpStallCurrentData data) override;
     void refreshRootAgingHistory(ProtocolRootAgingHistoryData data) override;

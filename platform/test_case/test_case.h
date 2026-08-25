@@ -189,6 +189,20 @@ class UsbCameraCmdCatalog {
     static void paramToIniGroup(QSettings& settings, UsbCameraCmd cmd, const QVariant& value);
 };
 
+class VesLightCmdCatalog {
+  public:
+    static QStringList allVesLightCmdNames(TestCaseSendAction action);
+    static TestCaseSendAction actionFor(VesLightCmd cmd);
+    static bool isCmdForAction(VesLightCmd cmd, TestCaseSendAction action);
+    static QString vesLightCmdUiLabel(const QString& enumName);
+    static bool vesLightCmdFromName(const QString& name, VesLightCmd& out);
+    static QString vesLightCmdToName(VesLightCmd cmd);
+    static bool paramSchemaFor(VesLightCmd cmd, DeviceCmdParamSchema& out);
+    static QString paramUiHint(const QString& enumName);
+    static bool paramFromIniGroup(const QSettings& settings, VesLightCmd cmd, QVariant& out);
+    static void paramToIniGroup(QSettings& settings, VesLightCmd cmd, const QVariant& value);
+};
+
 enum class ProductSerialCmd {
     InstrumentReset,
     StartRx2402Ble1M,

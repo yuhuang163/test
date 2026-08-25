@@ -8,6 +8,7 @@
 #include "test_case.h"
 
 #include <QMessageBox>
+#include <QCloseEvent>
 #include <QPushButton>
 #include <QAbstractButton>
 #include <QLabel>
@@ -26,6 +27,7 @@
 #include <QStringList>
 #include <QFontMetrics>
 #include <QRegularExpression>
+#include <QIODevice>
 #include <algorithm>
 #include <QVBoxLayout>
 #include <QPen>
@@ -1030,6 +1032,8 @@ bool QFreeWork::tickOrderedTestStepLoop() {
     const QStringList& orderedNames = activeOrderedCaseNames();
     const int stepCount = orderedNames.count();
     for (; teststate < stepCount;) {
+        if (!isTestContinue)
+            return false;
         TestCaseDefinition caseDef;
         QString functionName;
         const QString caseName = orderedNames.at(teststate);
@@ -1293,6 +1297,12 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     ui->getMac->clear();
     mesProcessCode_.clear();
     // 焦点由 box_base::checkAllover 统一处理
+}
+
+void QFreeWork::closeEvent(QCloseEvent* event) {
+    closeTestCasePrompt();
+    closeKeyWaitPrompt();
+    test_base::closeEvent(event);
 }
 
 void QFreeWork::startTask() {
@@ -2402,6 +2412,159 @@ void QFreeWork::runDongleSuctionSampleSingleStep() {
     }
     markActiveTestCaseStepDone(pass, testData,
                                QStringLiteral("[%1,%2]").arg(peakLo, 0, 'f', 2).arg(peakHi, 0, 'f', 2));
+}
+
+void QFreeWork::runLightSensorGoldenCalibStep() {
+    QVariantMap map;
+    if (activeTestCase_.send.param.canConvert<QVariantMap>())
+        map = resolveTestCaseSendParamTree(activeTestCase_.send.param).toMap();
+
+    const auto mapInt = [&map](const QString& key, int defVal) {
+        return map.contains(key) ? map.value(key).toInt() : defVal;
+    };
+
+    const int golden = mapInt(QStringLiteral("golden"), -1);
+    const int index = qBound(0, mapInt(QStringLiteral("index"), 0), 19);
+    const int waitMs = qMax(500, mapInt(QStringLiteral("waitMs"), 5000));
+    const int sampleCount = qBound(1, mapInt(QStringLiteral("minSamples"), 10), 50);
+    const bool writeCalib = mapInt(QStringLiteral("writeCalib"), 1) != 0;
+    const int cmdTimeoutMs =
+        qMax(500, activeTestCase_.timing.commandTimeoutMs > 0 ? activeTestCase_.timing.commandTimeoutMs : 3000);
+    showlog(QStringLiteral("产品光感校准 index=%1 采%2点取平均写回%3")
+                .arg(index)
+                .arg(sampleCount)
+                .arg(golden >= 0 ? QStringLiteral(" 金样=%1").arg(golden) : QString()));
+    const auto waitProductCmd = [&]() -> bool {
+        QElapsedTimer t;
+        t.start();
+        while (commandRetryTimer && isTestContinue && t.elapsed() < cmdTimeoutMs + 800)
+            waitWork(20);
+        lastCommandRetryCount = 0;
+        if (stepRuntime_.done && !stepRuntime_.pass)
+            return false;
+        return commandRetryTimer == nullptr && !sendRetryOver && isTestContinue;
+    };
+    const auto sendProductSet = [&](DeviceCmd cmd, const QVariant& param) -> bool {
+        setCommandWaitSource(CommandWaitSource::ProductProtocol);
+        sendCommandWithRetry([this, cmd, param]() { protocolManager.set(cmd, param); }, cmdTimeoutMs);
+        return waitProductCmd();
+    };
+    const auto sendProductGet = [&](DeviceCmd cmd, const QVariant& param) -> bool {
+        setCommandWaitSource(CommandWaitSource::ProductProtocol);
+        sendCommandWithRetry([this, cmd, param]() { protocolManager.get(cmd, param); }, cmdTimeoutMs);
+        return waitProductCmd();
+    };
+
+    bool allOk = true;
+    QString failReason;
+    QVariantMap offMap;
+    offMap.insert(QStringLiteral("start"), 0);
+    if (!isTestContinue) {
+        allOk = false;
+        failReason = QStringLiteral("测试中止");
+    } else if (!sendProductSet(DeviceCmd::LightReportControl, offMap)) {
+        allOk = false;
+        failReason = QStringLiteral("关闭光感上报失败");
+    } else {
+        QVariantMap onMap;
+        onMap.insert(QStringLiteral("start"), 1);
+        if (!sendProductSet(DeviceCmd::LightReportControl, onMap)) {
+            allOk = false;
+            failReason = QStringLiteral("开启光感上报失败");
+        }
+    }
+
+    int dutAvg = 0;
+    if (allOk) {
+        lightSensorSamples_.clear();
+        lightSensorCollecting_ = true;
+        QElapsedTimer wt;
+        wt.start();
+        while (isTestContinue && wt.elapsed() < waitMs && lightSensorSamples_.size() < sampleCount)
+            waitWork(20);
+        lightSensorCollecting_ = false;
+        if (lightSensorSamples_.size() < sampleCount) {
+            allOk = false;
+            failReason = QStringLiteral("index=%1 光感上报不足 %2 点，实际 %3")
+                             .arg(index)
+                             .arg(sampleCount)
+                             .arg(lightSensorSamples_.size());
+        } else {
+            qint64 sum = 0;
+            QStringList allTxt;
+            for (int i = 0; i < sampleCount; ++i) {
+                sum += lightSensorSamples_.at(i);
+                allTxt << QString::number(lightSensorSamples_.at(i));
+            }
+            dutAvg = static_cast<int>(qRound(static_cast<double>(sum) / sampleCount));
+            showlog(QStringLiteral("index=%1 samples=[%2] avg=%3")
+                        .arg(index)
+                        .arg(allTxt.join(QStringLiteral(", ")))
+                        .arg(dutAvg));
+            if (writeCalib) {
+                QVariantMap wmap;
+                wmap.insert(QStringLiteral("index"), index);
+                wmap.insert(QStringLiteral("value"), dutAvg);
+                showlog(QStringLiteral("写入 LightCalibWrite index=%1 value=%2")
+                            .arg(index)
+                            .arg(dutAvg));
+                if (!sendProductSet(DeviceCmd::LightCalibWrite, wmap)) {
+                    allOk = false;
+                    failReason = QStringLiteral("写入校准失败 index=%1").arg(index);
+                } else {
+                    lightCalibReadValid_ = false;
+                    QVariantMap rmap;
+                    rmap.insert(QStringLiteral("index"), index);
+                    if (!sendProductGet(DeviceCmd::LightCalibRead, rmap) || !lightCalibReadValid_) {
+                        allOk = false;
+                        failReason = QStringLiteral("回读校准失败 index=%1").arg(index);
+                    } else if (lightCalibReadValue_ != dutAvg) {
+                        allOk = false;
+                        failReason = QStringLiteral("回读不一致 index=%1 write=%2 read=%3")
+                                         .arg(index)
+                                         .arg(dutAvg)
+                                         .arg(lightCalibReadValue_);
+                    } else {
+                        showlog(QStringLiteral("回读一致 index=%1 value=%2").arg(index).arg(dutAvg));
+                    }
+                }
+            }
+        }
+        sendProductSet(DeviceCmd::LightReportControl, offMap);
+    }
+
+    lightSensorCollecting_ = false;
+
+    if (!allOk) {
+        TestResult = failValue;
+        markActiveTestCaseStepDone(false, failReason, QStringLiteral("失败"));
+        showlog(QStringLiteral("光感金样校准失败：%1").arg(failReason));
+        return;
+    }
+    const QString line = QStringLiteral("index=%1 avg=%2")
+                             .arg(index)
+                             .arg(dutAvg);
+    showlog(line);
+    markActiveTestCaseStepDone(true, line, QStringLiteral("通过"));
+}
+
+void QFreeWork::runVesCh1SetBrightnessStep() {
+    QVariantMap map;
+    if (activeTestCase_.send.param.canConvert<QVariantMap>())
+        map = resolveTestCaseSendParamTree(activeTestCase_.send.param).toMap();
+    int brightness = 22;
+    if (map.contains(QStringLiteral("brightness")))
+        brightness = map.value(QStringLiteral("brightness")).toInt();
+    else if (map.contains(QStringLiteral("current")))
+        brightness = map.value(QStringLiteral("current")).toInt();
+    brightness = qBound(0, brightness, 255);
+    QString failReason;
+    if (!sendVesCh1BrightnessOnFixture(brightness, &failReason)) {
+        markActiveTestCaseStepDone(false, failReason, QStringLiteral("失败"));
+        showlog(QStringLiteral("VES 设亮度失败：%1").arg(failReason));
+        return;
+    }
+    markActiveTestCaseStepDone(true, QString::number(brightness), QStringLiteral("通过"));
 }
 
 bool QFreeWork::screenInspectAskHumanPassOnAutoFail(const QString& autoFailDetail) {
@@ -3566,11 +3729,16 @@ bool QFreeWork::pollKeyCapDuringPress(QString* errOut, QString* outSummary) {
 
         QElapsedTimer timer;
         timer.start();
-        while (plcKeyCapSyncReadPending_ && timer.elapsed() < singleTimeoutMs) {
+        while (plcKeyCapSyncReadPending_ && isTestContinue && timer.elapsed() < singleTimeoutMs) {
             QCoreApplication::processEvents(QEventLoop::AllEvents, 30);
             QThread::msleep(20);
         }
 
+        if (!isTestContinue) {
+            if (errOut)
+                *errOut = QStringLiteral("测试中止");
+            return false;
+        }
         if (plcKeyCapSyncReadPending_) {
             if (errOut) {
                 *errOut = QStringLiteral("第%1/%2次读电容超时(%3ms)")

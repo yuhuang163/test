@@ -2,6 +2,7 @@
 
 #include <QApplication>
 #include <QAuthenticator>
+#include <QDialog>
 #include <QElapsedTimer>
 #include <QMessageBox>
 #include <QMenu>
@@ -271,8 +272,23 @@ box_base::~box_base() {
 void box_base::closeEvent(QCloseEvent*) {
     qDebug() << "box_base关闭";
     isTestContinue = 0;
-    for (auto x : testList) {
-        x->close();
+    for (auto* x : testList) {
+        if (x)
+            x->isTestContinue = false;
+    }
+    // 自由工站测试中有 dlg.exec() / 人工确认框时，叉掉主窗口不会结束嵌套循环，进程会留在后台
+    for (int i = 0; i < 8; ++i) {
+        QWidget* modal = QApplication::activeModalWidget();
+        if (!modal)
+            break;
+        if (auto* dlg = qobject_cast<QDialog*>(modal))
+            dlg->reject();
+        else
+            modal->close();
+    }
+    for (auto* x : testList) {
+        if (x)
+            x->close();
     }
     if (qsetting_ui != NULL)
         qsetting_ui->close();
@@ -619,6 +635,6 @@ bool box_base::checkStateReady(std::vector<int> States) {
 void box_base::waitWork(int ms) {
     QTime t;
     t.start();
-    while (t.elapsed() < ms)
+    while (t.elapsed() < ms && isTestContinue)
         QCoreApplication::processEvents();
 }

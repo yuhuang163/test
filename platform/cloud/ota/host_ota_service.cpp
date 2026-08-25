@@ -46,8 +46,12 @@ bool startDeleteSelfBat(const QString& savePath) {
     const QString batFileName = QDir(appDir).filePath(QStringLiteral("delete_self.bat"));
     const QString tempExePath = savePath + QStringLiteral(".tmp");
     const QString logPath = QDir(appDir).filePath(QStringLiteral("ota_replace.log"));
+    const QString oldPid = QString::number(QCoreApplication::applicationPid());
+    const QString bakNative = QDir::toNativeSeparators(QDir(appDir).filePath(bakFileName));
+    const QString logNative = QDir::toNativeSeparators(logPath);
 
-    // 旧 exe 仍被占用时，Windows rename 会失败，留下 .tmp 且不会启动
+    // 必须先杀掉旧 PID，再 rename。Windows 允许给正在运行的 exe 改名，
+    // 若不先结束进程，旧实例会以 new_production.exe.bak 继续跑。
     QFile batFile(batFileName);
     if (!batFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
         return false;
@@ -55,20 +59,33 @@ bool startDeleteSelfBat(const QString& savePath) {
     QTextStream out(&batFile);
     out << "@echo off\r\n";
     out << "cd /d \"" << QDir::toNativeSeparators(appDir) << "\"\r\n";
-    out << "echo [%date% %time%] OTA replace start > \"" << QDir::toNativeSeparators(logPath) << "\"\r\n";
-    out << "timeout /t 3 /nobreak >nul\r\n";
-    // 重试：等旧进程真正释放文件锁
+    out << "echo [%date% %time%] OTA replace start pid=" << oldPid << " > \"" << logNative << "\"\r\n";
+    out << "timeout /t 2 /nobreak >nul\r\n";
+    out << "taskkill /F /T /PID " << oldPid << " >> \"" << logNative << "\" 2>&1\r\n";
+    out << "set /a waitn=0\r\n";
+    out << ":wait_old\r\n";
+    out << "set /a waitn+=1\r\n";
+    out << "tasklist /FI \"PID eq " << oldPid << "\" 2>nul | find \"" << oldPid << "\" >nul\r\n";
+    out << "if not errorlevel 1 (\r\n";
+    out << "  if %waitn% geq 30 (\r\n";
+    out << "    echo old pid still alive >> \"" << logNative << "\"\r\n";
+    out << "    goto fail\r\n";
+    out << "  )\r\n";
+    out << "  timeout /t 1 /nobreak >nul\r\n";
+    out << "  taskkill /F /T /PID " << oldPid << " >nul 2>&1\r\n";
+    out << "  goto wait_old\r\n";
+    out << ")\r\n";
+    out << "taskkill /F /T /IM \"" << bakFileName << "\" >nul 2>&1\r\n";
+    out << "timeout /t 1 /nobreak >nul\r\n";
     out << "set /a tries=0\r\n";
     out << ":retry_bak\r\n";
     out << "set /a tries+=1\r\n";
-    out << "if exist \"" << QDir::toNativeSeparators(QDir(appDir).filePath(bakFileName)) << "\" del /f /q \""
-        << QDir::toNativeSeparators(QDir(appDir).filePath(bakFileName)) << "\" >nul 2>&1\r\n";
-    out << "move /y \"" << QDir::toNativeSeparators(appFilePath) << "\" \""
-        << QDir::toNativeSeparators(QDir(appDir).filePath(bakFileName)) << "\" >> \""
-        << QDir::toNativeSeparators(logPath) << "\" 2>&1\r\n";
+    out << "if exist \"" << bakNative << "\" del /f /q \"" << bakNative << "\" >nul 2>&1\r\n";
+    out << "move /y \"" << QDir::toNativeSeparators(appFilePath) << "\" \"" << bakNative << "\" >> \""
+        << logNative << "\" 2>&1\r\n";
     out << "if errorlevel 1 (\r\n";
     out << "  if %tries% geq 20 (\r\n";
-    out << "    echo move old exe to bak failed >> \"" << QDir::toNativeSeparators(logPath) << "\"\r\n";
+    out << "    echo move old exe to bak failed >> \"" << logNative << "\"\r\n";
     out << "    goto fail\r\n";
     out << "  )\r\n";
     out << "  timeout /t 1 /nobreak >nul\r\n";
@@ -78,41 +95,45 @@ bool startDeleteSelfBat(const QString& savePath) {
     out << ":retry_new\r\n";
     out << "set /a tries+=1\r\n";
     out << "move /y \"" << QDir::toNativeSeparators(tempExePath) << "\" \""
-        << QDir::toNativeSeparators(savePath) << "\" >> \"" << QDir::toNativeSeparators(logPath) << "\" 2>&1\r\n";
+        << QDir::toNativeSeparators(savePath) << "\" >> \"" << logNative << "\" 2>&1\r\n";
     out << "if errorlevel 1 (\r\n";
     out << "  if %tries% geq 20 (\r\n";
-    out << "    echo move tmp to exe failed >> \"" << QDir::toNativeSeparators(logPath) << "\"\r\n";
+    out << "    echo move tmp to exe failed >> \"" << logNative << "\"\r\n";
     out << "    goto fail\r\n";
     out << "  )\r\n";
     out << "  timeout /t 1 /nobreak >nul\r\n";
     out << "  goto retry_new\r\n";
     out << ")\r\n";
-    out << "echo replace ok, starting >> \"" << QDir::toNativeSeparators(logPath) << "\"\r\n";
+    out << "echo replace ok, starting >> \"" << logNative << "\"\r\n";
     out << "start \"\" \"" << QDir::toNativeSeparators(savePath) << "\"\r\n";
-    out << "del /f /q \"" << QDir::toNativeSeparators(QDir(appDir).filePath(bakFileName)) << "\" >nul 2>&1\r\n";
+    out << "del /f /q \"" << bakNative << "\" >nul 2>&1\r\n";
     out << "del /f /q \"%~f0\" >nul 2>&1\r\n";
     out << "exit /b 0\r\n";
     out << ":fail\r\n";
-    out << "echo OTA replace failed, keep .tmp for manual recover >> \"" << QDir::toNativeSeparators(logPath)
-        << "\"\r\n";
+    out << "echo OTA replace failed, keep .tmp for manual recover >> \"" << logNative << "\"\r\n";
     out << "exit /b 1\r\n";
     batFile.close();
 
-    // 必须用 cmd + 工作目录，否则部分电脑直接 startDetached(.bat) 会静默失败
     if (!QProcess::startDetached(QStringLiteral("cmd.exe"),
                                  {QStringLiteral("/c"), QDir::toNativeSeparators(batFileName)}, appDir)) {
         return false;
     }
-    QTimer::singleShot(1000, []() {
-        qApp->quit();
-        QProcess::startDetached(QStringLiteral("cmd.exe"),
-                                {QStringLiteral("/c"),
-                                 QStringLiteral("taskkill /f /pid ") + QString::number(QCoreApplication::applicationPid())});
+    QTimer::singleShot(300, []() { qApp->quit(); });
+    QTimer::singleShot(1500, []() {
+        QProcess::startDetached(QStringLiteral("taskkill.exe"),
+                                {QStringLiteral("/F"), QStringLiteral("/T"), QStringLiteral("/PID"),
+                                 QString::number(QCoreApplication::applicationPid())});
     });
     return true;
 }
 
 } // namespace
+
+void HostOtaService::cleanupStaleBackupProcess() {
+    const QString bakName = QFileInfo(QCoreApplication::applicationFilePath()).fileName() + QStringLiteral(".bak");
+    QProcess::startDetached(QStringLiteral("taskkill.exe"),
+                            {QStringLiteral("/F"), QStringLiteral("/T"), QStringLiteral("/IM"), bakName});
+}
 
 HostOtaService::CheckResult HostOtaService::checkUpdate() {
     CheckResult result;
