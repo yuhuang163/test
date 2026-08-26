@@ -13,6 +13,7 @@
 #include <QAbstractItemView>
 #include <QApplication>
 #include <QClipboard>
+#include <QComboBox>
 #include <QDateTime>
 #include <QDebug>
 #include <QElapsedTimer>
@@ -22,6 +23,7 @@
 #include <QKeySequence>
 #include <QLineEdit>
 #include <QPlainTextEdit>
+#include <QPushButton>
 #include <QSet>
 #include <QShortcut>
 #include <QShowEvent>
@@ -1123,6 +1125,14 @@ void test_base::solveMesData(const int mechines, QString msg) {
 }
 void test_base::testResultTableInit() {
     pb->setAppVersion(upperComputerVer);
+    // 仅初始化时按厂别/本机配置设置 MES 默认勾选；之后锁定界面不得改勾选状态
+    if (getIsUseMes() && getIsFormMes()) {
+        if (pack.factory == "无mes厂"
+            || SETTINGS.value(QStringLiteral("SYSTEM/MesDefaultUnchecked"), false).toBool()) {
+            getIsUseMes()->setCheckState(Qt::Unchecked);
+            getIsFormMes()->setCheckState(Qt::Unchecked);
+        }
+    }
     LockProductUI();
     QTableWidget* table = testResultTable();
     if (table == nullptr) {
@@ -1205,19 +1215,47 @@ void test_base::testResultTableInit() {
     }
 }
 void test_base::LockProductUI() {
-    if (SETTINGS.value("SYSTEM/LockProductUI", 0).toBool())
-        getIsUseMes()->setEnabled(false);
+    // 只锁定/解锁可操作性，保留当前 MES 两个勾选状态不变
+    const bool locked = SETTINGS.value(QStringLiteral("SYSTEM/LockProductUI"), false).toBool();
+    if (QCheckBox* useMes = getIsUseMes())
+        useMes->setEnabled(!locked);
+    if (QCheckBox* formMes = getIsFormMes())
+        formMes->setEnabled(!locked);
 
-    if (!getIsUseMes() || !getIsFormMes()) {
-        qDebug() << "Error: getIsUseMes() or getIsFormMes() is nullptr!";
-        return;
-    }
+    applySerialPortUiLock();
+}
 
-    // 无mes厂，或本机 local.ini：SYSTEM/MesDefaultUnchecked=true → 默认不勾选
-    if (pack.factory == "无mes厂" || SETTINGS.value(QStringLiteral("SYSTEM/MesDefaultUnchecked"), false).toBool()) {
-        getIsUseMes()->setCheckState(Qt::Unchecked);
-        getIsFormMes()->setCheckState(Qt::Unchecked);
-    }
+void test_base::applySerialPortUiLock() {
+    const bool locked = SETTINGS.value(QStringLiteral("SYSTEM/LockProductUI"), false).toBool();
+    const auto applyOne = [this, locked](const char* comboName, const char* connectName, const char* disconnectName,
+                                         QSerialPort* port) {
+        auto* combo = findChild<QComboBox*>(QLatin1String(comboName));
+        auto* connectBtn = findChild<QPushButton*>(QLatin1String(connectName));
+        auto* disconnectBtn = findChild<QPushButton*>(QLatin1String(disconnectName));
+        if (!combo && !connectBtn && !disconnectBtn)
+            return;
+        if (locked) {
+            if (combo)
+                combo->setEnabled(false);
+            if (connectBtn)
+                connectBtn->setEnabled(false);
+            if (disconnectBtn)
+                disconnectBtn->setEnabled(false);
+            return;
+        }
+        const bool connected = port && port->isOpen();
+        if (combo)
+            combo->setEnabled(!connected);
+        if (connectBtn)
+            connectBtn->setEnabled(!connected);
+        if (disconnectBtn)
+            disconnectBtn->setEnabled(connected);
+    };
+    // 与各工站 .ui 中常见 objectName 对齐（找不到的控件自动跳过）
+    applyOne("comNameCombo", "connectButton", "disconnectButton", dongleSerialPort);
+    applyOne("jigComNameCombo", "jigConnectButton", "jigDisconnectButton", jigSerialPort);
+    applyOne("usbcomNameCombo", "usbconnectButton", "usbdisconnectButton", usbSerialPort);
+    applyOne("productComNameCombo", "productConnectButton", "productDisconnectButton", productSerialPort);
 }
 void test_base::getMac(QString sn_to_search) {
     if (!getIsFormMes()->isChecked()) {

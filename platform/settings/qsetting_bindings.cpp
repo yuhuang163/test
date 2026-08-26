@@ -362,6 +362,8 @@ static const Row kSettings[] = {
     TIP("checkBox_imu_status", "启用 imu 状态比对。"),
     TIP("checkBox_TestCsvOneRowPerTest",
         "SYSTEM/TestCsvOneRowPerTest（默认勾选）：D 盘测试结果 CSV 一次测试一行、无表头；前四格为 sn/版本/mac/时间，其后按「数据名,数据,卡控,结果」成组。取消勾选则每个测试项单独一行。"),
+    TIP("checkBox_LockProductUI",
+        "SYSTEM/LockProductUI：锁定生产界面（冻结当前 MES 两勾选框状态不可改 + 串口下拉/连接断开）。关闭设置页热生效，不改勾选本身。"),
     TIP("lineEdit_ageingBurningSeconds", "AGING/BurningSeconds（秒）。"),
     TIP("checkBox_freeInstrumentBleBrushCmwConcurrent",
         "FreeInstrument/BleBrushCmwConcurrent：启用 CMW GPRF；“停止接收/PER…”项见另一勾选（"

@@ -1384,9 +1384,13 @@ void QFreeWork::refreshBleState(int state) {
 
 void QFreeWork::refreshDongleUartState(int state) {
     const bool connected = state != 0;
-    ui->comNameCombo->setEnabled(!connected);
-    ui->connectButton->setEnabled(!connected);
-    ui->disconnectButton->setEnabled(connected);
+    if (SETTINGS.value(QStringLiteral("SYSTEM/LockProductUI"), false).toBool()) {
+        applySerialPortUiLock();
+    } else {
+        ui->comNameCombo->setEnabled(!connected);
+        ui->connectButton->setEnabled(!connected);
+        ui->disconnectButton->setEnabled(connected);
+    }
     if (connected)
         showlog("dongle串口连接成功");
     else
@@ -1394,9 +1398,13 @@ void QFreeWork::refreshDongleUartState(int state) {
 }
 void QFreeWork::refreshUsbUartState(int state) {
     const bool connected = state != 0;
-    ui->usbcomNameCombo->setEnabled(!connected);
-    ui->usbconnectButton->setEnabled(!connected);
-    ui->usbdisconnectButton->setEnabled(connected);
+    if (SETTINGS.value(QStringLiteral("SYSTEM/LockProductUI"), false).toBool()) {
+        applySerialPortUiLock();
+    } else {
+        ui->usbcomNameCombo->setEnabled(!connected);
+        ui->usbconnectButton->setEnabled(!connected);
+        ui->usbdisconnectButton->setEnabled(connected);
+    }
     if (connected) {
         showlog(QStringLiteral("万用表串口连接成功"));
     } else {
@@ -1406,9 +1414,13 @@ void QFreeWork::refreshUsbUartState(int state) {
 
 void QFreeWork::refreshJigUartState(int state) {
     const bool connected = state != 0;
-    ui->jigComNameCombo->setEnabled(!connected);
-    ui->jigConnectButton->setEnabled(!connected);
-    ui->jigDisconnectButton->setEnabled(connected);
+    if (SETTINGS.value(QStringLiteral("SYSTEM/LockProductUI"), false).toBool()) {
+        applySerialPortUiLock();
+    } else {
+        ui->jigComNameCombo->setEnabled(!connected);
+        ui->jigConnectButton->setEnabled(!connected);
+        ui->jigDisconnectButton->setEnabled(connected);
+    }
     if (connected)
         showlog("治具串口连接成功");
     else
@@ -1417,9 +1429,13 @@ void QFreeWork::refreshJigUartState(int state) {
 
 void QFreeWork::refreshProductUartState(int state) {
     const bool connected = state != 0;
-    ui->productComNameCombo->setEnabled(!connected);
-    ui->productConnectButton->setEnabled(!connected);
-    ui->productDisconnectButton->setEnabled(connected);
+    if (SETTINGS.value(QStringLiteral("SYSTEM/LockProductUI"), false).toBool()) {
+        applySerialPortUiLock();
+    } else {
+        ui->productComNameCombo->setEnabled(!connected);
+        ui->productConnectButton->setEnabled(!connected);
+        ui->productDisconnectButton->setEnabled(connected);
+    }
     if (connected) {
         showlog(QStringLiteral("产品串口(仪器)连接成功"));
     } else {

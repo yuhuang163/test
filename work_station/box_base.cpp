@@ -524,11 +524,13 @@ void box_base::setting_ui() {
                         }
                     });
         }
-        // 关闭设置保存后热切换 SYSTEM/ProtocolType，免重启
+        // 关闭设置保存后热切换协议 / 生产界面锁定，免重启
         connect(qsetting_ui, &qsetting::settingsSaved, this, [this]() {
             for (test_base* t : testList) {
-                if (t)
-                    t->applySystemProtocolFromSettings();
+                if (!t)
+                    continue;
+                t->applySystemProtocolFromSettings();
+                t->LockProductUI();
             }
         });
     } else {

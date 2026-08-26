@@ -115,6 +115,8 @@ class test_base : public QWidget {
     bool validateSnFormat(const QString& sn);
     void appendStationResult(QVector<TestItem>& testItems, const QString& item, const QString& data, const QString& result);
     void LockProductUI();
+    /** 按 SYSTEM/LockProductUI 锁定/恢复串口下拉与连接按钮（可热切换，无需重启） */
+    void applySerialPortUiLock();
     void getMac(QString sn_to_search);
     void signalAndslot();
     int getIndex() const;
