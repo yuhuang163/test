@@ -2438,14 +2438,18 @@ void QFreeWork::resetLightSensorFivePointState() {
 }
 
 bool QFreeWork::evaluateLightSensorFivePointRule(QString* detailOut) {
-    // 使用各「产品光感读取点N」步骤缓存的范围/差值阈值
+    // 仅判定已采到的点：范围；相邻两点都齐时再判差值（支持中途提前 FAIL）
     QStringList vals;
-    for (int i = 0; i < 5; ++i)
-        vals << QString::number(lightCalibFivePointValues_[i]);
+    for (int i = 0; i < 5; ++i) {
+        if (lightCalibFivePointMask_ & static_cast<quint8>(1u << i))
+            vals << QString::number(lightCalibFivePointValues_[i]);
+    }
     const QString valuesText = vals.join(QStringLiteral(","));
 
     QStringList failParts;
     for (int i = 0; i < 5; ++i) {
+        if (!(lightCalibFivePointMask_ & static_cast<quint8>(1u << i)))
+            continue;
         const int v = lightCalibFivePointValues_[i];
         const int lo = lightCalibRangeLo_[i];
         const int hi = lightCalibRangeHi_[i];
@@ -2457,6 +2461,10 @@ bool QFreeWork::evaluateLightSensorFivePointRule(QString* detailOut) {
         }
     }
     for (int i = 0; i < 4; ++i) {
+        const quint8 bitLo = static_cast<quint8>(1u << i);
+        const quint8 bitHi = static_cast<quint8>(1u << (i + 1));
+        if ((lightCalibFivePointMask_ & bitLo) == 0 || (lightCalibFivePointMask_ & bitHi) == 0)
+            continue;
         const int diff = lightCalibFivePointValues_[i + 1] - lightCalibFivePointValues_[i];
         if (!(diff > lightCalibDiffMin_[i])) {
             failParts << QStringLiteral("回读[%1]-回读[%2]=%3≤%4")
@@ -2656,18 +2664,23 @@ bool QFreeWork::runLightSensorCalibStepCore(LightCalibStepKind kind, QString* fa
                     .arg(lightCalibRangeHiInc_[index] ? QStringLiteral("]") : QStringLiteral(")"))
                     .arg(index > 0 ? QStringLiteral(" diffMin>%1").arg(lightCalibDiffMin_[index - 1]) : QString()));
     }
-    if (doRead && enableFivePointJudge && lightCalibFivePointMask_ == 0x1F) {
+    // enableFivePointJudge=1：对本步及已采点做范围/差值卡控，不合格立刻 FAIL（不必等五点齐）
+    if (doRead && enableFivePointJudge && index >= 0 && index < 5
+        && (lightCalibFivePointMask_ & static_cast<quint8>(1u << index))) {
         QString judgeDetail;
         const bool judgePass = evaluateLightSensorFivePointRule(&judgeDetail);
-        showlog(judgeDetail);
         if (!judgePass) {
+            showlog(judgeDetail);
             if (failReason)
                 *failReason = judgeDetail;
             if (lineOut)
                 *lineOut = judgeDetail;
             return false;
         }
-        line = judgeDetail;
+        if (lightCalibFivePointMask_ == 0x1F) {
+            showlog(judgeDetail);
+            line = judgeDetail;
+        }
     }
 
     if (lineOut)
@@ -2701,7 +2714,7 @@ void QFreeWork::runLightSensorCalibReadStep() {
     if (!ok && failReason.contains(QStringLiteral("卡控失败"))) {
         TestResult = failValue;
         markActiveTestCaseStepDone(false, failReason, QStringLiteral("失败"));
-        showlog(QStringLiteral("光感五点终判失败 → 产品不合格"));
+        showlog(QStringLiteral("光感卡控失败 → 产品不合格"));
         return;
     }
     finishLightSensorCalibStep(LightCalibStepKind::ReadOnly, ok, ok ? line : failReason);
@@ -2714,7 +2727,7 @@ void QFreeWork::runLightSensorGoldenCalibStep() {
     if (!ok && failReason.contains(QStringLiteral("卡控失败"))) {
         TestResult = failValue;
         markActiveTestCaseStepDone(false, failReason, QStringLiteral("失败"));
-        showlog(QStringLiteral("光感五点终判失败 → 产品不合格"));
+        showlog(QStringLiteral("光感卡控失败 → 产品不合格"));
         return;
     }
     finishLightSensorCalibStep(LightCalibStepKind::WriteAndRead, ok, ok ? line : failReason);

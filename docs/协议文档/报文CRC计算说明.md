@@ -188,6 +188,7 @@ tx_buffer[len + 1] = calCrc16(/* payload 区间 */);
 
 ## 7. 杰理蓝牙盒子（CRC16-XMODEM）
 
+完整帧 / MASK / LTV 见 [杰理蓝牙测试盒MES_LOG协议.md](./杰理蓝牙测试盒MES_LOG协议.md)。  
 源码：`agreement/fixture_protocol/jieli_bt_box/codec/jieli_bt_box_codec.cpp`。
 
 ### 7.1 算法

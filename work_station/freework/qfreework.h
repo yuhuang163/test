@@ -353,12 +353,12 @@ class QFreeWork : public test_base {
     void runLightSensorGoldenCalibStep();
     /** 光感校准：仅采光感取平均并写入（不含回读）。 */
     void runLightSensorCalibWriteStep();
-    /** 光感校准：仅回读校准值（五点齐全后可做范围+差值终判）。 */
+    /** 光感校准：仅回读校准值（可对本点及已采点做范围+差值卡控）。 */
     void runLightSensorCalibReadStep();
     /** 清空本轮光感五点回读缓存（开测 / 单步调试 / index=0 写入时调用）。 */
     void resetLightSensorFivePointState();
     /**
-     * 光感五点终判：范围 + 相邻差值全部满足才 Pass。
+     * 光感卡控：仅检查 mask 已采点的范围，以及两端都齐的相邻差值。
      * 各点阈值在对应「产品光感读取点N」步骤执行时写入缓存。
      */
     bool evaluateLightSensorFivePointRule(QString* detailOut);

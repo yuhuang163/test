@@ -123,7 +123,7 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("writeCalib"), QStringLiteral("1=写入光感平均值 0=只读")},
         {QStringLiteral("verifyRead"), QStringLiteral("1=写后回读校验")},
         {QStringLiteral("verifyWrite"), QStringLiteral("1=回读值须与本轮写入值一致")},
-        {QStringLiteral("enableFivePointJudge"), QStringLiteral("1=五点齐全后做范围+差值终判（通常只在读取点5开）")},
+        {QStringLiteral("enableFivePointJudge"), QStringLiteral("1=本步回读后对已采点做范围+差值卡控（不合格立即 FAIL；各读取点建议均开）")},
         {QStringLiteral("minSamples"), QStringLiteral("采光感最少样本数")},
         {QStringLiteral("rangeLo"), QStringLiteral("本点回读下限（含）")},
         {QStringLiteral("rangeHi"), QStringLiteral("本点回读上限")},
@@ -225,7 +225,7 @@ QVariantMap hookSendParamDefaultMap(const QString& hookId) {
         QVariantMap map;
         map.insert(QStringLiteral("index"), QStringLiteral("0"));
         map.insert(QStringLiteral("verifyWrite"), QStringLiteral("1"));
-        map.insert(QStringLiteral("enableFivePointJudge"), QStringLiteral("0"));
+        map.insert(QStringLiteral("enableFivePointJudge"), QStringLiteral("1"));
         map.insert(QStringLiteral("rangeLo"), QStringLiteral("0"));
         map.insert(QStringLiteral("rangeHi"), QStringLiteral("70"));
         map.insert(QStringLiteral("rangeHiInc"), QStringLiteral("0"));
@@ -1282,7 +1282,7 @@ void applyHookSendParamUi(Ui::TestCaseEditDialog* ui, const QString& hookId, con
     } else if (hookId == QLatin1String("LIGHT_SENSOR_GOLDEN_CALIB")) {
         uiSchema.hint = QStringLiteral(
             "产品协议单点：index 写入下标；golden 金样光感（仅日志）；waitMs/minSamples 采光感取平均并写回读；"
-            "采齐 index0~4 后自动做范围+差值终判（Param_enableFivePointJudge=0 可关）。治具亮度请用前一步 VES SetBrightness");
+            "采齐后各点 enableFivePointJudge=1 时按已采点做范围+差值卡控（不合格立即 FAIL）。治具亮度请用前一步 VES SetBrightness");
     } else if (hookId == QLatin1String("LIGHT_SENSOR_CALIB_WRITE")) {
         uiSchema.hint = QStringLiteral(
             "仅采光感取平均并写入：index/golden/waitMs/minSamples。流程需先「开启光感上报」再 VES 设亮度；"
@@ -1291,7 +1291,7 @@ void applyHookSendParamUi(Ui::TestCaseEditDialog* ui, const QString& hookId, con
         uiSchema.hint = QStringLiteral(
             "本点回读：index/verifyWrite；Param_rangeLo/Hi/HiInc 配本点范围；"
             "index>0 写 Param_diffMin（相对上一点，判定>）；"
-            "读取点5 设 enableFivePointJudge=1 汇总终判");
+            "各读取点建议 enableFivePointJudge=1：已采点越界/差值不达标立即 FAIL");
     } else if (hookId == QLatin1String("VES_CH1_SET_BRIGHTNESS")) {
         uiSchema.hint = QStringLiteral(
             "走工位治具串口，协议固定通道 1；Param_brightness：亮度 0~255（默认 22）");
