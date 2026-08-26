@@ -2172,6 +2172,9 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     loadingDefinition_ = true;
     originalCaseName_ = storageKey.trimmed().isEmpty() ? def.meta.name.trimmed() : storageKey.trimmed();
     ui->lineEdit_caseName->setText(def.meta.name);
+    const QString displayName =
+        def.meta.displayName.trimmed().isEmpty() ? def.meta.name : def.meta.displayName.trimmed();
+    ui->lineEdit_displayName->setText(displayName);
     ui->lineEdit_mesTag->setText(def.meta.mesTag);
     ui->checkBox_promptEnabled->setChecked(def.meta.promptEnabled);
     ui->checkBox_promptOnly->setChecked(def.meta.promptOnly);
@@ -2286,7 +2289,9 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
 TestCaseDefinition TestCaseEditDialog::definition() const {
     TestCaseDefinition def;
     def.meta.name = ui->lineEdit_caseName->text().trimmed();
-    def.meta.displayName = def.meta.name;
+    def.meta.displayName = ui->lineEdit_displayName->text().trimmed();
+    if (def.meta.displayName.isEmpty())
+        def.meta.displayName = def.meta.name;
     def.meta.mesTag = ui->lineEdit_mesTag->text().trimmed();
     def.meta.promptEnabled = ui->checkBox_promptEnabled->isChecked();
     def.meta.promptOnly = def.meta.promptEnabled && ui->checkBox_promptOnly->isChecked();

@@ -991,13 +991,12 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
 
     const QString nameInIni = ini.value(QStringLiteral("Meta/Name"), stepId).toString().trimmed();
     const QString displayInIni = ini.value(QStringLiteral("Meta/DisplayName")).toString().trimmed();
-    if (!displayInIni.isEmpty())
-        out.meta.name = displayInIni;
-    else if (!nameInIni.isEmpty())
+    // Name / DisplayName 分开：不要再用 DisplayName 覆盖 Name（否则编辑框看不到真实 Name）
+    if (!nameInIni.isEmpty())
         out.meta.name = nameInIni;
     else
         out.meta.name = stepId.trimmed();
-    out.meta.displayName = out.meta.name;
+    out.meta.displayName = !displayInIni.isEmpty() ? displayInIni : out.meta.name;
     out.meta.mesTag = ini.value(QStringLiteral("Meta/MesTag")).toString().trimmed();
     out.meta.promptEnabled = ini.value(QStringLiteral("Meta/PromptEnabled"), false).toBool();
     out.meta.promptOnly = ini.value(QStringLiteral("Meta/PromptOnly"), false).toBool();
@@ -1895,7 +1894,8 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
         return true;
     }
 
-    ini.setValue(QStringLiteral("Meta/DisplayName"), def.meta.name);
+    ini.setValue(QStringLiteral("Meta/DisplayName"),
+                 def.meta.displayName.trimmed().isEmpty() ? def.meta.name : def.meta.displayName.trimmed());
     ini.setValue(QStringLiteral("Meta/MesTag"), def.meta.mesTag);
     ini.setValue(QStringLiteral("Meta/PromptEnabled"), def.meta.promptEnabled);
     ini.setValue(QStringLiteral("Meta/PromptOnly"), def.meta.promptOnly);
