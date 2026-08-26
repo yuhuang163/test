@@ -959,9 +959,13 @@ void QFreeWork::emitFixtureMultiGateTableRows(const QVector<TestCaseGate>& gates
         // 多字段卡控分项表格只显示判定项（如 RSSI/频偏），不再重复步骤名前缀
         item.testItem = GateRegistry::fieldDisplayName(reportType, ge.field);
         const QString unit = GateRegistry::unitFor(reportType, ge.field, payload);
-        // 数据列只显示实测值（纯色为文字）；完整「当前值/允许」细节留在日志 detail
-        const QString curPrefix = QStringLiteral("当前值=");
-        const int curPos = subDetail.indexOf(curPrefix);
+        // 数据列只显示实测值；兼容「当前值=」「当前=」
+        QString curPrefix = QStringLiteral("当前值=");
+        int curPos = subDetail.indexOf(curPrefix);
+        if (curPos < 0) {
+            curPrefix = QStringLiteral("当前=");
+            curPos = subDetail.indexOf(curPrefix);
+        }
         if (curPos >= 0) {
             const int start = curPos + curPrefix.size();
             const int comma = subDetail.indexOf(QLatin1Char(','), start);

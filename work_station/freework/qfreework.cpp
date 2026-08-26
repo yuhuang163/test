@@ -584,13 +584,15 @@ void QFreeWork::appendMultiGateTestCaseMes(const QVector<TestCaseGate>& gates, c
             break;
         }
 
-        // 杰理蓝牙盒子：拆成 BT_RSSI / BT_FREQ_OFFSET，避免整步只报一项 RSSI
+        // 杰理蓝牙盒子：拆成 BT_RSSI / BT_FREQ_OFFSET / BT_MAC
         QString itemName;
         if (reportType == QStringLiteral("ProtocolJieliBtBoxData")) {
             if (ge.field == QStringLiteral("rssi"))
                 itemName = QStringLiteral("BT_RSSI");
             else if (ge.field == QStringLiteral("freqOffset"))
                 itemName = QStringLiteral("BT_FREQ_OFFSET");
+            else if (ge.field == QStringLiteral("mac"))
+                itemName = QStringLiteral("BT_MAC");
         }
         if (itemName.isEmpty())
             itemName = QStringLiteral("%1_%2").arg(baseTag, ge.field);

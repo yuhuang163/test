@@ -2185,6 +2185,7 @@ void rebuildCloudItemNameMap() {
     // 杰理蓝牙盒子多字段卡控拆项后的 MES 键 → 云端中文名
     registerCloudItemNameAlias(&map, QStringLiteral("BT_RSSI"), QStringLiteral("RSSI(dBm)"));
     registerCloudItemNameAlias(&map, QStringLiteral("BT_FREQ_OFFSET"), QStringLiteral("频偏"));
+    registerCloudItemNameAlias(&map, QStringLiteral("BT_MAC"), QStringLiteral("MAC地址"));
     cloudItemNameMapLoaded() = true;
 }
 
