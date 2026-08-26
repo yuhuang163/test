@@ -181,6 +181,10 @@ class MainWindow : public QMainWindow {
         int missedPeakCount = 0;
         int weakPeakCount = 0;
         int freqPerMin = 0;
+        /** 已确认峰（有效+弱峰）里的代数最大/最小；如 -36/-35/-34 → 最大峰=-34 */
+        bool peakValueInit = false;
+        double maxPeakKpa = 0.0;
+        double minPeakKpa = 0.0;
         /** 每次下穿计频线的时刻；相邻两次间隔用于频率 */
         QVector<double> cycleStartSec;
     };
