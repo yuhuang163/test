@@ -2006,23 +2006,35 @@ void QFreeWork::on_clearSuctionChartButton_clicked() {
 }
 
 void QFreeWork::rememberScreenInspectImages(const QImage& capture, const QImage& annotated, const QImage& reference,
-                                            const QString& folder) {
+                                            const QString& folder, bool calibrationGuides) {
     screenInspectCapture_ = capture;
     screenInspectAnnotated_ = annotated;
     screenInspectReference_ = reference;
     screenInspectFolder_ = folder;
+    screenInspectCalibGuides_ = calibrationGuides;
     updateScreenInspectPreview();
 }
 
 void QFreeWork::updateScreenInspectPreview() {
-    // 坏点红圈只出现在「本次拍摄」；参考图保持干净原图
     const QImage& shot =
         !screenInspectAnnotated_.isNull() ? screenInspectAnnotated_ : screenInspectCapture_;
     const QRect roi = ScreenInspectAnalyzer::parseManualRoi(
         SETTINGS.value(QStringLiteral("ScreenInspect/Roi")).toString());
+    if (ui->label_screenInspectShotCaption) {
+        ui->label_screenInspectShotCaption->setText(
+            screenInspectCalibGuides_ ? QStringLiteral("本次拍摄（校准线）")
+                                      : QStringLiteral("本次拍摄（坏点标注）"));
+    }
+    if (ui->label_screenInspectRefCaption) {
+        ui->label_screenInspectRefCaption->setText(
+            screenInspectCalibGuides_ ? QStringLiteral("参考图（校准线）")
+                                      : QStringLiteral("标准参考图（无标注）"));
+    }
     fitScreenInspectThumb(ui->label_screenInspectShot, shot, QStringLiteral("尚无拍摄图"),
                           screenInspectAnnotated_.isNull() ? roi : QRect());
-    fitScreenInspectThumb(ui->label_screenInspectRef, screenInspectReference_, QStringLiteral("尚无参考图"));
+    // 校准步骤：参考图已带校准线；其它步骤参考图保持干净
+    fitScreenInspectThumb(ui->label_screenInspectRef, screenInspectReference_, QStringLiteral("尚无参考图"),
+                          screenInspectCalibGuides_ ? QRect() : QRect());
     const bool hasImg = !screenInspectCapture_.isNull();
     if (ui->viewScreenInspectLargeButton)
         ui->viewScreenInspectLargeButton->setEnabled(hasImg);
@@ -2030,12 +2042,13 @@ void QFreeWork::updateScreenInspectPreview() {
 
 void QFreeWork::showScreenInspectViewer() {
     if (screenInspectCapture_.isNull()) {
-        showlog(QStringLiteral("还没有屏幕拍照，请先跑 USB 摄像头检测步骤"));
+        showlog(QStringLiteral("还没有屏幕拍照，请先跑屏幕检测/校准步骤"));
         return;
     }
     auto* dlg = new QDialog(this);
     dlg->setAttribute(Qt::WA_DeleteOnClose);
-    dlg->setWindowTitle(QStringLiteral("屏幕拍照查看"));
+    dlg->setWindowTitle(screenInspectCalibGuides_ ? QStringLiteral("屏幕摄像头位置校准对照")
+                                                  : QStringLiteral("屏幕拍照查看"));
     dlg->resize(1100, 620);
     auto* root = new QVBoxLayout(dlg);
     auto* pics = new QHBoxLayout();
@@ -2056,9 +2069,11 @@ void QFreeWork::showScreenInspectViewer() {
         col->addWidget(scroll, 1);
         pics->addLayout(col, 1);
     };
-    addPane(QStringLiteral("本次拍摄（坏点标注）"),
+    addPane(screenInspectCalibGuides_ ? QStringLiteral("本次拍摄（校准线）")
+                                      : QStringLiteral("本次拍摄（坏点标注）"),
             !screenInspectAnnotated_.isNull() ? screenInspectAnnotated_ : screenInspectCapture_);
-    addPane(QStringLiteral("标准参考图"), screenInspectReference_);
+    addPane(screenInspectCalibGuides_ ? QStringLiteral("参考图（校准线）") : QStringLiteral("标准参考图"),
+            screenInspectReference_);
     root->addLayout(pics, 1);
     auto* buttons = new QDialogButtonBox(dlg);
     auto* folderBtn = buttons->addButton(QStringLiteral("打开图片文件夹"), QDialogButtonBox::ActionRole);
@@ -2456,13 +2471,11 @@ void QFreeWork::runDongleSuctionSampleSingleStep() {
                                QStringLiteral("[%1,%2]").arg(peakLo, 0, 'f', 2).arg(peakHi, 0, 'f', 2));
 }
 
-bool QFreeWork::screenInspectAskHumanPassOnAutoFail(const QString& autoFailDetail) {
-    const QString detail = autoFailDetail.trimmed().isEmpty() ? QStringLiteral("未通过") : autoFailDetail.trimmed();
-    QMessageBox box(QMessageBox::Question, QStringLiteral("屏幕检测人工确认"),
-                    QStringLiteral("图像自动识别未通过：%1\n\n是否确认屏幕有问题？\n"
-                                   "点「是」=确认有问题（不通过）\n"
-                                   "点「否」=目视正常（通过）")
-                        .arg(detail),
+bool QFreeWork::screenInspectAskHumanPassOnAutoFail(const QString& expectedColorName) {
+    const QString color =
+        expectedColorName.trimmed().isEmpty() ? QStringLiteral("目标颜色") : expectedColorName.trimmed();
+    QMessageBox box(QMessageBox::Question, QStringLiteral("屏幕颜色确认"),
+                    QStringLiteral("请确认屏幕是否显示「%1」？\n是=通过　否=不通过").arg(color),
                     QMessageBox::Yes | QMessageBox::No, this);
     if (QAbstractButton* yesBtn = box.button(QMessageBox::Yes))
         yesBtn->setText(QStringLiteral("是"));
@@ -2470,14 +2483,14 @@ bool QFreeWork::screenInspectAskHumanPassOnAutoFail(const QString& autoFailDetai
         noBtn->setText(QStringLiteral("否"));
     box.setDefaultButton(QMessageBox::Yes);
     applyTestItemPromptFont(&box);
-    const int reply = box.exec();
-    return reply == QMessageBox::No;
+    return box.exec() == QMessageBox::Yes;
 }
 
 void QFreeWork::runScreenInspectStep() {
     const bool deadMode = activeTestCase_.send.deviceCmd == QStringLiteral("ScreenDeadPixelCheck");
     const bool anomalyMode = activeTestCase_.send.deviceCmd == QStringLiteral("ScreenDisplayAnomalyCheck");
-    if (!deadMode && !anomalyMode) {
+    const bool calibMode = activeTestCase_.send.deviceCmd == QStringLiteral("ScreenCameraCalibration");
+    if (!deadMode && !anomalyMode && !calibMode) {
         TestResult = failValue;
         markActiveTestCaseStepDone(false, QStringLiteral("未知屏幕检测指令"), QStringLiteral("失败"));
         return;
@@ -2525,20 +2538,21 @@ void QFreeWork::runScreenInspectStep() {
     if (referencePath.isEmpty())
         referencePath = SETTINGS.value(QStringLiteral("ScreenInspect/ReferencePath")).toString().trimmed();
 
+    const QString modeName = calibMode   ? QStringLiteral("位置校准")
+                             : deadMode  ? QStringLiteral("坏点分析")
+                                         : QStringLiteral("显示对比");
     if (useUsb) {
-        showlog(QStringLiteral("本步调用 USB 摄像头对屏幕拍照并分析对比（%1）：index=%2%3 预热%4ms 残差%5")
-                    .arg(deadMode ? QStringLiteral("坏点分析") : QStringLiteral("显示对比"))
+        showlog(QStringLiteral("本步调用 USB 摄像头对屏幕拍照（%1）：index=%2%3 预热%4ms")
+                    .arg(modeName)
                     .arg(cameraIndex)
                     .arg(cameraName.isEmpty() ? QString() : QStringLiteral(" name=%1").arg(cameraName))
-                    .arg(warmupMs)
-                    .arg(deadDiff));
+                    .arg(warmupMs));
     } else {
-        showlog(QStringLiteral("本步调用 GigE 相机对屏幕拍照并分析对比（%1）：IP=%2%3 预热%4ms 残差%5")
-                    .arg(deadMode ? QStringLiteral("坏点分析") : QStringLiteral("显示对比"))
+        showlog(QStringLiteral("本步调用 GigE 相机对屏幕拍照（%1）：IP=%2%3 预热%4ms")
+                    .arg(modeName)
                     .arg(cameraIp.isEmpty() ? QStringLiteral("(自动第一台)") : cameraIp)
                     .arg(cameraSerial.isEmpty() ? QString() : QStringLiteral(" SN=%1").arg(cameraSerial))
-                    .arg(warmupMs)
-                    .arg(deadDiff));
+                    .arg(warmupMs));
     }
 
     QImage curr;
@@ -2557,7 +2571,7 @@ void QFreeWork::runScreenInspectStep() {
     }
 
     QImage ref;
-    if (anomalyMode) {
+    if (anomalyMode || calibMode) {
         QString path = referencePath;
         if (!path.isEmpty() && !QFileInfo(path).isAbsolute())
             path = QDir(QCoreApplication::applicationDirPath()).filePath(path);
@@ -2565,26 +2579,94 @@ void QFreeWork::runScreenInspectStep() {
             path = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("screen_inspect/reference.png"));
         if (!ref.load(path) || ref.isNull()) {
             TestResult = failValue;
-            showlog(QStringLiteral("显示异常检查失败：未加载参考图（%1）。请在调试页保存参考图或填写 Param_referencePath")
+            showlog(QStringLiteral("%1失败：未加载参考图（%2）。请在调试页保存参考图或填写 Param_referencePath")
+                        .arg(calibMode ? QStringLiteral("位置校准") : QStringLiteral("显示异常检查"))
                         .arg(path));
             markActiveTestCaseStepDone(false, QStringLiteral("无参考图"), QStringLiteral("失败"));
             return;
         }
     }
 
-    ScreenInspectAnalyzer::Params ap;
-    ap.deadDiff = deadDiff;
-    ap.expectedColor = expectedColor;
     QString roiText = map.value(QStringLiteral("roi")).toString().trimmed();
     if (roiText.isEmpty())
         roiText = SETTINGS.value(QStringLiteral("ScreenInspect/Roi")).toString().trimmed();
-    ap.manualRoi = ScreenInspectAnalyzer::parseManualRoi(roiText);
-    if (!ap.manualRoi.isNull())
+    const QRect manualRoi = ScreenInspectAnalyzer::parseManualRoi(roiText);
+    if (!manualRoi.isNull())
         showlog(QStringLiteral("使用划定检测范围：%1,%2 %3x%4")
-                    .arg(ap.manualRoi.x())
-                    .arg(ap.manualRoi.y())
-                    .arg(ap.manualRoi.width())
-                    .arg(ap.manualRoi.height()));
+                    .arg(manualRoi.x())
+                    .arg(manualRoi.y())
+                    .arg(manualRoi.width())
+                    .arg(manualRoi.height()));
+
+    // 位置校准：左右同套校准框/圆屏线，供操作员目视对位（不做坏点/相似度卡控）
+    if (calibMode) {
+        phaseT.restart();
+        QRect usedRoi;
+        const QImage currGuides = ScreenInspectAnalyzer::drawGuides(curr, manualRoi, nullptr, &usedRoi);
+        QRect refRoi = usedRoi;
+        if (curr.width() > 0 && curr.height() > 0 && ref.width() > 0 && ref.height() > 0
+            && curr.size() != ref.size()) {
+            refRoi = QRect(usedRoi.x() * ref.width() / curr.width(),
+                           usedRoi.y() * ref.height() / curr.height(),
+                           qMax(1, usedRoi.width() * ref.width() / curr.width()),
+                           qMax(1, usedRoi.height() * ref.height() / curr.height()));
+        }
+        const QImage refGuides = ScreenInspectAnalyzer::drawGuides(ref, refRoi, &curr, nullptr);
+        const qint64 msGuide = phaseT.elapsed();
+
+        const QString dir = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("screen_inspect"));
+        CommonUtils::ensureDirectory(dir);
+        QStringList uploadImagePaths;
+        phaseT.restart();
+        {
+            const QString stamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss"));
+            const QString capPath = dir + QLatin1Char('/') + stamp + QStringLiteral("_calib_capture.jpg");
+            const QString refPath = dir + QLatin1Char('/') + stamp + QStringLiteral("_calib_reference.jpg");
+            if (currGuides.save(capPath, "JPG", 90))
+                uploadImagePaths << capPath;
+            if (refGuides.save(refPath, "JPG", 90))
+                uploadImagePaths << refPath;
+        }
+        currGuides.save(dir + QStringLiteral("/last_capture.jpg"), "JPG", 90);
+        refGuides.save(dir + QStringLiteral("/last_reference.jpg"), "JPG", 90);
+        if (!uploadImagePaths.isEmpty())
+            Qlog::addScreenInspectImageFiles(getIndex(), uploadImagePaths);
+        rememberScreenInspectImages(curr, currGuides, refGuides, dir, true);
+        if (ui->tabWidget && ui->tab_screenInspect)
+            ui->tabWidget->setCurrentWidget(ui->tab_screenInspect);
+        showlog(QStringLiteral("位置校准对照已刷新：抓图%1ms 画线%2ms。请对比「屏幕拍照」页左右校准线是否重合")
+                    .arg(msGrab)
+                    .arg(msGuide));
+
+        QMessageBox box(QMessageBox::Question, QStringLiteral("屏幕摄像头位置校准"),
+                        QStringLiteral("请对照「屏幕拍照」页：\n"
+                                       "左=本次拍摄+校准线，右=参考图+同一套校准线。\n\n"
+                                       "位置是否对准？\n"
+                                       "点「是」=对准，继续测试\n"
+                                       "点「否」=未对准，本步失败"),
+                        QMessageBox::Yes | QMessageBox::No, this);
+        if (QAbstractButton* yesBtn = box.button(QMessageBox::Yes))
+            yesBtn->setText(QStringLiteral("是"));
+        if (QAbstractButton* noBtn = box.button(QMessageBox::No))
+            noBtn->setText(QStringLiteral("否"));
+        box.setDefaultButton(QMessageBox::Yes);
+        applyTestItemPromptFont(&box);
+        const bool aligned = (box.exec() == QMessageBox::Yes);
+        if (aligned) {
+            showlog(QStringLiteral("位置校准：操作员确认已对准"));
+            markActiveTestCaseStepDone(true, QStringLiteral("已对准"), QStringLiteral("校准"));
+        } else {
+            TestResult = failValue;
+            showlog(QStringLiteral("位置校准：操作员确认未对准"));
+            markActiveTestCaseStepDone(false, QStringLiteral("未对准"), QStringLiteral("校准"));
+        }
+        return;
+    }
+
+    ScreenInspectAnalyzer::Params ap;
+    ap.deadDiff = deadDiff;
+    ap.expectedColor = expectedColor;
+    ap.manualRoi = manualRoi;
     phaseT.restart();
     const ScreenInspectAnalyzer::Report report = ScreenInspectAnalyzer::analyze(curr, ref, ap);
     const qint64 msAnalyze = phaseT.elapsed();
@@ -2592,6 +2674,19 @@ void QFreeWork::runScreenInspectStep() {
     const QString dir = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("screen_inspect"));
     CommonUtils::ensureDirectory(dir);
     QStringList uploadImagePaths;
+    // 参考图也叠同一套识别框/圆屏线，便于归档对照
+    QImage refMarked;
+    if (!ref.isNull()) {
+        QRect refRoi = report.roi;
+        if (curr.width() > 0 && curr.height() > 0 && ref.width() > 0 && ref.height() > 0
+            && curr.size() != ref.size() && !report.roi.isNull()) {
+            refRoi = QRect(report.roi.x() * ref.width() / curr.width(),
+                           report.roi.y() * ref.height() / curr.height(),
+                           qMax(1, report.roi.width() * ref.width() / curr.width()),
+                           qMax(1, report.roi.height() * ref.height() / curr.height()));
+        }
+        refMarked = ScreenInspectAnalyzer::drawGuides(ref, refRoi, &curr);
+    }
     // 高分辨率 PNG 压缩极慢（曾出现分析完后 UI 卡死近 1 分钟）；证据图改 JPEG，识别仍用内存原图
     phaseT.restart();
     {
@@ -2604,23 +2699,23 @@ void QFreeWork::runScreenInspectStep() {
             if (report.annotated.save(markPath, "JPG", 90))
                 uploadImagePaths << markPath;
         }
-        if (!ref.isNull() && saveCapture) {
+        if (!refMarked.isNull() && saveCapture) {
             const QString refPath = dir + QLatin1Char('/') + stamp + QStringLiteral("_reference.jpg");
-            if (ref.save(refPath, "JPG", 90))
+            if (refMarked.save(refPath, "JPG", 90))
                 uploadImagePaths << refPath;
         }
     }
     curr.save(dir + QStringLiteral("/last_capture.jpg"), "JPG", 90);
     if (!report.annotated.isNull())
         report.annotated.save(dir + QStringLiteral("/last_mark.jpg"), "JPG", 90);
-    if (!ref.isNull())
-        ref.save(dir + QStringLiteral("/last_reference.jpg"), "JPG", 90);
+    if (!refMarked.isNull())
+        refMarked.save(dir + QStringLiteral("/last_reference.jpg"), "JPG", 90);
     // 本步不清理历史图：否则同一次测试前面颜色的 capture/mark 会被删掉，收尾只能拷到最后几张
     const qint64 msSave = phaseT.elapsed();
     if (!uploadImagePaths.isEmpty())
         Qlog::addScreenInspectImageFiles(getIndex(), uploadImagePaths);
     phaseT.restart();
-    rememberScreenInspectImages(curr, report.annotated, ref, dir);
+    rememberScreenInspectImages(curr, report.annotated, ref, dir, false);
     const qint64 msPreview = phaseT.elapsed();
     qDebug().noquote() << QStringLiteral("[ScreenInspectStep]")
                        << QStringLiteral("size=%1x%2 grab=%3ms analyze=%4ms save=%5ms preview=%6ms dead=%7")
@@ -2660,13 +2755,12 @@ void QFreeWork::runScreenInspectStep() {
     if (expectedColor >= 0 && data.colorMatch == 0) {
         showlog(QStringLiteral("屏幕检测自动识别未通过：%1").arg(colorLog));
         const QString askColor = ScreenInspectAnalyzer::colorName(expectedColor);
-        // 数据=实测颜色，要求=期望颜色；人工点「否」可按通过
-        if (screenInspectAskHumanPassOnAutoFail(colorLog)) {
-            showlog(QStringLiteral("人工确认：目视正常，本步按通过"));
+        if (screenInspectAskHumanPassOnAutoFail(askColor)) {
+            showlog(QStringLiteral("人工确认：屏幕显示%1，本步通过").arg(askColor));
             markActiveTestCaseStepDone(true, detectedName + QStringLiteral("（人工确认通过）"), askColor);
         } else {
             TestResult = failValue;
-            showlog(QStringLiteral("人工确认：有问题，本步不通过"));
+            showlog(QStringLiteral("人工确认：屏幕未显示%1，本步不通过").arg(askColor));
             markActiveTestCaseStepDone(false, detectedName, askColor);
         }
         return;
@@ -2714,13 +2808,15 @@ void QFreeWork::runScreenInspectStep() {
     if (!pass) {
         const QString failReason = reasons.join(QStringLiteral("；"));
         showlog(QStringLiteral("屏幕检测自动识别未通过：%1").arg(failReason));
-        if (screenInspectAskHumanPassOnAutoFail(failReason)) {
-            showlog(QStringLiteral("人工确认：目视正常，本步按通过"));
+        const QString askColor = expectedColor >= 0 ? ScreenInspectAnalyzer::colorName(expectedColor)
+                                                    : askText;
+        if (screenInspectAskHumanPassOnAutoFail(askColor)) {
+            showlog(QStringLiteral("人工确认：屏幕显示%1，本步通过").arg(askColor));
             markActiveTestCaseStepDone(true, testData + QStringLiteral("（人工确认通过）"),
                                        askText.isEmpty() ? QStringLiteral("通过") : askText);
         } else {
             TestResult = failValue;
-            showlog(QStringLiteral("人工确认：有问题，本步不通过"));
+            showlog(QStringLiteral("人工确认：屏幕未显示%1，本步不通过").arg(askColor));
             markActiveTestCaseStepDone(false, testData, askText.isEmpty() ? QStringLiteral("失败") : askText);
         }
         return;

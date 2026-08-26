@@ -10,6 +10,7 @@
 /**
  * 屏幕检测算法（调试页与自由工站步骤共用）。
  * expectedColor：-1 自动；0蓝 1绿 2红 3白 4黑 5灰。
+ * 坏点：圆屏内再内缩约 82%。相似度：识别到的完整圆屏外接方框整块对比（背景黑，四角可忽略）。
  */
 namespace ScreenInspectAnalyzer {
 
@@ -50,6 +51,14 @@ struct Report {
 
 Report analyze(const QImage& currRgb, const QImage& refRgb, const Params& p);
 QString colorName(int colorIndex);
+
+/**
+ * 仅画检测范围框 + 圆屏轮廓（无坏点红圈），供摄像头位置校准对照。
+ * roi 无效时自动找屏；circleFrom 非空时圆轮廓按该图尺寸映射到 rgb（左右同框对照）。
+ * outRoi 可选，回写实际使用的检测框。
+ */
+QImage drawGuides(const QImage& rgb, const QRect& roi, const QImage* circleFrom = nullptr,
+                  QRect* outRoi = nullptr);
 
 /**
  * 清理 screen_inspect 历史抓拍，避免目录无限累积。

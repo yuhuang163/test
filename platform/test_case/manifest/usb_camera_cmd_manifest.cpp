@@ -28,8 +28,17 @@ constexpr const char kHintScreenDisplayAnomaly[] =
     u8"Param_saveCapture=1 存图\r\n"
     u8"Param_roi 同坏点步骤（调试页拖拽划定后写入设置，步骤可不填）\r\n"
     u8"卡控勾「与参考图相似度」0.85~1。灰阶条纹不要勾亮度起伏";
+constexpr const char kHintScreenCameraCalibration[] =
+    u8"测试前摄像头位置校准：拍一张当前图，与参考图并排显示，两侧叠加同一套校准框/圆屏线\r\n"
+    u8"通道请选「治具通信」，治具协议选「USB摄像头」；默认 GigE\r\n"
+    u8"Param_referencePath 标准参考图（必填，或用调试页已保存的参考图）\r\n"
+    u8"Param_cameraIp / ScreenInspect/GigEIp；Param_cameraSource=usb 用 USB\r\n"
+    u8"Param_roi 检测范围（建议先在调试页拖拽划定）；Param_warmupMs 预热\r\n"
+    u8"弹窗请操作员目视对照：是=位置OK继续，否=未对准失败。本步不做坏点/相似度卡控";
 
 const Row kRows[] = {
+    {UsbCameraCmd::ScreenCameraCalibration, "ScreenCameraCalibration", u8"屏幕拍照·位置校准", DeviceCmdParamKind::JsonMap,
+     kHintScreenCameraCalibration, kGet, "ProtocolScreenInspectData", "ssim"},
     {UsbCameraCmd::ScreenDeadPixelCheck, "ScreenDeadPixelCheck", u8"屏幕拍照·坏点分析", DeviceCmdParamKind::JsonMap,
      kHintScreenDeadPixel, kGet, "ProtocolScreenInspectData", "deadPixels"},
     {UsbCameraCmd::ScreenDisplayAnomalyCheck, "ScreenDisplayAnomalyCheck", u8"屏幕拍照·显示对比",

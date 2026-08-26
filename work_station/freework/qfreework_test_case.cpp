@@ -1,6 +1,7 @@
 #include "qfreework.h"
 
 #include "test_case.h"
+#include "screen_inspect_analyzer.h"
 
 #include "qatmanager.h"
 #include "qfreeworkbox.h"
@@ -1047,19 +1048,30 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
     if (display.testData.isEmpty())
         display.testData = detail;
 
-    // 屏幕图像识别：自动卡控失败时弹窗交人工确认（点否=通过，点是=不通过）
+    // 屏幕图像识别：自动卡控失败时弹窗确认是否显示对应颜色（是=通过，否=不通过）
     bool humanOverrodePass = false;
     if (!pass && reportType == QStringLiteral("ProtocolScreenInspectData")) {
         const QString failDetail = detail.isEmpty() ? QStringLiteral("未通过") : detail;
         showlog(QStringLiteral("屏幕检测自动识别未通过：%1").arg(failDetail));
-        if (screenInspectAskHumanPassOnAutoFail(failDetail)) {
+        QString expectColor = QStringLiteral("目标颜色");
+        QVariantMap paramMap;
+        if (activeTestCase_.send.param.canConvert<QVariantMap>())
+            paramMap = resolveTestCaseSendParamTree(activeTestCase_.send.param).toMap();
+        if (paramMap.contains(QStringLiteral("expectedColor"))) {
+            bool colorOk = false;
+            const int ci = ScreenInspectAnalyzer::parseColorIndex(
+                paramMap.value(QStringLiteral("expectedColor")).toString(), &colorOk);
+            if (colorOk && ci >= 0)
+                expectColor = ScreenInspectAnalyzer::colorName(ci);
+        }
+        if (screenInspectAskHumanPassOnAutoFail(expectColor)) {
             pass = true;
             humanOverrodePass = true;
             if (!display.testData.contains(QStringLiteral("人工确认")))
                 display.testData += QStringLiteral("（人工确认通过）");
-            showlog(QStringLiteral("人工确认：目视正常，本步按通过"));
+            showlog(QStringLiteral("人工确认：屏幕显示%1，本步通过").arg(expectColor));
         } else {
-            showlog(QStringLiteral("人工确认：有问题，本步不通过"));
+            showlog(QStringLiteral("人工确认：屏幕未显示%1，本步不通过").arg(expectColor));
         }
     }
 

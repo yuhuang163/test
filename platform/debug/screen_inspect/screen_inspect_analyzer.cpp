@@ -218,6 +218,65 @@ double ssimOnGray(const QVector<quint8>& a, const QVector<quint8>& b, int w, int
     return qBound(0.0, sum / n, 1.0);
 }
 
+/** 与坏点一致：只统计圆屏内（圆心/半径相对裁剪图坐标系）的 8x8 块。 */
+double ssimOnGrayInCircle(const QVector<quint8>& a, const QVector<quint8>& b, int w, int h, int cx, int cy,
+                          int radius) {
+    if (a.size() != b.size() || w < 8 || h < 8 || radius < 8)
+        return 0.0;
+    const int block = 8;
+    const double c1 = 6.5025;
+    const double c2 = 58.5225;
+    const qint64 r2 = qint64(radius) * qint64(radius);
+    double sum = 0.0;
+    int n = 0;
+    for (int y = 0; y + block <= h; y += block) {
+        for (int x = 0; x + block <= w; x += block) {
+            const int bx = x + block / 2;
+            const int by = y + block / 2;
+            const qint64 dx = bx - cx;
+            const qint64 dy = by - cy;
+            if (dx * dx + dy * dy > r2)
+                continue;
+            double mx = 0, my = 0;
+            for (int j = 0; j < block; ++j) {
+                const quint8* pa = a.constData() + (y + j) * w + x;
+                const quint8* pb = b.constData() + (y + j) * w + x;
+                for (int i = 0; i < block; ++i) {
+                    mx += pa[i];
+                    my += pb[i];
+                }
+            }
+            const double inv = 1.0 / (block * block);
+            mx *= inv;
+            my *= inv;
+            double vx = 0, vy = 0, cov = 0;
+            for (int j = 0; j < block; ++j) {
+                const quint8* pa = a.constData() + (y + j) * w + x;
+                const quint8* pb = b.constData() + (y + j) * w + x;
+                for (int i = 0; i < block; ++i) {
+                    const double ddx = pa[i] - mx;
+                    const double ddy = pb[i] - my;
+                    vx += ddx * ddx;
+                    vy += ddy * ddy;
+                    cov += ddx * ddy;
+                }
+            }
+            vx *= inv;
+            vy *= inv;
+            cov *= inv;
+            const double num = (2.0 * mx * my + c1) * (2.0 * cov + c2);
+            const double den = (mx * mx + my * my + c1) * (vx + vy + c2);
+            if (den > 1e-9) {
+                sum += num / den;
+                ++n;
+            }
+        }
+    }
+    if (n <= 0)
+        return 0.0;
+    return qBound(0.0, sum / n, 1.0);
+}
+
 bool pixelMatchesSolidColor(int r, int g, int b, int gray, int colorIndex) {
     const int spread = qMax(r, qMax(g, b)) - qMin(r, qMin(g, b));
     switch (colorIndex) {
@@ -678,9 +737,46 @@ QImage drawAnnotated(const QImage& rgb, const QRect& roi, const ScreenCircle& ci
     return out;
 }
 
+QRect scaleRoiRect(const QRect& roi, const QSize& from, const QSize& to) {
+    if (from.width() <= 0 || from.height() <= 0 || to.width() <= 0 || to.height() <= 0)
+        return roi;
+    return QRect(roi.x() * to.width() / from.width(), roi.y() * to.height() / from.height(),
+                 qMax(1, roi.width() * to.width() / from.width()),
+                 qMax(1, roi.height() * to.height() / from.height()));
+}
+
 } // namespace
 
 namespace ScreenInspectAnalyzer {
+
+QImage drawGuides(const QImage& rgb, const QRect& roiIn, const QImage* circleFrom, QRect* outRoi) {
+    const QImage img = toRgb888(rgb);
+    QRect roi = roiIn.intersected(img.rect());
+    if (roi.width() < 10 || roi.height() < 10)
+        roi = detectScreenRoi(img);
+    if (outRoi)
+        *outRoi = roi;
+
+    ScreenCircle circle;
+    if (circleFrom && !circleFrom->isNull()) {
+        const QImage src = toRgb888(*circleFrom);
+        QRect srcRoi = scaleRoiRect(roi, img.size(), src.size()).intersected(src.rect());
+        if (srcRoi.width() < 10 || srcRoi.height() < 10)
+            srcRoi = detectScreenRoi(src);
+        const ScreenCircle sc = detectScreenCircle(src, srcRoi);
+        // 把源图圆映射到当前图，保证左右对照是同一套校准线
+        if (sc.r >= 8 && src.width() > 0 && src.height() > 0) {
+            circle.cx = sc.cx * img.width() / src.width();
+            circle.cy = sc.cy * img.height() / src.height();
+            circle.r = qMax(8, sc.r * qMin(img.width(), img.height()) / qMin(src.width(), src.height()));
+        } else {
+            circle = detectScreenCircle(img, roi);
+        }
+    } else {
+        circle = detectScreenCircle(img, roi);
+    }
+    return drawAnnotated(img, roi, circle, {});
+}
 
 Report analyze(const QImage& currRgb, const QImage& refRgb, const Params& p) {
     QElapsedTimer totalT;
@@ -726,10 +822,18 @@ Report analyze(const QImage& currRgb, const QImage& refRgb, const Params& p) {
         QImage ref = toRgb888(refRgb);
         if (ref.size() != curr.size())
             ref = ref.scaled(curr.size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-        const int tw = 256;
-        const int th = qMax(8, curr.height() * tw / qMax(1, curr.width()));
-        const QImage a = curr.copy(roi).scaled(tw, th, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-        const QImage b = ref.copy(roi).scaled(tw, th, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+        // 完整识别圆屏：以外接方框裁切对比（四角黑底一致，不再内缩、不按块跳过）
+        QRect circleBox(circle.cx - circle.r, circle.cy - circle.r, circle.r * 2, circle.r * 2);
+        circleBox = circleBox.intersected(curr.rect());
+        if (circleBox.width() < 8 || circleBox.height() < 8)
+            circleBox = roi;
+        QImage a = curr.copy(circleBox);
+        QImage b = ref.copy(circleBox);
+        const int maxSide = 256;
+        if (a.width() > maxSide || a.height() > maxSide) {
+            a = a.scaled(maxSide, maxSide, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+            b = b.scaled(a.size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+        }
         report.ssim = ssimOnGray(toGrayBytes(a), toGrayBytes(b), a.width(), a.height());
         msSsim = stepT.elapsed();
     }

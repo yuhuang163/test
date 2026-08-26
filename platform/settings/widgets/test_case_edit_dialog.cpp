@@ -331,13 +331,15 @@ QStringList sendParamPreferredOrder(TestCaseSendChannel channel, const QString& 
     }
     if (channel == TestCaseSendChannel::Fixture
         && (cmdName == QLatin1String("ScreenDeadPixelCheck")
-            || cmdName == QLatin1String("ScreenDisplayAnomalyCheck"))) {
+            || cmdName == QLatin1String("ScreenDisplayAnomalyCheck")
+            || cmdName == QLatin1String("ScreenCameraCalibration"))) {
         QStringList keys = {QStringLiteral("cameraSource"), QStringLiteral("cameraIp"),
                             QStringLiteral("cameraSerial"), QStringLiteral("cameraIndex"),
                             QStringLiteral("cameraName"), QStringLiteral("warmupMs"),
                             QStringLiteral("expectedColor"), QStringLiteral("deadDiff"),
                             QStringLiteral("saveCapture"), QStringLiteral("roi")};
-        if (cmdName == QLatin1String("ScreenDisplayAnomalyCheck"))
+        if (cmdName == QLatin1String("ScreenDisplayAnomalyCheck")
+            || cmdName == QLatin1String("ScreenCameraCalibration"))
             keys.append(QStringLiteral("referencePath"));
         return keys;
     }
@@ -612,7 +614,8 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
     if (channel == TestCaseSendChannel::Fixture
         && FixturePcbaCmdCatalog::fixtureProtocolFromIni(device) == TestCaseFixtureProtocol::UsbCamera) {
         if (cmdName == QLatin1String("ScreenDeadPixelCheck")
-            || cmdName == QLatin1String("ScreenDisplayAnomalyCheck")) {
+            || cmdName == QLatin1String("ScreenDisplayAnomalyCheck")
+            || cmdName == QLatin1String("ScreenCameraCalibration")) {
             QVariantMap map{{QStringLiteral("cameraSource"), QString()},
                             {QStringLiteral("cameraIp"), QStringLiteral("169.254.64.10")},
                             {QStringLiteral("cameraSerial"), QString()},
@@ -623,8 +626,13 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
                             {QStringLiteral("deadDiff"), QStringLiteral("35")},
                             {QStringLiteral("saveCapture"), QStringLiteral("1")},
                             {QStringLiteral("roi"), QString()}};
-            if (cmdName == QLatin1String("ScreenDisplayAnomalyCheck"))
+            if (cmdName == QLatin1String("ScreenDisplayAnomalyCheck")
+                || cmdName == QLatin1String("ScreenCameraCalibration"))
                 map.insert(QStringLiteral("referencePath"), QString());
+            if (cmdName == QLatin1String("ScreenCameraCalibration")) {
+                map.remove(QStringLiteral("expectedColor"));
+                map.remove(QStringLiteral("deadDiff"));
+            }
             return map;
         }
         return {};

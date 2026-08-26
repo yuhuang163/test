@@ -342,15 +342,15 @@ class QFreeWork : public test_base {
     void runDongleSuctionSampleStep();
     /** Dongle 单通道吸力采样；判定走 ProtocolDongleSuctionPeakData Gate。 */
     void runDongleSuctionSampleSingleStep();
-    /** 自由工站屏幕检测：调用 USB 摄像头对屏幕拍照，再分析对比（坏点 / 显示异常）+ Gate。 */
+    /** 自由工站屏幕检测：GigE/USB 拍照后坏点 / 显示对比 / 位置校准。 */
     void runScreenInspectStep();
     /**
-     * 图像自动识别未通过时弹窗人工复核。
-     * 点「否」=目视正常→返回 true（步骤按通过）；点「是」=确认有问题→返回 false（不通过）。
+     * 屏幕图像识别自动未通过时弹窗：确认是否显示对应颜色。
+     * 点「是」=是该颜色→返回 true（通过）；点「否」=不是→返回 false（不通过）。
      */
-    bool screenInspectAskHumanPassOnAutoFail(const QString& autoFailDetail);
+    bool screenInspectAskHumanPassOnAutoFail(const QString& expectedColorName);
     void rememberScreenInspectImages(const QImage& capture, const QImage& annotated, const QImage& reference,
-                                     const QString& folder);
+                                     const QString& folder, bool calibrationGuides = false);
     void updateScreenInspectPreview();
     void showScreenInspectViewer();
     void openScreenInspectFolder();
@@ -434,6 +434,8 @@ class QFreeWork : public test_base {
     QImage screenInspectAnnotated_;
     QImage screenInspectReference_;
     QString screenInspectFolder_;
+    /** true=校准步骤：左右均为校准画线对照图。 */
+    bool screenInspectCalibGuides_ = false;
 
   private slots:
     void initData(bool deferDongleAtForVisa = false);
