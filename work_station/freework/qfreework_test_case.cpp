@@ -1053,7 +1053,8 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
     if (!pass && reportType == QStringLiteral("ProtocolScreenInspectData")) {
         const QString failDetail = detail.isEmpty() ? QStringLiteral("未通过") : detail;
         showlog(QStringLiteral("屏幕检测自动识别未通过：%1").arg(failDetail));
-        QString expectColor = QStringLiteral("目标颜色");
+        // 弹窗要用本步具体颜色，避免笼统「目标颜色」
+        QString expectColor;
         QVariantMap paramMap;
         if (activeTestCase_.send.param.canConvert<QVariantMap>())
             paramMap = resolveTestCaseSendParamTree(activeTestCase_.send.param).toMap();
@@ -1064,14 +1065,50 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
             if (colorOk && ci >= 0)
                 expectColor = ScreenInspectAnalyzer::colorName(ci);
         }
+        if (expectColor.isEmpty()) {
+            for (const TestCaseGate& g : gatesForEval) {
+                if (!g.enabled || g.field.trimmed() != QLatin1String("detectedColor"))
+                    continue;
+                const QString e = g.expected.trimmed();
+                if (e.isEmpty())
+                    continue;
+                bool colorOk = false;
+                const int ci = ScreenInspectAnalyzer::parseColorIndex(e, &colorOk);
+                expectColor = (colorOk && ci >= 0) ? ScreenInspectAnalyzer::colorName(ci) : e;
+                break;
+            }
+        }
+        if (expectColor.isEmpty()) {
+            const QString hintName = activeTestCase_.meta.displayName.trimmed().isEmpty()
+                                         ? activeTestCase_.meta.name.trimmed()
+                                         : activeTestCase_.meta.displayName.trimmed();
+            // 确认屏幕(白色) / 确认屏幕（灰度条）
+            const QRegularExpression re(QStringLiteral("[（(]([^）)]+)[）)]"));
+            const QRegularExpressionMatch m = re.match(hintName);
+            if (m.hasMatch())
+                expectColor = m.captured(1).trimmed();
+            else {
+                const int us = hintName.lastIndexOf(QLatin1Char('_'));
+                if (us >= 0)
+                    expectColor = hintName.mid(us + 1).trimmed();
+            }
+        }
+        if (expectColor.isEmpty()) {
+            const QString prompt = activeTestCase_.meta.promptText.trimmed();
+            const QString prefix = QStringLiteral("请确认屏幕是否显示");
+            if (prompt.startsWith(prefix))
+                expectColor = prompt.mid(prefix.size()).trimmed();
+        }
         if (screenInspectAskHumanPassOnAutoFail(expectColor)) {
             pass = true;
             humanOverrodePass = true;
             if (!display.testData.contains(QStringLiteral("人工确认")))
                 display.testData += QStringLiteral("（人工确认通过）");
-            showlog(QStringLiteral("人工确认：屏幕显示%1，本步通过").arg(expectColor));
+            showlog(QStringLiteral("人工确认：屏幕显示%1，本步通过").arg(
+                expectColor.isEmpty() ? QStringLiteral("目标颜色") : expectColor));
         } else {
-            showlog(QStringLiteral("人工确认：屏幕未显示%1，本步不通过").arg(expectColor));
+            showlog(QStringLiteral("人工确认：屏幕未显示%1，本步不通过").arg(
+                expectColor.isEmpty() ? QStringLiteral("目标颜色") : expectColor));
         }
     }
 

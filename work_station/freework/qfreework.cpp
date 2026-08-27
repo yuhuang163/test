@@ -3087,28 +3087,38 @@ void QFreeWork::runScreenInspectStep() {
         refMarked = ScreenInspectAnalyzer::drawGuides(ref, refRoi, &curr);
     }
     // 高分辨率 PNG 压缩极慢（曾出现分析完后 UI 卡死近 1 分钟）；证据图改 JPEG，识别仍用内存原图
+    // 存盘再压长边，避免数千万像素 JPEG 编码拖慢节拍
+    auto forSave = [](const QImage& src) -> QImage {
+        constexpr int kSaveMaxSide = 1600;
+        if (src.isNull() || qMax(src.width(), src.height()) <= kSaveMaxSide)
+            return src;
+        return src.scaled(kSaveMaxSide, kSaveMaxSide, Qt::KeepAspectRatio, Qt::FastTransformation);
+    };
     phaseT.restart();
     {
         const QString stamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss"));
+        const QImage capSave = forSave(curr);
         const QString capPath = dir + QLatin1Char('/') + stamp + QStringLiteral("_capture.jpg");
-        if (curr.save(capPath, "JPG", 90))
+        if (capSave.save(capPath, "JPG", 85))
             uploadImagePaths << capPath;
         if (!report.annotated.isNull()) {
+            const QImage markSave = forSave(report.annotated);
             const QString markPath = dir + QLatin1Char('/') + stamp + QStringLiteral("_mark.jpg");
-            if (report.annotated.save(markPath, "JPG", 90))
+            if (markSave.save(markPath, "JPG", 85))
                 uploadImagePaths << markPath;
         }
         if (!refMarked.isNull() && saveCapture) {
+            const QImage refSave = forSave(refMarked);
             const QString refPath = dir + QLatin1Char('/') + stamp + QStringLiteral("_reference.jpg");
-            if (refMarked.save(refPath, "JPG", 90))
+            if (refSave.save(refPath, "JPG", 85))
                 uploadImagePaths << refPath;
         }
     }
-    curr.save(dir + QStringLiteral("/last_capture.jpg"), "JPG", 90);
+    forSave(curr).save(dir + QStringLiteral("/last_capture.jpg"), "JPG", 85);
     if (!report.annotated.isNull())
-        report.annotated.save(dir + QStringLiteral("/last_mark.jpg"), "JPG", 90);
+        forSave(report.annotated).save(dir + QStringLiteral("/last_mark.jpg"), "JPG", 85);
     if (!refMarked.isNull())
-        refMarked.save(dir + QStringLiteral("/last_reference.jpg"), "JPG", 90);
+        forSave(refMarked).save(dir + QStringLiteral("/last_reference.jpg"), "JPG", 85);
     // 本步不清理历史图：否则同一次测试前面颜色的 capture/mark 会被删掉，收尾只能拷到最后几张
     const qint64 msSave = phaseT.elapsed();
     if (!uploadImagePaths.isEmpty())
@@ -3116,6 +3126,17 @@ void QFreeWork::runScreenInspectStep() {
     phaseT.restart();
     rememberScreenInspectImages(curr, report.annotated, ref, dir, false);
     const qint64 msPreview = phaseT.elapsed();
+    // 分阶段耗时写入 UI 日志，便于现场确认是拍照还是识别/存图慢
+    showlog(QStringLiteral("屏幕检测耗时：拍照(含预热)%1ms 识别分析%2ms 存图%3ms 预览%4ms；图%5x%6 坏点=%7 分析裁剪坏点=%8 相似度=%9")
+                .arg(msGrab)
+                .arg(msAnalyze)
+                .arg(msSave)
+                .arg(msPreview)
+                .arg(curr.width())
+                .arg(curr.height())
+                .arg(report.deadPixels)
+                .arg(ap.enableDeadPixels ? QStringLiteral("开") : QStringLiteral("跳过"))
+                .arg(ap.enableSsim ? QStringLiteral("开") : QStringLiteral("跳过")));
     qDebug().noquote() << QStringLiteral("[ScreenInspectStep]")
                        << QStringLiteral("size=%1x%2 grab=%3ms analyze=%4ms save=%5ms preview=%6ms dead=%7")
                               .arg(curr.width())

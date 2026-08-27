@@ -1450,14 +1450,13 @@ QVariant readSendParamFromUi(const SendCmdParamUi& uiSchema, QSpinBox* spinBox, 
 
 void fillGateReportTypeCombo(QComboBox* box, const QStringList& allowedTypes = {}) {
     box->clear();
+    // 只列指令绑定的回包类型；禁止「空绑定 → 全量列表」导致随意选
+    if (allowedTypes.isEmpty())
+        return;
     for (const GateTypeDescriptor& t : GateRegistry::allTypeDescriptors()) {
-        if (!allowedTypes.isEmpty() && !allowedTypes.contains(t.reportType))
+        if (!allowedTypes.contains(t.reportType))
             continue;
         box->addItem(t.displayName, t.reportType);
-    }
-    if (box->count() == 0) {
-        for (const GateTypeDescriptor& t : GateRegistry::allTypeDescriptors())
-            box->addItem(t.displayName, t.reportType);
     }
 }
 
@@ -1616,6 +1615,38 @@ void applyScreenInspectGatePlaceholders(QTableWidget* table, const QString& repo
             lo->setText(low);
         if (QTableWidgetItem* hi = table->item(i, 4))
             hi->setText(high);
+    }
+}
+
+/** 指令已绑定的单字段卡控：默认勾选判定项，并给出常用 Op/期望（产测完成=等于1）。 */
+void applyBoundGatePlaceholders(QTableWidget* table, const QString& reportType, const QString& defaultField) {
+    if (!table || table->columnCount() < 6 || reportType.isEmpty())
+        return;
+    const QString wantField = defaultField.trimmed();
+    for (int i = 0; i < table->rowCount(); ++i) {
+        QTableWidgetItem* nameItem = table->item(i, 1);
+        if (!nameItem)
+            continue;
+        const QString field = nameItem->data(Qt::UserRole).toString();
+        const bool isDefault = !wantField.isEmpty() && field == wantField;
+        const bool onlyOneRow = (table->rowCount() == 1);
+        if (!isDefault && !onlyOneRow)
+            continue;
+
+        if (QTableWidgetItem* enableItem = table->item(i, 0))
+            enableItem->setCheckState(Qt::Checked);
+
+        if (reportType == QLatin1String("ProtocolFactoryDoneData") && field == QLatin1String("done")) {
+            if (QComboBox* opCombo = gateOpCellCombo(table, i)) {
+                const int opIdx = opCombo->findData(QStringLiteral("eq"));
+                if (opIdx >= 0)
+                    opCombo->setCurrentIndex(opIdx);
+            }
+            if (QTableWidgetItem* expectedItem = table->item(i, 5))
+                expectedItem->setText(QStringLiteral("1"));
+            nameItem->setToolTip(QStringLiteral("指令已绑定「产测完成标志」：期望 1=已完成，0=未完成。"));
+            updateMultiGateRowInputMode(table, i);
+        }
     }
 }
 
@@ -1785,7 +1816,13 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
             &TestCaseEditDialog::onDeviceCmdChanged);
     connect(ui->comboBox_gateReportType, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
             &TestCaseEditDialog::onGateReportTypeChanged);
-    connect(ui->checkBox_gateEnabled, &QCheckBox::toggled, this, &TestCaseEditDialog::updateGateFieldsEnabled);
+    connect(ui->checkBox_gateEnabled, &QCheckBox::toggled, this, [this](bool) {
+        // 勾选卡控时按当前指令重新绑定回包，避免残留「全量类型」下拉
+        if (!loadingDefinition_)
+            syncGateToSendCommand(comboData(ui->comboBox_gateReportType), comboData(ui->comboBox_gateField));
+        else
+            updateGateFieldsEnabled();
+    });
     connect(ui->checkBox_promptEnabled, &QCheckBox::toggled, this, &TestCaseEditDialog::updatePromptFieldsEnabled);
     connect(ui->checkBox_promptOnly, &QCheckBox::toggled, this, &TestCaseEditDialog::updatePromptFieldsEnabled);
     connect(ui->checkBox_hookEnabled, &QCheckBox::toggled, this, &TestCaseEditDialog::updateHookFieldsEnabled);
@@ -1952,9 +1989,14 @@ void TestCaseEditDialog::rebuildMultiGateTable() {
         return;
     if (isRangeMultiGateMode()) {
         const QString reportType = comboData(ui->comboBox_gateReportType);
+        if (reportType.isEmpty()) {
+            tableWidget_multiGates_->setRowCount(0);
+            return;
+        }
         initRangeMultiGateTable(tableWidget_multiGates_, reportType);
         applyScreenInspectGatePlaceholders(tableWidget_multiGates_, reportType,
                                            comboData(ui->comboBox_gateField));
+        applyBoundGatePlaceholders(tableWidget_multiGates_, reportType, comboData(ui->comboBox_gateField));
     } else if (isPeriphMultiGateMode())
         initPeriphGateTable(tableWidget_multiGates_);
 }
@@ -2184,13 +2226,15 @@ QVector<TestCaseGate> TestCaseEditDialog::readMultiGatesFromTable() const {
 
 void TestCaseEditDialog::updateGateFieldsEnabled() {
     const bool on = ui->checkBox_gateEnabled->isChecked();
-    // 与上方指令联动且仅一种回包时，回包类型已固定，不再展示「本步回包」行
-    const bool showReportType = on && !gateReportTypeLocked_;
-    ui->label_gateReportType->setVisible(showReportType);
-    ui->comboBox_gateReportType->setVisible(showReportType);
-    ui->comboBox_gateReportType->setEnabled(showReportType);
+    const bool hasBoundType = ui->comboBox_gateReportType->count() > 0;
+    // 仅一种回包：已绑定指令，不展示下拉；无绑定：只提示、不可选全量类型
+    const bool showReportTypeCombo = on && hasBoundType && !gateReportTypeLocked_;
+    const bool showReportTypeLabel = on && (!hasBoundType || !gateReportTypeLocked_);
+    ui->label_gateReportType->setVisible(showReportTypeLabel);
+    ui->comboBox_gateReportType->setVisible(showReportTypeCombo);
+    ui->comboBox_gateReportType->setEnabled(showReportTypeCombo);
     if (tableWidget_multiGates_)
-        tableWidget_multiGates_->setVisible(on);
+        tableWidget_multiGates_->setVisible(on && hasBoundType);
     // 单字段控件已统一为表格，全部隐藏
     ui->label_gateField->setVisible(false);
     ui->comboBox_gateField->setVisible(false);
@@ -2270,8 +2314,10 @@ void TestCaseEditDialog::syncGateToSendCommand(const QString& preferredReportTyp
     const GateSendBinding binding = GateRegistry::bindingForSend(channel, protocolOrDevice, cmdName);
 
     gateReportTypeLocked_ = (binding.reportTypes.size() == 1);
-    ui->label_gateReportType->setText(binding.reportTypes.isEmpty() ? QStringLiteral("回传数据类型")
-                                                                    : QStringLiteral("本步回包"));
+    if (binding.reportTypes.isEmpty())
+        ui->label_gateReportType->setText(QStringLiteral("当前指令未绑定卡控回包（请先选带回包的 Get 指令）"));
+    else
+        ui->label_gateReportType->setText(QStringLiteral("本步回包"));
 
     {
         QSignalBlocker blocker(ui->comboBox_gateReportType);

@@ -302,12 +302,15 @@ int guessExpectedColor(const QImage& rgb, const QRect& roi, const ScreenCircle& 
     const QRect r = roi.intersected(img.rect());
     int matchCount[6] = {0, 0, 0, 0, 0, 0};
     int n = 0;
+    // 大 ROI 逐像素扫圆内极慢（千万级）；抽稀到约数万点即可判纯色
+    const int area = qMax(1, r.width() * r.height());
+    const int step = qBound(1, static_cast<int>(qCeil(qSqrt(area / 40000.0))), 16);
     QVector<int> grays;
-    grays.reserve(qMax(1, r.width() * r.height() / 2));
+    grays.reserve(qMax(1, area / (step * step * 2)));
     qint64 sr = 0, sg = 0, sb = 0;
-    for (int y = r.top(); y <= r.bottom(); ++y) {
+    for (int y = r.top(); y <= r.bottom(); y += step) {
         const uchar* line = img.constScanLine(y);
-        for (int x = r.left(); x <= r.right(); ++x) {
+        for (int x = r.left(); x <= r.right(); x += step) {
             if (!circle.contains(x, y))
                 continue;
             const int i = x * 3;
@@ -723,15 +726,38 @@ DeadScan scanDeadPixels(const QImage& rgb, const QRect& roi, int deadDiff, int e
 }
 
 QImage drawAnnotated(const QImage& rgb, const QRect& roi, const ScreenCircle& circle, const QVector<QPoint>& pts) {
-    QImage out = rgb.convertToFormat(QImage::Format_RGB32);
+    // 标注仅供预览/归档，全分辨率转 RGB32 很慢；长边压到 1600
+    constexpr int kAnnoMaxSide = 1600;
+    QImage src = rgb;
+    QRect drawRoi = roi;
+    ScreenCircle drawCircle = circle;
+    QVector<QPoint> drawPts = pts;
+    const int maxSide = qMax(src.width(), src.height());
+    if (maxSide > kAnnoMaxSide && src.width() > 0 && src.height() > 0) {
+        const QImage scaled =
+            src.scaled(kAnnoMaxSide, kAnnoMaxSide, Qt::KeepAspectRatio, Qt::FastTransformation);
+        const int sw = scaled.width();
+        const int sh = scaled.height();
+        drawRoi = QRect(roi.x() * sw / src.width(), roi.y() * sh / src.height(),
+                        qMax(1, roi.width() * sw / src.width()), qMax(1, roi.height() * sh / src.height()));
+        drawCircle.cx = circle.cx * sw / src.width();
+        drawCircle.cy = circle.cy * sh / src.height();
+        drawCircle.r = qMax(1, circle.r * qMin(sw, sh) / qMin(src.width(), src.height()));
+        for (QPoint& pt : drawPts) {
+            pt.setX(pt.x() * sw / src.width());
+            pt.setY(pt.y() * sh / src.height());
+        }
+        src = scaled;
+    }
+    QImage out = src.convertToFormat(QImage::Format_RGB32);
     QPainter p(&out);
     p.setRenderHint(QPainter::Antialiasing, true);
     p.setPen(QPen(QColor(0, 200, 0), 2));
-    p.drawRect(roi.adjusted(0, 0, -1, -1));
-    if (circle.r >= 8)
-        p.drawEllipse(QPoint(circle.cx, circle.cy), circle.r, circle.r);
+    p.drawRect(drawRoi.adjusted(0, 0, -1, -1));
+    if (drawCircle.r >= 8)
+        p.drawEllipse(QPoint(drawCircle.cx, drawCircle.cy), drawCircle.r, drawCircle.r);
     p.setPen(QPen(QColor(220, 0, 0), 2));
-    for (const QPoint& pt : pts)
+    for (const QPoint& pt : drawPts)
         p.drawEllipse(pt, 6, 6);
     p.end();
     return out;
@@ -788,10 +814,10 @@ Report analyze(const QImage& currRgb, const QImage& refRgb, const Params& p) {
     const qint64 msRgb = stepT.elapsed();
 
     stepT.start();
-    const QRect autoRoi = detectScreenRoi(curr);
+    // 已划定 ROI 时跳过全图自动框（千万像素直方图很慢）
     QRect roi = p.manualRoi.intersected(curr.rect());
     if (roi.width() < 10 || roi.height() < 10)
-        roi = autoRoi;
+        roi = detectScreenRoi(curr);
     report.roi = roi;
     const ScreenCircle circle = detectScreenCircle(curr, roi);
     const qint64 msRoi = stepT.elapsed();

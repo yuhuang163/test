@@ -287,6 +287,9 @@ bool grabStill(const QString& cameraIp, const QString& serial, int warmupMs, QIm
         g_session.grabbing = true;
     } else {
         reused = 1;
+        // 会话已开着、曝光基本稳：缩短预热，少丢帧
+        if (warmupMs > 80)
+            warmupMs = 80;
     }
 
     stepT.start();
@@ -294,9 +297,10 @@ bool grabStill(const QString& cameraIp, const QString& serial, int warmupMs, QIm
         QThread::msleep(static_cast<unsigned long>(warmupMs));
     msWarm = stepT.elapsed();
 
-    // 丢掉若干帧再取稳定画面
+    // 新开会话丢 3 帧；复用只丢 1 帧再取稳定画面
+    const int discardFrames = reused ? 1 : 3;
     stepT.start();
-    for (int i = 0; i < 3; ++i) {
+    for (int i = 0; i < discardFrames; ++i) {
         MV_FRAME_OUT discard;
         memset(&discard, 0, sizeof(discard));
         if (MV_CC_GetImageBuffer(g_session.handle, &discard, 1000) == MV_OK)
