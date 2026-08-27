@@ -1170,7 +1170,9 @@ bool QFreeWork::tickOrderedTestStepLoop() {
                     .arg(functionName)
                     .arg(caseRetryCount)
                     .arg(caseElapsedMs));
-        if (!testCaseMultiGateTableEmitted_) {
+        // 多字段卡控已写分项结果表/MES，步骤收尾不再追加汇总行（结果表与云平台/MES 均避免重复）
+        const bool multiGateEmitted = testCaseMultiGateTableEmitted_;
+        if (!multiGateEmitted) {
             TestItem test;
             test.testItem = functionName;
             test.testData = stepRuntime_.testData;
@@ -1179,7 +1181,8 @@ bool QFreeWork::tickOrderedTestStepLoop() {
             testItems.append(test);
         }
         testCaseMultiGateTableEmitted_ = false;
-        appendTestCaseMes(caseDef, stepRuntime_.pass, stepRuntime_.testData);
+        if (!multiGateEmitted)
+            appendTestCaseMes(caseDef, stepRuntime_.pass, stepRuntime_.testData);
         if (caseDef.timing.delayAfterMs > 0)
             waitWork(caseDef.timing.delayAfterMs);
         closeTestCasePrompt();

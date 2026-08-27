@@ -338,7 +338,7 @@ class QFreeWork : public test_base {
     /** Gate/Expected 中的 $MAC/$SN 等占位符展开为运行时值（$MAC=界面 MAC 框） */
     void applyRuntimePlaceholderGateExpected(QVector<TestCaseGate>& gates);
     void appendTestCaseMes(const TestCaseDefinition& def, bool pass, const QString& testData);
-    /** 多字段卡控（如杰理 RSSI/频偏）按分项各写一条 MES，与结果表行对齐 */
+    /** 多字段卡控按分项各写一条 MES，与结果表行对齐；收尾勿再 appendTestCaseMes */
     void appendMultiGateTestCaseMes(const QVector<TestCaseGate>& gates, const QString& reportType,
                                     const QVariant& payload);
     void applyFreeWorkExtraTabsVisible(bool visible);

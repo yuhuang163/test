@@ -1026,16 +1026,9 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
     bool pass = true;
     QString detail;
     const bool multiFieldMode = gatesForEval.size() > 1;
-    const bool fixtureTableMode =
-        (reportType == QStringLiteral("ProtocolFixturePcbaData")
-         || reportType == QStringLiteral("ProtocolJieliBtBoxData")
-         || reportType == QStringLiteral("ProtocolDongleSuctionPeakData")
-         || reportType == QStringLiteral("ProtocolScreenInspectData"))
-        && multiFieldMode;
-    if (fixtureTableMode) {
+    // 凡启用多项判定：一律写分项结果表 + 分项 MES；步骤收尾靠 testCaseMultiGateTableEmitted_ 跳过汇总，避免重复
+    if (multiFieldMode) {
         emitFixtureMultiGateTableRows(gatesForEval, reportType, payload, pass, detail);
-    } else if (gatesForEval.size() > 1) {
-        GateRegistry::evaluateAll(gatesForEval, reportType, payload, pass, detail);
     } else {
         GateRegistry::evaluate(gatesForEval.first(), reportType, payload, pass, detail);
     }

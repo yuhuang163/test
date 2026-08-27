@@ -1880,10 +1880,8 @@ void QFreeWork::onUsbInstrumentReport(const ProtocolReport& report) {
         if (report.payload.canConvert<ProtocolMeasureData>()) {
             ProtocolMeasureData data = report.payload.value<ProtocolMeasureData>();
             if (data.type == QLatin1String("Current")) {
-                // 回读为 A 时统一成 mA（设置页电流卡控多为 mA）
-                if (data.unit == QLatin1String("A")
-                    && (data.deviceName == QLatin1String("VISA_Power") || data.deviceName == QLatin1String("USB_Power")
-                        || data.deviceName == QLatin1String("ASD9026A"))) {
+                // 兜底：任意 Current 若仍标 A，统一成 mA（卡控区间多为 mA）
+                if (data.unit == QLatin1String("A")) {
                     data.value *= 1000.0;
                     data.valueText = QString::number(data.value, 'f', 4);
                     data.unit = QStringLiteral("mA");
