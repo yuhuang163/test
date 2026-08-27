@@ -1,196 +1,123 @@
 # New Product Test Framework (Qt)
-基于模块化与分层设计的多工站产测上位机工程框架。
 
-## 克隆后首次设置（Git 提交钩子）
+> **一句话**：多工站产测上位机（FCT/ATE），配置驱动测试流程。  
+> **读者**：新人或改代码前快速定位。**前提**：Qt 5.15 / MSVC / C++17。
 
-在**仓库根目录**执行下面**任选一种**（每个克隆只需一次），启用提交说明校验：
+更深的自由工站与分层说明见 [`docs/项目代码结构与自由工站梳理.md`](docs/项目代码结构与自由工站梳理.md)。
 
-- **Windows（cmd）**：`scripts\setup-git-hooks.cmd`
-- **Windows（PowerShell）**：`powershell -NoProfile -ExecutionPolicy Bypass -File scripts\setup-git-hooks.ps1`
-- **Git Bash / Linux / macOS**：`sh scripts/setup-git-hooks.sh`
-- **手动**：`git config core.hooksPath .githooks`
+## 技术栈与编译
 
-确认：`git config --get core.hooksPath` 应输出 `.githooks`。约定说明见 `docs/上位机版本信息生成说明.md`「提交信息校验」。
+| 项 | 值 |
+|----|-----|
+| 工程入口 | `new_production.pro`（`CONFIG += c++17`，`/utf-8`） |
+| 构建目录 | `build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release` |
+| 增量编译 | `scripts\编译Release版本.ps1 -SkipQmake` |
+| 完整 qmake | 改 `.pro` / 增删源文件后去掉 `-SkipQmake` |
+| 格式化 | `scripts\格式化代码.ps1`（clang-format + UTF-8 无 BOM） |
+| 换行 | 仓库文本默认 CRLF；仅 `new_production.pro` 固定 LF |
+
+专用工站由 `.pro` 顶部 `ENABLE_STATION_*` 宏控制是否编入；**自由工站始终编译**。改宏后须重新 qmake。
+
+运行时配置（`上位机设置.ini`、功能块 INI）与 exe 同级，通常在 `build/.../bin/`，不在仓库根目录。
 
 ## 目录结构
 
 ```text
 new_product_test/
-├── new_production.pro                    ← Qt工程入口（模块与编译配置）
-├── main.cpp                              ← 程序启动入口
-├── mainwindow.h/.cpp/.ui                 ← 主界面与全局交互入口
-├── mainlogic.cpp                         ← 主流程调度与业务联动
-├── 上位机设置.ini                         ← 运行时配置（协议/阈值/开关）
-├── new_production.qrc                    ← 资源索引（图片/QSS等）
+├── new_production.pro          ← Qt 工程入口（模块开关 + 源文件列表）
+├── main.cpp / mainwindow.* / mainlogic.cpp
+├── common/                     ← CommonUtils（字节/时间/CRC/字符串等）
+├── my_set/                     ← AbIni.h 版本宏、全局类型
+├── qlog/                       ← 日志与测试记录
+├── stytle/qss/                 ← 界面 QSS（勿在 .cpp 硬编码长样式）
 │
-├── tools/                                ← 独立工具/分析模块（与主工站解耦）
-│   └── factory_analyzer/                 ← DJI/高通产测分析与 ADB/Bulk 调试
-│       ├── factory_analyzer.h/.cpp/.ui
-│       └── djitestfunction.cpp           ← 按名称执行 Bulk 测试项
+├── platform/                   ← 平台基础设施
+│   ├── driver/
+│   │   ├── serial/             ← SerialChannel
+│   │   ├── visa/               ← VisaChannel
+│   │   └── process/            ← ProcessChannel
+│   ├── settings/               ← qsetting + 测试流程编排 / 功能块编辑
+│   ├── test_case/              ← 功能块引擎（store/gate/ini_param/manifest）
+│   ├── cloud/                  ← 登录鉴权、用例同步、日志/测试数据上传、上位机 OTA
+│   ├── label_print/            ← 标签打印
+│   ├── instrument/             ← 仪器设备目录
+│   └── debug/screen_inspect/   ← 屏幕巡检调试
 │
-├── docs/                                 ← 文档说明与改造记录
-│   ├── 代码开发流程.md                    ← 开发流程规范
-│   ├── 上位机版本发布.md                  ← 版本发布流程
-│   ├── 协议适配.md                        ← 协议适配说明
-│   ├── 协议适配改造方案.md                 ← 协议改造设计文档
-│   └── 基于 TLV 的 BLE OTA 图片资源升级协议.md  ← 路特 BLE OTA 协议说明
+├── agreement/                  ← 协议层（按域拆分，access/manager/codec/device）
+│   ├── factory_protocol/       ← QProtocolManager、qpb/qfctp/qaiot/qroot
+│   ├── at_protocol/            ← Dongle AT
+│   ├── scpi_protocol/          ← SCPI（会凌电源、Agilent、CMW100 等）
+│   ├── modbus_protocol/        ← PLC / 电流表 / 温湿度等
+│   ├── fixture_protocol/       ← 治具（uart / 华勤 / 西威迪 / 杰理 / ASD9026A）
+│   ├── mes_protocol/           ← 多工厂 MES
+│   ├── product_protocol/       ← 产品串口 qproduct
+│   ├── adb_protocol/           ← ADB
+│   ├── bulk_protocol/          ← Bulk
+│   └── shell_protocol/         ← Shell
 │
-├── common/                               ← 公共工具类 CommonUtils（字节/时间/文件/字符串）
-│   └── common_utils.h/.cpp
+├── business/                   ← 工站业务门面（非通讯协议）
+│   ├── plc_v3_fixture/         ← PlcV3Facade（V3 治具 PLC）
+│   ├── cmw_gprf/               ← CmwGprfFacade（CMW100 GPRF PER/burst）
+│   ├── tuple/                  ← QTupleService 三元组
+│   └── ble_ota/                ← 路特 BLE OTA（root_ble_ota / root_ble_ota2）
 │
-├── platform/                             ← 平台层（I/O、配置 UI 等基础设施）
-│   ├── serial/serial_channel.h/.cpp     ← SerialChannel（防抖读、RTS/DTR、QSerialPort 封装）
-│   ├── test_case/                        ← 功能测试库（test_case.h/.cpp 单入口）
-│   │   ├── test_case_types.h             ← case 数据结构
-│   │   └── test_case.*                   ← 路径/存储/校验/指令表/卡控/钩子/执行
-│   └── settings/
-│       ├── qsetting.h/.cpp/.ui           ← 设置主界面（各 Tab、SETTINGS 加载/保存）
-│       ├── test_flow/test_flow_editor.*  ← Tab「测试流程编排」逻辑
-│       └── widgets/test_case_edit_dialog.* ← 功能块编辑对话框
+├── work_station/               ← 各工站 UI 与流程
+│   ├── test_base.* / box_base.*
+│   ├── freework/               ← 自由工站（始终编入；qfreework* + shared_instrument）
+│   ├── key/ suction/ pressure/ pcba/ motor/ imu/
+│   ├── screen/ camera/ ageing/ wifi_ble/ quiescent_current/
+│   └── …（是否编译见 ENABLE_STATION_*）
 │
-├── test_case/                            ← 运行时目录（与 exe 同级的配置，非源码）
-│   ├── 总的测试流程.ini                   ← [Station/<工站键>]/Items=case1,case2
-│   └── <ASCII名>.ini                     ← 单功能块 Meta/Send/Timing/Gate/Hook
-│
-├── my_set/                               ← 工程公共定义与聚合头
-│   ├── AbIni.h                           ← 公共头聚合/版本宏/全局依赖
-│   └── my_typedef.h                      ← 全局类型定义
-│
-├── qlog/                                 ← 日志与测试记录模块
-│   └── qlog.h/.cpp                       ← 日志保存、CSV记录等
-│
-├── agreement/                            ← 协议层与外设通信封装
-│   ├── qProtocol/                        ← 统一协议抽象与协议管理
-│   │   ├── qprotocol.h/.cpp              ← 协议接口基类
-│   │   ├── qprotocolmanager.h/.cpp       ← 协议选择/切换/统一调用
-│   │   ├── qprotocol_types.h             ← 协议类型定义
-│   │   ├── qaiot/                        ← AIOT 协议实现
-│   │   ├── qpb/                          ← PB协议实现与生成文件
-│   │   │   ├── qpb.h/.cpp                ← PB协议主实现
-│   │   │   ├── ble_protocol/*.pb.h       ← BLE协议生成头
-│   │   │   ├── factory_protocol/*.pb.h   ← 工厂协议生成头
-│   │   │   ├── pb*.h                     ← nanopb编解码头
-│   │   │   └── Python39/                 ← 工具链附带文件（第三方）
-│   │   └── qfctp/
-│   │       ├── qfctp.h/.cpp              ← FCTP协议实现
-│   │       └── common_protocl/comm_protocol_parser.cpp
-│   │                                        ← FCTP帧组包/解析
-│   │
-│   ├── qat/                              ← dongle AT协议
-│   │   └── qat.h/.cpp
-│   ├── peripheral_protocol/              ← 外设 RS232 自定义帧（治具帧后续迁入）
-│   ├── qusb/                             ← COM 电流表工站入口（历史名；内嵌 QScpiManager）
-│   │   ├── qusb_types.h
-│   │   └── qusb.h/.cpp
-│   ├── fixture/                          ← 治具域
-│   │   ├── jig/qjig.*                    ← 气缸/继电器（无 UI）
-│   │   ├── codec/fixture_*_uart_protocol ← PCBA/压感/IMU/相机帧协议
-│   │   └── uart_ui/fixture_uart.*        ← 治具串口调试（带 UI）
-│   ├── peripheral_protocol/              ← 外设 RS232 自定义协议（codec/device，治具帧后续迁入）
-│   ├── product_serial/protocol/          ← 产品串口 qproduct（独立域，不迁入 peripheral_protocol）
-│   ├── scpi/                             ← SCPI（串口 + VISA；见 docs/agreement协议目录分层规范.md）
-│   │   ├── access/scpi_types.h           ← ScpiDeviceRoute、ScpiLinkKind（无跨设备 Cmd）
-│   │   ├── manager/qscpimanager.*        ← exec(HuilingScpiCmd) / exec(CmwScpiCmd)
-│   │   ├── manager/qscpiserialsession.*  ← 串口写行/收行
-│   │   ├── manager/qscpivisasession.*    ← VISA SCPI
-│   │   ├── codec/scpi_line_codec.*
-│   │   └── device/
-│   │       ├── huiling_wfp60h_scpi/      ← HuilingScpiCmd（电流/程控电源）
-│   │       └── rs_cmw100_scpi/           ← CmwScpiCmd（CMW100 GPRF）
-│   └── qmes/                             ← 多工厂MES适配
-│       ├── qmes.h/.cpp                   ← MES基类
-│       ├── mesmanager.h/.cpp             ← MES路由与管理
-│       ├── hqmes.* / jjmes.* / lxmes.*   ← 工厂MES实现（华勤/金进/立讯）
-│       ├── xwdmes.* / wksmes.* / bydmes.*
-│       └── ydmmes.*
-│
-├── business/                             ← 工站业务封装（非 agreement 通讯协议）
-│   ├── plc_v3_fixture/                   ← V3 治具 PLC（PlcV3Facade）
-│   ├── cmw_gprf/                         ← CMW100 GPRF PER/burst（CmwGprfFacade）
-│   ├── tuple/                            ← 三元组 QTupleService
-│   └── ble_ota/                          ← 路特 BLE OTA
-│
-├── work_station/                         ← 各工站业务模块
-│   ├── test_base.h/.cpp                  ← 工站公共基类（串口/通用流程）
-│   ├── box_base.h/.cpp                   ← 工站容器基类
-│   ├── common_class.h/.cpp               ← MainWindow 用 TestFunctionExecutor（PB 按名执行测试项）
-│   ├── key/                              ← 按键工站
-│   ├── suction/                          ← 吸力工站
-│   │
-│   ├── quiescent_current/                ← 静态电流工站
-│   │   ├── quiescent_current.h/.cpp/.ui  ← 主流程与界面
-│   │   └── quiescent_current_box.h/.cpp/.ui
-│   │                                        ← 工站容器页
-│   ├── wifi_ble/                         ← WiFi/BLE工站
-│   │   ├── wifibletest.h/.cpp/.ui
-│   │   └── wifibox.h/.cpp/.ui
-│   ├── pressure/                         ← 压感工站
-│   │   ├── pressuresensorform.h/.cpp/.ui
-│   │   ├── PressCalibBox.h/.cpp/.ui
-│   │   └── ndt_sensor_cali.h/.cpp        ← 校准算法
-│   ├── pcba/                             ← PCBA工站
-│   │   ├── pcbaform.h/.cpp/.ui
-│   │   └── pcbabox.h/.cpp/.ui
-│   ├── motor/                            ← 电机工站
-│   │   ├── motor.h/.cpp/.ui
-│   │   └── motorbox.h/.cpp/.ui
-│   ├── imu/                              ← IMU校准工站
-│   │   ├── imucali.h/.cpp/.ui
-│   │   └── imubox.h/.cpp/.ui
-│   ├── screen/                           ← 屏幕工站
-│   │   ├── screentest.h/.cpp/.ui
-│   │   └── screenbox.h/.cpp/.ui
-│   ├── camera/                           ← 摄像头工站
-│   │   ├── cameratest.h/.cpp/.ui
-│   │   └── camerabox.h/.cpp/.ui
-│   ├── ageing/                           ← 老化工站
-│   │   ├── ageing.h/.cpp/.ui
-│   │   └── ageingbox.h/.cpp/.ui
-│   └── freework/                         ← 自由工站
-│       ├── qfreework.h/.cpp/.ui
-│       ├── qfreeworkbox.h/.cpp/.ui
-│       └── testFunction.cpp              ← 自由测试函数集
-│
-├── lib/                                  ← 第三方库与算法库
-│   ├── qcustomplot/                      ← 图表库
-│   ├── quicklz/                          ← 压缩库
-│   ├── productlicense/                   ← 授权库
-│   ├── md5/                              ← MD5库
-│   ├── aes/                              ← AES库
-│   ├── imu/                              ← IMU算法库
-│   ├── form/testmodel.h/.cpp             ← 表格模型
-│   ├── nfc/dcrf32.h                      ← NFC接口
-│   └── libusb-*/                         ← libusb头文件与示例
-│
-└── build/                                ← 构建产物目录（自动生成）
-    ├── .../ui_*.h                        ← Qt UI自动生成头
-    └── .../bin/上位机设置.ini              ← 编译输出配置拷贝
+├── tools/factory_analyzer/     ← DJI/高通分析页（与主工站解耦）
+├── docs/                       ← 说明与协议资料（见下）
+├── scripts/                    ← 编译 / 格式化 / 换行与辅助脚本
+├── lib/                        ← 第三方（qcustomplot、xlsx、visa 头等）
+├── advance/                    ← 演示 / 图像窗 / xlsx 等附属模块
+└── build/                      ← 构建产物（勿手改）
 ```
 
-## 分层与职责（协作边界）
+## 文档索引（`docs/`）
 
-| 层级 | 目录 | 职责 | 典型改动人 |
-|------|------|------|------------|
-| 平台/启动 | `main.cpp`、`qlog/`、`my_set/`、`platform/` | 启动、崩溃/日志、串口通道、设置页、全局宏与类型 | 平台 |
-| 界面入口 | `mainwindow.*`、`mainlogic.cpp` | UI、工站切换、流程联动 | 业务 + 平台 |
-| 协议层 | `agreement/` | 设备协议、MES、OTA/ADB/Bulk | 协议 |
-| 工站业务 | `work_station/` | 测试步骤、卡控、结果判定 | 业务 |
-| 独立工具 | `tools/factory_analyzer/` | DJI 分析页，不依赖 `common_class.h` | 工具/协议 |
+| 目录/文件 | 用途 |
+|-----------|------|
+| `项目代码结构与自由工站梳理.md` | 分层、启动 case、自由工站 onboarding |
+| `协议文档/` | Dongle / qroot / FCT&ATE / MES 等协议说明 |
+| `开发参考资料/` | 仪表与 PLC 原始资料（CMW、66319D、信捷等） |
+| `使用说明文档/` | 使用侧说明 |
+| `对外说明/` | 对外材料 |
+| `提示词文档/` | Agent / 提示词相关 |
 
-依赖建议（自上而下，避免反向 include）：
+## 分层与职责
+
+| 层级 | 目录 | 职责 |
+|------|------|------|
+| 启动 / UI | 根目录 `main*` | 启动模式、工站箱子、主界面联动 |
+| 平台 | `platform/` | 驱动通道、设置页、功能块引擎、云端服务 |
+| 协议 | `agreement/` | 帧编解码、设备适配、MES |
+| 业务门面 | `business/` | 跨协议的场景编排（PLC V3、CMW GPRF、三元组、BLE OTA） |
+| 工站 | `work_station/` | 步骤、卡控、`passValue`/`failValue`、界面 |
+| 工具 | `tools/factory_analyzer/` | 独立分析页，不依赖工站公共类 |
+
+依赖方向（避免反向 include）：
 
 ```text
-UI / 工站  →  SerialChannel / QProtocolManager / 平台服务  →  具体协议实现
+UI / 工站  →  business 门面 / platform 服务 / SerialChannel
+         →  QProtocolManager / QScpiManager / QModbusManager
+         →  agreement 具体 codec/device
 ```
-
-- `tools/factory_analyzer` 使用自有 `FactoryNamedFunction`（定义在 `factory_analyzer.h`），勿 include `common_class.h`，避免与 `MainWindow` 侧 `NamedFunction` 在 `main.cpp` 中重定义。
-- `MainWindow` 通过 `TestFunctionExecutor`（`common_class`）按名称执行 PB 测试命令；`factory_analyzer` 自行维护 Bulk 脚本测试表。
 
 ## 维护约定
 
-- 业务改动优先在 `work_station/`、`agreement/`、`mainlogic.cpp`；配置项 UI 在 `platform/settings/qsetting`。
-- `tools/factory_analyzer/` 改动保持模块内聚，勿再 include `common_class.h`。
-- 不建议手改 `build/` 与 `agreement/factory_protocol/protocol/qpb/Python39/`。
-- 新增产测协议：扩展 `agreement/factory_protocol/`（经 `QProtocolManager`）；外设见 `qusb` / `qat` 等；工站通过 `test_base` 接入。
-- 配置键统一走 `SETTINGS`（`上位机设置.ini`），新增项同步 `qsetting` 加载/保存与 UI。
-- Git 提交说明见 `.copilot-commit-message-instructions.md`；本地钩子见上文「克隆后首次设置」。
+- 业务步骤优先改 `work_station/`；场景编排可落在 `business/`；协议帧与设备适配改 `agreement/`。
+- 配置键统一 `SETTINGS`（`分类/键名`），新增项同步 `platform/settings/qsetting` 加载/保存与 UI。
+- 公共可复用工具进 `common/common_utils.*`（`CommonUtils::`）；禁止新建匿名命名空间堆小工具。
+- 调用点仅一处时不要额外抽函数；空实现 / 仅占位的 noop 不要保留。
+- 不手改 `build/`；不要改动 `agreement/factory_protocol/protocol/qpb/Python39/`（检索时也可忽略）。
+- 文本：UTF-8 无 BOM；Agent 改完 `.cpp/.h` 等后执行 `py -3 scripts/convert_to_crlf.py <路径>`。
+- Cursor 规则见 `.cursor/rules/`（`qt-cpp-project`、`minimal-diff`、`no-anonymous-namespace`）。
+
+## 验证
+
+1. 增量编译：`scripts\编译Release版本.ps1 -SkipQmake`
+2. 成功标志：`build/logs/build_*.log` 无 `error C` / `error LNK`，产出 `build/.../bin/new_production.exe`
+3. 排障日志：`build/.../bin/所有log/上位机log/`（按修改时间取最新）
