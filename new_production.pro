@@ -5,7 +5,13 @@ QMAKE_PROJECT_DEPTH = 0
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
-QMAKE_LFLAGS_RELEASE = /INCREMENTAL:NO /DEBUG /MAP
+# 链接：当前工具链不支持 /DEBUG:FASTLINK（会 LNK4315 回退 FULL），默认不写 PDB/MAP 以缩短链接
+# 需要符号/MAP 排查崩溃时：CONFIG+=release_pdb
+!contains(CONFIG, release_pdb) {
+    QMAKE_LFLAGS_RELEASE = /INCREMENTAL:NO
+} else {
+    QMAKE_LFLAGS_RELEASE = /INCREMENTAL:NO /DEBUG /MAP
+}
 
 CONFIG += c++17
 QMAKE_CXXFLAGS += /MP
