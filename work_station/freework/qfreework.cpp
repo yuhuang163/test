@@ -282,16 +282,17 @@ QString sanitizeMesValuePipes(QString v) {
 
 static void appendOneMesStep(QVector<QFreeWorkMesSegment>* out, const QString& name,
                               const QString& value, const QString& maxValue, const QString& minValue,
-                              const QString& standardValue, const QString& unit, const QString& result) {
+                              const QString& standardValue, const QString& unit, const QString& result,
+                              const QString& costTime) {
     const QString n = name.trimmed();
     if (n.isEmpty())
         return;
     out->append({sanitizeMesValuePipes(n), sanitizeMesValuePipes(value), sanitizeMesValuePipes(maxValue),
                  sanitizeMesValuePipes(minValue), sanitizeMesValuePipes(standardValue),
-                 sanitizeMesValuePipes(unit), sanitizeMesValuePipes(result)});
+                 sanitizeMesValuePipes(unit), sanitizeMesValuePipes(result), sanitizeMesValuePipes(costTime)});
 }
 
-/** 每段格式 NAME:VALUE:MAX:MIN:STANDARD:UNIT:RESULT，多段用 | 连接。 */
+/** 每段格式 NAME:VALUE:MAX:MIN:STANDARD:UNIT:RESULT:COSTTIME，多段用 | 连接。 */
 QString joinFreeWorkMesItemvalue(const QVector<QFreeWorkMesSegment>& segments, const QString& overallResult,
                                  const QString& failValueLiteral) {
     QStringList parts;
@@ -301,7 +302,7 @@ QString joinFreeWorkMesItemvalue(const QVector<QFreeWorkMesSegment>& segments, c
             continue;
         parts << s.name + QLatin1Char(':') + s.value + QLatin1Char(':') + s.maxValue + QLatin1Char(':') +
                      s.minValue + QLatin1Char(':') + s.standardValue + QLatin1Char(':') + s.unit +
-                     QLatin1Char(':') + s.result;
+                     QLatin1Char(':') + s.result + QLatin1Char(':') + s.costTime;
     }
     if (parts.isEmpty()) {
         const QString v = (overallResult == failValueLiteral) ? QStringLiteral("FAIL") : QStringLiteral("PASS");
@@ -541,7 +542,8 @@ void QFreeWork::appendTestCaseMes(const TestCaseDefinition& def, bool pass, cons
             }
         }
     }
-    appendOneMesStep(&freeWorkMesSegments_, tag, value, maxVal, minVal, stdVal, unit, resultVal);
+    const QString costTime = QString::number(stepRuntime_.caseTimer.isValid() ? stepRuntime_.caseTimer.elapsed() : 0);
+    appendOneMesStep(&freeWorkMesSegments_, tag, value, maxVal, minVal, stdVal, unit, resultVal, costTime);
 }
 
 void QFreeWork::appendMultiGateTestCaseMes(const QVector<TestCaseGate>& gates, const QString& reportType,
@@ -602,8 +604,10 @@ void QFreeWork::appendMultiGateTestCaseMes(const QVector<TestCaseGate>& gates, c
         if (itemName.isEmpty())
             itemName = QStringLiteral("%1_%2").arg(baseTag, ge.field);
 
+        const QString costTime =
+            QString::number(stepRuntime_.caseTimer.isValid() ? stepRuntime_.caseTimer.elapsed() : 0);
         appendOneMesStep(&freeWorkMesSegments_, itemName, value, maxVal, minVal, stdVal, unit,
-                         subPass ? QStringLiteral("PASS") : QStringLiteral("FAIL"));
+                         subPass ? QStringLiteral("PASS") : QStringLiteral("FAIL"), costTime);
     }
 }
 

@@ -39,6 +39,7 @@ struct QFreeWorkMesSegment {
     QString standardValue;
     QString unit;
     QString result;
+    QString costTime;
 };
 
 class QFreeWork : public test_base {

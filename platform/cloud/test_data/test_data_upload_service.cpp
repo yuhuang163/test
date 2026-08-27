@@ -54,6 +54,9 @@ QJsonObject itemToJson(const TestRecordStore::ParsedItem& item) {
     if (!item.result.isEmpty()) {
         obj.insert(QStringLiteral("result"), item.result);
     }
+    if (!item.costTime.isEmpty()) {
+        obj.insert(QStringLiteral("costTime"), item.costTime);
+    }
     return obj;
 }
 
