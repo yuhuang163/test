@@ -1268,6 +1268,9 @@ void QFreeWork::finalizeTestFlowIfComplete() {
         stepRuntime_.reset();
         clearActiveTestCase();
         ScreenInspectGigECapture::releaseSession();
+        // 整轮结束后再清历史戳记图（步内不删，避免同一次多色证据被裁掉）
+        ScreenInspectAnalyzer::cleanupStoredImages(
+            QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("screen_inspect")));
         ui->test_time->setText(CommonUtils::formatElapsedSeconds(TestTime));
         isTestContinue = false;
         refreshOrderedTestIndexes();
@@ -1324,6 +1327,8 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     teststate = -1;
     stepRuntime_.reset();
     ScreenInspectGigECapture::releaseSession();
+    ScreenInspectAnalyzer::cleanupStoredImages(
+        QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("screen_inspect")));
     ui->test_time->setText(CommonUtils::formatElapsedSeconds(TestTime));
     ui->macInput->clear();
     ui->snInput->clear();
@@ -3119,7 +3124,7 @@ void QFreeWork::runScreenInspectStep() {
         forSave(report.annotated).save(dir + QStringLiteral("/last_mark.jpg"), "JPG", 85);
     if (!refMarked.isNull())
         forSave(refMarked).save(dir + QStringLiteral("/last_reference.jpg"), "JPG", 85);
-    // 本步不清理历史图：否则同一次测试前面颜色的 capture/mark 会被删掉，收尾只能拷到最后几张
+    // 步内不清理：同一次多色的 capture/mark 要留到收尾上传；整轮结束/停止测试时再 cleanupStoredImages
     const qint64 msSave = phaseT.elapsed();
     if (!uploadImagePaths.isEmpty())
         Qlog::addScreenInspectImageFiles(getIndex(), uploadImagePaths);
@@ -4146,6 +4151,8 @@ void QFreeWork::startProductInstrumentStopReceiveAndPer(QString stepNameIn, int 
 void QFreeWork::on_stopTest_clicked() {
     clearProductInstrumentWatch();
     ScreenInspectGigECapture::releaseSession();
+    ScreenInspectAnalyzer::cleanupStoredImages(
+        QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("screen_inspect")));
     plcFacade_.disconnect();
     resetVisaBackend();
     isTestContinue = false;
