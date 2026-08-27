@@ -489,7 +489,7 @@
                <bool>true</bool>
               </property>
               <property name="currentIndex">
-               <number>1</number>
+               <number>2</number>
               </property>
               <property name="tabBarAutoHide">
                <bool>false</bool>
@@ -2624,34 +2624,20 @@
                         </layout>
                        </item>
                        <item>
-                        <widget class="QWidget" name="viewfinderHost">
-                         <property name="minimumSize">
-                          <size>
-                           <width>0</width>
-                           <height>120</height>
-                          </size>
+                        <layout class="QVBoxLayout" name="verticalLayout_viewfinder">
+                         <property name="leftMargin">
+                          <number>0</number>
                          </property>
-                         <property name="maximumSize">
-                          <size>
-                           <width>16777215</width>
-                           <height>180</height>
-                          </size>
+                         <property name="topMargin">
+                          <number>0</number>
                          </property>
-                         <layout class="QVBoxLayout" name="verticalLayout_viewfinder">
-                          <property name="leftMargin">
-                           <number>0</number>
-                          </property>
-                          <property name="topMargin">
-                           <number>0</number>
-                          </property>
-                          <property name="rightMargin">
-                           <number>0</number>
-                          </property>
-                          <property name="bottomMargin">
-                           <number>0</number>
-                          </property>
-                         </layout>
-                        </widget>
+                         <property name="rightMargin">
+                          <number>0</number>
+                         </property>
+                         <property name="bottomMargin">
+                          <number>0</number>
+                         </property>
+                        </layout>
                        </item>
                       </layout>
                      </widget>
@@ -5308,21 +5294,21 @@
                       <item row="3" column="0">
                        <widget class="QLabel" name="dongleSuctionCh1PeakStatLabel">
                         <property name="text">
-                         <string>第一通道峰检：有效0 漏峰0 弱峰0 频率--</string>
+                         <string>第一通道峰检：有效0 漏峰0 弱峰0 最大峰-- 频率--</string>
                         </property>
                        </widget>
                       </item>
                       <item row="3" column="1">
                        <widget class="QLabel" name="dongleSuctionCh2PeakStatLabel">
                         <property name="text">
-                         <string>第二通道峰检：有效0 漏峰0 弱峰0 频率--</string>
+                         <string>第二通道峰检：有效0 漏峰0 弱峰0 最大峰-- 频率--</string>
                         </property>
                        </widget>
                       </item>
                       <item row="3" column="2">
                        <widget class="QLabel" name="dongleSuctionCh3PeakStatLabel">
                         <property name="text">
-                         <string>第三通道峰检：有效0 漏峰0 弱峰0 频率--</string>
+                         <string>第三通道峰检：有效0 漏峰0 弱峰0 最大峰-- 频率--</string>
                         </property>
                        </widget>
                       </item>

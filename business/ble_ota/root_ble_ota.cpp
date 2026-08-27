@@ -1,9 +1,6 @@
 #include "root_ble_ota.h"
 
-#include <QCoreApplication>
 #include <QDebug>
-#include <QElapsedTimer>
-#include <QThread>
 
 #include "common_utils.h"
 #include "comm_protocol_defs.h"
@@ -11,28 +8,6 @@
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
 #endif
-
-namespace {
-
-constexpr uint16_t kFrameSof = 0x5CC5u;
-constexpr uint8_t kFrameTypeReq = 0x00;
-constexpr uint8_t kFrameTypeResp = 0x01;
-constexpr uint8_t kFrameTypeNotify = 0x02;
-constexpr uint16_t kNackBusyBlock = 0xFFFFu;
-constexpr uint8_t kNackReasonBusy = 0x01;
-constexpr uint8_t kNackReasonReassembleFailed = 0x02;
-
-/** 与 MainWindow::waitWork 相同：按毫秒等待并处理事件，避免 Windows 上 QThread::msleep(2) 被量化到 ~15ms */
-void waitWork(int ms) {
-    if (ms <= 0)
-        return;
-    QElapsedTimer timer;
-    timer.start();
-    while (timer.elapsed() < ms)
-        QCoreApplication::processEvents(QEventLoop::AllEvents);
-}
-
-} // namespace
 
 void RootBleOtaClient::reset() {
     rxBuffer_.clear();
@@ -338,7 +313,7 @@ RootBleOtaClient::BlockSendResult RootBleOtaClient::sendBlock(int blockNumber, i
         const BlockSendResult nackResult = checkPendingNack();
         if (nackResult != BlockSendResult::Success)
             return nackResult;
-        waitWork(intervalMs);
+        CommonUtils::waitWorkPumpEvents(intervalMs);
     }
 
     QByteArray complete;

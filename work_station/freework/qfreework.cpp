@@ -479,8 +479,13 @@ void QFreeWork::onTestCaseStepMarkedDone(bool pass, const QString& testData, con
     stepRuntime_.testData = testData;
     if (!ask.isEmpty())
         stepRuntime_.ask = ask;
-    // 同步收尾步骤（如 ASD9026A Get）不再走 sendCommandWithRetry，须放开 canGoNext 才能推进
+    // 同步收尾步骤（如 ASD9026A）不再走 sendCommandWithRetry，须放开 canGoNext 才能推进
     canGoNext = true;
+    // 串口 waitForReadyRead 会泵事件；残留 retry 定时器若在此期间到期会误报超时并打翻本步结果
+    if (commandRetryTimer)
+        finishCommandRetryWait(true, QString());
+    else
+        sendRetryOver = false;
 }
 
 void QFreeWork::appendTestCaseMes(const TestCaseDefinition& def, bool pass, const QString& testData) {
@@ -964,6 +969,11 @@ void QFreeWork::runTestFlowBootstrap() {
         onTestSessionStarting(sn, mac);
     }
     showlog(QStringLiteral("开始测试"));
+    // 清掉上一轮残留的指令重试定时器，避免本轮同步治具步骤被误判超时
+    if (commandRetryTimer)
+        finishCommandRetryWait(true, QString());
+    else
+        sendRetryOver = false;
     // 先刷新流程再 initData，避免 seed 缓存与 dongle 动作仍用上一轮工站/队列。
     refreshOrderedTestIndexes();
     initData();
@@ -1048,7 +1058,8 @@ bool QFreeWork::tickOrderedTestStepLoop() {
             break;
         }
         functionName = TestCaseRunner::stepLabel(caseDef);
-        const bool needCaseDone = TestCaseRunner::needAsyncDone(caseDef);
+        // 须等 markDone 才过步（与 sendCommandWithRetry 的 allowResend 无关）
+        const bool needAsyncDone = TestCaseRunner::needAsyncDone(caseDef);
 
         if (!stepRuntime_.started) {
             if (!canGoNext) {
@@ -1093,16 +1104,19 @@ bool QFreeWork::tickOrderedTestStepLoop() {
                                        ? QStringLiteral("指令失败（原因未知）")
                                        : lastCommandFailReason.trimmed();
             lastCommandFailReason.clear();
-            if (!stepRuntime_.done) {
-            stepRuntime_.done = true;
-            stepRuntime_.pass = false;
-            } else {
-                stepRuntime_.pass = false;
+            // 同步步骤已 markDone(通过) 后，忽略迟到的 sendCommandWithRetry 超时（勿打翻 pass）
+            if (!(stepRuntime_.done && stepRuntime_.pass)) {
+                if (!stepRuntime_.done) {
+                    stepRuntime_.done = true;
+                    stepRuntime_.pass = false;
+                } else {
+                    stepRuntime_.pass = false;
+                }
+                if (stepRuntime_.testData == QLatin1String("-") || stepRuntime_.testData.trimmed().isEmpty())
+                    stepRuntime_.testData = reason;
+                TestResult = failValue;
+                showlog(QStringLiteral("步骤失败：%1（%2）").arg(functionName, reason));
             }
-            if (stepRuntime_.testData == QLatin1String("-") || stepRuntime_.testData.trimmed().isEmpty())
-                stepRuntime_.testData = reason;
-            TestResult = failValue;
-            showlog(QStringLiteral("步骤失败：%1（%2）").arg(functionName, reason));
         }
 
         if (!caseDef.gate.enabled && canGoNext && !stepRuntime_.done && !sendRetryOver) {
@@ -1156,7 +1170,7 @@ bool QFreeWork::tickOrderedTestStepLoop() {
             // 不可凭 lastCommandRetryCount 提前 done，否则与采样循环并发导致第二次卡死。
         }
 
-        if (needCaseDone && !stepRuntime_.done) {
+        if (needAsyncDone && !stepRuntime_.done) {
             break;
         }
 

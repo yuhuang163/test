@@ -446,6 +446,7 @@ class TestCaseRunner {
                                    QString* errorOut = nullptr);
     static void beginStep(QFreeWork* ctx, const TestCaseDefinition& def);
     static QString stepLabel(const TestCaseDefinition& def);
+    /** 本步是否必须等异步 markDone 才过步（Gate/连接/采样等）；与 sendCommandWithRetry::allowResend 无关 */
     static bool needAsyncDone(const TestCaseDefinition& def);
     /** Dongle 扫描/直连蓝牙：需等待连接成功，不能发完即过步 */
     static bool isDongleBleConnectStep(const TestCaseDefinition& def);

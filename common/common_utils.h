@@ -98,6 +98,17 @@ class CommonUtils {
     static void selectSnPatternComboBox(QComboBox* combo, const QString& pattern);
     static QString snPatternFromComboBox(const QComboBox* combo);
     static QString snPatternDisplayText(const QString& pattern);
+
+    /**
+     * Gate RSSI range 是否用开区间 (low, high)（与遗留 refreshRssi 一致，边界不算合格）。
+     * ProtocolRssiData/dbm、杰理 ProtocolJieliBtBoxData/rssi 为 true；其它字段走闭区间。
+     */
+    static bool isRssiOpenRangeGate(const QString& reportType, const QString& field);
+
+    /**
+     * 按毫秒等待并泵 Qt 事件（等同工站 waitWork），避免 Windows 上 QThread::msleep 被量化到 ~15ms。
+     */
+    static void waitWorkPumpEvents(int ms);
 };
 
 #endif // COMMON_UTILS_H

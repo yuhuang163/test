@@ -1,8 +1,6 @@
 #include "root_ble_ota2.h"
 
-#include <QCoreApplication>
 #include <QDebug>
-#include <QElapsedTimer>
 
 #include "common_utils.h"
 #include "comm_protocol_defs.h"
@@ -10,25 +8,6 @@
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
 #endif
-
-namespace {
-
-constexpr uint16_t kFrameSof = 0x5CC5u;
-constexpr uint8_t kFrameTypeReq = 0x00;
-constexpr uint8_t kFrameTypeResp = 0x01;
-constexpr uint8_t kFrameTypeNotify = 0x02;
-constexpr uint8_t kObjectTypeImageResource = 0x02;
-
-void waitWork(int ms) {
-    if (ms <= 0)
-        return;
-    QElapsedTimer timer;
-    timer.start();
-    while (timer.elapsed() < ms)
-        QCoreApplication::processEvents(QEventLoop::AllEvents);
-}
-
-} // namespace
 
 void RootBleOta2Client::reset() {
     rxBuffer_.clear();
@@ -259,7 +238,7 @@ void RootBleOta2Client::sendFrameChunked(const QByteArray& frame) {
         const int pieceLen = qMin(step, frame.size() - off);
         sendFunc_(frame.mid(off, pieceLen));
         if (off + pieceLen < frame.size())
-            waitWork(transferIntervalMs_);
+            CommonUtils::waitWorkPumpEvents(transferIntervalMs_);
     }
 }
 
@@ -298,7 +277,7 @@ bool RootBleOta2Client::waitResponse(uint8_t expectSeq, FrameResponse* out, int 
             return true;
 
         // 勿用 QThread::msleep：会阻塞事件循环，串口 onRx 延迟导致块间多出 ~10–30ms
-        waitWork(1);
+        CommonUtils::waitWorkPumpEvents(1);
     }
     return false;
 }

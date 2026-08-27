@@ -1,0 +1,31 @@
+---
+description: 禁止匿名 namespace；可复用工具放 CommonUtils；具名 namespace 可保留
+alwaysApply: true
+---
+
+# 禁止匿名 namespace；工具进 CommonUtils
+
+## 禁止
+
+- 新建 **`namespace { ... }`（匿名命名空间）** 包工具函数、常量、小助手。
+- 为「躲冲突」再套无业务语义的命名空间（如 `namespace detail` / `helpers`）。
+- 在业务 `.cpp` 里堆可复用静态小函数却不进公共工具。
+
+## 允许 / 应保留
+
+- **具名**命名空间（如 `namespace DongleCmdManifest`、`namespace Asd9026aCodec`）——与现有清单/编解码模块一致，**不要**为「去 namespace」整仓拆掉。
+- Qt / 第三方已有命名空间。
+
+## 应该怎么放
+
+| 性质 | 放哪里 |
+|------|--------|
+| 多处可复用纯工具 | **`CommonUtils::`**（`common/common_utils.h` / `.cpp`） |
+| 仅某一类用 | 该类 `private` / `private static constexpr` |
+| 仅本 .cpp 用、不可复用 | 文件作用域 **`static`** 函数/常量（**不要**再包匿名 namespace） |
+
+## 注意
+
+- **存量**匿名命名空间：未改到的文件不必为合规整文件搬迁；**本次改动碰到**时删掉匿名命名空间并按上表落位。
+- 往 `CommonUtils` 加方法时保持现有分区注释，声明与实现同步，UTF-8 无 BOM + CRLF。
+- **禁止**用脚本对全仓匿名命名空间做「去壳 + 盲加 static」（易误伤构造函数初始化列表 `: Base(...)`）。

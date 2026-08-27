@@ -925,7 +925,8 @@ void QFreeWork::refreshRssiRead(ProtocolRssiData data) {
         return;
 
     const QString itemName = isBtStep ? QStringLiteral("BT RSSI") : QStringLiteral("BLE RSSI");
-    const QString ask = QStringLiteral("[%1,%2] dBm").arg(BleLowRssi).arg(BleHighRssi);
+    // 开区间 (Low, High)，与 Gate RSSI range 一致；边界不算合格
+    const QString ask = QStringLiteral("(%1,%2) dBm").arg(BleLowRssi).arg(BleHighRssi);
     const bool pass = (rssi > BleLowRssi && rssi < BleHighRssi);
 
     if (isBtStep) {

@@ -26,6 +26,12 @@ class RootBleOta2Client {
     static constexpr int kBlockResponseTimeoutMs = 2000;   // 写数据块应答
     static constexpr int kMaxWriteRetry = 3;
 
+    static constexpr uint16_t kFrameSof = 0x5CC5u;
+    static constexpr uint8_t kFrameTypeReq = 0x00;
+    static constexpr uint8_t kFrameTypeResp = 0x01;
+    static constexpr uint8_t kFrameTypeNotify = 0x02;
+    static constexpr uint8_t kObjectTypeImageResource = 0x02;
+
     enum TlvId : uint16_t {
         ImgId = 0x0001,
         Version = 0x0002,
