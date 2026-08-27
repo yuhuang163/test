@@ -365,6 +365,9 @@ void Qfctp::handleResponseByType(const PendingRequest& req, const uint8_t* mainV
 }
 
 bool Qfctp::isDataResponse(uint16_t serviceId, uint16_t tlvType) const {
+    // 0x001E 写校准应答是 1 字节成功/失败，不当作读类数据回包
+    if (tlvType == kTlvLightCalibWrite)
+        return false;
     return m_responseHandlers.contains(qfctpMakeResponseKey(serviceId, tlvType));
 }
 
@@ -589,10 +592,14 @@ void Qfctp::handleRspLightCalibRead(const uint8_t* mainValue, uint16_t mainLen) 
     if (mainValue != nullptr) {
         const QString rawHex = QByteArray(reinterpret_cast<const char*>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
         if (mainLen >= 4) {
-            const uint32_t cal = static_cast<uint32_t>(mainValue[0]) | (static_cast<uint32_t>(mainValue[1]) << 8) | (static_cast<uint32_t>(mainValue[2]) << 16) | (static_cast<uint32_t>(mainValue[3]) << 24);
-            qInfo() << "FCTP 光感校准读取 calib_u32=" << cal << "raw=" << rawHex;
+            const int32_t cal = static_cast<int32_t>(static_cast<uint32_t>(mainValue[0])
+                | (static_cast<uint32_t>(mainValue[1]) << 8)
+                | (static_cast<uint32_t>(mainValue[2]) << 16)
+                | (static_cast<uint32_t>(mainValue[3]) << 24));
+            qInfo() << "FCTP 光感校准读取 calib_i32=" << cal << "raw=" << rawHex;
             emitReport(QStringLiteral("ProtocolPbDate"), QString("FCTP 光感校准读取 value=%1 raw=%2").arg(cal).arg(rawHex));
-            emitReport(QStringLiteral("ProtocolLightCalibData"), QVariant::fromValue(ProtocolLightCalibData{cal}));
+            emitReport(QStringLiteral("ProtocolLightCalibData"),
+                       QVariant::fromValue(ProtocolLightCalibData{static_cast<uint32_t>(cal)}));
         } else {
             qWarning() << "FCTP 光感校准读取 长度异常 len=" << mainLen << "raw=" << rawHex;
         }
@@ -634,11 +641,14 @@ void Qfctp::handleRspLightReportCtrl(const uint8_t* mainValue, uint16_t mainLen)
 void Qfctp::handleRspLightCalibWrite(const uint8_t* mainValue, uint16_t mainLen) {
     if (mainValue != nullptr) {
         const QString rawHex = QByteArray(reinterpret_cast<const char*>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
-        if (mainLen >= 4) {
-            const uint32_t v = static_cast<uint32_t>(mainValue[0]) | (static_cast<uint32_t>(mainValue[1]) << 8) | (static_cast<uint32_t>(mainValue[2]) << 16) | (static_cast<uint32_t>(mainValue[3]) << 24);
-            qInfo() << "FCTP 光感校准写入应答 value_u32=" << v << "raw=" << rawHex;
-            emitReport(QStringLiteral("ProtocolPbDate"), QString("FCTP 光感校准写入应答 value=%1 raw=%2").arg(v).arg(rawHex));
-            emitReport(QStringLiteral("ProtocolLightCalibData"), QVariant::fromValue(ProtocolLightCalibData{v}));
+        // 0x001E 应答 TLV Length=1：byte0=0x01 成功，越界/写失败为 0x00
+        if (mainLen == 1) {
+            const int ack = static_cast<int>(static_cast<uint8_t>(mainValue[0]));
+            const QString ackText = (ack == 1) ? "成功" : "失败";
+            qInfo() << "FCTP 光感校准写入应答 响应结果=" << ackText << "raw=" << rawHex;
+            emitReport(QStringLiteral("ProtocolPbDate"),
+                       QString("FCTP 光感校准写入应答 响应结果=%1 raw=%2").arg(ackText).arg(rawHex));
+            emitReport(QStringLiteral("ProtocolAckData"), QVariant::fromValue(ProtocolAckData{ack}));
         } else {
             qInfo() << "FCTP 光感校准写入应答 len=" << mainLen << "raw=" << rawHex;
             emitReport(QStringLiteral("ProtocolPbDate"), QString("FCTP 光感校准写入应答 raw=%1").arg(rawHex));
@@ -754,7 +764,12 @@ void Qfctp::handleNotifyService(uint16_t serviceId, const uint8_t* tlvs, uint16_
                         << "values=" << samples.join(QStringLiteral(","))
                         << "raw=" << rawHex;
                 emitReport(QStringLiteral("ProtocolPbDate"), QString("FCTP 光感上报 count=%1 values=%2 raw=%3").arg(countText).arg(samples.join(QStringLiteral(","))).arg(rawHex));
-                emitReport(QStringLiteral("ProtocolPhotosensitiveData"), QVariant::fromValue(ProtocolPhotosensitiveData{firstSample}));
+                ProtocolPhotosensitiveData photo;
+                photo.lightSensor = firstSample;
+                photo.samples.reserve(sampleSize);
+                for (int i = 0; i < sampleSize; ++i)
+                    photo.samples.append(qfctpReadLe16(value + i * 2));
+                emitReport(QStringLiteral("ProtocolPhotosensitiveData"), QVariant::fromValue(photo));
             } else {
                 qInfo() << "FCTP 光感上报(短包) raw=" << rawHex;
                 emitReport(QStringLiteral("ProtocolPbDate"), QString("FCTP 光感上报 raw=%1").arg(rawHex));
@@ -1069,10 +1084,14 @@ bool Qfctp::setCaseLightReportControl(const QVariantMap& map) {
 }
 
 bool Qfctp::setCaseLightCalibWrite(const QVariantMap& map) {
+    const uint idx = map.value("index").toUInt();
+    if (idx > 19u) {
+        qWarning() << "Qfctp LightCalibWrite 索引越界，允许 0~19，当前:" << idx;
+        return false;
+    }
     QByteArray value;
-    const uint8_t idx = static_cast<uint8_t>(map.value("index").toUInt() & 0xFF);
     const int32_t calib = map.value("value").toInt();
-    value.append(static_cast<char>(idx));
+    value.append(static_cast<char>(static_cast<uint8_t>(idx)));
     value.append(static_cast<char>(calib & 0xFF));
     value.append(static_cast<char>((calib >> 8) & 0xFF));
     value.append(static_cast<char>((calib >> 16) & 0xFF));
@@ -1143,8 +1162,13 @@ bool Qfctp::getCaseKeySignalRead(const QVariantMap& map) {
 }
 
 bool Qfctp::getCaseLightCalibRead(const QVariantMap& map) {
-    const uint8_t idx = static_cast<uint8_t>(map.value("index").toUInt() & 0xFF);
-    return sendTestsServiceTlv(kTlvLightCalibRead, QByteArray(1, static_cast<char>(idx)), "读取光感校准值");
+    const uint idx = map.value("index").toUInt();
+    if (idx > 19u) {
+        qWarning() << "Qfctp LightCalibRead 索引越界，允许 0~19，当前:" << idx;
+        return false;
+    }
+    return sendTestsServiceTlv(kTlvLightCalibRead, QByteArray(1, static_cast<char>(static_cast<uint8_t>(idx))),
+                               "读取光感校准值");
 }
 
 bool Qfctp::getCaseChargeCurrentRead() {

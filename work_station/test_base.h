@@ -31,6 +31,7 @@ enum class CommandWaitSource {
     Any = 0,
     ProductProtocol,
     DongleAt,
+    ProductSerial,
 };
 
 typedef enum {
@@ -114,6 +115,8 @@ class test_base : public QWidget {
     bool validateSnFormat(const QString& sn);
     void appendStationResult(QVector<TestItem>& testItems, const QString& item, const QString& data, const QString& result);
     void LockProductUI();
+    /** 按 SYSTEM/LockProductUI 锁定/恢复串口下拉与连接按钮（可热切换，无需重启） */
+    void applySerialPortUiLock();
     void getMac(QString sn_to_search);
     void signalAndslot();
     int getIndex() const;
@@ -144,6 +147,7 @@ class test_base : public QWidget {
     QString upperComputerVer;
     bool isBrushLogGet = 0;
     QVector<TestItem> testItems;
+    QVector<TestItem> testCsvAccumItems_; // 一次测试一行：步骤追加，过站时整行写出
     MesPacketData pack;
     QString snPattern;
     QMap<QString, QMap<QString, QString>> deviceMap;
@@ -293,6 +297,8 @@ class test_base : public QWidget {
     virtual void refreshRootBatteryTemp(quint8) {}
     virtual void refreshRootHeatTemp(quint8) {}
     virtual void refreshResultCode(ProtocolResultData) {}
+    virtual void refreshPhotosensitiveData(ProtocolPhotosensitiveData) {}
+    virtual void refreshLightCalibData(ProtocolLightCalibData) {}
     virtual void refreshFlangeStatus(ProtocolTypeData) {}
     virtual void refreshPumpStallCurrent(ProtocolPumpStallCurrentData) {}
     virtual void refreshRootAgingHistory(ProtocolRootAgingHistoryData) {}
@@ -322,6 +328,7 @@ class test_base : public QWidget {
     QString sessionSnForLog();
     QString sessionMacForLog();
     void abortTestSessionAndUpload();
+    void flushPendingTestCsv();
     void closeEvent(QCloseEvent* event) override;
     void showEvent(QShowEvent* event) override;
     bool eventFilter(QObject* watched, QEvent* event) override;

@@ -2,6 +2,7 @@
 
 #include <QApplication>
 #include <QAuthenticator>
+#include <QDialog>
 #include <QElapsedTimer>
 #include <QMessageBox>
 #include <QMenu>
@@ -273,8 +274,23 @@ void box_base::closeEvent(QCloseEvent*) {
     isTestContinue = 0;
     // 先保存串口，再关子窗口（避免关窗过程中下拉被清空后写空值）
     saveCustom();
-    for (auto x : testList) {
-        x->close();
+    for (auto* x : testList) {
+        if (x)
+            x->isTestContinue = false;
+    }
+    // 自由工站测试中有 dlg.exec() / 人工确认框时，叉掉主窗口不会结束嵌套循环，进程会留在后台
+    for (int i = 0; i < 8; ++i) {
+        QWidget* modal = QApplication::activeModalWidget();
+        if (!modal)
+            break;
+        if (auto* dlg = qobject_cast<QDialog*>(modal))
+            dlg->reject();
+        else
+            modal->close();
+    }
+    for (auto* x : testList) {
+        if (x)
+            x->close();
     }
     if (qsetting_ui != NULL)
         qsetting_ui->close();
@@ -489,6 +505,7 @@ void box_base::refreshCloudLoginState() {
     }
     refreshSettingsMenuVisibility();
 }
+
 void box_base::setting_ui() {
     if (!AuthService::canOpenSettings()) {
         QMessageBox::information(this, QStringLiteral("功能设置"),
@@ -508,11 +525,13 @@ void box_base::setting_ui() {
                         }
                     });
         }
-        // 关闭设置保存后热切换 SYSTEM/ProtocolType，免重启
+        // 关闭设置保存后热切换协议 / 生产界面锁定，免重启
         connect(qsetting_ui, &qsetting::settingsSaved, this, [this]() {
             for (test_base* t : testList) {
-                if (t)
-                    t->applySystemProtocolFromSettings();
+                if (!t)
+                    continue;
+                t->applySystemProtocolFromSettings();
+                t->LockProductUI();
             }
         });
     } else {
@@ -619,6 +638,6 @@ bool box_base::checkStateReady(std::vector<int> States) {
 void box_base::waitWork(int ms) {
     QTime t;
     t.start();
-    while (t.elapsed() < ms)
+    while (t.elapsed() < ms && isTestContinue)
         QCoreApplication::processEvents();
 }

@@ -1,9 +1,7 @@
 #include "mainwindow.h"
 
-#include <QAbstractItemView>
 #include <QCheckBox>
 #include <QComboBox>
-#include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QSpinBox>
@@ -66,7 +64,11 @@ void wrapDebugTabPageInScrollArea(QTabWidget* tabWidget) {
         return;
     for (int i = 0; i < tabWidget->count(); ++i) {
         QWidget* page = tabWidget->widget(i);
-        if (!page || page->property("debugScrollWrapped").toBool())
+        // 已是滚动区则跳过：属性打在内页上，二次调用时 widget(i) 是 QScrollArea，
+        // 若只查属性会把滚动区再包一层，内容被压成左上角一小块。
+        if (!page || qobject_cast<QScrollArea*>(page))
+            continue;
+        if (page->property("debugScrollWrapped").toBool())
             continue;
         if (debugTabPagesWithoutScroll().contains(page->objectName()))
             continue;
@@ -86,72 +88,20 @@ void wrapDebugTabPageInScrollArea(QTabWidget* tabWidget) {
     }
 }
 
-constexpr int kDebugCompactMargin = 4;
-constexpr int kDebugCompactMarginTop = 2;
-constexpr int kDebugCompactSpacing = 4;
-
-bool debugGroupBoxKeepsVerticalExpand(const QGroupBox* box) {
-    if (!box)
-        return false;
-    if (box->findChild<QCustomPlot*>() || box->findChild<QSplitter*>())
-        return true;
-    if (box->findChild<QTableView*>())
-        return true;
-    return box->findChild<QWidget*>(QStringLiteral("dongleSuctionPlotHost")) != nullptr;
-}
-
-void compactLayoutsInWidgetTree(QWidget* root) {
-    if (!root)
-        return;
-    for (QLayout* layout : root->findChildren<QLayout*>()) {
-        layout->setContentsMargins(kDebugCompactMargin, kDebugCompactMarginTop, kDebugCompactMargin,
-                                   kDebugCompactMargin);
-        layout->setSpacing(kDebugCompactSpacing);
-    }
-    for (QGroupBox* box : root->findChildren<QGroupBox*>()) {
-        box->setFlat(true);
-        if (!debugGroupBoxKeepsVerticalExpand(box))
-            box->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
-    }
-}
-
+/** 仅顶对齐滚动内容；不改 sizePolicy / SetMinAndMaxSize，尺寸以 .ui 为准。 */
 void pinDebugTabPageToTop(QTabWidget* tabWidget) {
     if (!tabWidget)
         return;
     for (int i = 0; i < tabWidget->count(); ++i) {
-        QWidget* tabPage = tabWidget->widget(i);
-        if (auto* scroll = qobject_cast<QScrollArea*>(tabPage)) {
-            scroll->setWidgetResizable(false);
-            scroll->setAlignment(Qt::AlignLeft | Qt::AlignTop);
-            tabPage = scroll->widget();
-        }
-        if (!tabPage || !tabPage->layout())
+        auto* scroll = qobject_cast<QScrollArea*>(tabWidget->widget(i));
+        if (!scroll)
             continue;
-        if (debugTabPagesWithoutScroll().contains(tabPage->objectName()))
+        QWidget* inner = scroll->widget();
+        if (inner && debugTabPagesWithoutScroll().contains(inner->objectName()))
             continue;
-        tabPage->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Maximum);
-        tabPage->layout()->setSizeConstraint(QLayout::SetMinAndMaxSize);
-    }
-}
-
-/** SetMinAndMaxSize 会把 ComboBox 压到极窄，下拉列表宽度跟随控件导致选项被省略。 */
-void fitDebugComboBoxWidths(QWidget* root) {
-    if (!root)
-        return;
-    for (QComboBox* combo : root->findChildren<QComboBox*>()) {
-        if (combo->count() <= 0)
-            continue;
-        combo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
-        const QFontMetrics fm(combo->font());
-        int maxTextWidth = 0;
-        for (int i = 0; i < combo->count(); ++i)
-            maxTextWidth = qMax(maxTextWidth, fm.horizontalAdvance(combo->itemText(i)));
-        const int minWidth = maxTextWidth + 36; // 下拉箭头与左右留白
-        combo->setMinimumWidth(minWidth);
-        if (QAbstractItemView* view = combo->view()) {
-            view->setMinimumWidth(minWidth);
-            view->setTextElideMode(Qt::ElideNone);
-        }
+        // 铺满视口宽度，避免左侧按 sizeHint 缩成一列、右侧大块空白
+        scroll->setWidgetResizable(true);
+        scroll->setAlignment(Qt::AlignTop);
     }
 }
 
@@ -182,15 +132,7 @@ void MainWindow::initDebugTabChrome() {
 }
 
 void MainWindow::initDebugTabLayout() {
-    if (ui->horizontalLayout_45) {
-        ui->horizontalLayout_45->setStretch(0, 1);
-        ui->horizontalLayout_45->setStretch(1, 5);
-    }
-    if (ui->verticalLayout_10) {
-        ui->verticalLayout_10->setStretch(0, 0);
-        ui->verticalLayout_10->setStretch(1, 0);
-        ui->verticalLayout_10->setStretch(2, 1);
-    }
+    // 左右/上下 stretch、间距以 mainwindow.ui 为准；此处只保留 splitter 初始比例（.ui 不便表达）
     if (ui->splitter_3) {
         ui->splitter_3->setStretchFactor(0, 1);
         ui->splitter_3->setStretchFactor(1, 4);
@@ -218,17 +160,6 @@ void MainWindow::initDebugTabLayout() {
     ui->tabWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     pinDebugTabPageToTop(ui->tabWidget_ota);
-    compactLayoutsInWidgetTree(ui->tabWidget);
-    compactLayoutsInWidgetTree(ui->groupBox_5);
-    compactLayoutsInWidgetTree(ui->verticalGroupBox);
-    compactLayoutsInWidgetTree(ui->groupBox_11);
-    compactLayoutsInWidgetTree(ui->groupBox_2);
-    if (ui->groupBox_7 && ui->groupBox_7->layout()) {
-        ui->groupBox_7->layout()->setContentsMargins(kDebugCompactMargin, kDebugCompactMarginTop,
-                                                     kDebugCompactMargin, kDebugCompactMargin);
-        ui->groupBox_7->layout()->setSpacing(kDebugCompactSpacing);
-    }
-    fitDebugComboBoxWidths(ui->tabWidget);
 }
 
 void MainWindow::applyDebugOtaTabVisibility() {
@@ -324,13 +255,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     initDongleSuctionChart();
     initQaiotFeatureButtons();
     initDebugTabChrome();
+    if (ui->screenInspectPage)
+        ui->screenInspectPage->bindDesignerUi();
     initDebugTabLayout();
-    screenInspectPage_ = new ScreenInspectWidget(this);
-    if (ui->tabWidget_debug_peripheral) {
-        const int afterLights = ui->tabWidget_debug_peripheral->indexOf(ui->tab_13);
-        const int insertAt = afterLights >= 0 ? afterLights + 1 : 0;
-        ui->tabWidget_debug_peripheral->insertTab(insertAt, screenInspectPage_, QStringLiteral("屏幕测试"));
-    }
+    screenInspectPage_ = ui->screenInspectPage;
     protocolManager.bindQpb(pb);
     protocolManager.bindQfctp(qfctp);
     protocolManager.bindQaiot(qaiot);
@@ -468,7 +396,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     ui->statusbar->addPermanentWidget(uartStatusLabel);
     ui->statusbar->addPermanentWidget(new QLabel(DEBUG_VER + QString(__DATE__) + " " + QString(__TIME__)));
     ui->statusbar->addPermanentWidget(cloudLoginLabel);
-   
+
     refreshCloudLoginState();
     {
         QTimer* timer = new QTimer(this);
@@ -769,7 +697,7 @@ void MainWindow::refreshDongleDeviceName(const QString& name)
     SETTINGS.setValue("Mes/Product_Name", targetProduct);
     SETTINGS.setValue("SYSTEM/ProtocolType", targetProtocol);
     SETTINGS.sync();
-    
+
     auto selectedType =
         QProtocolManager::protocolTypeFromString(targetProtocol.toStdString());
     protocolManager.setCurrentProtocolType(selectedType);
@@ -1333,6 +1261,7 @@ void MainWindow::refreshCloudLoginState() {
     }
     refreshSettingsMenuVisibility();
 }
+
 void MainWindow::setting_ui() {
     if (!AuthService::canOpenSettings()) {
         QMessageBox::information(this, QStringLiteral("功能设置"),
@@ -1591,8 +1520,17 @@ void MainWindow::on_lcdTestButton_clicked() {
 
     if (ui->tabWidget && ui->tab_debug_group_peripheral)
         ui->tabWidget->setCurrentWidget(ui->tab_debug_group_peripheral);
-    if (ui->tabWidget_debug_peripheral && screenInspectPage_)
-        ui->tabWidget_debug_peripheral->setCurrentWidget(screenInspectPage_);
+    if (ui->tabWidget_debug_peripheral && screenInspectPage_) {
+        QTabWidget* tabs = ui->tabWidget_debug_peripheral;
+        for (int i = 0; i < tabs->count(); ++i) {
+            QWidget* w = tabs->widget(i);
+            auto* scroll = qobject_cast<QScrollArea*>(w);
+            if (w == screenInspectPage_ || (scroll && scroll->widget() == screenInspectPage_)) {
+                tabs->setCurrentIndex(i);
+                break;
+            }
+        }
+    }
 }
 
 void MainWindow::on_snInput_returnPressed() {
@@ -5190,7 +5128,6 @@ constexpr DongleSuctionPeakGuideLineDef kDongleSuctionPeakGuideDefs[] = {
     {"dongleSuctionGuideTarget", "dongleSuctionGuideTargetLbl", QColor(220, 60, 50), Qt::SolidLine, 2},
     {"dongleSuctionGuideTolLow", "dongleSuctionGuideTolLowLbl", QColor(210, 130, 20), Qt::DashLine, 1},
     {"dongleSuctionGuideTolHigh", "dongleSuctionGuideTolHighLbl", QColor(210, 130, 20), Qt::DashLine, 1},
-    {"dongleSuctionGuideBaseline", "dongleSuctionGuideBaselineLbl", QColor(40, 110, 210), Qt::DashLine, 1},
     {"dongleSuctionGuideDipStart", "dongleSuctionGuideDipStartLbl", QColor(130, 70, 190), Qt::DashLine, 1},
 };
 
@@ -5265,8 +5202,6 @@ void MainWindow::updateDongleSuctionPeakGuideLines(QCustomPlot* plot) {
                                                           : dongleSuctionPeakTargetKpa_;
     const double tolerance = ui->dongleSuctionPeakToleranceSpin ? ui->dongleSuctionPeakToleranceSpin->value()
                                                                 : dongleSuctionPeakToleranceKpa_;
-    const double baseline = ui->dongleSuctionPeakBaselineSpin ? ui->dongleSuctionPeakBaselineSpin->value()
-                                                              : dongleSuctionPeakBaselineKpa_;
     const double dipStart = ui->dongleSuctionPeakDipStartSpin ? ui->dongleSuctionPeakDipStartSpin->value()
                                                               : dongleSuctionPeakDipStartKpa_;
     const double tolLow = target - tolerance;
@@ -5281,10 +5216,8 @@ void MainWindow::updateDongleSuctionPeakGuideLines(QCustomPlot* plot) {
                                 QStringLiteral("容差下 %1").arg(tolLow, 0, 'f', 1), show, x0, x1);
     dongleSuctionPlaceGuideLine(plot, kDongleSuctionPeakGuideDefs[2], tolHigh,
                                 QStringLiteral("容差上 %1").arg(tolHigh, 0, 'f', 1), show, x0, x1);
-    dongleSuctionPlaceGuideLine(plot, kDongleSuctionPeakGuideDefs[3], baseline,
-                                QStringLiteral("周期结束 %1").arg(baseline, 0, 'f', 1), show, x0, x1);
-    dongleSuctionPlaceGuideLine(plot, kDongleSuctionPeakGuideDefs[4], dipStart,
-                                QStringLiteral("周期开始 %1").arg(dipStart, 0, 'f', 1), show, x0, x1);
+    dongleSuctionPlaceGuideLine(plot, kDongleSuctionPeakGuideDefs[3], dipStart,
+                                QStringLiteral("计频线 %1").arg(dipStart, 0, 'f', 1), show, x0, x1);
 }
 
 void MainWindow::updateDongleSuctionPeakGuideLinesAll() {
@@ -5297,7 +5230,6 @@ void MainWindow::loadDongleSuctionPeakSettings() {
         return;
     dongleSuctionPeakTargetKpa_ = ui->dongleSuctionPeakTargetSpin->value();
     dongleSuctionPeakToleranceKpa_ = ui->dongleSuctionPeakToleranceSpin->value();
-    dongleSuctionPeakBaselineKpa_ = ui->dongleSuctionPeakBaselineSpin->value();
     dongleSuctionPeakDipStartKpa_ = ui->dongleSuctionPeakDipStartSpin->value();
     dongleSuctionPeakMaxGapSec_ = ui->dongleSuctionPeakMaxGapSpin->value();
 }
@@ -5309,8 +5241,6 @@ void MainWindow::setDongleSuctionPeakParamWidgetsEnabled(bool enabled) {
         ui->dongleSuctionPeakTargetSpin->setEnabled(enabled);
     if (ui->dongleSuctionPeakToleranceSpin)
         ui->dongleSuctionPeakToleranceSpin->setEnabled(enabled);
-    if (ui->dongleSuctionPeakBaselineSpin)
-        ui->dongleSuctionPeakBaselineSpin->setEnabled(enabled);
     if (ui->dongleSuctionPeakDipStartSpin)
         ui->dongleSuctionPeakDipStartSpin->setEnabled(enabled);
     if (ui->dongleSuctionPeakMaxGapSpin)
@@ -5332,20 +5262,26 @@ void MainWindow::updateDongleSuctionPeakMonitorLabels() {
         if (!labels[i])
             continue;
         auto& m = dongleSuctionPeakMonitors_[i];
-        // 按近期完整周期时长均值换算频率，首个周期结束即可显示，避免按总采时长外推导致初期剧烈跳动
-        const double nowSec = dongleSuctionPlotTimeSecLast_ < 0.0 ? 0.0 : dongleSuctionPlotTimeSecLast_;
-        const double windowStart = (nowSec >= 60.0) ? (nowSec - 60.0) : 0.0;
-        double periodSum = 0.0;
-        int periodCount = 0;
-        const int n = qMin(m.cycleEndSec.size(), m.cyclePeriodSec.size());
-        for (int j = 0; j < n; ++j) {
-            if (m.cycleEndSec[j] > windowStart && m.cyclePeriodSec[j] > 0.0) {
-                periodSum += m.cyclePeriodSec[j];
-                ++periodCount;
+        // 频率：相邻两次下穿计频线的间隔均值（≥2 次下穿才可算）
+        constexpr int kFreqRecentIntervals = 3;
+        double periodSec = -1.0;
+        const int startCount = m.cycleStartSec.size();
+        if (startCount >= 2) {
+            const int beginIdx = qMax(1, startCount - kFreqRecentIntervals);
+            double intervalSum = 0.0;
+            int intervalCount = 0;
+            for (int j = beginIdx; j < startCount; ++j) {
+                const double dt = m.cycleStartSec[j] - m.cycleStartSec[j - 1];
+                if (dt > 0.0) {
+                    intervalSum += dt;
+                    ++intervalCount;
+                }
             }
+            if (intervalCount > 0)
+                periodSec = intervalSum / intervalCount;
         }
-        if (periodCount > 0) {
-            m.freqPerMin = qRound(60.0 * periodCount / periodSum);
+        if (periodSec > 0.0) {
+            m.freqPerMin = qRound(60.0 / periodSec);
         } else {
             m.freqPerMin = -1;
         }
@@ -5382,58 +5318,46 @@ void MainWindow::updateDongleSuctionChannelPeakMonitor(int chIndex, double kpa, 
         updateDongleSuctionPeakMonitorLabels();
     }
 
-    if (kpa >= dongleSuctionPeakBaselineKpa_) {
-        if (m.phase == DongleSuctionChannelPeakMonitor::Phase::InCycle) {
-            if (m.cycleMinInit) {
-                const double peakKpa = m.cycleMinKpa;
-                const bool dippedEnough = peakKpa <= dongleSuctionPeakDipStartKpa_;
-                const bool inRange = peakKpa >= lowerBound && peakKpa <= upperBound;
-                if (dippedEnough && inRange) {
-                    m.validPeakCount++;
-                    m.waitingNextPeak = true;
-                    m.lastPeakEndSec = tSec;
-                    m.gapMissFlagged = false;
-                    if (eventOut.isEmpty())
-                        eventOut = QStringLiteral("VALID_%1:%2").arg(chTag).arg(peakKpa, 0, 'f', 3);
-                    showlog(QStringLiteral("【有效峰】%1：%2 kPa（累计 %3）")
-                                .arg(chTag)
-                                .arg(peakKpa, 0, 'f', 3)
-                                .arg(m.validPeakCount));
-                } else if (dippedEnough) {
-                    m.weakPeakCount++;
-                    if (eventOut.isEmpty())
-                        eventOut = QStringLiteral("WEAK_%1:%2").arg(chTag).arg(peakKpa, 0, 'f', 3);
-                    showlog(QStringLiteral("【弱峰】%1：%2 kPa，不在 %3~%4 kPa")
-                                .arg(chTag)
-                                .arg(peakKpa, 0, 'f', 3)
-                                .arg(lowerBound, 0, 'f', 2)
-                                .arg(upperBound, 0, 'f', 2));
-                }
+    if (m.phase == DongleSuctionChannelPeakMonitor::Phase::InCycle && kpa >= dongleSuctionPeakDipStartKpa_) {
+        if (m.cycleMinInit) {
+            const double peakKpa = m.cycleMinKpa;
+            const bool dippedEnough = peakKpa <= dongleSuctionPeakDipStartKpa_;
+            const bool inRange = peakKpa >= lowerBound && peakKpa <= upperBound;
+            if (dippedEnough && inRange) {
+                m.validPeakCount++;
+                m.waitingNextPeak = true;
+                m.lastPeakEndSec = tSec;
+                m.gapMissFlagged = false;
+                if (eventOut.isEmpty())
+                    eventOut = QStringLiteral("VALID_%1:%2").arg(chTag).arg(peakKpa, 0, 'f', 3);
+                showlog(QStringLiteral("【有效峰】%1：%2 kPa（累计 %3）")
+                            .arg(chTag)
+                            .arg(peakKpa, 0, 'f', 3)
+                            .arg(m.validPeakCount));
+            } else if (dippedEnough) {
+                m.weakPeakCount++;
+                if (eventOut.isEmpty())
+                    eventOut = QStringLiteral("WEAK_%1:%2").arg(chTag).arg(peakKpa, 0, 'f', 3);
+                showlog(QStringLiteral("【弱峰】%1：%2 kPa，不在 %3~%4 kPa")
+                            .arg(chTag)
+                            .arg(peakKpa, 0, 'f', 3)
+                            .arg(lowerBound, 0, 'f', 2)
+                            .arg(upperBound, 0, 'f', 2));
             }
-            // 周期结束（回到周期结束线）：频率只按周期边界计，弱峰/无效周期也计入
-            if (m.currentCycleStartSec >= 0.0 && tSec > m.currentCycleStartSec) {
-                m.cyclePeriodSec.append(tSec - m.currentCycleStartSec);
-            } else {
-                m.cyclePeriodSec.append(0.0);
-            }
-            m.cycleEndSec.append(tSec);
-            while (!m.cycleEndSec.isEmpty() && m.cycleEndSec.first() <= tSec - 60.0) {
-                m.cycleEndSec.removeFirst();
-                if (!m.cyclePeriodSec.isEmpty())
-                    m.cyclePeriodSec.removeFirst();
-            }
-            m.currentCycleStartSec = -1.0;
-            updateDongleSuctionPeakMonitorLabels();
-            m.phase = DongleSuctionChannelPeakMonitor::Phase::AtBaseline;
-            m.cycleMinInit = false;
         }
+        updateDongleSuctionPeakMonitorLabels();
+        m.phase = DongleSuctionChannelPeakMonitor::Phase::AtBaseline;
+        m.cycleMinInit = false;
         return;
     }
 
     if (kpa < dongleSuctionPeakDipStartKpa_) {
         if (m.phase == DongleSuctionChannelPeakMonitor::Phase::AtBaseline) {
             m.phase = DongleSuctionChannelPeakMonitor::Phase::InCycle;
-            m.currentCycleStartSec = tSec;
+            m.cycleStartSec.append(tSec);
+            while (!m.cycleStartSec.isEmpty() && m.cycleStartSec.first() <= tSec - 60.0)
+                m.cycleStartSec.removeFirst();
+            updateDongleSuctionPeakMonitorLabels();
             m.cycleMinKpa = kpa;
             m.cycleMinInit = true;
             m.gapMissFlagged = false;
@@ -5442,12 +5366,6 @@ void MainWindow::updateDongleSuctionChannelPeakMonitor(int chIndex, double kpa, 
             m.cycleMinInit = true;
         }
         return;
-    }
-
-    if (m.phase == DongleSuctionChannelPeakMonitor::Phase::InCycle &&
-        (!m.cycleMinInit || kpa < m.cycleMinKpa)) {
-        m.cycleMinKpa = kpa;
-        m.cycleMinInit = true;
     }
 }
 
@@ -6049,7 +5967,6 @@ void MainWindow::initDongleSuctionChart() {
     };
     bindPeakGuideRefresh(ui->dongleSuctionPeakTargetSpin);
     bindPeakGuideRefresh(ui->dongleSuctionPeakToleranceSpin);
-    bindPeakGuideRefresh(ui->dongleSuctionPeakBaselineSpin);
     bindPeakGuideRefresh(ui->dongleSuctionPeakDipStartSpin);
     if (ui->dongleSuctionPeakGuideLinesCheck) {
         connect(ui->dongleSuctionPeakGuideLinesCheck, &QCheckBox::toggled, this, [this](bool) {
@@ -6262,7 +6179,6 @@ void MainWindow::on_dongle_suction_open_clicked() {
     loadDongleSuctionPeakSettings();
     setDongleSuctionPeakParamWidgetsEnabled(false);
     dongleSuctionReadEnabled_ = true;
-    resetDongleSuctionChart();
     if (!startDongleSuctionCsvLog()) {
         dongleSuctionReadEnabled_ = false;
         setDongleSuctionPeakParamWidgetsEnabled(true);

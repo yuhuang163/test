@@ -996,6 +996,7 @@ void bydmes::TestPass(MesPacketData pack) {
         const QString ncitemname = bydNcCodeFromPack(pack);
         completeParam["STATION_ID"] = settingsValue("StationID");
         completeParam["NC_CODE"] = ncitemname;
+        // 不良详情只放 NC_CONTEXT；REMARK 字段保持短文案
         completeParam["NC_CONTEXT"] = QStringLiteral("不良原因 %1; 测试结果 %2").arg(pack.remark, pack.result);
         completeParam["NC_TYPE"] = ncitemname;
     } else {

@@ -13,6 +13,7 @@
 #include <QAbstractItemView>
 #include <QApplication>
 #include <QClipboard>
+#include <QComboBox>
 #include <QDateTime>
 #include <QDebug>
 #include <QElapsedTimer>
@@ -22,6 +23,7 @@
 #include <QKeySequence>
 #include <QLineEdit>
 #include <QPlainTextEdit>
+#include <QPushButton>
 #include <QSet>
 #include <QShortcut>
 #include <QShowEvent>
@@ -186,7 +188,7 @@ void test_base::initData() {
     pack.userNo = SETTINGS.value("Mes/M_USERNO").toString();
     pack.lotName = SETTINGS.value("Mes/Work_Order").toString();
     pack.error = "NULL";
-    pack.remark.clear(); // 避免上一轮 NG 备注残留到本轮 PASS
+    pack.remark.clear(); // 开测清空，避免上轮 NG 备注带到本轮
 
     isBrushLogGet = SETTINGS.value("SYSTEM/SaveToothbrushLog", 0).toBool();
     snPattern = SETTINGS.value("Regex/SNPattern").toString().trimmed();
@@ -571,6 +573,7 @@ QString test_base::sessionMacForLog() {
 }
 
 void test_base::onTestSessionStarting(const QString& sn, const QString& mac) {
+    testCsvAccumItems_.clear();
     QString station = TestCaseStore::loadSelectedFlowStationName();
     if (station.isEmpty()) {
         station = SETTINGS.value(QStringLiteral("SYSTEM/station")).toString().trimmed();
@@ -589,7 +592,16 @@ void test_base::onTestSessionStarting(const QString& sn, const QString& mac) {
     qDebug() << buildInfo;
 }
 
+void test_base::flushPendingTestCsv() {
+    if (testCsvAccumItems_.isEmpty()) {
+        return;
+    }
+    log->saveTestCsv(upperComputerVer, getMacLineEdit()->text(), macInputLineEdit()->text(), testCsvAccumItems_);
+    testCsvAccumItems_.clear();
+}
+
 void test_base::abortTestSessionAndUpload() {
+    flushPendingTestCsv();
     if (!Qlog::hasActiveSession(m_index)) {
         return;
     }
@@ -630,17 +642,27 @@ int test_base::getIndex() const {
 void test_base::waitWork(int ms) {
     QTime t;
     t.start();
-    while (t.elapsed() < ms)
+    while (t.elapsed() < ms && isTestContinue)
         QCoreApplication::processEvents();
 }
 
 void test_base::waitWorkIdle(int ms) {
-    if (ms <= 0) {
+    if (ms <= 0 || !isTestContinue) {
         QCoreApplication::processEvents();
         return;
     }
     QEventLoop loop;
-    QTimer::singleShot(ms, &loop, &QEventLoop::quit);
+    QTimer done;
+    done.setSingleShot(true);
+    QObject::connect(&done, &QTimer::timeout, &loop, &QEventLoop::quit);
+    QTimer poll;
+    poll.setInterval(50);
+    QObject::connect(&poll, &QTimer::timeout, &loop, [this, &loop]() {
+        if (!isTestContinue)
+            loop.quit();
+    });
+    done.start(ms);
+    poll.start();
     loop.exec();
 }
 
@@ -664,6 +686,12 @@ bool test_base::isCommandRetryResponseAccepted(const QObject* source) const {
     case CommandWaitSource::DongleAt:
         if (source != static_cast<const QObject*>(at)) {
             qDebug() << QStringLiteral("sendCommandWithRetry: 忽略非 dongle AT");
+            return false;
+        }
+        return true;
+    case CommandWaitSource::ProductSerial:
+        if (source != static_cast<const QObject*>(product)) {
+            qDebug() << QStringLiteral("sendCommandWithRetry: 忽略非产品串口应答");
             return false;
         }
         return true;
@@ -785,6 +813,12 @@ void test_base::onProtocolReport(const ProtocolReport& report) {
         refreshRootAgingHistory(payload.value<ProtocolRootAgingHistoryData>());
     } else if (reportType == QLatin1String("ProtocolResultData") && payload.canConvert<ProtocolResultData>()) {
         refreshResultCode(payload.value<ProtocolResultData>());
+    } else if (reportType == QLatin1String("ProtocolPhotosensitiveData")
+               && payload.canConvert<ProtocolPhotosensitiveData>()) {
+        refreshPhotosensitiveData(payload.value<ProtocolPhotosensitiveData>());
+    } else if (reportType == QLatin1String("ProtocolLightCalibData")
+               && payload.canConvert<ProtocolLightCalibData>()) {
+        refreshLightCalibData(payload.value<ProtocolLightCalibData>());
     } else if (reportType == QLatin1String("ProtocolTypeData") && payload.canConvert<ProtocolTypeData>()) {
         refreshTypeStatus(payload.value<ProtocolTypeData>());
     }
@@ -952,6 +986,7 @@ QString test_base::exportTableContent() {
 }
 
 void test_base::finishTestRecord(const MesPacketData& packIn, bool useMes) {
+    flushPendingTestCsv();
     MesPacketData pack = packIn;
     if (pack.sn.trimmed().isEmpty()) {
         pack.sn = sessionSnForLog();
@@ -1019,7 +1054,11 @@ void test_base::testResultTableUpdate(QVector<TestItem>& testItems) {
         testResultTable()->setItem(row, 2, resultItem);
         testResultTable()->setItem(row, 3, askItem);
     }
-    log->saveTestCsv(upperComputerVer, getMacLineEdit()->text(), macInputLineEdit()->text(), testItems);
+    if (SETTINGS.value(QStringLiteral("SYSTEM/TestCsvOneRowPerTest"), true).toBool()) {
+        testCsvAccumItems_.append(testItems);
+    } else {
+        log->saveTestCsv(upperComputerVer, getMacLineEdit()->text(), macInputLineEdit()->text(), testItems);
+    }
 
     testItems.clear();
 }
@@ -1086,6 +1125,14 @@ void test_base::solveMesData(const int mechines, QString msg) {
 }
 void test_base::testResultTableInit() {
     pb->setAppVersion(upperComputerVer);
+    // 仅初始化时按厂别/本机配置设置 MES 默认勾选；之后锁定界面不得改勾选状态
+    if (getIsUseMes() && getIsFormMes()) {
+        if (pack.factory == "无mes厂"
+            || SETTINGS.value(QStringLiteral("SYSTEM/MesDefaultUnchecked"), false).toBool()) {
+            getIsUseMes()->setCheckState(Qt::Unchecked);
+            getIsFormMes()->setCheckState(Qt::Unchecked);
+        }
+    }
     LockProductUI();
     QTableWidget* table = testResultTable();
     if (table == nullptr) {
@@ -1168,19 +1215,47 @@ void test_base::testResultTableInit() {
     }
 }
 void test_base::LockProductUI() {
-    if (SETTINGS.value("SYSTEM/LockProductUI", 0).toBool())
-        getIsUseMes()->setEnabled(false);
+    // 只锁定/解锁可操作性，保留当前 MES 两个勾选状态不变
+    const bool locked = SETTINGS.value(QStringLiteral("SYSTEM/LockProductUI"), false).toBool();
+    if (QCheckBox* useMes = getIsUseMes())
+        useMes->setEnabled(!locked);
+    if (QCheckBox* formMes = getIsFormMes())
+        formMes->setEnabled(!locked);
 
-    if (!getIsUseMes() || !getIsFormMes()) {
-        qDebug() << "Error: getIsUseMes() or getIsFormMes() is nullptr!";
-        return;
-    }
+    applySerialPortUiLock();
+}
 
-    // 无mes厂，或本机 local.ini：SYSTEM/MesDefaultUnchecked=true → 默认不勾选
-    if (pack.factory == "无mes厂" || SETTINGS.value(QStringLiteral("SYSTEM/MesDefaultUnchecked"), false).toBool()) {
-        getIsUseMes()->setCheckState(Qt::Unchecked);
-        getIsFormMes()->setCheckState(Qt::Unchecked);
-    }
+void test_base::applySerialPortUiLock() {
+    const bool locked = SETTINGS.value(QStringLiteral("SYSTEM/LockProductUI"), false).toBool();
+    const auto applyOne = [this, locked](const char* comboName, const char* connectName, const char* disconnectName,
+                                         QSerialPort* port) {
+        auto* combo = findChild<QComboBox*>(QLatin1String(comboName));
+        auto* connectBtn = findChild<QPushButton*>(QLatin1String(connectName));
+        auto* disconnectBtn = findChild<QPushButton*>(QLatin1String(disconnectName));
+        if (!combo && !connectBtn && !disconnectBtn)
+            return;
+        if (locked) {
+            if (combo)
+                combo->setEnabled(false);
+            if (connectBtn)
+                connectBtn->setEnabled(false);
+            if (disconnectBtn)
+                disconnectBtn->setEnabled(false);
+            return;
+        }
+        const bool connected = port && port->isOpen();
+        if (combo)
+            combo->setEnabled(!connected);
+        if (connectBtn)
+            connectBtn->setEnabled(!connected);
+        if (disconnectBtn)
+            disconnectBtn->setEnabled(connected);
+    };
+    // 与各工站 .ui 中常见 objectName 对齐（找不到的控件自动跳过）
+    applyOne("comNameCombo", "connectButton", "disconnectButton", dongleSerialPort);
+    applyOne("jigComNameCombo", "jigConnectButton", "jigDisconnectButton", jigSerialPort);
+    applyOne("usbcomNameCombo", "usbconnectButton", "usbdisconnectButton", usbSerialPort);
+    applyOne("productComNameCombo", "productConnectButton", "productDisconnectButton", productSerialPort);
 }
 void test_base::getMac(QString sn_to_search) {
     if (!getIsFormMes()->isChecked()) {
@@ -1243,8 +1318,13 @@ void test_base::getMac(QString sn_to_search) {
 void test_base::closeEvent(QCloseEvent*) {
     qDebug() << getIndex() << "test_base关闭";
     isTestContinue = 0;
-    at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00"); // 发送mac地址
-    waitWork(50);
+    if (at)
+        at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");
+    // 关窗时 isTestContinue 已清，不能走 waitWork（会立刻返回）
+    QElapsedTimer t;
+    t.start();
+    while (t.elapsed() < 50)
+        QCoreApplication::processEvents();
 }
 
 void test_base::ensureSnInputLatinIme() {

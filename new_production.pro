@@ -283,6 +283,7 @@ SOURCES += \
     platform/test_case/manifest/device_cmd_manifest.cpp \
     platform/test_case/manifest/dongle_cmd_manifest.cpp \
     platform/test_case/manifest/usb_camera_cmd_manifest.cpp \
+    platform/test_case/manifest/ves_light_cmd_manifest.cpp \
     platform/test_case/manifest/fixture_pcba_cmd_manifest.cpp \
     platform/test_case/manifest/asd9026a_cmd_manifest.cpp \
     platform/test_case/manifest/xwd_fixture_cmd_manifest.cpp \
@@ -452,6 +453,7 @@ HEADERS += \
     platform/test_case/manifest/device_cmd_manifest.h \
     platform/test_case/manifest/dongle_cmd_manifest.h \
     platform/test_case/manifest/usb_camera_cmd_manifest.h \
+    platform/test_case/manifest/ves_light_cmd_manifest.h \
     platform/test_case/manifest/fixture_pcba_cmd_manifest.h \
     platform/test_case/manifest/asd9026a_cmd_manifest.h \
     platform/test_case/manifest/xwd_fixture_cmd_manifest.h \
@@ -528,7 +530,6 @@ FORMS += \
     platform/settings/widgets/fixture_uart.ui \
     platform/settings/qsetting.ui \
     platform/settings/widgets/test_case_edit_dialog.ui \
-    platform/debug/screen_inspect/screen_inspect_widget.ui \
     tools/factory_analyzer/factory_analyzer.ui \
     mainwindow.ui \
     work_station/camera/cameratest.ui \

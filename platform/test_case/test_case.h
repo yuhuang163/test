@@ -93,6 +93,8 @@ class TestCaseStore {
     /** 工站 flow.ini [DeviceSide]：三元组位置 / device_side_id */
     static TestCaseDeviceSideConfig loadStationDeviceSideConfig(const QString& stationKey);
     static bool saveStationDeviceSideConfig(const QString& stationKey, const TestCaseDeviceSideConfig& config);
+    /** profiles/{工站}/profile.ini [Profile/ProfileVersion]；stationKey 空则当前选中工站，缺失返回 0 */
+    static int loadStationProfileVersion(const QString& stationKey = QString());
     static bool saveStationFlowItems(const QString& stationKey, const QVector<TestFlowItemEntry>& items,
                                      bool stopFlowOnTestFail = true);
     static bool saveStationFlowItems(const QString& stationKey, const QVector<TestFlowItemEntry>& items,
@@ -185,6 +187,20 @@ class UsbCameraCmdCatalog {
     static QString paramUiHint(const QString& enumName);
     static bool paramFromIniGroup(const QSettings& settings, UsbCameraCmd cmd, QVariant& out);
     static void paramToIniGroup(QSettings& settings, UsbCameraCmd cmd, const QVariant& value);
+};
+
+class VesLightCmdCatalog {
+  public:
+    static QStringList allVesLightCmdNames(TestCaseSendAction action);
+    static TestCaseSendAction actionFor(VesLightCmd cmd);
+    static bool isCmdForAction(VesLightCmd cmd, TestCaseSendAction action);
+    static QString vesLightCmdUiLabel(const QString& enumName);
+    static bool vesLightCmdFromName(const QString& name, VesLightCmd& out);
+    static QString vesLightCmdToName(VesLightCmd cmd);
+    static bool paramSchemaFor(VesLightCmd cmd, DeviceCmdParamSchema& out);
+    static QString paramUiHint(const QString& enumName);
+    static bool paramFromIniGroup(const QSettings& settings, VesLightCmd cmd, QVariant& out);
+    static void paramToIniGroup(QSettings& settings, VesLightCmd cmd, const QVariant& value);
 };
 
 enum class ProductSerialCmd {

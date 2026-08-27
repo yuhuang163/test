@@ -23,6 +23,7 @@
 #include "qlog.h"
 #include "login_dialog.h"
 #include "auth_service.h"
+#include "host_ota_service.h"
 #include "test_case_sync_service.h"
 #include "qfreeworkbox.h"
 #include "mainwindow.h"
@@ -147,6 +148,7 @@ int main(int argc, char* argv[]) {
     // 设置使用 UTF-8 编码
     // QTextCodec::setCodecForLocale(QTextCodec::codecForName("UTF-8"));
     MyApplication a(argc, argv);
+    HostOtaService::cleanupStaleBackupProcess();
     installChineseQtTranslations(a);
 
     SETTINGS.migrateFactoryCloudToLocal();

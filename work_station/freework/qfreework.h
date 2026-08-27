@@ -48,6 +48,7 @@ class QFreeWork : public test_base {
   public:
     explicit QFreeWork(int index, QWidget* parent = nullptr);
     ~QFreeWork();
+    void closeEvent(QCloseEvent* event) override;
     void startTask() override;
     void startTest() override;
     /**
@@ -112,6 +113,9 @@ class QFreeWork : public test_base {
     void executeFixtureAsd9026aCase(const TestCaseDefinition& def);
     void executeFixtureXwdCase(const TestCaseDefinition& def);
     void executeFixtureJieliBtBoxCase(const TestCaseDefinition& def);
+    void executeFixtureVesLightCase(const TestCaseDefinition& def);
+    /** VES 单通道指令固定 CH1，brightness 0~255。失败时 failReason 非空。 */
+    bool sendVesCh1BrightnessOnFixture(int brightness, QString* failReason = nullptr);
     int resolveFixtureMachineIndex(const QVariant& param) const;
     QVariantMap cachedHuilingVisaLink() const;
     void updateHuilingVisaLinkCache(const QVariantMap& link);
@@ -119,6 +123,10 @@ class QFreeWork : public test_base {
     void onUsbInstrumentReport(const ProtocolReport& report) override;
 
   private:
+    enum class LightCalibStepKind { WriteOnly, ReadOnly, WriteAndRead };
+    bool runLightSensorCalibStepCore(LightCalibStepKind kind, QString* failReason, QString* lineOut);
+    void finishLightSensorCalibStep(LightCalibStepKind kind, bool ok, const QString& detail);
+
     int teststate = -1;
 
     // --- 扫描 / 绑定 ---
@@ -295,9 +303,9 @@ class QFreeWork : public test_base {
     void clearProductInstrumentWatch();
     bool ensureProductSerialForInstrumentStep(const QString& stepName);
     static QByteArray brushInstrumentStartCmdForProfile(int profile);
-    void startProductInstrumentResetAndWaitAck(QString stepName = QString());
-    void startProductInstrumentStartReceiveForCatalog(const QString& stepName, int profile);
-    void startProductInstrumentStopReceiveAndPer(QString stepName = QString());
+    void startProductInstrumentResetAndWaitAck(QString stepName = QString(), int timeoutMs = 0);
+    void startProductInstrumentStartReceiveForCatalog(const QString& stepName, int profile, int timeoutMs = 0);
+    void startProductInstrumentStopReceiveAndPer(QString stepName = QString(), int timeoutMs = 0);
 
     // --- 协议回包 / 三元组 / BYD（部分实现见 qfreework_data.cpp） ---
     void appendPeriphItem(QVector<TestItem>& periphTestItems, bool& pass, const QString& name, const QString& value,
@@ -342,6 +350,21 @@ class QFreeWork : public test_base {
     void runDongleSuctionSampleStep();
     /** Dongle 单通道吸力采样；判定走 ProtocolDongleSuctionPeakData Gate。 */
     void runDongleSuctionSampleSingleStep();
+    /** V3 光感单点校准（产品协议）：采光感取平均 → 写平均值并回读。亮度由前一步治具 VES 设置。 */
+    void runLightSensorGoldenCalibStep();
+    /** 光感校准：仅采光感取平均并写入（不含回读）。 */
+    void runLightSensorCalibWriteStep();
+    /** 光感校准：仅回读校准值（可对本点及已采点做范围+差值卡控）。 */
+    void runLightSensorCalibReadStep();
+    /** 清空本轮光感五点回读缓存（开测 / 单步调试 / index=0 写入时调用）。 */
+    void resetLightSensorFivePointState();
+    /**
+     * 光感卡控：仅检查 mask 已采点的范围，以及两端都齐的相邻差值。
+     * 各点阈值在对应「产品光感读取点N」步骤执行时写入缓存。
+     */
+    bool evaluateLightSensorFivePointRule(QString* detailOut);
+    /** VES 四通道光源：固定通道 1，亮度由步骤 Param_brightness 配置（0~255）。 */
+    void runVesCh1SetBrightnessStep();
     /** 自由工站屏幕检测：GigE/USB 拍照后坏点 / 显示对比 / 位置校准。 */
     void runScreenInspectStep();
     /**
@@ -419,6 +442,19 @@ class QFreeWork : public test_base {
     QVector<double> suctionChartRightKpa_;
     QElapsedTimer suctionChartTimer_;
     bool suctionChartTimerStarted_ = false;
+    bool lightSensorCollecting_ = false;
+    QVector<int> lightSensorSamples_;
+    bool lightCalibReadValid_ = false;
+    int lightCalibReadValue_ = 0;
+    /** 本轮五点光感回读值（index0~4）；bit i 表示 lightCalibFivePointValues_[i] 已采到。 */
+    int lightCalibFivePointValues_[5] = {0, 0, 0, 0, 0};
+    int lightCalibWrittenValues_[5] = {0, 0, 0, 0, 0};
+    /** 各读取点 ini 缓存的本点范围；diffMin[i] 对应 回读[i+1]-回读[i]。 */
+    int lightCalibRangeLo_[5] = {0, 70, 170, 500, 1000};
+    int lightCalibRangeHi_[5] = {70, 200, 500, 1200, 1700};
+    int lightCalibRangeHiInc_[5] = {0, 0, 0, 0, 1};
+    int lightCalibDiffMin_[4] = {20, 20, 50, 100};
+    quint8 lightCalibFivePointMask_ = 0;
     /** 实时数值标签节流：约 2Hz（曲线不实时画，测完一次性绘制） */
     qint64 suctionChartLastUiMs_ = 0;
     bool suctionLeftPeakInit_ = false;
@@ -464,6 +500,8 @@ class QFreeWork : public test_base {
     void refreshRootBatteryTemp(quint8 temp) override;
     void refreshRootHeatTemp(quint8 temp) override;
     void refreshResultCode(ProtocolResultData data) override;
+    void refreshPhotosensitiveData(ProtocolPhotosensitiveData data) override;
+    void refreshLightCalibData(ProtocolLightCalibData data) override;
     void refreshFlangeStatus(ProtocolTypeData data) override;
     void refreshPumpStallCurrent(ProtocolPumpStallCurrentData data) override;
     void refreshRootAgingHistory(ProtocolRootAgingHistoryData data) override;

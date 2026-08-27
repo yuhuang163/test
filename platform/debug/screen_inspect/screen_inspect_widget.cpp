@@ -1,7 +1,5 @@
 #include "screen_inspect_widget.h"
 
-#include "ui_screen_inspect_widget.h"
-
 #include "Abini.h"
 #include "common_utils.h"
 #include "screen_inspect_analyzer.h"
@@ -11,8 +9,11 @@
 #include <QCameraImageCapture>
 #include <QCameraInfo>
 #include <QCameraViewfinder>
+#include <QCheckBox>
+#include <QComboBox>
 #include <QCoreApplication>
 #include <QDateTime>
+#include <QDebug>
 #include <QDebug>
 #include <QDir>
 #include <QElapsedTimer>
@@ -24,20 +25,82 @@
 #include <QPen>
 #include <QPixmap>
 #include <QPlainTextEdit>
+#include <QPushButton>
 #include <QResizeEvent>
 #include <QShowEvent>
 #include <QThread>
 #include <QTimer>
+#include <QVBoxLayout>
 #include <QtConcurrent>
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
 #endif
 
+struct ScreenInspectUi {
+    QComboBox* comboBox_camera = nullptr;
+    QComboBox* comboBox_expectedColor = nullptr;
+    QWidget* viewfinderHost = nullptr;
+    QVBoxLayout* verticalLayout_viewfinder = nullptr;
+    QDoubleSpinBox* doubleSpinBox_minSsim = nullptr;
+    QSpinBox* spinBox_deadDiff = nullptr;
+    QSpinBox* spinBox_maxDead = nullptr;
+    QDoubleSpinBox* doubleSpinBox_mura = nullptr;
+    QLabel* label_currImage = nullptr;
+    QLabel* label_refImage = nullptr;
+    QLabel* label_screenInspectSimilarity = nullptr;
+    QLabel* label_screenInspectVerdict = nullptr;
+    QPlainTextEdit* plainTextEdit_screenInspectLog = nullptr;
+    QCheckBox* checkBox_autoInspect = nullptr;
+    QPushButton* btnCapture = nullptr;
+    QPushButton* btnInspect = nullptr;
+    QPushButton* btnOpenPreview = nullptr;
+};
+
+template <typename T>
+T* screenInspectFind(QWidget* root, const char* name) {
+    if (!root)
+        return nullptr;
+    return root->findChild<T*>(QString::fromUtf8(name));
+}
+
 ScreenInspectWidget::ScreenInspectWidget(QWidget* parent)
-    : QWidget(parent), ui(new Ui::ScreenInspectWidget) {
-    ui->setupUi(this);
-    setObjectName(QStringLiteral("ScreenInspectWidget"));
+    : QWidget(parent) {
+}
+
+void ScreenInspectWidget::bindDesignerUi() {
+    if (uiBound_)
+        return;
+    ui = new ScreenInspectUi;
+    ui->comboBox_camera = screenInspectFind<QComboBox>(this, "comboBox_camera");
+    ui->comboBox_expectedColor = screenInspectFind<QComboBox>(this, "comboBox_expectedColor");
+    ui->viewfinderHost = screenInspectFind<QWidget>(this, "viewfinderHost");
+    ui->verticalLayout_viewfinder = screenInspectFind<QVBoxLayout>(this, "verticalLayout_viewfinder");
+    if (!ui->verticalLayout_viewfinder && ui->viewfinderHost)
+        ui->verticalLayout_viewfinder = qobject_cast<QVBoxLayout*>(ui->viewfinderHost->layout());
+    if (!ui->viewfinderHost && ui->verticalLayout_viewfinder)
+        ui->viewfinderHost = ui->verticalLayout_viewfinder->parentWidget();
+    ui->doubleSpinBox_minSsim = screenInspectFind<QDoubleSpinBox>(this, "doubleSpinBox_minSsim");
+    ui->spinBox_deadDiff = screenInspectFind<QSpinBox>(this, "spinBox_deadDiff");
+    ui->spinBox_maxDead = screenInspectFind<QSpinBox>(this, "spinBox_maxDead");
+    ui->doubleSpinBox_mura = screenInspectFind<QDoubleSpinBox>(this, "doubleSpinBox_mura");
+    ui->label_currImage = screenInspectFind<QLabel>(this, "label_currImage");
+    ui->label_refImage = screenInspectFind<QLabel>(this, "label_refImage");
+    ui->label_screenInspectSimilarity = screenInspectFind<QLabel>(this, "label_screenInspectSimilarity");
+    ui->label_screenInspectVerdict = screenInspectFind<QLabel>(this, "label_screenInspectVerdict");
+    ui->plainTextEdit_screenInspectLog = screenInspectFind<QPlainTextEdit>(this, "plainTextEdit_screenInspectLog");
+    ui->checkBox_autoInspect = screenInspectFind<QCheckBox>(this, "checkBox_autoInspect");
+    ui->btnCapture = screenInspectFind<QPushButton>(this, "btnCapture");
+    ui->btnInspect = screenInspectFind<QPushButton>(this, "btnInspect");
+    ui->btnOpenPreview = screenInspectFind<QPushButton>(this, "btnOpenPreview");
+    if (!ui->comboBox_camera || !ui->comboBox_expectedColor || !ui->viewfinderHost || !ui->verticalLayout_viewfinder
+        || !ui->doubleSpinBox_minSsim || !ui->spinBox_deadDiff || !ui->spinBox_maxDead || !ui->doubleSpinBox_mura
+        || !ui->label_currImage || !ui->label_refImage || !ui->label_screenInspectSimilarity
+        || !ui->label_screenInspectVerdict || !ui->plainTextEdit_screenInspectLog || !ui->checkBox_autoInspect
+        || !ui->btnCapture || !ui->btnInspect || !ui->btnOpenPreview) {
+        qWarning() << "ScreenInspectWidget: 界面控件未绑定完整，跳过屏幕测试页初始化";
+        return;
+    }
 
     ui->comboBox_expectedColor->addItem(QStringLiteral("自动判断"), -1);
     ui->comboBox_expectedColor->addItem(QStringLiteral("蓝"), 0);
@@ -48,6 +111,8 @@ ScreenInspectWidget::ScreenInspectWidget(QWidget* parent)
     ui->comboBox_expectedColor->addItem(QStringLiteral("灰"), 5);
 
     viewfinder_ = new QCameraViewfinder(ui->viewfinderHost);
+    viewfinder_->setMaximumHeight(ui->viewfinderHost->maximumHeight());
+    viewfinder_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     ui->verticalLayout_viewfinder->addWidget(viewfinder_);
 
     connect(ui->doubleSpinBox_minSsim, &QDoubleSpinBox::editingFinished, this,
@@ -68,6 +133,9 @@ ScreenInspectWidget::ScreenInspectWidget(QWidget* parent)
     ui->label_currImage->setCursor(Qt::CrossCursor);
     manualRoi_ = ScreenInspectAnalyzer::parseManualRoi(
         SETTINGS.value(QStringLiteral("ScreenInspect/Roi")).toString());
+
+    QMetaObject::connectSlotsByName(this);
+    uiBound_ = true;
 }
 
 ScreenInspectWidget::~ScreenInspectWidget() {
@@ -85,7 +153,8 @@ void ScreenInspectWidget::showEvent(QShowEvent* event) {
 
 void ScreenInspectWidget::resizeEvent(QResizeEvent* event) {
     QWidget::resizeEvent(event);
-    refreshImageLabels();
+    if (uiBound_)
+        refreshImageLabels();
 }
 
 void ScreenInspectWidget::loadThresholdsFromSettings() {

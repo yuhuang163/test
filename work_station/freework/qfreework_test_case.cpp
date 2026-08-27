@@ -1775,6 +1775,10 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             ctx->runScreenInspectStep();
             return;
         }
+        if (def.send.fixtureProtocol == TestCaseFixtureProtocol::VesLight) {
+            ctx->executeFixtureVesLightCase(def);
+            return;
+        }
         if (def.send.fixtureProtocol == TestCaseFixtureProtocol::Asd9026a)
             ctx->executeFixtureAsd9026aCase(def);
         else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::Xwd)
@@ -3038,6 +3042,76 @@ void QFreeWork::executeFixtureJieliBtBoxCase(const TestCaseDefinition& def) {
     markActiveTestCaseStepDone(true, detail, QStringLiteral("通过"));
 }
 
+bool QFreeWork::sendVesCh1BrightnessOnFixture(int brightness, QString* failReason) {
+    auto* box = qobject_cast<QFreeWorkBox*>(window());
+    QString fixtureConnectDetail;
+    bool fixtureAutoConnected = false;
+    Fixture_uart* uart =
+        box ? box->ensureFixtureUartConnected(getIndex(), &fixtureConnectDetail, &fixtureAutoConnected) : nullptr;
+    if (!uart || !uart->isFixtureSerialOpen()) {
+        const QString msg = fixtureConnectDetail.isEmpty()
+            ? QStringLiteral("治具串口未连接，且无法自动连接（请检查配置或菜单「连接治具串口」）")
+            : fixtureConnectDetail;
+        if (failReason)
+            *failReason = msg;
+        return false;
+    }
+    if (fixtureAutoConnected)
+        showlog(QStringLiteral("已自动连接治具串口：%1").arg(fixtureConnectDetail));
+
+    const quint8 ch = 1;
+    const quint8 cur = static_cast<quint8>(qBound(0, brightness, 255));
+    const quint8 xorv = static_cast<quint8>(0x24 ^ ch ^ cur);
+    QByteArray pkt(4, '\0');
+    pkt[0] = char(0x24);
+    pkt[1] = char(ch);
+    pkt[2] = char(cur);
+    pkt[3] = char(xorv);
+    uart->sendPcbaFrame(pkt);
+    showlog(QStringLiteral("VES 光源 CH1 亮度=%1 帧 %2")
+                .arg(cur)
+                .arg(QString::fromLatin1(pkt.toHex(' ').toUpper())));
+    return true;
+}
+
+void QFreeWork::executeFixtureVesLightCase(const TestCaseDefinition& def) {
+    if (def.send.fixtureProtocol != TestCaseFixtureProtocol::VesLight) {
+        showlog(QStringLiteral("VES 光源协议类型不匹配，请检查 Send/Protocol"));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+    VesLightCmd cmd;
+    if (!VesLightCmdCatalog::vesLightCmdFromName(def.send.deviceCmd, cmd)) {
+        showlog(QStringLiteral("未知 VES 光源指令：%1").arg(def.send.deviceCmd));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+    if (!VesLightCmdCatalog::isCmdForAction(cmd, def.send.action)) {
+        showlog(QStringLiteral("VES 光源指令与操作方式不匹配：%1").arg(def.send.deviceCmd));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+
+    QVariantMap map;
+    if (def.send.param.canConvert<QVariantMap>())
+        map = resolveTestCaseSendParamTree(def.send.param).toMap();
+    int brightness = 22;
+    if (map.contains(QStringLiteral("brightness")))
+        brightness = map.value(QStringLiteral("brightness")).toInt();
+    else if (map.contains(QStringLiteral("current")))
+        brightness = map.value(QStringLiteral("current")).toInt();
+    brightness = qBound(0, brightness, 255);
+
+    QString failReason;
+    if (!sendVesCh1BrightnessOnFixture(brightness, &failReason)) {
+        showlog(QStringLiteral("VES 设亮度失败：%1").arg(failReason));
+        markActiveTestCaseStepDone(false, failReason, QStringLiteral("失败"));
+        return;
+    }
+    const QString data = QStringLiteral("CH1=%1").arg(brightness);
+    markActiveTestCaseStepDone(true, data, QStringLiteral("通过"));
+}
+
 void QFreeWork::executeProductSerialCase(const TestCaseDefinition& def) {
     ProductSerialCmd serialCmd;
     if (!ProductSerialCmdCatalog::productSerialCmdFromName(def.send.deviceCmd, serialCmd)) {
@@ -3051,12 +3125,16 @@ void QFreeWork::executeProductSerialCase(const TestCaseDefinition& def) {
         return;
     }
 
+    const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+    // WaitReply=false：只发不等应答；停止接收+PER 必须等收包数，仍走等待
+    const int waitMs = def.timing.waitReply ? timeoutMs : -1;
+
     switch (serialCmd) {
     case ProductSerialCmd::InstrumentReset:
-        startProductInstrumentResetAndWaitAck(QString());
+        startProductInstrumentResetAndWaitAck(QString(), waitMs);
         break;
     case ProductSerialCmd::StopRxAndPer:
-        startProductInstrumentStopReceiveAndPer(QString());
+        startProductInstrumentStopReceiveAndPer(QString(), timeoutMs);
         break;
     default: {
         const int profile = ProductSerialCmdCatalog::brushProfileForCmd(serialCmd);
@@ -3064,7 +3142,7 @@ void QFreeWork::executeProductSerialCase(const TestCaseDefinition& def) {
             markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
             return;
         }
-        startProductInstrumentStartReceiveForCatalog(QString(), profile);
+        startProductInstrumentStartReceiveForCatalog(QString(), profile, waitMs);
         break;
     }
     }

@@ -1,0 +1,638 @@
+﻿╔═══════════════════════════════════════════════════════════════════════╗
+║                          测试报告 - PASSED                                  ║
+╚═══════════════════════════════════════════════════════════════════════╝
+
+【基本信息】
+  会话ID        : 7c2f04d2b554
+  产品序列号    : V3Pro2604290235
+  产品型号      : 
+  批次号        : 
+  工单号        : 
+  操作员        : 
+  测试机名称    : WIN-20260504BCL
+  工站/面板/通道: 1/1/1
+
+【脚本信息】
+  脚本名称      : V3光感金样电流样品校准_Rev1.1
+  脚本路径      : F:\MES2\V3光感测试\TestScript\V3光感金样电流样品校准_Rev1.1.cs
+  脚本哈希      : 2bd97c759ea6f710adbf2030e487e3872c33e937d0dcf4c6783f00066708eb0c
+
+【时间信息】
+  开始时间      : 2026-06-03 16:27:10.520
+  结束时间      : 2026-06-03 16:28:03.692
+  测试耗时      : 53.17 秒 (53172 ms)
+
+【事件流水日志】
+时间              事件类型                      内容
+----------------------------------------------------------------------------------------------------
+08:27:10.520    test.text                 ━━━━━ MES 启动 ━━━━━
+08:27:10.570    test.text                 MesStart 成功
+08:27:10.577    test.text                 桩号绑定结果：True, 消息：
+08:27:10.577    test.text                 主板条码: V3P0DFA1100025051JMB65A00064
+08:27:10.577    test.text                 V3P0DFA1100025051JMB65A00064
+08:27:10.577    test.text                 PCBA SN: V3P0DFA1100025051JMB65A00064
+08:27:10.577    test.text                 提取位置: [4:16] = DFA110002505
+08:27:10.577    test.text                 格式化MAC: DF:A1:10:00:25:05
+08:27:10.577    test.status               状态
+08:27:10.577    test.progress             测试进度 - 0%
+08:27:10.577    test.text                 ━━━━━ V3 光感金样电流样品校准 ━━━━━
+08:27:10.577    test.text                 当前脚本不使用照度计，按金样电流列表读取待测品并写入光感偏移。
+08:27:10.577    test.text                 ━━━━━ 参数配置 ━━━━━
+08:27:10.577    test.text                 产品型号 = V3
+08:27:10.577    test.text                 BLE连接模式 = 1 (条码解析MAC)
+08:27:10.577    test.text                 目标MAC = DF:A1:10:00:25:05
+08:27:10.577    test.text                 BLE连接超时 = 15000 ms
+08:27:10.577    test.text                 BLE命令超时 = 10000 ms
+08:27:10.577    test.text                 进入产测模式 = True
+08:27:10.577    test.text                 关闭屏幕灯/按键灯 = True, 严格校验 = True
+08:27:10.577    test.text                 屏幕灯关闭指令 = lcd-off, 按键灯关闭指令 = key-light-off
+08:27:10.577    test.text                 结束恢复屏幕灯/按键灯 = True, 屏幕灯打开指令 = lcd-on, 按键灯打开指令 = key-light-on
+08:27:10.577    test.text                 光源控制器 = COM8@9600, CH1
+08:27:10.577    test.text                 光源电流 = 0, 6, 8, 10, 12, 15, 21, 26, 48, 70, 92, 104, 109
+08:27:10.577    test.text                 金样基准 = 1, 38, 76, 113, 148, 202, 310, 399, 791, 1153, 1489, 1620, 1637
+08:27:10.577    test.text                 照度标签 = 0, 10, 20, 30, 40, 50, 80, 100, 200, 300, 400, 500, 600
+08:27:10.578    test.text                 写入校准 = True
+08:27:10.578    test.text                 回读校验 = True
+08:27:10.578    test.text                 偏移fail阈值 = 未启用
+08:27:10.578    test.text                 校准索引 = 0..12
+08:27:10.578    test.text                 光源稳定等待 = 1000 ms
+08:27:10.578    test.text                 wait-light 超时 = 5000 ms
+08:27:10.578    test.text                 预热包数 = 0
+08:27:10.578    test.text                 单点读取次数 = 3
+08:27:10.578    test.text                 每点重置光感上报 = True
+08:27:10.578    test.text                 使用尾部稳定样本 = True, 尾部数量 = 5
+08:27:10.578    test.text                 ━━━━━ 初始化光源控制器 ━━━━━
+08:27:10.578    test.progress             测试进度 - 5%
+08:27:10.583    test.text                 光源控制器连接成功: COM8@9600
+08:27:10.583    test.text                 从 SN 解析 MAC: DF:A1:10:00:25:05
+08:27:10.583    test.text                 ━━━━━ BLE连接 ━━━━━
+08:27:10.583    test.progress             测试进度 - 8%
+08:27:10.583    test.text                 ConnectMode=1 (条码解析MAC), Target=DF:A1:10:00:25:05, Args=--mac DF:A1:10:00:25:05
+08:27:18.465    test.text                 ==================================================
+  V3Protocol Shell
+==================================================
+
+[OK] BLE initialized (COM9)
+Connecting to: DF:A1:10:00:25:05
+MTU协商成功: 65 bytes, 最大写入: 62 bytes
+[OK] Connected: DF:A1:10:00:25:05
+Type 'list' for commands, 'quit' to exit
+
+
+08:27:18.465    test.text                 已连接设备: DF:A1:10:00:25:05
+08:27:18.683    test.text                 V3> enter
+08:27:18.745    test.text                 V3> V3> [OK] Test mode ON
+
+08:27:18.964    test.text                 关闭屏幕灯和按键灯，避免影响光感校准
+08:27:18.964    test.text                 V3> lcd-off
+08:27:19.011    test.text                 V3> [OK] LCD backlight OFF
+
+08:27:19.011    test.text                 V3> key-light-off
+08:27:19.073    test.text                 V3> [OK] Display LED OFF
+
+08:27:19.073    test.text                 ━━━━━ 点位 1/13 ━━━━━
+08:27:19.073    test.progress             测试进度 - 10%
+08:27:19.073    test.text                 照度标签 = 0 lux
+08:27:19.073    test.text                 设置 CH1 电流 = 0
+08:27:19.073    test.text                 设置光源 CH1 电流 = 0, cmd=24 01 00 25
+08:27:20.140    test.text                 开启光感持续上报
+08:27:20.140    test.text                 V3> light-report-on
+08:27:20.218    test.text                 V3> [OK] Light sensor report ON
+
+08:27:20.328    test.text                 V3> wait-light 5000
+08:27:21.171    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [2, 2, 2, 2, 2, 2, 2, 2, 1, 2]
+
+08:27:21.171    test.text                 点位1, 第1次, samples=[2, 2, 2, 2, 2, 2, 2, 2, 1, 2], stable=[2, 2, 2, 1, 2], median=2, min=1, max=2
+08:27:21.171    test.text                 V3> wait-light 5000
+08:27:21.187    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [2, 2, 2, 2, 2, 2, 2, 2, 1, 2]
+
+08:27:21.187    test.text                 点位1, 第2次, samples=[2, 2, 2, 2, 2, 2, 2, 2, 1, 2], stable=[2, 2, 2, 1, 2], median=2, min=1, max=2
+08:27:21.187    test.text                 V3> wait-light 5000
+08:27:22.187    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [2, 2, 2, 2, 2, 1, 2, 2, 1, 2]
+
+08:27:22.187    test.text                 点位1, 第3次, samples=[2, 2, 2, 2, 2, 1, 2, 2, 1, 2], stable=[1, 2, 2, 1, 2], median=2, min=1, max=2
+08:27:22.187    test.text                 点位1 最终中位数 = 2, readings=[2, 2, 2]
+08:27:22.187    test.text                 写入 set-light-calib 0 1 (dut=2 - golden=1)
+08:27:22.187    test.text                 V3> set-light-calib 0 1
+08:27:22.249    test.text                 V3> [OK] Light calibration[0] = 1 (0x00000001)
+
+08:27:22.249    test.text                 V3> get-light-calib 0
+08:27:22.312    test.text                 V3> Light calibration[0]: 1 (0x00000001)
+
+08:27:22.312    test.text                 点位1: current=0, golden=1, dut=2, offset=1, index=0
+08:27:22.312    test.text                 V3> light-report-off
+08:27:22.374    test.text                 V3> [OK] Light sensor report OFF
+
+08:27:22.374    test.text                 ━━━━━ 点位 2/13 ━━━━━
+08:27:22.374    test.progress             测试进度 - 16%
+08:27:22.374    test.text                 照度标签 = 10 lux
+08:27:22.374    test.text                 设置 CH1 电流 = 6
+08:27:22.374    test.text                 设置光源 CH1 电流 = 6, cmd=24 01 06 23
+08:27:23.452    test.text                 开启光感持续上报
+08:27:23.452    test.text                 V3> light-report-on
+08:27:23.514    test.text                 V3> [OK] Light sensor report ON
+
+08:27:23.624    test.text                 V3> wait-light 5000
+08:27:24.436    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [35, 34, 35, 35, 34, 36, 34, 35, 35, 35]
+
+08:27:24.436    test.text                 点位2, 第1次, samples=[35, 34, 35, 35, 34, 36, 34, 35, 35, 35], stable=[36, 34, 35, 35, 35], median=35, min=34, max=36
+08:27:24.436    test.text                 V3> wait-light 5000
+08:27:24.452    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [35, 34, 35, 35, 34, 36, 34, 35, 35, 35]
+
+08:27:24.452    test.text                 点位2, 第2次, samples=[35, 34, 35, 35, 34, 36, 34, 35, 35, 35], stable=[36, 34, 35, 35, 35], median=35, min=34, max=36
+08:27:24.452    test.text                 V3> wait-light 5000
+08:27:25.467    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [35, 35, 35, 34, 35, 34, 35, 34, 35, 35]
+
+08:27:25.467    test.text                 点位2, 第3次, samples=[35, 35, 35, 34, 35, 34, 35, 34, 35, 35], stable=[34, 35, 34, 35, 35], median=35, min=34, max=35
+08:27:25.467    test.text                 点位2 最终中位数 = 35, readings=[35, 35, 35]
+08:27:25.468    test.text                 写入 set-light-calib 1 -3 (dut=35 - golden=38)
+08:27:25.468    test.text                 V3> set-light-calib 1 -3
+08:27:25.514    test.text                 V3> [OK] Light calibration[1] = -3 (0xFFFFFFFD)
+
+08:27:25.514    test.text                 V3> get-light-calib 1
+08:27:25.577    test.text                 V3> Light calibration[1]: -3 (0xFFFFFFFD)
+
+08:27:25.577    test.text                 点位2: current=6, golden=38, dut=35, offset=-3, index=1
+08:27:25.577    test.text                 V3> light-report-off
+08:27:25.639    test.text                 V3> [OK] Light sensor report OFF
+
+08:27:25.639    test.text                 ━━━━━ 点位 3/13 ━━━━━
+08:27:25.639    test.progress             测试进度 - 22%
+08:27:25.639    test.text                 照度标签 = 20 lux
+08:27:25.639    test.text                 设置 CH1 电流 = 8
+08:27:25.639    test.text                 设置光源 CH1 电流 = 8, cmd=24 01 08 2D
+08:27:26.708    test.text                 开启光感持续上报
+08:27:26.708    test.text                 V3> light-report-on
+08:27:26.786    test.text                 V3> [OK] Light sensor report ON
+
+08:27:26.896    test.text                 V3> wait-light 5000
+08:27:27.708    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [71, 71, 71, 71, 72, 69, 72, 70, 71, 69]
+
+08:27:27.708    test.text                 点位3, 第1次, samples=[71, 71, 71, 71, 72, 69, 72, 70, 71, 69], stable=[69, 72, 70, 71, 69], median=70, min=69, max=72
+08:27:27.708    test.text                 V3> wait-light 5000
+08:27:27.724    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [71, 71, 71, 71, 72, 69, 72, 70, 71, 69]
+
+08:27:27.724    test.text                 点位3, 第2次, samples=[71, 71, 71, 71, 72, 69, 72, 70, 71, 69], stable=[69, 72, 70, 71, 69], median=70, min=69, max=72
+08:27:27.724    test.text                 V3> wait-light 5000
+08:27:28.723    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [71, 72, 70, 72, 71, 72, 70, 72, 69, 72]
+
+08:27:28.724    test.text                 点位3, 第3次, samples=[71, 72, 70, 72, 71, 72, 70, 72, 69, 72], stable=[72, 70, 72, 69, 72], median=72, min=69, max=72
+08:27:28.724    test.text                 点位3 最终中位数 = 70, readings=[70, 70, 72]
+08:27:28.724    test.text                 写入 set-light-calib 2 -6 (dut=70 - golden=76)
+08:27:28.724    test.text                 V3> set-light-calib 2 -6
+08:27:28.817    test.text                 V3> [OK] Light calibration[2] = -6 (0xFFFFFFFA)
+
+08:27:28.817    test.text                 V3> get-light-calib 2
+08:27:28.880    test.text                 V3> Light calibration[2]: -6 (0xFFFFFFFA)
+
+08:27:28.880    test.text                 点位3: current=8, golden=76, dut=70, offset=-6, index=2
+08:27:28.880    test.text                 V3> light-report-off
+08:27:28.942    test.text                 V3> [OK] Light sensor report OFF
+
+08:27:28.942    test.text                 ━━━━━ 点位 4/13 ━━━━━
+08:27:28.942    test.progress             测试进度 - 27%
+08:27:28.942    test.text                 照度标签 = 30 lux
+08:27:28.942    test.text                 设置 CH1 电流 = 10
+08:27:28.942    test.text                 设置光源 CH1 电流 = 10, cmd=24 01 0A 2F
+08:27:30.018    test.text                 开启光感持续上报
+08:27:30.018    test.text                 V3> light-report-on
+08:27:30.080    test.text                 V3> [OK] Light sensor report ON
+
+08:27:30.189    test.text                 V3> wait-light 5000
+08:27:31.064    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [102, 103, 104, 103, 104, 103, 104, 102, 104, 103]
+
+08:27:31.064    test.text                 点位4, 第1次, samples=[102, 103, 104, 103, 104, 103, 104, 102, 104, 103], stable=[103, 104, 102, 104, 103], median=103, min=102, max=104
+08:27:31.064    test.text                 V3> wait-light 5000
+08:27:31.080    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [102, 103, 104, 103, 104, 103, 104, 102, 104, 103]
+
+08:27:31.080    test.text                 点位4, 第2次, samples=[102, 103, 104, 103, 104, 103, 104, 102, 104, 103], stable=[103, 104, 102, 104, 103], median=103, min=102, max=104
+08:27:31.080    test.text                 V3> wait-light 5000
+08:27:32.095    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [104, 102, 103, 102, 103, 104, 103, 104, 103, 104]
+
+08:27:32.096    test.text                 点位4, 第3次, samples=[104, 102, 103, 102, 103, 104, 103, 104, 103, 104], stable=[104, 103, 104, 103, 104], median=104, min=102, max=104
+08:27:32.096    test.text                 点位4 最终中位数 = 103, readings=[103, 103, 104]
+08:27:32.096    test.text                 写入 set-light-calib 3 -10 (dut=103 - golden=113)
+08:27:32.096    test.text                 V3> set-light-calib 3 -10
+08:27:32.158    test.text                 V3> [OK] Light calibration[3] = -10 (0xFFFFFFF6)
+
+08:27:32.158    test.text                 V3> get-light-calib 3
+08:27:32.205    test.text                 V3> Light calibration[3]: -10 (0xFFFFFFF6)
+
+08:27:32.205    test.text                 点位4: current=10, golden=113, dut=103, offset=-10, index=3
+08:27:32.205    test.text                 V3> light-report-off
+08:27:32.267    test.text                 V3> [OK] Light sensor report OFF
+
+08:27:32.267    test.text                 ━━━━━ 点位 5/13 ━━━━━
+08:27:32.267    test.progress             测试进度 - 33%
+08:27:32.267    test.text                 照度标签 = 40 lux
+08:27:32.267    test.text                 设置 CH1 电流 = 12
+08:27:32.268    test.text                 设置光源 CH1 电流 = 12, cmd=24 01 0C 29
+08:27:33.347    test.text                 开启光感持续上报
+08:27:33.347    test.text                 V3> light-report-on
+08:27:33.409    test.text                 V3> [OK] Light sensor report ON
+
+08:27:33.519    test.text                 V3> wait-light 5000
+08:27:34.347    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [134, 134, 134, 133, 135, 134, 134, 135, 133, 134]
+
+08:27:34.347    test.text                 点位5, 第1次, samples=[134, 134, 134, 133, 135, 134, 134, 135, 133, 134], stable=[134, 134, 135, 133, 134], median=134, min=133, max=135
+08:27:34.347    test.text                 V3> wait-light 5000
+08:27:34.362    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [134, 134, 134, 133, 135, 134, 134, 135, 133, 134]
+
+08:27:34.363    test.text                 点位5, 第2次, samples=[134, 134, 134, 133, 135, 134, 134, 135, 133, 134], stable=[134, 134, 135, 133, 134], median=134, min=133, max=135
+08:27:34.363    test.text                 V3> wait-light 5000
+08:27:35.362    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [134, 134, 133, 134, 134, 133, 133, 133, 134, 133]
+
+08:27:35.363    test.text                 点位5, 第3次, samples=[134, 134, 133, 134, 134, 133, 133, 133, 134, 133], stable=[133, 133, 133, 134, 133], median=133, min=133, max=134
+08:27:35.363    test.text                 点位5 最终中位数 = 134, readings=[134, 134, 133]
+08:27:35.363    test.text                 写入 set-light-calib 4 -14 (dut=134 - golden=148)
+08:27:35.363    test.text                 V3> set-light-calib 4 -14
+08:27:35.456    test.text                 V3> [OK] Light calibration[4] = -14 (0xFFFFFFF2)
+
+08:27:35.456    test.text                 V3> get-light-calib 4
+08:27:35.503    test.text                 V3> Light calibration[4]: -14 (0xFFFFFFF2)
+
+08:27:35.503    test.text                 点位5: current=12, golden=148, dut=134, offset=-14, index=4
+08:27:35.503    test.text                 V3> light-report-off
+08:27:35.565    test.text                 V3> [OK] Light sensor report OFF
+
+08:27:35.566    test.text                 ━━━━━ 点位 6/13 ━━━━━
+08:27:35.566    test.progress             测试进度 - 39%
+08:27:35.566    test.text                 照度标签 = 50 lux
+08:27:35.566    test.text                 设置 CH1 电流 = 15
+08:27:35.566    test.text                 设置光源 CH1 电流 = 15, cmd=24 01 0F 2A
+08:27:36.647    test.text                 开启光感持续上报
+08:27:36.647    test.text                 V3> light-report-on
+08:27:36.709    test.text                 V3> [OK] Light sensor report ON
+
+08:27:36.819    test.text                 V3> wait-light 5000
+08:27:37.725    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [178, 179, 179, 179, 180, 179, 179, 180, 179, 180]
+
+08:27:37.725    test.text                 点位6, 第1次, samples=[178, 179, 179, 179, 180, 179, 179, 180, 179, 180], stable=[179, 179, 180, 179, 180], median=179, min=178, max=180
+08:27:37.725    test.text                 V3> wait-light 5000
+08:27:37.740    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [178, 179, 179, 179, 180, 179, 179, 180, 179, 180]
+
+08:27:37.740    test.text                 点位6, 第2次, samples=[178, 179, 179, 179, 180, 179, 179, 180, 179, 180], stable=[179, 179, 180, 179, 180], median=179, min=178, max=180
+08:27:37.740    test.text                 V3> wait-light 5000
+08:27:38.756    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [179, 180, 178, 180, 179, 180, 179, 178, 180, 178]
+
+08:27:38.756    test.text                 点位6, 第3次, samples=[179, 180, 178, 180, 179, 180, 179, 178, 180, 178], stable=[180, 179, 178, 180, 178], median=179, min=178, max=180
+08:27:38.756    test.text                 点位6 最终中位数 = 179, readings=[179, 179, 179]
+08:27:38.756    test.text                 写入 set-light-calib 5 -23 (dut=179 - golden=202)
+08:27:38.756    test.text                 V3> set-light-calib 5 -23
+08:27:38.803    test.text                 V3> [OK] Light calibration[5] = -23 (0xFFFFFFE9)
+
+08:27:38.803    test.text                 V3> get-light-calib 5
+08:27:38.865    test.text                 V3> Light calibration[5]: -23 (0xFFFFFFE9)
+
+08:27:38.865    test.text                 点位6: current=15, golden=202, dut=179, offset=-23, index=5
+08:27:38.865    test.text                 V3> light-report-off
+08:27:38.928    test.text                 V3> [OK] Light sensor report OFF
+
+08:27:38.928    test.text                 ━━━━━ 点位 7/13 ━━━━━
+08:27:38.928    test.progress             测试进度 - 45%
+08:27:38.928    test.text                 照度标签 = 80 lux
+08:27:38.928    test.text                 设置 CH1 电流 = 21
+08:27:38.928    test.text                 设置光源 CH1 电流 = 21, cmd=24 01 15 30
+08:27:39.998    test.text                 开启光感持续上报
+08:27:39.998    test.text                 V3> light-report-on
+08:27:40.076    test.text                 V3> [OK] Light sensor report ON
+
+08:27:40.185    test.text                 V3> wait-light 5000
+08:27:40.997    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [270, 268, 269, 268, 269, 268, 269, 269, 269, 269]
+
+08:27:40.998    test.text                 点位7, 第1次, samples=[270, 268, 269, 268, 269, 268, 269, 269, 269, 269], stable=[268, 269, 269, 269, 269], median=269, min=268, max=270
+08:27:40.998    test.text                 V3> wait-light 5000
+08:27:41.013    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [270, 268, 269, 268, 269, 268, 269, 269, 269, 269]
+
+08:27:41.013    test.text                 点位7, 第2次, samples=[270, 268, 269, 268, 269, 268, 269, 269, 269, 269], stable=[268, 269, 269, 269, 269], median=269, min=268, max=270
+08:27:41.013    test.text                 V3> wait-light 5000
+08:27:42.013    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [271, 269, 268, 268, 269, 268, 269, 271, 270, 270]
+
+08:27:42.013    test.text                 点位7, 第3次, samples=[271, 269, 268, 268, 269, 268, 269, 271, 270, 270], stable=[268, 269, 271, 270, 270], median=270, min=268, max=271
+08:27:42.013    test.text                 点位7 最终中位数 = 269, readings=[269, 269, 270]
+08:27:42.013    test.text                 写入 set-light-calib 6 -41 (dut=269 - golden=310)
+08:27:42.013    test.text                 V3> set-light-calib 6 -41
+08:27:42.076    test.text                 V3> [OK] Light calibration[6] = -41 (0xFFFFFFD7)
+
+08:27:42.076    test.text                 V3> get-light-calib 6
+08:27:42.138    test.text                 V3> Light calibration[6]: -41 (0xFFFFFFD7)
+
+08:27:42.138    test.text                 点位7: current=21, golden=310, dut=269, offset=-41, index=6
+08:27:42.138    test.text                 V3> light-report-off
+08:27:42.200    test.text                 V3> [OK] Light sensor report OFF
+
+08:27:42.201    test.text                 ━━━━━ 点位 8/13 ━━━━━
+08:27:42.201    test.progress             测试进度 - 50%
+08:27:42.201    test.text                 照度标签 = 100 lux
+08:27:42.201    test.text                 设置 CH1 电流 = 26
+08:27:42.201    test.text                 设置光源 CH1 电流 = 26, cmd=24 01 1A 3F
+08:27:43.280    test.text                 开启光感持续上报
+08:27:43.280    test.text                 V3> light-report-on
+08:27:43.343    test.text                 V3> [OK] Light sensor report ON
+
+08:27:43.452    test.text                 V3> wait-light 5000
+08:27:44.265    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [342, 344, 343, 345, 343, 344, 344, 344, 344, 342]
+
+08:27:44.265    test.text                 点位8, 第1次, samples=[342, 344, 343, 345, 343, 344, 344, 344, 344, 342], stable=[344, 344, 344, 344, 342], median=344, min=342, max=345
+08:27:44.265    test.text                 V3> wait-light 5000
+08:27:44.280    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [342, 344, 343, 345, 343, 344, 344, 344, 344, 342]
+
+08:27:44.280    test.text                 点位8, 第2次, samples=[342, 344, 343, 345, 343, 344, 344, 344, 344, 342], stable=[344, 344, 344, 344, 342], median=344, min=342, max=345
+08:27:44.280    test.text                 V3> wait-light 5000
+08:27:45.296    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [344, 342, 344, 345, 343, 345, 344, 344, 343, 344]
+
+08:27:45.296    test.text                 点位8, 第3次, samples=[344, 342, 344, 345, 343, 345, 344, 344, 343, 344], stable=[345, 344, 344, 343, 344], median=344, min=342, max=345
+08:27:45.296    test.text                 点位8 最终中位数 = 344, readings=[344, 344, 344]
+08:27:45.296    test.text                 写入 set-light-calib 7 -55 (dut=344 - golden=399)
+08:27:45.296    test.text                 V3> set-light-calib 7 -55
+08:27:45.374    test.text                 V3> [OK] Light calibration[7] = -55 (0xFFFFFFC9)
+
+08:27:45.374    test.text                 V3> get-light-calib 7
+08:27:45.436    test.text                 V3> Light calibration[7]: -55 (0xFFFFFFC9)
+
+08:27:45.436    test.text                 点位8: current=26, golden=399, dut=344, offset=-55, index=7
+08:27:45.436    test.text                 V3> light-report-off
+08:27:45.499    test.text                 V3> [OK] Light sensor report OFF
+
+08:27:45.499    test.text                 ━━━━━ 点位 9/13 ━━━━━
+08:27:45.499    test.progress             测试进度 - 56%
+08:27:45.499    test.text                 照度标签 = 200 lux
+08:27:45.499    test.text                 设置 CH1 电流 = 48
+08:27:45.499    test.text                 设置光源 CH1 电流 = 48, cmd=24 01 30 15
+08:27:46.580    test.text                 开启光感持续上报
+08:27:46.580    test.text                 V3> light-report-on
+08:27:46.642    test.text                 V3> [OK] Light sensor report ON
+
+08:27:46.752    test.text                 V3> wait-light 5000
+08:27:47.658    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [661, 664, 661, 663, 662, 664, 663, 662, 663, 662]
+
+08:27:47.658    test.text                 点位9, 第1次, samples=[661, 664, 661, 663, 662, 664, 663, 662, 663, 662], stable=[664, 663, 662, 663, 662], median=663, min=661, max=664
+08:27:47.658    test.text                 V3> wait-light 5000
+08:27:47.674    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [661, 664, 661, 663, 662, 664, 663, 662, 663, 662]
+
+08:27:47.674    test.text                 点位9, 第2次, samples=[661, 664, 661, 663, 662, 664, 663, 662, 663, 662], stable=[664, 663, 662, 663, 662], median=663, min=661, max=664
+08:27:47.674    test.text                 V3> wait-light 5000
+08:27:48.642    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [666, 661, 662, 661, 663, 664, 662, 663, 663, 664]
+
+08:27:48.642    test.text                 点位9, 第3次, samples=[666, 661, 662, 661, 663, 664, 662, 663, 663, 664], stable=[664, 662, 663, 663, 664], median=663, min=661, max=666
+08:27:48.642    test.text                 点位9 最终中位数 = 663, readings=[663, 663, 663]
+08:27:48.642    test.text                 写入 set-light-calib 8 -128 (dut=663 - golden=791)
+08:27:48.643    test.text                 V3> set-light-calib 8 -128
+08:27:48.705    test.text                 V3> [OK] Light calibration[8] = -128 (0xFFFFFF80)
+
+08:27:48.705    test.text                 V3> get-light-calib 8
+08:27:48.767    test.text                 V3> Light calibration[8]: -128 (0xFFFFFF80)
+
+08:27:48.767    test.text                 点位9: current=48, golden=791, dut=663, offset=-128, index=8
+08:27:48.767    test.text                 V3> light-report-off
+08:27:48.830    test.text                 V3> [OK] Light sensor report OFF
+
+08:27:48.830    test.text                 ━━━━━ 点位 10/13 ━━━━━
+08:27:48.830    test.progress             测试进度 - 62%
+08:27:48.830    test.text                 照度标签 = 300 lux
+08:27:48.830    test.text                 设置 CH1 电流 = 70
+08:27:48.830    test.text                 设置光源 CH1 电流 = 70, cmd=24 01 46 63
+08:27:49.913    test.text                 开启光感持续上报
+08:27:49.913    test.text                 V3> light-report-on
+08:27:49.976    test.text                 V3> [OK] Light sensor report ON
+
+08:27:50.085    test.text                 V3> wait-light 5000
+08:27:50.898    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [969, 969, 969, 967, 970, 968, 969, 967, 968, 967]
+
+08:27:50.898    test.text                 点位10, 第1次, samples=[969, 969, 969, 967, 970, 968, 969, 967, 968, 967], stable=[968, 969, 967, 968, 967], median=968, min=967, max=970
+08:27:50.898    test.text                 V3> wait-light 5000
+08:27:50.913    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [969, 969, 969, 967, 970, 968, 969, 967, 968, 967]
+
+08:27:50.913    test.text                 点位10, 第2次, samples=[969, 969, 969, 967, 970, 968, 969, 967, 968, 967], stable=[968, 969, 967, 968, 967], median=968, min=967, max=970
+08:27:50.913    test.text                 V3> wait-light 5000
+08:27:51.913    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [968, 970, 968, 971, 967, 969, 967, 969, 967, 968]
+
+08:27:51.913    test.text                 点位10, 第3次, samples=[968, 970, 968, 971, 967, 969, 967, 969, 967, 968], stable=[969, 967, 969, 967, 968], median=968, min=967, max=971
+08:27:51.913    test.text                 点位10 最终中位数 = 968, readings=[968, 968, 968]
+08:27:51.913    test.text                 写入 set-light-calib 9 -185 (dut=968 - golden=1153)
+08:27:51.913    test.text                 V3> set-light-calib 9 -185
+08:27:51.976    test.text                 V3> [OK] Light calibration[9] = -185 (0xFFFFFF47)
+
+08:27:51.976    test.text                 V3> get-light-calib 9
+08:27:52.038    test.text                 V3> Light calibration[9]: -185 (0xFFFFFF47)
+
+08:27:52.038    test.text                 点位10: current=70, golden=1153, dut=968, offset=-185, index=9
+08:27:52.038    test.text                 V3> light-report-off
+08:27:52.101    test.text                 V3> [OK] Light sensor report OFF
+
+08:27:52.101    test.text                 ━━━━━ 点位 11/13 ━━━━━
+08:27:52.101    test.progress             测试进度 - 68%
+08:27:52.101    test.text                 照度标签 = 400 lux
+08:27:52.101    test.text                 设置 CH1 电流 = 92
+08:27:52.101    test.text                 设置光源 CH1 电流 = 92, cmd=24 01 5C 79
+08:27:53.183    test.text                 开启光感持续上报
+08:27:53.183    test.text                 V3> light-report-on
+08:27:53.246    test.text                 V3> [OK] Light sensor report ON
+
+08:27:53.355    test.text                 V3> wait-light 5000
+08:27:54.230    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [1250, 1254, 1255, 1250, 1252, 1255, 1254, 1255, 1252, 1254]
+
+08:27:54.230    test.text                 点位11, 第1次, samples=[1250, 1254, 1255, 1250, 1252, 1255, 1254, 1255, 1252, 1254], stable=[1255, 1254, 1255, 1252, 1254], median=1254, min=1250, max=1255
+08:27:54.230    test.text                 V3> wait-light 5000
+08:27:54.246    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [1250, 1254, 1255, 1250, 1252, 1255, 1254, 1255, 1252, 1254]
+
+08:27:54.246    test.text                 点位11, 第2次, samples=[1250, 1254, 1255, 1250, 1252, 1255, 1254, 1255, 1252, 1254], stable=[1255, 1254, 1255, 1252, 1254], median=1254, min=1250, max=1255
+08:27:54.246    test.text                 V3> wait-light 5000
+08:27:55.246    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [1251, 1254, 1251, 1253, 1250, 1253, 1254, 1254, 1253, 1253]
+
+08:27:55.246    test.text                 点位11, 第3次, samples=[1251, 1254, 1251, 1253, 1250, 1253, 1254, 1254, 1253, 1253], stable=[1253, 1254, 1254, 1253, 1253], median=1253, min=1250, max=1254
+08:27:55.246    test.text                 点位11 最终中位数 = 1254, readings=[1254, 1254, 1253]
+08:27:55.246    test.text                 写入 set-light-calib 10 -235 (dut=1254 - golden=1489)
+08:27:55.246    test.text                 V3> set-light-calib 10 -235
+08:27:55.308    test.text                 V3> [OK] Light calibration[10] = -235 (0xFFFFFF15)
+
+08:27:55.308    test.text                 V3> get-light-calib 10
+08:27:55.371    test.text                 V3> Light calibration[10]: -235 (0xFFFFFF15)
+
+08:27:55.371    test.text                 点位11: current=92, golden=1489, dut=1254, offset=-235, index=10
+08:27:55.371    test.text                 V3> light-report-off
+08:27:55.433    test.text                 V3> [OK] Light sensor report OFF
+
+08:27:55.433    test.text                 ━━━━━ 点位 12/13 ━━━━━
+08:27:55.433    test.progress             测试进度 - 73%
+08:27:55.433    test.text                 照度标签 = 500 lux
+08:27:55.433    test.text                 设置 CH1 电流 = 104
+08:27:55.433    test.text                 设置光源 CH1 电流 = 104, cmd=24 01 68 4D
+08:27:56.513    test.text                 开启光感持续上报
+08:27:56.513    test.text                 V3> light-report-on
+08:27:56.576    test.text                 V3> [OK] Light sensor report ON
+
+08:27:56.685    test.text                 V3> wait-light 5000
+08:27:57.498    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [1494, 1495, 1495, 1496, 1493, 1494, 1493, 1495, 1496, 1496]
+
+08:27:57.498    test.text                 点位12, 第1次, samples=[1494, 1495, 1495, 1496, 1493, 1494, 1493, 1495, 1496, 1496], stable=[1494, 1493, 1495, 1496, 1496], median=1495, min=1493, max=1496
+08:27:57.498    test.text                 V3> wait-light 5000
+08:27:57.513    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [1494, 1495, 1495, 1496, 1493, 1494, 1493, 1495, 1496, 1496]
+
+08:27:57.513    test.text                 点位12, 第2次, samples=[1494, 1495, 1495, 1496, 1493, 1494, 1493, 1495, 1496, 1496], stable=[1494, 1493, 1495, 1496, 1496], median=1495, min=1493, max=1496
+08:27:57.513    test.text                 V3> wait-light 5000
+08:27:58.513    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [1496, 1493, 1495, 1492, 1495, 1493, 1495, 1492, 1494, 1494]
+
+08:27:58.513    test.text                 点位12, 第3次, samples=[1496, 1493, 1495, 1492, 1495, 1493, 1495, 1492, 1494, 1494], stable=[1493, 1495, 1492, 1494, 1494], median=1494, min=1492, max=1496
+08:27:58.513    test.text                 点位12 最终中位数 = 1495, readings=[1495, 1495, 1494]
+08:27:58.513    test.text                 写入 set-light-calib 11 -125 (dut=1495 - golden=1620)
+08:27:58.513    test.text                 V3> set-light-calib 11 -125
+08:27:58.607    test.text                 V3> [OK] Light calibration[11] = -125 (0xFFFFFF83)
+
+08:27:58.607    test.text                 V3> get-light-calib 11
+08:27:58.669    test.text                 V3> Light calibration[11]: -125 (0xFFFFFF83)
+
+08:27:58.669    test.text                 点位12: current=104, golden=1620, dut=1495, offset=-125, index=11
+08:27:58.669    test.text                 V3> light-report-off
+08:27:58.732    test.text                 V3> [OK] Light sensor report OFF
+
+08:27:58.732    test.text                 ━━━━━ 点位 13/13 ━━━━━
+08:27:58.732    test.progress             测试进度 - 79%
+08:27:58.732    test.text                 照度标签 = 600 lux
+08:27:58.732    test.text                 设置 CH1 电流 = 109
+08:27:58.732    test.text                 设置光源 CH1 电流 = 109, cmd=24 01 6D 48
+08:27:59.813    test.text                 开启光感持续上报
+08:27:59.813    test.text                 V3> light-report-on
+08:27:59.876    test.text                 V3> [OK] Light sensor report ON
+
+08:27:59.985    test.text                 V3> wait-light 5000
+08:28:00.860    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [1593, 1590, 1593, 1592, 1592, 1593, 1590, 1593, 1590, 1593]
+
+08:28:00.860    test.text                 点位13, 第1次, samples=[1593, 1590, 1593, 1592, 1592, 1593, 1590, 1593, 1590, 1593], stable=[1593, 1590, 1593, 1590, 1593], median=1593, min=1590, max=1593
+08:28:00.860    test.text                 V3> wait-light 5000
+08:28:00.876    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [1593, 1590, 1593, 1592, 1592, 1593, 1590, 1593, 1590, 1593]
+
+08:28:00.876    test.text                 点位13, 第2次, samples=[1593, 1590, 1593, 1592, 1592, 1593, 1590, 1593, 1590, 1593], stable=[1593, 1590, 1593, 1590, 1593], median=1593, min=1590, max=1593
+08:28:00.876    test.text                 V3> wait-light 5000
+08:28:01.876    test.text                 V3> Waiting for light sensor report (5000ms)...
+Light Samples: 10
+Lux Values: [1593, 1593, 1592, 1593, 1592, 1590, 1592, 1590, 1593, 1590]
+
+08:28:01.876    test.text                 点位13, 第3次, samples=[1593, 1593, 1592, 1593, 1592, 1590, 1592, 1590, 1593, 1590], stable=[1590, 1592, 1590, 1593, 1590], median=1590, min=1590, max=1593
+08:28:01.876    test.text                 点位13 最终中位数 = 1593, readings=[1593, 1593, 1590]
+08:28:01.876    test.text                 写入 set-light-calib 12 -44 (dut=1593 - golden=1637)
+08:28:01.876    test.text                 V3> set-light-calib 12 -44
+08:28:01.938    test.text                 V3> [OK] Light calibration[12] = -44 (0xFFFFFFD4)
+
+08:28:01.938    test.text                 V3> get-light-calib 12
+08:28:02.001    test.text                 V3> Light calibration[12]: -44 (0xFFFFFFD4)
+
+08:28:02.001    test.text                 点位13: current=109, golden=1637, dut=1593, offset=-44, index=12
+08:28:02.001    test.text                 V3> light-report-off
+08:28:02.063    test.text                 V3> [OK] Light sensor report OFF
+
+08:28:02.063    test.progress             测试进度 - 95%
+08:28:02.063    test.text                 ━━━━━ 光感金样电流样品校准汇总 ━━━━━
+08:28:02.063    test.text                 点位1: current=0, golden=1, dut=2, offset=1, index=0
+08:28:02.063    test.text                 点位2: current=6, golden=38, dut=35, offset=-3, index=1
+08:28:02.063    test.text                 点位3: current=8, golden=76, dut=70, offset=-6, index=2
+08:28:02.063    test.text                 点位4: current=10, golden=113, dut=103, offset=-10, index=3
+08:28:02.063    test.text                 点位5: current=12, golden=148, dut=134, offset=-14, index=4
+08:28:02.063    test.text                 点位6: current=15, golden=202, dut=179, offset=-23, index=5
+08:28:02.063    test.text                 点位7: current=21, golden=310, dut=269, offset=-41, index=6
+08:28:02.063    test.text                 点位8: current=26, golden=399, dut=344, offset=-55, index=7
+08:28:02.063    test.text                 点位9: current=48, golden=791, dut=663, offset=-128, index=8
+08:28:02.063    test.text                 点位10: current=70, golden=1153, dut=968, offset=-185, index=9
+08:28:02.063    test.text                 点位11: current=92, golden=1489, dut=1254, offset=-235, index=10
+08:28:02.063    test.text                 点位12: current=104, golden=1620, dut=1495, offset=-125, index=11
+08:28:02.063    test.text                 点位13: current=109, golden=1637, dut=1593, offset=-44, index=12
+08:28:02.063    test.text                 V3 光感金样电流样品校准完成
+08:28:02.063    test.state                
+08:28:02.063    test.status               状态
+08:28:02.063    test.progress             测试进度 - 100%
+08:28:02.063    test.text                 恢复屏幕灯和按键灯
+08:28:02.063    test.text                 V3> key-light-on
+08:28:02.112    test.text                 V3> [OK] Display LED ON
+
+08:28:02.112    test.text                 V3> lcd-on
+08:28:02.177    test.text                 V3> [OK] LCD backlight ON
+
+08:28:02.177    test.text                 V3> exit-test
+08:28:02.237    test.text                 V3> [OK] Test mode OFF
+
+08:28:03.553    test.text                 BLE Shell 会话已关闭
+08:28:03.553    test.text                 结束置零: 设置光源 CH1 电流 = 0, cmd=24 01 00 25
+08:28:03.662    test.text                 测试生命周期结束，执行清理...
+08:28:03.663    test.text                 ━━━━━ MES 结束上报 ━━━━━
+
+╔═══════════════════════════════════════════════════════════════════════╗
+║                         报告生成完成                                  ║
+║  生成时间: 2026-06-03 16:28:03                                        ║
+║  Generated by BYDCore Testing Framework                              ║
+╚═══════════════════════════════════════════════════════════════════════╝

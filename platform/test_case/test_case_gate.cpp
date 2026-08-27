@@ -13,6 +13,7 @@
 #include "modbus_cmd_manifest.h"
 #include "scpi_cmd_manifest.h"
 #include "usb_camera_cmd_manifest.h"
+#include "ves_light_cmd_manifest.h"
 #include "screen_inspect_analyzer.h"
 
 #if _MSC_VER >= 1600
@@ -30,6 +31,7 @@ const QVector<GateTypeDescriptor> kTypes = {
     {QStringLiteral("ProtocolChargeCurrentData"), QStringLiteral("充电电流"), {{QStringLiteral("currentMa"), QStringLiteral("电流(mA)")}}},
     {QStringLiteral("ProtocolTrimData"), QStringLiteral("Trim微调值"), {{QStringLiteral("trim"), QStringLiteral("微调值")}}},
     {QStringLiteral("ProtocolLightCalibData"), QStringLiteral("光感校准值"), {{QStringLiteral("calibValue"), QStringLiteral("校准值")}}},
+    {QStringLiteral("ProtocolPhotosensitiveData"), QStringLiteral("光感上报"), {{QStringLiteral("lightSensor"), QStringLiteral("光感值")}}},
     {QStringLiteral("ProtocolAiotImuCaliData"), QStringLiteral("Qaiot IMU校准"),
      {{QStringLiteral("kx"), QStringLiteral("kx")},
       {QStringLiteral("ky"), QStringLiteral("ky")},
@@ -97,7 +99,7 @@ const QVector<GateTypeDescriptor> kTypes = {
     {QStringLiteral("ProtocolMusicStateData"), QStringLiteral("音乐状态"), {{QStringLiteral("musicState"), QStringLiteral("音乐状态码")}}},
     {QStringLiteral("ProtocolResultData"), QStringLiteral("通用结果码"), {{QStringLiteral("result"), QStringLiteral("结果码")}}},
     {QStringLiteral("ProtocolFixturePcbaData"), QStringLiteral("PCBA治具数据包"), {{QStringLiteral("machineNumber"), QStringLiteral("机号")}, {QStringLiteral("staticCurrent"), QStringLiteral("静态电流(uA)")}, {QStringLiteral("workingCurrent"), QStringLiteral("工作电流(mA)")}, {QStringLiteral("chargingCurrent"), QStringLiteral("充电电流(mA)")}, {QStringLiteral("musicCurrent"), QStringLiteral("音频IC电流(mA)")}, {QStringLiteral("standbyCurrentUa"), QStringLiteral("待机电流(uA)")}, {QStringLiteral("pumpVoltageMv"), QStringLiteral("泵电压(mV)")}, {QStringLiteral("mcuVoltageMv"), QStringLiteral("MCU电压(mV)")}, {QStringLiteral("valveVoltageMv"), QStringLiteral("阀电压(mV)")}, {QStringLiteral("button1"), QStringLiteral("按键1")}, {QStringLiteral("button2"), QStringLiteral("按键2")}, {QStringLiteral("overVoltageLight"), QStringLiteral("过压灯")}, {QStringLiteral("fixerro"), QStringLiteral("治具错误码")}}},
-    {QStringLiteral("ProtocolJieliBtBoxData"), QStringLiteral("杰理蓝牙盒子RF"), {{QStringLiteral("rssi"), QStringLiteral("RSSI(dBm)")}, {QStringLiteral("freqOffset"), QStringLiteral("频偏")}}},
+    {QStringLiteral("ProtocolJieliBtBoxData"), QStringLiteral("杰理蓝牙盒子RF"), {{QStringLiteral("rssi"), QStringLiteral("RSSI(dBm)")}, {QStringLiteral("freqOffset"), QStringLiteral("频偏")}, {QStringLiteral("mac"), QStringLiteral("MAC地址")}}},
     {QStringLiteral("ProtocolMacData"), QStringLiteral("MAC地址"), {{QStringLiteral("mac"), QStringLiteral("MAC文本")}}},
     {QStringLiteral("ProtocolTypeData"), QStringLiteral("状态码"), {{QStringLiteral("type"), QStringLiteral("状态值")}}},
     {QStringLiteral("ProtocolFlangeData"), QStringLiteral("法兰状态"), {{QStringLiteral("type"), QStringLiteral("法兰类型")}}},
@@ -243,6 +245,12 @@ double fieldValueFromVariant(const QString& reportType, const QString& field, co
         if (field == QLatin1String("calibValue")) {
             ok = true;
             return static_cast<double>(d.calibValue);
+        }
+    } else if (reportType == QLatin1String("ProtocolPhotosensitiveData")) {
+        const auto d = payload.value<ProtocolPhotosensitiveData>();
+        if (field == QLatin1String("lightSensor") || field == QLatin1String("value")) {
+            ok = true;
+            return static_cast<double>(d.lightSensor);
         }
     } else if (reportType == QLatin1String("ProtocolAiotImuCaliData")) {
         const auto d = payload.value<ProtocolAiotImuCaliData>();
@@ -591,6 +599,12 @@ double fieldValueFromVariant(const QString& reportType, const QString& field, co
             const auto d = payload.value<ProtocolJieliBtBoxData>();
             m.insert(QStringLiteral("rssi"), d.rssi);
             m.insert(QStringLiteral("freqOffset"), d.freqOffset);
+            m.insert(QStringLiteral("mac"), d.mac);
+        }
+        // mac 为文本字段，走 fieldStringFromVariant；数值路径不处理
+        if (field == QLatin1String("mac")) {
+            ok = false;
+            return 0;
         }
         if (m.contains(field)) {
             ok = true;
@@ -971,6 +985,22 @@ QString fieldStringFromVariant(const QString& reportType, const QString& field, 
             ok = true;
             return d.mac.trimmed();
         }
+    } else if (reportType == QLatin1String("ProtocolJieliBtBoxData")) {
+        QVariantMap m = payload.toMap();
+        if (m.isEmpty() && payload.canConvert<ProtocolJieliBtBoxData>()) {
+            const auto d = payload.value<ProtocolJieliBtBoxData>();
+            m.insert(QStringLiteral("rssi"), d.rssi);
+            m.insert(QStringLiteral("freqOffset"), d.freqOffset);
+            m.insert(QStringLiteral("mac"), d.mac);
+        }
+        if (field == QLatin1String("mac")) {
+            ok = true;
+            return m.value(QStringLiteral("mac")).toString().trimmed();
+        }
+        if (field == QLatin1String("rssi") || field == QLatin1String("freqOffset")) {
+            ok = true;
+            return QString::number(m.value(field).toLongLong());
+        }
     } else if (reportType == QLatin1String("ProtocolTypeData") || reportType == QLatin1String("ProtocolBatteryTempData")
                || reportType == QLatin1String("ProtocolFlangeData")
                || reportType == QLatin1String("ProtocolHeatTempData")) {
@@ -1228,6 +1258,9 @@ GateSendBinding GateRegistry::bindingForSend(TestCaseSendChannel channel, const 
         } else if (proto == TestCaseFixtureProtocol::UsbCamera) {
             if (const UsbCameraCmdManifest::Row* row = UsbCameraCmdManifest::findByEnumName(cmd))
                 applyRow(row->gateReportType, row->gateDefaultField);
+        } else if (proto == TestCaseFixtureProtocol::VesLight) {
+            if (const VesLightCmdManifest::Row* row = VesLightCmdManifest::findByEnumName(cmd))
+                applyRow(row->gateReportType, row->gateDefaultField);
         }
         break;
     }
@@ -1372,6 +1405,13 @@ bool GateRegistry::evaluate(const TestCaseGate& gate, const QString& reportType,
         return true;
     }
 
+    // multi 仅为 ini 占位，须用 Gate/ItemN_Field；误评会得到「无法从上报数据读取字段」
+    if (gate.field.compare(QLatin1String("multi"), Qt::CaseInsensitive) == 0) {
+        passOut = false;
+        detailOut = QStringLiteral("多项卡控未加载分项(请检查 Gate/Count 与 ItemN_Field)");
+        return true;
+    }
+
     bool ok = false;
     double value = fieldValueFromVariant(reportType, gate.field, payload, ok);
     // 步骤未写 Param_expectedColor 时 colorMatch=-1；展示曾误成「否」且 -1!=0 导致卡控失败
@@ -1418,7 +1458,9 @@ bool GateRegistry::evaluate(const TestCaseGate& gate, const QString& reportType,
             if (expected.isEmpty()) {
                 passOut = false;
                 detailOut = QStringLiteral("当前=%1, 未配置期望( Gate/Expected 或 MES/UI SN)").arg(actual.isEmpty() ? QStringLiteral("-") : actual);
-            } else if (reportType == QLatin1String("ProtocolMacData") && gate.field == QLatin1String("mac")) {
+            } else if ((reportType == QLatin1String("ProtocolMacData")
+                        || reportType == QLatin1String("ProtocolJieliBtBoxData"))
+                       && gate.field == QLatin1String("mac")) {
                 auto normalizeMac = [](QString s) {
                     s.remove(QLatin1Char(':'));
                     s.remove(QLatin1Char('-'));

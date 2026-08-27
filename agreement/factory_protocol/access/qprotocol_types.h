@@ -338,6 +338,7 @@ typedef ProtocolResultData ProtocolPictureSendOverData;
 
 struct ProtocolPhotosensitiveData {
     int lightSensor = 0;
+    QVector<int> samples;
 };
 
 struct ProtocolSdInfoData {

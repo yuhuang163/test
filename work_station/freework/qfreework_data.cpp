@@ -373,6 +373,7 @@ void QFreeWork::onProductInstrumentStopReceiveAckForPer(int recvPkts) {
         return;
     }
     productInstrumentStopWaitStepName_.clear();
+    finishCommandRetryWait(true, QString());
     const int sendCount = SETTINGS.value(QStringLiteral("BrushInstrument/InstrumentSendPacketCount"), 1000).toInt();
     const double maxPer = SETTINGS.value(QStringLiteral("BrushInstrument/MaxPer"), 0.05).toDouble();
     const double per = Qproduct::computePer(sendCount, recvPkts);
@@ -1688,6 +1689,22 @@ void QFreeWork::refreshResultCode(ProtocolResultData data) {
     if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolResultData"), QVariant::fromValue(data)))
         return;
     showlog(QStringLiteral("协议结果码：%1").arg(data.result));
+}
+
+void QFreeWork::refreshPhotosensitiveData(ProtocolPhotosensitiveData data) {
+    if (lightSensorCollecting_) {
+        if (!data.samples.isEmpty())
+            lightSensorSamples_.append(data.samples);
+        else
+            lightSensorSamples_.append(data.lightSensor);
+    }
+    evaluateActiveTestCaseGate(QStringLiteral("ProtocolPhotosensitiveData"), QVariant::fromValue(data));
+}
+
+void QFreeWork::refreshLightCalibData(ProtocolLightCalibData data) {
+    lightCalibReadValid_ = true;
+    lightCalibReadValue_ = static_cast<int>(static_cast<int32_t>(data.calibValue));
+    evaluateActiveTestCaseGate(QStringLiteral("ProtocolLightCalibData"), QVariant::fromValue(data));
 }
 
 void QFreeWork::refreshFlangeStatus(ProtocolTypeData data) {

@@ -112,6 +112,24 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("seconds"), QStringLiteral("倒计时等待秒数（COUNTDOWN_WAIT）")},
         {QStringLiteral("waitSeconds"), QStringLiteral("倒计时等待秒数（同 seconds）")},
         {QStringLiteral("prompt"), QStringLiteral("倒计时弹窗提示文字（可选）")},
+        {QStringLiteral("brightness"), QStringLiteral("VES 通道1亮度（0~255）")},
+        {QStringLiteral("index"), QStringLiteral("光感校准写入下标（0~19）")},
+        {QStringLiteral("golden"), QStringLiteral("本点金样光感值")},
+        {QStringLiteral("turnOff"), QStringLiteral("1=本步结束后关闭光源")},
+        {QStringLiteral("port"), QStringLiteral("VES 光源串口（如 COM8）")},
+        {QStringLiteral("settleMs"), QStringLiteral("设电流后稳定等待毫秒")},
+        {QStringLiteral("waitMs"), QStringLiteral("单次采集光感上报超时毫秒")},
+        {QStringLiteral("readRepeat"), QStringLiteral("单点重复读取次数（取中位数）")},
+        {QStringLiteral("stableTail"), QStringLiteral("取尾部稳定样本个数")},
+        {QStringLiteral("writeCalib"), QStringLiteral("1=写入光感平均值 0=只读")},
+        {QStringLiteral("verifyRead"), QStringLiteral("1=写后回读校验")},
+        {QStringLiteral("verifyWrite"), QStringLiteral("1=回读值须与本轮写入值一致")},
+        {QStringLiteral("enableFivePointJudge"), QStringLiteral("1=本步回读后对已采点做范围+差值卡控（不合格立即 FAIL；各读取点建议均开）")},
+        {QStringLiteral("minSamples"), QStringLiteral("采光感最少样本数")},
+        {QStringLiteral("rangeLo"), QStringLiteral("本点回读下限（含）")},
+        {QStringLiteral("rangeHi"), QStringLiteral("本点回读上限")},
+        {QStringLiteral("rangeHiInc"), QStringLiteral("本点上界是否含：1=含 0=不含")},
+        {QStringLiteral("diffMin"), QStringLiteral("本点相对上一点差值下限（判定 >；点1可不写）")},
         {QStringLiteral("channelLock"), QStringLiteral("锁定通道号（不按工位改）")},
         {QStringLiteral("slaveAddr"), QStringLiteral("Modbus 从站地址")},
         {QStringLiteral("addr"), QStringLiteral("Modbus 从站地址")},
@@ -178,7 +196,9 @@ QString sendParamKeyZhLabel(const QString& key) {
 
 /** Hook 步骤是否需在编辑对话框展示 Param_ 参数表（非 Send 指令）。 */
 bool hookUsesSendParamUi(const QString& hookId) {
-    return hookId == QLatin1String("COUNTDOWN_WAIT");
+    return hookId == QLatin1String("COUNTDOWN_WAIT") || hookId == QLatin1String("LIGHT_SENSOR_GOLDEN_CALIB")
+        || hookId == QLatin1String("LIGHT_SENSOR_CALIB_WRITE") || hookId == QLatin1String("LIGHT_SENSOR_CALIB_READ")
+        || hookId == QLatin1String("VES_CH1_SET_BRIGHTNESS");
 }
 
 QVariantMap hookSendParamDefaultMap(const QString& hookId) {
@@ -186,6 +206,41 @@ QVariantMap hookSendParamDefaultMap(const QString& hookId) {
         QVariantMap map;
         map.insert(QStringLiteral("seconds"), QStringLiteral("5"));
         map.insert(QStringLiteral("prompt"), QStringLiteral("请等待"));
+        return map;
+    }
+    if (hookId == QLatin1String("LIGHT_SENSOR_GOLDEN_CALIB")) {
+        QVariantMap map;
+        map.insert(QStringLiteral("index"), QStringLiteral("0"));
+        map.insert(QStringLiteral("golden"), QStringLiteral("38"));
+        map.insert(QStringLiteral("waitMs"), QStringLiteral("5000"));
+        map.insert(QStringLiteral("minSamples"), QStringLiteral("10"));
+        map.insert(QStringLiteral("verifyWrite"), QStringLiteral("1"));
+        map.insert(QStringLiteral("enableFivePointJudge"), QStringLiteral("1"));
+        return map;
+    }
+    if (hookId == QLatin1String("LIGHT_SENSOR_CALIB_WRITE")) {
+        QVariantMap map;
+        map.insert(QStringLiteral("index"), QStringLiteral("0"));
+        map.insert(QStringLiteral("golden"), QStringLiteral("38"));
+        map.insert(QStringLiteral("waitMs"), QStringLiteral("5000"));
+        map.insert(QStringLiteral("minSamples"), QStringLiteral("10"));
+        return map;
+    }
+    if (hookId == QLatin1String("LIGHT_SENSOR_CALIB_READ")) {
+        QVariantMap map;
+        map.insert(QStringLiteral("index"), QStringLiteral("0"));
+        map.insert(QStringLiteral("verifyWrite"), QStringLiteral("1"));
+        map.insert(QStringLiteral("enableFivePointJudge"), QStringLiteral("1"));
+        map.insert(QStringLiteral("rangeLo"), QStringLiteral("0"));
+        map.insert(QStringLiteral("rangeHi"), QStringLiteral("70"));
+        map.insert(QStringLiteral("rangeHiInc"), QStringLiteral("0"));
+        map.insert(QStringLiteral("diffMin"), QStringLiteral("20"));
+        return map;
+    }
+    if (hookId == QLatin1String("VES_CH1_SET_BRIGHTNESS")) {
+        QVariantMap map;
+        map.insert(QStringLiteral("baud"), QStringLiteral("9600"));
+        map.insert(QStringLiteral("brightness"), QStringLiteral("22"));
         return map;
     }
     return {};
@@ -329,6 +384,8 @@ QStringList sendParamPreferredOrder(TestCaseSendChannel channel, const QString& 
                 QStringLiteral("minPeakCount"), QStringLiteral("peakBaselineKpa"),
                 QStringLiteral("peakDipStartKpa"), QStringLiteral("offsetKpa")};
     }
+    if (channel == TestCaseSendChannel::Fixture && cmdName == QLatin1String("SetBrightness"))
+        return {QStringLiteral("brightness")};
     if (channel == TestCaseSendChannel::Fixture
         && (cmdName == QLatin1String("ScreenDeadPixelCheck")
             || cmdName == QLatin1String("ScreenDisplayAnomalyCheck")
@@ -637,6 +694,12 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
         }
         return {};
     }
+    if (channel == TestCaseSendChannel::Fixture
+        && FixturePcbaCmdCatalog::fixtureProtocolFromIni(device) == TestCaseFixtureProtocol::VesLight) {
+        if (cmdName == QLatin1String("SetBrightness"))
+            return QVariantMap{{QStringLiteral("brightness"), QStringLiteral("22")}};
+        return {};
+    }
     if (channel == TestCaseSendChannel::Cloud && cmdName == QLatin1String("Login")) {
         // 三元组云端登录：提供 baseUrl/userName/password 字段；显示顺序见 sendParamPreferredOrder（账号在密码上方）
         return QVariantMap{{QStringLiteral("baseUrl"), QString()},
@@ -878,6 +941,8 @@ void fillFixtureProtocolCombo(QComboBox* box) {
                  FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::JieliBtBox));
     box->addItem(FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol::UsbCamera),
                  FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::UsbCamera));
+    box->addItem(FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol::VesLight),
+                 FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::VesLight));
 }
 
 void fillProtocolComboForChannel(QComboBox* box, TestCaseSendChannel channel) {
@@ -942,6 +1007,10 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
             items.reserve(UsbCameraCmdCatalog::allUsbCameraCmdNames(action).size());
             for (const QString& name : UsbCameraCmdCatalog::allUsbCameraCmdNames(action))
                 items.append({UsbCameraCmdCatalog::usbCameraCmdUiLabel(name), name});
+        } else if (proto == TestCaseFixtureProtocol::VesLight) {
+            items.reserve(VesLightCmdCatalog::allVesLightCmdNames(action).size());
+            for (const QString& name : VesLightCmdCatalog::allVesLightCmdNames(action))
+                items.append({VesLightCmdCatalog::vesLightCmdUiLabel(name), name});
         } else {
             items.reserve(FixturePcbaCmdCatalog::allFixturePcbaCmdNames(action).size());
             for (const QString& name : FixturePcbaCmdCatalog::allFixturePcbaCmdNames(action))
@@ -1142,6 +1211,18 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
             }
             return out;
         }
+        if (proto == TestCaseFixtureProtocol::VesLight) {
+            VesLightCmd vesCmd;
+            if (VesLightCmdCatalog::vesLightCmdFromName(name, vesCmd)) {
+                DeviceCmdParamSchema schema;
+                if (VesLightCmdCatalog::paramSchemaFor(vesCmd, schema)) {
+                    out.valid = true;
+                    out.hint = VesLightCmdCatalog::paramUiHint(name);
+                    out.kind = sendParamUiKindFromSchema(schema.kind);
+                }
+            }
+            return out;
+        }
         FixturePcbaCmd fixtureCmd;
         if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(name, fixtureCmd)) {
             DeviceCmdParamSchema schema;
@@ -1289,6 +1370,22 @@ void applyHookSendParamUi(Ui::TestCaseEditDialog* ui, const QString& hookId, con
     uiSchema.kind = SendCmdParamKind::JsonMap;
     if (hookId == QLatin1String("COUNTDOWN_WAIT")) {
         uiSchema.hint = QStringLiteral("seconds：倒计时秒数（必填，>0）；prompt：弹窗提示文字（可选）");
+    } else if (hookId == QLatin1String("LIGHT_SENSOR_GOLDEN_CALIB")) {
+        uiSchema.hint = QStringLiteral(
+            "产品协议单点：index 写入下标；golden 金样光感（仅日志）；waitMs/minSamples 采光感取平均并写回读；"
+            "采齐后各点 enableFivePointJudge=1 时按已采点做范围+差值卡控（不合格立即 FAIL）。治具亮度请用前一步 VES SetBrightness");
+    } else if (hookId == QLatin1String("LIGHT_SENSOR_CALIB_WRITE")) {
+        uiSchema.hint = QStringLiteral(
+            "仅采光感取平均并写入：index/golden/waitMs/minSamples。流程需先「开启光感上报」再 VES 设亮度；"
+            "回读请用 LIGHT_SENSOR_CALIB_READ 步骤");
+    } else if (hookId == QLatin1String("LIGHT_SENSOR_CALIB_READ")) {
+        uiSchema.hint = QStringLiteral(
+            "本点回读：index/verifyWrite；Param_rangeLo/Hi/HiInc 配本点范围；"
+            "index>0 写 Param_diffMin（相对上一点，判定>）；"
+            "各读取点建议 enableFivePointJudge=1：已采点越界/差值不达标立即 FAIL");
+    } else if (hookId == QLatin1String("VES_CH1_SET_BRIGHTNESS")) {
+        uiSchema.hint = QStringLiteral(
+            "走工位治具串口，协议固定通道 1；Param_brightness：亮度 0~255（默认 22）");
     }
     applySendParamHintToUi(uiSchema, true, ui->label_sendParamHint, ui->tableWidget_sendParam, ui->spinBox_intParam,
                            ui->pushButton_addParamRow, ui->pushButton_removeParamRow,
@@ -1580,6 +1677,10 @@ const QHash<QString, QString>& hookDisplayNameMap() {
         {QStringLiteral("PRINT_WHOLE_MACHINE_SN"), QStringLiteral("打印整机 SN 二维码")},
         {QStringLiteral("QR_SN_CONSISTENCY_CHECK"), QStringLiteral("二维码一致性校验（与开局SN比对）")},
         {QStringLiteral("COUNTDOWN_WAIT"), QStringLiteral("倒计时等待弹窗（到点自动下一步）")},
+        {QStringLiteral("LIGHT_SENSOR_GOLDEN_CALIB"), QStringLiteral("光感单点校准（设亮度→采光感→写+回读，旧）")},
+        {QStringLiteral("LIGHT_SENSOR_CALIB_WRITE"), QStringLiteral("光感写入校准值（采光感→写）")},
+        {QStringLiteral("LIGHT_SENSOR_CALIB_READ"), QStringLiteral("光感读取校准值（回读+五点终判）")},
+        {QStringLiteral("VES_CH1_SET_BRIGHTNESS"), QStringLiteral("VES光源CH1设亮度")},
         {QStringLiteral("MES_GET_ROOT_SKU"), QStringLiteral("MES 获取 ROOTSKU（三元组 SKU）")},
         {QStringLiteral("PLC_MODBUS_CONN"), QStringLiteral("PLC Modbus 连接")},
         {QStringLiteral("PLC_V3_SWITCH_RIGHT_WHOLE"), QStringLiteral("PLC+V3 旋钮整步右旋")},
@@ -2215,6 +2316,9 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     loadingDefinition_ = true;
     originalCaseName_ = storageKey.trimmed().isEmpty() ? def.meta.name.trimmed() : storageKey.trimmed();
     ui->lineEdit_caseName->setText(def.meta.name);
+    const QString displayName =
+        def.meta.displayName.trimmed().isEmpty() ? def.meta.name : def.meta.displayName.trimmed();
+    ui->lineEdit_displayName->setText(displayName);
     ui->lineEdit_mesTag->setText(def.meta.mesTag);
     ui->checkBox_promptEnabled->setChecked(def.meta.promptEnabled);
     ui->checkBox_promptOnly->setChecked(def.meta.promptOnly);
@@ -2329,7 +2433,9 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
 TestCaseDefinition TestCaseEditDialog::definition() const {
     TestCaseDefinition def;
     def.meta.name = ui->lineEdit_caseName->text().trimmed();
-    def.meta.displayName = def.meta.name;
+    def.meta.displayName = ui->lineEdit_displayName->text().trimmed();
+    if (def.meta.displayName.isEmpty())
+        def.meta.displayName = def.meta.name;
     def.meta.mesTag = ui->lineEdit_mesTag->text().trimmed();
     def.meta.promptEnabled = ui->checkBox_promptEnabled->isChecked();
     def.meta.promptOnly = def.meta.promptEnabled && ui->checkBox_promptOnly->isChecked();

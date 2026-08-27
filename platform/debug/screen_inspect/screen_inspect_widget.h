@@ -9,19 +9,18 @@ class QCamera;
 class QCameraImageCapture;
 class QCameraViewfinder;
 
-namespace Ui {
-class ScreenInspectWidget;
-}
+struct ScreenInspectUi;
 
 /**
  * 调试工站外设「屏幕测试」页：USB 摄像头采集 + 坏点/花屏/亮度不均检测。
- * 参考 docs/photo_analysis.py 的预热拍照；判定改为屏幕 ROI、彩色 SSIM、局部残差坏点。
+ * 界面在 mainwindow.ui 的 screenInspectPage 内，构造后需 bindDesignerUi。
  */
 class ScreenInspectWidget : public QWidget {
     Q_OBJECT
   public:
     explicit ScreenInspectWidget(QWidget* parent = nullptr);
     ~ScreenInspectWidget() override;
+    void bindDesignerUi();
 
   protected:
     void showEvent(QShowEvent* event) override;
@@ -89,7 +88,8 @@ class ScreenInspectWidget : public QWidget {
     QRect labelPosToImage(const QPoint& pos) const;
     void saveManualRoi(const QRect& r);
 
-    Ui::ScreenInspectWidget* ui = nullptr;
+    ScreenInspectUi* ui = nullptr;
+    bool uiBound_ = false;
     QCamera* camera_ = nullptr;
     QCameraImageCapture* capture_ = nullptr;
     QCameraViewfinder* viewfinder_ = nullptr;

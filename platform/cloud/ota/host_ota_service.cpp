@@ -19,6 +19,12 @@
 #include <QTextStream>
 #include <QTimer>
 #include <functional>
+#include <string>
+
+#ifdef Q_OS_WIN
+#include <qt_windows.h>
+#include <shellapi.h>
+#endif
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
@@ -43,76 +49,146 @@ bool startDeleteSelfBat(const QString& savePath) {
     const QString appFilePath = QCoreApplication::applicationFilePath();
     const QString appFileName = QFileInfo(appFilePath).fileName();
     const QString bakFileName = appFileName + QStringLiteral(".bak");
-    const QString batFileName = QDir(appDir).filePath(QStringLiteral("delete_self.bat"));
+    const QString vbsFileName = QDir(appDir).filePath(QStringLiteral("delete_self.vbs"));
     const QString tempExePath = savePath + QStringLiteral(".tmp");
     const QString logPath = QDir(appDir).filePath(QStringLiteral("ota_replace.log"));
+    const QString oldPid = QString::number(QCoreApplication::applicationPid());
 
-    // 旧 exe 仍被占用时，Windows rename 会失败，留下 .tmp 且不会启动
-    QFile batFile(batFileName);
-    if (!batFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        return false;
-    }
-    QTextStream out(&batFile);
-    out << "@echo off\r\n";
-    out << "cd /d \"" << QDir::toNativeSeparators(appDir) << "\"\r\n";
-    out << "echo [%date% %time%] OTA replace start > \"" << QDir::toNativeSeparators(logPath) << "\"\r\n";
-    out << "timeout /t 3 /nobreak >nul\r\n";
-    // 重试：等旧进程真正释放文件锁
-    out << "set /a tries=0\r\n";
-    out << ":retry_bak\r\n";
-    out << "set /a tries+=1\r\n";
-    out << "if exist \"" << QDir::toNativeSeparators(QDir(appDir).filePath(bakFileName)) << "\" del /f /q \""
-        << QDir::toNativeSeparators(QDir(appDir).filePath(bakFileName)) << "\" >nul 2>&1\r\n";
-    out << "move /y \"" << QDir::toNativeSeparators(appFilePath) << "\" \""
-        << QDir::toNativeSeparators(QDir(appDir).filePath(bakFileName)) << "\" >> \""
-        << QDir::toNativeSeparators(logPath) << "\" 2>&1\r\n";
-    out << "if errorlevel 1 (\r\n";
-    out << "  if %tries% geq 20 (\r\n";
-    out << "    echo move old exe to bak failed >> \"" << QDir::toNativeSeparators(logPath) << "\"\r\n";
-    out << "    goto fail\r\n";
-    out << "  )\r\n";
-    out << "  timeout /t 1 /nobreak >nul\r\n";
-    out << "  goto retry_bak\r\n";
-    out << ")\r\n";
-    out << "set /a tries=0\r\n";
-    out << ":retry_new\r\n";
-    out << "set /a tries+=1\r\n";
-    out << "move /y \"" << QDir::toNativeSeparators(tempExePath) << "\" \""
-        << QDir::toNativeSeparators(savePath) << "\" >> \"" << QDir::toNativeSeparators(logPath) << "\" 2>&1\r\n";
-    out << "if errorlevel 1 (\r\n";
-    out << "  if %tries% geq 20 (\r\n";
-    out << "    echo move tmp to exe failed >> \"" << QDir::toNativeSeparators(logPath) << "\"\r\n";
-    out << "    goto fail\r\n";
-    out << "  )\r\n";
-    out << "  timeout /t 1 /nobreak >nul\r\n";
-    out << "  goto retry_new\r\n";
-    out << ")\r\n";
-    out << "echo replace ok, starting >> \"" << QDir::toNativeSeparators(logPath) << "\"\r\n";
-    out << "start \"\" \"" << QDir::toNativeSeparators(savePath) << "\"\r\n";
-    out << "del /f /q \"" << QDir::toNativeSeparators(QDir(appDir).filePath(bakFileName)) << "\" >nul 2>&1\r\n";
-    out << "del /f /q \"%~f0\" >nul 2>&1\r\n";
-    out << "exit /b 0\r\n";
-    out << ":fail\r\n";
-    out << "echo OTA replace failed, keep .tmp for manual recover >> \"" << QDir::toNativeSeparators(logPath)
-        << "\"\r\n";
-    out << "exit /b 1\r\n";
-    batFile.close();
+    auto vbsQuote = [](const QString& path) {
+        return QDir::toNativeSeparators(path).replace(QLatin1Char('"'), QStringLiteral("\"\""));
+    };
+    const QString dirV = vbsQuote(appDir);
+    const QString logV = vbsQuote(logPath);
+    const QString exeV = vbsQuote(appFilePath);
+    const QString bakV = vbsQuote(QDir(appDir).filePath(bakFileName));
+    const QString tmpV = vbsQuote(tempExePath);
+    const QString saveV = vbsQuote(savePath);
+    const QString vbsSelfV = vbsQuote(vbsFileName);
 
-    // 必须用 cmd + 工作目录，否则部分电脑直接 startDetached(.bat) 会静默失败
-    if (!QProcess::startDetached(QStringLiteral("cmd.exe"),
-                                 {QStringLiteral("/c"), QDir::toNativeSeparators(batFileName)}, appDir)) {
+    // 全程 VBS：无黑框；WScript.Sleep 150ms 重试，比 ping 约 1s 快得多
+    QFile vbsFile(vbsFileName);
+    if (!vbsFile.open(QIODevice::WriteOnly | QIODevice::Text))
         return false;
+    QTextStream vbs(&vbsFile);
+    vbs << "On Error Resume Next\r\n";
+    vbs << "Set sh = CreateObject(\"WScript.Shell\")\r\n";
+    vbs << "Set fso = CreateObject(\"Scripting.FileSystemObject\")\r\n";
+    vbs << "sh.CurrentDirectory = \"" << dirV << "\"\r\n";
+    vbs << "Dim logPath, pid, exePath, bakPath, tmpPath, savePath, vbsPath\r\n";
+    vbs << "logPath = \"" << logV << "\"\r\n";
+    vbs << "pid = \"" << oldPid << "\"\r\n";
+    vbs << "exePath = \"" << exeV << "\"\r\n";
+    vbs << "bakPath = \"" << bakV << "\"\r\n";
+    vbs << "tmpPath = \"" << tmpV << "\"\r\n";
+    vbs << "savePath = \"" << saveV << "\"\r\n";
+    vbs << "vbsPath = \"" << vbsSelfV << "\"\r\n";
+    vbs << "Set logf = fso.CreateTextFile(logPath, True)\r\n";
+    vbs << "logf.WriteLine Now & \" OTA replace start pid=\" & pid\r\n";
+    vbs << "sh.Run \"taskkill /F /PID \" & pid, 0, True\r\n";
+    vbs << "Dim i, movedOk\r\n";
+    vbs << "movedOk = False\r\n";
+    vbs << "For i = 1 To 40\r\n";
+    vbs << "  Err.Clear\r\n";
+    vbs << "  If fso.FileExists(bakPath) Then fso.DeleteFile bakPath, True\r\n";
+    vbs << "  Err.Clear\r\n";
+    vbs << "  fso.MoveFile exePath, bakPath\r\n";
+    vbs << "  If Err.Number = 0 Then\r\n";
+    vbs << "    movedOk = True\r\n";
+    vbs << "    Exit For\r\n";
+    vbs << "  End If\r\n";
+    vbs << "  sh.Run \"taskkill /F /PID \" & pid, 0, True\r\n";
+    vbs << "  WScript.Sleep 150\r\n";
+    vbs << "Next\r\n";
+    vbs << "If Not movedOk Then\r\n";
+    vbs << "  logf.WriteLine \"move old exe to bak failed\"\r\n";
+    vbs << "  logf.Close\r\n";
+    vbs << "  If fso.FileExists(vbsPath) Then fso.DeleteFile vbsPath, True\r\n";
+    vbs << "  WScript.Quit 1\r\n";
+    vbs << "End If\r\n";
+    vbs << "logf.WriteLine \"moved old to bak\"\r\n";
+    vbs << "movedOk = False\r\n";
+    vbs << "For i = 1 To 40\r\n";
+    vbs << "  Err.Clear\r\n";
+    vbs << "  fso.MoveFile tmpPath, savePath\r\n";
+    vbs << "  If Err.Number = 0 Then\r\n";
+    vbs << "    movedOk = True\r\n";
+    vbs << "    Exit For\r\n";
+    vbs << "  End If\r\n";
+    vbs << "  WScript.Sleep 150\r\n";
+    vbs << "Next\r\n";
+    vbs << "If Not movedOk Then\r\n";
+    vbs << "  logf.WriteLine \"move tmp to exe failed\"\r\n";
+    vbs << "  logf.Close\r\n";
+    vbs << "  If fso.FileExists(vbsPath) Then fso.DeleteFile vbsPath, True\r\n";
+    vbs << "  WScript.Quit 1\r\n";
+    vbs << "End If\r\n";
+    vbs << "logf.WriteLine \"replace ok, starting\"\r\n";
+    vbs << "logf.Close\r\n";
+    // 1=正常窗口启动 GUI；False=不等待
+    vbs << "sh.Run \"\"\"\" & savePath & \"\"\"\", 1, False\r\n";
+    vbs << "If fso.FileExists(bakPath) Then fso.DeleteFile bakPath, True\r\n";
+    vbs << "If fso.FileExists(vbsPath) Then fso.DeleteFile vbsPath, True\r\n";
+    vbs << "WScript.Quit 0\r\n";
+    vbsFile.close();
+
+    // 顺手清掉旧 bat，避免残留
+    QFile::remove(QDir(appDir).filePath(QStringLiteral("delete_self.bat")));
+
+    bool launched = false;
+#ifdef Q_OS_WIN
+    {
+        const QString params = QStringLiteral("//B //Nologo \"%1\"").arg(QDir::toNativeSeparators(vbsFileName));
+        const std::wstring paramsW = params.toStdWString();
+        const std::wstring dirW = QDir::toNativeSeparators(appDir).toStdWString();
+        SHELLEXECUTEINFOW sei;
+        ZeroMemory(&sei, sizeof(sei));
+        sei.cbSize = sizeof(sei);
+        sei.fMask = SEE_MASK_NOCLOSEPROCESS;
+        sei.lpVerb = L"open";
+        sei.lpFile = L"wscript.exe";
+        sei.lpParameters = paramsW.c_str();
+        sei.lpDirectory = dirW.c_str();
+        sei.nShow = SW_HIDE;
+        if (ShellExecuteExW(&sei)) {
+            launched = true;
+            if (sei.hProcess)
+                CloseHandle(sei.hProcess);
+        }
     }
-    QTimer::singleShot(1000, []() {
-        qApp->quit();
-        QProcess::startDetached(QStringLiteral("cmd.exe"),
-                                {QStringLiteral("/c"),
-                                 QStringLiteral("taskkill /f /pid ") + QString::number(QCoreApplication::applicationPid())});
-    });
+#endif
+    if (!launched) {
+        QProcess helper;
+        helper.setProgram(QStringLiteral("wscript.exe"));
+        helper.setArguments(
+            {QStringLiteral("//B"), QStringLiteral("//Nologo"), QDir::toNativeSeparators(vbsFileName)});
+        helper.setWorkingDirectory(appDir);
+#ifdef Q_OS_WIN
+        helper.setCreateProcessArgumentsModifier([](QProcess::CreateProcessArguments* args) {
+            args->flags |= CREATE_NO_WINDOW | CREATE_NEW_PROCESS_GROUP | DETACHED_PROCESS;
+            args->flags |= CREATE_BREAKAWAY_FROM_JOB;
+            args->inheritHandles = false;
+        });
+#endif
+        if (!helper.startDetached())
+            return false;
+    }
+
+#ifdef Q_OS_WIN
+    // 给 wscript 一点启动时间后立刻硬杀本进程，跳过 Qt 缓慢退场
+    Sleep(80);
+    TerminateProcess(GetCurrentProcess(), 0);
+#endif
+    QTimer::singleShot(0, []() { qApp->quit(); });
     return true;
 }
 
 } // namespace
+
+void HostOtaService::cleanupStaleBackupProcess() {
+    const QString bakName = QFileInfo(QCoreApplication::applicationFilePath()).fileName() + QStringLiteral(".bak");
+    QProcess::startDetached(QStringLiteral("taskkill.exe"),
+                            {QStringLiteral("/F"), QStringLiteral("/T"), QStringLiteral("/IM"), bakName});
+}
 
 HostOtaService::CheckResult HostOtaService::checkUpdate() {
     CheckResult result;
@@ -248,11 +324,30 @@ bool HostOtaService::downloadAndApply(const CheckResult& info, QWidget* parent, 
     if (parent) {
         QMessageBox* msgBox = new QMessageBox(parent);
         msgBox->setWindowTitle(QStringLiteral("软件更新"));
-        msgBox->setText(QStringLiteral("下载完成，即将重启并安装新版本…\n\n5秒后自动关闭"));
         msgBox->setStandardButtons(QMessageBox::Ok);
         msgBox->setDefaultButton(QMessageBox::Ok);
-        QTimer::singleShot(5000, msgBox, &QMessageBox::accept);
+        // 点确定立即继续；未点则倒计时结束后自动关闭
+        int remainSec = 3;
+        auto refreshText = [msgBox, &remainSec]() {
+            msgBox->setText(QStringLiteral("下载完成，即将重启并安装新版本。\n\n"
+                                           "点击「确定」立即重启；%1 秒后自动关闭。")
+                                .arg(remainSec));
+        };
+        refreshText();
+        QTimer* countdown = new QTimer(msgBox);
+        countdown->setInterval(1000);
+        QObject::connect(countdown, &QTimer::timeout, msgBox, [msgBox, countdown, &remainSec, refreshText]() {
+            --remainSec;
+            if (remainSec <= 0) {
+                countdown->stop();
+                msgBox->accept();
+                return;
+            }
+            refreshText();
+        });
+        countdown->start();
         msgBox->exec();
+        countdown->stop();
         msgBox->deleteLater();
     }
     if (!startDeleteSelfBat(savePath)) {

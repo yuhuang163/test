@@ -164,6 +164,16 @@
             </property>
            </widget>
           </item>
+          <item row="32" column="0">
+           <widget class="QCheckBox" name="checkBox_TestCsvOneRowPerTest">
+            <property name="text">
+             <string>D盘测试结果一次测试一行</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
           <item row="28" column="0">
            <widget class="QCheckBox" name="checkBox_TestShippingCurrent">
             <property name="text">
