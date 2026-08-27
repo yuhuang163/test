@@ -290,6 +290,7 @@ class test_base : public QWidget {
     virtual void refreshPeriphData(ProtocolPeriphStateData) {}
     virtual void refreshRssiRead(ProtocolRssiData) {}
     virtual void refreshChargeCurrentRead(ProtocolChargeCurrentData) {}
+    virtual void refreshFactoryDoneRead(ProtocolFactoryDoneData) {}
     virtual void refreshKeySignalRead(ProtocolKeyCapData) {}
     virtual void refreshTupleData(ProtocolTupleData) {}
     virtual void refreshPictureSendOver(ProtocolPictureSendOverData) {}

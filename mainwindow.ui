@@ -2578,11 +2578,32 @@
                        </sizepolicy>
                       </property>
                       <property name="title">
-                       <string>USB 摄像头</string>
+                       <string>摄像头</string>
                       </property>
                       <layout class="QVBoxLayout" name="verticalLayout_camera">
                        <item>
                         <layout class="QHBoxLayout" name="horizontalLayout_cameraBar">
+                         <item>
+                          <widget class="QLabel" name="label_cameraSource">
+                           <property name="text">
+                            <string>来源</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QComboBox" name="comboBox_cameraSource">
+                           <item>
+                            <property name="text">
+                             <string>USB</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>GigE</string>
+                            </property>
+                           </item>
+                          </widget>
+                         </item>
                          <item>
                           <widget class="QLabel" name="label_camera">
                            <property name="text">
@@ -2597,6 +2618,26 @@
                              <horstretch>0</horstretch>
                              <verstretch>0</verstretch>
                             </sizepolicy>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QLabel" name="label_gigeIp">
+                           <property name="text">
+                            <string>IP</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QLineEdit" name="lineEdit_gigeIp">
+                           <property name="placeholderText">
+                            <string>169.254.64.10</string>
+                           </property>
+                           <property name="minimumSize">
+                            <size>
+                             <width>120</width>
+                             <height>0</height>
+                            </size>
                            </property>
                           </widget>
                          </item>

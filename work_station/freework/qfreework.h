@@ -39,6 +39,7 @@ struct QFreeWorkMesSegment {
     QString standardValue;
     QString unit;
     QString result;
+    QString costTime;
 };
 
 class QFreeWork : public test_base {
@@ -486,6 +487,7 @@ class QFreeWork : public test_base {
     void refreshPeriphData(ProtocolPeriphStateData data) override;
     void refreshRssiRead(ProtocolRssiData data) override;
     void refreshChargeCurrentRead(ProtocolChargeCurrentData data) override;
+    void refreshFactoryDoneRead(ProtocolFactoryDoneData data) override;
     void refreshKeySignalRead(ProtocolKeyCapData data) override;
     void refreshTupleData(ProtocolTupleData data) override;
     void refreshButton(ProtocolButtonStateData data) override;

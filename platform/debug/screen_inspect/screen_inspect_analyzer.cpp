@@ -806,18 +806,22 @@ Report analyze(const QImage& currRgb, const QImage& refRgb, const Params& p) {
     report.colorMatch = p.expectedColor < 0 ? -1 : (detected == p.expectedColor ? 1 : 0);
     const qint64 msColor = stepT.elapsed();
 
-    stepT.start();
-    const DeadScan dead = scanDeadPixels(curr, roi, p.deadDiff, expected, circle);
-    report.deadPixels = dead.count;
-    report.muraStd = dead.muraStd;
-    const qint64 msDead = stepT.elapsed();
+    DeadScan dead;
+    qint64 msDead = 0;
+    if (p.enableDeadPixels) {
+        stepT.start();
+        dead = scanDeadPixels(curr, roi, p.deadDiff, expected, circle);
+        report.deadPixels = dead.count;
+        report.muraStd = dead.muraStd;
+        msDead = stepT.elapsed();
+    }
 
     stepT.start();
     report.annotated = drawAnnotated(curr, roi, circle, dead.points);
     const qint64 msAnno = stepT.elapsed();
 
     qint64 msSsim = 0;
-    if (!refRgb.isNull()) {
+    if (p.enableSsim && !refRgb.isNull()) {
         stepT.start();
         QImage ref = toRgb888(refRgb);
         if (ref.size() != curr.size())

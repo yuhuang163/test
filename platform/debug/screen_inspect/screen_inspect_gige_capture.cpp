@@ -27,6 +27,16 @@ namespace {
 QMutex g_mvsMutex;
 bool g_sdkInited = false;
 
+struct Session {
+    void* handle = nullptr;
+    bool opened = false;
+    bool grabbing = false;
+    QString cameraIp;
+    QString serial;
+};
+
+Session g_session;
+
 void ensureRuntimeDllSearchPath() {
     static bool done = false;
     if (done)
@@ -83,6 +93,25 @@ bool deviceMatches(const MV_CC_DEVICE_INFO* info, const QString& cameraIp, const
     return false;
 }
 
+bool sessionMatches(const QString& cameraIp, const QString& serial) {
+    if (!g_session.handle || !g_session.opened || !g_session.grabbing)
+        return false;
+    return g_session.cameraIp.trimmed() == cameraIp.trimmed()
+           && g_session.serial.trimmed() == serial.trimmed();
+}
+
+void closeSessionUnlocked() {
+    if (g_session.grabbing && g_session.handle)
+        MV_CC_StopGrabbing(g_session.handle);
+    if (g_session.opened && g_session.handle)
+        MV_CC_CloseDevice(g_session.handle);
+    if (g_session.handle) {
+        MV_CC_DestroyHandle(g_session.handle);
+        g_session.handle = nullptr;
+    }
+    g_session = Session();
+}
+
 bool frameToQImage(void* handle, const MV_FRAME_OUT& frame, QImage* out, QString* err) {
     const unsigned int w = frame.stFrameInfo.nExtendWidth
                                ? frame.stFrameInfo.nExtendWidth
@@ -123,8 +152,13 @@ bool frameToQImage(void* handle, const MV_FRAME_OUT& frame, QImage* out, QString
 
 } // namespace
 
+void releaseSession() {
+    QMutexLocker lock(&g_mvsMutex);
+    closeSessionUnlocked();
+}
+
 bool grabStill(const QString& cameraIp, const QString& serial, int warmupMs, QImage* out, QString* err,
-               QString* stageLog) {
+               QString* stageLog, bool keepSession) {
     if (!out) {
         if (err)
             *err = QStringLiteral("内部错误：输出图为空");
@@ -137,11 +171,13 @@ bool grabStill(const QString& cameraIp, const QString& serial, int warmupMs, QIm
     totalT.start();
     QElapsedTimer stepT;
     qint64 msEnum = 0, msOpen = 0, msStart = 0, msWarm = 0, msDiscard = 0, msGet = 0, msCvt = 0;
+    int reused = 0;
     auto finishLog = [&](bool ok) {
         const QString line =
-            QStringLiteral("ok=%1 thread=%2 enum=%3 open=%4 start=%5 warm=%6 discard=%7 get=%8 cvt=%9 "
-                           "total=%10 size=%11x%12")
+            QStringLiteral("ok=%1 reused=%2 thread=%3 enum=%4 open=%5 start=%6 warm=%7 discard=%8 get=%9 "
+                           "cvt=%10 total=%11 size=%12x%13")
                 .arg(ok ? 1 : 0)
+                .arg(reused)
                 .arg(quintptr(QThread::currentThreadId()), 0, 16)
                 .arg(msEnum)
                 .arg(msOpen)
@@ -164,99 +200,94 @@ bool grabStill(const QString& cameraIp, const QString& serial, int warmupMs, QIm
         return false;
     }
 
-    void* handle = nullptr;
-    bool opened = false;
-    bool grabbing = false;
-    auto cleanup = [&]() {
-        if (grabbing)
-            MV_CC_StopGrabbing(handle);
-        if (opened)
-            MV_CC_CloseDevice(handle);
-        if (handle) {
-            MV_CC_DestroyHandle(handle);
-            handle = nullptr;
-        }
-    };
+    if (!sessionMatches(cameraIp, serial)) {
+        closeSessionUnlocked();
 
-    MV_CC_DEVICE_INFO_LIST deviceList;
-    memset(&deviceList, 0, sizeof(deviceList));
-    stepT.start();
-    int nRet = MV_CC_EnumDevices(MV_GIGE_DEVICE | MV_GENTL_GIGE_DEVICE, &deviceList);
-    msEnum = stepT.elapsed();
-    if (nRet != MV_OK) {
-        if (err)
-            *err = QStringLiteral("枚举 GigE 相机失败：0x%1").arg(nRet, 0, 16);
-        finishLog(false);
-        return false;
-    }
-    if (deviceList.nDeviceNum == 0) {
-        if (err)
-            *err = QStringLiteral("未找到 GigE 相机（请检查网线/同网段 IP，MVS 能出图后再试）");
-        finishLog(false);
-        return false;
-    }
-
-    int index = -1;
-    for (unsigned int i = 0; i < deviceList.nDeviceNum; ++i) {
-        if (deviceMatches(deviceList.pDeviceInfo[i], cameraIp, serial)) {
-            index = static_cast<int>(i);
-            break;
+        MV_CC_DEVICE_INFO_LIST deviceList;
+        memset(&deviceList, 0, sizeof(deviceList));
+        stepT.start();
+        int nRet = MV_CC_EnumDevices(MV_GIGE_DEVICE | MV_GENTL_GIGE_DEVICE, &deviceList);
+        msEnum = stepT.elapsed();
+        if (nRet != MV_OK) {
+            if (err)
+                *err = QStringLiteral("枚举 GigE 相机失败：0x%1").arg(nRet, 0, 16);
+            finishLog(false);
+            return false;
         }
-    }
-    if (index < 0) {
-        if (err) {
-            QStringList ips;
-            for (unsigned int i = 0; i < deviceList.nDeviceNum; ++i) {
-                const auto* p = deviceList.pDeviceInfo[i];
-                if (p && (p->nTLayerType == MV_GIGE_DEVICE || p->nTLayerType == MV_GENTL_GIGE_DEVICE))
-                    ips << ipFromGigEInfo(p->SpecialInfo.stGigEInfo);
+        if (deviceList.nDeviceNum == 0) {
+            if (err)
+                *err = QStringLiteral("未找到 GigE 相机（请检查网线/同网段 IP，MVS 能出图后再试）");
+            finishLog(false);
+            return false;
+        }
+
+        int index = -1;
+        for (unsigned int i = 0; i < deviceList.nDeviceNum; ++i) {
+            if (deviceMatches(deviceList.pDeviceInfo[i], cameraIp, serial)) {
+                index = static_cast<int>(i);
+                break;
             }
-            *err = QStringLiteral("未匹配 GigE 相机 IP/序列号（当前=%1，已发现：%2）")
-                       .arg(cameraIp.trimmed().isEmpty() ? QStringLiteral("(空)") : cameraIp.trimmed(),
-                            ips.join(QLatin1Char(',')));
         }
-        finishLog(false);
-        return false;
-    }
+        if (index < 0) {
+            if (err) {
+                QStringList ips;
+                for (unsigned int i = 0; i < deviceList.nDeviceNum; ++i) {
+                    const auto* p = deviceList.pDeviceInfo[i];
+                    if (p && (p->nTLayerType == MV_GIGE_DEVICE || p->nTLayerType == MV_GENTL_GIGE_DEVICE))
+                        ips << ipFromGigEInfo(p->SpecialInfo.stGigEInfo);
+                }
+                *err = QStringLiteral("未匹配 GigE 相机 IP/序列号（当前=%1，已发现：%2）")
+                           .arg(cameraIp.trimmed().isEmpty() ? QStringLiteral("(空)") : cameraIp.trimmed(),
+                                ips.join(QLatin1Char(',')));
+            }
+            finishLog(false);
+            return false;
+        }
 
-    stepT.start();
-    nRet = MV_CC_CreateHandle(&handle, deviceList.pDeviceInfo[index]);
-    if (nRet != MV_OK) {
-        if (err)
-            *err = QStringLiteral("创建 GigE 句柄失败：0x%1").arg(nRet, 0, 16);
-        finishLog(false);
-        return false;
-    }
+        stepT.start();
+        nRet = MV_CC_CreateHandle(&g_session.handle, deviceList.pDeviceInfo[index]);
+        if (nRet != MV_OK) {
+            g_session.handle = nullptr;
+            if (err)
+                *err = QStringLiteral("创建 GigE 句柄失败：0x%1").arg(nRet, 0, 16);
+            finishLog(false);
+            return false;
+        }
 
-    nRet = MV_CC_OpenDevice(handle);
-    msOpen = stepT.elapsed();
-    if (nRet != MV_OK) {
-        cleanup();
-        if (err)
-            *err = QStringLiteral("打开 GigE 相机失败：0x%1（是否被 MVS 客户端占用？）").arg(nRet, 0, 16);
-        finishLog(false);
-        return false;
-    }
-    opened = true;
+        nRet = MV_CC_OpenDevice(g_session.handle);
+        msOpen = stepT.elapsed();
+        if (nRet != MV_OK) {
+            closeSessionUnlocked();
+            if (err)
+                *err = QStringLiteral("打开 GigE 相机失败：0x%1（是否被 MVS 客户端占用？）").arg(nRet, 0, 16);
+            finishLog(false);
+            return false;
+        }
+        g_session.opened = true;
+        g_session.cameraIp = cameraIp.trimmed();
+        g_session.serial = serial.trimmed();
 
-    if (deviceList.pDeviceInfo[index]->nTLayerType == MV_GIGE_DEVICE) {
-        const int packetSize = MV_CC_GetOptimalPacketSize(handle);
-        if (packetSize > 0)
-            MV_CC_SetIntValueEx(handle, "GevSCPSPacketSize", packetSize);
-    }
-    MV_CC_SetEnumValue(handle, "TriggerMode", 0);
+        if (deviceList.pDeviceInfo[index]->nTLayerType == MV_GIGE_DEVICE) {
+            const int packetSize = MV_CC_GetOptimalPacketSize(g_session.handle);
+            if (packetSize > 0)
+                MV_CC_SetIntValueEx(g_session.handle, "GevSCPSPacketSize", packetSize);
+        }
+        MV_CC_SetEnumValue(g_session.handle, "TriggerMode", 0);
 
-    stepT.start();
-    nRet = MV_CC_StartGrabbing(handle);
-    msStart = stepT.elapsed();
-    if (nRet != MV_OK) {
-        cleanup();
-        if (err)
-            *err = QStringLiteral("GigE 开始取流失败：0x%1").arg(nRet, 0, 16);
-        finishLog(false);
-        return false;
+        stepT.start();
+        nRet = MV_CC_StartGrabbing(g_session.handle);
+        msStart = stepT.elapsed();
+        if (nRet != MV_OK) {
+            closeSessionUnlocked();
+            if (err)
+                *err = QStringLiteral("GigE 开始取流失败：0x%1").arg(nRet, 0, 16);
+            finishLog(false);
+            return false;
+        }
+        g_session.grabbing = true;
+    } else {
+        reused = 1;
     }
-    grabbing = true;
 
     stepT.start();
     if (warmupMs > 0)
@@ -268,36 +299,40 @@ bool grabStill(const QString& cameraIp, const QString& serial, int warmupMs, QIm
     for (int i = 0; i < 3; ++i) {
         MV_FRAME_OUT discard;
         memset(&discard, 0, sizeof(discard));
-        if (MV_CC_GetImageBuffer(handle, &discard, 1000) == MV_OK)
-            MV_CC_FreeImageBuffer(handle, &discard);
+        if (MV_CC_GetImageBuffer(g_session.handle, &discard, 1000) == MV_OK)
+            MV_CC_FreeImageBuffer(g_session.handle, &discard);
     }
     msDiscard = stepT.elapsed();
 
     MV_FRAME_OUT frame;
     memset(&frame, 0, sizeof(frame));
     stepT.start();
-    nRet = MV_CC_GetImageBuffer(handle, &frame, 3000);
+    const int nGet = MV_CC_GetImageBuffer(g_session.handle, &frame, 3000);
     msGet = stepT.elapsed();
-    if (nRet != MV_OK) {
-        cleanup();
+    if (nGet != MV_OK) {
+        closeSessionUnlocked();
         if (err)
-            *err = QStringLiteral("GigE 取图超时/失败：0x%1").arg(nRet, 0, 16);
+            *err = QStringLiteral("GigE 取图超时/失败：0x%1").arg(nGet, 0, 16);
         finishLog(false);
         return false;
     }
 
     QImage converted;
     stepT.start();
-    const bool ok = frameToQImage(handle, frame, &converted, err);
+    const bool ok = frameToQImage(g_session.handle, frame, &converted, err);
     msCvt = stepT.elapsed();
-    MV_CC_FreeImageBuffer(handle, &frame);
-    cleanup();
+    MV_CC_FreeImageBuffer(g_session.handle, &frame);
 
     if (!ok) {
+        closeSessionUnlocked();
         finishLog(false);
         return false;
     }
     *out = converted;
+
+    if (!keepSession)
+        closeSessionUnlocked();
+
     finishLog(true);
     return true;
 }

@@ -29,6 +29,8 @@ const QVector<GateTypeDescriptor> kTypes = {
     {QStringLiteral("ProtocolBatteryData"), QStringLiteral("电量"), {{QStringLiteral("percent"), QStringLiteral("电量(%)")}, {QStringLiteral("chargeState"), QStringLiteral("充电状态")}, {QStringLiteral("voltageMv"), QStringLiteral("电压(mV)")}, {QStringLiteral("currentMa"), QStringLiteral("电流(mA)")}, {QStringLiteral("temperatureC"), QStringLiteral("温度(℃)")}}},
     {QStringLiteral("ProtocolKeyCapData"), QStringLiteral("按键电容"), {{QStringLiteral("capacitance"), QStringLiteral("电容值")}, {QStringLiteral("keyId"), QStringLiteral("按键编号")}}},
     {QStringLiteral("ProtocolChargeCurrentData"), QStringLiteral("充电电流"), {{QStringLiteral("currentMa"), QStringLiteral("电流(mA)")}}},
+    {QStringLiteral("ProtocolFactoryDoneData"), QStringLiteral("产测完成标识"),
+     {{QStringLiteral("done"), QStringLiteral("已完成(1=是)")}}},
     {QStringLiteral("ProtocolTrimData"), QStringLiteral("Trim微调值"), {{QStringLiteral("trim"), QStringLiteral("微调值")}}},
     {QStringLiteral("ProtocolLightCalibData"), QStringLiteral("光感校准值"), {{QStringLiteral("calibValue"), QStringLiteral("校准值")}}},
     {QStringLiteral("ProtocolPhotosensitiveData"), QStringLiteral("光感上报"), {{QStringLiteral("lightSensor"), QStringLiteral("光感值")}}},
@@ -188,6 +190,12 @@ double fieldValueFromVariant(const QString& reportType, const QString& field, co
         if (field == QLatin1String("currentMa")) {
             ok = true;
             return static_cast<double>(d.currentMa);
+        }
+    } else if (reportType == QLatin1String("ProtocolFactoryDoneData")) {
+        const auto d = payload.value<ProtocolFactoryDoneData>();
+        if (field == QLatin1String("done")) {
+            ok = true;
+            return d.done ? 1.0 : 0.0;
         }
     } else if (reportType == QLatin1String("ProtocolPumpStallCurrentData")) {
         const auto d = payload.value<ProtocolPumpStallCurrentData>();
@@ -1188,6 +1196,12 @@ QString fieldStringFromVariant(const QString& reportType, const QString& field, 
                 return QStringLiteral("未指定");
             return d.colorMatch == 1 ? QStringLiteral("是") : QStringLiteral("否");
         }
+    } else if (reportType == QLatin1String("ProtocolFactoryDoneData")) {
+        const auto d = payload.value<ProtocolFactoryDoneData>();
+        if (field == QLatin1String("done")) {
+            ok = true;
+            return d.done ? QStringLiteral("已完成") : QStringLiteral("未完成");
+        }
     }
     return {};
 }
@@ -1329,6 +1343,8 @@ QString formatGateFieldValue(const QString& reportType, const QString& field, do
                        ? QStringLiteral("未指定")
                        : (qAbs(value - 1.0) < 0.0001 ? QStringLiteral("是") : QStringLiteral("否"));
     }
+    if (reportType == QLatin1String("ProtocolFactoryDoneData") && field == QLatin1String("done"))
+        return qAbs(value - 1.0) < 0.0001 ? QStringLiteral("已完成") : QStringLiteral("未完成");
     if (qAbs(value - qRound(value)) < 1e-9)
         return QString::number(qRound(value));
     return QString::number(value);
@@ -1369,6 +1385,26 @@ double colorMatchThreshold(const TestCaseGate& gate) {
         return gate.low;
     if (qAbs(gate.low - 1.0) < 0.0001 || qAbs(gate.high - 1.0) < 0.0001)
         return 1.0;
+    return 1.0;
+}
+
+/** 产测完成标志：支持 1/0、已完成/未完成；空则默认期望已完成(1)。 */
+double factoryDoneThreshold(const TestCaseGate& gate) {
+    const QString e = gate.expected.trimmed();
+    if (!e.isEmpty()) {
+        if (e == QStringLiteral("已完成") || e == QStringLiteral("是")
+            || e.compare(QLatin1String("yes"), Qt::CaseInsensitive) == 0
+            || e.compare(QLatin1String("true"), Qt::CaseInsensitive) == 0)
+            return 1.0;
+        if (e == QStringLiteral("未完成") || e == QStringLiteral("否")
+            || e.compare(QLatin1String("no"), Qt::CaseInsensitive) == 0
+            || e.compare(QLatin1String("false"), Qt::CaseInsensitive) == 0)
+            return 0.0;
+        bool ok = false;
+        const double parsed = e.toDouble(&ok);
+        if (ok)
+            return parsed;
+    }
     return 1.0;
 }
 
@@ -1455,7 +1491,9 @@ bool GateRegistry::evaluate(const TestCaseGate& gate, const QString& reportType,
             QString expected = gate.expected.trimmed();
             if (expected.isEmpty() && !gate.expectedSettingsKey.isEmpty())
                 expected = SETTINGS.value(gate.expectedSettingsKey).toString().trimmed();
-            if (expected.isEmpty()) {
+            if (expected.isEmpty()
+                && !(reportType == QLatin1String("ProtocolFactoryDoneData")
+                     && gate.field == QLatin1String("done"))) {
                 passOut = false;
                 detailOut = QStringLiteral("当前=%1, 未配置期望( Gate/Expected 或 MES/UI SN)").arg(actual.isEmpty() ? QStringLiteral("-") : actual);
             } else if ((reportType == QLatin1String("ProtocolMacData")
@@ -1492,6 +1530,19 @@ bool GateRegistry::evaluate(const TestCaseGate& gate, const QString& reportType,
                                     .arg(formatGateFieldValue(reportType, gate.field, value), expectText);
                 } else {
                     // 数值读不到时退化为中文名比对（期望侧仍转文字，避免弹窗出现「期望=2」）
+                    passOut = (actual == expectText);
+                    detailOut = QStringLiteral("当前=%1, 期望=%2").arg(actual, expectText);
+                }
+            } else if (reportType == QLatin1String("ProtocolFactoryDoneData")
+                       && gate.field == QLatin1String("done")) {
+                // 实测文案为「已完成/未完成」；ini 期望可为 1/0 或中文，不能裸字符串比
+                const double threshold = factoryDoneThreshold(gate);
+                const QString expectText = formatGateFieldValue(reportType, gate.field, threshold);
+                if (ok) {
+                    passOut = qAbs(value - threshold) < 0.0001;
+                    detailOut = QStringLiteral("当前=%1, 期望=%2")
+                                    .arg(formatGateFieldValue(reportType, gate.field, value), expectText);
+                } else {
                     passOut = (actual == expectText);
                     detailOut = QStringLiteral("当前=%1, 期望=%2").arg(actual, expectText);
                 }
@@ -1680,6 +1731,9 @@ QString GateRegistry::formatGateAsk(const TestCaseGate& gate, const QString& rep
         if (reportType == QLatin1String("ProtocolScreenInspectData")
             && gate.field == QLatin1String("colorMatch")) {
             ask = formatGateFieldValue(reportType, gate.field, colorMatchThreshold(gate));
+        } else if (reportType == QLatin1String("ProtocolFactoryDoneData")
+                   && gate.field == QLatin1String("done")) {
+            ask = formatGateFieldValue(reportType, gate.field, factoryDoneThreshold(gate));
         } else if (!expected.isEmpty()) {
             bool ok = false;
             const double parsed = expected.toDouble(&ok);

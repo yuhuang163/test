@@ -16,10 +16,12 @@
 #include <QDebug>
 #include <QDebug>
 #include <QDir>
+#include <QDoubleSpinBox>
 #include <QElapsedTimer>
 #include <QEvent>
 #include <QFileDialog>
 #include <QLabel>
+#include <QLineEdit>
 #include <QMouseEvent>
 #include <QPainter>
 #include <QPen>
@@ -28,6 +30,7 @@
 #include <QPushButton>
 #include <QResizeEvent>
 #include <QShowEvent>
+#include <QSpinBox>
 #include <QThread>
 #include <QTimer>
 #include <QVBoxLayout>
@@ -39,6 +42,7 @@
 
 struct ScreenInspectUi {
     QComboBox* comboBox_camera = nullptr;
+    QComboBox* comboBox_cameraSource = nullptr;
     QComboBox* comboBox_expectedColor = nullptr;
     QWidget* viewfinderHost = nullptr;
     QVBoxLayout* verticalLayout_viewfinder = nullptr;
@@ -46,6 +50,9 @@ struct ScreenInspectUi {
     QSpinBox* spinBox_deadDiff = nullptr;
     QSpinBox* spinBox_maxDead = nullptr;
     QDoubleSpinBox* doubleSpinBox_mura = nullptr;
+    QLabel* label_camera = nullptr;
+    QLabel* label_gigeIp = nullptr;
+    QLineEdit* lineEdit_gigeIp = nullptr;
     QLabel* label_currImage = nullptr;
     QLabel* label_refImage = nullptr;
     QLabel* label_screenInspectSimilarity = nullptr;
@@ -55,6 +62,7 @@ struct ScreenInspectUi {
     QPushButton* btnCapture = nullptr;
     QPushButton* btnInspect = nullptr;
     QPushButton* btnOpenPreview = nullptr;
+    QPushButton* btnClosePreview = nullptr;
 };
 
 template <typename T>
@@ -73,6 +81,7 @@ void ScreenInspectWidget::bindDesignerUi() {
         return;
     ui = new ScreenInspectUi;
     ui->comboBox_camera = screenInspectFind<QComboBox>(this, "comboBox_camera");
+    ui->comboBox_cameraSource = screenInspectFind<QComboBox>(this, "comboBox_cameraSource");
     ui->comboBox_expectedColor = screenInspectFind<QComboBox>(this, "comboBox_expectedColor");
     ui->viewfinderHost = screenInspectFind<QWidget>(this, "viewfinderHost");
     ui->verticalLayout_viewfinder = screenInspectFind<QVBoxLayout>(this, "verticalLayout_viewfinder");
@@ -84,6 +93,9 @@ void ScreenInspectWidget::bindDesignerUi() {
     ui->spinBox_deadDiff = screenInspectFind<QSpinBox>(this, "spinBox_deadDiff");
     ui->spinBox_maxDead = screenInspectFind<QSpinBox>(this, "spinBox_maxDead");
     ui->doubleSpinBox_mura = screenInspectFind<QDoubleSpinBox>(this, "doubleSpinBox_mura");
+    ui->label_camera = screenInspectFind<QLabel>(this, "label_camera");
+    ui->label_gigeIp = screenInspectFind<QLabel>(this, "label_gigeIp");
+    ui->lineEdit_gigeIp = screenInspectFind<QLineEdit>(this, "lineEdit_gigeIp");
     ui->label_currImage = screenInspectFind<QLabel>(this, "label_currImage");
     ui->label_refImage = screenInspectFind<QLabel>(this, "label_refImage");
     ui->label_screenInspectSimilarity = screenInspectFind<QLabel>(this, "label_screenInspectSimilarity");
@@ -93,14 +105,42 @@ void ScreenInspectWidget::bindDesignerUi() {
     ui->btnCapture = screenInspectFind<QPushButton>(this, "btnCapture");
     ui->btnInspect = screenInspectFind<QPushButton>(this, "btnInspect");
     ui->btnOpenPreview = screenInspectFind<QPushButton>(this, "btnOpenPreview");
-    if (!ui->comboBox_camera || !ui->comboBox_expectedColor || !ui->viewfinderHost || !ui->verticalLayout_viewfinder
-        || !ui->doubleSpinBox_minSsim || !ui->spinBox_deadDiff || !ui->spinBox_maxDead || !ui->doubleSpinBox_mura
-        || !ui->label_currImage || !ui->label_refImage || !ui->label_screenInspectSimilarity
-        || !ui->label_screenInspectVerdict || !ui->plainTextEdit_screenInspectLog || !ui->checkBox_autoInspect
-        || !ui->btnCapture || !ui->btnInspect || !ui->btnOpenPreview) {
-        qWarning() << "ScreenInspectWidget: 界面控件未绑定完整，跳过屏幕测试页初始化";
+    ui->btnClosePreview = screenInspectFind<QPushButton>(this, "btnClosePreview");
+    if (!ui->comboBox_camera || !ui->comboBox_expectedColor || !ui->viewfinderHost
+        || !ui->verticalLayout_viewfinder || !ui->doubleSpinBox_minSsim || !ui->spinBox_deadDiff
+        || !ui->spinBox_maxDead || !ui->doubleSpinBox_mura || !ui->label_currImage || !ui->label_refImage
+        || !ui->label_screenInspectSimilarity || !ui->label_screenInspectVerdict
+        || !ui->plainTextEdit_screenInspectLog || !ui->checkBox_autoInspect || !ui->btnCapture
+        || !ui->btnInspect || !ui->btnOpenPreview || !ui->btnClosePreview) {
+        QStringList missing;
+        auto note = [&](bool ok, const char* name) {
+            if (!ok)
+                missing << QString::fromUtf8(name);
+        };
+        note(ui->comboBox_camera, "comboBox_camera");
+        note(ui->comboBox_expectedColor, "comboBox_expectedColor");
+        note(ui->viewfinderHost, "viewfinderHost");
+        note(ui->verticalLayout_viewfinder, "verticalLayout_viewfinder");
+        note(ui->doubleSpinBox_minSsim, "doubleSpinBox_minSsim");
+        note(ui->spinBox_deadDiff, "spinBox_deadDiff");
+        note(ui->spinBox_maxDead, "spinBox_maxDead");
+        note(ui->doubleSpinBox_mura, "doubleSpinBox_mura");
+        note(ui->label_currImage, "label_currImage");
+        note(ui->label_refImage, "label_refImage");
+        note(ui->label_screenInspectSimilarity, "label_screenInspectSimilarity");
+        note(ui->label_screenInspectVerdict, "label_screenInspectVerdict");
+        note(ui->plainTextEdit_screenInspectLog, "plainTextEdit_screenInspectLog");
+        note(ui->checkBox_autoInspect, "checkBox_autoInspect");
+        note(ui->btnCapture, "btnCapture");
+        note(ui->btnInspect, "btnInspect");
+        note(ui->btnOpenPreview, "btnOpenPreview");
+        note(ui->btnClosePreview, "btnClosePreview");
+        qWarning() << "ScreenInspectWidget: 界面控件未绑定完整，跳过屏幕测试页初始化，缺失=" << missing;
         return;
     }
+    // GigE 相关控件在独立 .ui 有、主窗口嵌入页可能暂无；缺省时只走 USB
+    if (!ui->comboBox_cameraSource || !ui->lineEdit_gigeIp)
+        qWarning() << "ScreenInspectWidget: 未找到 GigE 源/IP 控件，调试页仅 USB（工站 GigE 不受影响）";
 
     ui->comboBox_expectedColor->addItem(QStringLiteral("自动判断"), -1);
     ui->comboBox_expectedColor->addItem(QStringLiteral("蓝"), 0);
@@ -147,6 +187,8 @@ ScreenInspectWidget::~ScreenInspectWidget() {
 
 void ScreenInspectWidget::showEvent(QShowEvent* event) {
     QWidget::showEvent(event);
+    if (!uiBound_ || !ui)
+        return;
     loadThresholdsFromSettings();
     updateCameraSourceUi();
 }
@@ -158,6 +200,8 @@ void ScreenInspectWidget::resizeEvent(QResizeEvent* event) {
 }
 
 void ScreenInspectWidget::loadThresholdsFromSettings() {
+    if (!uiBound_ || !ui)
+        return;
     ui->doubleSpinBox_minSsim->setValue(SETTINGS.value("ScreenInspect/MinSimilarity", 0.90).toDouble());
     ui->spinBox_deadDiff->setValue(SETTINGS.value("ScreenInspect/DeadPixelDiff", 35).toInt());
     ui->spinBox_maxDead->setValue(SETTINGS.value("ScreenInspect/MaxDeadPixels", 8).toInt());
@@ -166,15 +210,20 @@ void ScreenInspectWidget::loadThresholdsFromSettings() {
                             .toString()
                             .trimmed()
                             .toLower();
-    ui->comboBox_cameraSource->setCurrentIndex(src == QLatin1String("gige") ? 1 : 0);
-    ui->lineEdit_gigeIp->setText(
-        SETTINGS.value(QStringLiteral("ScreenInspect/GigEIp"), QStringLiteral("169.254.64.10")).toString());
+    if (ui->comboBox_cameraSource)
+        ui->comboBox_cameraSource->setCurrentIndex(src == QLatin1String("gige") ? 1 : 0);
+    if (ui->lineEdit_gigeIp) {
+        ui->lineEdit_gigeIp->setText(
+            SETTINGS.value(QStringLiteral("ScreenInspect/GigEIp"), QStringLiteral("169.254.64.10")).toString());
+    }
     const int camIdx = SETTINGS.value("ScreenInspect/CameraIndex", 0).toInt();
     if (camIdx >= 0 && camIdx < ui->comboBox_camera->count())
         ui->comboBox_camera->setCurrentIndex(camIdx);
 }
 
 void ScreenInspectWidget::saveThresholdsToSettings() {
+    if (!uiBound_ || !ui)
+        return;
     SETTINGS.setValue("ScreenInspect/MinSimilarity", ui->doubleSpinBox_minSsim->value());
     SETTINGS.setValue("ScreenInspect/DeadPixelDiff", ui->spinBox_deadDiff->value());
     SETTINGS.setValue("ScreenInspect/MaxDeadPixels", ui->spinBox_maxDead->value());
@@ -182,19 +231,25 @@ void ScreenInspectWidget::saveThresholdsToSettings() {
     SETTINGS.setValue("ScreenInspect/CameraIndex", ui->comboBox_camera->currentIndex());
     SETTINGS.setValue(QStringLiteral("ScreenInspect/CameraSource"),
                       isGigESource() ? QStringLiteral("gige") : QStringLiteral("usb"));
-    SETTINGS.setValue(QStringLiteral("ScreenInspect/GigEIp"), ui->lineEdit_gigeIp->text().trimmed());
+    if (ui->lineEdit_gigeIp)
+        SETTINGS.setValue(QStringLiteral("ScreenInspect/GigEIp"), ui->lineEdit_gigeIp->text().trimmed());
 }
 
 bool ScreenInspectWidget::isGigESource() const {
-    return ui->comboBox_cameraSource->currentIndex() == 1;
+    return ui && ui->comboBox_cameraSource && ui->comboBox_cameraSource->currentIndex() == 1;
 }
 
 void ScreenInspectWidget::updateCameraSourceUi() {
+    if (!uiBound_ || !ui)
+        return;
     const bool gige = isGigESource();
-    ui->label_camera->setVisible(!gige);
+    if (ui->label_camera)
+        ui->label_camera->setVisible(!gige);
     ui->comboBox_camera->setVisible(!gige);
-    ui->label_gigeIp->setVisible(gige);
-    ui->lineEdit_gigeIp->setVisible(gige);
+    if (ui->label_gigeIp)
+        ui->label_gigeIp->setVisible(gige);
+    if (ui->lineEdit_gigeIp)
+        ui->lineEdit_gigeIp->setVisible(gige);
     ui->btnOpenPreview->setText(gige ? QStringLiteral("测试采图") : QStringLiteral("打开预览"));
     ui->btnClosePreview->setEnabled(!gige);
     if (viewfinder_)
@@ -315,6 +370,10 @@ void ScreenInspectWidget::on_btnClosePreview_clicked() {
 }
 
 void ScreenInspectWidget::captureGigEStill() {
+    if (!uiBound_ || !ui || !ui->lineEdit_gigeIp) {
+        onCaptureFailed(QStringLiteral("GigE 控件未就绪（请确认主界面已包含 IP 输入框）"));
+        return;
+    }
     saveThresholdsToSettings();
     setBusy(true);
     const QString ip = ui->lineEdit_gigeIp->text().trimmed();

@@ -23,6 +23,7 @@ class TestRecordStore {
         QString standardValue;
         QString unit;
         QString result;
+        QString costTime;
     };
 
     struct PendingCloudUpload {

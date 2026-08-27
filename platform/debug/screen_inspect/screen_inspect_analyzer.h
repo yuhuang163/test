@@ -18,6 +18,8 @@ struct Params {
     int deadDiff = 35;
     int expectedColor = -1;
     QRect manualRoi; // 有效则只在此矩形内判定；空则自动找 ROI
+    bool enableDeadPixels = true; // 步骤未启用坏点卡控时可跳过扫描
+    bool enableSsim = true;       // 步骤未启用相似度卡控时可跳过 SSIM
 };
 
 inline QRect parseManualRoi(const QString& text) {
