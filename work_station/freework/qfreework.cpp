@@ -2960,8 +2960,13 @@ void QFreeWork::runScreenInspectStep() {
         QString path = referencePath;
         if (!path.isEmpty() && !QFileInfo(path).isAbsolute())
             path = QDir(QCoreApplication::applicationDirPath()).filePath(path);
-        if (path.isEmpty())
-            path = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("screen_inspect/reference.png"));
+        if (path.isEmpty()) {
+            path = QDir(QCoreApplication::applicationDirPath())
+                       .filePath(QStringLiteral("screen_inspect/参考图/reference.png"));
+            if (!QFileInfo::exists(path))
+                path = QDir(QCoreApplication::applicationDirPath())
+                           .filePath(QStringLiteral("screen_inspect/reference.png"));
+        }
         if (!ref.load(path) || ref.isNull()) {
             TestResult = failValue;
             showlog(QStringLiteral("%1失败：未加载参考图（%2）。请在调试页保存参考图或填写 Param_referencePath")

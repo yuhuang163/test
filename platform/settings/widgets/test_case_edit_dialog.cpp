@@ -171,7 +171,7 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("warmupMs"), QStringLiteral("采集预热 (ms)")},
         {QStringLiteral("expectedColor"), QStringLiteral("期望纯色（下拉选：不判断/蓝绿红白黑灰）")},
         {QStringLiteral("deadDiff"), QStringLiteral("坏点残差阈值")},
-        {QStringLiteral("referencePath"), QStringLiteral("参考图路径（双击选择图片）")},
+        {QStringLiteral("referencePath"), QStringLiteral("参考图路径（双击选择，自动存入 screen_inspect/参考图）")},
         {QStringLiteral("saveCapture"), QStringLiteral("保存拍摄图（1开/0关）")},
         {QStringLiteral("roi"), QStringLiteral("检测范围 x,y,w,h（空=调试页划定/自动）")},
     };
@@ -1908,13 +1908,23 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
         if (column == 1 && key == QLatin1String("referencePath")) {
             QTableWidgetItem* valItem = ui->tableWidget_sendParam->item(row, 1);
             const QString start = valItem ? valItem->text().trimmed() : QString();
+            const QString startDir = start.isEmpty()
+                                        ? ScreenInspectAnalyzer::referenceLibraryDir()
+                                        : start;
             const QString path = QFileDialog::getOpenFileName(
-                this, QStringLiteral("选择标准参考图"), start,
+                this, QStringLiteral("选择标准参考图"), startDir,
                 QStringLiteral("图片 (*.png *.jpg *.jpeg *.bmp);;所有文件 (*.*)"));
             if (path.isEmpty() || !valItem)
                 return;
+            QString err;
+            const QString stored = ScreenInspectAnalyzer::importReferenceToLibrary(path, &err);
+            if (stored.isEmpty()) {
+                QMessageBox::warning(this, QStringLiteral("参考图"),
+                                     err.isEmpty() ? QStringLiteral("导入参考图失败") : err);
+                return;
+            }
             materializeSendParamValueItem(valItem);
-            valItem->setText(path);
+            valItem->setText(stored);
             return;
         }
         if (column != 0)

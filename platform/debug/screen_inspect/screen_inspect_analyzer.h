@@ -63,11 +63,22 @@ QImage drawGuides(const QImage& rgb, const QRect& roi, const QImage* circleFrom 
                   QRect* outRoi = nullptr);
 
 /**
- * 清理 screen_inspect 历史抓拍，避免目录无限累积。
- * 保留 reference* / last_*；带时间戳的 capture/mark/reference 只留最近 keepNewest 份
- *（默认 48，覆盖一次红蓝绿黑白灰+灰阶各拍 2~3 张），且超过 maxAgeDays 的一律删。
+ * 清理 screen_inspect 根目录下的历史测试抓拍，避免无限累积。
+ * 只处理 dirPath 下「文件」（不进入子目录）；「参考图」子目录永不清理。
+ * 根目录保留 last_*；带时间戳的 _capture/_mark/_reference 只留最近 keepNewest 份，
+ * 且超过 maxAgeDays 的删除。
  */
-void cleanupStoredImages(const QString& dirPath, int keepNewest = 48, int maxAgeDays = 1);
+void cleanupStoredImages(const QString& dirPath, int keepNewest = 30, int maxAgeDays = 1);
+
+/** bin/screen_inspect */
+QString storageRootDir();
+/** bin/screen_inspect/参考图 — 步骤参考图专用，与测试抓拍分开 */
+QString referenceLibraryDir();
+/**
+ * 将任意图片复制进「参考图」目录，返回可写入 Param_referencePath 的路径
+ *（优先相对 applicationDir，如 screen_inspect/参考图/白.jpg）。
+ */
+QString importReferenceToLibrary(const QString& sourcePath, QString* errorOut = nullptr);
 
 /** 解析期望/卡控颜色：支持 -1/0~5、不判断/自动、蓝绿红白黑灰（及英文）。失败返回 -1。 */
 inline int parseColorIndex(const QString& text, bool* ok = nullptr) {

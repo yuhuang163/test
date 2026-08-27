@@ -1,12 +1,14 @@
 #include "screen_inspect_analyzer.h"
 
 #include <QColor>
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QDebug>
 #include <QDir>
 #include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
+#include <QIODevice>
 #include <QPainter>
 #include <QPen>
 #include <QPoint>
@@ -914,6 +916,8 @@ void cleanupStoredImages(const QString& dirPath, int keepNewest, int maxAgeDays)
 
     const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
     const qint64 maxAgeMs = static_cast<qint64>(maxAgeDays) * 24 * 3600 * 1000;
+    // 仅枚举根目录文件，不递归；参考图目录内文件不会出现在此列表
+    const QString refDirName = QStringLiteral("参考图");
 
     struct Entry {
         QString path;
@@ -925,9 +929,15 @@ void cleanupStoredImages(const QString& dirPath, int keepNewest, int maxAgeDays)
     const QFileInfoList files = dir.entryInfoList(QDir::Files | QDir::NoDotAndDotDot);
     for (const QFileInfo& fi : files) {
         const QString name = fi.fileName();
-        // 常驻：参考图与最近一次结果
+        // 防御：根目录旧版单张参考图、最近一次预览
         if (name.compare(QStringLiteral("reference.png"), Qt::CaseInsensitive) == 0
             || name.startsWith(QStringLiteral("last_"), Qt::CaseInsensitive))
+            continue;
+        // 双保险：路径落在参考图目录下绝不删
+        const QString abs = QDir::cleanPath(fi.absoluteFilePath());
+        if (abs.contains(QLatin1Char('/') + refDirName + QLatin1Char('/'))
+            || abs.contains(QLatin1Char('\\') + refDirName + QLatin1Char('\\'))
+            || abs.endsWith(QLatin1Char('/') + refDirName) || abs.endsWith(QLatin1Char('\\') + refDirName))
             continue;
 
         const bool isStamp = name.contains(QStringLiteral("_capture"), Qt::CaseInsensitive)
@@ -948,6 +958,82 @@ void cleanupStoredImages(const QString& dirPath, int keepNewest, int maxAgeDays)
               [](const Entry& a, const Entry& b) { return a.mtime > b.mtime; });
     for (int i = keepNewest; i < stamped.size(); ++i)
         QFile::remove(stamped.at(i).path);
+}
+
+QString storageRootDir() {
+    return QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("screen_inspect"));
+}
+
+QString referenceLibraryDir() {
+    return QDir(storageRootDir()).filePath(QStringLiteral("参考图"));
+}
+
+QString importReferenceToLibrary(const QString& sourcePath, QString* errorOut) {
+    const QString src = sourcePath.trimmed();
+    if (src.isEmpty()) {
+        if (errorOut)
+            *errorOut = QStringLiteral("参考图路径为空");
+        return {};
+    }
+    QFileInfo srcInfo(src);
+    if (!srcInfo.isAbsolute())
+        srcInfo.setFile(QDir(QCoreApplication::applicationDirPath()).filePath(src));
+    if (!srcInfo.exists() || !srcInfo.isFile()) {
+        if (errorOut)
+            *errorOut = QStringLiteral("参考图文件不存在：") + srcInfo.absoluteFilePath();
+        return {};
+    }
+
+    const QString libDir = referenceLibraryDir();
+    if (!QDir().mkpath(libDir)) {
+        if (errorOut)
+            *errorOut = QStringLiteral("无法创建参考图目录：") + libDir;
+        return {};
+    }
+
+    const QString srcAbs = QDir::cleanPath(srcInfo.absoluteFilePath());
+    const QString libAbs = QDir::cleanPath(libDir);
+    // 已在参考图目录内：直接返回相对路径，不再复制
+    if (srcAbs.startsWith(libAbs + QLatin1Char('/'), Qt::CaseInsensitive)
+        || srcAbs.startsWith(libAbs + QLatin1Char('\\'), Qt::CaseInsensitive)
+        || srcAbs.compare(libAbs, Qt::CaseInsensitive) == 0) {
+        const QString app = QDir::cleanPath(QCoreApplication::applicationDirPath());
+        if (srcAbs.startsWith(app, Qt::CaseInsensitive))
+            return QDir(app).relativeFilePath(srcAbs).replace(QLatin1Char('\\'), QLatin1Char('/'));
+        return srcAbs;
+    }
+
+    QString baseName = srcInfo.fileName();
+    if (baseName.isEmpty())
+        baseName = QStringLiteral("reference.png");
+    QString destAbs = QDir(libDir).filePath(baseName);
+    if (QFileInfo::exists(destAbs)) {
+        // 同名已存在：内容相同则复用；不同则加时间戳避免覆盖
+        QFile fa(srcAbs), fb(destAbs);
+        bool same = false;
+        if (fa.open(QIODevice::ReadOnly) && fb.open(QIODevice::ReadOnly))
+            same = (fa.readAll() == fb.readAll());
+        if (!same) {
+            const QString stamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss"));
+            destAbs = QDir(libDir).filePath(srcInfo.completeBaseName() + QLatin1Char('_') + stamp + QLatin1Char('.')
+                                            + srcInfo.suffix());
+        }
+    }
+    if (!QFileInfo::exists(destAbs)) {
+        if (QFile::exists(destAbs))
+            QFile::remove(destAbs);
+        if (!QFile::copy(srcAbs, destAbs)) {
+            if (errorOut)
+                *errorOut = QStringLiteral("复制参考图失败：") + destAbs;
+            return {};
+        }
+    }
+
+    const QString app = QDir::cleanPath(QCoreApplication::applicationDirPath());
+    const QString cleanDest = QDir::cleanPath(destAbs);
+    if (cleanDest.startsWith(app, Qt::CaseInsensitive))
+        return QDir(app).relativeFilePath(cleanDest).replace(QLatin1Char('\\'), QLatin1Char('/'));
+    return cleanDest;
 }
 
 } // namespace ScreenInspectAnalyzer

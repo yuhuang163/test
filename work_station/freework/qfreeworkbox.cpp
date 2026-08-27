@@ -23,9 +23,13 @@ QFreeWorkBox::QFreeWorkBox(QWidget* parent) : box_base(parent), ui(new Ui::QFree
     QTimer::singleShot(800, this, [this]() { recoverCustom(); });
     ShowData(this);
     setWindowTitle("自由工站");
-    // 启动时清一次历史屏幕检测图
-    ScreenInspectAnalyzer::cleanupStoredImages(
-        QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("screen_inspect")));
+    // 启动时清一次历史屏幕检测图（仅根目录测试抓拍；不碰「参考图」子目录）
+    {
+        const QString inspectRoot =
+            QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("screen_inspect"));
+        QDir().mkpath(QDir(inspectRoot).filePath(QStringLiteral("参考图")));
+        ScreenInspectAnalyzer::cleanupStoredImages(inspectRoot);
+    }
     ui->statusbar->addPermanentWidget(new QLabel(FREE_VER + QString(__DATE__) + " " + QString(__TIME__)));
 
     QAction* Fixture_connectl_act = ui->menubar->addAction("连接治具串口");

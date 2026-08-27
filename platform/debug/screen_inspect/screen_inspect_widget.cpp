@@ -20,6 +20,7 @@
 #include <QElapsedTimer>
 #include <QEvent>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMouseEvent>
@@ -500,17 +501,24 @@ void ScreenInspectWidget::on_btnSaveAsRef_clicked() {
         ui->plainTextEdit_screenInspectLog->setPlainText(QStringLiteral("请先采集当前图，再保存为参考图。"));
         return;
     }
-    const QString dir = inspectDir();
+    const QString dir = ScreenInspectAnalyzer::referenceLibraryDir();
     CommonUtils::ensureDirectory(dir);
     const QString path = dir + QLatin1Char('/') + QStringLiteral("reference.png");
     if (!currImage_.save(path, "PNG")) {
         ui->plainTextEdit_screenInspectLog->setPlainText(QStringLiteral("参考图保存失败：") + path);
         return;
     }
+    // 额外备份到参考图目录（带时间戳）；不写到测试抓拍根目录，避免被清理误删
     const QString stamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss"));
     currImage_.save(dir + QLatin1Char('/') + stamp + QStringLiteral("_reference.png"), "PNG");
-    applyReferenceImage(currImage_, path);
-    ui->plainTextEdit_screenInspectLog->setPlainText(QStringLiteral("当前图已保存为参考图：") + path);
+    const QString app = QDir::cleanPath(QCoreApplication::applicationDirPath());
+    const QString clean = QDir::cleanPath(path);
+    const QString stored =
+        clean.startsWith(app, Qt::CaseInsensitive)
+            ? QDir(app).relativeFilePath(clean).replace(QLatin1Char('\\'), QLatin1Char('/'))
+            : clean;
+    applyReferenceImage(currImage_, stored);
+    ui->plainTextEdit_screenInspectLog->setPlainText(QStringLiteral("当前图已保存为参考图：") + stored);
 }
 
 void ScreenInspectWidget::on_btnInspect_clicked() {
@@ -841,7 +849,15 @@ void ScreenInspectWidget::applyReferenceImage(const QImage& img, const QString& 
 void ScreenInspectWidget::loadSavedReferenceIfAny() {
     QString path = SETTINGS.value(QStringLiteral("ScreenInspect/ReferencePath")).toString();
     if (path.isEmpty())
-        path = inspectDir() + QLatin1Char('/') + QStringLiteral("reference.png");
+        path = ScreenInspectAnalyzer::referenceLibraryDir() + QLatin1Char('/') + QStringLiteral("reference.png");
+    if (!QFileInfo(path).isAbsolute())
+        path = QDir(QCoreApplication::applicationDirPath()).filePath(path);
+    // 兼容旧路径：根目录 reference.png
+    if (!QFileInfo::exists(path)) {
+        const QString legacy = inspectDir() + QLatin1Char('/') + QStringLiteral("reference.png");
+        if (QFileInfo::exists(legacy))
+            path = legacy;
+    }
     QImage img(path);
     if (img.isNull())
         return;
