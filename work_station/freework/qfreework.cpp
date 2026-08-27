@@ -1058,7 +1058,8 @@ bool QFreeWork::tickOrderedTestStepLoop() {
             break;
         }
         functionName = TestCaseRunner::stepLabel(caseDef);
-        const bool needCaseDone = TestCaseRunner::needAsyncDone(caseDef);
+        // 须等 markDone 才过步（与 sendCommandWithRetry 的 allowResend 无关）
+        const bool needAsyncDone = TestCaseRunner::needAsyncDone(caseDef);
 
         if (!stepRuntime_.started) {
             if (!canGoNext) {
@@ -1169,7 +1170,7 @@ bool QFreeWork::tickOrderedTestStepLoop() {
             // 不可凭 lastCommandRetryCount 提前 done，否则与采样循环并发导致第二次卡死。
         }
 
-        if (needCaseDone && !stepRuntime_.done) {
+        if (needAsyncDone && !stepRuntime_.done) {
             break;
         }
 

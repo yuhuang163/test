@@ -24,6 +24,14 @@ class RootBleOtaClient {
     static constexpr int kMaxRetry = 3;                         // 单块失败后的最大整块重发次数。
     static constexpr int kDefaultBlockBusyWaitMs = 500;         // 设备忙 NACK 后默认退避等待（ms）。
 
+    static constexpr uint16_t kFrameSof = 0x5CC5u;
+    static constexpr uint8_t kFrameTypeReq = 0x00;
+    static constexpr uint8_t kFrameTypeResp = 0x01;
+    static constexpr uint8_t kFrameTypeNotify = 0x02;
+    static constexpr uint16_t kNackBusyBlock = 0xFFFFu;
+    static constexpr uint8_t kNackReasonBusy = 0x01;
+    static constexpr uint8_t kNackReasonReassembleFailed = 0x02;
+
     enum TlvType : uint8_t {
         NegotiateBsReq = 0x01,
         NegotiateBsResp = 0x02,
