@@ -502,6 +502,7 @@ class QFreeWork : public test_base {
     void refreshLightCalibData(ProtocolLightCalibData data) override;
     void refreshFlangeStatus(ProtocolTypeData data) override;
     void refreshPumpStallCurrent(ProtocolPumpStallCurrentData data) override;
+    void refreshAgingStatus(ProtocolAgingStatusData data) override;
     void refreshRootAgingHistory(ProtocolRootAgingHistoryData data) override;
     void refreshTypeStatus(ProtocolTypeData data) override;
     void refreshAmmeterData(QString data) override;

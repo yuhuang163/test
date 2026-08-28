@@ -1734,6 +1734,20 @@ void QFreeWork::refreshPumpStallCurrent(ProtocolPumpStallCurrentData data) {
     showlog(QStringLiteral("泵堵电流 ADC：%1").arg(data.adcValue));
 }
 
+void QFreeWork::refreshAgingStatus(ProtocolAgingStatusData data) {
+    const QString summary =
+        QStringLiteral("状态=%1 循环=%2 已老化=%3s").arg(data.status).arg(data.loops).arg(data.seconds);
+    showlog(QStringLiteral("老化状态：%1").arg(summary));
+
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolAgingStatusData"), QVariant::fromValue(data)))
+        return;
+
+    if (!testCaseStepActive_ || activeTestCase_.send.deviceCmd != QStringLiteral("AgingStatusRead"))
+        return;
+
+    markActiveTestCaseStepDone(true, summary, QString());
+}
+
 void QFreeWork::refreshRootAgingHistory(ProtocolRootAgingHistoryData data) {
     // Qroot 0x9C / Qaiot CID=0x01 老化模式共用；先打全量字段便于对照卡控
     QString summary;
