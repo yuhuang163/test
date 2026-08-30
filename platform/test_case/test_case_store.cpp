@@ -817,7 +817,9 @@ void loadMultiGatesFromIni(QSettings& ini, TestCaseDefinition& out) {
 bool isMultiFieldGateReportType(const QString& reportType) {
     return reportType == QLatin1String("ProtocolDongleSuctionPeakData")
         || reportType == QLatin1String("ProtocolFixturePcbaData")
-        || reportType == QLatin1String("ProtocolJieliBtBoxData");
+        || reportType == QLatin1String("ProtocolJieliBtBoxData")
+        || reportType == QLatin1String("ProtocolScreenInspectData")
+        || reportType == QLatin1String("ProtocolPeriphStateData");
 }
 
 bool gateRangeLooksLikePlaceholder(const TestCaseGate& g) {

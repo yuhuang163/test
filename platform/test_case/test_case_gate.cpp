@@ -1584,15 +1584,18 @@ bool GateRegistry::evaluate(const TestCaseGate& gate, const QString& reportType,
                         .arg(gateActualValueLabel(reportType, gate.field), valueText, thresholdText);
         return true;
     }
-    default:
-        passOut = value >= low && value <= high;
-        break;
+    default: {
+        const bool openRange = CommonUtils::isRssiOpenRangeGate(reportType, gate.field);
+        passOut = openRange ? (value > low && value < high) : (value >= low && value <= high);
+        detailOut = QStringLiteral("%1=%2, 允许%3%4,%5%6")
+                        .arg(gateActualValueLabel(reportType, gate.field), valueText,
+                             openRange ? QStringLiteral("(") : QStringLiteral("["),
+                             formatGateFieldValue(reportType, gate.field, low),
+                             formatGateFieldValue(reportType, gate.field, high),
+                             openRange ? QStringLiteral(")") : QStringLiteral("]"));
+        return true;
     }
-    detailOut = QStringLiteral("%1=%2, 允许[%3,%4]")
-                    .arg(gateActualValueLabel(reportType, gate.field), valueText,
-                         formatGateFieldValue(reportType, gate.field, low),
-                         formatGateFieldValue(reportType, gate.field, high));
-    return true;
+    }
 }
 
 bool GateRegistry::evaluateAll(const QVector<TestCaseGate>& gates, const QString& reportType,
@@ -1719,9 +1722,16 @@ QString GateRegistry::formatGateAsk(const TestCaseGate& gate, const QString& rep
         double low = gate.low;
         double high = gate.high;
         resolveRangeBounds(gate, low, high);
-        ask = QStringLiteral("[%1,%2]")
-                  .arg(formatGateFieldValue(reportType, gate.field, low),
-                       formatGateFieldValue(reportType, gate.field, high));
+        // RSSI 开区间展示为 (low,high)，与判定一致
+        if (CommonUtils::isRssiOpenRangeGate(reportType, gate.field)) {
+            ask = QStringLiteral("(%1,%2)")
+                      .arg(formatGateFieldValue(reportType, gate.field, low),
+                           formatGateFieldValue(reportType, gate.field, high));
+        } else {
+            ask = QStringLiteral("[%1,%2]")
+                      .arg(formatGateFieldValue(reportType, gate.field, low),
+                           formatGateFieldValue(reportType, gate.field, high));
+        }
     } else if (gate.op == TestCaseGateOp::Gt) {
         ask = QStringLiteral(">%1").arg(formatGateFieldValue(reportType, gate.field, gateCompareThreshold(gate)));
     } else if (gate.op == TestCaseGateOp::Lt) {

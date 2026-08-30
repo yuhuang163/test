@@ -1,7 +1,10 @@
 #include "common_utils.h"
 
 #include <QComboBox>
+#include <QCoreApplication>
 #include <QDir>
+#include <QElapsedTimer>
+#include <QEventLoop>
 #include <QFile>
 #include <QFileInfo>
 #include <QRegularExpression>
@@ -13,10 +16,8 @@
 #pragma execution_character_set(push, "utf-8")
 #endif
 
-namespace {
-
 // clang-format off
-const quint32 kCrc32Table[256] = {
+static const quint32 kCrc32Table[256] = {
     0x00000000, 0x77073096, 0xEE0E612C, 0x990951BA, 0x076DC419, 0x706AF48F, 0xE963A535, 0x9E6495A3, 0x0EDB8832, 0x79DCB8A4, 0xE0D5E91E, 0x97D2D988, 0x09B64C2B, 0x7EB17CBD, 0xE7B82D07, 0x90BF1D91,
     0x1DB71064, 0x6AB020F2, 0xF3B97148, 0x84BE41DE, 0x1ADAD47D, 0x6DDDE4EB, 0xF4D4B551, 0x83D385C7, 0x136C9856, 0x646BA8C0, 0xFD62F97A, 0x8A65C9EC, 0x14015C4F, 0x63066CD9, 0xFA0F3D63, 0x8D080DF5,
     0x3B6E20C8, 0x4C69105E, 0xD56041E4, 0xA2677172, 0x3C03E4D1, 0x4B04D447, 0xD20D85FD, 0xA50AB56B, 0x35B5A8FA, 0x42B2986C, 0xDBBBC9D6, 0xACBCF940, 0x32D86CE3, 0x45DF5C75, 0xDCD60DCF, 0xABD13D59,
@@ -35,8 +36,6 @@ const quint32 kCrc32Table[256] = {
     0xBDBDF21C, 0xCABAC28A, 0x53B39330, 0x24B4A3A6, 0xBAD03605, 0xCDD70693, 0x54DE5729, 0x23D967BF, 0xB3667A2E, 0xC4614AB8, 0x5D681B02, 0x2A6F2B94, 0xB40BBE37, 0xC30C8EA1, 0x5A05DF1B, 0x2D02EF8D,
 };
 // clang-format on
-
-} // namespace
 
 void CommonUtils::appendLe16(QByteArray* buffer, quint16 value) {
     if (!buffer)
@@ -340,8 +339,6 @@ QString CommonUtils::formatList(const QStringList& items, const QString& separat
     return items.join(separator);
 }
 
-namespace {
-
 /**
  * 产品目录唯一表：Mes 产品名 / 协议 / 设置页是否展示 / Dongle 广播匹配。
  * donglePattern 为空表示仅目录项无广播映射；containsMatch=true 为大写 contains，false 为精确相等。
@@ -371,11 +368,11 @@ static const ProductEntry kProductTable[] = {
 static const char* kDongleFilterExtras[] = {"W1", "W2", "Pump-E"};
 // clang-format on
 
-bool hasDonglePattern(const ProductEntry& entry) {
+static bool hasDonglePattern(const ProductEntry& entry) {
     return entry.donglePattern && entry.donglePattern[0] != '\0';
 }
 
-const ProductEntry* findProductEntry(const QString& productName) {
+static const ProductEntry* findProductEntry(const QString& productName) {
     const QString trimmed = productName.trimmed();
     for (const ProductEntry& entry : kProductTable) {
         if (trimmed == QLatin1String(entry.productName))
@@ -386,7 +383,7 @@ const ProductEntry* findProductEntry(const QString& productName) {
 
 /** 工站名（大写）是否以该产品名开头（含去空格形式，如 W1LITE）。
  * 不用空格前第一段去匹配：否则 W1 Lite 会把 W1组装厂 也算进去，短名 W1 反而筛不到。 */
-bool stationUpperStartsWithProductPrefix(const QString& stationUpper, const QString& productName) {
+static bool stationUpperStartsWithProductPrefix(const QString& stationUpper, const QString& productName) {
     const QString pu = productName.trimmed().toUpper();
     if (pu.isEmpty())
         return false;
@@ -398,12 +395,10 @@ bool stationUpperStartsWithProductPrefix(const QString& stationUpper, const QStr
     return false;
 }
 
-int productNamePrefixLength(const QString& productName) {
+static int productNamePrefixLength(const QString& productName) {
     const QString p = productName.trimmed().toUpper();
     return p.isEmpty() ? 0 : p.length();
 }
-
-} // namespace
 
 QStringList CommonUtils::mesProductNames() {
     QStringList names;
@@ -564,4 +559,21 @@ QString CommonUtils::snPatternDisplayText(const QString& pattern) {
         }
     }
     return rule;
+}
+
+bool CommonUtils::isRssiOpenRangeGate(const QString& reportType, const QString& field) {
+    if (reportType == QLatin1String("ProtocolRssiData") && field == QLatin1String("dbm"))
+        return true;
+    if (reportType == QLatin1String("ProtocolJieliBtBoxData") && field == QLatin1String("rssi"))
+        return true;
+    return false;
+}
+
+void CommonUtils::waitWorkPumpEvents(int ms) {
+    if (ms <= 0)
+        return;
+    QElapsedTimer timer;
+    timer.start();
+    while (timer.elapsed() < ms)
+        QCoreApplication::processEvents(QEventLoop::AllEvents);
 }

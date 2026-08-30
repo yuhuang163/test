@@ -99,6 +99,11 @@ class test_base : public QWidget {
      */
     void waitWorkIdle(int ms);
     void updateMainStyle(QString style);
+    /**
+     * 发指令并在 timeoutMs 总窗口内等待回包（成功则 finishCommandRetryWait）。
+     * allowResend：窗口内是否按间隔重发同一条指令（默认 true）；蓝牙连接等应传 false 只发一次。
+     * 与 TestCaseRunner::needAsyncDone / 流程里「须 markDone 才过步」无关，勿混用命名。
+     */
     int sendCommandWithRetry(std::function<void()> commandFunc, int timeoutMs = 300, bool allowResend = true);
     void setCommandWaitSource(CommandWaitSource source) {
         commandWaitSource_ = source;

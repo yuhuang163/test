@@ -34,7 +34,7 @@ alwaysApply: true
 - **异步步骤**：在 **`refresh*` / 协议回调**里判定卡控时，必须 **`isCurrentStep("步骤中文名")`** 守卫，避免串步骤误判定。
 - **回填状态机**：判定结束后设置 **`stepRuntime_.done = true`**、**`stepRuntime_.pass`**，失败时 **`TestResult = failValue`**；日志建议带「卡控通过/失败、当前值、允许范围」，与现有 RSSI/电流等句式一致。
 - **边界含义**：新建卡控时与同类步骤保持一致（例如 RSSI 现为 **`>` / `<` 非 `>=`**）；若改边界语义须在注释与设置说明里写清。
-- **`sendCommandWithRetry`**：仅表示「等到设备回包」；**`needCaseDone == false`** 的步骤默认不会因协议 FAIL 自动 **`pass = false`**，卡控类步骤应用 **`needCaseDone == true`** 并在回调里写入 **`stepRuntime_.pass`**，或在做不到时用显式预检/单独判定（参见自由工站三元组写入）。
+- **`sendCommandWithRetry`**：仅表示「发指令并等到设备回包」；第三参 **`allowResend`** 只控制超时窗口内是否重发，**不是**结案开关。步骤是否必须异步结案看 **`TestCaseRunner::needAsyncDone`**（流程里常叫 `needCaseDone`/`needAsyncDone`）：为 false 时默认不会因协议 FAIL 自动 **`pass = false`**；卡控类步骤应为 true，并在回调里写入 **`stepRuntime_.pass`**，或用显式预检/单独判定（参见自由工站三元组写入）。
 
 ## 编译验证
 
@@ -95,5 +95,5 @@ alwaysApply: true
 ## 协作提示
 
 - **提交说明**：按「Git 提交信息」节与 **`.copilot-commit-message-instructions.md`**；单工站改动通常 **一行** `[XXX_VER]`；**工站 + 三元组**同提交须**分别出现** **`[XXX_VER]`** 与 **`[FREE_VER]`**（可两行或同一行用 **`；`** 分隔）；**工站 + 主窗口**用 **`[DEBUG_VER]`**；勿把不同模块要点塞进**同一个** `[XXX_VER]` 说明却不写应有宏。
-- 涉及工站流程（自由工站、设置页 `qsetting`、协议 `qfctp`）时，注意步骤状态机、`stepRuntime_`、`needCaseDone` 与异步回调的一致性，避免「有回包即判通过」类误判。
+- 涉及工站流程（自由工站、设置页 `qsetting`、协议 `qfctp`）时，注意步骤状态机、`stepRuntime_`、`needAsyncDone`（勿与 `allowResend` 混淆）与异步回调的一致性，避免「有回包即判通过」类误判。
 - **检索**：全仓 **`grep` / 语义搜索** 时避开 **`agreement/factory_protocol/protocol/qpb/Python39/`**（内置 Python，与业务无关）；仓库根目录 **`.cursorignore`** 已忽略该路径以利于 Cursor 索引。Agent 搜索优先限定 **`work_station/`**、**`platform/settings/`**、**`agreement/factory_protocol/`**、**`agreement/modbus/`**（不含 Python39）等。

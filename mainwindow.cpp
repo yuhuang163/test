@@ -5171,7 +5171,7 @@ QCPItemText* dongleSuctionFindOrCreateGuideLabel(QCustomPlot* plot, const char* 
     label->setBrush(QBrush(QColor(255, 255, 255, 180)));
     label->setPen(QPen(Qt::NoPen));
     QFont f;
-    f.setPointSize(7);
+    f.setPointSize(10);
     label->setFont(f);
     return label;
 }
@@ -5287,11 +5287,14 @@ void MainWindow::updateDongleSuctionPeakMonitorLabels() {
         }
         const QString freqText =
             (m.freqPerMin < 0) ? QStringLiteral("--") : QStringLiteral("%1/min").arg(m.freqPerMin);
-        labels[i]->setText(QStringLiteral("%1峰检：有效%2 漏峰%3 弱峰%4 频率%5")
+        const QString maxPeakText =
+            m.peakValueInit ? QString::number(m.maxPeakKpa, 'f', 2) : QStringLiteral("--");
+        labels[i]->setText(QStringLiteral("%1峰检：有效%2 漏峰%3 弱峰%4 最大峰%5 频率%6")
                                .arg(channelNames[i])
                                .arg(m.validPeakCount)
                                .arg(m.missedPeakCount)
                                .arg(m.weakPeakCount)
+                               .arg(maxPeakText)
                                .arg(freqText));
     }
 }
@@ -5328,21 +5331,37 @@ void MainWindow::updateDongleSuctionChannelPeakMonitor(int chIndex, double kpa, 
                 m.waitingNextPeak = true;
                 m.lastPeakEndSec = tSec;
                 m.gapMissFlagged = false;
+                if (!m.peakValueInit) {
+                    m.maxPeakKpa = m.minPeakKpa = peakKpa;
+                    m.peakValueInit = true;
+                } else {
+                    m.maxPeakKpa = qMax(m.maxPeakKpa, peakKpa);
+                    m.minPeakKpa = qMin(m.minPeakKpa, peakKpa);
+                }
                 if (eventOut.isEmpty())
                     eventOut = QStringLiteral("VALID_%1:%2").arg(chTag).arg(peakKpa, 0, 'f', 3);
-                showlog(QStringLiteral("【有效峰】%1：%2 kPa（累计 %3）")
+                showlog(QStringLiteral("【有效峰】%1：%2 kPa（累计 %3，最大峰 %4）")
                             .arg(chTag)
                             .arg(peakKpa, 0, 'f', 3)
-                            .arg(m.validPeakCount));
+                            .arg(m.validPeakCount)
+                            .arg(m.maxPeakKpa, 0, 'f', 3));
             } else if (dippedEnough) {
                 m.weakPeakCount++;
+                if (!m.peakValueInit) {
+                    m.maxPeakKpa = m.minPeakKpa = peakKpa;
+                    m.peakValueInit = true;
+                } else {
+                    m.maxPeakKpa = qMax(m.maxPeakKpa, peakKpa);
+                    m.minPeakKpa = qMin(m.minPeakKpa, peakKpa);
+                }
                 if (eventOut.isEmpty())
                     eventOut = QStringLiteral("WEAK_%1:%2").arg(chTag).arg(peakKpa, 0, 'f', 3);
-                showlog(QStringLiteral("【弱峰】%1：%2 kPa，不在 %3~%4 kPa")
+                showlog(QStringLiteral("【弱峰】%1：%2 kPa，不在 %3~%4 kPa（最大峰 %5）")
                             .arg(chTag)
                             .arg(peakKpa, 0, 'f', 3)
                             .arg(lowerBound, 0, 'f', 2)
-                            .arg(upperBound, 0, 'f', 2));
+                            .arg(upperBound, 0, 'f', 2)
+                            .arg(m.maxPeakKpa, 0, 'f', 3));
             }
         }
         updateDongleSuctionPeakMonitorLabels();
@@ -5481,6 +5500,16 @@ void MainWindow::setupDongleSuctionPlotWidget(QCustomPlot* plot) {
     // 横轴为绝对时间；跟随时滑动 X 窗口，拖拽/滚轮后可查看全程
     plot->xAxis->setLabel(QStringLiteral("时间(s)"));
     plot->yAxis->setLabel(QStringLiteral("吸力(kPa)"));
+    {
+        QFont axisLabelFont = font();
+        axisLabelFont.setPointSize(11);
+        QFont tickFont = font();
+        tickFont.setPointSize(10);
+        plot->xAxis->setLabelFont(axisLabelFont);
+        plot->yAxis->setLabelFont(axisLabelFont);
+        plot->xAxis->setTickLabelFont(tickFont);
+        plot->yAxis->setTickLabelFont(tickFont);
+    }
     plot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
     plot->xAxis->setRange(0, xInit);
     plot->yAxis->setRange(yMin, yMax);
@@ -5826,10 +5855,12 @@ void MainWindow::updateDongleSuctionPlotOverlay(QCustomPlot* plot) {
     auto fmtName = [](const QString& name, double live, double hi, double lo, bool ok,
                       const DongleSuctionChannelPeakMonitor& m) {
         if (!ok)
-            return QStringLiteral("%1 实时-- 最高-- 最低-- 有效0 漏峰0 弱峰0 频率--").arg(name);
+            return QStringLiteral("%1 实时-- 最高-- 最低-- 有效0 漏峰0 弱峰0 最大峰-- 频率--").arg(name);
         const QString freqText =
             (m.freqPerMin < 0) ? QStringLiteral("--") : QStringLiteral("%1/min").arg(m.freqPerMin);
-        return QStringLiteral("%1 实时%2 最高%3 最低%4 有效%5 漏峰%6 弱峰%7 频率%8")
+        const QString maxPeakText =
+            m.peakValueInit ? QString::number(m.maxPeakKpa, 'f', 2) : QStringLiteral("--");
+        return QStringLiteral("%1 实时%2 最高%3 最低%4 有效%5 漏峰%6 弱峰%7 最大峰%8 频率%9")
             .arg(name)
             .arg(live, 0, 'f', 2)
             .arg(hi, 0, 'f', 2)
@@ -5837,6 +5868,7 @@ void MainWindow::updateDongleSuctionPlotOverlay(QCustomPlot* plot) {
             .arg(m.validPeakCount)
             .arg(m.missedPeakCount)
             .arg(m.weakPeakCount)
+            .arg(maxPeakText)
             .arg(freqText);
     };
 
