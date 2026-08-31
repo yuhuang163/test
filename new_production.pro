@@ -115,6 +115,13 @@ INCLUDEPATH += platform/settings/widgets
 INCLUDEPATH += platform/label_print
 INCLUDEPATH += lib/qrcodegen
 INCLUDEPATH += platform/test_case \
+    platform/test_case/types \
+    platform/test_case/paths \
+    platform/test_case/ini \
+    platform/test_case/store \
+    platform/test_case/validator \
+    platform/test_case/runner \
+    platform/test_case/hooks \
     platform/test_case/gate \
     platform/test_case/catalog \
     platform/test_case/manifest
@@ -297,15 +304,18 @@ SOURCES += \
     platform/test_case/manifest/modbus_cmd_manifest.cpp \
     platform/test_case/manifest/scpi_cmd_manifest.cpp \
     platform/test_case/manifest/tuple_cmd_manifest.cpp \
-    platform/test_case/test_case.cpp \
+    platform/test_case/paths/test_case_paths.cpp \
+    platform/test_case/store/test_case_store.cpp \
+    platform/test_case/validator/test_case_validator.cpp \
+    platform/test_case/runner/test_case_runner.cpp \
+    platform/test_case/hooks/test_case_hook_registry.cpp \
     platform/test_case/catalog/cmd_catalog_base.cpp \
-    platform/test_case/catalog/test_case_cmd_catalogs.cpp \
+    platform/test_case/catalog/cmd_manifest_catalogs.cpp \
     platform/test_case/catalog/test_case_send_dispatch.cpp \
-    platform/test_case/test_case_store.cpp \
     platform/test_case/gate/test_case_gate.cpp \
     platform/test_case/gate/test_case_gate_accessors.cpp \
     platform/test_case/gate/test_case_gate_types.cpp \
-    platform/test_case/test_case_ini_param.cpp \
+    platform/test_case/ini/test_case_ini_param.cpp \
     platform/instrument/instrument_device_catalog.cpp \
     platform/cloud/test_record/test_record_store.cpp \
     platform/cloud/log_upload/log_upload_service.cpp \
@@ -472,11 +482,18 @@ HEADERS += \
     platform/test_case/manifest/product_serial_cmd_manifest.h \
     platform/test_case/manifest/tuple_cmd_manifest.h \
     platform/test_case/catalog/cmd_catalog_base.h \
-    platform/test_case/catalog/test_case_cmd_catalogs.h \
+    platform/test_case/catalog/cmd_manifest_catalogs.h \
+    platform/test_case/catalog/test_case_catalog.h \
     platform/test_case/catalog/test_case_send_dispatch.h \
     platform/test_case/test_case.h \
     platform/test_case/gate/test_case_gate_accessors.h \
-    platform/test_case/test_case_ini_param.h \
+    platform/test_case/gate/test_case_gate_api.h \
+    platform/test_case/ini/test_case_ini_param.h \
+    platform/test_case/paths/test_case_paths.h \
+    platform/test_case/store/test_case_store.h \
+    platform/test_case/validator/test_case_validator.h \
+    platform/test_case/runner/test_case_runner.h \
+    platform/test_case/hooks/test_case_hook_registry.h \
     platform/cloud/test_record/test_record_store.h \
     platform/cloud/log_upload/log_upload_service.h \
     platform/cloud/client/factory_cloud_client.h \
@@ -486,7 +503,7 @@ HEADERS += \
     platform/cloud/sync/test_case_sync_service.h \
     platform/cloud/ota/host_ota_service.h \
     platform/cloud/test_data/test_data_upload_service.h \
-    platform/test_case/test_case_types.h \
+    platform/test_case/types/test_case_types.h \
     platform/instrument/instrument_device_catalog.h \
     agreement/shell_protocol/manager/qshellmanager.h \
     business/tuple/qtupleservice.h \

@@ -612,7 +612,6 @@ void QFreeWork::appendMultiGateTestCaseMes(const QVector<TestCaseGate>& gates, c
 #endif
 
 QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui::QFreeWork) {
-    registerFreeWorkTestCaseHooks();
     registerQFreeWorkCatalogTestCaseHooks();
     m_index = index;
     pack.mechines = getIndex();

@@ -47,10 +47,10 @@ class QFreeWorkTestCaseHookRegistrar {
     static void dispatch(QFreeWork* fw, const QString& hookId);
 
   private:
-    static void registerHook(const QString& hookId);
+    static void registerDispatchHook(const QString& hookId);
 };
 
-void QFreeWorkTestCaseHookRegistrar::registerHook(const QString& hookId) {
+void QFreeWorkTestCaseHookRegistrar::registerDispatchHook(const QString& hookId) {
     TestCaseHookRegistry::registerHook(hookId, [hookId](QFreeWork* fw) { dispatch(fw, hookId); });
 }
 
@@ -383,52 +383,52 @@ void QFreeWorkTestCaseHookRegistrar::registerAll() {
         return;
     registered = true;
 
-    registerHook(QStringLiteral("JIG_CURRENT_READ"));
-    registerHook(QStringLiteral("DONGLE_SUCTION_ENABLE"));
-    registerHook(QStringLiteral("DONGLE_SUCTION_DISABLE"));
-    registerHook(QStringLiteral("DONGLE_SUCTION_SAMPLE"));
-    registerHook(QStringLiteral("DONGLE_SUCTION_SAMPLE_SINGLE"));
-    registerHook(QStringLiteral("SN_WRITE_TAIL"));
-    registerHook(QStringLiteral("PRINT_WHOLE_MACHINE_SN"));
-    registerHook(QStringLiteral("QR_SN_CONSISTENCY_CHECK"));
-    registerHook(QStringLiteral("COUNTDOWN_WAIT"));
-    registerHook(QStringLiteral("LIGHT_SENSOR_GOLDEN_CALIB"));
-    registerHook(QStringLiteral("LIGHT_SENSOR_CALIB_WRITE"));
-    registerHook(QStringLiteral("LIGHT_SENSOR_CALIB_READ"));
-    registerHook(QStringLiteral("VES_CH1_SET_BRIGHTNESS"));
-    registerHook(QStringLiteral("MES_GET_ROOT_SKU"));
-    registerHook(QStringLiteral("MAC_WRITE_ROOT"));
-    registerHook(QStringLiteral("BLE_CONNECT_BY_NAME"));
-    registerHook(QStringLiteral("PLC_MODBUS_CONN"));
-    registerHook(QStringLiteral("PLC_V3_SWITCH_RIGHT_WHOLE"));
-    registerHook(QStringLiteral("PLC_V3_SWITCH_DONE_RESET_M"));
-    registerHook(QStringLiteral("PLC_V3_KEY_MODE"));
-    registerHook(QStringLiteral("PLC_V3_KEY_PROGRAM"));
-    registerHook(QStringLiteral("PLC_V3_KEY_SPEED"));
-    registerHook(QStringLiteral("PLC_V3_KEY_RIGHT"));
-    registerHook(QStringLiteral("PLC_V3_KEY_START_PAUSE"));
-    registerHook(QStringLiteral("PLC_V3_KEY_LEFT"));
-    registerHook(QStringLiteral("PLC_V3_KEY_POWER"));
-    registerHook(QStringLiteral("PROD_INST_RESET_ACK"));
-    registerHook(QStringLiteral("PROD_INST_START_RX_2402_1M"));
-    registerHook(QStringLiteral("PROD_INST_START_RX_2440_1M"));
-    registerHook(QStringLiteral("PROD_INST_START_RX_2480_1M"));
-    registerHook(QStringLiteral("PROD_INST_START_RX_2402_2M"));
-    registerHook(QStringLiteral("PROD_INST_START_RX_2440_2M"));
-    registerHook(QStringLiteral("PROD_INST_START_RX_2480_2M"));
-    registerHook(QStringLiteral("FREE_INSTR_CMW_GPRF_2402_1M"));
-    registerHook(QStringLiteral("FREE_INSTR_CMW_GPRF_2440_1M"));
-    registerHook(QStringLiteral("FREE_INSTR_CMW_GPRF_2480_1M"));
-    registerHook(QStringLiteral("FREE_INSTR_CMW_GPRF_2402_2M"));
-    registerHook(QStringLiteral("FREE_INSTR_CMW_GPRF_2440_2M"));
-    registerHook(QStringLiteral("FREE_INSTR_CMW_GPRF_2480_2M"));
-    registerHook(QStringLiteral("FREE_INSTR_CMW_GPRF_P0"));
-    registerHook(QStringLiteral("FREE_INSTR_CMW_GPRF_P1"));
-    registerHook(QStringLiteral("FREE_INSTR_CMW_GPRF_P2"));
-    registerHook(QStringLiteral("FREE_INSTR_CMW_GPRF_P3"));
-    registerHook(QStringLiteral("FREE_INSTR_CMW_GPRF_P4"));
-    registerHook(QStringLiteral("FREE_INSTR_CMW_GPRF_P5"));
-    registerHook(QStringLiteral("PROD_INST_STOP_RX_PER"));
+    registerDispatchHook(QStringLiteral("JIG_CURRENT_READ"));
+    registerDispatchHook(QStringLiteral("DONGLE_SUCTION_ENABLE"));
+    registerDispatchHook(QStringLiteral("DONGLE_SUCTION_DISABLE"));
+    registerDispatchHook(QStringLiteral("DONGLE_SUCTION_SAMPLE"));
+    registerDispatchHook(QStringLiteral("DONGLE_SUCTION_SAMPLE_SINGLE"));
+    registerDispatchHook(QStringLiteral("SN_WRITE_TAIL"));
+    registerDispatchHook(QStringLiteral("PRINT_WHOLE_MACHINE_SN"));
+    registerDispatchHook(QStringLiteral("QR_SN_CONSISTENCY_CHECK"));
+    registerDispatchHook(QStringLiteral("COUNTDOWN_WAIT"));
+    registerDispatchHook(QStringLiteral("LIGHT_SENSOR_GOLDEN_CALIB"));
+    registerDispatchHook(QStringLiteral("LIGHT_SENSOR_CALIB_WRITE"));
+    registerDispatchHook(QStringLiteral("LIGHT_SENSOR_CALIB_READ"));
+    registerDispatchHook(QStringLiteral("VES_CH1_SET_BRIGHTNESS"));
+    registerDispatchHook(QStringLiteral("MES_GET_ROOT_SKU"));
+    registerDispatchHook(QStringLiteral("MAC_WRITE_ROOT"));
+    registerDispatchHook(QStringLiteral("BLE_CONNECT_BY_NAME"));
+    registerDispatchHook(QStringLiteral("PLC_MODBUS_CONN"));
+    registerDispatchHook(QStringLiteral("PLC_V3_SWITCH_RIGHT_WHOLE"));
+    registerDispatchHook(QStringLiteral("PLC_V3_SWITCH_DONE_RESET_M"));
+    registerDispatchHook(QStringLiteral("PLC_V3_KEY_MODE"));
+    registerDispatchHook(QStringLiteral("PLC_V3_KEY_PROGRAM"));
+    registerDispatchHook(QStringLiteral("PLC_V3_KEY_SPEED"));
+    registerDispatchHook(QStringLiteral("PLC_V3_KEY_RIGHT"));
+    registerDispatchHook(QStringLiteral("PLC_V3_KEY_START_PAUSE"));
+    registerDispatchHook(QStringLiteral("PLC_V3_KEY_LEFT"));
+    registerDispatchHook(QStringLiteral("PLC_V3_KEY_POWER"));
+    registerDispatchHook(QStringLiteral("PROD_INST_RESET_ACK"));
+    registerDispatchHook(QStringLiteral("PROD_INST_START_RX_2402_1M"));
+    registerDispatchHook(QStringLiteral("PROD_INST_START_RX_2440_1M"));
+    registerDispatchHook(QStringLiteral("PROD_INST_START_RX_2480_1M"));
+    registerDispatchHook(QStringLiteral("PROD_INST_START_RX_2402_2M"));
+    registerDispatchHook(QStringLiteral("PROD_INST_START_RX_2440_2M"));
+    registerDispatchHook(QStringLiteral("PROD_INST_START_RX_2480_2M"));
+    registerDispatchHook(QStringLiteral("FREE_INSTR_CMW_GPRF_2402_1M"));
+    registerDispatchHook(QStringLiteral("FREE_INSTR_CMW_GPRF_2440_1M"));
+    registerDispatchHook(QStringLiteral("FREE_INSTR_CMW_GPRF_2480_1M"));
+    registerDispatchHook(QStringLiteral("FREE_INSTR_CMW_GPRF_2402_2M"));
+    registerDispatchHook(QStringLiteral("FREE_INSTR_CMW_GPRF_2440_2M"));
+    registerDispatchHook(QStringLiteral("FREE_INSTR_CMW_GPRF_2480_2M"));
+    registerDispatchHook(QStringLiteral("FREE_INSTR_CMW_GPRF_P0"));
+    registerDispatchHook(QStringLiteral("FREE_INSTR_CMW_GPRF_P1"));
+    registerDispatchHook(QStringLiteral("FREE_INSTR_CMW_GPRF_P2"));
+    registerDispatchHook(QStringLiteral("FREE_INSTR_CMW_GPRF_P3"));
+    registerDispatchHook(QStringLiteral("FREE_INSTR_CMW_GPRF_P4"));
+    registerDispatchHook(QStringLiteral("FREE_INSTR_CMW_GPRF_P5"));
+    registerDispatchHook(QStringLiteral("PROD_INST_STOP_RX_PER"));
 }
 
 void registerQFreeWorkCatalogTestCaseHooks() {

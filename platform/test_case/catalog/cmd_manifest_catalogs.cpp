@@ -9,7 +9,7 @@
 #include "modbus_cmd_manifest.h"
 #include "product_serial_cmd_manifest.h"
 #include "scpi_cmd_manifest.h"
-#include "test_case_cmd_catalogs.h"
+#include "cmd_manifest_catalogs.h"
 #include "test_case_ini_param.h"
 #include "tuple_cmd_manifest.h"
 #include "usb_camera_cmd_manifest.h"

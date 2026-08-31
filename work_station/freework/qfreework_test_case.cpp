@@ -3139,23 +3139,3 @@ void QFreeWork::executeProductSerialCase(const TestCaseDefinition& def) {
     }
     }
 }
-
-void registerFreeWorkTestCaseHooks() {
-    static bool registered = false;
-    if (registered)
-        return;
-    registered = true;
-
-    TestCaseHookRegistry::registerHook(QStringLiteral("NoOp"), [](QFreeWork* fw) {
-        if (!fw)
-            return;
-        fw->showlog(QStringLiteral("钩子 NoOp 已执行"));
-        fw->markActiveTestCaseStepDone(true, QStringLiteral("noop"), QStringLiteral("通过"));
-    });
-    TestCaseHookRegistry::registerHook(QStringLiteral("FreeWorkNoOpDemo"), [](QFreeWork* fw) {
-        if (!fw)
-            return;
-        fw->showlog(QStringLiteral("示例钩子 FreeWorkNoOpDemo 已执行"));
-        fw->markActiveTestCaseStepDone(true, QStringLiteral("hook_ok"), QStringLiteral("通过"));
-    });
-}

@@ -1582,8 +1582,6 @@ void initFixturePcbaGateTable(QTableWidget* table) {
 
 const QHash<QString, QString>& hookDisplayNameMap() {
     static const QHash<QString, QString> map = {
-        {QStringLiteral("NoOp"), QStringLiteral("空操作（示例）")},
-        {QStringLiteral("FreeWorkNoOpDemo"), QStringLiteral("示例步骤")},
         {QStringLiteral("JIG_CURRENT_READ"), QStringLiteral("读取治具电流测量值")},
         {QStringLiteral("DONGLE_SUCTION_ENABLE"), QStringLiteral("开启 dongle 吸力读取")},
         {QStringLiteral("DONGLE_SUCTION_DISABLE"), QStringLiteral("关闭 dongle 吸力读取")},
@@ -1681,7 +1679,6 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
     fillDeviceCmdCombo(ui->comboBox_deviceCmd, TestCaseSendChannel::Product, TestCaseSendAction::Set, QString());
     fillGateReportTypeCombo(ui->comboBox_gateReportType);
     fillGateOpCombo(ui->comboBox_gateOp);
-    registerFreeWorkTestCaseHooks();
     registerQFreeWorkCatalogTestCaseHooks();
     fillHookCombo(ui->comboBox_hookId);
 

@@ -1,5 +1,6 @@
 #include "test_case_ini_param.h"
-#include "test_case.h"
+#include "test_case_catalog.h"
+#include "device_cmd_manifest.h"
 
 #include <QJsonDocument>
 #include <QJsonObject>
