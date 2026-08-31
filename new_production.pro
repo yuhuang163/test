@@ -707,7 +707,13 @@ win32 {
     VISA_DIR = $$PWD/lib/visa
     INCLUDEPATH += $$VISA_DIR
     LIBS += -L$$shell_path($$VISA_DIR) -lvisa64
-    QMAKE_POST_LINK += $$quote(cmd /c copy /Y \"$$shell_path($$VISA_DIR/visa64.dll)\" \"$$shell_path($$OUT_PWD/$$DESTDIR/visa64.dll)\" && copy /Y \"$$shell_path($$VISA_DIR/visaConfMgr.dll)\" \"$$shell_path($$OUT_PWD/$$DESTDIR/visaConfMgr.dll)\")
+
+    # 海康 MVS GigE：头文件/导入库在 lib/mvs；运行 DLL 拷贝到 bin/mvs_runtime（与 screen_inspect_gige_capture 一致）
+    MVS_DIR = $$PWD/lib/mvs
+    INCLUDEPATH += $$MVS_DIR/include
+    LIBS += -L$$shell_path($$MVS_DIR/lib/win64) -lMvCameraControl
+
+    QMAKE_POST_LINK += $$quote(cmd /c copy /Y \"$$shell_path($$VISA_DIR/visa64.dll)\" \"$$shell_path($$OUT_PWD/$$DESTDIR/visa64.dll)\" && copy /Y \"$$shell_path($$VISA_DIR/visaConfMgr.dll)\" \"$$shell_path($$OUT_PWD/$$DESTDIR/visaConfMgr.dll)\" && if not exist \"$$shell_path($$OUT_PWD/$$DESTDIR/mvs_runtime)\" mkdir \"$$shell_path($$OUT_PWD/$$DESTDIR/mvs_runtime)\" && xcopy /Y /Q /E \"$$shell_path($$MVS_DIR/runtime/win64)\\*\" \"$$shell_path($$OUT_PWD/$$DESTDIR/mvs_runtime)\\\" >nul)
 }
 
 
