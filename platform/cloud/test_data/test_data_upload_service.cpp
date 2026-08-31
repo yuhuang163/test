@@ -89,7 +89,10 @@ bool buildUploadBody(const MesPacketData& pack, QJsonObject* body, QString* mess
     body->insert(QStringLiteral("lotName"), pack.lotName.trimmed());
     body->insert(QStringLiteral("userNo"), pack.userNo.trimmed());
     body->insert(QStringLiteral("clientVersion"), FactoryCloudClient::appVersion());
-    body->insert(QStringLiteral("testedAt"), QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs));
+    // 云端：本机北京墙钟 + timeBase 标志（旧上位机无此字段，服务端按 UTC）
+    body->insert(QStringLiteral("testedAt"),
+                 QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-ddTHH:mm:ss.zzz")));
+    body->insert(QStringLiteral("timeBase"), QStringLiteral("beijing"));
 
     QJsonArray items;
     const QVector<TestRecordStore::ParsedItem> parsed = TestRecordStore::parseItemValue(pack);

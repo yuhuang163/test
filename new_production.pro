@@ -116,6 +116,7 @@ INCLUDEPATH += platform/label_print
 INCLUDEPATH += lib/qrcodegen
 INCLUDEPATH += platform/test_case \
     platform/test_case/gate \
+    platform/test_case/catalog \
     platform/test_case/manifest
 INCLUDEPATH += platform/cloud/test_record
 INCLUDEPATH += platform/cloud/log_upload
@@ -297,6 +298,9 @@ SOURCES += \
     platform/test_case/manifest/scpi_cmd_manifest.cpp \
     platform/test_case/manifest/tuple_cmd_manifest.cpp \
     platform/test_case/test_case.cpp \
+    platform/test_case/catalog/cmd_catalog_base.cpp \
+    platform/test_case/catalog/test_case_cmd_catalogs.cpp \
+    platform/test_case/catalog/test_case_send_dispatch.cpp \
     platform/test_case/test_case_store.cpp \
     platform/test_case/gate/test_case_gate.cpp \
     platform/test_case/gate/test_case_gate_accessors.cpp \
@@ -467,6 +471,9 @@ HEADERS += \
     platform/test_case/manifest/scpi_cmd_manifest.h \
     platform/test_case/manifest/product_serial_cmd_manifest.h \
     platform/test_case/manifest/tuple_cmd_manifest.h \
+    platform/test_case/catalog/cmd_catalog_base.h \
+    platform/test_case/catalog/test_case_cmd_catalogs.h \
+    platform/test_case/catalog/test_case_send_dispatch.h \
     platform/test_case/test_case.h \
     platform/test_case/gate/test_case_gate_accessors.h \
     platform/test_case/test_case_ini_param.h \

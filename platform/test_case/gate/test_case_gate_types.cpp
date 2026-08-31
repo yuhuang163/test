@@ -183,15 +183,15 @@ static void registerAiotGates() {
     }
     // 阈值/循环上报回包是数组，取值绕 items.first()，用 GateTypeRaw
     GateTypeRaw("ProtocolAiotExceptionThresholdData", "Qaiot异常阈值")
-        .numberFn("type", "异常类型", "", aiotThresholdItemReader(&ProtocolAiotExceptionThresholdItem::type))
-        .numberFn("value", "阈值主值", "", aiotThresholdItemReader(&ProtocolAiotExceptionThresholdItem::value))
+        .numberWithReader("type", "异常类型", "", aiotThresholdItemReader(&ProtocolAiotExceptionThresholdItem::type))
+        .numberWithReader("value", "阈值主值", "", aiotThresholdItemReader(&ProtocolAiotExceptionThresholdItem::value))
         .alias("percent")
         .alias("voltageMv")
         .alias("seconds")
         .alias("currentMa")
         .alias("tempLow")
         .alias("low")
-        .numberFn("valueHigh", "阈值上限", "",
+        .numberWithReader("valueHigh", "阈值上限", "",
                   aiotThresholdItemReader(&ProtocolAiotExceptionThresholdItem::valueHigh))
         .alias("tempHigh")
         .alias("high")
@@ -252,7 +252,7 @@ static void registerAiotGates() {
             .commit();
     }
     GateTypeRaw("ProtocolAiotCycleReportConfigData", "Qaiot循环上报配置")
-        .numberFn("enable", "循环上报使能", "",
+        .numberWithReader("enable", "循环上报使能", "",
                   [](const QVariant& payload, double* out) -> bool {
                       if (!out || !payload.canConvert<ProtocolAiotCycleReportConfigData>())
                           return false;
@@ -260,48 +260,48 @@ static void registerAiotGates() {
                       return true;
                   })
         .alias("cycle_report_enable")
-        .numberFn("dataType", "数据类型", "",
+        .numberWithReader("dataType", "数据类型", "",
                   aiotCycleConfigItemReader(&ProtocolAiotCycleReportConfigItem::dataType))
         .alias("type")
         .alias("report_data_type")
-        .numberFn("intervalTime", "上报周期ms", "",
+        .numberWithReader("intervalTime", "上报周期ms", "",
                   aiotCycleConfigItemReader(&ProtocolAiotCycleReportConfigItem::intervalTime))
         .alias("report_interval_time")
         .alias("interval")
         .commit();
     GateTypeRaw("ProtocolAiotCycleReportData", "Qaiot循环上报数据")
-        .numberFn("dataType", "数据类型", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::dataType))
+        .numberWithReader("dataType", "数据类型", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::dataType))
         .alias("type")
         .alias("report_data_type")
-        .numberFn("accX", "加速度X", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::accX))
-        .numberFn("accY", "加速度Y", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::accY))
-        .numberFn("accZ", "加速度Z", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::accZ))
-        .numberFn("gyroX", "角速度X", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::gyroX))
-        .numberFn("gyroY", "角速度Y", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::gyroY))
-        .numberFn("gyroZ", "角速度Z", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::gyroZ))
-        .numberFn("pressureOut", "压力出(0.1Pa)", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::pressureOut))
+        .numberWithReader("accX", "加速度X", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::accX))
+        .numberWithReader("accY", "加速度Y", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::accY))
+        .numberWithReader("accZ", "加速度Z", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::accZ))
+        .numberWithReader("gyroX", "角速度X", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::gyroX))
+        .numberWithReader("gyroY", "角速度Y", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::gyroY))
+        .numberWithReader("gyroZ", "角速度Z", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::gyroZ))
+        .numberWithReader("pressureOut", "压力出(0.1Pa)", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::pressureOut))
         .alias("p_out")
-        .numberFn("pressureIn", "压力进(0.1Pa)", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::pressureIn))
+        .numberWithReader("pressureIn", "压力进(0.1Pa)", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::pressureIn))
         .alias("p_in")
-        .numberFn("flowRate", "气流(0.01L/min)", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::flowRate))
+        .numberWithReader("flowRate", "气流(0.01L/min)", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::flowRate))
         .alias("flow_rate")
-        .numberFn("distanceMm", "距离mm", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::distanceMm))
+        .numberWithReader("distanceMm", "距离mm", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::distanceMm))
         .alias("distance")
-        .numberFn("adcRaw", "ADC原始值", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::adcRaw))
+        .numberWithReader("adcRaw", "ADC原始值", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::adcRaw))
         .alias("adc")
-        .numberFn("irLevel", "红外强度", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::irLevel))
+        .numberWithReader("irLevel", "红外强度", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::irLevel))
         .alias("ir_level")
-        .numberFn("impedance", "阻抗(0.1Ω)", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::impedance))
-        .numberFn("levelMm", "液位mm", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::levelMm))
+        .numberWithReader("impedance", "阻抗(0.1Ω)", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::impedance))
+        .numberWithReader("levelMm", "液位mm", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::levelMm))
         .alias("level")
-        .numberFn("temperatureC", "温度℃", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::temperatureC))
+        .numberWithReader("temperatureC", "温度℃", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::temperatureC))
         .alias("temperature")
-        .numberFn("humidity", "湿度%RH", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::humidity))
-        .numberFn("currentMa", "电流mA", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::currentMa))
+        .numberWithReader("humidity", "湿度%RH", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::humidity))
+        .numberWithReader("currentMa", "电流mA", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::currentMa))
         .alias("current")
-        .numberFn("hallState", "霍尔状态", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::hallState))
+        .numberWithReader("hallState", "霍尔状态", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::hallState))
         .alias("hall")
-        .numberFn("pulseCount", "编码器脉冲", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::pulseCount))
+        .numberWithReader("pulseCount", "编码器脉冲", "", aiotCycleItemReader(&ProtocolAiotCycleReportItem::pulseCount))
         .alias("pulse")
         .commit();
 }
@@ -462,35 +462,35 @@ static void registerRootGates() {
             .alias("flangeMaxTemp")
             .number("stallCount", &S::stallCount, "老化堵转次数", "")
             .number("stallThreshold", &S::stallThreshold, "泵阀堵转阈值", "")
-            .numberFn("stallCurrent0", "堵转电流1", "",
+            .numberWithReader("stallCurrent0", "堵转电流1", "",
                       [](const S& d, double* out) {
                           if (!out)
                               return false;
                           *out = d.stallCurrents[0];
                           return true;
                       })
-            .numberFn("stallCurrent1", "堵转电流2", "",
+            .numberWithReader("stallCurrent1", "堵转电流2", "",
                       [](const S& d, double* out) {
                           if (!out)
                               return false;
                           *out = d.stallCurrents[1];
                           return true;
                       })
-            .numberFn("stallCurrent2", "堵转电流3", "",
+            .numberWithReader("stallCurrent2", "堵转电流3", "",
                       [](const S& d, double* out) {
                           if (!out)
                               return false;
                           *out = d.stallCurrents[2];
                           return true;
                       })
-            .numberFn("stallCurrent3", "堵转电流4", "",
+            .numberWithReader("stallCurrent3", "堵转电流4", "",
                       [](const S& d, double* out) {
                           if (!out)
                               return false;
                           *out = d.stallCurrents[3];
                           return true;
                       })
-            .numberFn("stallCurrent4", "堵转电流5", "",
+            .numberWithReader("stallCurrent4", "堵转电流5", "",
                       [](const S& d, double* out) {
                           if (!out)
                               return false;

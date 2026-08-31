@@ -218,7 +218,7 @@ GateSendBinding GateRegistry::bindingForSend(TestCaseSendChannel channel, const 
         break;
     case TestCaseSendChannel::Modbus:
         if (const ModbusCmdManifest::Row* row =
-                ModbusCmdManifest::findByDeviceAndName(ModbusPeriphCmdCatalog::deviceFromIni(protocolOrDevice), cmd))
+                ModbusCmdManifest::findByDeviceAndName(ModbusDeviceCatalog::deviceRouteFromIni(protocolOrDevice), cmd))
             applyRow(row->gateReportType, row->gateDefaultField);
         break;
     case TestCaseSendChannel::ProductSerial:

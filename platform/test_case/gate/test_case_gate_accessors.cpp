@@ -100,7 +100,7 @@ GateTypeRaw::GateTypeRaw(const char* reportType, const char* displayName) {
     entry_.displayName = QString::fromUtf8(displayName);
 }
 
-GateTypeRaw& GateTypeRaw::numberFn(const char* id, const char* label, const char* unit,
+GateTypeRaw& GateTypeRaw::numberWithReader(const char* id, const char* label, const char* unit,
                                    std::function<bool(const QVariant&, double*)> reader) {
     GateFieldEntry f;
     f.id = QString::fromUtf8(id);
@@ -118,7 +118,7 @@ GateTypeRaw& GateTypeRaw::numberFn(const char* id, const char* label, const char
     return *this;
 }
 
-GateTypeRaw& GateTypeRaw::textFn(const char* id, const char* label, GateCompareMode compare,
+GateTypeRaw& GateTypeRaw::textWithReader(const char* id, const char* label, GateCompareMode compare,
                                  std::function<bool(const QVariant&, QString*)> reader) {
     GateFieldEntry f;
     f.id = QString::fromUtf8(id);

@@ -6,8 +6,8 @@
 #include "test_case_types.h"
 
 #include <QString>
+#include <QVariant>
 
-/** 产测 DeviceCmd 元数据（枚举名、中文、参数、Set/Get）；设置页下拉仅据此表与操作方式过滤。 */
 namespace DeviceCmdManifest {
 
 using TestCaseCmdManifest::kSendActionBoth;
@@ -31,6 +31,9 @@ const Row* rows();
 int rowCount();
 const Row* findByCmd(DeviceCmd cmd);
 const Row* findByEnumName(const QString& enumName);
+
+/** 将 case ini 中的 JsonMap 参数转换为协议 set/get 可接受的 QVariant。 */
+QVariant normalizeSendParam(DeviceCmd cmd, const QVariant& param);
 
 } // namespace DeviceCmdManifest
 

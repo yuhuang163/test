@@ -3,12 +3,10 @@
 
 #include "modbus_device_catalog.h"
 #include "scpi_types.h"
-#include "modbus_device_catalog.h"
-#include "scpi_types.h"
 #include "qprotocol_types.h"
 #include "qatmanager.h"
-#include "qatmanager.h"
 #include "qtupleservice.h"
+#include "cmd_catalog_base.h"
 #include "test_case_types.h"
 
 #include <QSettings>
@@ -143,64 +141,25 @@ class TestCaseValidator {
 // ---------- 设备指令 ----------
 class DeviceCmdCatalog {
   public:
-    static QStringList allDeviceCmdNames(TestCaseSendAction action);
+    static CmdManifestCatalog& catalog();
     static TestCaseProductProtocol productProtocolFromIni(const QString& text);
     static QString productProtocolToIni(TestCaseProductProtocol protocol);
     static QString productProtocolUiLabel(TestCaseProductProtocol protocol);
-    static TestCaseSendAction actionFor(DeviceCmd cmd);
-    static bool isCmdForAction(DeviceCmd cmd, TestCaseSendAction action);
-    static QString deviceCmdUiLabel(const QString& enumName);
-    static bool deviceCmdFromName(const QString& name, DeviceCmd& out);
-    static QString deviceCmdToName(DeviceCmd cmd);
-    static bool paramSchemaFor(DeviceCmd cmd, DeviceCmdParamSchema& out);
-    /** 设置页「指令参数」填写说明（含示例）。 */
-    static QString paramUiHint(const QString& deviceCmdName);
-    static bool paramFromIniGroup(const QSettings& settings, DeviceCmd cmd, QVariant& out);
-    static void paramToIniGroup(QSettings& settings, DeviceCmd cmd, const QVariant& value);
-    /** 将 case ini 中的 JsonMap 参数转换为协议 set/get 可接受的 QVariant。 */
-    static QVariant normalizeSendParam(DeviceCmd cmd, const QVariant& param);
 };
 
 class DongleCmdCatalog {
   public:
-    static QStringList allDongleCmdNames(TestCaseSendAction action);
-    static TestCaseSendAction actionFor(DongleCmd cmd);
-    static bool isCmdForAction(DongleCmd cmd, TestCaseSendAction action);
-    static QString dongleCmdUiLabel(const QString& enumName);
-    static bool dongleCmdFromName(const QString& name, DongleCmd& out);
-    static QString dongleCmdToName(DongleCmd cmd);
-    static bool paramSchemaFor(DongleCmd cmd, DeviceCmdParamSchema& out);
-    static QString paramUiHint(const QString& dongleCmdName);
-    static bool paramFromIniGroup(const QSettings& settings, DongleCmd cmd, QVariant& out);
-    static void paramToIniGroup(QSettings& settings, DongleCmd cmd, const QVariant& value);
+    static CmdManifestCatalog& catalog();
 };
 
 class UsbCameraCmdCatalog {
   public:
-    static QStringList allUsbCameraCmdNames(TestCaseSendAction action);
-    static TestCaseSendAction actionFor(UsbCameraCmd cmd);
-    static bool isCmdForAction(UsbCameraCmd cmd, TestCaseSendAction action);
-    static QString usbCameraCmdUiLabel(const QString& enumName);
-    static bool usbCameraCmdFromName(const QString& name, UsbCameraCmd& out);
-    static QString usbCameraCmdToName(UsbCameraCmd cmd);
-    static bool paramSchemaFor(UsbCameraCmd cmd, DeviceCmdParamSchema& out);
-    static QString paramUiHint(const QString& enumName);
-    static bool paramFromIniGroup(const QSettings& settings, UsbCameraCmd cmd, QVariant& out);
-    static void paramToIniGroup(QSettings& settings, UsbCameraCmd cmd, const QVariant& value);
+    static CmdManifestCatalog& catalog();
 };
 
 class VesLightCmdCatalog {
   public:
-    static QStringList allVesLightCmdNames(TestCaseSendAction action);
-    static TestCaseSendAction actionFor(VesLightCmd cmd);
-    static bool isCmdForAction(VesLightCmd cmd, TestCaseSendAction action);
-    static QString vesLightCmdUiLabel(const QString& enumName);
-    static bool vesLightCmdFromName(const QString& name, VesLightCmd& out);
-    static QString vesLightCmdToName(VesLightCmd cmd);
-    static bool paramSchemaFor(VesLightCmd cmd, DeviceCmdParamSchema& out);
-    static QString paramUiHint(const QString& enumName);
-    static bool paramFromIniGroup(const QSettings& settings, VesLightCmd cmd, QVariant& out);
-    static void paramToIniGroup(QSettings& settings, VesLightCmd cmd, const QVariant& value);
+    static CmdManifestCatalog& catalog();
 };
 
 enum class ProductSerialCmd {
@@ -226,16 +185,7 @@ enum class Asd9026aCmd {
 
 class Asd9026aCmdCatalog {
   public:
-    static QStringList allAsd9026aCmdNames(TestCaseSendAction action);
-    static TestCaseSendAction actionFor(Asd9026aCmd cmd);
-    static bool isCmdForAction(Asd9026aCmd cmd, TestCaseSendAction action);
-    static QString asd9026aCmdUiLabel(const QString& enumName);
-    static bool asd9026aCmdFromName(const QString& name, Asd9026aCmd& out);
-    static QString asd9026aCmdToName(Asd9026aCmd cmd);
-    static bool paramSchemaFor(Asd9026aCmd cmd, DeviceCmdParamSchema& out);
-    static QString paramUiHint(const QString& enumName);
-    static bool paramFromIniGroup(const QSettings& settings, Asd9026aCmd cmd, QVariant& out);
-    static void paramToIniGroup(QSettings& settings, Asd9026aCmd cmd, const QVariant& value);
+    static CmdManifestCatalog& catalog();
 };
 
 /** 欣旺达 XWD raw 治具（与气缸 XwdFixtureCmd 区分；Protocol=XWD，兼容 XWD_BLE/XWD_SUCTION）。 */
@@ -245,16 +195,7 @@ enum class XwdRawFixtureCmd {
 
 class XwdRawFixtureCmdCatalog {
   public:
-    static QStringList allXwdRawFixtureCmdNames(TestCaseSendAction action);
-    static TestCaseSendAction actionFor(XwdRawFixtureCmd cmd);
-    static bool isCmdForAction(XwdRawFixtureCmd cmd, TestCaseSendAction action);
-    static QString xwdRawFixtureCmdUiLabel(const QString& enumName);
-    static bool xwdRawFixtureCmdFromName(const QString& name, XwdRawFixtureCmd& out);
-    static QString xwdRawFixtureCmdToName(XwdRawFixtureCmd cmd);
-    static bool paramSchemaFor(XwdRawFixtureCmd cmd, DeviceCmdParamSchema& out);
-    static QString paramUiHint(const QString& enumName);
-    static bool paramFromIniGroup(const QSettings& settings, XwdRawFixtureCmd cmd, QVariant& out);
-    static void paramToIniGroup(QSettings& settings, XwdRawFixtureCmd cmd, const QVariant& value);
+    static CmdManifestCatalog& catalog();
 };
 
 /** 杰理蓝牙盒子：串口 TLV 上报频偏/RSSI（Send/Channel=Fixture 且 Protocol=JieliBtBox）。 */
@@ -264,16 +205,7 @@ enum class JieliBtBoxCmd {
 
 class JieliBtBoxCmdCatalog {
   public:
-    static QStringList allJieliBtBoxCmdNames(TestCaseSendAction action);
-    static TestCaseSendAction actionFor(JieliBtBoxCmd cmd);
-    static bool isCmdForAction(JieliBtBoxCmd cmd, TestCaseSendAction action);
-    static QString jieliBtBoxCmdUiLabel(const QString& enumName);
-    static bool jieliBtBoxCmdFromName(const QString& name, JieliBtBoxCmd& out);
-    static QString jieliBtBoxCmdToName(JieliBtBoxCmd cmd);
-    static bool paramSchemaFor(JieliBtBoxCmd cmd, DeviceCmdParamSchema& out);
-    static QString paramUiHint(const QString& enumName);
-    static bool paramFromIniGroup(const QSettings& settings, JieliBtBoxCmd cmd, QVariant& out);
-    static void paramToIniGroup(QSettings& settings, JieliBtBoxCmd cmd, const QVariant& value);
+    static CmdManifestCatalog& catalog();
 };
 
 /** PCBA 治具 0x55 协议指令（Send/Channel=Fixture 且 Send/Protocol=Pcba）。 */
@@ -289,33 +221,15 @@ enum class FixturePcbaCmd {
 
 class FixturePcbaCmdCatalog {
   public:
-    static QStringList allFixturePcbaCmdNames(TestCaseSendAction action);
+    static CmdManifestCatalog& catalog();
     static TestCaseFixtureProtocol fixtureProtocolFromIni(const QString& text);
     static QString fixtureProtocolToIni(TestCaseFixtureProtocol protocol);
     static QString fixtureProtocolUiLabel(TestCaseFixtureProtocol protocol);
-    static TestCaseSendAction actionFor(FixturePcbaCmd cmd);
-    static bool isCmdForAction(FixturePcbaCmd cmd, TestCaseSendAction action);
-    static QString fixturePcbaCmdUiLabel(const QString& enumName);
-    static bool fixturePcbaCmdFromName(const QString& name, FixturePcbaCmd& out);
-    static QString fixturePcbaCmdToName(FixturePcbaCmd cmd);
-    static bool paramSchemaFor(FixturePcbaCmd cmd, DeviceCmdParamSchema& out);
-    static QString paramUiHint(const QString& enumName);
-    static bool paramFromIniGroup(const QSettings& settings, FixturePcbaCmd cmd, QVariant& out);
-    static void paramToIniGroup(QSettings& settings, FixturePcbaCmd cmd, const QVariant& value);
 };
 
 class ProductSerialCmdCatalog {
   public:
-    static QStringList allProductSerialCmdNames();
-    static TestCaseSendAction actionFor(ProductSerialCmd cmd);
-    static bool isCmdForAction(ProductSerialCmd cmd, TestCaseSendAction action);
-    static QString productSerialCmdUiLabel(const QString& enumName);
-    static bool productSerialCmdFromName(const QString& name, ProductSerialCmd& out);
-    static QString productSerialCmdToName(ProductSerialCmd cmd);
-    static bool paramSchemaFor(ProductSerialCmd cmd, DeviceCmdParamSchema& out);
-    static QString paramUiHint(const QString& enumName);
-    /** 开始接收类指令对应的 brush profile 0～5；-1 表示非此类指令。 */
-    static int brushProfileForCmd(ProductSerialCmd cmd);
+    static CmdManifestCatalog& catalog();
 };
 
 /** 
@@ -325,9 +239,6 @@ class ProductSerialCmdCatalog {
 class ModbusPeriphCmdCatalog {
   public:
     static QStringList allDeviceKeys();
-    static QString deviceUiLabel(ModbusDeviceRoute device);
-    static ModbusDeviceRoute deviceFromIni(const QString& text);
-    static QString deviceToIni(ModbusDeviceRoute device);
 
     static QStringList allCmdNames(ModbusDeviceRoute device, TestCaseSendAction action);
     static bool isCmdForDevice(ModbusDeviceRoute device, const QString& enumName, TestCaseSendAction action);
@@ -350,16 +261,7 @@ class ScpiPeriphCmdCatalog {
 
 class TupleCmdCatalog {
   public:
-    static QStringList allTupleCmdNames(TestCaseSendAction action);
-    static TestCaseSendAction actionFor(TupleCmd cmd);
-    static bool isCmdForAction(TupleCmd cmd, TestCaseSendAction action);
-    static QString tupleCmdUiLabel(const QString& enumName);
-    static bool tupleCmdFromName(const QString& name, TupleCmd& out);
-    static QString tupleCmdToName(TupleCmd cmd);
-    static bool paramSchemaFor(TupleCmd cmd, DeviceCmdParamSchema& out);
-    static QString paramUiHint(const QString& tupleCmdName);
-    static bool paramFromIniGroup(const QSettings& settings, TupleCmd cmd, QVariant& out);
-    static void paramToIniGroup(QSettings& settings, TupleCmd cmd, const QVariant& value);
+    static CmdManifestCatalog& catalog();
 };
 
 // ---------- 卡控 ----------

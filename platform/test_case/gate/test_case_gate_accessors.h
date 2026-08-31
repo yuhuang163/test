@@ -85,7 +85,7 @@ class GateType {
             *out = static_cast<double>(d.*mem);
             return true;
         };
-        // 文本默认由数值生成；需要定制格式时再用 textFormat / textFn
+        // 文本默认由数值生成；需要定制格式时再用 textFormat / textWithReader
         f.readText = [unpack, mem](const QVariant& payload, QString* out) -> bool {
             bool ok = false;
             const D d = unpack(payload, &ok);
@@ -128,9 +128,9 @@ class GateType {
         return *this;
     }
 
-    /** 自定义数值（数组下标、items.first 等）。 */
-    GateType& numberFn(const char* id, const char* label, const char* unit,
-                       std::function<bool(const D& d, double* out)> reader) {
+    /** 自定义数值读取（数组下标、items.first 等，传入 reader）。 */
+    GateType& numberWithReader(const char* id, const char* label, const char* unit,
+                               std::function<bool(const D& d, double* out)> reader) {
         GateFieldEntry f;
         f.id = QString::fromUtf8(id);
         f.displayName = QString::fromUtf8(label);
@@ -158,9 +158,9 @@ class GateType {
         return *this;
     }
 
-    /** 自定义文本（新建字段）。 */
-    GateType& textFn(const char* id, const char* label, GateCompareMode compare,
-                     std::function<bool(const D& d, QString* out)> reader) {
+    /** 自定义文本读取（新建字段，传入 reader）。 */
+    GateType& textWithReader(const char* id, const char* label, GateCompareMode compare,
+                             std::function<bool(const D& d, QString* out)> reader) {
         GateFieldEntry f;
         f.id = QString::fromUtf8(id);
         f.displayName = QString::fromUtf8(label);
@@ -264,15 +264,15 @@ class GateType {
     UnpackFn unpack_;
 };
 
-/** 无结构体模板时用（仅 numberFn/textFn 基于 QVariant）。 */
+/** 无结构体模板时用（仅 numberWithReader/textWithReader 基于 QVariant）。 */
 class GateTypeRaw {
   public:
     GateTypeRaw(const char* reportType, const char* displayName);
 
-    GateTypeRaw& numberFn(const char* id, const char* label, const char* unit,
-                          std::function<bool(const QVariant& payload, double* out)> reader);
-    GateTypeRaw& textFn(const char* id, const char* label, GateCompareMode compare,
-                        std::function<bool(const QVariant& payload, QString* out)> reader);
+    GateTypeRaw& numberWithReader(const char* id, const char* label, const char* unit,
+                                  std::function<bool(const QVariant& payload, double* out)> reader);
+    GateTypeRaw& textWithReader(const char* id, const char* label, GateCompareMode compare,
+                                std::function<bool(const QVariant& payload, QString* out)> reader);
     GateTypeRaw& alias(const char* otherId);
     GateTypeRaw& textFormat(char fmt, int precision);
     GateTypeRaw& summary(std::function<QString(const QVariant& payload)> fn);
