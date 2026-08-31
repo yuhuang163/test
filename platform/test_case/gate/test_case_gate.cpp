@@ -435,6 +435,10 @@ QString GateRegistry::unitFor(const QString& reportType, const QString& field, c
 
 // ===================== 展示 =====================
 
+QString GateRegistry::formatFieldDisplayValue(const QString& reportType, const QString& field, double value) {
+    return formatGateFieldValue(reportType, field, value);
+}
+
 QString GateRegistry::formatGateAsk(const TestCaseGate& gate, const QString& reportType, const QVariant& payload) {
     return withDisplayUnit(formatAskBody(gate, reportType, false), unitFor(reportType, gate.field, payload));
 }

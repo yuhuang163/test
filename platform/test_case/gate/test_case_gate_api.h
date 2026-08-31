@@ -55,6 +55,8 @@ class GateRegistry {
      * 无物理单位的文本/状态字段返回空。
      */
     static QString unitFor(const QString& reportType, const QString& field, const QVariant& payload = QVariant());
+    /** 把卡控数值格式化为界面文字（屏幕纯色→蓝/绿/红…，是否匹配→是/否）。 */
+    static QString formatFieldDisplayValue(const QString& reportType, const QString& field, double value);
     /** 单项卡控的期望展示（范围/比较符/等值，末尾带单位）。 */
     static QString formatGateAsk(const TestCaseGate& gate, const QString& reportType,
                                  const QVariant& payload = QVariant());
