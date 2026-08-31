@@ -3210,12 +3210,26 @@ void QFreeWork::runScreenInspectStep() {
     if (expectedColor >= 0 && data.colorMatch == 0) {
         showlog(QStringLiteral("屏幕检测自动识别未通过：%1").arg(colorLog));
         const QString askColor = ScreenInspectAnalyzer::colorName(expectedColor);
-        if (screenInspectAskHumanPassOnAutoFail(askColor)) {
+        bool allowHumanOverride = true;
+        if (activeTestCase_.send.param.canConvert<QVariantMap>()) {
+            const QVariantMap paramMap = resolveTestCaseSendParamTree(activeTestCase_.send.param).toMap();
+            if (paramMap.contains(QStringLiteral("allowHumanOverride"))) {
+                allowHumanOverride = paramMap.value(QStringLiteral("allowHumanOverride")).toBool();
+            } else if (paramMap.contains(QStringLiteral("askHumanOnFail"))) {
+                allowHumanOverride = paramMap.value(QStringLiteral("askHumanOnFail")).toBool();
+            }
+        }
+
+        if (allowHumanOverride && screenInspectAskHumanPassOnAutoFail(askColor)) {
             showlog(QStringLiteral("人工确认：屏幕显示%1，本步通过").arg(askColor));
             markActiveTestCaseStepDone(true, detectedName + QStringLiteral("（人工确认通过）"), askColor);
         } else {
             TestResult = failValue;
-            showlog(QStringLiteral("人工确认：屏幕未显示%1，本步不通过").arg(askColor));
+            if (!allowHumanOverride) {
+                showlog(QStringLiteral("自动判定未通过，且该步骤配置为禁用人工确认，直接判定失败"));
+            } else {
+                showlog(QStringLiteral("人工确认：屏幕未显示%1，本步不通过").arg(askColor));
+            }
             markActiveTestCaseStepDone(false, detectedName, askColor);
         }
         return;
@@ -3260,13 +3274,27 @@ void QFreeWork::runScreenInspectStep() {
         showlog(QStringLiteral("屏幕检测自动识别未通过：%1").arg(failReason));
         const QString askColor = expectedColor >= 0 ? ScreenInspectAnalyzer::colorName(expectedColor)
                                                     : askText;
-        if (screenInspectAskHumanPassOnAutoFail(askColor)) {
+        bool allowHumanOverride = true;
+        if (activeTestCase_.send.param.canConvert<QVariantMap>()) {
+            const QVariantMap paramMap = resolveTestCaseSendParamTree(activeTestCase_.send.param).toMap();
+            if (paramMap.contains(QStringLiteral("allowHumanOverride"))) {
+                allowHumanOverride = paramMap.value(QStringLiteral("allowHumanOverride")).toBool();
+            } else if (paramMap.contains(QStringLiteral("askHumanOnFail"))) {
+                allowHumanOverride = paramMap.value(QStringLiteral("askHumanOnFail")).toBool();
+            }
+        }
+
+        if (allowHumanOverride && screenInspectAskHumanPassOnAutoFail(askColor)) {
             showlog(QStringLiteral("人工确认：屏幕显示%1，本步通过").arg(askColor));
             markActiveTestCaseStepDone(true, testData + QStringLiteral("（人工确认通过）"),
                                        askText.isEmpty() ? QStringLiteral("通过") : askText);
         } else {
             TestResult = failValue;
-            showlog(QStringLiteral("人工确认：屏幕未显示%1，本步不通过").arg(askColor));
+            if (!allowHumanOverride) {
+                showlog(QStringLiteral("自动判定未通过，且该步骤配置为禁用人工确认，直接判定失败"));
+            } else {
+                showlog(QStringLiteral("人工确认：屏幕未显示%1，本步不通过").arg(askColor));
+            }
             markActiveTestCaseStepDone(false, testData, askText.isEmpty() ? QStringLiteral("失败") : askText);
         }
         return;
