@@ -717,6 +717,10 @@ win32 {
     MVS_DIR = $$PWD/lib/mvs
     INCLUDEPATH += $$MVS_DIR/include
     LIBS += -L$$shell_path($$MVS_DIR/lib/win64) -lMvCameraControl
+    # MVCameraControl.dll 延迟加载：screen_inspect_gige_capture 先 SetDllDirectoryW(mvs_runtime) 设好搜索路径，
+    # 首次 MV_CC_* 调用时才真正加载 DLL；否则进程启动即因找不到该 DLL 无法运行
+    LIBS += delayimp.lib
+    QMAKE_LFLAGS += /DELAYLOAD:MVCameraControl.dll
 
     QMAKE_POST_LINK += $$quote(cmd /c copy /Y \"$$shell_path($$VISA_DIR/visa64.dll)\" \"$$shell_path($$OUT_PWD/$$DESTDIR/visa64.dll)\" && copy /Y \"$$shell_path($$VISA_DIR/visaConfMgr.dll)\" \"$$shell_path($$OUT_PWD/$$DESTDIR/visaConfMgr.dll)\" && if not exist \"$$shell_path($$OUT_PWD/$$DESTDIR/mvs_runtime)\" mkdir \"$$shell_path($$OUT_PWD/$$DESTDIR/mvs_runtime)\" && xcopy /Y /Q /E \"$$shell_path($$MVS_DIR/runtime/win64)\\*\" \"$$shell_path($$OUT_PWD/$$DESTDIR/mvs_runtime)\\\" >nul)
 }
