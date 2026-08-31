@@ -1,5 +1,9 @@
 #include "device_cmd_manifest.h"
 
+#include "test_case_ini_param.h"
+
+#include <QVariantMap>
+
 namespace {
 
 using DeviceCmdManifest::Row;
@@ -402,6 +406,125 @@ const Row* findByEnumName(const QString& enumName) {
             return &row;
     }
     return nullptr;
+}
+
+QVariant normalizeSendParam(DeviceCmd cmd, const QVariant& param) {
+    if (!param.canConvert<QVariantMap>())
+        return param;
+
+    const QVariantMap map = param.toMap();
+    if (map.isEmpty()) {
+        switch (cmd) {
+        case DeviceCmd::SoftVersionRead:
+        case DeviceCmd::BaseInfo:
+        case DeviceCmd::GetBattery:
+        case DeviceCmd::DevReset:
+        case DeviceCmd::WifiDisconnect:
+        case DeviceCmd::ChargeCurrentRead:
+        case DeviceCmd::TupleRead:
+        case DeviceCmd::PeriphState:
+        case DeviceCmd::FactoryReset:
+        case DeviceCmd::ShipMode:
+        case DeviceCmd::RootEnterOta:
+            return QVariant();
+        default:
+            return QVariant();
+        }
+    }
+
+    switch (cmd) {
+    case DeviceCmd::ForbidSleep:
+    case DeviceCmd::FacMode:
+        return jsonMapIntValue(map, 1);
+    case DeviceCmd::FacResult: {
+        if (map.contains(QStringLiteral("done")))
+            return map;
+        QVariantMap facOut = map;
+        if (!facOut.contains(QStringLiteral("done")))
+            facOut.insert(QStringLiteral("done"), jsonMapIntValue(map, 1));
+        return facOut;
+    }
+    case DeviceCmd::Sn: {
+        const auto whichFromMap = [&map]() -> int {
+            if (map.contains(QStringLiteral("which_sn")))
+                return map.value(QStringLiteral("which_sn")).toInt();
+            if (map.contains(QStringLiteral("which")))
+                return map.value(QStringLiteral("which")).toInt();
+            if (map.contains(QStringLiteral("type")))
+                return map.value(QStringLiteral("type")).toInt();
+            return jsonMapIntValue(map, 0);
+        };
+        QByteArray snBytes;
+        if (map.contains(QStringLiteral("sn")))
+            snBytes = map.value(QStringLiteral("sn")).toString().toUtf8();
+        else if (map.contains(QStringLiteral("value")))
+            snBytes = map.value(QStringLiteral("value")).toString().toUtf8();
+        else if (map.contains(QStringLiteral("string")))
+            snBytes = map.value(QStringLiteral("string")).toString().toUtf8();
+        if (!snBytes.isEmpty()) {
+            DeviceSnPayload payload;
+            payload.which_sn = static_cast<FacDevInfoType>(whichFromMap());
+            payload.sn = snBytes;
+            payload.sideId = -1;
+            static const QStringList sideKeys = {QStringLiteral("side"),
+                                                QStringLiteral("device_side_id"),
+                                                QStringLiteral("deviceSideId"),
+                                                QStringLiteral("sideId"),
+                                                QStringLiteral("position")};
+            for (const QString& key : sideKeys) {
+                if (!map.contains(key))
+                    continue;
+                const QString raw = map.value(key).toString().trimmed();
+                bool ok = false;
+                const uint n = raw.toUInt(&ok);
+                if (ok && n <= 2u) {
+                    payload.sideId = static_cast<int>(n);
+                    break;
+                }
+                const QString lower = raw.toLower();
+                if (lower == QLatin1String("left") || lower == QLatin1String("l") || raw.contains(QStringLiteral("左"))) {
+                    payload.sideId = 0;
+                    break;
+                }
+                if (lower == QLatin1String("right") || lower == QLatin1String("r") || raw.contains(QStringLiteral("右"))) {
+                    payload.sideId = 1;
+                    break;
+                }
+                if (lower == QLatin1String("independent") || lower == QLatin1String("single")
+                    || lower == QLatin1String("s") || raw.contains(QStringLiteral("单"))
+                    || raw.contains(QStringLiteral("独立"))) {
+                    payload.sideId = 2;
+                    break;
+                }
+                break;
+            }
+            return QVariant::fromValue(payload);
+        }
+        if (map.contains(QStringLiteral("which_sn")) || map.contains(QStringLiteral("which")) || map.contains(QStringLiteral("type")))
+            return whichFromMap();
+        return jsonMapIntValue(map, 0);
+    }
+    case DeviceCmd::Sleep:
+    case DeviceCmd::BurningMode:
+    case DeviceCmd::SuctionMode:
+    case DeviceCmd::WifiConnect:
+    case DeviceCmd::RssiRead:
+        return map;
+    case DeviceCmd::SoftVersionRead:
+    case DeviceCmd::BaseInfo:
+    case DeviceCmd::GetBattery:
+    case DeviceCmd::DevReset:
+    case DeviceCmd::WifiDisconnect:
+    case DeviceCmd::ChargeCurrentRead:
+    case DeviceCmd::TupleRead:
+    case DeviceCmd::PeriphState:
+    case DeviceCmd::FactoryReset:
+    case DeviceCmd::ShipMode:
+    case DeviceCmd::RootEnterOta:
+        return map.isEmpty() ? QVariant() : QVariant(map);
+    default:
+        return map;
+    }
 }
 
 } // namespace DeviceCmdManifest

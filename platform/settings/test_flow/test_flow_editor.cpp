@@ -1594,7 +1594,7 @@ bool TestFlowEditor::confirmDiscardOrSaveOnLeave() {
     box.setText(QStringLiteral("测试流程编排已修改，是否保存？"));
     box.setIcon(QMessageBox::Question);
     auto* btnSave = box.addButton(QStringLiteral("保存"), QMessageBox::AcceptRole);
-    auto* btnCancel = box.addButton(QStringLiteral("取消"), QMessageBox::RejectRole);
+    box.addButton(QStringLiteral("取消"), QMessageBox::RejectRole);
     box.setDefaultButton(btnSave);
     box.exec();
 

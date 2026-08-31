@@ -559,7 +559,7 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
         return {};
     }
     if (channel == TestCaseSendChannel::Modbus
-        && ModbusPeriphCmdCatalog::deviceFromIni(device) == ModbusDeviceRoute::MultiTempLoggerRtu) {
+        && ModbusDeviceCatalog::deviceRouteFromIni(device) == ModbusDeviceRoute::MultiTempLoggerRtu) {
         if (cmdName == QLatin1String("ReadChannelTemp")) {
             QVariantMap map;
             map.insert(QStringLiteral("slaveAddr"), QStringLiteral("1"));
@@ -579,7 +579,7 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
         return {};
     }
     if (channel == TestCaseSendChannel::Modbus
-        && ModbusPeriphCmdCatalog::deviceFromIni(device) == ModbusDeviceRoute::XinjiePlcRtu) {
+        && ModbusDeviceCatalog::deviceRouteFromIni(device) == ModbusDeviceRoute::XinjiePlcRtu) {
         if (cmdName == QLatin1String("Connect")) {
             // comPort 留空占位：用户填写后须写入 ini；勿填 COM11 等硬编码以免误保存
             return QVariantMap{{QStringLiteral("comPort"), QString()},
@@ -951,7 +951,7 @@ void fillProtocolComboForChannel(QComboBox* box, TestCaseSendChannel channel) {
         fillFixtureProtocolCombo(box);
     } else if (channel == TestCaseSendChannel::Modbus) {
         for (const QString& dev : ModbusPeriphCmdCatalog::allDeviceKeys()) {
-            box->addItem(ModbusPeriphCmdCatalog::deviceUiLabel(ModbusPeriphCmdCatalog::deviceFromIni(dev)), dev);
+            box->addItem(ModbusDeviceCatalog::deviceRouteUiLabel(ModbusDeviceCatalog::deviceRouteFromIni(dev)), dev);
         }
     } else if (channel == TestCaseSendChannel::Scpi) {
         for (const QString& dev : ScpiPeriphCmdCatalog::allDeviceKeys()) {
@@ -976,48 +976,57 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
     box->clear();
     QVector<QPair<QString, QString>> items;
     if (channel == TestCaseSendChannel::Dongle) {
-        items.reserve(DongleCmdCatalog::allDongleCmdNames(action).size());
-        for (const QString& name : DongleCmdCatalog::allDongleCmdNames(action))
-            items.append({DongleCmdCatalog::dongleCmdUiLabel(name), name});
+        const QStringList names = DongleCmdCatalog::catalog().allCmdNames(action);
+        items.reserve(names.size());
+        for (const QString& name : names)
+            items.append({DongleCmdCatalog::catalog().cmdUiLabel(name), name});
     } else if (channel == TestCaseSendChannel::Cloud) {
-        items.reserve(TupleCmdCatalog::allTupleCmdNames(action).size());
-        for (const QString& name : TupleCmdCatalog::allTupleCmdNames(action))
-            items.append({TupleCmdCatalog::tupleCmdUiLabel(name), name});
+        const QStringList names = TupleCmdCatalog::catalog().allCmdNames(action);
+        items.reserve(names.size());
+        for (const QString& name : names)
+            items.append({TupleCmdCatalog::catalog().cmdUiLabel(name), name});
     } else if (channel == TestCaseSendChannel::ProductSerial) {
-        items.reserve(ProductSerialCmdCatalog::allProductSerialCmdNames().size());
-        for (const QString& name : ProductSerialCmdCatalog::allProductSerialCmdNames()) {
-            if (ProductSerialCmd cmd; ProductSerialCmdCatalog::productSerialCmdFromName(name, cmd) && ProductSerialCmdCatalog::isCmdForAction(cmd, action))
-                items.append({ProductSerialCmdCatalog::productSerialCmdUiLabel(name), name});
+        const QStringList names = ProductSerialCmdCatalog::catalog().allCmdNames(TestCaseSendAction::Set);
+        items.reserve(names.size());
+        for (const QString& name : names) {
+            if (ProductSerialCmd cmd; cmdEnumFromName(ProductSerialCmdCatalog::catalog(), name, cmd) && ProductSerialCmdCatalog::catalog().isCmdForAction(static_cast<int>(cmd), action))
+                items.append({ProductSerialCmdCatalog::catalog().cmdUiLabel(name), name});
         }
     } else if (channel == TestCaseSendChannel::Fixture) {
         const TestCaseFixtureProtocol proto = FixturePcbaCmdCatalog::fixtureProtocolFromIni(device);
         if (proto == TestCaseFixtureProtocol::Asd9026a) {
-            items.reserve(Asd9026aCmdCatalog::allAsd9026aCmdNames(action).size());
-            for (const QString& name : Asd9026aCmdCatalog::allAsd9026aCmdNames(action))
-                items.append({Asd9026aCmdCatalog::asd9026aCmdUiLabel(name), name});
+            const QStringList names = Asd9026aCmdCatalog::catalog().allCmdNames(action);
+            items.reserve(names.size());
+            for (const QString& name : names)
+                items.append({Asd9026aCmdCatalog::catalog().cmdUiLabel(name), name});
         } else if (proto == TestCaseFixtureProtocol::Xwd) {
-            items.reserve(XwdRawFixtureCmdCatalog::allXwdRawFixtureCmdNames(action).size());
-            for (const QString& name : XwdRawFixtureCmdCatalog::allXwdRawFixtureCmdNames(action))
-                items.append({XwdRawFixtureCmdCatalog::xwdRawFixtureCmdUiLabel(name), name});
+            const QStringList names = XwdRawFixtureCmdCatalog::catalog().allCmdNames(action);
+            items.reserve(names.size());
+            for (const QString& name : names)
+                items.append({XwdRawFixtureCmdCatalog::catalog().cmdUiLabel(name), name});
         } else if (proto == TestCaseFixtureProtocol::JieliBtBox) {
-            items.reserve(JieliBtBoxCmdCatalog::allJieliBtBoxCmdNames(action).size());
-            for (const QString& name : JieliBtBoxCmdCatalog::allJieliBtBoxCmdNames(action))
-                items.append({JieliBtBoxCmdCatalog::jieliBtBoxCmdUiLabel(name), name});
+            const QStringList names = JieliBtBoxCmdCatalog::catalog().allCmdNames(action);
+            items.reserve(names.size());
+            for (const QString& name : names)
+                items.append({JieliBtBoxCmdCatalog::catalog().cmdUiLabel(name), name});
         } else if (proto == TestCaseFixtureProtocol::UsbCamera) {
-            items.reserve(UsbCameraCmdCatalog::allUsbCameraCmdNames(action).size());
-            for (const QString& name : UsbCameraCmdCatalog::allUsbCameraCmdNames(action))
-                items.append({UsbCameraCmdCatalog::usbCameraCmdUiLabel(name), name});
+            const QStringList names = UsbCameraCmdCatalog::catalog().allCmdNames(action);
+            items.reserve(names.size());
+            for (const QString& name : names)
+                items.append({UsbCameraCmdCatalog::catalog().cmdUiLabel(name), name});
         } else if (proto == TestCaseFixtureProtocol::VesLight) {
-            items.reserve(VesLightCmdCatalog::allVesLightCmdNames(action).size());
-            for (const QString& name : VesLightCmdCatalog::allVesLightCmdNames(action))
-                items.append({VesLightCmdCatalog::vesLightCmdUiLabel(name), name});
+            const QStringList names = VesLightCmdCatalog::catalog().allCmdNames(action);
+            items.reserve(names.size());
+            for (const QString& name : names)
+                items.append({VesLightCmdCatalog::catalog().cmdUiLabel(name), name});
         } else {
-            items.reserve(FixturePcbaCmdCatalog::allFixturePcbaCmdNames(action).size());
-            for (const QString& name : FixturePcbaCmdCatalog::allFixturePcbaCmdNames(action))
-                items.append({FixturePcbaCmdCatalog::fixturePcbaCmdUiLabel(name), name});
+            const QStringList names = FixturePcbaCmdCatalog::catalog().allCmdNames(action);
+            items.reserve(names.size());
+            for (const QString& name : names)
+                items.append({FixturePcbaCmdCatalog::catalog().cmdUiLabel(name), name});
         }
     } else if (channel == TestCaseSendChannel::Modbus) {
-        ModbusDeviceRoute devRoute = ModbusPeriphCmdCatalog::deviceFromIni(device);
+        ModbusDeviceRoute devRoute = ModbusDeviceCatalog::deviceRouteFromIni(device);
         const QStringList names = ModbusPeriphCmdCatalog::allCmdNames(devRoute, action);
         items.reserve(names.size());
         for (const QString& name : names) {
@@ -1031,10 +1040,10 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
             items.append({ScpiPeriphCmdCatalog::cmdUiLabel(devRoute, name), name});
         }
     } else {
-        const QStringList names = DeviceCmdCatalog::allDeviceCmdNames(action);
+        const QStringList names = DeviceCmdCatalog::catalog().allCmdNames(action);
         items.reserve(names.size());
         for (const QString& name : names)
-            items.append({DeviceCmdCatalog::deviceCmdUiLabel(name), name});
+            items.append({DeviceCmdCatalog::catalog().cmdUiLabel(name), name});
     }
     std::sort(items.begin(), items.end(), [](const QPair<QString, QString>& a, const QPair<QString, QString>& b) {
         return a.first.localeAwareCompare(b.first) < 0;
@@ -1048,7 +1057,7 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
             }
         }
         if (!found) {
-            const QString label = DeviceCmdCatalog::deviceCmdUiLabel(keepCmdIfMissing) + QStringLiteral("（未登记）");
+            const QString label = DeviceCmdCatalog::catalog().cmdUiLabel(keepCmdIfMissing) + QStringLiteral("（未登记）");
             items.prepend({label, keepCmdIfMissing});
         }
     }
@@ -1127,11 +1136,11 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
     SendCmdParamUi out;
     if (channel == TestCaseSendChannel::Dongle) {
         DongleCmd dongleCmd;
-        if (DongleCmdCatalog::dongleCmdFromName(name, dongleCmd)) {
+        if (cmdEnumFromName(DongleCmdCatalog::catalog(), name, dongleCmd)) {
             DeviceCmdParamSchema schema;
-            if (DongleCmdCatalog::paramSchemaFor(dongleCmd, schema)) {
+            if (DongleCmdCatalog::catalog().paramSchemaFor(static_cast<int>(dongleCmd), schema)) {
                 out.valid = true;
-                out.hint = DongleCmdCatalog::paramUiHint(name);
+                out.hint = DongleCmdCatalog::catalog().paramUiHint(name);
                 out.kind = sendParamUiKindFromSchema(schema.kind);
             }
         }
@@ -1139,11 +1148,11 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
     }
     if (channel == TestCaseSendChannel::Cloud) {
         TupleCmd tupleCmd;
-        if (TupleCmdCatalog::tupleCmdFromName(name, tupleCmd)) {
+        if (cmdEnumFromName(TupleCmdCatalog::catalog(), name, tupleCmd)) {
             DeviceCmdParamSchema schema;
-            if (TupleCmdCatalog::paramSchemaFor(tupleCmd, schema)) {
+            if (TupleCmdCatalog::catalog().paramSchemaFor(static_cast<int>(tupleCmd), schema)) {
                 out.valid = true;
-                out.hint = TupleCmdCatalog::paramUiHint(name);
+                out.hint = TupleCmdCatalog::catalog().paramUiHint(name);
                 out.kind = sendParamUiKindFromSchema(schema.kind);
             }
         }
@@ -1151,11 +1160,11 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
     }
     if (channel == TestCaseSendChannel::ProductSerial) {
         ProductSerialCmd serialCmd;
-        if (ProductSerialCmdCatalog::productSerialCmdFromName(name, serialCmd)) {
+        if (cmdEnumFromName(ProductSerialCmdCatalog::catalog(), name, serialCmd)) {
             DeviceCmdParamSchema schema;
-            if (ProductSerialCmdCatalog::paramSchemaFor(serialCmd, schema)) {
+            if (ProductSerialCmdCatalog::catalog().paramSchemaFor(static_cast<int>(serialCmd), schema)) {
                 out.valid = true;
-                out.hint = ProductSerialCmdCatalog::paramUiHint(name);
+                out.hint = ProductSerialCmdCatalog::catalog().paramUiHint(name);
                 out.kind = SendCmdParamKind::None;
             }
         }
@@ -1165,11 +1174,11 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
         const TestCaseFixtureProtocol proto = FixturePcbaCmdCatalog::fixtureProtocolFromIni(device);
         if (proto == TestCaseFixtureProtocol::Asd9026a) {
             Asd9026aCmd asdCmd;
-            if (Asd9026aCmdCatalog::asd9026aCmdFromName(name, asdCmd)) {
+            if (cmdEnumFromName(Asd9026aCmdCatalog::catalog(), name, asdCmd)) {
                 DeviceCmdParamSchema schema;
-                if (Asd9026aCmdCatalog::paramSchemaFor(asdCmd, schema)) {
+                if (Asd9026aCmdCatalog::catalog().paramSchemaFor(static_cast<int>(asdCmd), schema)) {
                     out.valid = true;
-                    out.hint = Asd9026aCmdCatalog::paramUiHint(name);
+                    out.hint = Asd9026aCmdCatalog::catalog().paramUiHint(name);
                     out.kind = sendParamUiKindFromSchema(schema.kind);
                 }
             }
@@ -1177,11 +1186,11 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
         }
         if (proto == TestCaseFixtureProtocol::Xwd) {
             XwdRawFixtureCmd xwdCmd;
-            if (XwdRawFixtureCmdCatalog::xwdRawFixtureCmdFromName(name, xwdCmd)) {
+            if (cmdEnumFromName(XwdRawFixtureCmdCatalog::catalog(), name, xwdCmd)) {
                 DeviceCmdParamSchema schema;
-                if (XwdRawFixtureCmdCatalog::paramSchemaFor(xwdCmd, schema)) {
+                if (XwdRawFixtureCmdCatalog::catalog().paramSchemaFor(static_cast<int>(xwdCmd), schema)) {
                     out.valid = true;
-                    out.hint = XwdRawFixtureCmdCatalog::paramUiHint(name);
+                    out.hint = XwdRawFixtureCmdCatalog::catalog().paramUiHint(name);
                     out.kind = sendParamUiKindFromSchema(schema.kind);
                 }
             }
@@ -1189,11 +1198,11 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
         }
         if (proto == TestCaseFixtureProtocol::JieliBtBox) {
             JieliBtBoxCmd jieliCmd;
-            if (JieliBtBoxCmdCatalog::jieliBtBoxCmdFromName(name, jieliCmd)) {
+            if (cmdEnumFromName(JieliBtBoxCmdCatalog::catalog(), name, jieliCmd)) {
                 DeviceCmdParamSchema schema;
-                if (JieliBtBoxCmdCatalog::paramSchemaFor(jieliCmd, schema)) {
+                if (JieliBtBoxCmdCatalog::catalog().paramSchemaFor(static_cast<int>(jieliCmd), schema)) {
                     out.valid = true;
-                    out.hint = JieliBtBoxCmdCatalog::paramUiHint(name);
+                    out.hint = JieliBtBoxCmdCatalog::catalog().paramUiHint(name);
                     out.kind = sendParamUiKindFromSchema(schema.kind);
                 }
             }
@@ -1201,11 +1210,11 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
         }
         if (proto == TestCaseFixtureProtocol::UsbCamera) {
             UsbCameraCmd camCmd;
-            if (UsbCameraCmdCatalog::usbCameraCmdFromName(name, camCmd)) {
+            if (cmdEnumFromName(UsbCameraCmdCatalog::catalog(), name, camCmd)) {
                 DeviceCmdParamSchema schema;
-                if (UsbCameraCmdCatalog::paramSchemaFor(camCmd, schema)) {
+                if (UsbCameraCmdCatalog::catalog().paramSchemaFor(static_cast<int>(camCmd), schema)) {
                     out.valid = true;
-                    out.hint = UsbCameraCmdCatalog::paramUiHint(name);
+                    out.hint = UsbCameraCmdCatalog::catalog().paramUiHint(name);
                     out.kind = sendParamUiKindFromSchema(schema.kind);
                 }
             }
@@ -1213,29 +1222,29 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
         }
         if (proto == TestCaseFixtureProtocol::VesLight) {
             VesLightCmd vesCmd;
-            if (VesLightCmdCatalog::vesLightCmdFromName(name, vesCmd)) {
+            if (cmdEnumFromName(VesLightCmdCatalog::catalog(), name, vesCmd)) {
                 DeviceCmdParamSchema schema;
-                if (VesLightCmdCatalog::paramSchemaFor(vesCmd, schema)) {
+                if (VesLightCmdCatalog::catalog().paramSchemaFor(static_cast<int>(vesCmd), schema)) {
                     out.valid = true;
-                    out.hint = VesLightCmdCatalog::paramUiHint(name);
+                    out.hint = VesLightCmdCatalog::catalog().paramUiHint(name);
                     out.kind = sendParamUiKindFromSchema(schema.kind);
                 }
             }
             return out;
         }
         FixturePcbaCmd fixtureCmd;
-        if (FixturePcbaCmdCatalog::fixturePcbaCmdFromName(name, fixtureCmd)) {
+        if (cmdEnumFromName(FixturePcbaCmdCatalog::catalog(), name, fixtureCmd)) {
             DeviceCmdParamSchema schema;
-            if (FixturePcbaCmdCatalog::paramSchemaFor(fixtureCmd, schema)) {
+            if (FixturePcbaCmdCatalog::catalog().paramSchemaFor(static_cast<int>(fixtureCmd), schema)) {
                 out.valid = true;
-                out.hint = FixturePcbaCmdCatalog::paramUiHint(name);
+                out.hint = FixturePcbaCmdCatalog::catalog().paramUiHint(name);
                 out.kind = sendParamUiKindFromSchema(schema.kind);
             }
         }
         return out;
     }
     if (channel == TestCaseSendChannel::Modbus) {
-        ModbusDeviceRoute devRoute = ModbusPeriphCmdCatalog::deviceFromIni(device);
+        ModbusDeviceRoute devRoute = ModbusDeviceCatalog::deviceRouteFromIni(device);
         const auto* row = ModbusCmdManifest::findByDeviceAndName(devRoute, name);
         if (row) {
             out.valid = true;
@@ -1299,11 +1308,11 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
         return out;
     }
     DeviceCmd cmd;
-    if (DeviceCmdCatalog::deviceCmdFromName(name, cmd)) {
+    if (cmdEnumFromName(DeviceCmdCatalog::catalog(), name, cmd)) {
         DeviceCmdParamSchema schema;
-        if (DeviceCmdCatalog::paramSchemaFor(cmd, schema)) {
+        if (DeviceCmdCatalog::catalog().paramSchemaFor(static_cast<int>(cmd), schema)) {
             out.valid = true;
-            out.hint = DeviceCmdCatalog::paramUiHint(name);
+            out.hint = DeviceCmdCatalog::catalog().paramUiHint(name);
             out.kind = sendParamUiKindFromSchema(schema.kind);
         }
     }
@@ -1696,8 +1705,6 @@ void initFixturePcbaGateTable(QTableWidget* table) {
 
 const QHash<QString, QString>& hookDisplayNameMap() {
     static const QHash<QString, QString> map = {
-        {QStringLiteral("NoOp"), QStringLiteral("空操作（示例）")},
-        {QStringLiteral("FreeWorkNoOpDemo"), QStringLiteral("示例步骤")},
         {QStringLiteral("JIG_CURRENT_READ"), QStringLiteral("读取治具电流测量值")},
         {QStringLiteral("DONGLE_SUCTION_ENABLE"), QStringLiteral("开启 dongle 吸力读取")},
         {QStringLiteral("DONGLE_SUCTION_DISABLE"), QStringLiteral("关闭 dongle 吸力读取")},
@@ -1795,7 +1802,6 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
     fillDeviceCmdCombo(ui->comboBox_deviceCmd, TestCaseSendChannel::Product, TestCaseSendAction::Set, QString());
     fillGateReportTypeCombo(ui->comboBox_gateReportType);
     fillGateOpCombo(ui->comboBox_gateOp);
-    registerFreeWorkTestCaseHooks();
     registerQFreeWorkCatalogTestCaseHooks();
     fillHookCombo(ui->comboBox_hookId);
 

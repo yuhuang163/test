@@ -1194,7 +1194,9 @@ void TestCaseSyncService::pollDeviceCommands() {
     QString readyError;
     if (!ensureCloudReady(&readyError)) {
         Qlog::saveResidentLog(QStringLiteral("cmdPoll"),
-                              QStringLiteral("未就绪 cost=%1ms err=%2").arg(timer.elapsed()).arg(readyError));
+                              QStringLiteral("问云端命令前未就绪 耗时=%1ms 原因=%2")
+                                  .arg(timer.elapsed())
+                                  .arg(readyError));
         g_commandPollBusy.storeRelaxed(0);
         return;
     }
@@ -1208,7 +1210,7 @@ void TestCaseSyncService::pollDeviceCommands() {
     const qint64 httpMs = httpTimer.elapsed();
     if (!cmdRes.ok) {
         Qlog::saveResidentLog(QStringLiteral("cmdPoll"),
-                              QStringLiteral("失败 http=%1ms total=%2ms err=%3")
+                              QStringLiteral("问云端有无下发命令失败 请求=%1ms 总耗时=%2ms 原因=%3")
                                   .arg(httpMs)
                                   .arg(timer.elapsed())
                                   .arg(cmdRes.message));
@@ -1246,16 +1248,16 @@ void TestCaseSyncService::pollDeviceCommands() {
         }
         const SyncResult uploadResult = uploadStationProfile(stationKey, displayName, QStringLiteral("pull"));
         Qlog::saveResidentLog(QStringLiteral("cmdPoll"),
-                              QStringLiteral("网页拉取回传 station=%1 ok=%2 msg=%3")
+                              QStringLiteral("网页拉取配置回传 工站=%1 成功=%2 说明=%3")
                                   .arg(stationKey)
-                                  .arg(uploadResult.ok ? QStringLiteral("1") : QStringLiteral("0"),
+                                  .arg(uploadResult.ok ? QStringLiteral("是") : QStringLiteral("否"),
                                        uploadResult.message));
         ++handled;
     }
 
     // 空轮询也记耗时，便于对照卡顿时段占用
     Qlog::saveResidentLog(QStringLiteral("cmdPoll"),
-                          QStringLiteral("完成 http=%1ms total=%2ms items=%3 handled=%4")
+                          QStringLiteral("问云端有无下发命令 请求=%1ms 总耗时=%2ms 云端命令数=%3 本机处理数=%4")
                               .arg(httpMs)
                               .arg(timer.elapsed())
                               .arg(items.size())

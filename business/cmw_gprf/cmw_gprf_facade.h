@@ -75,7 +75,6 @@ class CmwGprfFacade {
         bool checkErrorAfterScenario = false;
 
         static Config fromSettings();
-        int holdMsAfterTrigger(int postTrigHoldMsOverride) const;
     };
 
     struct BrushProfile {
@@ -90,17 +89,13 @@ class CmwGprfFacade {
     void bindSession(QScpiManager* scpi, const LogFn& log, const WaitFn& wait);
     QString cmwVisaAddress() const;
     bool ensureVisaConnected(QScpiManager* scpi, const LogFn& log, QString* detail);
-    bool primeGprf(QString* errorMessage);
-    bool waitArbComplete(const QString& scenarioLabel, const Config& cfg, const LogFn& log, const WaitFn& wait,
-                         QString* errorMessage, int* outElapsedMs);
-    bool runSingleBurstAtMhz(int freqMhz, const QString& scenarioLabel, const Config& cfg, const LogFn& log,
-                             const WaitFn& wait, QString* errorMessage, int postTrigHoldMsOverride);
-    CmwGprfRunResult runBurstAtProfile(const CmwGprfRunParams& params, const LogFn& log, const WaitFn& wait,
-                                       const QString& burstLabel, bool logWaveformHint);
+    bool waitArbComplete(const QString& scenarioLabel, const Config& cfg, QString* errorMessage,
+                         int* outElapsedMs);
+    CmwGprfRunResult runBurstAtProfile(const CmwGprfRunParams& params, const QString& burstLabel,
+                                       bool logWaveformHint);
 
     bool cmwSet(CmwScpiCmd cmd, const QVariant& data = {});
     bool cmwGet(CmwScpiCmd cmd, const QVariant& param = {}, QString* response = nullptr);
-    static bool parseArbScount(const QString& response, double* countTime, int* cycles, int* samplesCurrent);
 
     bool sessionReady_ = false;
     bool gprfPrimed_ = false;

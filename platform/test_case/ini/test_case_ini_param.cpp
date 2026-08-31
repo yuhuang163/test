@@ -1,5 +1,6 @@
 #include "test_case_ini_param.h"
-#include "test_case.h"
+#include "test_case_catalog.h"
+#include "device_cmd_manifest.h"
 
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -178,7 +179,7 @@ void writeGenericHookSendParamMap(QSettings& ini, const TestCaseDefinition& def)
     }
     if (def.send.channel == TestCaseSendChannel::Product) {
         DeviceCmd cmd;
-        if (!DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd))
+        if (!cmdEnumFromName(DeviceCmdCatalog::catalog(), def.send.deviceCmd, cmd))
             writeSendParamMap(ini, map);
     } else if (def.send.channel == TestCaseSendChannel::Fixture
                && (def.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera

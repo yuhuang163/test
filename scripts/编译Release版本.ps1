@@ -7,7 +7,7 @@
     Skip qmake when .pro unchanged.
 
 .PARAMETER Jobs
-    jom parallel jobs (default 8).
+    jom parallel jobs. 0 = use logical CPU count (default).
 
 .PARAMETER Clean
     Run jom clean before build.
@@ -15,7 +15,7 @@
 [CmdletBinding()]
 param(
     [switch] $SkipQmake,
-    [int] $Jobs = 8,
+    [int] $Jobs = 0,
     [switch] $Clean
 )
 
@@ -93,10 +93,17 @@ $LogDir = Join-Path $RepoRoot "build\logs"
 New-Item -ItemType Directory -Force -Path $LogDir | Out-Null
 $LogFile = Join-Path $LogDir ("build_{0:yyyyMMdd_HHmmss}.log" -f (Get-Date))
 
+if ($Jobs -le 0) {
+    $Jobs = [int]((Get-CimInstance Win32_Processor |
+        Measure-Object -Property NumberOfLogicalProcessors -Sum).Sum)
+    if ($Jobs -lt 1) { $Jobs = 8 }
+}
+
 Write-Host "repo:  $RepoRoot"
 Write-Host "build: $BuildDir"
 Write-Host "target: $env:NEW_PRODUCT_BUILD_TARGET"
 Write-Host "qt:    $QtDir"
+Write-Host "jobs:  $Jobs"
 Write-Host "log:   $LogFile"
 Write-Host ""
 Stop-RunningNewProduction

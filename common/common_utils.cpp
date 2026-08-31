@@ -339,6 +339,13 @@ QString CommonUtils::formatList(const QStringList& items, const QString& separat
     return items.join(separator);
 }
 
+QString CommonUtils::normalizeMac(QString mac) {
+    mac.remove(QLatin1Char(':'));
+    mac.remove(QLatin1Char('-'));
+    mac.remove(QLatin1Char(' '));
+    return mac.toUpper();
+}
+
 /**
  * 产品目录唯一表：Mes 产品名 / 协议 / 设置页是否展示 / Dongle 广播匹配。
  * donglePattern 为空表示仅目录项无广播映射；containsMatch=true 为大写 contains，false 为精确相等。

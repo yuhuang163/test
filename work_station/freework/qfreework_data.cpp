@@ -1359,7 +1359,7 @@ void QFreeWork::reportTupleWriteRecord() {
 
 void QFreeWork::executeCloudTupleCase(const TestCaseDefinition& def) {
     TupleCmd cmd;
-    if (!TupleCmdCatalog::tupleCmdFromName(def.send.deviceCmd, cmd)) {
+    if (!cmdEnumFromName(TupleCmdCatalog::catalog(), def.send.deviceCmd, cmd)) {
         markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
         return;
     }

@@ -186,8 +186,19 @@ bool startDeleteSelfBat(const QString& savePath) {
 
 void HostOtaService::cleanupStaleBackupProcess() {
     const QString bakName = QFileInfo(QCoreApplication::applicationFilePath()).fileName() + QStringLiteral(".bak");
-    QProcess::startDetached(QStringLiteral("taskkill.exe"),
-                            {QStringLiteral("/F"), QStringLiteral("/T"), QStringLiteral("/IM"), bakName});
+    // 无残留时 taskkill 会往控制台打「没有找到进程」，启动时很碍眼：静默执行即可
+    auto* proc = new QProcess(qApp);
+    proc->setProgram(QStringLiteral("taskkill.exe"));
+    proc->setArguments({QStringLiteral("/F"), QStringLiteral("/T"), QStringLiteral("/IM"), bakName});
+    proc->setStandardOutputFile(QProcess::nullDevice());
+    proc->setStandardErrorFile(QProcess::nullDevice());
+#ifdef Q_OS_WIN
+    proc->setCreateProcessArgumentsModifier([](QProcess::CreateProcessArguments* args) {
+        args->flags |= CREATE_NO_WINDOW;
+    });
+#endif
+    QObject::connect(proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), proc, &QObject::deleteLater);
+    proc->start();
 }
 
 HostOtaService::CheckResult HostOtaService::checkUpdate() {

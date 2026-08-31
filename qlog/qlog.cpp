@@ -1149,7 +1149,7 @@ void Qlog::saveTestCsv(const QString& ver, const QString& sn, const QString& mac
     const bool oneRowPerTest = SETTINGS.value(QStringLiteral("SYSTEM/TestCsvOneRowPerTest"), true).toBool();
 
     if (!oneRowPerTest) {
-    QFile file(filePath);
+        QFile file(filePath);
         if (!file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append))
             return;
         QTextStream stream(&file);

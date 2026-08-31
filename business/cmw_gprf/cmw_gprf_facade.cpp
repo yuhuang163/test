@@ -10,40 +10,6 @@
 #pragma execution_character_set(push, "utf-8")
 #endif
 
-namespace {
-
-void noopLog(const QString&) {
-}
-
-void noopWait(int) {
-}
-
-struct BrushProfileRow {
-    int profile;
-    int freqMhz;
-    const char* bandLabel;
-};
-
-constexpr BrushProfileRow kBrushProfiles[] = {
-    {0, 2402, "2402_BLE1M"},
-    {1, 2440, "2440_BLE1M"},
-    {2, 2480, "2480_BLE1M"},
-    {3, 2402, "2402_BLE2M"},
-    {4, 2440, "2440_BLE2M"},
-    {5, 2480, "2480_BLE2M"},
-};
-
-const BrushProfileRow& brushProfileRow(int profile) {
-    for (const BrushProfileRow& row : kBrushProfiles) {
-        if (row.profile == profile) {
-            return row;
-        }
-    }
-    return kBrushProfiles[0];
-}
-
-} // namespace
-
 CmwGprfFacade::Config CmwGprfFacade::Config::fromSettings() {
     Config cfg;
     cfg.enableFixedInit = SETTINGS.value(QStringLiteral("BlePer/CmwEnableFixedInit"), true).toBool();
@@ -70,16 +36,32 @@ CmwGprfFacade::Config CmwGprfFacade::Config::fromSettings() {
     return cfg;
 }
 
-int CmwGprfFacade::Config::holdMsAfterTrigger(int postTrigHoldMsOverride) const {
-    return postTrigHoldMsOverride >= 0 ? postTrigHoldMsOverride : triggerWaitMs;
-}
-
 CmwGprfFacade::BrushProfile CmwGprfFacade::BrushProfile::fromProfile(int profile) {
-    const BrushProfileRow& row = brushProfileRow(profile);
+    struct Row {
+        int profile;
+        int freqMhz;
+        const char* bandLabel;
+    };
+    static constexpr Row kRows[] = {
+        {0, 2402, "2402_BLE1M"},
+        {1, 2440, "2440_BLE1M"},
+        {2, 2480, "2480_BLE1M"},
+        {3, 2402, "2402_BLE2M"},
+        {4, 2440, "2440_BLE2M"},
+        {5, 2480, "2480_BLE2M"},
+    };
     BrushProfile out;
-    out.profile = row.profile;
-    out.freqMhz = row.freqMhz;
-    out.bandLabel = QString::fromUtf8(row.bandLabel);
+    for (const Row& row : kRows) {
+        if (row.profile == profile) {
+            out.profile = row.profile;
+            out.freqMhz = row.freqMhz;
+            out.bandLabel = QString::fromUtf8(row.bandLabel);
+            return out;
+        }
+    }
+    out.profile = kRows[0].profile;
+    out.freqMhz = kRows[0].freqMhz;
+    out.bandLabel = QString::fromUtf8(kRows[0].bandLabel);
     return out;
 }
 
@@ -98,8 +80,8 @@ QString CmwGprfFacade::cmwVisaAddress() const {
 }
 
 void CmwGprfFacade::bindSession(QScpiManager* scpi, const LogFn& log, const WaitFn& wait) {
-    log_ = log ? log : noopLog;
-    wait_ = wait ? wait : noopWait;
+    log_ = log;
+    wait_ = wait;
     if (scpi) {
         scpi_ = scpi;
         scpi_->loadCmwVisaFromSettings();
@@ -121,38 +103,13 @@ bool CmwGprfFacade::cmwGet(CmwScpiCmd cmd, const QVariant& param, QString* respo
     return ok;
 }
 
-bool CmwGprfFacade::parseArbScount(const QString& response, double* countTime, int* cycles, int* samplesCurrent) {
-    const QString clean = response.trimmed().remove(QLatin1Char('"'));
-    const QStringList parts = clean.split(QLatin1Char(','), Qt::SkipEmptyParts);
-    if (parts.size() < 3) {
-        return false;
-    }
-    bool timeOk = false;
-    bool cyclesOk = false;
-    bool samplesOk = false;
-    const double parsedTime = parts.at(0).trimmed().toDouble(&timeOk);
-    const int parsedCycles = parts.at(1).trimmed().toInt(&cyclesOk);
-    const int parsedSamples = parts.at(2).trimmed().toInt(&samplesOk);
-    if (!timeOk || !cyclesOk || !samplesOk) {
-        return false;
-    }
-    if (countTime) {
-        *countTime = parsedTime;
-    }
-    if (cycles) {
-        *cycles = parsedCycles;
-    }
-    if (samplesCurrent) {
-        *samplesCurrent = parsedSamples;
-    }
-    return true;
-}
-
 bool CmwGprfFacade::ensureVisaConnected(QScpiManager* scpi, const LogFn& log, QString* detail) {
     bindSession(scpi, log, wait_);
     QString idn;
     if (cmwGet(CmwScpiCmd::Identity, {}, &idn) && !idn.trimmed().isEmpty()) {
-        log_(QStringLiteral("并联CMW: %1").arg(idn.trimmed()));
+        if (log_) {
+            log_(QStringLiteral("并联CMW: %1").arg(idn.trimmed()));
+        }
         return true;
     }
     if (detail) {
@@ -161,60 +118,8 @@ bool CmwGprfFacade::ensureVisaConnected(QScpiManager* scpi, const LogFn& log, QS
     return false;
 }
 
-bool CmwGprfFacade::primeGprf(QString* errorMessage) {
-    const Config cfg = Config::fromSettings();
-    if (!cfg.enableFixedInit) {
-        gprfPrimed_ = true;
-        return true;
-    }
-    if (gprfPrimed_) {
-        return true;
-    }
-
-    cmwSet(CmwScpiCmd::ClearStatus);
-    cmwSet(CmwScpiCmd::GenOff);
-    cmwSet(CmwScpiCmd::ListOff);
-    cmwSet(CmwScpiCmd::BbModeArb);
-
-    if (!cfg.waveformFile.isEmpty()) {
-        log_(QStringLiteral("CMW GPRF 加载 ARB 波形文件：%1").arg(cfg.waveformFile));
-        cmwSet(CmwScpiCmd::ArbFile, cfg.waveformFile);
-        QString arbReadBack;
-        if (cmwGet(CmwScpiCmd::ArbFilePath, {}, &arbReadBack)) {
-            log_(QStringLiteral("CMW GPRF 仪侧当前波形路径：%1").arg(arbReadBack.trimmed()));
-        }
-    } else {
-        log_(QStringLiteral("CMW GPRF：BlePer/CmwWaveformFile 未配置（首次初始化仍继续，请确认仪上 ARB）"));
-        if (cfg.queryCurrentArbFile) {
-            QString arbReadBack;
-            if (cmwGet(CmwScpiCmd::ArbFilePath, {}, &arbReadBack)) {
-                log_(QStringLiteral("CMW GPRF 仪侧波形（未配置本机路径）：%1").arg(arbReadBack.trimmed()));
-            }
-        }
-    }
-
-    cmwSet(CmwScpiCmd::ArbRepetition, cfg.arbRepetition);
-    cmwSet(CmwScpiCmd::ArbCycles, qMax(1, cfg.arbCycles));
-    cmwSet(CmwScpiCmd::TxLevelDbm, cfg.txPowerDbm);
-
-    if (cfg.checkErrorAfterInit) {
-        QString err;
-        if (cmwGet(CmwScpiCmd::SystemError, {}, &err) && !err.startsWith(QLatin1Char('0'))) {
-            if (errorMessage) {
-                *errorMessage = QStringLiteral("CMW100 GPRF初始化错误: %1").arg(err);
-            }
-            return false;
-        }
-    }
-    gprfPrimed_ = true;
-    return true;
-}
-
-bool CmwGprfFacade::waitArbComplete(const QString& scenarioLabel, const Config& cfg, const LogFn& log,
-                                    const WaitFn& wait, QString* errorMessage, int* outElapsedMs) {
-    Q_UNUSED(log);
-    Q_UNUSED(wait);
-
+bool CmwGprfFacade::waitArbComplete(const QString& scenarioLabel, const Config& cfg, QString* errorMessage,
+                                    int* outElapsedMs) {
     QElapsedTimer timer;
     timer.start();
     QString lastResponse;
@@ -232,34 +137,45 @@ bool CmwGprfFacade::waitArbComplete(const QString& scenarioLabel, const Config& 
             return false;
         }
         lastResponse = response;
-        double countTime = 0.0;
-        int cycles = 0;
-        int samplesCurrent = 0;
-        if (parseArbScount(response, &countTime, &cycles, &samplesCurrent)) {
-            lastCycles = cycles;
-            if (cfg.verboseArbPollLog || cycles != prevCycles) {
-                prevCycles = cycles;
-                log_(QStringLiteral("CMW100发包进度 %1: time=%2s, cycles=%3, samples=%4")
-                         .arg(scenarioLabel)
-                         .arg(countTime, 0, 'f', 3)
-                         .arg(cycles)
-                         .arg(samplesCurrent));
-            }
-            if (cfg.arbCompleteCycles <= 0 || cycles >= cfg.arbCompleteCycles) {
-                if (outElapsedMs) {
-                    *outElapsedMs = static_cast<int>(timer.elapsed());
+        const QString clean = response.trimmed().remove(QLatin1Char('"'));
+        const QStringList parts = clean.split(QLatin1Char(','), Qt::SkipEmptyParts);
+        if (parts.size() >= 3) {
+            bool timeOk = false;
+            bool cyclesOk = false;
+            bool samplesOk = false;
+            const double countTime = parts.at(0).trimmed().toDouble(&timeOk);
+            const int cycles = parts.at(1).trimmed().toInt(&cyclesOk);
+            const int samplesCurrent = parts.at(2).trimmed().toInt(&samplesOk);
+            if (timeOk && cyclesOk && samplesOk) {
+                lastCycles = cycles;
+                if (cfg.verboseArbPollLog || cycles != prevCycles) {
+                    prevCycles = cycles;
+                    if (log_) {
+                        log_(QStringLiteral("CMW100发包进度 %1: time=%2s, cycles=%3, samples=%4")
+                                 .arg(scenarioLabel)
+                                 .arg(countTime, 0, 'f', 3)
+                                 .arg(cycles)
+                                 .arg(samplesCurrent));
+                    }
                 }
-                if (!cfg.verboseArbPollLog) {
-                    log_(QStringLiteral("CMW100发包进度 %1：ARB 完成 time=%2s cycles=%3 samples=%4 耗时%5ms")
-                             .arg(scenarioLabel)
-                             .arg(countTime, 0, 'f', 3)
-                             .arg(cycles)
-                             .arg(samplesCurrent)
-                             .arg(timer.elapsed()));
+                if (cfg.arbCompleteCycles <= 0 || cycles >= cfg.arbCompleteCycles) {
+                    if (outElapsedMs) {
+                        *outElapsedMs = static_cast<int>(timer.elapsed());
+                    }
+                    if (!cfg.verboseArbPollLog && log_) {
+                        log_(QStringLiteral("CMW100发包进度 %1：ARB 完成 time=%2s cycles=%3 samples=%4 耗时%5ms")
+                                 .arg(scenarioLabel)
+                                 .arg(countTime, 0, 'f', 3)
+                                 .arg(cycles)
+                                 .arg(samplesCurrent)
+                                 .arg(timer.elapsed()));
+                    }
+                    return true;
                 }
-                return true;
+            } else if (log_) {
+                log_(QStringLiteral("CMW100发包进度 %1: 无法解析SCOunt返回 %2").arg(scenarioLabel, response));
             }
-        } else {
+        } else if (log_) {
             log_(QStringLiteral("CMW100发包进度 %1: 无法解析SCOunt返回 %2").arg(scenarioLabel, response));
         }
         if (wait_) {
@@ -277,15 +193,81 @@ bool CmwGprfFacade::waitArbComplete(const QString& scenarioLabel, const Config& 
     return false;
 }
 
-bool CmwGprfFacade::runSingleBurstAtMhz(int freqMhz, const QString& scenarioLabel, const Config& cfg,
-                                        const LogFn& log, const WaitFn& wait, QString* errorMessage,
-                                        int postTrigHoldMsOverride) {
-    bindSession(nullptr, log, wait);
+CmwGprfRunResult CmwGprfFacade::runBurstAtProfile(const CmwGprfRunParams& params, const QString& burstLabel,
+                                                  bool logWaveformHint) {
+    CmwGprfRunResult result;
+    const BrushProfile brush = BrushProfile::fromProfile(params.brushProfile);
+    const Config cfg = Config::fromSettings();
+
+    bindSession(params.scpi, params.log, params.wait);
+
+    // GPRF 首次初始化（仅 enableFixedInit 且本会话未 primed）
+    if (cfg.enableFixedInit && !gprfPrimed_) {
+        cmwSet(CmwScpiCmd::ClearStatus);
+        cmwSet(CmwScpiCmd::GenOff);
+        cmwSet(CmwScpiCmd::ListOff);
+        cmwSet(CmwScpiCmd::BbModeArb);
+
+        if (!cfg.waveformFile.isEmpty()) {
+            if (log_) {
+                log_(QStringLiteral("CMW GPRF 加载 ARB 波形文件：%1").arg(cfg.waveformFile));
+            }
+            cmwSet(CmwScpiCmd::ArbFile, cfg.waveformFile);
+            QString arbReadBack;
+            if (cmwGet(CmwScpiCmd::ArbFilePath, {}, &arbReadBack) && log_) {
+                log_(QStringLiteral("CMW GPRF 仪侧当前波形路径：%1").arg(arbReadBack.trimmed()));
+            }
+        } else {
+            if (log_) {
+                log_(QStringLiteral("CMW GPRF：BlePer/CmwWaveformFile 未配置（首次初始化仍继续，请确认仪上 ARB）"));
+            }
+            if (cfg.queryCurrentArbFile) {
+                QString arbReadBack;
+                if (cmwGet(CmwScpiCmd::ArbFilePath, {}, &arbReadBack) && log_) {
+                    log_(QStringLiteral("CMW GPRF 仪侧波形（未配置本机路径）：%1").arg(arbReadBack.trimmed()));
+                }
+            }
+        }
+
+        cmwSet(CmwScpiCmd::ArbRepetition, cfg.arbRepetition);
+        cmwSet(CmwScpiCmd::ArbCycles, qMax(1, cfg.arbCycles));
+        cmwSet(CmwScpiCmd::TxLevelDbm, cfg.txPowerDbm);
+
+        if (cfg.checkErrorAfterInit) {
+            QString err;
+            if (cmwGet(CmwScpiCmd::SystemError, {}, &err) && !err.startsWith(QLatin1Char('0'))) {
+                result.ok = false;
+                result.detail = QStringLiteral("CMW100 GPRF初始化错误: %1").arg(err);
+                if (log_) {
+                    log_(QStringLiteral("并联CMW %1 GPRF初始化失败：%2").arg(brush.bandLabel).arg(result.detail));
+                }
+                return result;
+            }
+        }
+        gprfPrimed_ = true;
+    } else if (!cfg.enableFixedInit) {
+        gprfPrimed_ = true;
+    }
+
+    if (logWaveformHint && log_) {
+        if (cfg.waveformFile.isEmpty()) {
+            log_(QStringLiteral("并联CMW %1：CMW ARB 波形未配置").arg(brush.bandLabel));
+        } else {
+            log_(QStringLiteral("并联CMW %1：CMW ARB 波形文件 %2").arg(brush.bandLabel).arg(cfg.waveformFile));
+        }
+    }
+
+    // 单频点一次 GPRF burst
+    const int freqMhz = brush.freqMhz;
+    const int postTrigHoldMsOverride = params.alignedPostTrigHoldMs;
+    QString burstErr;
 
     if (cfg.waveformFile.isEmpty()) {
-        log_(QStringLiteral("[%1] CMW 单次 GPRF：BlePer/CmwWaveformFile 未配置").arg(scenarioLabel));
-    } else {
-        log_(QStringLiteral("[%1] CMW 单次 GPRF ARB：%2").arg(scenarioLabel).arg(cfg.waveformFile));
+        if (log_) {
+            log_(QStringLiteral("[%1] CMW 单次 GPRF：BlePer/CmwWaveformFile 未配置").arg(burstLabel));
+        }
+    } else if (log_) {
+        log_(QStringLiteral("[%1] CMW 单次 GPRF ARB：%2").arg(burstLabel).arg(cfg.waveformFile));
     }
 
     const auto stopGen = [&]() {
@@ -294,7 +276,7 @@ bool CmwGprfFacade::runSingleBurstAtMhz(int freqMhz, const QString& scenarioLabe
         }
         cmwSet(CmwScpiCmd::GenOff);
         QString state;
-        if (cmwGet(CmwScpiCmd::GenState, {}, &state)) {
+        if (cmwGet(CmwScpiCmd::GenState, {}, &state) && log_) {
             log_(QStringLiteral("CMW100 GPRF状态: %1").arg(state));
         }
     };
@@ -309,63 +291,77 @@ bool CmwGprfFacade::runSingleBurstAtMhz(int freqMhz, const QString& scenarioLabe
     cmwSet(CmwScpiCmd::ArbCycles, qMax(1, cfg.arbCycles));
     if (cfg.queryCurrentArbFile) {
         QString arbCur;
-        if (cmwGet(CmwScpiCmd::ArbFilePath, {}, &arbCur)) {
-            log_(QStringLiteral("[%1] 仪侧当前波形：%2").arg(scenarioLabel).arg(arbCur.trimmed()));
+        if (cmwGet(CmwScpiCmd::ArbFilePath, {}, &arbCur) && log_) {
+            log_(QStringLiteral("[%1] 仪侧当前波形：%2").arg(burstLabel).arg(arbCur.trimmed()));
         }
     }
     // 顺序与参考一致：Manual EXECute → STATe ON（见 docs/开发参考资料/cmw100rx.txt）
     if (!cmwSet(CmwScpiCmd::ManualArbTrigger)) {
-        if (errorMessage) {
-            *errorMessage = QStringLiteral("%1 CMW100触发发包失败").arg(scenarioLabel);
+        result.ok = false;
+        result.detail = QStringLiteral("%1 CMW100触发发包失败").arg(burstLabel);
+        if (log_) {
+            log_(QStringLiteral("并联CMW %1 失败：%2").arg(brush.bandLabel).arg(result.detail));
         }
         stopGen();
-        return false;
+        return result;
     }
     if (!cmwSet(CmwScpiCmd::GenOn)) {
-        if (errorMessage) {
-            *errorMessage = QStringLiteral("%1 CMW100打开发射失败").arg(scenarioLabel);
+        result.ok = false;
+        result.detail = QStringLiteral("%1 CMW100打开发射失败").arg(burstLabel);
+        if (log_) {
+            log_(QStringLiteral("并联CMW %1 失败：%2").arg(brush.bandLabel).arg(result.detail));
         }
         stopGen();
-        return false;
+        return result;
     }
 
-    const int holdMs = cfg.holdMsAfterTrigger(postTrigHoldMsOverride);
+    const int holdMs = postTrigHoldMsOverride >= 0 ? postTrigHoldMsOverride : cfg.triggerWaitMs;
     if (cfg.waitArbScountOnly) {
-        if (postTrigHoldMsOverride >= 0) {
+        if (postTrigHoldMsOverride >= 0 && log_) {
             log_(QStringLiteral("%1：仅以 ARB SCOunt? 轮询待发完（积包 %2 ms 不阻塞 TRIG 后）")
-                     .arg(scenarioLabel)
+                     .arg(burstLabel)
                      .arg(postTrigHoldMsOverride));
         }
-        if (!waitArbComplete(scenarioLabel, cfg, log, wait, errorMessage, nullptr)) {
+        if (!waitArbComplete(burstLabel, cfg, &burstErr, nullptr)) {
+            result.ok = false;
+            result.detail = burstErr;
+            if (log_) {
+                log_(QStringLiteral("并联CMW %1 失败：%2").arg(brush.bandLabel).arg(burstErr));
+            }
             stopGen();
-            return false;
+            return result;
         }
     } else if (cfg.burstPollArbScount) {
         int arbElapsedMs = 0;
-        if (!waitArbComplete(scenarioLabel, cfg, log, wait, errorMessage, &arbElapsedMs)) {
+        if (!waitArbComplete(burstLabel, cfg, &burstErr, &arbElapsedMs)) {
+            result.ok = false;
+            result.detail = burstErr;
+            if (log_) {
+                log_(QStringLiteral("并联CMW %1 失败：%2").arg(brush.bandLabel).arg(burstErr));
+            }
             stopGen();
-            return false;
+            return result;
         }
         if (arbElapsedMs < holdMs) {
             const int padMs = holdMs - arbElapsedMs;
-            if (postTrigHoldMsOverride >= 0) {
+            if (postTrigHoldMsOverride >= 0 && log_) {
                 log_(QStringLiteral("%1：SCOunt 完成后再补足积包 %2ms（总≥%3ms）")
-                         .arg(scenarioLabel)
+                         .arg(burstLabel)
                          .arg(padMs)
                          .arg(holdMs));
             }
             if (wait_) {
                 wait_(padMs);
             }
-        } else if (postTrigHoldMsOverride >= 0) {
+        } else if (postTrigHoldMsOverride >= 0 && log_) {
             log_(QStringLiteral("%1：ARB 轮询已耗时 %2 ms，不小于积包 %3 ms，跳过补足")
-                     .arg(scenarioLabel)
+                     .arg(burstLabel)
                      .arg(arbElapsedMs)
                      .arg(holdMs));
         }
     } else {
-        if (postTrigHoldMsOverride >= 0) {
-            log_(QStringLiteral("%1：STAT ON 后仅定时阻塞 %2ms（不轮询 SCOunt）").arg(scenarioLabel).arg(holdMs));
+        if (postTrigHoldMsOverride >= 0 && log_) {
+            log_(QStringLiteral("%1：STAT ON 后仅定时阻塞 %2ms（不轮询 SCOunt）").arg(burstLabel).arg(holdMs));
         }
         if (wait_) {
             wait_(holdMs);
@@ -375,56 +371,26 @@ bool CmwGprfFacade::runSingleBurstAtMhz(int freqMhz, const QString& scenarioLabe
     if (cfg.checkErrorAfterScenario) {
         QString err;
         if (cmwGet(CmwScpiCmd::SystemError, {}, &err) && !err.startsWith(QLatin1Char('0'))) {
-            if (errorMessage) {
-                *errorMessage = QStringLiteral("%1 CMW100错误: %2").arg(scenarioLabel, err);
+            result.ok = false;
+            result.detail = QStringLiteral("%1 CMW100错误: %2").arg(burstLabel, err);
+            if (log_) {
+                log_(QStringLiteral("并联CMW %1 失败：%2").arg(brush.bandLabel).arg(result.detail));
             }
             stopGen();
-            return false;
+            return result;
         }
     }
     stopGen();
-    return true;
-}
 
-CmwGprfRunResult CmwGprfFacade::runBurstAtProfile(const CmwGprfRunParams& params, const LogFn& log,
-                                                  const WaitFn& wait, const QString& burstLabel,
-                                                  bool logWaveformHint) {
-    CmwGprfRunResult result;
-    const BrushProfile brush = BrushProfile::fromProfile(params.brushProfile);
-    const Config cfg = Config::fromSettings();
-
-    bindSession(params.scpi, log, wait);
-    QString primeErr;
-    if (!primeGprf(&primeErr)) {
-        result.ok = false;
-        result.detail = primeErr;
-        log_(QStringLiteral("并联CMW %1 GPRF初始化失败：%2").arg(brush.bandLabel).arg(primeErr));
-        return result;
-    }
-    if (logWaveformHint) {
-        if (cfg.waveformFile.isEmpty()) {
-            log_(QStringLiteral("并联CMW %1：CMW ARB 波形未配置").arg(brush.bandLabel));
-        } else {
-            log_(QStringLiteral("并联CMW %1：CMW ARB 波形文件 %2").arg(brush.bandLabel).arg(cfg.waveformFile));
-        }
-    }
-
-    QString burstErr;
-    if (!runSingleBurstAtMhz(brush.freqMhz, burstLabel, cfg, log, wait, &burstErr, params.alignedPostTrigHoldMs)) {
-        result.ok = false;
-        result.detail = burstErr;
-        log_(QStringLiteral("并联CMW %1 失败：%2").arg(brush.bandLabel).arg(burstErr));
-        return result;
-    }
     result.detail = QStringLiteral("OK %1 %2MHz").arg(brush.bandLabel).arg(brush.freqMhz);
-    log_(result.detail);
+    if (log_) {
+        log_(result.detail);
+    }
     return result;
 }
 
 CmwGprfRunResult CmwGprfFacade::run(CmwGprfCommand command, const CmwGprfRunParams& params) {
     CmwGprfRunResult result;
-    const auto log = params.log ? params.log : noopLog;
-    const auto wait = params.wait ? params.wait : noopWait;
 
     switch (command) {
     case CmwGprfCommand::ResetSession:
@@ -432,7 +398,7 @@ CmwGprfRunResult CmwGprfFacade::run(CmwGprfCommand command, const CmwGprfRunPara
         return result;
 
     case CmwGprfCommand::BrushBurstOnStopPer: {
-        bindSession(params.scpi, log, wait);
+        bindSession(params.scpi, params.log, params.wait);
         if (params.outRanBurst) {
             *params.outRanBurst = false;
         }
@@ -448,31 +414,39 @@ CmwGprfRunResult CmwGprfFacade::run(CmwGprfCommand command, const CmwGprfRunPara
             return result;
         }
         if (cmwVisaAddress().isEmpty()) {
-            log_(QStringLiteral("%1：已启用并联射频但未配置 BlePer/CmwVisaAddress，跳过 CMW").arg(params.scenarioLabel));
+            if (log_) {
+                log_(QStringLiteral("%1：已启用并联射频但未配置 BlePer/CmwVisaAddress，跳过 CMW")
+                         .arg(params.scenarioLabel));
+            }
             result.skipped = true;
             return result;
         }
         if (!BrushProfile::isValid(params.brushProfile)) {
-            log_(QStringLiteral("%1：无有效 brush profile，跳过 CMW").arg(params.scenarioLabel));
+            if (log_) {
+                log_(QStringLiteral("%1：无有效 brush profile，跳过 CMW").arg(params.scenarioLabel));
+            }
             result.skipped = true;
             return result;
         }
         if (burstDoneSinceStartRx_) {
-            log_(QStringLiteral("%1：本收包周期内已发过并联 CMW，PER 内跳过重复 GPRF").arg(params.scenarioLabel));
+            if (log_) {
+                log_(QStringLiteral("%1：本收包周期内已发过并联 CMW，PER 内跳过重复 GPRF")
+                         .arg(params.scenarioLabel));
+            }
             if (params.outRanBurst) {
                 *params.outRanBurst = true;
             }
             result.skipped = true;
             return result;
         }
-        if (!ensureVisaConnected(params.scpi, log, &result.detail)) {
+        if (!ensureVisaConnected(params.scpi, params.log, &result.detail)) {
             result.ok = false;
             return result;
         }
         const BrushProfile brush = BrushProfile::fromProfile(params.brushProfile);
         const QString burstLabel =
             QStringLiteral("%1 Profile%2@%3MHz").arg(params.scenarioLabel).arg(brush.profile).arg(brush.freqMhz);
-        result = runBurstAtProfile(params, log, wait, burstLabel, false);
+        result = runBurstAtProfile(params, burstLabel, false);
         if (!result.ok) {
             return result;
         }
@@ -487,11 +461,13 @@ CmwGprfRunResult CmwGprfFacade::run(CmwGprfCommand command, const CmwGprfRunPara
     }
 
     case CmwGprfCommand::ParallelBurstForProfile: {
-        bindSession(params.scpi, log, wait);
+        bindSession(params.scpi, params.log, params.wait);
         const BrushProfile brush = BrushProfile::fromProfile(params.brushProfile);
         if (!SETTINGS.value(QStringLiteral("FreeInstrument/BleBrushCmwConcurrent"), false).toBool()) {
             const QString msg = QStringLiteral("跳过：未勾选并联 CMW100（BleBrushCmwConcurrent）");
-            log_(QStringLiteral("并联CMW %1：%2").arg(brush.bandLabel).arg(msg));
+            if (log_) {
+                log_(QStringLiteral("并联CMW %1：%2").arg(brush.bandLabel).arg(msg));
+            }
             result.detail = msg;
             result.skipped = true;
             return result;
@@ -500,23 +476,29 @@ CmwGprfRunResult CmwGprfFacade::run(CmwGprfCommand command, const CmwGprfRunPara
             const QString msg = QStringLiteral("频点无效：%1").arg(params.brushProfile);
             result.detail = msg;
             result.ok = false;
-            log_(QStringLiteral("并联CMW失败：%1").arg(msg));
+            if (log_) {
+                log_(QStringLiteral("并联CMW失败：%1").arg(msg));
+            }
             return result;
         }
         if (cmwVisaAddress().isEmpty()) {
             const QString msg = QStringLiteral("跳过：未配置 BlePer/CmwVisaAddress");
-            log_(QStringLiteral("并联CMW %1：%2").arg(brush.bandLabel).arg(msg));
+            if (log_) {
+                log_(QStringLiteral("并联CMW %1：%2").arg(brush.bandLabel).arg(msg));
+            }
             result.detail = msg;
             result.skipped = true;
             return result;
         }
-        if (!ensureVisaConnected(params.scpi, log, &result.detail)) {
+        if (!ensureVisaConnected(params.scpi, params.log, &result.detail)) {
             result.ok = false;
-            log_(QStringLiteral("并联CMW %1：%2").arg(brush.bandLabel).arg(result.detail));
+            if (log_) {
+                log_(QStringLiteral("并联CMW %1：%2").arg(brush.bandLabel).arg(result.detail));
+            }
             return result;
         }
         const QString burstLabel = QStringLiteral("并联CMW播放%1@%2MHz").arg(brush.bandLabel).arg(brush.freqMhz);
-        result = runBurstAtProfile(params, log, wait, burstLabel, true);
+        result = runBurstAtProfile(params, burstLabel, true);
         if (!result.ok) {
             return result;
         }

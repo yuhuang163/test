@@ -79,6 +79,8 @@ class CommonUtils {
     static QString trimmed(const QString& text);
     static bool equalsIgnoreCase(const QString& left, const QString& right);
     static QString formatList(const QStringList& items, const QString& separator = QStringLiteral(", "));
+    /** MAC 比对用：去掉 : - 空白后转大写。 */
+    static QString normalizeMac(QString mac);
 
     /**
      * 产品目录（common_utils.cpp 内 kProductTable 唯一维护）。

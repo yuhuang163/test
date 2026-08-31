@@ -1,6 +1,8 @@
 #include "qfreework.h"
 
 #include "test_case.h"
+
+#include "device_cmd_manifest.h"
 #include "screen_inspect_analyzer.h"
 
 #include "qatmanager.h"
@@ -1823,12 +1825,12 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
 
     if (def.send.channel == TestCaseSendChannel::Cloud) {
         TupleCmd tupleCmd;
-        if (!TupleCmdCatalog::tupleCmdFromName(def.send.deviceCmd, tupleCmd)) {
+        if (!cmdEnumFromName(TupleCmdCatalog::catalog(), def.send.deviceCmd, tupleCmd)) {
             ctx->showlog(QStringLiteral("未知云端指令：%1").arg(def.send.deviceCmd));
             ctx->markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
             return;
         }
-        if (!TupleCmdCatalog::isCmdForAction(tupleCmd, def.send.action)) {
+        if (!TupleCmdCatalog::catalog().isCmdForAction(static_cast<int>(tupleCmd), def.send.action)) {
             ctx->showlog(QStringLiteral("云端指令与操作方式不匹配：%1").arg(def.send.deviceCmd));
             ctx->markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
             return;
@@ -1844,7 +1846,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
 
     if (def.send.channel == TestCaseSendChannel::Modbus) {
         const QString deviceKey = def.send.device;
-        ModbusDeviceRoute devRoute = ModbusPeriphCmdCatalog::deviceFromIni(deviceKey);
+        ModbusDeviceRoute devRoute = ModbusDeviceCatalog::deviceRouteFromIni(deviceKey);
         ctx->modbusManager.setDeviceRoute(devRoute);
 
         const QVariant resolvedParam = ctx->resolveTestCaseSendParamTree(def.send.param);
@@ -2240,7 +2242,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
 
     DongleCmd dongleCmd = DongleCmd::BleScanConnect;
     if (def.send.channel == TestCaseSendChannel::Dongle) {
-        if (!DongleCmdCatalog::dongleCmdFromName(def.send.deviceCmd, dongleCmd)) {
+        if (!cmdEnumFromName(DongleCmdCatalog::catalog(), def.send.deviceCmd, dongleCmd)) {
             ctx->showlog(QStringLiteral("未知 Dongle 指令：%1").arg(def.send.deviceCmd));
             ctx->markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
             return;
@@ -2445,14 +2447,14 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
     ctx->applyTestCaseProductProtocol(def.send.productProtocol);
 
     DeviceCmd cmd = DeviceCmd::FacMode;
-    if (!DeviceCmdCatalog::deviceCmdFromName(def.send.deviceCmd, cmd)) {
+    if (!cmdEnumFromName(DeviceCmdCatalog::catalog(), def.send.deviceCmd, cmd)) {
         ctx->showlog(QStringLiteral("未知指令：%1").arg(def.send.deviceCmd));
         ctx->markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
         return;
     }
 
     const QVariant resolvedParam = ctx->resolveTestCaseSendParamTree(def.send.param);
-    const QVariant wireParam = DeviceCmdCatalog::normalizeSendParam(cmd, resolvedParam);
+    const QVariant wireParam = DeviceCmdManifest::normalizeSendParam(cmd, resolvedParam);
     if (def.send.action == TestCaseSendAction::Set && !ctx->prepareTupleProductWriteForTestCase(def, cmd, wireParam)) {
         ctx->markActiveTestCaseStepDone(false, ctx->activeTestCaseStepTestData(), QStringLiteral("失败"));
         return;
@@ -2493,12 +2495,12 @@ void QFreeWork::executeFixturePcbaCase(const TestCaseDefinition& def) {
         return;
     }
     FixturePcbaCmd cmd;
-    if (!FixturePcbaCmdCatalog::fixturePcbaCmdFromName(def.send.deviceCmd, cmd)) {
+    if (!cmdEnumFromName(FixturePcbaCmdCatalog::catalog(), def.send.deviceCmd, cmd)) {
         showlog(QStringLiteral("未知治具 PCBA 指令：%1").arg(def.send.deviceCmd));
         markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
         return;
     }
-    if (!FixturePcbaCmdCatalog::isCmdForAction(cmd, def.send.action)) {
+    if (!FixturePcbaCmdCatalog::catalog().isCmdForAction(static_cast<int>(cmd), def.send.action)) {
         showlog(QStringLiteral("治具指令与操作方式不匹配：%1").arg(def.send.deviceCmd));
         markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
         return;
@@ -2545,7 +2547,7 @@ void QFreeWork::executeFixturePcbaCase(const TestCaseDefinition& def) {
         }
         uart->sendPcbaFrame(frame);
         showlog(QStringLiteral("已发送治具 PCBA：%1，机号 %2，帧 %3")
-                    .arg(FixturePcbaCmdCatalog::fixturePcbaCmdUiLabel(def.send.deviceCmd))
+                    .arg(FixturePcbaCmdCatalog::catalog().cmdUiLabel(def.send.deviceCmd))
                     .arg(machineIndex)
                     .arg(QString::fromLatin1(frame.toHex(' ').toUpper())));
         if (!def.gate.enabled)
@@ -2646,7 +2648,7 @@ void QFreeWork::executeFixturePcbaCase(const TestCaseDefinition& def) {
 
     timeoutTimer->start();
     showlog(QStringLiteral("等待治具回包：%1（超时 %2ms）")
-                .arg(FixturePcbaCmdCatalog::fixturePcbaCmdUiLabel(def.send.deviceCmd))
+                .arg(FixturePcbaCmdCatalog::catalog().cmdUiLabel(def.send.deviceCmd))
                 .arg(timeoutMs));
 }
 
@@ -2658,12 +2660,12 @@ void QFreeWork::executeFixtureAsd9026aCase(const TestCaseDefinition& def) {
     }
 
     Asd9026aCmd cmd;
-    if (!Asd9026aCmdCatalog::asd9026aCmdFromName(def.send.deviceCmd, cmd)) {
+    if (!cmdEnumFromName(Asd9026aCmdCatalog::catalog(), def.send.deviceCmd, cmd)) {
         showlog(QStringLiteral("未知 ASD9026A 指令：%1").arg(def.send.deviceCmd));
         markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
         return;
     }
-    if (!Asd9026aCmdCatalog::isCmdForAction(cmd, def.send.action)) {
+    if (!Asd9026aCmdCatalog::catalog().isCmdForAction(static_cast<int>(cmd), def.send.action)) {
         showlog(QStringLiteral("ASD9026A 指令与操作方式不匹配：%1").arg(def.send.deviceCmd));
         markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
         return;
@@ -2857,12 +2859,12 @@ void QFreeWork::executeFixtureXwdCase(const TestCaseDefinition& def) {
     }
 
     XwdRawFixtureCmd cmd;
-    if (!XwdRawFixtureCmdCatalog::xwdRawFixtureCmdFromName(def.send.deviceCmd, cmd)) {
+    if (!cmdEnumFromName(XwdRawFixtureCmdCatalog::catalog(), def.send.deviceCmd, cmd)) {
         showlog(QStringLiteral("未知 XWD治具指令：%1").arg(def.send.deviceCmd));
         markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
         return;
     }
-    if (!XwdRawFixtureCmdCatalog::isCmdForAction(cmd, def.send.action)) {
+    if (!XwdRawFixtureCmdCatalog::catalog().isCmdForAction(static_cast<int>(cmd), def.send.action)) {
         showlog(QStringLiteral("XWD治具指令与操作方式不匹配：%1").arg(def.send.deviceCmd));
         markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
         return;
@@ -3012,12 +3014,12 @@ void QFreeWork::executeFixtureJieliBtBoxCase(const TestCaseDefinition& def) {
     }
 
     JieliBtBoxCmd cmd;
-    if (!JieliBtBoxCmdCatalog::jieliBtBoxCmdFromName(def.send.deviceCmd, cmd)) {
+    if (!cmdEnumFromName(JieliBtBoxCmdCatalog::catalog(), def.send.deviceCmd, cmd)) {
         showlog(QStringLiteral("未知杰理蓝牙盒子指令：%1").arg(def.send.deviceCmd));
         markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
         return;
     }
-    if (!JieliBtBoxCmdCatalog::isCmdForAction(cmd, def.send.action)) {
+    if (!JieliBtBoxCmdCatalog::catalog().isCmdForAction(static_cast<int>(cmd), def.send.action)) {
         showlog(QStringLiteral("杰理蓝牙盒子指令与操作方式不匹配：%1").arg(def.send.deviceCmd));
         markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
         return;
@@ -3113,12 +3115,12 @@ void QFreeWork::executeFixtureVesLightCase(const TestCaseDefinition& def) {
         return;
     }
     VesLightCmd cmd;
-    if (!VesLightCmdCatalog::vesLightCmdFromName(def.send.deviceCmd, cmd)) {
+    if (!cmdEnumFromName(VesLightCmdCatalog::catalog(), def.send.deviceCmd, cmd)) {
         showlog(QStringLiteral("未知 VES 光源指令：%1").arg(def.send.deviceCmd));
         markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
         return;
     }
-    if (!VesLightCmdCatalog::isCmdForAction(cmd, def.send.action)) {
+    if (!VesLightCmdCatalog::catalog().isCmdForAction(static_cast<int>(cmd), def.send.action)) {
         showlog(QStringLiteral("VES 光源指令与操作方式不匹配：%1").arg(def.send.deviceCmd));
         markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
         return;
@@ -3146,12 +3148,12 @@ void QFreeWork::executeFixtureVesLightCase(const TestCaseDefinition& def) {
 
 void QFreeWork::executeProductSerialCase(const TestCaseDefinition& def) {
     ProductSerialCmd serialCmd;
-    if (!ProductSerialCmdCatalog::productSerialCmdFromName(def.send.deviceCmd, serialCmd)) {
+    if (!cmdEnumFromName(ProductSerialCmdCatalog::catalog(), def.send.deviceCmd, serialCmd)) {
         showlog(QStringLiteral("未知产品串口指令：%1").arg(def.send.deviceCmd));
         markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
         return;
     }
-    if (!ProductSerialCmdCatalog::isCmdForAction(serialCmd, def.send.action)) {
+    if (!ProductSerialCmdCatalog::catalog().isCmdForAction(static_cast<int>(serialCmd), def.send.action)) {
         showlog(QStringLiteral("产品串口指令仅支持设置：%1").arg(def.send.deviceCmd));
         markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
         return;
@@ -3169,33 +3171,15 @@ void QFreeWork::executeProductSerialCase(const TestCaseDefinition& def) {
         startProductInstrumentStopReceiveAndPer(QString(), timeoutMs);
         break;
     default: {
-        const int profile = ProductSerialCmdCatalog::brushProfileForCmd(serialCmd);
-        if (profile < 0) {
+        if (serialCmd < ProductSerialCmd::StartRx2402Ble1M
+            || serialCmd > ProductSerialCmd::StartRx2480Ble2M) {
             markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
             return;
         }
+        const int profile = static_cast<int>(serialCmd)
+            - static_cast<int>(ProductSerialCmd::StartRx2402Ble1M);
         startProductInstrumentStartReceiveForCatalog(QString(), profile, waitMs);
         break;
     }
     }
-}
-
-void registerFreeWorkTestCaseHooks() {
-    static bool registered = false;
-    if (registered)
-        return;
-    registered = true;
-
-    TestCaseHookRegistry::registerHook(QStringLiteral("NoOp"), [](QFreeWork* fw) {
-        if (!fw)
-            return;
-        fw->showlog(QStringLiteral("钩子 NoOp 已执行"));
-        fw->markActiveTestCaseStepDone(true, QStringLiteral("noop"), QStringLiteral("通过"));
-    });
-    TestCaseHookRegistry::registerHook(QStringLiteral("FreeWorkNoOpDemo"), [](QFreeWork* fw) {
-        if (!fw)
-            return;
-        fw->showlog(QStringLiteral("示例钩子 FreeWorkNoOpDemo 已执行"));
-        fw->markActiveTestCaseStepDone(true, QStringLiteral("hook_ok"), QStringLiteral("通过"));
-    });
 }

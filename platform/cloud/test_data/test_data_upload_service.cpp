@@ -14,6 +14,7 @@
 #include <QSysInfo>
 #include <QThread>
 #include <QtConcurrent>
+#include <functional>
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
@@ -91,7 +92,10 @@ bool buildUploadBody(const MesPacketData& pack, QJsonObject* body, QString* mess
     body->insert(QStringLiteral("lotName"), pack.lotName.trimmed());
     body->insert(QStringLiteral("userNo"), pack.userNo.trimmed());
     body->insert(QStringLiteral("clientVersion"), FactoryCloudClient::appVersion());
-    body->insert(QStringLiteral("testedAt"), QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs));
+    // 云端：本机北京墙钟 + timeBase 标志（旧上位机无此字段，服务端按 UTC）
+    body->insert(QStringLiteral("testedAt"),
+                 QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-ddTHH:mm:ss.zzz")));
+    body->insert(QStringLiteral("timeBase"), QStringLiteral("beijing"));
 
     QJsonArray items;
     const QVector<TestRecordStore::ParsedItem> parsed = TestRecordStore::parseItemValue(pack);
@@ -272,17 +276,25 @@ void TestDataUploadService::tryUploadTestAndLogAsync(const MesPacketData& pack, 
     });
 }
 
+/** SQLite 仅主线程可用；HTTP 必须留在工作线程，禁止整段补传丢回 GUI。 */
+static void runDbOnMainThread(const std::function<void()>& fn) {
+    QCoreApplication* app = QCoreApplication::instance();
+    if (!app || QThread::currentThread() == app->thread()) {
+        fn();
+        return;
+    }
+    QMetaObject::invokeMethod(app, fn, Qt::BlockingQueuedConnection);
+}
+
 void TestDataUploadService::flushPendingUploads() {
     if (AuthService::isOfflineSession() || !isTestDataUploadEnabled()) {
         return;
     }
 
-    // SQLite 连接建在主线程；心跳在 QtConcurrent 工作线程，必须切回主线程再访问库
-    if (QCoreApplication::instance()
-        && QThread::currentThread() != QCoreApplication::instance()->thread()) {
-        QMetaObject::invokeMethod(
-            QCoreApplication::instance(), []() { TestDataUploadService::flushPendingUploads(); },
-            Qt::QueuedConnection);
+    // 若误在主线程调用：立刻扔到后台，避免同步 HTTP 卡界面
+    QCoreApplication* app = QCoreApplication::instance();
+    if (app && QThread::currentThread() == app->thread()) {
+        QtConcurrent::run([]() { TestDataUploadService::flushPendingUploads(); });
         return;
     }
 
@@ -293,14 +305,18 @@ void TestDataUploadService::flushPendingUploads() {
 
     int okCount = 0;
     int failCount = 0;
+    int remaining = 0;
     do {
-        // 进程异常退出时，uploading 可能卡住，先回收再扫
-        TestRecordStore::instance().recoverStaleCloudUploads(120);
-
-        const int pending = TestRecordStore::instance().pendingCloudUploadCount();
-        if (pending <= 0) {
+        int pending = 0;
+        QVector<TestRecordStore::PendingCloudUpload> batch;
+        runDbOnMainThread([&]() {
+            TestRecordStore::instance().recoverStaleCloudUploads(120);
+            pending = TestRecordStore::instance().pendingCloudUploadCount();
+            if (pending > 0)
+                batch = TestRecordStore::instance().listPendingCloudUploads(kFlushBatchSize);
+        });
+        if (pending <= 0 || batch.isEmpty())
             break;
-        }
 
         if (!AuthService::isLoggedIn()) {
             const AuthService::LoginResult login = AuthService::loginWithSavedCredentials();
@@ -310,33 +326,31 @@ void TestDataUploadService::flushPendingUploads() {
             }
         }
 
-        const QVector<TestRecordStore::PendingCloudUpload> batch =
-            TestRecordStore::instance().listPendingCloudUploads(kFlushBatchSize);
-        if (batch.isEmpty()) {
-            break;
-        }
-
         qDebug() << QStringLiteral("[TestDataUpload] 开始补传，待传=%1，本批=%2").arg(pending).arg(batch.size());
 
         for (const TestRecordStore::PendingCloudUpload& item : batch) {
-            if (item.id <= 0 || item.payload.isEmpty()) {
+            if (item.id <= 0 || item.payload.isEmpty())
                 continue;
-            }
             if (item.retryCount >= kMaxRetryCount) {
-                TestRecordStore::instance().markCloudUploadFailed(
-                    item.id, QStringLiteral("超过最大重试次数 %1").arg(kMaxRetryCount));
+                runDbOnMainThread([&]() {
+                    TestRecordStore::instance().markCloudUploadFailed(
+                        item.id, QStringLiteral("超过最大重试次数 %1").arg(kMaxRetryCount));
+                });
                 ++failCount;
                 continue;
             }
-            if (!TestRecordStore::instance().claimCloudUpload(item.id)) {
-                continue;
-            }
 
+            bool claimed = false;
+            runDbOnMainThread([&]() { claimed = TestRecordStore::instance().claimCloudUpload(item.id); });
+            if (!claimed)
+                continue;
+
+            // HTTP 留在本工作线程，不阻塞主任务
             const FactoryCloudClient::ApiResult api =
                 FactoryCloudClient::post(QStringLiteral("/test-records"), item.payload);
             if (api.ok) {
                 const int recordId = api.data.value(QStringLiteral("recordId")).toInt(0);
-                TestRecordStore::instance().markCloudUploadDone(item.id, recordId);
+                runDbOnMainThread([&]() { TestRecordStore::instance().markCloudUploadDone(item.id, recordId); });
                 ++okCount;
                 qDebug() << QStringLiteral("[TestDataUpload] 补传成功 queue_id=%1 recordId=%2")
                                 .arg(item.id)
@@ -345,24 +359,25 @@ void TestDataUploadService::flushPendingUploads() {
             }
 
             const QString err = api.message.isEmpty() ? QStringLiteral("补传失败") : api.message;
-            if (shouldEnqueueForRetry(api)) {
-                TestRecordStore::instance().markCloudUploadRetry(item.id, err);
-            } else {
-                TestRecordStore::instance().markCloudUploadFailed(item.id, err);
-            }
+            runDbOnMainThread([&]() {
+                if (shouldEnqueueForRetry(api))
+                    TestRecordStore::instance().markCloudUploadRetry(item.id, err);
+                else
+                    TestRecordStore::instance().markCloudUploadFailed(item.id, err);
+            });
             ++failCount;
             qDebug() << QStringLiteral("[TestDataUpload] 补传失败 queue_id=%1：%2").arg(item.id).arg(err);
             // 网络仍不通时尽快结束本批，等下次心跳
-            if (api.code < 0 || looksLikeNetworkError(err)) {
+            if (api.code < 0 || looksLikeNetworkError(err))
                 break;
-            }
         }
 
+        runDbOnMainThread([&]() { remaining = TestRecordStore::instance().pendingCloudUploadCount(); });
         if (okCount > 0 || failCount > 0) {
             qDebug() << QStringLiteral("[TestDataUpload] 本批补传结束：成功=%1 失败=%2 剩余=%3")
                             .arg(okCount)
                             .arg(failCount)
-                            .arg(TestRecordStore::instance().pendingCloudUploadCount());
+                            .arg(remaining);
         }
     } while (false);
 
