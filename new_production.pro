@@ -134,6 +134,8 @@ INCLUDEPATH += platform/cloud/ota
 INCLUDEPATH += platform/cloud/test_data
 INCLUDEPATH += platform/instrument
 INCLUDEPATH += platform/debug/screen_inspect
+INCLUDEPATH += $$PWD/third_party/mvs/include
+LIBS += -L$$PWD/third_party/mvs/lib/win64 -lMvCameraControl
 INCLUDEPATH += agreement/factory_protocol/protocol/qpb/ble_protocol
 INCLUDEPATH += agreement/factory_protocol/protocol/qpb/factory_protocol
 INCLUDEPATH += agreement/scpi_protocol/access
@@ -210,6 +212,7 @@ SOURCES += \
     platform/debug/screen_inspect/screen_inspect_widget.cpp \
     platform/debug/screen_inspect/screen_inspect_analyzer.cpp \
     platform/debug/screen_inspect/screen_inspect_capture.cpp \
+    platform/debug/screen_inspect/screen_inspect_gige_capture.cpp \
     platform/driver/serial/serial_channel.cpp \
     advance/demo/usmile_ring_buffer.cpp \
     advance/imagewindow/draggablecheckbox.cpp \
@@ -375,6 +378,7 @@ HEADERS += \
     platform/debug/screen_inspect/screen_inspect_widget.h \
     platform/debug/screen_inspect/screen_inspect_analyzer.h \
     platform/debug/screen_inspect/screen_inspect_capture.h \
+    platform/debug/screen_inspect/screen_inspect_gige_capture.h \
     platform/driver/serial/serial_channel.h \
     advance/demo/usmile_ring_buffer.h \
     advance/imagewindow/draggablecheckbox.h \

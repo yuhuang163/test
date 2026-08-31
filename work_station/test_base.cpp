@@ -793,6 +793,9 @@ void test_base::onProtocolReport(const ProtocolReport& report) {
         refreshKeySignalRead(payload.value<ProtocolKeyCapData>());
     } else if (reportType == "ProtocolChargeCurrentData" && payload.canConvert<ProtocolChargeCurrentData>()) {
         refreshChargeCurrentRead(payload.value<ProtocolChargeCurrentData>());
+    } else if (reportType == QLatin1String("ProtocolFactoryDoneData")
+               && payload.canConvert<ProtocolFactoryDoneData>()) {
+        refreshFactoryDoneRead(payload.value<ProtocolFactoryDoneData>());
     } else if (reportType == "ProtocolTupleData" && payload.canConvert<ProtocolTupleData>()) {
         refreshTupleData(payload.value<ProtocolTupleData>());
     } else if (reportType == "ProtocolPictureSendOverData" && payload.canConvert<ProtocolResultData>()) {
@@ -1492,19 +1495,30 @@ void test_base::appendStationResult(QVector<TestItem>& testItems, const QString&
     testItems.append(test);
 }
 
+namespace {
+
+/** 会凌等 SCPI 电流回读为安培(A)，产线卡控统一用 mA。 */
+ProtocolMeasureData makeScpiCurrentMeasureMa(const QString& deviceName, double valueAmps, bool ok) {
+    ProtocolMeasureData measureData;
+    measureData.deviceName = deviceName;
+    measureData.type = QStringLiteral("Current");
+    measureData.value = valueAmps * 1000.0;
+    measureData.valueText = QString::number(measureData.value, 'f', 4);
+    measureData.unit = QStringLiteral("mA");
+    measureData.isOk = ok;
+    return measureData;
+}
+
+} // namespace
+
 void test_base::onScpiUsbMeasureReadingReceived(const QString& valueText) {
     onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolAmmeterReadingData"),
                                          QVariant::fromValue(ProtocolAmmeterReadingData{valueText})));
 
-    ProtocolMeasureData measureData;
-    measureData.deviceName = QStringLiteral("USB_SCPI");
-    measureData.type = QStringLiteral("Current");
-    measureData.value = valueText.toDouble();
-    measureData.valueText = valueText;
-    measureData.unit = QStringLiteral("mA");
-    measureData.isOk = true;
+    // MEAS:CURR 回读为 A，勿直接标成 mA
     onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolMeasureData"),
-                                         QVariant::fromValue(measureData)));
+                                         QVariant::fromValue(makeScpiCurrentMeasureMa(
+                                             QStringLiteral("USB_SCPI"), valueText.toDouble(), true))));
 }
 
 void test_base::onScpiUsbProgrammablePowerVoltageRead(double valueVolts, bool ok) {
@@ -1520,15 +1534,9 @@ void test_base::onScpiUsbProgrammablePowerVoltageRead(double valueVolts, bool ok
 }
 
 void test_base::onScpiUsbProgrammablePowerCurrentRead(double valueAmps, bool ok) {
-    ProtocolMeasureData measureData;
-    measureData.deviceName = QStringLiteral("USB_Power");
-    measureData.type = QStringLiteral("Current");
-    measureData.value = valueAmps;
-    measureData.valueText = QString::number(valueAmps);
-    measureData.unit = QStringLiteral("A");
-    measureData.isOk = ok;
     onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolMeasureData"),
-                                         QVariant::fromValue(measureData)));
+                                         QVariant::fromValue(makeScpiCurrentMeasureMa(
+                                             QStringLiteral("USB_Power"), valueAmps, ok))));
 }
 
 void test_base::onModbusRtuAmmeterReadingReceived(const QString& value) {
@@ -1548,15 +1556,10 @@ void test_base::onModbusRtuAmmeterReadingReceived(const QString& value) {
 }
 
 void test_base::onScpiVisaMeasureReadingReceived(const QString& valueText) {
-    ProtocolMeasureData measureData;
-    measureData.deviceName = QStringLiteral("VISA_SCPI");
-    measureData.type = QStringLiteral("Current");
-    measureData.value = valueText.toDouble();
-    measureData.valueText = valueText;
-    measureData.unit = QStringLiteral("mA");
-    measureData.isOk = true;
+    // MEAS:CURR 回读为 A，勿直接标成 mA
     onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolMeasureData"),
-                                         QVariant::fromValue(measureData)));
+                                         QVariant::fromValue(makeScpiCurrentMeasureMa(
+                                             QStringLiteral("VISA_SCPI"), valueText.toDouble(), true))));
 }
 
 void test_base::onScpiVisaProgrammablePowerVoltageRead(double valueVolts, bool ok) {
@@ -1572,13 +1575,7 @@ void test_base::onScpiVisaProgrammablePowerVoltageRead(double valueVolts, bool o
 }
 
 void test_base::onScpiVisaProgrammablePowerCurrentRead(double valueAmps, bool ok) {
-    ProtocolMeasureData measureData;
-    measureData.deviceName = QStringLiteral("VISA_Power");
-    measureData.type = QStringLiteral("Current");
-    measureData.value = valueAmps;
-    measureData.valueText = QString::number(valueAmps);
-    measureData.unit = QStringLiteral("A");
-    measureData.isOk = ok;
     onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolMeasureData"),
-                                         QVariant::fromValue(measureData)));
+                                         QVariant::fromValue(makeScpiCurrentMeasureMa(
+                                             QStringLiteral("VISA_Power"), valueAmps, ok))));
 }

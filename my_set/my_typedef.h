@@ -33,8 +33,9 @@
 #define SETTING_LOCAL_NAME "上位机设置.local.ini"
 
 inline QString settingsIniPath(const char* fileName) {
-    const QString path = QDir(QCoreApplication::applicationDirPath()).filePath(QString::fromUtf8(fileName));
-    return QFile::exists(path) ? path : QString::fromUtf8(fileName);
+    // 始终落在可执行文件目录，避免「文件尚不存在时用相对路径」导致
+    // 写入 cwd、读取 bin 各一份，关闭后再开串口像没保存。
+    return QDir(QCoreApplication::applicationDirPath()).filePath(QString::fromUtf8(fileName));
 }
 
 /**
@@ -127,12 +128,13 @@ class SettingsManager {
         }
         QSettings& loc = localIni();
         enter(loc);
-        if (loc.contains(key)) {
-            const QVariant v = loc.value(key);
-            leave(loc);
-            return v;
-        }
+        // 不用 contains：Ini 嵌套键（mechine/0/comName）在部分环境下 contains 会漏，
+        // 误回落到主 ini 旧串口；用哨兵判断本机文件是否已有该项。
+        const QVariant miss(QStringLiteral("\x01__SETTINGS_MISS__"));
+        const QVariant localV = loc.value(key, miss);
         leave(loc);
+        if (localV != miss)
+            return localV;
         QSettings& ini = baseIni();
         enter(ini);
         const QVariant v = ini.value(key, defaultValue);

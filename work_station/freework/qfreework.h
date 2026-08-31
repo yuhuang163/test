@@ -39,6 +39,7 @@ struct QFreeWorkMesSegment {
     QString standardValue;
     QString unit;
     QString result;
+    QString costTime;
 };
 
 class QFreeWork : public test_base {
@@ -274,7 +275,8 @@ class QFreeWork : public test_base {
     void closeKeyWaitPrompt();
     void showTestCasePromptForStep(const TestCaseDefinition& def);
     void closeTestCasePrompt();
-    void onTestCasePromptAcknowledged();
+    /** accepted=true 点「是」；false 点「否」或关闭 → 纯弹窗判失败。 */
+    void onTestCasePromptAcknowledged(bool accepted = true);
     void onTestCaseStepMarkedDone(bool pass, const QString& testData, const QString& ask);
     void armPlcBleKeyWaitTimeout();
     void waitPlcBleKeyReportBlocking();
@@ -341,7 +343,7 @@ class QFreeWork : public test_base {
     /** Gate/Expected 中的 $MAC/$SN 等占位符展开为运行时值（$MAC=界面 MAC 框） */
     void applyRuntimePlaceholderGateExpected(QVector<TestCaseGate>& gates);
     void appendTestCaseMes(const TestCaseDefinition& def, bool pass, const QString& testData);
-    /** 多字段卡控（如杰理 RSSI/频偏）按分项各写一条 MES，与结果表行对齐 */
+    /** 多字段卡控按分项各写一条 MES，与结果表行对齐；收尾勿再 appendTestCaseMes */
     void appendMultiGateTestCaseMes(const QVector<TestCaseGate>& gates, const QString& reportType,
                                     const QVariant& payload);
     void applyFreeWorkExtraTabsVisible(bool visible);
@@ -368,15 +370,15 @@ class QFreeWork : public test_base {
     bool evaluateLightSensorFivePointRule(QString* detailOut);
     /** VES 四通道光源：固定通道 1，亮度由步骤 Param_brightness 配置（0~255）。 */
     void runVesCh1SetBrightnessStep();
-    /** 自由工站屏幕检测：调用 USB 摄像头对屏幕拍照，再分析对比（坏点 / 显示异常）+ Gate。 */
+    /** 自由工站屏幕检测：GigE/USB 拍照后坏点 / 显示对比 / 位置校准。 */
     void runScreenInspectStep();
     /**
-     * 图像自动识别未通过时弹窗人工复核。
-     * 点「否」=目视正常→返回 true（步骤按通过）；点「是」=确认有问题→返回 false（不通过）。
+     * 屏幕图像识别自动未通过时弹窗：确认是否显示对应颜色。
+     * 点「是」=是该颜色→返回 true（通过）；点「否」=不是→返回 false（不通过）。
      */
-    bool screenInspectAskHumanPassOnAutoFail(const QString& autoFailDetail);
+    bool screenInspectAskHumanPassOnAutoFail(const QString& expectedColorName);
     void rememberScreenInspectImages(const QImage& capture, const QImage& annotated, const QImage& reference,
-                                     const QString& folder);
+                                     const QString& folder, bool calibrationGuides = false);
     void updateScreenInspectPreview();
     void showScreenInspectViewer();
     void openScreenInspectFolder();
@@ -473,6 +475,8 @@ class QFreeWork : public test_base {
     QImage screenInspectAnnotated_;
     QImage screenInspectReference_;
     QString screenInspectFolder_;
+    /** true=校准步骤：左右均为校准画线对照图。 */
+    bool screenInspectCalibGuides_ = false;
 
   private slots:
     void initData(bool deferDongleAtForVisa = false);
@@ -487,6 +491,7 @@ class QFreeWork : public test_base {
     void refreshPeriphData(ProtocolPeriphStateData data) override;
     void refreshRssiRead(ProtocolRssiData data) override;
     void refreshChargeCurrentRead(ProtocolChargeCurrentData data) override;
+    void refreshFactoryDoneRead(ProtocolFactoryDoneData data) override;
     void refreshKeySignalRead(ProtocolKeyCapData data) override;
     void refreshTupleData(ProtocolTupleData data) override;
     void refreshButton(ProtocolButtonStateData data) override;
@@ -505,6 +510,7 @@ class QFreeWork : public test_base {
     void refreshLightCalibData(ProtocolLightCalibData data) override;
     void refreshFlangeStatus(ProtocolTypeData data) override;
     void refreshPumpStallCurrent(ProtocolPumpStallCurrentData data) override;
+    void refreshAgingStatus(ProtocolAgingStatusData data) override;
     void refreshRootAgingHistory(ProtocolRootAgingHistoryData data) override;
     void refreshTypeStatus(ProtocolTypeData data) override;
     void refreshAmmeterData(QString data) override;

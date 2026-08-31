@@ -282,6 +282,7 @@ QVector<TestRecordStore::ParsedItem> TestRecordStore::parseItemValue(const MesPa
         item.minValue.clear();
         item.standardValue.clear();
         item.unit.clear();
+        item.costTime.clear();
         const QStringList parts = kv.split(QLatin1Char(':'), QString::KeepEmptyParts);
         if (parts.size() >= 6) {
             item.name = parts.at(0).trimmed();
@@ -301,6 +302,9 @@ QVector<TestRecordStore::ParsedItem> TestRecordStore::parseItemValue(const MesPa
                         item.result = QStringLiteral("FAIL");
                     }
                 }
+            }
+            if (parts.size() >= 8) {
+                item.costTime = parts.at(7).trimmed();
             }
         } else if (parts.size() == 2) {
             item.name = parts.at(0).trimmed();

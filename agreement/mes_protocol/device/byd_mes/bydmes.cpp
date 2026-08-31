@@ -378,7 +378,7 @@ QJsonArray bydmes::buildBydTestDataList(const MesPacketData& pack, const QString
         item[QStringLiteral("TEST_RESULT")] = testDataItem.result;
         item[QStringLiteral("ERROR_CODE")] = (pack.error == QStringLiteral("NULL")) ? QString() : pack.error;
         item[QStringLiteral("PN")] = pack.sn;
-        // REMARK 固定短文案，避免失败长串占满字段并污染下一轮 PASS
+        // 分项 REMARK 固定短文案；不良详情走 NcComplete 的 NC_CONTEXT（pack.remark）
         item[QStringLiteral("REMARK")] = QStringLiteral("备注信息");
         item[QStringLiteral("TEXT")] = QString("备注");
         list.append(item);
@@ -1001,6 +1001,7 @@ void bydmes::TestPass(MesPacketData pack) {
         completeParam["NC_TYPE"] = ncitemname;
     } else {
         completeParam["STATION_ID"] = settingsValue("StationID");
+        // Complete.REMARK 与分项一致，固定短文案（避免上轮 NG 残留长串）
         completeParam["REMARK"] = QStringLiteral("备注信息");
     }
     if (emitIfMissingLoginClientOrNet(pack, completeParam, completeMethod)) {

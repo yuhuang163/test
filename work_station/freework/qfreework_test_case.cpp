@@ -3,6 +3,7 @@
 #include "test_case.h"
 
 #include "device_cmd_manifest.h"
+#include "screen_inspect_analyzer.h"
 
 #include "qatmanager.h"
 #include "qfreeworkbox.h"
@@ -961,25 +962,27 @@ void QFreeWork::emitFixtureMultiGateTableRows(const QVector<TestCaseGate>& gates
         TestItem item;
         // 多字段卡控分项表格只显示判定项（如 RSSI/频偏），不再重复步骤名前缀
         item.testItem = GateRegistry::fieldDisplayName(reportType, ge.field);
-        const QString unit = GateRegistry::unitFor(reportType, ge.field, payload);
-        // 数据列只显示实测值；兼容「当前值=」「当前=」
-        QString curPrefix = QStringLiteral("当前值=");
-        int curPos = subDetail.indexOf(curPrefix);
-        if (curPos < 0) {
-            curPrefix = QStringLiteral("当前=");
-            curPos = subDetail.indexOf(curPrefix);
+        // 实测/要求统一走 formatStepDisplay（屏幕纯色等会转成中文，避免表里出现 0~5）
+        const GateStepDisplay disp =
+            GateRegistry::formatStepDisplay(ge, QVector<TestCaseGate>{ge}, reportType, payload, false);
+        item.testData = disp.testData;
+        item.ask = disp.ask;
+        if (item.testData.isEmpty()) {
+            // 兼容旧详情句式：当前值= / 当前=
+            const QStringList prefixes = {QStringLiteral("当前值="), QStringLiteral("当前=")};
+            for (const QString& curPrefix : prefixes) {
+                const int curPos = subDetail.indexOf(curPrefix);
+                if (curPos < 0)
+                    continue;
+                const int start = curPos + curPrefix.size();
+                const int comma = subDetail.indexOf(QLatin1Char(','), start);
+                item.testData = (comma > start) ? subDetail.mid(start, comma - start).trimmed()
+                                                : subDetail.mid(start).trimmed();
+                break;
+            }
+            if (item.testData.isEmpty())
+                item.testData = subDetail;
         }
-        if (curPos >= 0) {
-            const int start = curPos + curPrefix.size();
-            const int comma = subDetail.indexOf(QLatin1Char(','), start);
-            item.testData = (comma > start) ? subDetail.mid(start, comma - start).trimmed()
-                                            : subDetail.mid(start).trimmed();
-        } else {
-            item.testData = subDetail;
-        }
-        if (!unit.isEmpty() && !item.testData.endsWith(unit))
-            item.testData += QLatin1Char(' ') + unit;
-        item.ask = GateRegistry::formatGateAsk(ge, reportType, payload);
         item.testResult = subPass ? passValue : failValue;
         rows.append(item);
     }
@@ -1029,16 +1032,9 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
     bool pass = true;
     QString detail;
     const bool multiFieldMode = gatesForEval.size() > 1;
-    const bool fixtureTableMode =
-        (reportType == QStringLiteral("ProtocolFixturePcbaData")
-         || reportType == QStringLiteral("ProtocolJieliBtBoxData")
-         || reportType == QStringLiteral("ProtocolDongleSuctionPeakData")
-         || reportType == QStringLiteral("ProtocolScreenInspectData"))
-        && multiFieldMode;
-    if (fixtureTableMode) {
+    // 凡启用多项判定：一律写分项结果表 + 分项 MES；步骤收尾靠 testCaseMultiGateTableEmitted_ 跳过汇总，避免重复
+    if (multiFieldMode) {
         emitFixtureMultiGateTableRows(gatesForEval, reportType, payload, pass, detail);
-    } else if (gatesForEval.size() > 1) {
-        GateRegistry::evaluateAll(gatesForEval, reportType, payload, pass, detail);
     } else {
         GateRegistry::evaluate(gatesForEval.first(), reportType, payload, pass, detail);
     }
@@ -1048,19 +1044,67 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
     if (display.testData.isEmpty())
         display.testData = detail;
 
-    // 屏幕图像识别：自动卡控失败时弹窗交人工确认（点否=通过，点是=不通过）
+    // 屏幕图像识别：自动卡控失败时弹窗确认是否显示对应颜色（是=通过，否=不通过）
     bool humanOverrodePass = false;
     if (!pass && reportType == QStringLiteral("ProtocolScreenInspectData")) {
         const QString failDetail = detail.isEmpty() ? QStringLiteral("未通过") : detail;
         showlog(QStringLiteral("屏幕检测自动识别未通过：%1").arg(failDetail));
-        if (screenInspectAskHumanPassOnAutoFail(failDetail)) {
+        // 弹窗要用本步具体颜色，避免笼统「目标颜色」
+        QString expectColor;
+        QVariantMap paramMap;
+        if (activeTestCase_.send.param.canConvert<QVariantMap>())
+            paramMap = resolveTestCaseSendParamTree(activeTestCase_.send.param).toMap();
+        if (paramMap.contains(QStringLiteral("expectedColor"))) {
+            bool colorOk = false;
+            const int ci = ScreenInspectAnalyzer::parseColorIndex(
+                paramMap.value(QStringLiteral("expectedColor")).toString(), &colorOk);
+            if (colorOk && ci >= 0)
+                expectColor = ScreenInspectAnalyzer::colorName(ci);
+        }
+        if (expectColor.isEmpty()) {
+            for (const TestCaseGate& g : gatesForEval) {
+                if (!g.enabled || g.field.trimmed() != QLatin1String("detectedColor"))
+                    continue;
+                const QString e = g.expected.trimmed();
+                if (e.isEmpty())
+                    continue;
+                bool colorOk = false;
+                const int ci = ScreenInspectAnalyzer::parseColorIndex(e, &colorOk);
+                expectColor = (colorOk && ci >= 0) ? ScreenInspectAnalyzer::colorName(ci) : e;
+                break;
+            }
+        }
+        if (expectColor.isEmpty()) {
+            const QString hintName = activeTestCase_.meta.displayName.trimmed().isEmpty()
+                                         ? activeTestCase_.meta.name.trimmed()
+                                         : activeTestCase_.meta.displayName.trimmed();
+            // 确认屏幕(白色) / 确认屏幕（灰度条）
+            const QRegularExpression re(QStringLiteral("[（(]([^）)]+)[）)]"));
+            const QRegularExpressionMatch m = re.match(hintName);
+            if (m.hasMatch())
+                expectColor = m.captured(1).trimmed();
+            else {
+                const int us = hintName.lastIndexOf(QLatin1Char('_'));
+                if (us >= 0)
+                    expectColor = hintName.mid(us + 1).trimmed();
+            }
+        }
+        if (expectColor.isEmpty()) {
+            const QString prompt = activeTestCase_.meta.promptText.trimmed();
+            const QString prefix = QStringLiteral("请确认屏幕是否显示");
+            if (prompt.startsWith(prefix))
+                expectColor = prompt.mid(prefix.size()).trimmed();
+        }
+        if (screenInspectAskHumanPassOnAutoFail(expectColor)) {
             pass = true;
             humanOverrodePass = true;
             if (!display.testData.contains(QStringLiteral("人工确认")))
                 display.testData += QStringLiteral("（人工确认通过）");
-            showlog(QStringLiteral("人工确认：目视正常，本步按通过"));
+            showlog(QStringLiteral("人工确认：屏幕显示%1，本步通过").arg(
+                expectColor.isEmpty() ? QStringLiteral("目标颜色") : expectColor));
         } else {
-            showlog(QStringLiteral("人工确认：有问题，本步不通过"));
+            showlog(QStringLiteral("人工确认：屏幕未显示%1，本步不通过").arg(
+                expectColor.isEmpty() ? QStringLiteral("目标颜色") : expectColor));
         }
     }
 
