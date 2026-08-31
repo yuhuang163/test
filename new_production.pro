@@ -309,6 +309,8 @@ SOURCES += \
     platform/test_case/validator/test_case_validator.cpp \
     platform/test_case/runner/test_case_runner.cpp \
     platform/test_case/hooks/test_case_hook_registry.cpp \
+    platform/test_case/hooks/qfreework_case_hooks.cpp \
+    platform/test_case/hooks/qfreework_hook_steps.cpp \
     platform/test_case/catalog/cmd_catalog_base.cpp \
     platform/test_case/catalog/cmd_manifest_catalogs.cpp \
     platform/test_case/catalog/test_case_send_dispatch.cpp \
@@ -358,7 +360,6 @@ SOURCES += \
     work_station/freework/qfreework.cpp \
     work_station/freework/qfreework_data.cpp \
     work_station/freework/qfreeworkbox.cpp \
-    work_station/freework/qfreework_case_hooks.cpp \
     work_station/freework/qfreework_test_case.cpp \
     work_station/freework/shared_instrument.cpp \
     agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp.cpp \

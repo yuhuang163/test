@@ -267,6 +267,7 @@ class QFreeWork : public test_base {
     QString plcKeyCapPassSummary_;
     void startKeyButtonTest(const QString& testName, const QString& promptText, const QString& expectedKey,
                             const QString& enableKey);
+    /** Hook 步骤，实现见 qfreework_hook_steps.cpp */
     void startPlcKeyButtonTest(const QString& testName, const QString& promptText, const QString& expectedKey,
                                const QString& enableKey, int keyIndex0To6, bool useCapacitanceRead = false);
     void startPlcSwitchPlcAndWaitRightRotate();
@@ -289,6 +290,7 @@ class QFreeWork : public test_base {
     PlcV3RunResult runPlcV3(PlcV3Command command, int keyIndex0To6 = 0, bool finishStepRuntime = true);
     CmwGprfRunResult runCmwGprf(CmwGprfCommand command, const QString& scenarioLabel = QString(), int brushProfile = -1,
                                 int alignedPostTrigHoldMs = -1, bool* outRanBurst = nullptr);
+    /** Hook 步骤，实现见 qfreework_hook_steps.cpp */
     void runPlcModbusConnectTest();
     void runPlcSwitchTestDoneResetM();
     void runPlcV3TouchKeyFull(int keyIndex0To6, bool finishStepRuntime = true);
@@ -302,6 +304,7 @@ class QFreeWork : public test_base {
     void clearProductInstrumentWatch();
     bool ensureProductSerialForInstrumentStep(const QString& stepName);
     static QByteArray brushInstrumentStartCmdForProfile(int profile);
+    /** Hook 步骤，实现见 qfreework_hook_steps.cpp */
     void startProductInstrumentResetAndWaitAck(QString stepName = QString(), int timeoutMs = 0);
     void startProductInstrumentStartReceiveForCatalog(const QString& stepName, int profile, int timeoutMs = 0);
     void startProductInstrumentStopReceiveAndPer(QString stepName = QString(), int timeoutMs = 0);
@@ -346,6 +349,7 @@ class QFreeWork : public test_base {
     void loadSuctionGateSettings();
     /** 从步骤 send.param 读取采样时长/通道等（卡控范围以 Gate 为准；无 Gate 时回退 Param）。 */
     void applySuctionGateFromStepParam(const QVariant& param);
+    /** test_case Hook 步骤（实现见 qfreework_hook_steps.cpp） */
     void runDongleSuctionSampleStep();
     /** Dongle 单通道吸力采样；判定走 ProtocolDongleSuctionPeakData Gate。 */
     void runDongleSuctionSampleSingleStep();
