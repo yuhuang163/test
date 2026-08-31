@@ -986,6 +986,14 @@ void QFreeWork::refreshChargeCurrentRead(ProtocolChargeCurrentData data) {
     }
 }
 
+void QFreeWork::refreshFactoryDoneRead(ProtocolFactoryDoneData data) {
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolFactoryDoneData"), QVariant::fromValue(data)))
+        return;
+
+    const QString value = data.done ? QStringLiteral("已完成") : QStringLiteral("未完成");
+    showlog(QStringLiteral("产测完成标识：%1").arg(value));
+}
+
 bool QFreeWork::failTupleWriteIfNoValidField(const QString& stepName, bool fieldOk, const QString& emptyReason) {
     if (!tupleData_.success) {
         stepRuntime_.pass = false;

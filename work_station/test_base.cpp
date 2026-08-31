@@ -793,6 +793,9 @@ void test_base::onProtocolReport(const ProtocolReport& report) {
         refreshKeySignalRead(payload.value<ProtocolKeyCapData>());
     } else if (reportType == "ProtocolChargeCurrentData" && payload.canConvert<ProtocolChargeCurrentData>()) {
         refreshChargeCurrentRead(payload.value<ProtocolChargeCurrentData>());
+    } else if (reportType == QLatin1String("ProtocolFactoryDoneData")
+               && payload.canConvert<ProtocolFactoryDoneData>()) {
+        refreshFactoryDoneRead(payload.value<ProtocolFactoryDoneData>());
     } else if (reportType == "ProtocolTupleData" && payload.canConvert<ProtocolTupleData>()) {
         refreshTupleData(payload.value<ProtocolTupleData>());
     } else if (reportType == "ProtocolPictureSendOverData" && payload.canConvert<ProtocolResultData>()) {

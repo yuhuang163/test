@@ -41,6 +41,7 @@ class ScreenInspectWidget : public QWidget {
     void on_btnColorRed_clicked();
     void on_btnColorWhite_clicked();
     void on_btnColorBlack_clicked();
+    void on_comboBox_cameraSource_currentIndexChanged(int index);
 
   private:
     struct InspectParams {
@@ -66,9 +67,12 @@ class ScreenInspectWidget : public QWidget {
     void saveThresholdsToSettings();
     InspectParams currentParams() const;
     void refreshCameraList();
+    void updateCameraSourceUi();
+    bool isGigESource() const;
     void startPreview();
     void stopPreview();
     void requestCapture();
+    void captureGigEStill();
     void onStillImage(int id, const QImage& image);
     void onCaptureFailed(const QString& message);
     void setBusy(bool busy);

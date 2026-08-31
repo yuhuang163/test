@@ -18,7 +18,7 @@ struct DeviceCmdParamSchema {
 
 // clang-format off
 enum class TestCaseSendChannel { Product, ProductSerial, Dongle, Cloud, Fixture, Modbus, Scpi };
-enum class UsbCameraCmd { ScreenDeadPixelCheck, ScreenDisplayAnomalyCheck };
+enum class UsbCameraCmd { ScreenCameraCalibration, ScreenDeadPixelCheck, ScreenDisplayAnomalyCheck };
 enum class VesLightCmd { SetBrightness };
 enum class TestCaseProductProtocol { Qfctp, Qpb, Qroot, Qaiot };
 enum class TestCaseFixtureProtocol {
