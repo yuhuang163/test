@@ -152,8 +152,7 @@ void ScreenInspectWidget::bindDesignerUi() {
     ui->comboBox_expectedColor->addItem(QStringLiteral("灰"), 5);
 
     viewfinder_ = new QCameraViewfinder(ui->viewfinderHost);
-    viewfinder_->setMaximumHeight(ui->viewfinderHost->maximumHeight());
-    viewfinder_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    viewfinder_->setFixedSize(1, 1);
     ui->verticalLayout_viewfinder->addWidget(viewfinder_);
 
     connect(ui->doubleSpinBox_minSsim, &QDoubleSpinBox::editingFinished, this,
@@ -252,7 +251,8 @@ void ScreenInspectWidget::updateCameraSourceUi() {
     if (ui->lineEdit_gigeIp)
         ui->lineEdit_gigeIp->setVisible(gige);
     ui->btnOpenPreview->setText(gige ? QStringLiteral("测试采图") : QStringLiteral("打开预览"));
-    ui->btnClosePreview->setEnabled(!gige);
+    ui->btnOpenPreview->setVisible(gige);
+    ui->btnClosePreview->setVisible(false);
     if (viewfinder_)
         viewfinder_->setVisible(!gige);
     if (gige)
