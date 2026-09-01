@@ -61,7 +61,6 @@ struct ScreenInspectUi {
     QPlainTextEdit* plainTextEdit_screenInspectLog = nullptr;
     QCheckBox* checkBox_autoInspect = nullptr;
     QPushButton* btnCapture = nullptr;
-    QPushButton* btnCaptureRef = nullptr;
     QPushButton* btnInspect = nullptr;
     QPushButton* btnOpenPreview = nullptr;
     QPushButton* btnClosePreview = nullptr;
@@ -105,7 +104,6 @@ void ScreenInspectWidget::bindDesignerUi() {
     ui->plainTextEdit_screenInspectLog = screenInspectFind<QPlainTextEdit>(this, "plainTextEdit_screenInspectLog");
     ui->checkBox_autoInspect = screenInspectFind<QCheckBox>(this, "checkBox_autoInspect");
     ui->btnCapture = screenInspectFind<QPushButton>(this, "btnCapture");
-    ui->btnCaptureRef = screenInspectFind<QPushButton>(this, "btnCaptureRef");
     ui->btnInspect = screenInspectFind<QPushButton>(this, "btnInspect");
     ui->btnOpenPreview = screenInspectFind<QPushButton>(this, "btnOpenPreview");
     ui->btnClosePreview = screenInspectFind<QPushButton>(this, "btnClosePreview");
@@ -114,7 +112,7 @@ void ScreenInspectWidget::bindDesignerUi() {
         || !ui->spinBox_maxDead || !ui->doubleSpinBox_mura || !ui->label_currImage || !ui->label_refImage
         || !ui->label_screenInspectSimilarity || !ui->label_screenInspectVerdict
         || !ui->plainTextEdit_screenInspectLog || !ui->checkBox_autoInspect || !ui->btnCapture
-        || !ui->btnInspect || !ui->btnOpenPreview || !ui->btnClosePreview || !ui->btnCaptureRef) {
+        || !ui->btnInspect || !ui->btnOpenPreview || !ui->btnClosePreview) {
         QStringList missing;
         auto note = [&](bool ok, const char* name) {
             if (!ok)
@@ -135,7 +133,6 @@ void ScreenInspectWidget::bindDesignerUi() {
         note(ui->plainTextEdit_screenInspectLog, "plainTextEdit_screenInspectLog");
         note(ui->checkBox_autoInspect, "checkBox_autoInspect");
         note(ui->btnCapture, "btnCapture");
-        note(ui->btnCaptureRef, "btnCaptureRef");
         note(ui->btnInspect, "btnInspect");
         note(ui->btnOpenPreview, "btnOpenPreview");
         note(ui->btnClosePreview, "btnClosePreview");
@@ -370,6 +367,7 @@ void ScreenInspectWidget::on_btnOpenPreview_clicked() {
 
 void ScreenInspectWidget::on_btnClosePreview_clicked() {
     stopPreview();
+    setBusy(false);
     ui->plainTextEdit_screenInspectLog->setPlainText(QStringLiteral("已关闭预览。"));
 }
 
@@ -410,18 +408,20 @@ void ScreenInspectWidget::captureGigEStill() {
 }
 
 void ScreenInspectWidget::requestCapture() {
+    if (!busy_) {
+        return;
+    }
     if (isGigESource()) {
         captureGigEStill();
         return;
     }
-    if (!busy_) {
-        // aborted (e.g. user closed preview)
-        return;
-    }
     if (!camera_ || !capture_) {
-        captureAfterReady_ = true;
-        captureRetries_ = 0;
         startPreview();
+        if (camera_) {
+            captureAfterReady_ = true;
+        } else {
+            setBusy(false);
+        }
         return;
     }
     if (camera_->status() != QCamera::ActiveStatus) {
@@ -429,23 +429,9 @@ void ScreenInspectWidget::requestCapture() {
         return;
     }
     if (!capture_->isReadyForCapture()) {
-        if (captureRetries_ > 20) {
-            qWarning() << "ScreenInspectWidget: QCameraImageCapture not ready after 3 seconds, forcing capture";
-        } else {
-            captureRetries_++;
-            QTimer::singleShot(150, this, &ScreenInspectWidget::requestCapture);
-            return;
-        }
+        QTimer::singleShot(150, this, &ScreenInspectWidget::requestCapture);
+        return;
     }
-    captureRetries_ = 0;
-    
-    // Fallback timeout in case capture() hangs silently
-    QTimer::singleShot(10000, this, [this]() {
-        if (busy_) {
-            onCaptureFailed(QStringLiteral("等待拍摄完成超时"));
-        }
-    });
-
     if (capture_->captureDestination() == QCameraImageCapture::CaptureToFile) {
         const QString tmp = QDir::temp().filePath(QStringLiteral("screen_inspect_cap.png"));
         capture_->capture(tmp);
@@ -456,7 +442,6 @@ void ScreenInspectWidget::requestCapture() {
 
 void ScreenInspectWidget::on_btnCapture_clicked() {
     inspectAfterCapture_ = ui->checkBox_autoInspect->isChecked();
-    captureAsRef_ = false;
     setBusy(true);
     if (isGigESource()) {
         ui->plainTextEdit_screenInspectLog->setPlainText(QStringLiteral("正在 GigE 采集…"));
@@ -467,24 +452,9 @@ void ScreenInspectWidget::on_btnCapture_clicked() {
     requestCapture();
 }
 
-void ScreenInspectWidget::on_btnCaptureRef_clicked() {
-    inspectAfterCapture_ = false;
-    captureAsRef_ = true;
-    setBusy(true);
-    if (isGigESource()) {
-        ui->plainTextEdit_screenInspectLog->setPlainText(QStringLiteral("正在 GigE 采集参考图…"));
-        captureGigEStill();
-        return;
-    }
-    ui->plainTextEdit_screenInspectLog->setPlainText(QStringLiteral("正在采集参考图（预热后抓拍）…"));
-    requestCapture();
-}
-
 void ScreenInspectWidget::onStillImage(int, const QImage& image) {
     QElapsedTimer t;
     t.start();
-    bool wasCaptureAsRef = captureAsRef_;
-    captureAsRef_ = false;
     setBusy(false);
     if (image.isNull()) {
         ui->plainTextEdit_screenInspectLog->setPlainText(QStringLiteral("采集失败：空画面。"));
@@ -507,9 +477,7 @@ void ScreenInspectWidget::onStillImage(int, const QImage& image) {
             .arg(msSaveKick);
     qDebug().noquote() << QStringLiteral("[ScreenInspectUI]") << uiLog;
     ui->plainTextEdit_screenInspectLog->setPlainText(uiLog);
-    if (wasCaptureAsRef) {
-        on_btnSaveAsRef_clicked();
-    } else if (inspectAfterCapture_) {
+    if (inspectAfterCapture_) {
         inspectAfterCapture_ = false;
         runInspect();
     }
@@ -595,12 +563,10 @@ void ScreenInspectWidget::on_btnColorBlack_clicked() {
 
 void ScreenInspectWidget::setBusy(bool busy) {
     busy_ = busy;
-    if (ui->btnCapture) ui->btnCapture->setEnabled(!busy);
-    if (ui->btnCaptureRef) ui->btnCaptureRef->setEnabled(!busy);
-    if (ui->btnInspect) ui->btnInspect->setEnabled(!busy);
-    if (ui->btnOpenPreview) ui->btnOpenPreview->setEnabled(!busy);
-    if (ui->btnCapture) ui->btnCapture->setText(busy && !captureAsRef_ ? QStringLiteral("正在采集...") : QStringLiteral("采集当前图"));
-    if (ui->btnCaptureRef) ui->btnCaptureRef->setText(busy && captureAsRef_ ? QStringLiteral("正在采集...") : QStringLiteral("采集参考图"));
+    ui->btnCapture->setEnabled(!busy);
+    ui->btnInspect->setEnabled(!busy);
+    ui->btnOpenPreview->setEnabled(!busy);
+    ui->btnCapture->setText(busy ? QStringLiteral("正在采集...") : QStringLiteral("采集当前图"));
 }
 
 void ScreenInspectWidget::showPixmapOnLabel(const QImage& image, QLabel* label) {

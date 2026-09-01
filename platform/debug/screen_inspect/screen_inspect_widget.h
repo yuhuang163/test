@@ -33,7 +33,6 @@ class ScreenInspectWidget : public QWidget {
     void on_btnClosePreview_clicked();
     void on_btnCapture_clicked();
     void on_btnLoadRef_clicked();
-    void on_btnCaptureRef_clicked();
     void on_btnSaveAsRef_clicked();
     void on_btnInspect_clicked();
     void on_btnClearRoi_clicked();
@@ -98,8 +97,6 @@ class ScreenInspectWidget : public QWidget {
     QImage currImage_;
     QImage annotatedImage_;
     bool captureAfterReady_ = false;
-    bool captureAsRef_ = false;
-    int captureRetries_ = 0;
     bool inspectAfterCapture_ = false;
     bool inspectRunning_ = false;
     bool busy_ = false;
