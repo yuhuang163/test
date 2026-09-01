@@ -997,6 +997,9 @@ bool QFreeWork::runSingleTestCaseStep(const QString& stationKey, const QString& 
         return false;
     }
 
+    // 单步与开测一致：Dongle 串口未打开时自动打开，避免「扫描连接蓝牙」等 BLE 步骤因串口未开而失败
+    if (!dongleSerialPort->isOpen())
+        on_connectButton_clicked();
     showlog(QStringLiteral("单步运行：%1（工站 %2）").arg(TestCaseRunner::stepLabel(def), key));
     singleStepDebugRun_ = true;
     activeFlowStationKey_ = key;

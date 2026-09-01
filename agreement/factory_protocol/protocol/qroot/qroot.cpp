@@ -171,7 +171,9 @@ QString Qroot::formatKeyNotifyLabel(quint8 keyId) {
     case 3:
         return QStringLiteral("模式按键(9A03)");
     case 4:
-        return QStringLiteral("加热按键(9A04)");
+        return QStringLiteral("加热按键/左边拨动开关(9A04)");
+    case 5:
+        return QStringLiteral("右边拨动开关(9A05)");
     default:
         return QStringLiteral("按键上报(9A ID=0x%1)").arg(keyId, 2, 16, QLatin1Char('0'));
     }
@@ -301,7 +303,7 @@ void Qroot::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
         }
         if (body.size() >= 1) {
             const quint8 keyId = static_cast<quint8>(body.at(0));
-            // 按键按下：1加挡/2减挡/3模式/4加热；其它非应答 body 仍上报 ID
+            // 按键按下：1加挡/2减挡/3模式/4加热(兼左拨动开关)/5右拨动开关；其它非应答 body 仍上报 ID
             if (keyId != 0x00 && keyId != kKeyNotifySwitchAck) {
                 emitKeyNotifyReport(keyId);
                 return;

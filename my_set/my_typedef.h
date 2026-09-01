@@ -82,6 +82,7 @@ inline bool settingsUseLocalFile(const QString& fullKey) {
         QStringLiteral("Window/Size"),
         QStringLiteral("SYSTEM/station"),
         QStringLiteral("SYSTEM/MesDefaultUnchecked"),
+        QStringLiteral("Mes/Product_Name"),
         QStringLiteral("TestOrderMeta/SelectedStation"),
         QStringLiteral("TestOrderMeta/SelectedStationName"),
     };
