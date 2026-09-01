@@ -2056,13 +2056,11 @@ void QFreeWork::setDongleSuctionReadEnabled(bool enabled) {
         at->set(DongleCmd::GetSuction, enabled ? 1 : 0);
 }
 
-bool QFreeWork::screenInspectAskHumanPassOnAutoFail(const QString& autoFailDetail) {
-    const QString detail = autoFailDetail.trimmed().isEmpty() ? QStringLiteral("未通过") : autoFailDetail.trimmed();
-    QMessageBox box(QMessageBox::Question, QStringLiteral("屏幕检测人工确认"),
-                    QStringLiteral("图像自动识别未通过：%1\n\n是否确认屏幕有问题？\n"
-                                   "点「是」=确认有问题（不通过）\n"
-                                   "点「否」=目视正常（通过）")
-                        .arg(detail),
+bool QFreeWork::screenInspectAskHumanPassOnAutoFail(const QString& expectedColorName) {
+    const QString color =
+        expectedColorName.trimmed().isEmpty() ? QStringLiteral("目标颜色") : expectedColorName.trimmed();
+    QMessageBox box(QMessageBox::Question, QStringLiteral("屏幕颜色确认"),
+                    QStringLiteral("请确认屏幕是否显示「%1」？\n是=通过　否=不通过").arg(color),
                     QMessageBox::Yes | QMessageBox::No, this);
     if (QAbstractButton* yesBtn = box.button(QMessageBox::Yes))
         yesBtn->setText(QStringLiteral("是"));
