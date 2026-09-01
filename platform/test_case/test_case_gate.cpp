@@ -193,7 +193,7 @@ double fieldValueFromVariant(const QString& reportType, const QString& field, co
         }
     } else if (reportType == QLatin1String("ProtocolFactoryDoneData")) {
         const auto d = payload.value<ProtocolFactoryDoneData>();
-        if (field.isEmpty() || field == QLatin1String("done")) {
+        if (field == QLatin1String("done")) {
             ok = true;
             return d.done ? 1.0 : 0.0;
         }
@@ -1198,7 +1198,7 @@ QString fieldStringFromVariant(const QString& reportType, const QString& field, 
         }
     } else if (reportType == QLatin1String("ProtocolFactoryDoneData")) {
         const auto d = payload.value<ProtocolFactoryDoneData>();
-        if (field.isEmpty() || field == QLatin1String("done")) {
+        if (field == QLatin1String("done")) {
             ok = true;
             return d.done ? QStringLiteral("已完成") : QStringLiteral("未完成");
         }
@@ -1328,9 +1328,6 @@ QString GateRegistry::fieldDisplayName(const QString& reportType, const QString&
         if (fd.field == field)
             return fd.displayName;
     }
-    // 兼容旧版本 INI 尚未保存 field 字段的情况：如果是单字段卡控，则默认取首个
-    if (field.isEmpty() && desc.fields.size() == 1)
-        return desc.fields.first().displayName;
     return field;
 }
 
@@ -1346,7 +1343,7 @@ QString formatGateFieldValue(const QString& reportType, const QString& field, do
                        ? QStringLiteral("未指定")
                        : (qAbs(value - 1.0) < 0.0001 ? QStringLiteral("是") : QStringLiteral("否"));
     }
-    if (reportType == QLatin1String("ProtocolFactoryDoneData") && (field.isEmpty() || field == QLatin1String("done")))
+    if (reportType == QLatin1String("ProtocolFactoryDoneData") && field == QLatin1String("done"))
         return qAbs(value - 1.0) < 0.0001 ? QStringLiteral("已完成") : QStringLiteral("未完成");
     if (qAbs(value - qRound(value)) < 1e-9)
         return QString::number(qRound(value));
@@ -1496,7 +1493,7 @@ bool GateRegistry::evaluate(const TestCaseGate& gate, const QString& reportType,
                 expected = SETTINGS.value(gate.expectedSettingsKey).toString().trimmed();
             if (expected.isEmpty()
                 && !(reportType == QLatin1String("ProtocolFactoryDoneData")
-                     && (gate.field.isEmpty() || gate.field == QLatin1String("done")))) {
+                     && gate.field == QLatin1String("done"))) {
                 passOut = false;
                 detailOut = QStringLiteral("当前=%1, 未配置期望( Gate/Expected 或 MES/UI SN)").arg(actual.isEmpty() ? QStringLiteral("-") : actual);
             } else if ((reportType == QLatin1String("ProtocolMacData")
@@ -1537,7 +1534,7 @@ bool GateRegistry::evaluate(const TestCaseGate& gate, const QString& reportType,
                     detailOut = QStringLiteral("当前=%1, 期望=%2").arg(actual, expectText);
                 }
             } else if (reportType == QLatin1String("ProtocolFactoryDoneData")
-                       && (gate.field.isEmpty() || gate.field == QLatin1String("done"))) {
+                       && gate.field == QLatin1String("done")) {
                 // 实测文案为「已完成/未完成」；ini 期望可为 1/0 或中文，不能裸字符串比
                 const double threshold = factoryDoneThreshold(gate);
                 const QString expectText = formatGateFieldValue(reportType, gate.field, threshold);
@@ -1745,7 +1742,7 @@ QString GateRegistry::formatGateAsk(const TestCaseGate& gate, const QString& rep
             && gate.field == QLatin1String("colorMatch")) {
             ask = formatGateFieldValue(reportType, gate.field, colorMatchThreshold(gate));
         } else if (reportType == QLatin1String("ProtocolFactoryDoneData")
-                   && (gate.field.isEmpty() || gate.field == QLatin1String("done"))) {
+                   && gate.field == QLatin1String("done")) {
             ask = formatGateFieldValue(reportType, gate.field, factoryDoneThreshold(gate));
         } else if (!expected.isEmpty()) {
             bool ok = false;
