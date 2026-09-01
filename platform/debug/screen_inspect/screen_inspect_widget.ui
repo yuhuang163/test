@@ -216,6 +216,13 @@
          </widget>
         </item>
         <item>
+         <widget class="QPushButton" name="btnCaptureRef">
+          <property name="text">
+           <string>采集参考图</string>
+          </property>
+         </widget>
+        </item>
+        <item>
          <widget class="QPushButton" name="btnSaveAsRef">
           <property name="text">
            <string>保存为参考图</string>
