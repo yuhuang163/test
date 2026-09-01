@@ -418,7 +418,11 @@ void ScreenInspectWidget::requestCapture() {
     if (!camera_ || !capture_) {
         startPreview();
         if (camera_) {
-            captureAfterReady_ = true;
+            if (camera_->status() == QCamera::ActiveStatus) {
+                QTimer::singleShot(450, this, &ScreenInspectWidget::requestCapture);
+            } else {
+                captureAfterReady_ = true;
+            }
         } else {
             setBusy(false);
         }
