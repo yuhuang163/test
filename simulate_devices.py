@@ -3,7 +3,7 @@ import threading
 import time
 import sys
 
-# 全局变量：用于控制 PLC 的线圈状态
+# 全局变量
 PLC_TRIGGER = False
 
 # ==========================================
@@ -88,8 +88,8 @@ def scanner_simulator_worker():
                     # 假装正在扫码，延迟 0.5 秒
                     time.sleep(0.5)
                     
-                    # 发送模拟条码
-                    fake_barcode = "SIM_BARCODE_2026\r\n"
+                    # 发送模拟条码（长度需满足解析要求）
+                    fake_barcode = "SIM_BARCODE_2026_XWD\r\n"
                     c.sendall(fake_barcode.encode('utf-8'))
                     print(f">> [扫码枪] 已成功返回条码: {fake_barcode.strip()}\n")
             except Exception as e:
@@ -116,8 +116,8 @@ if __name__ == "__main__":
     
     print("\n----------------------------------------")
     print("【操作说明】:")
-    print("在下面按回车键 (Enter)，即可向 PLC 发送一个启动信号 (ON)。")
-    print("按 Ctrl+C 退出模拟器。")
+    print("在下面直接按回车键 (Enter)，即可向 PLC 发送一个启动信号 (ON)。")
+    print("按 Ctrl+C 或输入 q 退出模拟器。")
     print("----------------------------------------\n")
     
     # 保持主线程用来接收用户输入
@@ -125,11 +125,15 @@ if __name__ == "__main__":
         while True:
             # 兼容 python 2/3 的输入
             if sys.version_info[0] < 3:
-                raw_input("提示: [按回车键] 触发一次启动信号...")
+                user_in = raw_input("提示: [直接回车=发PLC启动信号] > ")
             else:
-                input("提示: [按回车键] 触发一次启动信号...")
+                user_in = input("提示: [直接回车=发PLC启动信号] > ")
+                
+            user_in = user_in.strip()
+            if user_in.lower() == 'q':
+                break
             
             PLC_TRIGGER = True
-            print("=> PLC 信号已置为 ON，等待上位机读取中...")
+            print("=> PLC 信号已置为 ON，等待上位机读取中...\n")
     except KeyboardInterrupt:
         print("\n模拟器已关闭。")
