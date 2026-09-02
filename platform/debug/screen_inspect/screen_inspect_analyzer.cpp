@@ -1,4 +1,4 @@
-#include "screen_inspect_analyzer.h"
+﻿#include "screen_inspect_analyzer.h"
 
 #include <QColor>
 #include <QCoreApplication>
@@ -61,12 +61,58 @@ ScreenCircle detectScreenCircle(const QImage& rgb, const QRect& roi) {
     const QImage img = toRgb888(rgb);
     const QRect r = roi.intersected(img.rect());
     ScreenCircle c;
-    c.cx = r.center().x();
-    c.cy = r.center().y();
-    const int rMax = qMin(r.width(), r.height()) / 2;
+    
+    int rMax = qMin(r.width(), r.height()) / 2;
     if (rMax < 8) {
+        c.cx = r.center().x();
+        c.cy = r.center().y();
         c.r = qMax(0, rMax);
         return c;
+    }
+
+    // 动态找准真实圆心：在固定的小 ROI 框内，快速找出亮色区域的包围盒重心
+    int x0 = r.right(), y0 = r.bottom(), x1 = r.left(), y1 = r.top();
+    int maxVal = 0;
+    
+    // 第一遍极速抽样扫描，找到 ROI 内的最高亮度（步长=4，速度极快）
+    for (int y = r.top(); y <= r.bottom(); y += 4) {
+        const uchar* line = img.constScanLine(y);
+        for (int x = r.left(); x <= r.right(); x += 4) {
+            const int i = x * 3;
+            const int val = qMax(line[i], qMax(line[i + 1], line[i + 2]));
+            if (val > maxVal) maxVal = val;
+        }
+    }
+    
+    // 只有当画面有足够亮的内容时，才去找真实中心，避免全黑屏干扰
+    if (maxVal > 30) {
+        const int thr = qMax(30, maxVal * 60 / 100); 
+        for (int y = r.top(); y <= r.bottom(); y += 4) {
+            const uchar* line = img.constScanLine(y);
+            for (int x = r.left(); x <= r.right(); x += 4) {
+                const int i = x * 3;
+                if (qMax(line[i], qMax(line[i + 1], line[i + 2])) >= thr) {
+                    if (x < x0) x0 = x;
+                    if (x > x1) x1 = x;
+                    if (y < y0) y0 = y;
+                    if (y > y1) y1 = y;
+                }
+            }
+        }
+        if (x1 >= x0 && y1 >= y0) {
+            c.cx = (x0 + x1) / 2;
+            c.cy = (y0 + y1) / 2;
+            int dynamicRMax = qMin(x1 - x0, y1 - y0) / 2;
+            if (dynamicRMax >= 8) {
+                rMax = dynamicRMax;
+            }
+        } else {
+            c.cx = r.center().x();
+            c.cy = r.center().y();
+        }
+    } else {
+        c.cx = r.center().x();
+        c.cy = r.center().y();
     }
 
     QVector<qint64> sum(rMax + 1, 0);
@@ -476,7 +522,7 @@ void finalizeDeadMarks(QVector<quint8>& mark, int w, int h, const QRect& r, int 
 }
 
 DeadScan scanDeadPixels(const QImage& rgb, const QRect& roi, int deadDiff, int expectedColor,
-                        const ScreenCircle& circle) {
+                        const ScreenCircle& circle, int deadRadiusPercent) {
     DeadScan out;
     const QImage img = toRgb888(rgb);
     const QRect r = roi.intersected(img.rect());
@@ -485,7 +531,7 @@ DeadScan scanDeadPixels(const QImage& rgb, const QRect& roi, int deadDiff, int e
 
     // 坏点再内缩：边缘过渡环被圆裁切后易成大量小连通域，全部计入坏点
     ScreenCircle dead = circle;
-    dead.r = qMax(8, circle.r * 82 / 100);
+    dead.r = qMax(8, circle.r * deadRadiusPercent / 100);
 
     const QVector<quint8> gray = toGrayBytes(img);
     const int w = img.width();
@@ -838,7 +884,7 @@ Report analyze(const QImage& currRgb, const QImage& refRgb, const Params& p) {
     qint64 msDead = 0;
     if (p.enableDeadPixels) {
         stepT.start();
-        dead = scanDeadPixels(curr, roi, p.deadDiff, expected, circle);
+        dead = scanDeadPixels(curr, roi, p.deadDiff, expected, circle, p.deadRadiusPercent);
         report.deadPixels = dead.count;
         report.muraStd = dead.muraStd;
         msDead = stepT.elapsed();

@@ -1,0 +1,3 @@
+﻿Always use CRLF (
+) line endings when modifying or creating files, EXCEPT for 'new_production.pro' which MUST always use LF (
+) format. After every file modification, if you suspect the line endings were converted to LF (for files other than new_production.pro), run a powershell command to replace them back to CRLF.

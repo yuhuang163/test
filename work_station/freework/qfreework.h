@@ -42,6 +42,17 @@ struct QFreeWorkMesSegment {
     QString costTime;
 };
 
+struct PreStartMonitorConfig {
+    bool enabled = false;
+    QString plcDevice = "InovanceH5uTcp";
+    int plcWaitAddressM = 100;
+    int plcPollIntervalMs = 500;
+    QString scannerIp = "192.168.1.64";
+    int scannerPort = 2001;
+    int scannerTimeoutMs = 1000;
+    bool autoIncrementIpByStation = true;
+};
+
 class QFreeWork : public test_base {
     Q_OBJECT
     friend class QFreeWorkTestCaseHookRegistrar;
@@ -478,6 +489,12 @@ class QFreeWork : public test_base {
     /** true=校准步骤：左右均为校准画线对照图。 */
     bool screenInspectCalibGuides_ = false;
 
+    PreStartMonitorConfig preStartMonitorConfig_;
+    QTimer* preStartMonitorTimer_ = nullptr;
+    bool preStartMonitorRunning_ = false;
+    void updatePreStartMonitorState();
+    void triggerHikvisionScanner();
+
   private slots:
     void initData(bool deferDongleAtForVisa = false);
 
@@ -557,6 +574,9 @@ class QFreeWork : public test_base {
     void on_clearSuctionChartButton_clicked();
     void on_viewScreenInspectLargeButton_clicked();
     void on_openScreenInspectFolderButton_clicked();
+
+    void onPreStartMonitorTimeout();
+    void on_autoStartCheckBox_toggled(bool checked);
 
   signals:
     void send_go_next_focus();

@@ -1,4 +1,4 @@
-#include "qfreework.h"
+﻿#include "qfreework.h"
 
 #include "common_utils.h"
 #include "huiling_wfp60h_scpi_types.h"
@@ -601,6 +601,9 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     setupModbusManager();
     plcFacade_.setModbusManager(&modbusManager);
 
+    preStartMonitorTimer_ = new QTimer(this);
+    connect(preStartMonitorTimer_, &QTimer::timeout, this, &QFreeWork::onPreStartMonitorTimeout);
+
     ui->setupUi(this);
     ui->disconnectButton->setEnabled(false);
     ui->jigDisconnectButton->setEnabled(false);
@@ -608,6 +611,7 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     ui->productDisconnectButton->setEnabled(false);
     updateMainStyle("Ubuntu.qss");
     applyFreeWorkExtraTabsVisible(false);
+    
     setupFreeWorkTabBar(ui->tabWidget);
     scanSerialPorts(); // 要搜索一下一开始
     ui->test_result->setText("WAIT");
@@ -775,6 +779,7 @@ void QFreeWork::refreshOrderedTestIndexes() {
     updateTuplePositionUiVisible();
     applyStationSerialUiConfig();
     loadAndApplyStationDeviceSide();
+    updatePreStartMonitorState();
 }
 
 bool QFreeWork::currentOrderedStepIsDongleBleConnect() const {
@@ -790,6 +795,130 @@ bool QFreeWork::currentOrderedStepIsDongleBleConnect() const {
         return true;
     }
     return isDongleBleConnectStepName(caseDef.meta.name);
+}
+
+void QFreeWork::updatePreStartMonitorState() {
+    preStartMonitorConfig_.enabled = false;
+    const QString flowPath = TestCasePaths::flowIniPath();
+    if (!QFile::exists(flowPath)) return;
+
+    QSettings settings(flowPath, QSettings::IniFormat);
+    settings.setIniCodec("UTF-8");
+    settings.beginGroup("PreStart_Monitor");
+    
+    ui->autoStartCheckBox->blockSignals(true);
+    ui->autoStartCheckBox->setChecked(settings.value("IsAutoStartChecked", false).toBool());
+    ui->autoStartCheckBox->blockSignals(false);
+    
+    if (settings.contains("Enabled") && settings.value("Enabled").toBool()) {
+        preStartMonitorConfig_.enabled = true;
+        preStartMonitorConfig_.plcDevice = settings.value("PlcDevice", "InovanceH5uTcp").toString();
+        preStartMonitorConfig_.plcWaitAddressM = settings.value("PlcWaitAddressM", 100).toInt();
+        preStartMonitorConfig_.plcPollIntervalMs = qMax(50, settings.value("PlcPollIntervalMs", 500).toInt());
+        preStartMonitorConfig_.scannerIp = settings.value("ScannerIp", "192.168.1.64").toString();
+        preStartMonitorConfig_.scannerPort = settings.value("ScannerPort", 2001).toInt();
+        preStartMonitorConfig_.scannerTimeoutMs = settings.value("ScannerTimeoutMs", 1000).toInt();
+        preStartMonitorConfig_.autoIncrementIpByStation = settings.value("AutoIncrementIpByStation", true).toBool();
+        
+        if (preStartMonitorConfig_.autoIncrementIpByStation) {
+            QStringList parts = preStartMonitorConfig_.scannerIp.split('.');
+            if (parts.size() == 4) {
+                int lastPart = parts[3].toInt() + (getIndex() - 1);
+                parts[3] = QString::number(lastPart);
+                preStartMonitorConfig_.scannerIp = parts.join('.');
+            }
+        }
+    }
+    settings.endGroup();
+
+    ui->autoStartCheckBox->setVisible(preStartMonitorConfig_.enabled);
+
+    if (preStartMonitorConfig_.enabled && !isTestContinue && ui->autoStartCheckBox->isChecked()) {
+        if (!preStartMonitorRunning_) {
+            preStartMonitorTimer_->start(preStartMonitorConfig_.plcPollIntervalMs);
+            preStartMonitorRunning_ = true;
+            qDebug() << "[FreeWork] Start PreStart Monitor polling on M" << preStartMonitorConfig_.plcWaitAddressM;
+        }
+    } else {
+        if (preStartMonitorRunning_) {
+            preStartMonitorTimer_->stop();
+            preStartMonitorRunning_ = false;
+            qDebug() << "[FreeWork] Stop PreStart Monitor polling";
+        }
+    }
+}
+
+void QFreeWork::on_autoStartCheckBox_toggled(bool checked) {
+    const QString flowPath = TestCasePaths::flowIniPath();
+    if (QFile::exists(flowPath)) {
+        QSettings settings(flowPath, QSettings::IniFormat);
+        settings.setIniCodec("UTF-8");
+        settings.beginGroup("PreStart_Monitor");
+        settings.setValue("IsAutoStartChecked", checked);
+        settings.endGroup();
+    }
+    updatePreStartMonitorState();
+}
+
+void QFreeWork::onPreStartMonitorTimeout() {
+    if (isTestContinue || !preStartMonitorConfig_.enabled) {
+        updatePreStartMonitorState();
+        return;
+    }
+
+    if (!modbusManager.isPlcConnected()) {
+        return;
+    }
+
+    QString plcErr;
+    QVariant param = preStartMonitorConfig_.plcWaitAddressM;
+    QVariant result;
+    bool ok = modbusManager.exec(PlcCmd::ReadCoil, param, &result, &plcErr);
+    
+    if (ok && result.isValid() && result.toBool() == true) {
+        qDebug() << "[FreeWork] PLC Trigger detected! Stopping monitor and triggering scanner.";
+        preStartMonitorTimer_->stop();
+        preStartMonitorRunning_ = false;
+        
+        QMetaObject::invokeMethod(this, "triggerHikvisionScanner", Qt::QueuedConnection);
+    }
+}
+
+#include "hikvision_scanner_tcp.h"
+#include <QtConcurrent>
+#include <QFutureWatcher>
+
+void QFreeWork::triggerHikvisionScanner() {
+    showlog("检测到 PLC 启动信号，正在触发扫码枪...");
+    
+    PreStartMonitorConfig cfg = preStartMonitorConfig_;
+    auto watcher = new QFutureWatcher<QString>(this);
+    connect(watcher, &QFutureWatcher<QString>::finished, this, [this, watcher]() {
+        QString res = watcher->result();
+        watcher->deleteLater();
+        if (res.startsWith("ERROR:")) {
+            showlog(QStringLiteral("扫码枪读取失败: ") + res.mid(6));
+            updatePreStartMonitorState();
+        } else {
+            showlog(QStringLiteral("扫码枪读取成功: ") + res);
+            ui->macInput->setText(res);
+            on_macInput_returnPressed();
+        }
+    });
+
+    QFuture<QString> future = QtConcurrent::run([cfg]() -> QString {
+        HikvisionScannerTcp scanner;
+        QString err;
+        if (!scanner.connectDevice(cfg.scannerIp, cfg.scannerPort, cfg.scannerTimeoutMs, &err)) {
+            return "ERROR:" + err;
+        }
+        QString result;
+        if (!scanner.sendStartAndRead(&result, cfg.scannerTimeoutMs, &err)) {
+            return "ERROR:" + err;
+        }
+        return result;
+    });
+    watcher->setFuture(future);
 }
 
 void QFreeWork::beginUiStartTest() {
@@ -808,6 +937,7 @@ void QFreeWork::beginUiStartTest() {
 
     isTestContinue = true;
     teststate = -1;
+    updatePreStartMonitorState();
     ui->test_time->setText(QStringLiteral("0.0 s"));
     resetLightSensorFivePointState();
 
@@ -1309,6 +1439,7 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     ui->getMac->setDisabled(0);
     // 先退出本工位测试态；最后一个工位结束时才能安全释放共享 ASD 串口。
     isTestContinue = false;
+    updatePreStartMonitorState();
     on_disconnectButton_clicked();
     if (auto* box = qobject_cast<QFreeWorkBox*>(window())) {
         box->releaseSharedAsd9026aIfIdle();
@@ -2118,6 +2249,8 @@ void QFreeWork::runScreenInspectStep() {
     }
     const int deadDiff = mapInt(QStringLiteral("deadDiff"),
                                 SETTINGS.value(QStringLiteral("ScreenInspect/DeadPixelDiff"), 35).toInt());
+    const int deadRadiusPercent = mapInt(QStringLiteral("deadRadiusPercent"),
+                                         SETTINGS.value(QStringLiteral("ScreenInspect/DeadRadiusPercent"), 82).toInt());
     const int saveCapture = mapInt(QStringLiteral("saveCapture"), 1);
     QString referencePath = map.value(QStringLiteral("referencePath")).toString().trimmed();
     if (referencePath.isEmpty())
@@ -2256,6 +2389,7 @@ void QFreeWork::runScreenInspectStep() {
 
     ScreenInspectAnalyzer::Params ap;
     ap.deadDiff = deadDiff;
+    ap.deadRadiusPercent = deadRadiusPercent;
     ap.expectedColor = expectedColor;
     ap.manualRoi = manualRoi;
     // 未启用的卡控项跳过重计算；坏点专用指令仍强制扫坏点
@@ -3197,6 +3331,7 @@ void QFreeWork::on_stopTest_clicked() {
     plcFacade_.disconnect();
     resetVisaBackend();
     isTestContinue = false;
+    updatePreStartMonitorState();
     if (auto* box = qobject_cast<QFreeWorkBox*>(window())) {
         box->releaseSharedAsd9026aIfIdle();
         box->releaseSharedTempLoggerIfIdle();

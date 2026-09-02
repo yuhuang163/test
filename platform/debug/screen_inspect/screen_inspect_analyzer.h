@@ -1,4 +1,4 @@
-#ifndef SCREEN_INSPECT_ANALYZER_H
+﻿#ifndef SCREEN_INSPECT_ANALYZER_H
 #define SCREEN_INSPECT_ANALYZER_H
 
 #include <QImage>
@@ -20,6 +20,7 @@ struct Params {
     QRect manualRoi; // 有效则只在此矩形内判定；空则自动找 ROI
     bool enableDeadPixels = true; // 步骤未启用坏点卡控时可跳过扫描
     bool enableSsim = true;       // 步骤未启用相似度卡控时可跳过 SSIM
+    int deadRadiusPercent = 82;   // 坏点识别的区域缩放比例（默认82%）
 };
 
 inline QRect parseManualRoi(const QString& text) {
