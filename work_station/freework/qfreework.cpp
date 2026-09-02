@@ -1147,6 +1147,9 @@ bool QFreeWork::runSingleTestCaseStep(const QString& stationKey, const QString& 
         "padding: 10px; text-align: center; ");
     TestTime.start();
     ui->test_time->setText(QStringLiteral("0.0 s"));
+    cachedScreenCircleCx_ = -1;
+    cachedScreenCircleCy_ = -1;
+    cachedScreenCircleR_ = -1;
     teststate = 0;
     isTestContinue = true;
     return true;
@@ -2411,9 +2414,25 @@ void QFreeWork::runScreenInspectStep() {
                              needSsim ? QStringLiteral("开") : QStringLiteral("跳过")));
         }
     }
+    const int reuseCircleRoi = mapInt(QStringLiteral("reuseCircleRoi"), 0);
+    if (reuseCircleRoi && cachedScreenCircleR_ > 0) {
+        ap.cachedCircleCx = cachedScreenCircleCx_;
+        ap.cachedCircleCy = cachedScreenCircleCy_;
+        ap.cachedCircleR = cachedScreenCircleR_;
+    }
+
     phaseT.restart();
     const ScreenInspectAnalyzer::Report report = ScreenInspectAnalyzer::analyze(curr, ref, ap);
     const qint64 msAnalyze = phaseT.elapsed();
+
+    // 更新缓存的圆信息
+    if (!reuseCircleRoi || cachedScreenCircleR_ <= 0) {
+        if (report.circleR > 0) {
+            cachedScreenCircleCx_ = report.circleCx;
+            cachedScreenCircleCy_ = report.circleCy;
+            cachedScreenCircleR_ = report.circleR;
+        }
+    }
 
     const QString dir = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("screen_inspect"));
     CommonUtils::ensureDirectory(dir);
@@ -3342,7 +3361,11 @@ void QFreeWork::on_stopTest_clicked() {
     ui->macInput->clear();
     ui->getMac->clear();
     mesProcessCode_.clear();
-    ui->getMac->setFocus();
+    if (ui->isformmes->isChecked()) {
+        ui->getMac->setFocus();
+    } else {
+        ui->macInput->setFocus();
+    }
     on_disconnectButton_clicked();
 }
 

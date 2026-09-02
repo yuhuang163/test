@@ -245,6 +245,13 @@ class QFreeWork : public test_base {
     void beginUiStartTest();
     /** 主动 BleDisconnect 后禁止 startTask 里用当前 MAC 自动重连，直到显式扫描/直连或新一轮测试 */
     bool suppressProductBleAutoReconnect_ = false;
+
+    // 屏幕拍照缓存的上一次检测圆心
+    int cachedScreenCircleCx_ = -1;
+    int cachedScreenCircleCy_ = -1;
+    int cachedScreenCircleR_ = -1;
+
+    void executeSerialTxStep(const QVariantMap& map);
     void runTestFlowBootstrap();
     bool tickOrderedTestStepLoop();
     void finalizeTestFlowIfComplete();
