@@ -1,4 +1,4 @@
-﻿#include "qfreework.h"
+#include "qfreework.h"
 
 #include "common_utils.h"
 #include "huiling_wfp60h_scpi_types.h"
@@ -799,7 +799,7 @@ bool QFreeWork::currentOrderedStepIsDongleBleConnect() const {
 
 void QFreeWork::updatePreStartMonitorState() {
     preStartMonitorConfig_.enabled = false;
-    const QString flowPath = TestCasePaths::flowIniPath();
+    const QString flowPath = TestCasePaths::profileFlowPath(activeFlowStationKey_);
     if (!QFile::exists(flowPath)) return;
 
     QSettings settings(flowPath, QSettings::IniFormat);
@@ -849,7 +849,7 @@ void QFreeWork::updatePreStartMonitorState() {
 }
 
 void QFreeWork::on_autoStartCheckBox_toggled(bool checked) {
-    const QString flowPath = TestCasePaths::flowIniPath();
+    const QString flowPath = TestCasePaths::profileFlowPath(activeFlowStationKey_);
     if (QFile::exists(flowPath)) {
         QSettings settings(flowPath, QSettings::IniFormat);
         settings.setIniCodec("UTF-8");
