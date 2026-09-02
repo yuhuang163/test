@@ -17,7 +17,7 @@ bool HikvisionScannerTcp::connectDevice(const QString& ip, int port, int timeout
     socket_.connectToHost(ip, port);
     if (!socket_.waitForConnected(timeoutMs)) {
         if (errorMessage) {
-            *errorMessage = QStringLiteral("杩炴帴鎵爜鏋秴鏃? ") + socket_.errorString();
+            *errorMessage = QStringLiteral("连接扫码枪超时: ") + socket_.errorString();
         }
         return false;
     }
@@ -37,19 +37,20 @@ bool HikvisionScannerTcp::isConnected() const {
 
 bool HikvisionScannerTcp::sendStartAndRead(QString* outResult, int timeoutMs, QString* errorMessage) {
     if (!isConnected()) {
-        if (errorMessage) *errorMessage = QStringLiteral("鎵爜鏋湭杩炴帴");
+        if (errorMessage) *errorMessage = QStringLiteral("扫码枪未连接");
         return false;
     }
     
-    // 娓呯┖鍙兘鐨勬畫浣欐暟鎹?    socket_.readAll();
+    // 清空可能的残余数据
+    socket_.readAll();
 
     const QByteArray cmd = "start";
     if (socket_.write(cmd) != cmd.size()) {
-        if (errorMessage) *errorMessage = QStringLiteral("鍙戦€佹寚浠ゅけ璐? ") + socket_.errorString();
+        if (errorMessage) *errorMessage = QStringLiteral("发送指令失败: ") + socket_.errorString();
         return false;
     }
     if (!socket_.waitForBytesWritten(timeoutMs)) {
-        if (errorMessage) *errorMessage = QStringLiteral("鍙戦€佹寚浠よ秴鏃?);
+        if (errorMessage) *errorMessage = QStringLiteral("发送指令超时");
         return false;
     }
 
@@ -60,7 +61,8 @@ bool HikvisionScannerTcp::sendStartAndRead(QString* outResult, int timeoutMs, QS
         if (socket_.waitForReadyRead(50)) {
             buffer.append(socket_.readAll());
             QString current = QString::fromLatin1(buffer).trimmed();
-            // 鍋囪鏉＄爜澶т簬 10 涓瓧绗﹀氨绠楁壂鍒颁簡锛堟捣搴锋枃妗ｈ鏄?35 瀛楃锛?            if (current.length() > 10) {
+            // 假设条码大于 10 个字符就算扫到了（海康文档说明 35 字符）
+            if (current.length() > 10) {
                 if (outResult) {
                     *outResult = current;
                 }
@@ -70,6 +72,6 @@ bool HikvisionScannerTcp::sendStartAndRead(QString* outResult, int timeoutMs, QS
         QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents, 10);
     }
     
-    if (errorMessage) *errorMessage = QStringLiteral("璇诲彇鏉＄爜瓒呮椂锛屽彲鑳芥湭鎵埌");
+    if (errorMessage) *errorMessage = QStringLiteral("读取条码超时，可能未扫到");
     return false;
 }
