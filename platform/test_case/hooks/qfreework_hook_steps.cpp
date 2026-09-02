@@ -1,5 +1,5 @@
 #include "qfreework.h"
-#include "hikvision_scanner.h"
+#include "hikvision_scanner_tcp.h"
 
 #include <algorithm>
 
@@ -1088,7 +1088,12 @@ void QFreeWork::runHikvisionScannerReadStep() {
     
     QString barcode;
     QString error;
-    bool ok = HikvisionScanner::scan(ip, port, timeout, &barcode, &error);
+    HikvisionScannerTcp scanner;
+    bool ok = false;
+    if (scanner.connectDevice(ip, port, timeout, &error)) {
+        ok = scanner.sendStartAndRead(&barcode, timeout, &error);
+        scanner.disconnectDevice();
+    }
     
     if (ok) {
         showlog(QStringLiteral("扫码成功: %1").arg(barcode));

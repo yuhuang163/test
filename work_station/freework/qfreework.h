@@ -364,6 +364,7 @@ class QFreeWork : public test_base {
     void applySuctionGateFromStepParam(const QVariant& param);
     /** test_case Hook 步骤（实现见 qfreework_hook_steps.cpp） */
     void runDongleSuctionSampleStep();
+    void runHikvisionScannerReadStep();
     /** Dongle 单通道吸力采样；判定走 ProtocolDongleSuctionPeakData Gate。 */
     void runDongleSuctionSampleSingleStep();
     /** V3 光感单点校准（产品协议）：采光感取平均 → 写平均值并回读。亮度由前一步治具 VES 设置。 */
