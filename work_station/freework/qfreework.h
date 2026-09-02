@@ -503,9 +503,9 @@ class QFreeWork : public test_base {
     QTimer* preStartMonitorTimer_ = nullptr;
     bool preStartMonitorRunning_ = false;
     void updatePreStartMonitorState();
-    void triggerHikvisionScanner();
 
   private slots:
+    void triggerHikvisionScanner();
     void initData(bool deferDongleAtForVisa = false);
 
     // 协议上行（实现见 qfreework_data.cpp）
