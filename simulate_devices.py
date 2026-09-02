@@ -1,0 +1,113 @@
+import socket
+import threading
+import time
+
+# ==========================================
+# 1. 模拟 PLC (Modbus TCP) - 监听 502 端口
+# ==========================================
+def plc_simulator_worker():
+    PLC_PORT = 502
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    # 允许端口复用
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        server.bind(('0.0.0.0', PLC_PORT))
+        server.listen(5)
+        print(f"[PLC] 模拟器已启动，正在监听端口 {PLC_PORT}...")
+    except Exception as e:
+        print(f"[PLC] 启动失败: {e}。请确保没有其他程序占用 502 端口，并且以管理员权限运行。")
+        return
+
+    while True:
+        client, addr = server.accept()
+        print(f"[PLC] 上位机已连接: {addr}")
+        
+        def handle_client(c):
+            try:
+                while True:
+                    req = c.recv(1024)
+                    if not req:
+                        break
+                    # 简单解析 Modbus TCP 报文
+                    # 头7个字节是：事务标识(2) + 协议标识(2) + 长度(2) + 单元标识(1)
+                    # 第8个字节是功能码
+                    if len(req) >= 12:
+                        trans_id = req[0:2]
+                        unit_id = req[6:7]
+                        func_code = req[7]
+                        
+                        # 如果是读线圈 (0x01) 或 读离散输入 (0x02)
+                        if func_code in (1, 2):
+                            # 永远返回 "线圈状态为 1 (True)"
+                            # 响应格式: 事务标识(2) + 协议(0,0) + 长度(0,4) + 单元(1) + 功能码(1) + 字节数(1) + 状态值(1)
+                            resp = trans_id + b'\x00\x00\x00\x04' + unit_id + bytes([func_code, 0x01, 0x01])
+                            c.sendall(resp)
+                            print("[PLC] 收到查询请求，已返回状态: ON (True)")
+            except Exception as e:
+                pass
+            finally:
+                c.close()
+                print(f"[PLC] 上位机已断开: {addr}")
+
+        threading.Thread(target=handle_client, args=(client,), daemon=True).start()
+
+
+# ==========================================
+# 2. 模拟海康扫码枪 (TCP Server) - 监听 2001 端口
+# ==========================================
+def scanner_simulator_worker():
+    SCANNER_PORT = 2001
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        server.bind(('0.0.0.0', SCANNER_PORT))
+        server.listen(5)
+        print(f"[扫码枪] 模拟器已启动，正在监听端口 {SCANNER_PORT}...")
+    except Exception as e:
+        print(f"[扫码枪] 启动失败: {e}。")
+        return
+
+    while True:
+        client, addr = server.accept()
+        print(f"[扫码枪] 上位机已连接: {addr}")
+        
+        def handle_client(c):
+            try:
+                # 扫码枪逻辑：接收到指令后，返回条码
+                req = c.recv(1024)
+                if req:
+                    cmd_str = req.decode('utf-8', errors='ignore').strip()
+                    print(f"[扫码枪] 收到触发指令: '{cmd_str}'")
+                    
+                    # 假装正在扫码，延迟 0.5 秒
+                    time.sleep(0.5)
+                    
+                    # 发送模拟条码
+                    fake_barcode = "SIM_BARCODE_2026\r\n"
+                    c.sendall(fake_barcode.encode('utf-8'))
+                    print(f"[扫码枪] 已返回条码: {fake_barcode.strip()}")
+            except Exception as e:
+                pass
+            finally:
+                c.close()
+
+        threading.Thread(target=handle_client, args=(client,), daemon=True).start()
+
+
+if __name__ == "__main__":
+    print("========================================")
+    print("      PLC & 扫码枪 组合模拟器运行中")
+    print("========================================")
+    
+    t1 = threading.Thread(target=plc_simulator_worker, daemon=True)
+    t2 = threading.Thread(target=scanner_simulator_worker, daemon=True)
+    
+    t1.start()
+    t2.start()
+    
+    # 保持主线程存活
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\n模拟器已关闭。")

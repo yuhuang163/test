@@ -1,4 +1,4 @@
-﻿#ifndef SCREEN_INSPECT_ANALYZER_H
+#ifndef SCREEN_INSPECT_ANALYZER_H
 #define SCREEN_INSPECT_ANALYZER_H
 
 #include <QImage>
@@ -21,6 +21,9 @@ struct Params {
     bool enableDeadPixels = true; // 步骤未启用坏点卡控时可跳过扫描
     bool enableSsim = true;       // 步骤未启用相似度卡控时可跳过 SSIM
     int deadRadiusPercent = 82;   // 坏点识别的区域缩放比例（默认82%）
+    int cachedCircleCx = -1;
+    int cachedCircleCy = -1;
+    int cachedCircleR = -1;
 };
 
 inline QRect parseManualRoi(const QString& text) {
@@ -48,6 +51,9 @@ struct Report {
     int expectedColorUsed = -1;
     int detectedColor = -1;
     int colorMatch = -1; // -1未指定期望色；1匹配；0不匹配
+    int circleCx = -1;
+    int circleCy = -1;
+    int circleR = -1;
     QRect roi;
     QImage annotated;
 };

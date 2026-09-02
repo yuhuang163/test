@@ -1,4 +1,4 @@
-﻿#include "screen_inspect_analyzer.h"
+#include "screen_inspect_analyzer.h"
 
 #include <QColor>
 #include <QCoreApplication>
@@ -867,7 +867,17 @@ Report analyze(const QImage& currRgb, const QImage& refRgb, const Params& p) {
     if (roi.width() < 10 || roi.height() < 10)
         roi = detectScreenRoi(curr);
     report.roi = roi;
-    const ScreenCircle circle = detectScreenCircle(curr, roi);
+    ScreenCircle circle;
+    if (p.cachedCircleR > 0) {
+        circle.cx = p.cachedCircleCx;
+        circle.cy = p.cachedCircleCy;
+        circle.r = p.cachedCircleR;
+    } else {
+        circle = detectScreenCircle(curr, roi);
+    }
+    report.circleCx = circle.cx;
+    report.circleCy = circle.cy;
+    report.circleR = circle.r;
     const qint64 msRoi = stepT.elapsed();
 
     stepT.start();
