@@ -44,7 +44,9 @@ struct QFreeWorkMesSegment {
 
 struct PreStartMonitorConfig {
     bool enabled = false;
-    QString plcDevice = "InovanceH5uTcp";
+    QString plcDevice;
+    QString plcIp;
+    int plcPort = 502;
     int plcWaitAddressM = 100;
     int plcPollIntervalMs = 500;
     QString scannerIp = "192.168.1.64";

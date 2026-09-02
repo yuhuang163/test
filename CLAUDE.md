@@ -10,6 +10,10 @@
 
 ## 技术栈
 
+## 上下文防遗忘与长对话机制（强制执行）
+- **长上下文检索**：因为系统可能折叠早期的对话历史，当涉及**以前修改过的文件配置、网络 IP/端口设置、或者早期的用户明确要求**时，**严禁**单凭摘要猜测。
+- **强制使用日志**：遇到疑问或用户反馈“联系错前后文”时，必须主动使用工具读取 `.system_generated/logs/transcript.jsonl`（包含全部完整的历史对话日志），精准还原上文细节和用户最初贴出的完整内容。
+
 - **Qt 5.15**，**MSVC**，**C++17**，工程入口：`new_production.pro`（`CONFIG += c++17`，编译选项含 `/utf-8`）。
 - **文本编码**：除第三方或未改动的存量文件外，本项目新建或修改的 **`.cpp` / `.h` / `.hpp` / `.ui` / `.pro` / `.qrc` / `.md` / `.ini` 配置片段等** 一律使用 **UTF-8（无 BOM）** 保存；工程已配置 `/utf-8` 编译选项，无需 BOM。已有文件若非任务要求不要随意改编码。
 - **换行**：`.gitattributes` 为 `* -text`，**仓库内文本默认 CRLF 原样入库**；**仅根目录 `new_production.pro` 固定 LF**（qmake 入口）；`*.sh` 保持 LF。`python scripts/convert_to_crlf.py` **无参数时只检查 `new_production.pro`**，不批量改其它文件；Agent 改动其它文本后对该文件执行 `python scripts/convert_to_crlf.py <路径>` 转 CRLF。
