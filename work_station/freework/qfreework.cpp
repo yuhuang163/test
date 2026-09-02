@@ -1637,8 +1637,22 @@ void QFreeWork::onTestCasePromptAcknowledged(bool accepted) {
     testCasePromptAcknowledged_ = true;
     if (!stepRuntime_.started || stepRuntime_.done || !testCaseStepActive_)
         return;
-    if (!TestCaseRunner::stepWaitsForPromptAck(activeTestCase_))
+    if (!TestCaseRunner::stepWaitsForPromptAck(activeTestCase_)) {
+        // 卡控提示步骤（Gate 已开）弹窗只提示、无「是/否」按钮；用户叉掉即放弃本步，直接判失败
+        if (!accepted) {
+            if (!testCaseCommandBegun_)
+                testCaseCommandBegun_ = true;
+            stepRuntime_.done = true;
+            stepRuntime_.pass = false;
+            stepRuntime_.ask = QStringLiteral("失败");
+            if (stepRuntime_.testData == QLatin1String("-"))
+                stepRuntime_.testData = QStringLiteral("用户关闭提示弹窗");
+            TestResult = failValue;
+            showlog(QStringLiteral("弹窗确认：关闭，本步失败"));
+            canGoNext = true;
+        }
         return;
+    }
     // 点「否」：本步失败，不发指令
     if (!accepted) {
         if (!testCaseCommandBegun_)
