@@ -258,6 +258,16 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     if (ui->screenInspectPage)
         ui->screenInspectPage->bindDesignerUi();
     initDebugTabLayout();
+    // 泵/阀交替运行频率实时跟随四个时长输入框
+    auto bindPumpRateInput = [this](QLineEdit* edit) {
+        if (edit)
+            connect(edit, &QLineEdit::textChanged, this, &MainWindow::updateDongleAtPumpRate);
+    };
+    bindPumpRateInput(ui->DongleAtPumpSec);
+    bindPumpRateInput(ui->DongleAtPumpOff);
+    bindPumpRateInput(ui->DongleAtValveSec);
+    bindPumpRateInput(ui->DongleAtValveOff);
+    updateDongleAtPumpRate();
     screenInspectPage_ = ui->screenInspectPage;
     protocolManager.bindQpb(pb);
     protocolManager.bindQfctp(qfctp);
@@ -6519,8 +6529,16 @@ void MainWindow::on_btnDongleAtSetPumpSec_clicked() {
     sendDongleAtIntParam(QStringLiteral("PUMPSEC"), ui->DongleAtPumpSec->text(), 1);
 }
 
+void MainWindow::on_btnDongleAtSetPumpOff_clicked() {
+    sendDongleAtIntParam(QStringLiteral("PUMPOFF"), ui->DongleAtPumpOff->text(), 0);
+}
+
 void MainWindow::on_btnDongleAtSetValveSec_clicked() {
     sendDongleAtIntParam(QStringLiteral("VALVESEC"), ui->DongleAtValveSec->text(), 1);
+}
+
+void MainWindow::on_btnDongleAtSetValveOff_clicked() {
+    sendDongleAtIntParam(QStringLiteral("VALVEOFF"), ui->DongleAtValveOff->text(), 0);
 }
 
 void MainWindow::on_btnDongleAtSetPumpTotal_clicked() {
@@ -6554,6 +6572,18 @@ void MainWindow::on_btnDongleAtPumpSetAll_clicked() {
         QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("阀运行毫秒数须为正整数"));
         return;
     }
+    const int pumpOff = ui->DongleAtPumpOff->text().trimmed().toInt(&ok);
+    if (!ok || pumpOff < 0) {
+        QMessageBox::warning(this, QStringLiteral("警告"),
+                             QStringLiteral("泵后全关毫秒数须为不小于 0 的整数（0=不保持全关）"));
+        return;
+    }
+    const int valveOff = ui->DongleAtValveOff->text().trimmed().toInt(&ok);
+    if (!ok || valveOff < 0) {
+        QMessageBox::warning(this, QStringLiteral("警告"),
+                             QStringLiteral("阀后全关毫秒数须为不小于 0 的整数（0=不保持全关）"));
+        return;
+    }
     const int totalSec = ui->DongleAtPumpTotal->text().trimmed().toInt(&ok);
     if (!ok || totalSec < 0) {
         QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("总运行毫秒数须为不小于 0 的整数（0=不限）"));
@@ -6575,7 +6605,13 @@ void MainWindow::on_btnDongleAtPumpSetAll_clicked() {
     if (!sendDongleAtLineCmd(QStringLiteral("PUMPSEC"), QString::number(pumpSec)))
         return;
     waitWork(50);
+    if (!sendDongleAtLineCmd(QStringLiteral("PUMPOFF"), QString::number(pumpOff)))
+        return;
+    waitWork(50);
     if (!sendDongleAtLineCmd(QStringLiteral("VALVESEC"), QString::number(valveSec)))
+        return;
+    waitWork(50);
+    if (!sendDongleAtLineCmd(QStringLiteral("VALVEOFF"), QString::number(valveOff)))
         return;
     waitWork(50);
     if (!sendDongleAtLineCmd(QStringLiteral("PUMPTOTAL"), QString::number(totalSec)))
@@ -6601,4 +6637,21 @@ void MainWindow::on_btnDongleAtPumpStart_clicked() {
 
 void MainWindow::on_btnDongleAtPumpStop_clicked() {
     sendDongleAtLineCmd(QStringLiteral("PUMPSTOP"), QStringLiteral("1"));
+}
+
+void MainWindow::updateDongleAtPumpRate() {
+    if (!ui->label_dongle_at_pump_rate)
+        return;
+    bool ok = false;
+    const int pumpSec = ui->DongleAtPumpSec->text().trimmed().toInt(&ok);
+    const int pumpOff = ok ? ui->DongleAtPumpOff->text().trimmed().toInt(&ok) : 0;
+    const int valveSec = ok ? ui->DongleAtValveSec->text().trimmed().toInt(&ok) : 0;
+    const int valveOff = ok ? ui->DongleAtValveOff->text().trimmed().toInt(&ok) : 0;
+    const int cycleMs = pumpSec + pumpOff + valveSec + valveOff;
+    if (!ok || cycleMs <= 0) {
+        ui->label_dongle_at_pump_rate->setText(QStringLiteral("频率：-- 次/分钟"));
+        return;
+    }
+    ui->label_dongle_at_pump_rate->setText(
+        QStringLiteral("频率：%1 次/分钟").arg(60000.0 / cycleMs, 0, 'f', 2));
 }
