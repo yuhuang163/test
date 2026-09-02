@@ -1,4 +1,4 @@
-﻿#include "test_case_edit_dialog.h"
+#include "test_case_edit_dialog.h"
 #include "ui_test_case_edit_dialog.h"
 
 #include "test_case.h"
@@ -1708,6 +1708,7 @@ void initFixturePcbaGateTable(QTableWidget* table) {
 
 const QHash<QString, QString>& hookDisplayNameMap() {
     static const QHash<QString, QString> map = {
+        {QStringLiteral("HIKVISION_SCANNER_READ"), QStringLiteral("海康扫码枪读取(HIKVISION_SCANNER)")},
         {QStringLiteral("JIG_CURRENT_READ"), QStringLiteral("读取治具电流测量值")},
         {QStringLiteral("DONGLE_SUCTION_ENABLE"), QStringLiteral("开启 dongle 吸力读取")},
         {QStringLiteral("DONGLE_SUCTION_DISABLE"), QStringLiteral("关闭 dongle 吸力读取")},

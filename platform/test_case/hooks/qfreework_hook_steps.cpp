@@ -1,4 +1,5 @@
 #include "qfreework.h"
+#include "hikvision_scanner.h"
 
 #include <algorithm>
 
@@ -1065,3 +1066,40 @@ void QFreeWork::startPlcSwitchPlcAndWaitRightRotate() {
 #if _MSC_VER >= 1600
 #pragma execution_character_set(pop)
 #endif
+
+void QFreeWork::runHikvisionScannerReadStep() {
+    const TestCaseDefinition& def = activeTestCase();
+    QVariantMap map;
+    if (def.send.param.canConvert<QVariantMap>()) {
+        map = resolveTestCaseSendParamTree(def.send.param).toMap();
+    }
+    
+    QString ip = map.value(QStringLiteral("ip")).toString().trimmed();
+    int port = map.value(QStringLiteral("port"), 2001).toInt();
+    int timeout = map.value(QStringLiteral("timeout"), 1000).toInt();
+
+    if (ip.isEmpty()) {
+        markActiveTestCaseStepDone(false, QStringLiteral("未配置 IP 地址"), QStringLiteral("失败"));
+        showlog(QStringLiteral("扫码枪错误：步骤参数未配置 ip"));
+        return;
+    }
+
+    showlog(QStringLiteral("正在触发扫码枪（IP: %1, Port: %2, Timeout: %3ms）").arg(ip).arg(port).arg(timeout));
+    
+    QString barcode;
+    QString error;
+    bool ok = HikvisionScanner::scan(ip, port, timeout, &barcode, &error);
+    
+    if (ok) {
+        showlog(QStringLiteral("扫码成功: %1").arg(barcode));
+        // 用户要求：扫码结果回填入原本扫码输入的sn填窗中
+        if (ui && ui->macInput) {
+            ui->macInput->setText(barcode);
+            macAddress = barcode;
+        }
+        markActiveTestCaseStepDone(true, barcode, QStringLiteral("通过"));
+    } else {
+        showlog(QStringLiteral("扫码失败: %1").arg(error));
+        markActiveTestCaseStepDone(false, error, QStringLiteral("失败"));
+    }
+}

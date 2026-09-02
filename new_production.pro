@@ -109,6 +109,7 @@ INCLUDEPATH += agreement/factory_protocol/protocol
 INCLUDEPATH += business/ble_ota
 INCLUDEPATH += business/tuple
 INCLUDEPATH += business/plc_v3_fixture
+INCLUDEPATH += business/hikvision_scanner
 INCLUDEPATH += platform/settings
 INCLUDEPATH += platform/settings/test_flow
 INCLUDEPATH += platform/settings/widgets
@@ -371,6 +372,7 @@ SOURCES += \
     business/plc_v3_fixture/plc_v3_touch.cpp \
     business/plc_v3_fixture/plc_v3_facade.cpp \
     business/plc_v3_fixture/plc_v3_fixture.cpp \
+    business/hikvision_scanner/hikvision_scanner.cpp \
     work_station/test_base.cpp \
 
 
@@ -561,6 +563,7 @@ HEADERS += \
     business/plc_v3_fixture/plc_v3_touch.h \
     business/plc_v3_fixture/plc_v3_facade.h \
     business/plc_v3_fixture/plc_v3_fixture.h \
+    business/hikvision_scanner/hikvision_scanner.h \
     work_station/test_base.h \
 
 FORMS += \
