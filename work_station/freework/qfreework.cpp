@@ -923,6 +923,8 @@ void QFreeWork::triggerHikvisionScanner() {
             showlog(QStringLiteral("扫码枪读取成功: ") + res);
             ui->getMac->setText(res);
             on_getMac_returnPressed();
+            // 如果解析失败或 MES 拒绝导致没有真正开始测试，恢复监控，允许下一次扫码
+            updatePreStartMonitorState();
         }
     });
 
