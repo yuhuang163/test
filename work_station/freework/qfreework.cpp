@@ -813,6 +813,8 @@ void QFreeWork::updatePreStartMonitorState() {
     if (settings.contains("Enabled") && settings.value("Enabled").toBool()) {
         preStartMonitorConfig_.enabled = true;
         preStartMonitorConfig_.plcDevice = settings.value("PlcDevice", "InovanceH5uTcp").toString();
+        preStartMonitorConfig_.plcIp = settings.value("PlcIp", "127.0.0.1").toString();
+        preStartMonitorConfig_.plcPort = settings.value("PlcPort", 502).toInt();
         preStartMonitorConfig_.plcWaitAddressM = settings.value("PlcWaitAddressM", 100).toInt();
         preStartMonitorConfig_.plcPollIntervalMs = qMax(50, settings.value("PlcPollIntervalMs", 500).toInt());
         preStartMonitorConfig_.scannerIp = settings.value("ScannerIp", "192.168.1.64").toString();
@@ -868,7 +870,15 @@ void QFreeWork::onPreStartMonitorTimeout() {
 
     if (!modbusManager.isPlcConnected()) {
         QString err;
-        if (!modbusManager.connectPlc(&err)) {
+        QVariantMap connectParams;
+        if (!preStartMonitorConfig_.plcIp.isEmpty()) {
+            connectParams.insert(QStringLiteral("host"), preStartMonitorConfig_.plcIp);
+        }
+        if (preStartMonitorConfig_.plcPort > 0) {
+            connectParams.insert(QStringLiteral("port"), preStartMonitorConfig_.plcPort);
+        }
+        
+        if (!modbusManager.exec(PlcCmd::Connect, connectParams, nullptr, &err)) {
             static qint64 lastLog = 0;
             if (QDateTime::currentMSecsSinceEpoch() - lastLog > 5000) {
                 qDebug() << "[FreeWork] PreStartMonitor auto-connect to PLC failed:" << err;
