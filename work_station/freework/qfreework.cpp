@@ -901,8 +901,8 @@ void QFreeWork::triggerHikvisionScanner() {
             updatePreStartMonitorState();
         } else {
             showlog(QStringLiteral("扫码枪读取成功: ") + res);
-            ui->macInput->setText(res);
-            on_macInput_returnPressed();
+            ui->getMac->setText(res);
+            on_getMac_returnPressed();
         }
     });
 
