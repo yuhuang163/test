@@ -395,7 +395,8 @@ QStringList sendParamPreferredOrder(TestCaseSendChannel channel, const QString& 
                             QStringLiteral("cameraSerial"), QStringLiteral("cameraIndex"),
                             QStringLiteral("cameraName"), QStringLiteral("warmupMs"),
                             QStringLiteral("expectedColor"), QStringLiteral("deadDiff"),
-                            QStringLiteral("deadRadiusPercent"), QStringLiteral("saveCapture"), QStringLiteral("roi")};
+                            QStringLiteral("deadRadiusPercent"), QStringLiteral("saveCapture"), QStringLiteral("roi"),
+                            QStringLiteral("reuseCircleRoi")};
         if (cmdName == QLatin1String("ScreenDisplayAnomalyCheck")
             || cmdName == QLatin1String("ScreenCameraCalibration"))
             keys.append(QStringLiteral("referencePath"));
@@ -684,7 +685,8 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
                             {QStringLiteral("deadDiff"), QStringLiteral("35")},
                             {QStringLiteral("deadRadiusPercent"), QStringLiteral("82")},
                             {QStringLiteral("saveCapture"), QStringLiteral("1")},
-                            {QStringLiteral("roi"), QString()}};
+                            {QStringLiteral("roi"), QString()},
+                            {QStringLiteral("reuseCircleRoi"), QStringLiteral("0")}};
             if (cmdName == QLatin1String("ScreenDisplayAnomalyCheck")
                 || cmdName == QLatin1String("ScreenCameraCalibration"))
                 map.insert(QStringLiteral("referencePath"), QString());
