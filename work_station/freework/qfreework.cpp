@@ -867,7 +867,17 @@ void QFreeWork::onPreStartMonitorTimeout() {
     }
 
     if (!modbusManager.isPlcConnected()) {
-        return;
+        QString err;
+        if (!modbusManager.connectPlc(&err)) {
+            static qint64 lastLog = 0;
+            if (QDateTime::currentMSecsSinceEpoch() - lastLog > 5000) {
+                qDebug() << "[FreeWork] PreStartMonitor auto-connect to PLC failed:" << err;
+                lastLog = QDateTime::currentMSecsSinceEpoch();
+            }
+            return;
+        } else {
+            qDebug() << "[FreeWork] PreStartMonitor auto-connected to PLC successfully.";
+        }
     }
 
     QString plcErr;
