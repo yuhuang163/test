@@ -4,8 +4,6 @@
 
 ## 环境注意事项（Claude Code 专用）
 
-- **代码被公司透明加密，`Read` 工具读源码会返回乱码（密文）**：不要用 `Read` 读 `.cpp/.h/.pro/.md` 等源码。改用 **Bash 执行 `cat` / `sed -n '行号范围p'` / `grep` / `xxd` / `file`**——这些命令跑在 git-bash 进程里，被加密软件放行，能读到明文（含中文注释）。
-- `Write` / `Edit` / `git status|diff` 正常，读到的都是明文；内置 `Grep` 工具大概率同样乱码，检索优先用 Bash 的 `grep`。
 - **`python` 是 Windows Store 占位符**（`python -c ...` 退出码 49、无输出），跑不了 `scripts/convert_to_crlf.py`；需要转 CRLF 时改用 `perl -pi -e 's/\r?\n/\r\n/g' <文件>`。
 
 ## 技术栈

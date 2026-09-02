@@ -465,7 +465,11 @@ void QFreeWork::onTestCaseStepMarkedDone(bool pass, const QString& testData, con
 }
 
 void QFreeWork::appendTestCaseMes(const TestCaseDefinition& def, bool pass, const QString& testData) {
-    const QString tag = def.meta.mesTag.trimmed().isEmpty() ? def.meta.name.trimmed() : def.meta.mesTag.trimmed();
+    // 优先取云服务字段（中文 DisplayName），其次中文 Name，最后回退 MES 英文 MesTag
+    const QString tag = def.meta.displayName.trimmed().isEmpty()
+                            ? (def.meta.name.trimmed().isEmpty() ? def.meta.mesTag.trimmed()
+                                                                 : def.meta.name.trimmed())
+                            : def.meta.displayName.trimmed();
     const bool hasData = !testData.trimmed().isEmpty() && testData != QStringLiteral("-");
     QString value = hasData ? testData.trimmed() : QString();
     const QString resultVal = pass ? QStringLiteral("PASS") : QStringLiteral("FAIL");
@@ -523,9 +527,12 @@ void QFreeWork::appendTestCaseMes(const TestCaseDefinition& def, bool pass, cons
 
 void QFreeWork::appendMultiGateTestCaseMes(const QVector<TestCaseGate>& gates, const QString& reportType,
                                            const QVariant& payload) {
-    const QString baseTag =
-        activeTestCase_.meta.mesTag.trimmed().isEmpty() ? activeTestCase_.meta.name.trimmed()
-                                                        : activeTestCase_.meta.mesTag.trimmed();
+    // 优先取云服务字段（中文 DisplayName），其次中文 Name，最后回退 MES 英文 MesTag
+    const QString baseTag = activeTestCase_.meta.displayName.trimmed().isEmpty()
+                                ? (activeTestCase_.meta.name.trimmed().isEmpty()
+                                       ? activeTestCase_.meta.mesTag.trimmed()
+                                       : activeTestCase_.meta.name.trimmed())
+                                : activeTestCase_.meta.displayName.trimmed();
     for (const TestCaseGate& g : gates) {
         if (!g.enabled)
             continue;

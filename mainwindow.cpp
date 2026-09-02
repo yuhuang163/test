@@ -6546,17 +6546,17 @@ void MainWindow::on_btnDongleAtPumpSetAll_clicked() {
     }
     const int pumpSec = ui->DongleAtPumpSec->text().trimmed().toInt(&ok);
     if (!ok || pumpSec < 1) {
-        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("泵运行秒数须为正整数"));
+        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("泵运行毫秒数须为正整数"));
         return;
     }
     const int valveSec = ui->DongleAtValveSec->text().trimmed().toInt(&ok);
     if (!ok || valveSec < 1) {
-        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("阀运行秒数须为正整数"));
+        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("阀运行毫秒数须为正整数"));
         return;
     }
     const int totalSec = ui->DongleAtPumpTotal->text().trimmed().toInt(&ok);
     if (!ok || totalSec < 0) {
-        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("总运行秒数须为不小于 0 的整数（0=不限）"));
+        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("总运行毫秒数须为不小于 0 的整数（0=不限）"));
         return;
     }
     const int fgPrint = ui->DongleAtFgPrint->text().trimmed().toInt(&ok);

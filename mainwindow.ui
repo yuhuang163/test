@@ -5878,7 +5878,7 @@
                          <item>
                           <widget class="QLabel" name="label_dongle_at_pump_sec">
                            <property name="text">
-                            <string>泵运行(秒)</string>
+                            <string>泵运行(ms)</string>
                            </property>
                           </widget>
                          </item>
@@ -5891,17 +5891,17 @@
                             </size>
                            </property>
                            <property name="toolTip">
-                            <string>AT+PUMPSEC=，泵运行秒数（默认 5）</string>
+                            <string>AT+PUMPSEC=，泵运行毫秒数（默认 5000）</string>
                            </property>
                            <property name="text">
-                            <string>5</string>
+                            <string>5000</string>
                            </property>
                           </widget>
                          </item>
                          <item>
                           <widget class="QPushButton" name="btnDongleAtSetPumpSec">
                            <property name="toolTip">
-                            <string>下发 AT+PUMPSEC=秒数</string>
+                            <string>下发 AT+PUMPSEC=毫秒数</string>
                            </property>
                            <property name="text">
                             <string>设置</string>
@@ -5928,7 +5928,7 @@
                          <item>
                           <widget class="QLabel" name="label_dongle_at_valve_sec">
                            <property name="text">
-                            <string>阀运行(秒)</string>
+                            <string>阀运行(ms)</string>
                            </property>
                           </widget>
                          </item>
@@ -5941,17 +5941,17 @@
                             </size>
                            </property>
                            <property name="toolTip">
-                            <string>AT+VALVESEC=，阀运行秒数（默认 3）</string>
+                            <string>AT+VALVESEC=，阀运行毫秒数（默认 3000）</string>
                            </property>
                            <property name="text">
-                            <string>3</string>
+                            <string>3000</string>
                            </property>
                           </widget>
                          </item>
                          <item>
                           <widget class="QPushButton" name="btnDongleAtSetValveSec">
                            <property name="toolTip">
-                            <string>下发 AT+VALVESEC=秒数</string>
+                            <string>下发 AT+VALVESEC=毫秒数</string>
                            </property>
                            <property name="text">
                             <string>设置</string>
@@ -5961,7 +5961,7 @@
                          <item>
                           <widget class="QLabel" name="label_dongle_at_pump_total">
                            <property name="text">
-                            <string>总运行(秒，0=不限)</string>
+                            <string>总运行(ms，0=不限)</string>
                            </property>
                           </widget>
                          </item>
@@ -5974,7 +5974,7 @@
                             </size>
                            </property>
                            <property name="toolTip">
-                            <string>AT+PUMPTOTAL=，总运行秒数（0=不限）</string>
+                            <string>AT+PUMPTOTAL=，总运行毫秒数（0=不限）</string>
                            </property>
                            <property name="text">
                             <string>0</string>
@@ -5984,7 +5984,7 @@
                          <item>
                           <widget class="QPushButton" name="btnDongleAtSetPumpTotal">
                            <property name="toolTip">
-                            <string>下发 AT+PUMPTOTAL=总秒数</string>
+                            <string>下发 AT+PUMPTOTAL=总毫秒数</string>
                            </property>
                            <property name="text">
                             <string>设置</string>
