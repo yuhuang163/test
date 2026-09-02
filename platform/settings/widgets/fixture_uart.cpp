@@ -37,10 +37,48 @@ Fixture_uart::Fixture_uart(QWidget* parent) : QWidget(parent), ui(new Ui::Fixtur
     connect(fixtureManager_, &QFixtureManager::send_data_to_mechine_start, this, &Fixture_uart::send_data_to_mechine_start);
     connect(fixtureManager_, &QFixtureManager::start_fix_action, this, &Fixture_uart::start_fix_action);
     connect(fixtureManager_, &QFixtureManager::send_data_to_mechine_press, this, &Fixture_uart::send_data_to_mechine_press);
+
+    loadPreStartMonitorConfig();
 }
 
 Fixture_uart::~Fixture_uart() {
     delete ui;
+}
+
+void Fixture_uart::loadPreStartMonitorConfig() {
+    // 回填时屏蔽两个 QSpinBox 信号，避免 setValue 触发 valueChanged 提前写回 SETTINGS
+    ui->scannerPortSpinBox->blockSignals(true);
+    ui->plcPortSpinBox->blockSignals(true);
+    ui->scannerIpLineEdit->setText(SETTINGS.value(QStringLiteral("PreStart_Monitor/ScannerIp"), QStringLiteral("127.0.0.1")).toString());
+    ui->scannerPortSpinBox->setValue(SETTINGS.value(QStringLiteral("PreStart_Monitor/ScannerPort"), 2001).toInt());
+    ui->plcIpLineEdit->setText(SETTINGS.value(QStringLiteral("PreStart_Monitor/PlcIp"), QStringLiteral("127.0.0.1")).toString());
+    ui->plcPortSpinBox->setValue(SETTINGS.value(QStringLiteral("PreStart_Monitor/PlcPort"), 502).toInt());
+    ui->scannerPortSpinBox->blockSignals(false);
+    ui->plcPortSpinBox->blockSignals(false);
+}
+
+void Fixture_uart::savePreStartMonitorConfig() {
+    SETTINGS.setValue(QStringLiteral("PreStart_Monitor/ScannerIp"), ui->scannerIpLineEdit->text().trimmed());
+    SETTINGS.setValue(QStringLiteral("PreStart_Monitor/ScannerPort"), ui->scannerPortSpinBox->value());
+    SETTINGS.setValue(QStringLiteral("PreStart_Monitor/PlcIp"), ui->plcIpLineEdit->text().trimmed());
+    SETTINGS.setValue(QStringLiteral("PreStart_Monitor/PlcPort"), ui->plcPortSpinBox->value());
+    SETTINGS.sync();
+}
+
+void Fixture_uart::on_scannerIpLineEdit_editingFinished() {
+    savePreStartMonitorConfig();
+}
+
+void Fixture_uart::on_plcIpLineEdit_editingFinished() {
+    savePreStartMonitorConfig();
+}
+
+void Fixture_uart::on_scannerPortSpinBox_valueChanged(int) {
+    savePreStartMonitorConfig();
+}
+
+void Fixture_uart::on_plcPortSpinBox_valueChanged(int) {
+    savePreStartMonitorConfig();
 }
 
 void Fixture_uart::on_FixtureconnectButton_clicked() {
