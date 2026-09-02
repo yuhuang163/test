@@ -1,11 +1,16 @@
 import socket
 import threading
 import time
+import sys
+
+# 全局变量：用于控制 PLC 的线圈状态
+PLC_TRIGGER = False
 
 # ==========================================
 # 1. 模拟 PLC (Modbus TCP) - 监听 502 端口
 # ==========================================
 def plc_simulator_worker():
+    global PLC_TRIGGER
     PLC_PORT = 502
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     # 允许端口复用
@@ -20,17 +25,16 @@ def plc_simulator_worker():
 
     while True:
         client, addr = server.accept()
-        print(f"[PLC] 上位机已连接: {addr}")
+        # print(f"[PLC] 上位机已连接: {addr}")
         
         def handle_client(c):
+            global PLC_TRIGGER
             try:
                 while True:
                     req = c.recv(1024)
                     if not req:
                         break
                     # 简单解析 Modbus TCP 报文
-                    # 头7个字节是：事务标识(2) + 协议标识(2) + 长度(2) + 单元标识(1)
-                    # 第8个字节是功能码
                     if len(req) >= 12:
                         trans_id = req[0:2]
                         unit_id = req[6:7]
@@ -38,16 +42,19 @@ def plc_simulator_worker():
                         
                         # 如果是读线圈 (0x01) 或 读离散输入 (0x02)
                         if func_code in (1, 2):
-                            # 永远返回 "线圈状态为 1 (True)"
-                            # 响应格式: 事务标识(2) + 协议(0,0) + 长度(0,4) + 单元(1) + 功能码(1) + 字节数(1) + 状态值(1)
-                            resp = trans_id + b'\x00\x00\x00\x04' + unit_id + bytes([func_code, 0x01, 0x01])
+                            # 根据当前的触发状态返回
+                            state_val = 0x01 if PLC_TRIGGER else 0x00
+                            resp = trans_id + b'\x00\x00\x00\x04' + unit_id + bytes([func_code, 0x01, state_val])
                             c.sendall(resp)
-                            print("[PLC] 收到查询请求，已返回状态: ON (True)")
+                            
+                            # 如果刚刚触发了上位机，立刻将信号复位（模拟按键弹起）
+                            if PLC_TRIGGER:
+                                print(">> [PLC] 检测到上位机查询，已下发触发信号 (ON) 并自动复位！\n")
+                                PLC_TRIGGER = False
             except Exception as e:
                 pass
             finally:
                 c.close()
-                print(f"[PLC] 上位机已断开: {addr}")
 
         threading.Thread(target=handle_client, args=(client,), daemon=True).start()
 
@@ -69,15 +76,14 @@ def scanner_simulator_worker():
 
     while True:
         client, addr = server.accept()
-        print(f"[扫码枪] 上位机已连接: {addr}")
+        # print(f"[扫码枪] 上位机已连接: {addr}")
         
         def handle_client(c):
             try:
-                # 扫码枪逻辑：接收到指令后，返回条码
                 req = c.recv(1024)
                 if req:
                     cmd_str = req.decode('utf-8', errors='ignore').strip()
-                    print(f"[扫码枪] 收到触发指令: '{cmd_str}'")
+                    print(f"\n>> [扫码枪] 收到上位机指令: '{cmd_str}'")
                     
                     # 假装正在扫码，延迟 0.5 秒
                     time.sleep(0.5)
@@ -85,7 +91,7 @@ def scanner_simulator_worker():
                     # 发送模拟条码
                     fake_barcode = "SIM_BARCODE_2026\r\n"
                     c.sendall(fake_barcode.encode('utf-8'))
-                    print(f"[扫码枪] 已返回条码: {fake_barcode.strip()}")
+                    print(f">> [扫码枪] 已成功返回条码: {fake_barcode.strip()}\n")
             except Exception as e:
                 pass
             finally:
@@ -96,7 +102,7 @@ def scanner_simulator_worker():
 
 if __name__ == "__main__":
     print("========================================")
-    print("      PLC & 扫码枪 组合模拟器运行中")
+    print("      PLC & 扫码枪 组合模拟器 (可控版)")
     print("========================================")
     
     t1 = threading.Thread(target=plc_simulator_worker, daemon=True)
@@ -105,9 +111,25 @@ if __name__ == "__main__":
     t1.start()
     t2.start()
     
-    # 保持主线程存活
+    # 稍等一下让端口打印出来
+    time.sleep(0.5)
+    
+    print("\n----------------------------------------")
+    print("【操作说明】:")
+    print("在下面按回车键 (Enter)，即可向 PLC 发送一个启动信号 (ON)。")
+    print("按 Ctrl+C 退出模拟器。")
+    print("----------------------------------------\n")
+    
+    # 保持主线程用来接收用户输入
     try:
         while True:
-            time.sleep(1)
+            # 兼容 python 2/3 的输入
+            if sys.version_info[0] < 3:
+                raw_input("提示: [按回车键] 触发一次启动信号...")
+            else:
+                input("提示: [按回车键] 触发一次启动信号...")
+            
+            PLC_TRIGGER = True
+            print("=> PLC 信号已置为 ON，等待上位机读取中...")
     except KeyboardInterrupt:
         print("\n模拟器已关闭。")
