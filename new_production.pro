@@ -166,6 +166,7 @@ INCLUDEPATH += agreement/modbus_protocol/access
 INCLUDEPATH += agreement/modbus_protocol/manager
 INCLUDEPATH += agreement/modbus_protocol/codec
 INCLUDEPATH += agreement/modbus_protocol/device/inovance_h5u_tcp
+INCLUDEPATH += agreement/modbus_protocol/device/hikvision_scanner
 INCLUDEPATH += agreement/modbus_protocol/device/gc_series_tcp
 INCLUDEPATH += agreement/modbus_protocol/device/hq_ammeter_rtu
 INCLUDEPATH += agreement/modbus_protocol/device/lx_ammeter_rtu
@@ -366,6 +367,7 @@ SOURCES += \
     work_station/freework/qfreework_test_case.cpp \
     work_station/freework/shared_instrument.cpp \
     agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp.cpp \
+    agreement/modbus_protocol/device/hikvision_scanner/hikvision_scanner_tcp.cpp \
     business/plc_v3_fixture/plc_v3_touch.cpp \
     business/plc_v3_fixture/plc_v3_facade.cpp \
     business/plc_v3_fixture/plc_v3_fixture.cpp \
@@ -548,6 +550,7 @@ HEADERS += \
     work_station/freework/qfreeworkbox.h \
     work_station/freework/shared_instrument.h \
     agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp.h \
+    agreement/modbus_protocol/device/hikvision_scanner/hikvision_scanner_tcp.h \
     agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp_types.h \
     agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp_device.h \
     agreement/modbus_protocol/device/gc_series_tcp/gc_series_tcp_types.h \

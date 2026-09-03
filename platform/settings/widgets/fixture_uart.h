@@ -46,6 +46,9 @@ class Fixture_uart : public QWidget {
     QFixtureManager* fixtureManager_ = nullptr;
     QTimer* scanSerialPortsTimer_ = nullptr;
 
+    void loadPreStartMonitorConfig();
+    void savePreStartMonitorConfig();
+
   signals:
     // Re-emitted from QFixtureManager
     void send_data_to_mechine(const FixturePacketData datapack);
@@ -69,6 +72,11 @@ class Fixture_uart : public QWidget {
     void onManagerConnected();
     void onManagerDisconnected();
     void onManagerError(int error, const QString& message);
+
+    void on_scannerIpLineEdit_editingFinished();
+    void on_plcIpLineEdit_editingFinished();
+    void on_scannerPortSpinBox_valueChanged(int value);
+    void on_plcPortSpinBox_valueChanged(int value);
 };
 
 #if _MSC_VER >= 1600

@@ -171,6 +171,7 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("warmupMs"), QStringLiteral("采集预热 (ms)")},
         {QStringLiteral("expectedColor"), QStringLiteral("期望纯色（下拉选：不判断/蓝绿红白黑灰）")},
         {QStringLiteral("deadDiff"), QStringLiteral("坏点残差阈值")},
+        {QStringLiteral("deadRadiusPercent"), QStringLiteral("坏点检测区域缩放比例 (%)")},
         {QStringLiteral("referencePath"), QStringLiteral("参考图路径（双击选择，自动存入 screen_inspect/参考图）")},
         {QStringLiteral("saveCapture"), QStringLiteral("保存拍摄图（1开/0关）")},
         {QStringLiteral("roi"), QStringLiteral("检测范围 x,y,w,h（空=调试页划定/自动）")},
@@ -394,7 +395,8 @@ QStringList sendParamPreferredOrder(TestCaseSendChannel channel, const QString& 
                             QStringLiteral("cameraSerial"), QStringLiteral("cameraIndex"),
                             QStringLiteral("cameraName"), QStringLiteral("warmupMs"),
                             QStringLiteral("expectedColor"), QStringLiteral("deadDiff"),
-                            QStringLiteral("saveCapture"), QStringLiteral("roi")};
+                            QStringLiteral("deadRadiusPercent"), QStringLiteral("saveCapture"), QStringLiteral("roi"),
+                            QStringLiteral("reuseCircleRoi")};
         if (cmdName == QLatin1String("ScreenDisplayAnomalyCheck")
             || cmdName == QLatin1String("ScreenCameraCalibration"))
             keys.append(QStringLiteral("referencePath"));
@@ -681,14 +683,17 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
                             {QStringLiteral("warmupMs"), QStringLiteral("450")},
                             {QStringLiteral("expectedColor"), QStringLiteral("不判断")},
                             {QStringLiteral("deadDiff"), QStringLiteral("35")},
+                            {QStringLiteral("deadRadiusPercent"), QStringLiteral("82")},
                             {QStringLiteral("saveCapture"), QStringLiteral("1")},
-                            {QStringLiteral("roi"), QString()}};
+                            {QStringLiteral("roi"), QString()},
+                            {QStringLiteral("reuseCircleRoi"), QStringLiteral("0")}};
             if (cmdName == QLatin1String("ScreenDisplayAnomalyCheck")
                 || cmdName == QLatin1String("ScreenCameraCalibration"))
                 map.insert(QStringLiteral("referencePath"), QString());
             if (cmdName == QLatin1String("ScreenCameraCalibration")) {
                 map.remove(QStringLiteral("expectedColor"));
                 map.remove(QStringLiteral("deadDiff"));
+                map.remove(QStringLiteral("deadRadiusPercent"));
             }
             return map;
         }
@@ -1705,6 +1710,7 @@ void initFixturePcbaGateTable(QTableWidget* table) {
 
 const QHash<QString, QString>& hookDisplayNameMap() {
     static const QHash<QString, QString> map = {
+        {QStringLiteral("HIKVISION_SCANNER_READ"), QStringLiteral("海康扫码枪读取(HIKVISION_SCANNER)")},
         {QStringLiteral("JIG_CURRENT_READ"), QStringLiteral("读取治具电流测量值")},
         {QStringLiteral("DONGLE_SUCTION_ENABLE"), QStringLiteral("开启 dongle 吸力读取")},
         {QStringLiteral("DONGLE_SUCTION_DISABLE"), QStringLiteral("关闭 dongle 吸力读取")},

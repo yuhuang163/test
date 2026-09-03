@@ -58,6 +58,10 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
     if (!fw)
         return;
 
+    if (hookId == QStringLiteral("HIKVISION_SCANNER_READ")) {
+        fw->runHikvisionScannerReadStep();
+        return;
+    }
     if (hookId == QStringLiteral("JIG_CURRENT_READ")) {
         fw->runJigAmmeterCurrentSampleAnyMatch();
         return;
@@ -383,6 +387,7 @@ void QFreeWorkTestCaseHookRegistrar::registerAll() {
         return;
     registered = true;
 
+    registerDispatchHook(QStringLiteral("HIKVISION_SCANNER_READ"));
     registerDispatchHook(QStringLiteral("JIG_CURRENT_READ"));
     registerDispatchHook(QStringLiteral("DONGLE_SUCTION_ENABLE"));
     registerDispatchHook(QStringLiteral("DONGLE_SUCTION_DISABLE"));

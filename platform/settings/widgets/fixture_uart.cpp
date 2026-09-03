@@ -1,12 +1,16 @@
 #include "fixture_uart.h"
 
 #include <QElapsedTimer>
+#include <QFile>
 #include <QMessageBox>
+#include <QSettings>
 #include <QTimer>
 
 #include "qdebug.h"
 #include "qlog.h"
 #include "serial_channel.h"
+#include "test_case_paths.h"
+#include "test_case_store.h"
 #include "ui_fixture_uart.h"
 #include "qfixturemanager.h"
 
@@ -37,10 +41,69 @@ Fixture_uart::Fixture_uart(QWidget* parent) : QWidget(parent), ui(new Ui::Fixtur
     connect(fixtureManager_, &QFixtureManager::send_data_to_mechine_start, this, &Fixture_uart::send_data_to_mechine_start);
     connect(fixtureManager_, &QFixtureManager::start_fix_action, this, &Fixture_uart::start_fix_action);
     connect(fixtureManager_, &QFixtureManager::send_data_to_mechine_press, this, &Fixture_uart::send_data_to_mechine_press);
+
+    loadPreStartMonitorConfig();
 }
 
 Fixture_uart::~Fixture_uart() {
     delete ui;
+}
+
+void Fixture_uart::loadPreStartMonitorConfig() {
+    // 工站级配置：读写当前工站 profiles/<工站>/flow.ini 的 [PreStart_Monitor]，避免全局 SETTINGS 被其他工站覆盖
+    QString stationKey = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationKey());
+    if (stationKey.isEmpty())
+        stationKey = QStringLiteral("default");
+    const QString flowPath = TestCasePaths::profileFlowPath(stationKey);
+
+    // 回填时屏蔽两个 QSpinBox 信号，避免 setValue 触发 valueChanged 提前写回
+    ui->scannerPortSpinBox->blockSignals(true);
+    ui->plcPortSpinBox->blockSignals(true);
+    QSettings settings(flowPath, QSettings::IniFormat);
+    settings.setIniCodec("UTF-8");
+    settings.beginGroup(QStringLiteral("PreStart_Monitor"));
+    ui->scannerIpLineEdit->setText(settings.value(QStringLiteral("ScannerIp"), QStringLiteral("127.0.0.1")).toString());
+    ui->scannerPortSpinBox->setValue(settings.value(QStringLiteral("ScannerPort"), 2001).toInt());
+    ui->plcIpLineEdit->setText(settings.value(QStringLiteral("PlcIp"), QStringLiteral("127.0.0.1")).toString());
+    ui->plcPortSpinBox->setValue(settings.value(QStringLiteral("PlcPort"), 502).toInt());
+    settings.endGroup();
+    ui->scannerPortSpinBox->blockSignals(false);
+    ui->plcPortSpinBox->blockSignals(false);
+}
+
+void Fixture_uart::savePreStartMonitorConfig() {
+    QString stationKey = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationKey());
+    if (stationKey.isEmpty())
+        stationKey = QStringLiteral("default");
+    const QString flowPath = TestCasePaths::profileFlowPath(stationKey);
+    if (!QFile::exists(flowPath))
+        return;
+
+    QSettings settings(flowPath, QSettings::IniFormat);
+    settings.setIniCodec("UTF-8");
+    settings.beginGroup(QStringLiteral("PreStart_Monitor"));
+    settings.setValue(QStringLiteral("ScannerIp"), ui->scannerIpLineEdit->text().trimmed());
+    settings.setValue(QStringLiteral("ScannerPort"), ui->scannerPortSpinBox->value());
+    settings.setValue(QStringLiteral("PlcIp"), ui->plcIpLineEdit->text().trimmed());
+    settings.setValue(QStringLiteral("PlcPort"), ui->plcPortSpinBox->value());
+    settings.endGroup();
+    settings.sync();
+}
+
+void Fixture_uart::on_scannerIpLineEdit_editingFinished() {
+    savePreStartMonitorConfig();
+}
+
+void Fixture_uart::on_plcIpLineEdit_editingFinished() {
+    savePreStartMonitorConfig();
+}
+
+void Fixture_uart::on_scannerPortSpinBox_valueChanged(int) {
+    savePreStartMonitorConfig();
+}
+
+void Fixture_uart::on_plcPortSpinBox_valueChanged(int) {
+    savePreStartMonitorConfig();
 }
 
 void Fixture_uart::on_FixtureconnectButton_clicked() {

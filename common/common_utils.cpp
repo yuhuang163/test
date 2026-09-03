@@ -365,6 +365,7 @@ static const ProductEntry kProductTable[] = {
     {"V3Pro",    "qfctp", true,  "V3 PRO",   true},
     {"V3",       "qfctp", true,  "V3",       true},
     {"M8",       "qroot", true,  "M5 Ultra",   false},
+    {"M9",       "qroot", true,  "MobileFlow", true},
     {"Wellness Warm",  "qroot", true, "Wellness Warm",  true},
     {"M8P",      "qaiot", false, "M8P",      false},
     {"W1 Lite",  "qroot", true, "W1 Lite",  true},
@@ -372,7 +373,7 @@ static const ProductEntry kProductTable[] = {
 };
 
 /** 主窗口 BLE 扫描过滤名补充项（无产品映射，仅作筛选提示）。 */
-static const char* kDongleFilterExtras[] = {"W1", "W2", "Pump-E"};
+static const char* kDongleFilterExtras[] = {"W1", "W2", "Pump-E","MobileFlow"};
 // clang-format on
 
 static bool hasDonglePattern(const ProductEntry& entry) {

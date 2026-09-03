@@ -5,19 +5,25 @@
 
 #include "my_set/my_typedef.h"
 
+#include <QAbstractItemView>
 #include <QCoreApplication>
 #include <QCryptographicHash>
+#include <QDialog>
+#include <QDialogButtonBox>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
 #include <QInputDialog>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QLabel>
+#include <QListWidget>
 #include <QMessageBox>
 #include <QProcess>
 #include <QPushButton>
 #include <QTextStream>
 #include <QTimer>
+#include <QVBoxLayout>
 #include <functional>
 #include <string>
 
@@ -517,37 +523,48 @@ bool HostOtaService::showVersionPicker(QWidget* parent,
         return true;
     }
 
-    // 构建版本列表显示文字
-    QStringList displayItems;
-    QList<QJsonObject> versionObjects;
-    for (const auto& val : items) {
-        const QJsonObject v = val.toObject();
+    // 弹出版本选择列表：鼠标悬停每个版本项即显示该版本的修改说明
+    QDialog dialog(parent);
+    dialog.setWindowTitle(QStringLiteral("选择版本"));
+    auto* pickerLayout = new QVBoxLayout(&dialog);
+    pickerLayout->addWidget(new QLabel(QStringLiteral("请选择要升级的版本（鼠标悬停可查看修改内容）："), &dialog));
+
+    auto* versionList = new QListWidget(&dialog);
+    versionList->setSelectionMode(QAbstractItemView::SingleSelection);
+    versionList->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    for (int i = 0; i < items.size(); ++i) {
+        const QJsonObject v = items.at(i).toObject();
         const QString ver = v.value(QStringLiteral("appVersion")).toString();
         const QString bid = v.value(QStringLiteral("buildId")).toString();
         const QString time = v.value(QStringLiteral("uploadedAt")).toString();
+        const QString notes = v.value(QStringLiteral("releaseNotes")).toString().trimmed();
         QString label = QStringLiteral("%1 (buildId=%2)").arg(ver, bid);
         if (!time.isEmpty()) {
             label += QStringLiteral("  %1").arg(time);
         }
-        displayItems.append(label);
-        versionObjects.append(v);
+        auto* item = new QListWidgetItem(label, versionList);
+        item->setToolTip(notes.isEmpty() ? QStringLiteral("（上传时未填写修改说明）") : notes);
+        item->setData(Qt::UserRole, i);
     }
+    versionList->setCurrentRow(0);
+    pickerLayout->addWidget(versionList);
 
-    // 弹出版本选择对话框
-    bool ok = false;
-    const QString selected = QInputDialog::getItem(parent, QStringLiteral("选择版本"),
-                                                    QStringLiteral("请选择要升级的版本（选定后将显示修改内容）："),
-                                                    displayItems, 0, false, &ok);
-    if (!ok || selected.isEmpty()) {
+    auto* pickerButtons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    QObject::connect(pickerButtons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    QObject::connect(pickerButtons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    QObject::connect(versionList, &QListWidget::itemDoubleClicked, &dialog, &QDialog::accept);
+    pickerLayout->addWidget(pickerButtons);
+    dialog.resize(420, 320);
+
+    if (dialog.exec() != QDialog::Accepted) {
         return true;
     }
-
-    const int idx = displayItems.indexOf(selected);
-    if (idx < 0 || idx >= versionObjects.size()) {
+    const int row = versionList->currentRow();
+    if (row < 0 || row >= versionList->count()) {
         return true;
     }
-
-    const QJsonObject chosen = versionObjects[idx];
+    const int idx = versionList->item(row)->data(Qt::UserRole).toInt();
+    const QJsonObject chosen = items.at(idx).toObject();
     CheckResult info;
     info.hasUpdate = true;
     info.appVersion = chosen.value(QStringLiteral("appVersion")).toString();

@@ -16,8 +16,10 @@ constexpr const char kHintScreenDeadPixel[] =
     u8"Param_cameraIndex / cameraName 仅 USB 时有效；Param_warmupMs 预热毫秒（默认 450）\r\n"
     u8"Param_expectedColor 期望纯色：下拉选「蓝/绿/红/白/黑/灰」，或「不判断」；也兼容数字 0~5/-1\r\n"
     u8"Param_deadDiff 残差阈值（空则用设置页坏点残差）\r\n"
+    u8"Param_deadRadiusPercent 坏点检测区域缩放比例（默认 82%）\r\n"
     u8"Param_saveCapture=1 保存拍摄图到 bin/screen_inspect/\r\n"
     u8"Param_roi 检测范围 x,y,w,h（空则用调试页划定的范围，再空则自动找屏）\r\n"
+    u8"Param_reuseCircleRoi=1 沿用上一步(如红屏)识别的圆形区域，解决灰阶图无法找圆\r\n"
     u8"卡控勾「坏点数」0~8；测绿屏再勾「是否为期望纯色」范围 1~1";
 constexpr const char kHintScreenDisplayAnomaly[] =
     u8"本步对屏幕拍照后与参考图做相似度对比\r\n"
@@ -27,6 +29,7 @@ constexpr const char kHintScreenDisplayAnomaly[] =
     u8"Param_cameraIndex / cameraName / warmupMs 同坏点步骤\r\n"
     u8"Param_saveCapture=1 存图\r\n"
     u8"Param_roi 同坏点步骤（调试页拖拽划定后写入设置，步骤可不填）\r\n"
+    u8"Param_reuseCircleRoi=1 沿用上一步识别的圆形区域，解决灰阶图找圆失败\r\n"
     u8"卡控勾「与参考图相似度」0.85~1。灰阶条纹不要勾亮度起伏";
 constexpr const char kHintScreenCameraCalibration[] =
     u8"测试前摄像头位置校准：拍一张当前图，与参考图并排显示，两侧叠加同一套校准框/圆屏线\r\n"

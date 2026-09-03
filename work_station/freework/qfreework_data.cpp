@@ -1286,6 +1286,47 @@ void QFreeWork::debugUpdateTupleMacStatus(const TestCaseDefinition& def) {
     showlog(QStringLiteral("上报烧录状态成功：mac=%1 status=%2").arg(tupleMac).arg(status));
 }
 
+void QFreeWork::resetTupleStatus(const TestCaseDefinition& def) {
+    stepRuntime_.done = true;
+    const QVariantMap resolved = resolveTestCaseSendParamTree(def.send.param).toMap();
+    QString tupleMac = resolved.value(QStringLiteral("mac")).toString().trimmed();
+    tupleMac.remove(QLatin1Char(':'));
+    tupleMac.remove(QLatin1Char('-'));
+    tupleMac.remove(QLatin1Char(' '));
+    tupleMac = tupleMac.trimmed().toUpper();
+
+    if (tupleMac.isEmpty() || tupleMac == QStringLiteral("没有MAC地址") || tupleMac == QStringLiteral("没有mac地址")) {
+        stepRuntime_.pass = false;
+        stepRuntime_.testData = QStringLiteral("MAC为空");
+        TestResult = failValue;
+        showlog(QStringLiteral("复位状态失败：MAC为空"));
+        return;
+    }
+    if (!QTupleService::hasSharedSession()) {
+        stepRuntime_.pass = false;
+        TestResult = failValue;
+        showlog(QStringLiteral("复位状态失败：请先执行「三元组云端登录」"));
+        return;
+    }
+
+    const int status = resolved.value(QStringLiteral("status"), 1).toInt();
+
+    QTupleService service;
+    QVariantMap statusMap;
+    statusMap[QStringLiteral("mac")] = tupleMac;
+    statusMap[QStringLiteral("status")] = status;
+    service.set(TupleCmd::ResetStatus, statusMap);
+    if (!service.lastError().isEmpty()) {
+        stepRuntime_.pass = false;
+        TestResult = failValue;
+        showlog(QStringLiteral("复位状态失败：") + service.lastError());
+        return;
+    }
+    stepRuntime_.pass = true;
+    stepRuntime_.testData = QStringLiteral("%1 / status=%2").arg(tupleMac).arg(status);
+    showlog(QStringLiteral("复位状态成功：mac=%1 status=%2").arg(tupleMac).arg(status));
+}
+
 void QFreeWork::reportTupleWriteRecord() {
     stepRuntime_.done = true;
     const QString productSn = resolvedWholeMachineSnText().isEmpty() ? resolvedPcbaSnText() : resolvedWholeMachineSnText();
@@ -1372,6 +1413,9 @@ void QFreeWork::executeCloudTupleCase(const TestCaseDefinition& def) {
         break;
     case TupleCmd::DebugUpdateMacStatus:
         debugUpdateTupleMacStatus(def);
+        break;
+    case TupleCmd::ResetStatus:
+        resetTupleStatus(def);
         break;
     case TupleCmd::Login: {
         stepRuntime_.done = true;
