@@ -24,6 +24,9 @@ Fixture_uart::Fixture_uart(QWidget* parent) : QWidget(parent), ui(new Ui::Fixtur
     ui->setupUi(this);
     ui->FixturecomNameCombo->clear();
 
+    ui->plcDeviceCombo->addItem(QStringLiteral("串口通信 (Modbus RTU)"), QStringLiteral("XinjiePlcRtu"));
+    ui->plcDeviceCombo->addItem(QStringLiteral("网口通信 (Modbus TCP)"), QStringLiteral("InovanceH5uTcp"));
+
     ui->plcBaudRateCombo->clear();
     ui->plcBaudRateCombo->addItems({QStringLiteral("115200"), QStringLiteral("19200"), QStringLiteral("9600"), QStringLiteral("38400"), QStringLiteral("57600")});
 
@@ -53,33 +56,64 @@ Fixture_uart::~Fixture_uart() {
     delete ui;
 }
 
+void Fixture_uart::updateDeviceFieldsVisibility() {
+    const QString dev = ui->plcDeviceCombo->currentData().toString();
+    const bool isSerial = (dev != QLatin1String("InovanceH5uTcp"));
+
+    ui->plcComPortLabel->setVisible(isSerial);
+    ui->plcComPortCombo->setVisible(isSerial);
+    ui->plcBaudRateLabel->setVisible(isSerial);
+    ui->plcBaudRateCombo->setVisible(isSerial);
+
+    ui->plcIpLabel->setVisible(!isSerial);
+    ui->plcIpLineEdit->setVisible(!isSerial);
+    ui->plcPortLabel->setVisible(!isSerial);
+    ui->plcPortSpinBox->setVisible(!isSerial);
+}
+
 void Fixture_uart::loadPreStartMonitorConfig() {
     QString stationKey = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationKey());
     if (stationKey.isEmpty())
         stationKey = QStringLiteral("default");
     const QString flowPath = TestCasePaths::profileFlowPath(stationKey);
 
-    ui->scannerIpLineEdit->blockSignals(true);
-    ui->scannerPortSpinBox->blockSignals(true);
+    ui->plcDeviceCombo->blockSignals(true);
     ui->plcComPortCombo->blockSignals(true);
     ui->plcBaudRateCombo->blockSignals(true);
+    ui->plcIpLineEdit->blockSignals(true);
+    ui->plcPortSpinBox->blockSignals(true);
     ui->plcWaitAddressLineEdit->blockSignals(true);
+    ui->scannerIpLineEdit->blockSignals(true);
+    ui->scannerPortSpinBox->blockSignals(true);
 
     QSettings settings(flowPath, QSettings::IniFormat);
     settings.setIniCodec("UTF-8");
     settings.beginGroup(QStringLiteral("PreStart_Monitor"));
-    ui->scannerIpLineEdit->setText(settings.value(QStringLiteral("ScannerIp"), QStringLiteral("192.168.1.64")).toString());
-    ui->scannerPortSpinBox->setValue(settings.value(QStringLiteral("ScannerPort"), 2001).toInt());
+
+    const QString dev = settings.value(QStringLiteral("PlcDevice"), QStringLiteral("XinjiePlcRtu")).toString();
+    int idx = ui->plcDeviceCombo->findData(dev);
+    ui->plcDeviceCombo->setCurrentIndex(idx >= 0 ? idx : 0);
+
     ui->plcComPortCombo->setEditText(settings.value(QStringLiteral("PlcComPort")).toString());
     ui->plcBaudRateCombo->setEditText(settings.value(QStringLiteral("PlcBaudRate"), QStringLiteral("115200")).toString());
+    ui->plcIpLineEdit->setText(settings.value(QStringLiteral("PlcIp"), QStringLiteral("127.0.0.1")).toString());
+    ui->plcPortSpinBox->setValue(settings.value(QStringLiteral("PlcPort"), 502).toInt());
     ui->plcWaitAddressLineEdit->setText(settings.value(QStringLiteral("PlcWaitAddress"), QStringLiteral("M100")).toString());
+
+    ui->scannerIpLineEdit->setText(settings.value(QStringLiteral("ScannerIp"), QStringLiteral("192.168.1.64")).toString());
+    ui->scannerPortSpinBox->setValue(settings.value(QStringLiteral("ScannerPort"), 2001).toInt());
     settings.endGroup();
 
-    ui->scannerIpLineEdit->blockSignals(false);
-    ui->scannerPortSpinBox->blockSignals(false);
+    ui->plcDeviceCombo->blockSignals(false);
     ui->plcComPortCombo->blockSignals(false);
     ui->plcBaudRateCombo->blockSignals(false);
+    ui->plcIpLineEdit->blockSignals(false);
+    ui->plcPortSpinBox->blockSignals(false);
     ui->plcWaitAddressLineEdit->blockSignals(false);
+    ui->scannerIpLineEdit->blockSignals(false);
+    ui->scannerPortSpinBox->blockSignals(false);
+
+    updateDeviceFieldsVisibility();
 }
 
 void Fixture_uart::savePreStartMonitorConfig() {
@@ -93,12 +127,34 @@ void Fixture_uart::savePreStartMonitorConfig() {
     QSettings settings(flowPath, QSettings::IniFormat);
     settings.setIniCodec("UTF-8");
     settings.beginGroup(QStringLiteral("PreStart_Monitor"));
-    settings.setValue(QStringLiteral("ScannerIp"), ui->scannerIpLineEdit->text().trimmed());
-    settings.setValue(QStringLiteral("ScannerPort"), ui->scannerPortSpinBox->value());
+    settings.setValue(QStringLiteral("PlcDevice"), ui->plcDeviceCombo->currentData().toString());
     settings.setValue(QStringLiteral("PlcComPort"), ui->plcComPortCombo->currentText().trimmed());
     settings.setValue(QStringLiteral("PlcBaudRate"), ui->plcBaudRateCombo->currentText().toInt());
-    settings.setValue(QStringLiteral("PlcWaitAddress"), ui->plcWaitAddressLineEdit->text().trimmed());
+    settings.setValue(QStringLiteral("PlcIp"), ui->plcIpLineEdit->text().trimmed());
+    settings.setValue(QStringLiteral("PlcPort"), ui->plcPortSpinBox->value());
+    const QString waitAddr = ui->plcWaitAddressLineEdit->text().trimmed();
+    settings.setValue(QStringLiteral("PlcWaitAddress"), waitAddr);
+    bool okNum = false;
+    int addrNum = waitAddr.startsWith(QLatin1Char('M'), Qt::CaseInsensitive) ? waitAddr.mid(1).toInt(&okNum) : waitAddr.toInt(&okNum);
+    if (okNum) {
+        settings.setValue(QStringLiteral("PlcWaitAddressM"), addrNum);
+    }
+    settings.setValue(QStringLiteral("ScannerIp"), ui->scannerIpLineEdit->text().trimmed());
+    settings.setValue(QStringLiteral("ScannerPort"), ui->scannerPortSpinBox->value());
     settings.endGroup();
+}
+
+void Fixture_uart::on_plcDeviceCombo_currentIndexChanged(int) {
+    updateDeviceFieldsVisibility();
+    savePreStartMonitorConfig();
+}
+
+void Fixture_uart::on_plcIpLineEdit_editingFinished() {
+    savePreStartMonitorConfig();
+}
+
+void Fixture_uart::on_plcPortSpinBox_valueChanged(int) {
+    savePreStartMonitorConfig();
 }
 
 void Fixture_uart::on_scannerIpLineEdit_editingFinished() {

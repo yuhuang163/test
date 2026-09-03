@@ -15,7 +15,6 @@
 import socket
 import threading
 import time
-import sys
 import argparse
 
 # 全局按键线圈状态
@@ -282,12 +281,7 @@ if __name__ == "__main__":
 
     try:
         while True:
-            if sys.version_info[0] < 3:
-                user_in = raw_input("提示: [按回车键 = 模拟按键按下触发开测] > ")
-            else:
-                user_in = input("提示: [按回车键 = 模拟按键按下触发开测] > ")
-
-            user_in = user_in.strip()
+            user_in = input("提示: [按回车键 = 模拟按键按下触发开测] > ").strip()
             if user_in.lower() == 'q':
                 break
 

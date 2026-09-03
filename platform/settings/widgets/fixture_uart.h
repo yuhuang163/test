@@ -49,6 +49,8 @@ class Fixture_uart : public QWidget {
     void loadPreStartMonitorConfig();
     void savePreStartMonitorConfig();
 
+    void updateDeviceFieldsVisibility();
+
   signals:
     // Re-emitted from QFixtureManager
     void send_data_to_mechine(const FixturePacketData datapack);
@@ -73,8 +75,11 @@ class Fixture_uart : public QWidget {
     void onManagerDisconnected();
     void onManagerError(int error, const QString& message);
 
+    void on_plcDeviceCombo_currentIndexChanged(int index);
     void on_plcComPortCombo_currentTextChanged(const QString& text);
     void on_plcBaudRateCombo_currentTextChanged(const QString& text);
+    void on_plcIpLineEdit_editingFinished();
+    void on_plcPortSpinBox_valueChanged(int value);
     void on_plcWaitAddressLineEdit_editingFinished();
     void on_scannerIpLineEdit_editingFinished();
     void on_scannerPortSpinBox_valueChanged(int value);
