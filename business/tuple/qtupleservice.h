@@ -23,6 +23,7 @@ enum class TupleCmd {
     Login,                // set: userName, password
     ApplyTupleByMac,      // get: mac, sku, position → lastApplyResult()
     DebugUpdateMacStatus, // set: mac, status
+    ResetStatus,          // set: mac, status → /api/mac-addresses/reset-status（复位）
     ReportWriteRecord,    // set: tuple/productSn/result 及可选 RSSI、版本字段
 };
 
@@ -61,7 +62,7 @@ class QTupleService {
   private:
     bool loginImpl(const QString& userName, const QString& password, QString* error);
     TupleApplyResult applyTupleByMacImpl(const QString& mac, const QString& sku, const QString& position);
-    bool debugUpdateMacStatusImpl(const QString& mac, int status, const QString& sn, QString* error);
+    bool debugUpdateMacStatusImpl(const QString& mac, int status, const QString& sn, const QString& path, QString* error);
     bool reportWriteRecordImpl(const TupleApplyResult& tuple, const QString& productSn, const QString& result,
                                const QString& btRssi, bool btRssiPass, const QString& bleRssi, bool bleRssiPass,
                                const QString& softwareVersion, bool softwareVersionPass, QString* error);

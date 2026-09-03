@@ -266,6 +266,8 @@ QString QTupleService::tupleCmdToName(TupleCmd cmd) {
         return QStringLiteral("ApplyTupleByMac");
     case TupleCmd::DebugUpdateMacStatus:
         return QStringLiteral("DebugUpdateMacStatus");
+    case TupleCmd::ResetStatus:
+        return QStringLiteral("ResetStatus");
     case TupleCmd::ReportWriteRecord:
         return QStringLiteral("ReportWriteRecord");
     }
@@ -284,6 +286,10 @@ bool QTupleService::tupleCmdFromName(const QString& name, TupleCmd& out) {
     }
     if (key == QStringLiteral("DebugUpdateMacStatus")) {
         out = TupleCmd::DebugUpdateMacStatus;
+        return true;
+    }
+    if (key == QStringLiteral("ResetStatus")) {
+        out = TupleCmd::ResetStatus;
         return true;
     }
     if (key == QStringLiteral("ReportWriteRecord")) {
@@ -319,7 +325,15 @@ void QTupleService::set(TupleCmd cmd, const QVariant& data) {
         const QString mac = m.value(QStringLiteral("mac")).toString();
         const int status = m.value(QStringLiteral("status"), 2).toInt();
         const QString sn = m.value(QStringLiteral("sn")).toString();
-        if (!debugUpdateMacStatusImpl(mac, status, sn, &error)) {
+        if (!debugUpdateMacStatusImpl(mac, status, sn, QStringLiteral("/api/mac-addresses"), &error)) {
+            lastError_ = error;
+        }
+        break;
+    }
+    case TupleCmd::ResetStatus: {
+        const QString mac = m.value(QStringLiteral("mac")).toString();
+        const int status = m.value(QStringLiteral("status"), 1).toInt();
+        if (!debugUpdateMacStatusImpl(mac, status, QString(), QStringLiteral("/api/mac-addresses/reset-status"), &error)) {
             lastError_ = error;
         }
         break;
@@ -530,7 +544,7 @@ TupleApplyResult QTupleService::parseApplyTupleResponse(const QByteArray& respon
     return result;
 }
 
-bool QTupleService::debugUpdateMacStatusImpl(const QString& mac, int status, const QString& sn, QString* error) {
+bool QTupleService::debugUpdateMacStatusImpl(const QString& mac, int status, const QString& sn, const QString& path, QString* error) {
     QJsonObject bodyObj;
     bodyObj.insert("mac", mac);
     bodyObj.insert("status", status);
@@ -540,7 +554,7 @@ bool QTupleService::debugUpdateMacStatusImpl(const QString& mac, int status, con
     const QByteArray body = QJsonDocument(bodyObj).toJson(QJsonDocument::Compact);
 
     QByteArray response;
-    if (!requestPost("/api/mac-addresses", body, &response, error)) {
+    if (!requestPost(path, body, &response, error)) {
         return false;
     }
 

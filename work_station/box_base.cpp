@@ -623,6 +623,7 @@ void box_base::checkAllover(int fixtureNumber) {
         if (!target) {
             return;
         }
+        qDebug() << "光标到" << target;
         target->setDisabled(false);
         target->setFocus(Qt::OtherFocusReason);
     });
