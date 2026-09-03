@@ -100,11 +100,16 @@ ScreenCircle detectScreenCircle(const QImage& rgb, const QRect& roi) {
             }
         }
         if (x1 >= x0 && y1 >= y0) {
-            c.cx = (x0 + x1) / 2;
-            c.cy = (y0 + y1) / 2;
-            int dynamicRMax = qMin(x1 - x0, y1 - y0) / 2;
-            if (dynamicRMax >= 8) {
+            const int dynamicW = x1 - x0;
+            const int dynamicH = y1 - y0;
+            const int dynamicRMax = qMin(dynamicW, dynamicH) / 2;
+            if (dynamicRMax >= 8 && dynamicH >= r.height() * 0.4 && dynamicW >= r.width() * 0.4) {
+                c.cx = (x0 + x1) / 2;
+                c.cy = (y0 + y1) / 2;
                 rMax = dynamicRMax;
+            } else {
+                c.cx = r.center().x();
+                c.cy = r.center().y();
             }
         } else {
             c.cx = r.center().x();
@@ -846,6 +851,22 @@ QImage drawGuides(const QImage& rgb, const QRect& roiIn, const QImage* circleFro
         } else {
             circle = detectScreenCircle(img, roi);
         }
+    } else {
+        circle = detectScreenCircle(img, roi);
+    }
+    return drawAnnotated(img, roi, circle, {});
+}
+
+QImage drawGuides(const QImage& rgb, const QRect& roiIn, int circleCx, int circleCy, int circleR) {
+    const QImage img = toRgb888(rgb);
+    QRect roi = roiIn.intersected(img.rect());
+    if (roi.width() < 10 || roi.height() < 10)
+        roi = detectScreenRoi(img);
+    ScreenCircle circle;
+    if (circleR > 0) {
+        circle.cx = circleCx;
+        circle.cy = circleCy;
+        circle.r = circleR;
     } else {
         circle = detectScreenCircle(img, roi);
     }

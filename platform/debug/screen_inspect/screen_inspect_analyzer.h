@@ -68,6 +68,11 @@ QString colorName(int colorIndex);
  */
 QImage drawGuides(const QImage& rgb, const QRect& roi, const QImage* circleFrom = nullptr,
                   QRect* outRoi = nullptr);
+/**
+ * 仅画检测范围框 + 指定的圆屏轮廓（无坏点红圈）。
+ * circleR > 0 时直接使用传入的圆心和半径，不再重新找圆。
+ */
+QImage drawGuides(const QImage& rgb, const QRect& roi, int circleCx, int circleCy, int circleR);
 
 /**
  * 清理 screen_inspect 根目录下的历史测试抓拍，避免无限累积。
