@@ -137,6 +137,21 @@ static void registerBasicMeasureGates() {
             .commit();
     }
     {
+        using D = ProtocolFactoryDoneData;
+        GateType<D>("ProtocolFactoryDoneData", "产测完成标识")
+            .number("done", &D::done, "已完成(1=是)", "")
+            .overrideText([](const D& d, QString* out) {
+                if (!out)
+                    return false;
+                *out = d.done ? QStringLiteral("已完成") : QStringLiteral("未完成");
+                return true;
+            })
+            .formatValue([](double v) {
+                return qAbs(v - 1.0) < 0.0001 ? QStringLiteral("已完成") : QStringLiteral("未完成");
+            })
+            .commit();
+    }
+    {
         using D = ProtocolTrimData;
         GateType<D>("ProtocolTrimData", "Trim微调值")
             .number("trim", &D::trim, "微调值", "")

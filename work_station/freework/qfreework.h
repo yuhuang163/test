@@ -42,6 +42,19 @@ struct QFreeWorkMesSegment {
     QString costTime;
 };
 
+struct PreStartMonitorConfig {
+    bool enabled = false;
+    QString plcDevice;
+    QString plcIp;
+    int plcPort = 502;
+    int plcWaitAddressM = 100;
+    int plcPollIntervalMs = 500;
+    QString scannerIp = "192.168.1.64";
+    int scannerPort = 2001;
+    int scannerTimeoutMs = 1000;
+    bool autoIncrementIpByStation = true;
+};
+
 class QFreeWork : public test_base {
     Q_OBJECT
     friend class QFreeWorkTestCaseHookRegistrar;
@@ -234,6 +247,13 @@ class QFreeWork : public test_base {
     void beginUiStartTest();
     /** 主动 BleDisconnect 后禁止 startTask 里用当前 MAC 自动重连，直到显式扫描/直连或新一轮测试 */
     bool suppressProductBleAutoReconnect_ = false;
+
+    // 屏幕拍照缓存的上一次检测圆心
+    int cachedScreenCircleCx_ = -1;
+    int cachedScreenCircleCy_ = -1;
+    int cachedScreenCircleR_ = -1;
+
+    void executeSerialTxStep(const QVariantMap& map);
     void runTestFlowBootstrap();
     bool tickOrderedTestStepLoop();
     void finalizeTestFlowIfComplete();
@@ -354,6 +374,7 @@ class QFreeWork : public test_base {
     void applySuctionGateFromStepParam(const QVariant& param);
     /** test_case Hook 步骤（实现见 qfreework_hook_steps.cpp） */
     void runDongleSuctionSampleStep();
+    void runHikvisionScannerReadStep();
     /** Dongle 单通道吸力采样；判定走 ProtocolDongleSuctionPeakData Gate。 */
     void runDongleSuctionSampleSingleStep();
     /** V3 光感单点校准（产品协议）：采光感取平均 → 写平均值并回读。亮度由前一步治具 VES 设置。 */
@@ -479,7 +500,13 @@ class QFreeWork : public test_base {
     /** true=校准步骤：左右均为校准画线对照图。 */
     bool screenInspectCalibGuides_ = false;
 
+    PreStartMonitorConfig preStartMonitorConfig_;
+    QTimer* preStartMonitorTimer_ = nullptr;
+    bool preStartMonitorRunning_ = false;
+    void updatePreStartMonitorState();
+
   private slots:
+    void triggerHikvisionScanner();
     void initData(bool deferDongleAtForVisa = false);
 
     // 协议上行（实现见 qfreework_data.cpp）
@@ -558,6 +585,9 @@ class QFreeWork : public test_base {
     void on_clearSuctionChartButton_clicked();
     void on_viewScreenInspectLargeButton_clicked();
     void on_openScreenInspectFolderButton_clicked();
+
+    void onPreStartMonitorTimeout();
+    void on_autoStartCheckBox_toggled(bool checked);
 
   signals:
     void send_go_next_focus();
