@@ -2249,8 +2249,15 @@ void QFreeWork::runScreenInspectStep() {
         return ok ? v : defVal;
     };
 
-    const int cameraIndex = mapInt(QStringLiteral("cameraIndex"),
-                                   SETTINGS.value(QStringLiteral("ScreenInspect/CameraIndex"), 0).toInt());
+    auto mapDouble = [&](const QString& key, double defVal) {
+        if (!map.contains(key) || map.value(key).toString().trimmed().isEmpty())
+            return defVal;
+        bool ok = false;
+        const double v = map.value(key).toDouble(&ok);
+        return ok ? v : defVal;
+    };
+
+    const int cameraIndex = mapInt(QStringLiteral("cameraIndex"), 0);
     const QString cameraName = map.value(QStringLiteral("cameraName")).toString().trimmed();
     // 自由工站默认 GigE；Param_cameraSource=usb 时仍走 USB 摄像头
     const QString cameraSource = map.value(QStringLiteral("cameraSource")).toString().trimmed().toLower();
@@ -2259,9 +2266,7 @@ void QFreeWork::runScreenInspectStep() {
     if (cameraIp.isEmpty())
         cameraIp = map.value(QStringLiteral("gigeIp")).toString().trimmed();
     if (cameraIp.isEmpty())
-        cameraIp = SETTINGS.value(QStringLiteral("ScreenInspect/GigEIp"), QStringLiteral("169.254.64.10"))
-                       .toString()
-                       .trimmed();
+        cameraIp = QStringLiteral("169.254.64.10");
     const QString cameraSerial = map.value(QStringLiteral("cameraSerial")).toString().trimmed();
     const int warmupMs = qBound(0, mapInt(QStringLiteral("warmupMs"), 450), 8000);
     int expectedColor = -1;
@@ -2272,14 +2277,10 @@ void QFreeWork::runScreenInspectStep() {
         if (!colorOk)
             expectedColor = -1;
     }
-    const int deadDiff = mapInt(QStringLiteral("deadDiff"),
-                                SETTINGS.value(QStringLiteral("ScreenInspect/DeadPixelDiff"), 35).toInt());
-    const int deadRadiusPercent = mapInt(QStringLiteral("deadRadiusPercent"),
-                                         SETTINGS.value(QStringLiteral("ScreenInspect/DeadRadiusPercent"), 82).toInt());
+    const int deadDiff = mapInt(QStringLiteral("deadDiff"), 35);
+    const int deadRadiusPercent = mapInt(QStringLiteral("deadRadiusPercent"), 82);
     const int saveCapture = mapInt(QStringLiteral("saveCapture"), 1);
-    QString referencePath = map.value(QStringLiteral("referencePath")).toString().trimmed();
-    if (referencePath.isEmpty())
-        referencePath = SETTINGS.value(QStringLiteral("ScreenInspect/ReferencePath")).toString().trimmed();
+    const QString referencePath = map.value(QStringLiteral("referencePath")).toString().trimmed();
 
     const QString modeName = calibMode   ? QStringLiteral("位置校准")
                              : deadMode  ? QStringLiteral("坏点分析")
@@ -2336,9 +2337,7 @@ void QFreeWork::runScreenInspectStep() {
         }
     }
 
-    QString roiText = map.value(QStringLiteral("roi")).toString().trimmed();
-    if (roiText.isEmpty())
-        roiText = SETTINGS.value(QStringLiteral("ScreenInspect/Roi")).toString().trimmed();
+    const QString roiText = map.value(QStringLiteral("roi")).toString().trimmed();
     const QRect manualRoi = ScreenInspectAnalyzer::parseManualRoi(roiText);
     if (!manualRoi.isNull())
         showlog(QStringLiteral("使用划定检测范围：%1,%2 %3x%4")
@@ -2606,7 +2605,7 @@ void QFreeWork::runScreenInspectStep() {
     bool pass = true;
     QStringList reasons;
     if (deadMode) {
-        const int maxDead = SETTINGS.value(QStringLiteral("ScreenInspect/MaxDeadPixels"), 8).toInt();
+        const int maxDead = mapInt(QStringLiteral("maxDead"), 8);
         if (data.deadPixels > maxDead) {
             pass = false;
             reasons.append(QStringLiteral("坏点%1 超过上限%2").arg(data.deadPixels).arg(maxDead));
@@ -2615,7 +2614,7 @@ void QFreeWork::runScreenInspectStep() {
         }
     }
     if (anomalyMode) {
-        const double minSsim = SETTINGS.value(QStringLiteral("ScreenInspect/MinSimilarity"), 0.90).toDouble();
+        const double minSsim = mapDouble(QStringLiteral("minSsim"), 0.90);
         if (data.ssim < minSsim) {
             pass = false;
             reasons.append(QStringLiteral("相似度%1 低于下限%2")
