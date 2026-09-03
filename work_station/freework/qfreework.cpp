@@ -969,6 +969,8 @@ void QFreeWork::beginUiStartTest() {
     updatePreStartMonitorState();
     ui->test_time->setText(QStringLiteral("0.0 s"));
     resetLightSensorFivePointState();
+    pendingSuctionCurveRow_ = false;
+    pendingSuctionPass_ = true;
 
     emit send_go_next_focus();
     ui->getMac->setDisabled(1);
@@ -1351,6 +1353,11 @@ bool QFreeWork::tickOrderedTestStepLoop() {
             test.ask = stepRuntime_.ask;
             testItems.append(test);
         }
+        if (shouldShowSuctionCurveInTable(caseDef)) {
+            pendingSuctionCurveRow_ = true;
+            pendingSuctionPass_ = stepRuntime_.pass;
+        }
+
         testCaseMultiGateTableEmitted_ = false;
         if (!multiGateEmitted)
             appendTestCaseMes(caseDef, stepRuntime_.pass, stepRuntime_.testData);
@@ -1409,6 +1416,10 @@ void QFreeWork::finalizeTestFlowIfComplete() {
         // 整轮结束后再清历史戳记图（步内不删，避免同一次多色证据被裁掉）
         ScreenInspectAnalyzer::cleanupStoredImages(
             QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("screen_inspect")));
+        if (pendingSuctionCurveRow_) {
+            appendSuctionCurveRowToResultTable(pendingSuctionPass_);
+            pendingSuctionCurveRow_ = false;
+        }
         ui->test_time->setText(CommonUtils::formatElapsedSeconds(TestTime));
         isTestContinue = false;
         refreshOrderedTestIndexes();
@@ -1467,6 +1478,10 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     ScreenInspectGigECapture::releaseSession();
     ScreenInspectAnalyzer::cleanupStoredImages(
         QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("screen_inspect")));
+    if (pendingSuctionCurveRow_) {
+        appendSuctionCurveRowToResultTable(pendingSuctionPass_);
+        pendingSuctionCurveRow_ = false;
+    }
     ui->test_time->setText(CommonUtils::formatElapsedSeconds(TestTime));
     ui->macInput->clear();
     ui->snInput->clear();
@@ -2111,17 +2126,130 @@ void QFreeWork::finalizeSuctionChartPlot() {
     suctionPlot_->graph(1)->setData(suctionChartTimeSec_, suctionChartRightKpa_);
     const double tSec = suctionChartTimeSec_.isEmpty() ? 0.0 : suctionChartTimeSec_.constLast();
     suctionPlot_->xAxis->setRange(0, qMax(10.0, tSec + 1.0));
+    double yMin = -40.0, yMax = 0.0;
+    bool hasY = false;
     if (suctionLeftPeakInit_ && suctionRightPeakInit_) {
-        const double yMin = qMin(suctionLeftPeakLow_, suctionRightPeakLow_);
-        const double yMax = qMax(suctionLeftPeakHigh_, suctionRightPeakHigh_);
+        yMin = qMin(suctionLeftPeakLow_, suctionRightPeakLow_);
+        yMax = qMax(suctionLeftPeakHigh_, suctionRightPeakHigh_);
+        hasY = true;
+    } else if (suctionLeftPeakInit_) {
+        yMin = suctionLeftPeakLow_;
+        yMax = suctionLeftPeakHigh_;
+        hasY = true;
+    } else if (suctionRightPeakInit_) {
+        yMin = suctionRightPeakLow_;
+        yMax = suctionRightPeakHigh_;
+        hasY = true;
+    }
+    if (hasY) {
         const double yPad = qMax(0.5, (yMax - yMin) * 0.1);
         suctionPlot_->yAxis->setRange(yMin - yPad, yMax + yPad);
     }
     suctionPlot_->replot();
+    saveSuctionCurveImageForUpload();
 }
 
 void QFreeWork::on_clearSuctionChartButton_clicked() {
     resetSuctionChart();
+}
+
+void QFreeWork::restoreScanFocus() {
+    QLineEdit* target = (ui && ui->isformmes && ui->isformmes->isChecked()) ? ui->getMac : ui->macInput;
+    if (!target)
+        target = getMacLineEdit();
+    if (target) {
+        target->setDisabled(false);
+        target->setFocus(Qt::OtherFocusReason);
+    }
+}
+
+void QFreeWork::saveSuctionCurveImageForUpload() {
+    if (!suctionPlot_ || suctionChartTimeSec_.isEmpty())
+        return;
+
+    const QString dir = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("suction_chart"));
+    QDir().mkpath(dir);
+    const QString stamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss"));
+    const QString curvePath = dir + QLatin1Char('/') + stamp + QStringLiteral("_suction_curve.jpg");
+
+    // 生成高清晰度（1000x450）吸力曲线并存为 JPEG，注册到云端上报清单
+    QPixmap pix = suctionPlot_->toPixmap(1000, 450, 1.0);
+    if (!pix.isNull() && pix.toImage().save(curvePath, "JPG", 90)) {
+        Qlog::addScreenInspectImageFiles(getIndex(), {curvePath});
+        showlog(QStringLiteral("吸力曲线图片已生成并注册到云端上报：%1").arg(QFileInfo(curvePath).fileName()));
+    }
+}
+
+bool QFreeWork::shouldShowSuctionCurveInTable(const TestCaseDefinition& def) const {
+    const bool isSuction = (def.hook.enabled && (def.hook.hookId == QLatin1String("DONGLE_SUCTION_SAMPLE")
+                                                 || def.hook.hookId == QLatin1String("DONGLE_SUCTION_SAMPLE_SINGLE")))
+                           || def.meta.stepId.contains(QLatin1String("吸力"))
+                           || def.meta.name.contains(QLatin1String("吸力"))
+                           || def.meta.displayName.contains(QLatin1String("吸力"));
+    if (!isSuction)
+        return false;
+
+    // 仅从具体步骤参数 Param_showCurveInTable 读取，未配置默认 false
+    if (def.send.param.canConvert<QVariantMap>()) {
+        const QVariantMap map = resolveTestCaseSendParamTree(def.send.param).toMap();
+        if (map.contains(QStringLiteral("showCurveInTable"))) {
+            const QString val = map.value(QStringLiteral("showCurveInTable")).toString().trimmed().toLower();
+            if (val == QLatin1String("true") || val == QLatin1String("1"))
+                return true;
+            if (val == QLatin1String("false") || val == QLatin1String("0"))
+                return false;
+        }
+    }
+
+    return false;
+}
+
+void QFreeWork::appendSuctionCurveRowToResultTable(bool pass) {
+    QTableWidget* table = testResultTable();
+    if (!table || !suctionPlot_)
+        return;
+    if (suctionChartTimeSec_.isEmpty())
+        return;
+
+    // 所有项测试完成后，在表格底部跨列（合并第 1~3 列）大图展示
+    const int row = table->rowCount();
+    table->insertRow(row);
+
+    const int targetHeight = 190;
+    table->setRowHeight(row, targetHeight);
+
+    // 第 0 列（项目）
+    QTableWidgetItem* item0 = new QTableWidgetItem(QStringLiteral("吸力曲线"));
+    item0->setTextAlignment(Qt::AlignCenter);
+    const auto cellFlags = Qt::ItemIsSelectable | Qt::ItemIsEnabled;
+    item0->setFlags(cellFlags);
+    table->setItem(row, 0, item0);
+
+    // 跨列合并第 1~3 列
+    table->setSpan(row, 1, 1, 3);
+
+    int availWidth = table->columnWidth(1) + table->columnWidth(2) + table->columnWidth(3);
+    if (availWidth < 400 && table->viewport()) {
+        availWidth = qMax(420, table->viewport()->width() - table->columnWidth(0) - 10);
+    }
+    const int plotWidth = qMax(420, availWidth - 12);
+    const int plotHeight = targetHeight - 8;
+    QPixmap pix = suctionPlot_->toPixmap(plotWidth, plotHeight, 1.0);
+
+    QLabel* imgLabel = new QLabel(table);
+    imgLabel->setFocusPolicy(Qt::NoFocus);
+    imgLabel->setAlignment(Qt::AlignCenter);
+    imgLabel->setPixmap(pix);
+    imgLabel->setStyleSheet(QStringLiteral("background: transparent; margin: 1px;"));
+    imgLabel->setToolTip(QStringLiteral("吸力测试完整波形曲线"));
+    table->setCellWidget(row, 1, imgLabel);
+
+    table->scrollToBottom();
+
+    // 焦点保护：确保测试完成显示曲线后，光标无缝回到 SN/MAC 输入框
+    QTimer::singleShot(0, this, [this]() {
+        restoreScanFocus();
+    });
 }
 
 void QFreeWork::rememberScreenInspectImages(const QImage& capture, const QImage& annotated, const QImage& reference,
