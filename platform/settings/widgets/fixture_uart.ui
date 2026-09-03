@@ -7,11 +7,11 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>280</height>
+    <height>350</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>治具串口与信捷PLC配置</string>
+   <string>治具串口与自动扫码配置</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="0" column="0">
@@ -63,7 +63,7 @@
      <item>
       <widget class="QGroupBox" name="preStartMonitorGroup">
        <property name="title">
-        <string>信捷 PLC 按键监听配置</string>
+        <string>信捷 PLC 按键监听与自动扫码配置</string>
        </property>
        <layout class="QFormLayout" name="preStartMonitorFormLayout">
         <item row="0" column="0">
@@ -105,6 +105,33 @@
          <widget class="QLineEdit" name="plcWaitAddressLineEdit">
           <property name="placeholderText">
            <string>如 M100 或 X0</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="0">
+         <widget class="QLabel" name="scannerIpLabel">
+          <property name="text">
+           <string>海康扫码枪 IP</string>
+          </property>
+         </widget>
+        </item>
+        <item row="3" column="1">
+         <widget class="QLineEdit" name="scannerIpLineEdit"/>
+        </item>
+        <item row="4" column="0">
+         <widget class="QLabel" name="scannerPortLabel">
+          <property name="text">
+           <string>扫码枪端口</string>
+          </property>
+         </widget>
+        </item>
+        <item row="4" column="1">
+         <widget class="QSpinBox" name="scannerPortSpinBox">
+          <property name="maximum">
+           <number>65535</number>
+          </property>
+          <property name="value">
+           <number>2001</number>
           </property>
          </widget>
         </item>

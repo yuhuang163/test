@@ -76,6 +76,8 @@ class Fixture_uart : public QWidget {
     void on_plcComPortCombo_currentTextChanged(const QString& text);
     void on_plcBaudRateCombo_currentTextChanged(const QString& text);
     void on_plcWaitAddressLineEdit_editingFinished();
+    void on_scannerIpLineEdit_editingFinished();
+    void on_scannerPortSpinBox_valueChanged(int value);
 };
 
 #if _MSC_VER >= 1600

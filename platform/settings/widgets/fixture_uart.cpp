@@ -59,6 +59,8 @@ void Fixture_uart::loadPreStartMonitorConfig() {
         stationKey = QStringLiteral("default");
     const QString flowPath = TestCasePaths::profileFlowPath(stationKey);
 
+    ui->scannerIpLineEdit->blockSignals(true);
+    ui->scannerPortSpinBox->blockSignals(true);
     ui->plcComPortCombo->blockSignals(true);
     ui->plcBaudRateCombo->blockSignals(true);
     ui->plcWaitAddressLineEdit->blockSignals(true);
@@ -66,11 +68,15 @@ void Fixture_uart::loadPreStartMonitorConfig() {
     QSettings settings(flowPath, QSettings::IniFormat);
     settings.setIniCodec("UTF-8");
     settings.beginGroup(QStringLiteral("PreStart_Monitor"));
+    ui->scannerIpLineEdit->setText(settings.value(QStringLiteral("ScannerIp"), QStringLiteral("192.168.1.64")).toString());
+    ui->scannerPortSpinBox->setValue(settings.value(QStringLiteral("ScannerPort"), 2001).toInt());
     ui->plcComPortCombo->setEditText(settings.value(QStringLiteral("PlcComPort")).toString());
     ui->plcBaudRateCombo->setEditText(settings.value(QStringLiteral("PlcBaudRate"), QStringLiteral("115200")).toString());
     ui->plcWaitAddressLineEdit->setText(settings.value(QStringLiteral("PlcWaitAddress"), QStringLiteral("M100")).toString());
     settings.endGroup();
 
+    ui->scannerIpLineEdit->blockSignals(false);
+    ui->scannerPortSpinBox->blockSignals(false);
     ui->plcComPortCombo->blockSignals(false);
     ui->plcBaudRateCombo->blockSignals(false);
     ui->plcWaitAddressLineEdit->blockSignals(false);
@@ -87,10 +93,20 @@ void Fixture_uart::savePreStartMonitorConfig() {
     QSettings settings(flowPath, QSettings::IniFormat);
     settings.setIniCodec("UTF-8");
     settings.beginGroup(QStringLiteral("PreStart_Monitor"));
+    settings.setValue(QStringLiteral("ScannerIp"), ui->scannerIpLineEdit->text().trimmed());
+    settings.setValue(QStringLiteral("ScannerPort"), ui->scannerPortSpinBox->value());
     settings.setValue(QStringLiteral("PlcComPort"), ui->plcComPortCombo->currentText().trimmed());
     settings.setValue(QStringLiteral("PlcBaudRate"), ui->plcBaudRateCombo->currentText().toInt());
     settings.setValue(QStringLiteral("PlcWaitAddress"), ui->plcWaitAddressLineEdit->text().trimmed());
     settings.endGroup();
+}
+
+void Fixture_uart::on_scannerIpLineEdit_editingFinished() {
+    savePreStartMonitorConfig();
+}
+
+void Fixture_uart::on_scannerPortSpinBox_valueChanged(int) {
+    savePreStartMonitorConfig();
 }
 
 void Fixture_uart::on_plcComPortCombo_currentTextChanged(const QString&) {
