@@ -286,7 +286,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     // pb 指针仅作为现有流程兼容对象保留，不再跟随当前协议类型切换。
     // 当前激活协议由 protocolManager 统一维护。
     if ((selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctp) ||
-        (selectedType == QProtocolManager::ProtocolType::Qaiot && !qaiot) ||
+        ((selectedType == QProtocolManager::ProtocolType::Qaiot ||
+          selectedType == QProtocolManager::ProtocolType::QaiotV2) &&
+         !qaiot) ||
         (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot)) {
         QMessageBox::information(this, "协议提示", "所选协议未就绪，已自动回退到 qpb。");
         protocolManager.setCurrentProtocolType(QProtocolManager::ProtocolType::Qpb);
@@ -1296,7 +1298,9 @@ void MainWindow::applySystemProtocolFromSettings() {
     if (selectedType == QProtocolManager::ProtocolType::Unknown)
         selectedType = QProtocolManager::ProtocolType::Qpb;
     if ((selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctp) ||
-        (selectedType == QProtocolManager::ProtocolType::Qaiot && !qaiot) ||
+        ((selectedType == QProtocolManager::ProtocolType::Qaiot ||
+          selectedType == QProtocolManager::ProtocolType::QaiotV2) &&
+         !qaiot) ||
         (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot)) {
         QMessageBox::information(this, QStringLiteral("协议提示"),
                                  QStringLiteral("所选协议未就绪，已自动回退到 qpb。"));

@@ -20,7 +20,7 @@ struct DeviceCmdParamSchema {
 enum class TestCaseSendChannel { Product, ProductSerial, Dongle, Cloud, Fixture, Modbus, Scpi };
 enum class UsbCameraCmd { ScreenCameraCalibration, ScreenDeadPixelCheck, ScreenDisplayAnomalyCheck };
 enum class VesLightCmd { SetBrightness };
-enum class TestCaseProductProtocol { Qfctp, Qpb, Qroot, Qaiot };
+enum class TestCaseProductProtocol { Qfctp, Qpb, Qroot, Qaiot, QaiotV2 };
 enum class TestCaseFixtureProtocol {
     Pcba,
     Asd9026a,

@@ -125,7 +125,7 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("verifyRead"), QStringLiteral("1=写后回读校验")},
         {QStringLiteral("verifyWrite"), QStringLiteral("1=回读值须与本轮写入值一致")},
         {QStringLiteral("enableFivePointJudge"), QStringLiteral("1=本步回读后对已采点做范围+差值卡控（不合格立即 FAIL；各读取点建议均开）")},
-        {QStringLiteral("minSamples"), QStringLiteral("采光感最少样本数")},
+        {QStringLiteral("minSamples"), QStringLiteral("采集光感最少样本数")},
         {QStringLiteral("rangeLo"), QStringLiteral("本点回读下限（含）")},
         {QStringLiteral("rangeHi"), QStringLiteral("本点回读上限")},
         {QStringLiteral("rangeHiInc"), QStringLiteral("本点上界是否含：1=含 0=不含")},
@@ -146,7 +146,7 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("mLeft"), QStringLiteral("PLC 左工位线圈")},
         {QStringLiteral("mRight"), QStringLiteral("PLC 右工位线圈")},
         {QStringLiteral("address"), QStringLiteral("信捷 PLC 地址（如 M20、D100、X0）")},
-        {QStringLiteral("value"), QStringLiteral("线圈/寄存器值（true/false 或数字）")},
+        {QStringLiteral("value"), QStringLiteral("参数值（true/false 或数字）")},
         {QStringLiteral("quantity"), QStringLiteral("读取数量")},
         {QStringLiteral("comPort"), QStringLiteral("信捷 PLC 串口（如 COM4，留空则用工位万用表串口）")},
         {QStringLiteral("portName"), QStringLiteral("信捷 PLC 串口（如 COM4，留空则用工位万用表串口）")},
@@ -932,6 +932,8 @@ void fillProductProtocolCombo(QComboBox* box) {
                  DeviceCmdCatalog::productProtocolToIni(TestCaseProductProtocol::Qroot));
     box->addItem(DeviceCmdCatalog::productProtocolUiLabel(TestCaseProductProtocol::Qaiot),
                  DeviceCmdCatalog::productProtocolToIni(TestCaseProductProtocol::Qaiot));
+    box->addItem(DeviceCmdCatalog::productProtocolUiLabel(TestCaseProductProtocol::QaiotV2),
+                 DeviceCmdCatalog::productProtocolToIni(TestCaseProductProtocol::QaiotV2));
 }
 
 void fillFixtureProtocolCombo(QComboBox* box) {

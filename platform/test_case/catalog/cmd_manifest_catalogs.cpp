@@ -423,6 +423,8 @@ TestCaseProductProtocol DeviceCmdCatalog::productProtocolFromIni(const QString& 
         return TestCaseProductProtocol::Qroot;
     if (t.compare(QStringLiteral("Qaiot"), Qt::CaseInsensitive) == 0)
         return TestCaseProductProtocol::Qaiot;
+    if (t.compare(QStringLiteral("Qaiot2"), Qt::CaseInsensitive) == 0)
+        return TestCaseProductProtocol::QaiotV2;
     return TestCaseProductProtocol::Qfctp;
 }
 
@@ -434,6 +436,8 @@ QString DeviceCmdCatalog::productProtocolToIni(TestCaseProductProtocol protocol)
         return QStringLiteral("Qroot");
     case TestCaseProductProtocol::Qaiot:
         return QStringLiteral("Qaiot");
+    case TestCaseProductProtocol::QaiotV2:
+        return QStringLiteral("Qaiot2");
     default:
         return QStringLiteral("Qfctp");
     }
@@ -446,7 +450,9 @@ QString DeviceCmdCatalog::productProtocolUiLabel(TestCaseProductProtocol protoco
     case TestCaseProductProtocol::Qroot:
         return QStringLiteral("Qroot");
     case TestCaseProductProtocol::Qaiot:
-        return QStringLiteral("QAIOT");
+        return QStringLiteral("QAIOT V1");
+    case TestCaseProductProtocol::QaiotV2:
+        return QStringLiteral("QAIOT V2");
     default:
         return QStringLiteral("FCTP");
     }

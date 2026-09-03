@@ -940,6 +940,10 @@ QString aiotErrorCodeText(quint32 code) {
 Qaiot::Qaiot(QSerialPort* parent) : qProtocol(parent), serialPort(parent) {
 }
 
+void Qaiot::setUseLinkV2(bool v2) {
+    useLinkV2_ = v2;
+}
+
 void Qaiot::parseCmd(const QByteArray& byte) {
     if (byte.isEmpty())
         return;
@@ -1122,8 +1126,9 @@ void Qaiot::handleFctResponse(const Message& message) {
             emitReport(QStringLiteral("ProtocolRootAgingHistoryData"), QVariant::fromValue(hist));
         }
     } else if (message.commandId == AiotLink::kFctCidGetDeviceData) {
-        // device_data_type：01 SN / 02~04 三元组 / 05 MAC；另有 side(0x01)/时间戳(0x02)
+        // device_data_type：01 SN / 02~04 三元组 / 05 MAC / 06 环境id；另有 side(0x01)/时间戳(0x02)
         QString prod, dev, key, sn, macText;
+        int envId = 0; // triplet_number_id 环境id：1测试 2正式
         ProtocolBaseInfoData macInfo;
         QString sideTip;
         QString tsTip;
@@ -1164,6 +1169,11 @@ void Qaiot::handleFctResponse(const Message& message) {
                 macText = macWireToDisplay(dataNode.value);
                 continue;
             }
+            if (dt == AiotLink::kFctDataTypeTripletNumberId) {
+                if (!dataNode.value.isEmpty())
+                    envId = static_cast<quint8>(dataNode.value.at(0));
+                continue;
+            }
             const QString text = QString::fromUtf8(dataNode.value);
             if (dt == AiotLink::kFctDataTypeSn)
                 sn = text;
@@ -1177,9 +1187,14 @@ void Qaiot::handleFctResponse(const Message& message) {
         if (!sn.isEmpty())
             emitReport(QStringLiteral("ProtocolSnData"),
                        QVariant::fromValue(ProtocolSnData{ProtocolSnType::TailSn, sn}));
-        if (!prod.isEmpty() || !dev.isEmpty() || !key.isEmpty())
-            emitReport(QStringLiteral("ProtocolTupleData"),
-                       QVariant::fromValue(ProtocolTupleData{prod, dev, key}));
+        if (!prod.isEmpty() || !dev.isEmpty() || !key.isEmpty() || envId != 0) {
+            ProtocolTupleData tuple;
+            tuple.productId = prod;
+            tuple.deviceId = dev;
+            tuple.key = key;
+            tuple.envId = envId;
+            emitReport(QStringLiteral("ProtocolTupleData"), QVariant::fromValue(tuple));
+        }
         if (!macText.isEmpty()) {
             emitReport(QStringLiteral("ProtocolBaseInfoData"), QVariant::fromValue(macInfo));
             emitReport(QStringLiteral("ProtocolMacData"), QVariant::fromValue(ProtocolMacData{macText}));
@@ -1198,6 +1213,8 @@ void Qaiot::handleFctResponse(const Message& message) {
             parts << QStringLiteral("deviceName=%1").arg(dev);
         if (!key.isEmpty())
             parts << QStringLiteral("deviceSecret=%1").arg(key);
+        if (envId != 0)
+            parts << QStringLiteral("环境id=%1").arg(envId);
         if (!macText.isEmpty())
             parts << QStringLiteral("MAC=%1").arg(macText);
         if (!parts.isEmpty()) {
@@ -1710,9 +1727,10 @@ void Qaiot::set(DeviceCmd cmd, const QVariant& data) {
     case DeviceCmd::Sn:
     case DeviceCmd::WriteKey:
     case DeviceCmd::MacWrite: {
-        // CID=0x04：device_side_id + UTC 时间戳 + data_type(01 SN / 02~04 三元组 / 05 MAC)
+        // CID=0x04：device_side_id + UTC 时间戳 + data_type(01 SN / 02~04 三元组 / 05 MAC / 06 环境id)
         QList<TlvNode> items;
         int sideOverride = -1;
+        quint8 envId = AiotLink::kFctTripletEnvTest; // 三元组环境id，默认测试环境
         auto appendItem = [&](quint8 dataType, const QByteArray& bytes) {
             if (bytes.isEmpty())
                 return;
@@ -1755,6 +1773,19 @@ void Qaiot::set(DeviceCmd cmd, const QVariant& data) {
             appendItem(AiotLink::kFctDataTypeDeviceSecret, deviceSecret);
             if (items.isEmpty() && data.type() == QVariant::String)
                 appendItem(AiotLink::kFctDataTypeSn, data.toString().toUtf8());
+            // 三元组环境id triplet_number_id（0x06）：仅 0x02 为正式环境，其余一律按测试环境
+            if (cmd == DeviceCmd::WriteKey) {
+                for (const QString& k : {QStringLiteral("envId"), QStringLiteral("tripletNumberId"),
+                                         QStringLiteral("environmentId")}) {
+                    if (!map.contains(k))
+                        continue;
+                    const uint v = map.value(k).toUInt();
+                    envId = (v == AiotLink::kFctTripletEnvProd) ? AiotLink::kFctTripletEnvProd
+                                                                : AiotLink::kFctTripletEnvTest;
+                    break;
+                }
+                appendItem(AiotLink::kFctDataTypeTripletNumberId, u8(envId));
+            }
         }
         if (items.isEmpty()) {
             emitReport(QStringLiteral("ProtocolPbDate"), QStringLiteral("QAIOT 写设备数据缺少字段"));
@@ -1774,6 +1805,9 @@ void Qaiot::set(DeviceCmd cmd, const QVariant& data) {
         else if (cmd == DeviceCmd::WriteKey)
             tip = QStringLiteral("写三元组");
         tip += QStringLiteral(" side=%1 时间戳=%2").arg(deviceSideIdTip(side), formatDeviceDataTimestamp(ts));
+        if (cmd == DeviceCmd::WriteKey)
+            tip += QStringLiteral(" 环境=%1").arg(envId == AiotLink::kFctTripletEnvProd ? QStringLiteral("正式")
+                                                                                       : QStringLiteral("测试"));
         sendServiceCommand(AiotLink::kSvcFctAte, AiotLink::kFctCidSetDeviceData, tlvs, tip);
         break;
     }
@@ -2370,7 +2404,8 @@ void Qaiot::get(DeviceCmd cmd, const QVariant& param) {
             else if (map.contains(QStringLiteral("type")))
                 onlyType = static_cast<quint8>(map.value(QStringLiteral("type")).toUInt());
             if (onlyType == AiotLink::kFctDataTypeProductId || onlyType == AiotLink::kFctDataTypeDeviceId ||
-                onlyType == AiotLink::kFctDataTypeDeviceSecret) {
+                onlyType == AiotLink::kFctDataTypeDeviceSecret ||
+                onlyType == AiotLink::kFctDataTypeTripletNumberId) {
                 appendDataType(onlyType);
             } else {
                 appendDataType(AiotLink::kFctDataTypeProductId);
@@ -2548,7 +2583,9 @@ bool Qaiot::sendAppPdu(const QByteArray& appPdu) {
         qWarning() << "QAIOT 串口未打开，未发送数据";
         return false;
     }
-    const QVector<QByteArray> linkFrames = AiotLinkCodec::buildFramesForPdu(appPdu);
+    // v2 链路启用 Version+PSN（分帧带 FSN+FMN）；v1 不带 Version 字段
+    const uint8_t psn = useLinkV2_ ? psnCounter_++ : 0;
+    const QVector<QByteArray> linkFrames = AiotLinkCodec::buildFramesForPdu(appPdu, 512, useLinkV2_, psn);
     for (const QByteArray& link : linkFrames) {
         const QByteArray phy = wrapPhyPacket(link);
         if (phy.isEmpty())

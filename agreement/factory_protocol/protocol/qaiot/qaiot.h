@@ -28,6 +28,9 @@ class Qaiot : public qProtocol {
     void get(DeviceCmd cmd, const QVariant& param = {}) override;
     bool sendCustomMessage(const QVariantMap& map) override;
 
+    /** 切换链路层封装版本：false=v1（无 Version 字段），true=v2（Version+PSN，分帧带 FSN+FMN） */
+    void setUseLinkV2(bool v2);
+
   private:
     struct TlvNode {
         quint8 rawType = 0;
@@ -76,6 +79,10 @@ class Qaiot : public qProtocol {
 
     QSerialPort* serialPort = nullptr;
     AiotLinkCodec linkCodec_;
+    // v2 链路：启用 Version 时每发一个应用层 PDU 递增 PSN（包序号 [0,255] 回绕）
+    uint8_t psnCounter_ = 0;
+    // 当前链路层封装版本（v2 才启用 Version 字段），由 QProtocolManager 按协议类型设置
+    bool useLinkV2_ = false;
 
     // 多分片组包
     QByteArray reassembly_;

@@ -352,6 +352,7 @@ struct ProtocolTupleData {
     QString key;           // 明文密钥或（qroot 解密后）密钥后 8 位明文
     QString keyCipherHex;  // qroot 0xF7 线上 KeyTail 密文 hex；非 qroot 为空
     bool keyDecrypted = false;
+    int envId = 0;         // 三元组环境id（qaiot triplet_number_id）：0未知 1测试 2正式
 };
 
 struct ProtocolAgingStatusData {
