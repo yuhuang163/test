@@ -47,6 +47,10 @@ struct PreStartMonitorConfig {
     QString plcDevice;
     QString plcIp;
     int plcPort = 502;
+    QString plcComPort;
+    int plcBaudRate = 19200;
+    int plcSlaveId = 1;
+    QString plcWaitAddress = "M100";
     int plcWaitAddressM = 100;
     int plcPollIntervalMs = 500;
     QString scannerIp = "192.168.1.64";
