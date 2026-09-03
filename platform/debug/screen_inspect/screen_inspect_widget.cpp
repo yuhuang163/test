@@ -367,6 +367,7 @@ void ScreenInspectWidget::on_btnOpenPreview_clicked() {
 
 void ScreenInspectWidget::on_btnClosePreview_clicked() {
     stopPreview();
+    setBusy(false);
     ui->plainTextEdit_screenInspectLog->setPlainText(QStringLiteral("已关闭预览。"));
 }
 
@@ -407,13 +408,24 @@ void ScreenInspectWidget::captureGigEStill() {
 }
 
 void ScreenInspectWidget::requestCapture() {
+    if (!busy_) {
+        return;
+    }
     if (isGigESource()) {
         captureGigEStill();
         return;
     }
     if (!camera_ || !capture_) {
-        captureAfterReady_ = true;
         startPreview();
+        if (camera_) {
+            if (camera_->status() == QCamera::ActiveStatus) {
+                QTimer::singleShot(450, this, &ScreenInspectWidget::requestCapture);
+            } else {
+                captureAfterReady_ = true;
+            }
+        } else {
+            setBusy(false);
+        }
         return;
     }
     if (camera_->status() != QCamera::ActiveStatus) {

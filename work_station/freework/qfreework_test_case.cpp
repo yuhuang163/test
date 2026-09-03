@@ -1095,7 +1095,14 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
             if (prompt.startsWith(prefix))
                 expectColor = prompt.mid(prefix.size()).trimmed();
         }
-        if (screenInspectAskHumanPassOnAutoFail(expectColor)) {
+        bool allowHumanOverride = true;
+        if (paramMap.contains(QStringLiteral("allowHumanOverride"))) {
+            allowHumanOverride = paramMap.value(QStringLiteral("allowHumanOverride")).toBool();
+        } else if (paramMap.contains(QStringLiteral("askHumanOnFail"))) {
+            allowHumanOverride = paramMap.value(QStringLiteral("askHumanOnFail")).toBool();
+        }
+
+        if (allowHumanOverride && screenInspectAskHumanPassOnAutoFail(expectColor)) {
             pass = true;
             humanOverrodePass = true;
             if (!display.testData.contains(QStringLiteral("人工确认")))
@@ -1103,8 +1110,12 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
             showlog(QStringLiteral("人工确认：屏幕显示%1，本步通过").arg(
                 expectColor.isEmpty() ? QStringLiteral("目标颜色") : expectColor));
         } else {
-            showlog(QStringLiteral("人工确认：屏幕未显示%1，本步不通过").arg(
-                expectColor.isEmpty() ? QStringLiteral("目标颜色") : expectColor));
+            if (!allowHumanOverride) {
+                showlog(QStringLiteral("自动判断未通过，且步骤已配置关闭人工确认，直接判定为不通过"));
+            } else {
+                showlog(QStringLiteral("人工确认：屏幕未显示%1，本步不通过").arg(
+                    expectColor.isEmpty() ? QStringLiteral("目标颜色") : expectColor));
+            }
         }
     }
 

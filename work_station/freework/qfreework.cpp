@@ -608,6 +608,9 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     setupModbusManager();
     plcFacade_.setModbusManager(&modbusManager);
 
+    preStartMonitorTimer_ = new QTimer(this);
+    connect(preStartMonitorTimer_, &QTimer::timeout, this, &QFreeWork::onPreStartMonitorTimeout);
+
     ui->setupUi(this);
     ui->disconnectButton->setEnabled(false);
     ui->jigDisconnectButton->setEnabled(false);
@@ -615,6 +618,7 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     ui->productDisconnectButton->setEnabled(false);
     updateMainStyle("Ubuntu.qss");
     applyFreeWorkExtraTabsVisible(false);
+    
     setupFreeWorkTabBar(ui->tabWidget);
     scanSerialPorts(); // 要搜索一下一开始
     ui->test_result->setText("WAIT");
@@ -782,6 +786,7 @@ void QFreeWork::refreshOrderedTestIndexes() {
     updateTuplePositionUiVisible();
     applyStationSerialUiConfig();
     loadAndApplyStationDeviceSide();
+    updatePreStartMonitorState();
 }
 
 bool QFreeWork::currentOrderedStepIsDongleBleConnect() const {
@@ -797,6 +802,152 @@ bool QFreeWork::currentOrderedStepIsDongleBleConnect() const {
         return true;
     }
     return isDongleBleConnectStepName(caseDef.meta.name);
+}
+
+void QFreeWork::updatePreStartMonitorState() {
+    preStartMonitorConfig_.enabled = false;
+    const QString flowPath = TestCasePaths::profileFlowPath(activeFlowStationKey_);
+    if (!QFile::exists(flowPath)) return;
+
+    QSettings settings(flowPath, QSettings::IniFormat);
+    settings.setIniCodec("UTF-8");
+    settings.beginGroup("PreStart_Monitor");
+    
+    ui->autoStartCheckBox->blockSignals(true);
+    ui->autoStartCheckBox->setChecked(settings.value("IsAutoStartChecked", false).toBool());
+    ui->autoStartCheckBox->blockSignals(false);
+    
+    if (settings.contains("Enabled") && settings.value("Enabled").toBool()) {
+        preStartMonitorConfig_.enabled = true;
+        preStartMonitorConfig_.plcDevice = settings.value("PlcDevice", "InovanceH5uTcp").toString();
+        preStartMonitorConfig_.plcIp = settings.value("PlcIp", "127.0.0.1").toString();
+        preStartMonitorConfig_.plcPort = settings.value("PlcPort", 502).toInt();
+        preStartMonitorConfig_.plcWaitAddressM = settings.value("PlcWaitAddressM", 100).toInt();
+        preStartMonitorConfig_.plcPollIntervalMs = qMax(50, settings.value("PlcPollIntervalMs", 500).toInt());
+        preStartMonitorConfig_.scannerIp = settings.value("ScannerIp", "127.0.0.1").toString();
+        preStartMonitorConfig_.scannerPort = settings.value("ScannerPort", 2001).toInt();
+        preStartMonitorConfig_.scannerTimeoutMs = settings.value("ScannerTimeoutMs", 1000).toInt();
+        preStartMonitorConfig_.autoIncrementIpByStation = settings.value("AutoIncrementIpByStation", true).toBool();
+        
+        if (preStartMonitorConfig_.autoIncrementIpByStation) {
+            QStringList parts = preStartMonitorConfig_.scannerIp.split('.');
+            if (parts.size() == 4) {
+                int lastPart = parts[3].toInt() + (getIndex() - 1);
+                parts[3] = QString::number(lastPart);
+                preStartMonitorConfig_.scannerIp = parts.join('.');
+            }
+        }
+    }
+    settings.endGroup();
+
+    ui->autoStartCheckBox->setVisible(preStartMonitorConfig_.enabled);
+
+    if (preStartMonitorConfig_.enabled && !isTestContinue && ui->autoStartCheckBox->isChecked()) {
+        if (!preStartMonitorRunning_) {
+            preStartMonitorTimer_->start(preStartMonitorConfig_.plcPollIntervalMs);
+            preStartMonitorRunning_ = true;
+            qDebug() << "[FreeWork] Start PreStart Monitor polling on M" << preStartMonitorConfig_.plcWaitAddressM;
+        }
+    } else {
+        if (preStartMonitorRunning_) {
+            preStartMonitorTimer_->stop();
+            preStartMonitorRunning_ = false;
+            qDebug() << "[FreeWork] Stop PreStart Monitor polling";
+        }
+    }
+}
+
+void QFreeWork::on_autoStartCheckBox_toggled(bool checked) {
+    const QString flowPath = TestCasePaths::profileFlowPath(activeFlowStationKey_);
+    if (QFile::exists(flowPath)) {
+        QSettings settings(flowPath, QSettings::IniFormat);
+        settings.setIniCodec("UTF-8");
+        settings.beginGroup("PreStart_Monitor");
+        settings.setValue("IsAutoStartChecked", checked);
+        settings.endGroup();
+    }
+    updatePreStartMonitorState();
+}
+
+void QFreeWork::onPreStartMonitorTimeout() {
+    if (isTestContinue || !preStartMonitorConfig_.enabled) {
+        updatePreStartMonitorState();
+        return;
+    }
+
+    if (!modbusManager.isPlcConnected()) {
+        QString err;
+        QVariantMap connectParams;
+        if (!preStartMonitorConfig_.plcIp.isEmpty()) {
+            connectParams.insert(QStringLiteral("host"), preStartMonitorConfig_.plcIp);
+        }
+        if (preStartMonitorConfig_.plcPort > 0) {
+            connectParams.insert(QStringLiteral("port"), preStartMonitorConfig_.plcPort);
+        }
+        
+        if (!modbusManager.exec(PlcCmd::Connect, connectParams, nullptr, &err)) {
+            static qint64 lastLog = 0;
+            if (QDateTime::currentMSecsSinceEpoch() - lastLog > 5000) {
+                qDebug() << "[FreeWork] PreStartMonitor auto-connect to PLC failed:" << err;
+                lastLog = QDateTime::currentMSecsSinceEpoch();
+            }
+            return;
+        } else {
+            qDebug() << "[FreeWork] PreStartMonitor auto-connected to PLC successfully.";
+        }
+    }
+
+    QString plcErr;
+    QVariant param = preStartMonitorConfig_.plcWaitAddressM;
+    QVariant result;
+    bool ok = modbusManager.exec(PlcCmd::ReadCoil, param, &result, &plcErr);
+    
+    if (ok && result.isValid() && result.toBool() == true) {
+        qDebug() << "[FreeWork] PLC Trigger detected! Stopping monitor and triggering scanner.";
+        preStartMonitorTimer_->stop();
+        preStartMonitorRunning_ = false;
+        
+        QMetaObject::invokeMethod(this, "triggerHikvisionScanner", Qt::QueuedConnection);
+    }
+}
+
+#include "hikvision_scanner_tcp.h"
+#include <QtConcurrent>
+#include <QFutureWatcher>
+
+void QFreeWork::triggerHikvisionScanner() {
+    showlog("检测到 PLC 启动信号，正在触发扫码枪...");
+    
+    PreStartMonitorConfig cfg = preStartMonitorConfig_;
+    auto watcher = new QFutureWatcher<QString>(this);
+    connect(watcher, &QFutureWatcher<QString>::finished, this, [this, watcher]() {
+        QString res = watcher->result();
+        watcher->deleteLater();
+        if (res.startsWith("ERROR:")) {
+            showlog(QStringLiteral("扫码枪读取失败: ") + res.mid(6));
+            updatePreStartMonitorState();
+        } else {
+            showlog(QStringLiteral("扫码枪读取成功: ") + res);
+            ui->getMac->setText(res);
+            on_getMac_returnPressed();
+            // 如果解析失败或 MES 拒绝导致没有真正开始测试，恢复监控，允许下一次扫码
+            updatePreStartMonitorState();
+        }
+    });
+
+    QFuture<QString> future = QtConcurrent::run([cfg]() -> QString {
+        HikvisionScannerTcp scanner;
+        QString err;
+        if (!scanner.connectDevice(cfg.scannerIp, cfg.scannerPort, cfg.scannerTimeoutMs, &err)) {
+            return "ERROR:" + err;
+        }
+        QString result;
+        if (!scanner.sendStartAndRead(&result, cfg.scannerTimeoutMs, &err)) {
+            return "ERROR:" + err;
+        }
+        return result;
+    });
+    watcher->setFuture(future);
 }
 
 void QFreeWork::beginUiStartTest() {
@@ -815,6 +966,7 @@ void QFreeWork::beginUiStartTest() {
 
     isTestContinue = true;
     teststate = -1;
+    updatePreStartMonitorState();
     ui->test_time->setText(QStringLiteral("0.0 s"));
     resetLightSensorFivePointState();
 
@@ -1027,6 +1179,9 @@ bool QFreeWork::runSingleTestCaseStep(const QString& stationKey, const QString& 
         "padding: 10px; text-align: center; ");
     TestTime.start();
     ui->test_time->setText(QStringLiteral("0.0 s"));
+    cachedScreenCircleCx_ = -1;
+    cachedScreenCircleCy_ = -1;
+    cachedScreenCircleR_ = -1;
     teststate = 0;
     isTestContinue = true;
     return true;
@@ -1319,6 +1474,7 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     ui->getMac->setDisabled(0);
     // 先退出本工位测试态；最后一个工位结束时才能安全释放共享 ASD 串口。
     isTestContinue = false;
+    updatePreStartMonitorState();
     on_disconnectButton_clicked();
     if (auto* box = qobject_cast<QFreeWorkBox*>(window())) {
         box->releaseSharedAsd9026aIfIdle();
@@ -2080,13 +2236,11 @@ void QFreeWork::setDongleSuctionReadEnabled(bool enabled) {
         at->set(DongleCmd::GetSuction, enabled ? 1 : 0);
 }
 
-bool QFreeWork::screenInspectAskHumanPassOnAutoFail(const QString& autoFailDetail) {
-    const QString detail = autoFailDetail.trimmed().isEmpty() ? QStringLiteral("未通过") : autoFailDetail.trimmed();
-    QMessageBox box(QMessageBox::Question, QStringLiteral("屏幕检测人工确认"),
-                    QStringLiteral("图像自动识别未通过：%1\n\n是否确认屏幕有问题？\n"
-                                   "点「是」=确认有问题（不通过）\n"
-                                   "点「否」=目视正常（通过）")
-                        .arg(detail),
+bool QFreeWork::screenInspectAskHumanPassOnAutoFail(const QString& expectedColorName) {
+    const QString color =
+        expectedColorName.trimmed().isEmpty() ? QStringLiteral("目标颜色") : expectedColorName.trimmed();
+    QMessageBox box(QMessageBox::Question, QStringLiteral("屏幕颜色确认"),
+                    QStringLiteral("请确认屏幕是否显示「%1」？\n是=通过　否=不通过").arg(color),
                     QMessageBox::Yes | QMessageBox::No, this);
     if (QAbstractButton* yesBtn = box.button(QMessageBox::Yes))
         yesBtn->setText(QStringLiteral("是"));
@@ -2119,8 +2273,15 @@ void QFreeWork::runScreenInspectStep() {
         return ok ? v : defVal;
     };
 
-    const int cameraIndex = mapInt(QStringLiteral("cameraIndex"),
-                                   SETTINGS.value(QStringLiteral("ScreenInspect/CameraIndex"), 0).toInt());
+    auto mapDouble = [&](const QString& key, double defVal) {
+        if (!map.contains(key) || map.value(key).toString().trimmed().isEmpty())
+            return defVal;
+        bool ok = false;
+        const double v = map.value(key).toDouble(&ok);
+        return ok ? v : defVal;
+    };
+
+    const int cameraIndex = mapInt(QStringLiteral("cameraIndex"), 0);
     const QString cameraName = map.value(QStringLiteral("cameraName")).toString().trimmed();
     // 自由工站默认 GigE；Param_cameraSource=usb 时仍走 USB 摄像头
     const QString cameraSource = map.value(QStringLiteral("cameraSource")).toString().trimmed().toLower();
@@ -2129,9 +2290,7 @@ void QFreeWork::runScreenInspectStep() {
     if (cameraIp.isEmpty())
         cameraIp = map.value(QStringLiteral("gigeIp")).toString().trimmed();
     if (cameraIp.isEmpty())
-        cameraIp = SETTINGS.value(QStringLiteral("ScreenInspect/GigEIp"), QStringLiteral("169.254.64.10"))
-                       .toString()
-                       .trimmed();
+        cameraIp = QStringLiteral("169.254.64.10");
     const QString cameraSerial = map.value(QStringLiteral("cameraSerial")).toString().trimmed();
     const int warmupMs = qBound(0, mapInt(QStringLiteral("warmupMs"), 450), 8000);
     int expectedColor = -1;
@@ -2142,12 +2301,10 @@ void QFreeWork::runScreenInspectStep() {
         if (!colorOk)
             expectedColor = -1;
     }
-    const int deadDiff = mapInt(QStringLiteral("deadDiff"),
-                                SETTINGS.value(QStringLiteral("ScreenInspect/DeadPixelDiff"), 35).toInt());
+    const int deadDiff = mapInt(QStringLiteral("deadDiff"), 35);
+    const int deadRadiusPercent = mapInt(QStringLiteral("deadRadiusPercent"), 82);
     const int saveCapture = mapInt(QStringLiteral("saveCapture"), 1);
-    QString referencePath = map.value(QStringLiteral("referencePath")).toString().trimmed();
-    if (referencePath.isEmpty())
-        referencePath = SETTINGS.value(QStringLiteral("ScreenInspect/ReferencePath")).toString().trimmed();
+    const QString referencePath = map.value(QStringLiteral("referencePath")).toString().trimmed();
 
     const QString modeName = calibMode   ? QStringLiteral("位置校准")
                              : deadMode  ? QStringLiteral("坏点分析")
@@ -2204,9 +2361,7 @@ void QFreeWork::runScreenInspectStep() {
         }
     }
 
-    QString roiText = map.value(QStringLiteral("roi")).toString().trimmed();
-    if (roiText.isEmpty())
-        roiText = SETTINGS.value(QStringLiteral("ScreenInspect/Roi")).toString().trimmed();
+    const QString roiText = map.value(QStringLiteral("roi")).toString().trimmed();
     const QRect manualRoi = ScreenInspectAnalyzer::parseManualRoi(roiText);
     if (!manualRoi.isNull())
         showlog(QStringLiteral("使用划定检测范围：%1,%2 %3x%4")
@@ -2282,6 +2437,7 @@ void QFreeWork::runScreenInspectStep() {
 
     ScreenInspectAnalyzer::Params ap;
     ap.deadDiff = deadDiff;
+    ap.deadRadiusPercent = deadRadiusPercent;
     ap.expectedColor = expectedColor;
     ap.manualRoi = manualRoi;
     // 未启用的卡控项跳过重计算；坏点专用指令仍强制扫坏点
@@ -2303,9 +2459,25 @@ void QFreeWork::runScreenInspectStep() {
                              needSsim ? QStringLiteral("开") : QStringLiteral("跳过")));
         }
     }
+    const int reuseCircleRoi = mapInt(QStringLiteral("reuseCircleRoi"), 0);
+    if (reuseCircleRoi && cachedScreenCircleR_ > 0) {
+        ap.cachedCircleCx = cachedScreenCircleCx_;
+        ap.cachedCircleCy = cachedScreenCircleCy_;
+        ap.cachedCircleR = cachedScreenCircleR_;
+    }
+
     phaseT.restart();
     const ScreenInspectAnalyzer::Report report = ScreenInspectAnalyzer::analyze(curr, ref, ap);
     const qint64 msAnalyze = phaseT.elapsed();
+
+    // 更新缓存的圆信息
+    if (!reuseCircleRoi || cachedScreenCircleR_ <= 0) {
+        if (report.circleR > 0) {
+            cachedScreenCircleCx_ = report.circleCx;
+            cachedScreenCircleCy_ = report.circleCy;
+            cachedScreenCircleR_ = report.circleR;
+        }
+    }
 
     const QString dir = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("screen_inspect"));
     CommonUtils::ensureDirectory(dir);
@@ -2314,14 +2486,23 @@ void QFreeWork::runScreenInspectStep() {
     QImage refMarked;
     if (!ref.isNull()) {
         QRect refRoi = report.roi;
-        if (curr.width() > 0 && curr.height() > 0 && ref.width() > 0 && ref.height() > 0
-            && curr.size() != ref.size() && !report.roi.isNull()) {
-            refRoi = QRect(report.roi.x() * ref.width() / curr.width(),
-                           report.roi.y() * ref.height() / curr.height(),
-                           qMax(1, report.roi.width() * ref.width() / curr.width()),
-                           qMax(1, report.roi.height() * ref.height() / curr.height()));
+        int refCircleCx = -1;
+        int refCircleCy = -1;
+        int refCircleR = -1;
+        if (curr.width() > 0 && curr.height() > 0 && ref.width() > 0 && ref.height() > 0) {
+            if (curr.size() != ref.size() && !report.roi.isNull()) {
+                refRoi = QRect(report.roi.x() * ref.width() / curr.width(),
+                               report.roi.y() * ref.height() / curr.height(),
+                               qMax(1, report.roi.width() * ref.width() / curr.width()),
+                               qMax(1, report.roi.height() * ref.height() / curr.height()));
+            }
+            if (report.circleR > 0) {
+                refCircleCx = report.circleCx * ref.width() / curr.width();
+                refCircleCy = report.circleCy * ref.height() / curr.height();
+                refCircleR = qMax(8, report.circleR * qMin(ref.width(), ref.height()) / qMin(curr.width(), curr.height()));
+            }
         }
-        refMarked = ScreenInspectAnalyzer::drawGuides(ref, refRoi, &curr);
+        refMarked = ScreenInspectAnalyzer::drawGuides(ref, refRoi, refCircleCx, refCircleCy, refCircleR);
     }
     // 高分辨率 PNG 压缩极慢（曾出现分析完后 UI 卡死近 1 分钟）；证据图改 JPEG，识别仍用内存原图
     // 存盘再压长边，避免数千万像素 JPEG 编码拖慢节拍
@@ -2420,12 +2601,26 @@ void QFreeWork::runScreenInspectStep() {
     if (expectedColor >= 0 && data.colorMatch == 0) {
         showlog(QStringLiteral("屏幕检测自动识别未通过：%1").arg(colorLog));
         const QString askColor = ScreenInspectAnalyzer::colorName(expectedColor);
-        if (screenInspectAskHumanPassOnAutoFail(askColor)) {
+        bool allowHumanOverride = true;
+        if (activeTestCase_.send.param.canConvert<QVariantMap>()) {
+            const QVariantMap paramMap = resolveTestCaseSendParamTree(activeTestCase_.send.param).toMap();
+            if (paramMap.contains(QStringLiteral("allowHumanOverride"))) {
+                allowHumanOverride = paramMap.value(QStringLiteral("allowHumanOverride")).toBool();
+            } else if (paramMap.contains(QStringLiteral("askHumanOnFail"))) {
+                allowHumanOverride = paramMap.value(QStringLiteral("askHumanOnFail")).toBool();
+            }
+        }
+
+        if (allowHumanOverride && screenInspectAskHumanPassOnAutoFail(askColor)) {
             showlog(QStringLiteral("人工确认：屏幕显示%1，本步通过").arg(askColor));
             markActiveTestCaseStepDone(true, detectedName + QStringLiteral("（人工确认通过）"), askColor);
         } else {
             TestResult = failValue;
-            showlog(QStringLiteral("人工确认：屏幕未显示%1，本步不通过").arg(askColor));
+            if (!allowHumanOverride) {
+                showlog(QStringLiteral("自动判定未通过，且该步骤配置为禁用人工确认，直接判定失败"));
+            } else {
+                showlog(QStringLiteral("人工确认：屏幕未显示%1，本步不通过").arg(askColor));
+            }
             markActiveTestCaseStepDone(false, detectedName, askColor);
         }
         return;
@@ -2434,7 +2629,7 @@ void QFreeWork::runScreenInspectStep() {
     bool pass = true;
     QStringList reasons;
     if (deadMode) {
-        const int maxDead = SETTINGS.value(QStringLiteral("ScreenInspect/MaxDeadPixels"), 8).toInt();
+        const int maxDead = mapInt(QStringLiteral("maxDead"), 8);
         if (data.deadPixels > maxDead) {
             pass = false;
             reasons.append(QStringLiteral("坏点%1 超过上限%2").arg(data.deadPixels).arg(maxDead));
@@ -2443,7 +2638,7 @@ void QFreeWork::runScreenInspectStep() {
         }
     }
     if (anomalyMode) {
-        const double minSsim = SETTINGS.value(QStringLiteral("ScreenInspect/MinSimilarity"), 0.90).toDouble();
+        const double minSsim = mapDouble(QStringLiteral("minSsim"), 0.90);
         if (data.ssim < minSsim) {
             pass = false;
             reasons.append(QStringLiteral("相似度%1 低于下限%2")
@@ -2470,13 +2665,27 @@ void QFreeWork::runScreenInspectStep() {
         showlog(QStringLiteral("屏幕检测自动识别未通过：%1").arg(failReason));
         const QString askColor = expectedColor >= 0 ? ScreenInspectAnalyzer::colorName(expectedColor)
                                                     : askText;
-        if (screenInspectAskHumanPassOnAutoFail(askColor)) {
+        bool allowHumanOverride = true;
+        if (activeTestCase_.send.param.canConvert<QVariantMap>()) {
+            const QVariantMap paramMap = resolveTestCaseSendParamTree(activeTestCase_.send.param).toMap();
+            if (paramMap.contains(QStringLiteral("allowHumanOverride"))) {
+                allowHumanOverride = paramMap.value(QStringLiteral("allowHumanOverride")).toBool();
+            } else if (paramMap.contains(QStringLiteral("askHumanOnFail"))) {
+                allowHumanOverride = paramMap.value(QStringLiteral("askHumanOnFail")).toBool();
+            }
+        }
+
+        if (allowHumanOverride && screenInspectAskHumanPassOnAutoFail(askColor)) {
             showlog(QStringLiteral("人工确认：屏幕显示%1，本步通过").arg(askColor));
             markActiveTestCaseStepDone(true, testData + QStringLiteral("（人工确认通过）"),
                                        askText.isEmpty() ? QStringLiteral("通过") : askText);
         } else {
             TestResult = failValue;
-            showlog(QStringLiteral("人工确认：屏幕未显示%1，本步不通过").arg(askColor));
+            if (!allowHumanOverride) {
+                showlog(QStringLiteral("自动判定未通过，且该步骤配置为禁用人工确认，直接判定失败"));
+            } else {
+                showlog(QStringLiteral("人工确认：屏幕未显示%1，本步不通过").arg(askColor));
+            }
             markActiveTestCaseStepDone(false, testData, askText.isEmpty() ? QStringLiteral("失败") : askText);
         }
         return;
@@ -3195,6 +3404,7 @@ void QFreeWork::on_stopTest_clicked() {
     plcFacade_.disconnect();
     resetVisaBackend();
     isTestContinue = false;
+    updatePreStartMonitorState();
     if (auto* box = qobject_cast<QFreeWorkBox*>(window())) {
         box->releaseSharedAsd9026aIfIdle();
         box->releaseSharedTempLoggerIfIdle();
@@ -3205,7 +3415,11 @@ void QFreeWork::on_stopTest_clicked() {
     ui->macInput->clear();
     ui->getMac->clear();
     mesProcessCode_.clear();
-    ui->getMac->setFocus();
+    if (ui->isformmes->isChecked()) {
+        ui->getMac->setFocus();
+    } else {
+        ui->macInput->setFocus();
+    }
     on_disconnectButton_clicked();
 }
 

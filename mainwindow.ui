@@ -2935,7 +2935,7 @@
                       <item>
                        <widget class="QGroupBox" name="groupBox_refImage">
                         <property name="sizePolicy">
-                         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                         <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
                           <horstretch>0</horstretch>
                           <verstretch>0</verstretch>
                          </sizepolicy>
@@ -2947,21 +2947,21 @@
                          <item>
                           <widget class="QLabel" name="label_refImage">
                            <property name="sizePolicy">
-                            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                              <horstretch>0</horstretch>
                              <verstretch>0</verstretch>
                             </sizepolicy>
                            </property>
                            <property name="minimumSize">
                             <size>
-                             <width>160</width>
-                             <height>120</height>
+                             <width>320</width>
+                             <height>240</height>
                             </size>
                            </property>
                            <property name="maximumSize">
                             <size>
                              <width>16777215</width>
-                             <height>120</height>
+                             <height>16777215</height>
                             </size>
                            </property>
                            <property name="frameShape">
@@ -2981,7 +2981,7 @@
                       <item>
                        <widget class="QGroupBox" name="groupBox_currImage">
                         <property name="sizePolicy">
-                         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+                         <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
                           <horstretch>0</horstretch>
                           <verstretch>0</verstretch>
                          </sizepolicy>
@@ -2993,21 +2993,21 @@
                          <item>
                           <widget class="QLabel" name="label_currImage">
                            <property name="sizePolicy">
-                            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                              <horstretch>0</horstretch>
                              <verstretch>0</verstretch>
                             </sizepolicy>
                            </property>
                            <property name="minimumSize">
                             <size>
-                             <width>160</width>
-                             <height>120</height>
+                             <width>320</width>
+                             <height>240</height>
                             </size>
                            </property>
                            <property name="maximumSize">
                             <size>
                              <width>16777215</width>
-                             <height>120</height>
+                             <height>16777215</height>
                             </size>
                            </property>
                            <property name="frameShape">
