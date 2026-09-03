@@ -169,6 +169,8 @@ class MainWindow : public QMainWindow {
     bool sendDongleAtLineCmd(const QString& atKey, const QString& value = QString());
     /** AT 测试页整数参数：text 须为不小于 minValue 的整数，上限交设备端判断 */
     bool sendDongleAtIntParam(const QString& atKey, const QString& text, int minValue);
+    /** 泵/阀交替运行频率（次/分钟）= 60000 ÷（泵时间+泵后全关+阀时间+阀后全关） */
+    void updateDongleAtPumpRate();
     struct DongleSuctionChannelPeakMonitor {
         enum class Phase { AtBaseline, InCycle };
         Phase phase = Phase::AtBaseline;
@@ -760,7 +762,9 @@ class MainWindow : public QMainWindow {
     void on_btnDongleAtSetPumpDuty_clicked();
     void on_btnDongleAtSetPumpFreq_clicked();
     void on_btnDongleAtSetPumpSec_clicked();
+    void on_btnDongleAtSetPumpOff_clicked();
     void on_btnDongleAtSetValveSec_clicked();
+    void on_btnDongleAtSetValveOff_clicked();
     void on_btnDongleAtSetPumpTotal_clicked();
     void on_btnDongleAtSetFgPrint_clicked();
     void on_btnDongleAtPumpSetAll_clicked();

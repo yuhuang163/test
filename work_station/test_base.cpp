@@ -388,13 +388,13 @@ void test_base::enqueueDongleUiLog(const QString& line) {
     if (line.isEmpty())
         return;
     dongleUiLogPending_.append(line);
-    while (dongleUiLogPending_.size() > 200)
+    while (dongleUiLogPending_.size() > 20)
         dongleUiLogPending_.removeFirst();
     if (dongleUiLogFlushScheduled_)
         return;
     dongleUiLogFlushScheduled_ = true;
     // 采样步骤在忙等里泵事件，singleShot(0) 会被立刻执行等于没节流；固定 200ms 攒批
-    QTimer::singleShot(200, this, [this]() { flushDongleUiLog(); });
+    QTimer::singleShot(20, this, [this]() { flushDongleUiLog(); });
 }
 
 void test_base::flushDongleUiLog() {

@@ -465,7 +465,11 @@ void QFreeWork::onTestCaseStepMarkedDone(bool pass, const QString& testData, con
 }
 
 void QFreeWork::appendTestCaseMes(const TestCaseDefinition& def, bool pass, const QString& testData) {
-    const QString tag = def.meta.mesTag.trimmed().isEmpty() ? def.meta.name.trimmed() : def.meta.mesTag.trimmed();
+    // 优先取云服务字段（中文 DisplayName），其次中文 Name，最后回退 MES 英文 MesTag
+    const QString tag = def.meta.displayName.trimmed().isEmpty()
+                            ? (def.meta.name.trimmed().isEmpty() ? def.meta.mesTag.trimmed()
+                                                                 : def.meta.name.trimmed())
+                            : def.meta.displayName.trimmed();
     const bool hasData = !testData.trimmed().isEmpty() && testData != QStringLiteral("-");
     QString value = hasData ? testData.trimmed() : QString();
     const QString resultVal = pass ? QStringLiteral("PASS") : QStringLiteral("FAIL");
@@ -523,9 +527,12 @@ void QFreeWork::appendTestCaseMes(const TestCaseDefinition& def, bool pass, cons
 
 void QFreeWork::appendMultiGateTestCaseMes(const QVector<TestCaseGate>& gates, const QString& reportType,
                                            const QVariant& payload) {
-    const QString baseTag =
-        activeTestCase_.meta.mesTag.trimmed().isEmpty() ? activeTestCase_.meta.name.trimmed()
-                                                        : activeTestCase_.meta.mesTag.trimmed();
+    // 优先取云服务字段（中文 DisplayName），其次中文 Name，最后回退 MES 英文 MesTag
+    const QString baseTag = activeTestCase_.meta.displayName.trimmed().isEmpty()
+                                ? (activeTestCase_.meta.name.trimmed().isEmpty()
+                                       ? activeTestCase_.meta.mesTag.trimmed()
+                                       : activeTestCase_.meta.name.trimmed())
+                                : activeTestCase_.meta.displayName.trimmed();
     for (const TestCaseGate& g : gates) {
         if (!g.enabled)
             continue;
@@ -1149,6 +1156,9 @@ bool QFreeWork::runSingleTestCaseStep(const QString& stationKey, const QString& 
         return false;
     }
 
+    // 单步与开测一致：Dongle 串口未打开时自动打开，避免「扫描连接蓝牙」等 BLE 步骤因串口未开而失败
+    if (!dongleSerialPort->isOpen())
+        on_connectButton_clicked();
     showlog(QStringLiteral("单步运行：%1（工站 %2）").arg(TestCaseRunner::stepLabel(def), key));
     singleStepDebugRun_ = true;
     activeFlowStationKey_ = key;
@@ -1783,8 +1793,22 @@ void QFreeWork::onTestCasePromptAcknowledged(bool accepted) {
     testCasePromptAcknowledged_ = true;
     if (!stepRuntime_.started || stepRuntime_.done || !testCaseStepActive_)
         return;
-    if (!TestCaseRunner::stepWaitsForPromptAck(activeTestCase_))
+    if (!TestCaseRunner::stepWaitsForPromptAck(activeTestCase_)) {
+        // 卡控提示步骤（Gate 已开）弹窗只提示、无「是/否」按钮；用户叉掉即放弃本步，直接判失败
+        if (!accepted) {
+            if (!testCaseCommandBegun_)
+                testCaseCommandBegun_ = true;
+            stepRuntime_.done = true;
+            stepRuntime_.pass = false;
+            stepRuntime_.ask = QStringLiteral("失败");
+            if (stepRuntime_.testData == QLatin1String("-"))
+                stepRuntime_.testData = QStringLiteral("用户关闭提示弹窗");
+            TestResult = failValue;
+            showlog(QStringLiteral("弹窗确认：关闭，本步失败"));
+            canGoNext = true;
+        }
         return;
+    }
     // 点「否」：本步失败，不发指令
     if (!accepted) {
         if (!testCaseCommandBegun_)

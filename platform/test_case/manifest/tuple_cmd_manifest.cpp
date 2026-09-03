@@ -17,6 +17,9 @@ constexpr const char kHintApply[] =
 constexpr const char kHintDebugMac[] =
     u8"上报烧录状态（/api/mac-addresses）：Param_mac=$MAC；Param_status=1 烧录工站、2 蓝牙工站\n"
     u8"可选 Param_sn=$SN；示例：Param_mac=$MAC Param_status=2";
+constexpr const char kHintReset[] =
+    u8"复位状态（/api/mac-addresses/reset-status）：Param_mac=$MAC；Param_status=1 复位\n"
+    u8"示例：Param_mac=$MAC Param_status=1";
 
 // 新增三元组指令：在此表加一行；实现见 qtupleservice.cpp set/get。
 const Row kRows[] = {
@@ -24,6 +27,8 @@ const Row kRows[] = {
     {TupleCmd::ApplyTupleByMac, "ApplyTupleByMac", u8"云端三元组", DeviceCmdParamKind::JsonMap, kHintApply, kGet},
     {TupleCmd::DebugUpdateMacStatus, "DebugUpdateMacStatus", u8"调试 MAC 状态", DeviceCmdParamKind::JsonMap,
      kHintDebugMac, kSet},
+    {TupleCmd::ResetStatus, "ResetStatus", u8"复位状态", DeviceCmdParamKind::JsonMap,
+     kHintReset, kSet},
     {TupleCmd::ReportWriteRecord, "ReportWriteRecord", u8"检验数据上报", DeviceCmdParamKind::None,
      u8"无参数：有三元组时上报读三元组/RSSI/版本；M8 烧录等无三元组时按 SN+MAC 上报写入MAC（/api/inspection/report）", kSet},
 };
