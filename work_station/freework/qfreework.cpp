@@ -2487,14 +2487,23 @@ void QFreeWork::runScreenInspectStep() {
     QImage refMarked;
     if (!ref.isNull()) {
         QRect refRoi = report.roi;
-        if (curr.width() > 0 && curr.height() > 0 && ref.width() > 0 && ref.height() > 0
-            && curr.size() != ref.size() && !report.roi.isNull()) {
-            refRoi = QRect(report.roi.x() * ref.width() / curr.width(),
-                           report.roi.y() * ref.height() / curr.height(),
-                           qMax(1, report.roi.width() * ref.width() / curr.width()),
-                           qMax(1, report.roi.height() * ref.height() / curr.height()));
+        int refCircleCx = -1;
+        int refCircleCy = -1;
+        int refCircleR = -1;
+        if (curr.width() > 0 && curr.height() > 0 && ref.width() > 0 && ref.height() > 0) {
+            if (curr.size() != ref.size() && !report.roi.isNull()) {
+                refRoi = QRect(report.roi.x() * ref.width() / curr.width(),
+                               report.roi.y() * ref.height() / curr.height(),
+                               qMax(1, report.roi.width() * ref.width() / curr.width()),
+                               qMax(1, report.roi.height() * ref.height() / curr.height()));
+            }
+            if (report.circleR > 0) {
+                refCircleCx = report.circleCx * ref.width() / curr.width();
+                refCircleCy = report.circleCy * ref.height() / curr.height();
+                refCircleR = qMax(8, report.circleR * qMin(ref.width(), ref.height()) / qMin(curr.width(), curr.height()));
+            }
         }
-        refMarked = ScreenInspectAnalyzer::drawGuides(ref, refRoi, &curr);
+        refMarked = ScreenInspectAnalyzer::drawGuides(ref, refRoi, refCircleCx, refCircleCy, refCircleR);
     }
     // 高分辨率 PNG 压缩极慢（曾出现分析完后 UI 卡死近 1 分钟）；证据图改 JPEG，识别仍用内存原图
     // 存盘再压长边，避免数千万像素 JPEG 编码拖慢节拍
