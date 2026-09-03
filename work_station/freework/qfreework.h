@@ -428,6 +428,13 @@ class QFreeWork : public test_base {
     /** 采样结束做一次完整 setData + 轴范围 + replot，避免过程中每帧全量重绘 */
     void finalizeSuctionChartPlot();
     void updateSuctionPeakLabels();
+    void appendSuctionCurveRowToResultTable(bool pass);
+    bool shouldShowSuctionCurveInTable(const TestCaseDefinition& def) const;
+    void restoreScanFocus();
+    void saveSuctionCurveImageForUpload();
+
+    bool pendingSuctionCurveRow_ = false;
+    bool pendingSuctionPass_ = true;
 
     double suctionPeakTargetKpa_ = -36.0;
     double suctionPeakToleranceKpa_ = 2.6;
