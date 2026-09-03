@@ -2159,7 +2159,6 @@ void QFreeWork::saveSuctionCurveImageForUpload() {
 bool QFreeWork::shouldShowSuctionCurveInTable(const TestCaseDefinition& def) const {
     const bool isSuction = (def.hook.enabled && (def.hook.hookId == QLatin1String("DONGLE_SUCTION_SAMPLE")
                                                  || def.hook.hookId == QLatin1String("DONGLE_SUCTION_SAMPLE_SINGLE")))
-                           || def.meta.stepId.contains(QLatin1String("吸力"))
                            || def.meta.name.contains(QLatin1String("吸力"))
                            || def.meta.displayName.contains(QLatin1String("吸力"));
     if (!isSuction)
