@@ -7,113 +7,104 @@
     <x>0</x>
     <y>0</y>
     <width>400</width>
-    <height>300</height>
+    <height>280</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>治具串口</string>
+   <string>治具串口与信捷PLC配置</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="0" column="0">
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
-      <widget class="QLabel" name="Fixtureuartstate">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
+      <widget class="QGroupBox" name="fixtureUartGroup">
+       <property name="title">
+        <string>治具串口直连</string>
        </property>
-       <property name="text">
-        <string>夹具串口连接：</string>
-       </property>
+       <layout class="QVBoxLayout" name="verticalLayoutFixture">
+        <item>
+         <widget class="QLabel" name="Fixtureuartstate">
+          <property name="text">
+           <string>夹具串口连接：未连接</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="horizontalLayout">
+          <item>
+           <widget class="QPushButton" name="FixturedisconnectButton">
+            <property name="text">
+             <string>断开串口</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="FixtureconnectButton">
+            <property name="text">
+             <string>连接串口</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="FixturecomNameCombo">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
       </widget>
-     </item>
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout">
-       <item>
-        <widget class="QPushButton" name="FixturedisconnectButton">
-         <property name="text">
-          <string>断开串口</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="FixtureconnectButton">
-         <property name="text">
-          <string>连接串口</string>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QComboBox" name="FixturecomNameCombo">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="maximumSize">
-          <size>
-           <width>16777215</width>
-           <height>16777215</height>
-          </size>
-         </property>
-        </widget>
-       </item>
-      </layout>
      </item>
      <item>
       <widget class="QGroupBox" name="preStartMonitorGroup">
        <property name="title">
-        <string>自动扫码监控配置</string>
+        <string>信捷 PLC 按键监听配置</string>
        </property>
        <layout class="QFormLayout" name="preStartMonitorFormLayout">
         <item row="0" column="0">
-         <widget class="QLabel" name="scannerIpLabel">
+         <widget class="QLabel" name="plcComPortLabel">
           <property name="text">
-           <string>扫码枪 IP</string>
+           <string>信捷 PLC 串口</string>
           </property>
          </widget>
         </item>
         <item row="0" column="1">
-         <widget class="QLineEdit" name="scannerIpLineEdit"/>
+         <widget class="QComboBox" name="plcComPortCombo">
+          <property name="editable">
+           <bool>true</bool>
+          </property>
+         </widget>
         </item>
         <item row="1" column="0">
-         <widget class="QLabel" name="scannerPortLabel">
+         <widget class="QLabel" name="plcBaudRateLabel">
           <property name="text">
-           <string>扫码枪端口</string>
+           <string>波特率</string>
           </property>
          </widget>
         </item>
         <item row="1" column="1">
-         <widget class="QSpinBox" name="scannerPortSpinBox">
-          <property name="maximum">
-           <number>65535</number>
+         <widget class="QComboBox" name="plcBaudRateCombo">
+          <property name="editable">
+           <bool>true</bool>
           </property>
          </widget>
         </item>
         <item row="2" column="0">
-         <widget class="QLabel" name="plcIpLabel">
+         <widget class="QLabel" name="plcWaitAddressLabel">
           <property name="text">
-           <string>PLC IP</string>
+           <string>监听线圈</string>
           </property>
          </widget>
         </item>
         <item row="2" column="1">
-         <widget class="QLineEdit" name="plcIpLineEdit"/>
-        </item>
-        <item row="3" column="0">
-         <widget class="QLabel" name="plcPortLabel">
-          <property name="text">
-           <string>PLC 端口</string>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="1">
-         <widget class="QSpinBox" name="plcPortSpinBox">
-          <property name="maximum">
-           <number>65535</number>
+         <widget class="QLineEdit" name="plcWaitAddressLineEdit">
+          <property name="placeholderText">
+           <string>如 M100 或 X0</string>
           </property>
          </widget>
         </item>

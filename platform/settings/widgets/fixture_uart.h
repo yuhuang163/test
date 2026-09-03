@@ -73,10 +73,9 @@ class Fixture_uart : public QWidget {
     void onManagerDisconnected();
     void onManagerError(int error, const QString& message);
 
-    void on_scannerIpLineEdit_editingFinished();
-    void on_plcIpLineEdit_editingFinished();
-    void on_scannerPortSpinBox_valueChanged(int value);
-    void on_plcPortSpinBox_valueChanged(int value);
+    void on_plcComPortCombo_currentTextChanged(const QString& text);
+    void on_plcBaudRateCombo_currentTextChanged(const QString& text);
+    void on_plcWaitAddressLineEdit_editingFinished();
 };
 
 #if _MSC_VER >= 1600

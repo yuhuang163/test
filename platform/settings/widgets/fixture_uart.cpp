@@ -23,6 +23,10 @@ Fixture_uart::Fixture_uart(QWidget* parent) : QWidget(parent), ui(new Ui::Fixtur
     qRegisterMetaType<FixturePacketData>("FixturePacketData");
     ui->setupUi(this);
     ui->FixturecomNameCombo->clear();
+
+    ui->plcBaudRateCombo->clear();
+    ui->plcBaudRateCombo->addItems({QStringLiteral("115200"), QStringLiteral("19200"), QStringLiteral("9600"), QStringLiteral("38400"), QStringLiteral("57600")});
+
     scanSerialPorts();
     scanSerialPortsTimer_ = new QTimer(this);
     connect(scanSerialPortsTimer_, &QTimer::timeout, this, &Fixture_uart::scanSerialPorts);
@@ -50,25 +54,26 @@ Fixture_uart::~Fixture_uart() {
 }
 
 void Fixture_uart::loadPreStartMonitorConfig() {
-    // 工站级配置：读写当前工站 profiles/<工站>/flow.ini 的 [PreStart_Monitor]，避免全局 SETTINGS 被其他工站覆盖
     QString stationKey = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationKey());
     if (stationKey.isEmpty())
         stationKey = QStringLiteral("default");
     const QString flowPath = TestCasePaths::profileFlowPath(stationKey);
 
-    // 回填时屏蔽两个 QSpinBox 信号，避免 setValue 触发 valueChanged 提前写回
-    ui->scannerPortSpinBox->blockSignals(true);
-    ui->plcPortSpinBox->blockSignals(true);
+    ui->plcComPortCombo->blockSignals(true);
+    ui->plcBaudRateCombo->blockSignals(true);
+    ui->plcWaitAddressLineEdit->blockSignals(true);
+
     QSettings settings(flowPath, QSettings::IniFormat);
     settings.setIniCodec("UTF-8");
     settings.beginGroup(QStringLiteral("PreStart_Monitor"));
-    ui->scannerIpLineEdit->setText(settings.value(QStringLiteral("ScannerIp"), QStringLiteral("127.0.0.1")).toString());
-    ui->scannerPortSpinBox->setValue(settings.value(QStringLiteral("ScannerPort"), 2001).toInt());
-    ui->plcIpLineEdit->setText(settings.value(QStringLiteral("PlcIp"), QStringLiteral("127.0.0.1")).toString());
-    ui->plcPortSpinBox->setValue(settings.value(QStringLiteral("PlcPort"), 502).toInt());
+    ui->plcComPortCombo->setEditText(settings.value(QStringLiteral("PlcComPort")).toString());
+    ui->plcBaudRateCombo->setEditText(settings.value(QStringLiteral("PlcBaudRate"), QStringLiteral("115200")).toString());
+    ui->plcWaitAddressLineEdit->setText(settings.value(QStringLiteral("PlcWaitAddress"), QStringLiteral("M100")).toString());
     settings.endGroup();
-    ui->scannerPortSpinBox->blockSignals(false);
-    ui->plcPortSpinBox->blockSignals(false);
+
+    ui->plcComPortCombo->blockSignals(false);
+    ui->plcBaudRateCombo->blockSignals(false);
+    ui->plcWaitAddressLineEdit->blockSignals(false);
 }
 
 void Fixture_uart::savePreStartMonitorConfig() {
@@ -82,27 +87,21 @@ void Fixture_uart::savePreStartMonitorConfig() {
     QSettings settings(flowPath, QSettings::IniFormat);
     settings.setIniCodec("UTF-8");
     settings.beginGroup(QStringLiteral("PreStart_Monitor"));
-    settings.setValue(QStringLiteral("ScannerIp"), ui->scannerIpLineEdit->text().trimmed());
-    settings.setValue(QStringLiteral("ScannerPort"), ui->scannerPortSpinBox->value());
-    settings.setValue(QStringLiteral("PlcIp"), ui->plcIpLineEdit->text().trimmed());
-    settings.setValue(QStringLiteral("PlcPort"), ui->plcPortSpinBox->value());
+    settings.setValue(QStringLiteral("PlcComPort"), ui->plcComPortCombo->currentText().trimmed());
+    settings.setValue(QStringLiteral("PlcBaudRate"), ui->plcBaudRateCombo->currentText().toInt());
+    settings.setValue(QStringLiteral("PlcWaitAddress"), ui->plcWaitAddressLineEdit->text().trimmed());
     settings.endGroup();
-    settings.sync();
 }
 
-void Fixture_uart::on_scannerIpLineEdit_editingFinished() {
+void Fixture_uart::on_plcComPortCombo_currentTextChanged(const QString&) {
     savePreStartMonitorConfig();
 }
 
-void Fixture_uart::on_plcIpLineEdit_editingFinished() {
+void Fixture_uart::on_plcBaudRateCombo_currentTextChanged(const QString&) {
     savePreStartMonitorConfig();
 }
 
-void Fixture_uart::on_scannerPortSpinBox_valueChanged(int) {
-    savePreStartMonitorConfig();
-}
-
-void Fixture_uart::on_plcPortSpinBox_valueChanged(int) {
+void Fixture_uart::on_plcWaitAddressLineEdit_editingFinished() {
     savePreStartMonitorConfig();
 }
 
@@ -123,6 +122,7 @@ void Fixture_uart::scanSerialPorts() {
     QElapsedTimer timer;
     timer.start();
     SerialChannel::updateComboBoxPorts(ui->FixturecomNameCombo);
+    SerialChannel::updateComboBoxPorts(ui->plcComPortCombo);
     Qlog::saveResidentLog(QStringLiteral("scanPorts"),
                           QStringLiteral("fixture cost=%1ms").arg(timer.elapsed()));
 }
