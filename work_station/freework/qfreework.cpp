@@ -813,17 +813,12 @@ void QFreeWork::updatePreStartMonitorState() {
     if (settings.contains("Enabled") && settings.value("Enabled").toBool()) {
         preStartMonitorConfig_.enabled = true;
         preStartMonitorConfig_.plcDevice = settings.value("PlcDevice", "InovanceH5uTcp").toString();
-        // 网络连接参数优先取「连接治具串口」弹窗配置（SETTINGS），未配才回退 flow.ini
-        const QString plcIp = SETTINGS.value(QStringLiteral("PreStart_Monitor/PlcIp")).toString().trimmed();
-        preStartMonitorConfig_.plcIp = plcIp.isEmpty() ? settings.value("PlcIp", "127.0.0.1").toString() : plcIp;
-        const int plcPort = SETTINGS.value(QStringLiteral("PreStart_Monitor/PlcPort"), 0).toInt();
-        preStartMonitorConfig_.plcPort = plcPort > 0 ? plcPort : settings.value("PlcPort", 502).toInt();
+        preStartMonitorConfig_.plcIp = settings.value("PlcIp", "127.0.0.1").toString();
+        preStartMonitorConfig_.plcPort = settings.value("PlcPort", 502).toInt();
         preStartMonitorConfig_.plcWaitAddressM = settings.value("PlcWaitAddressM", 100).toInt();
         preStartMonitorConfig_.plcPollIntervalMs = qMax(50, settings.value("PlcPollIntervalMs", 500).toInt());
-        const QString scannerIp = SETTINGS.value(QStringLiteral("PreStart_Monitor/ScannerIp")).toString().trimmed();
-        preStartMonitorConfig_.scannerIp = scannerIp.isEmpty() ? settings.value("ScannerIp", "127.0.0.1").toString() : scannerIp;
-        const int scannerPort = SETTINGS.value(QStringLiteral("PreStart_Monitor/ScannerPort"), 0).toInt();
-        preStartMonitorConfig_.scannerPort = scannerPort > 0 ? scannerPort : settings.value("ScannerPort", 2001).toInt();
+        preStartMonitorConfig_.scannerIp = settings.value("ScannerIp", "127.0.0.1").toString();
+        preStartMonitorConfig_.scannerPort = settings.value("ScannerPort", 2001).toInt();
         preStartMonitorConfig_.scannerTimeoutMs = settings.value("ScannerTimeoutMs", 1000).toInt();
         preStartMonitorConfig_.autoIncrementIpByStation = settings.value("AutoIncrementIpByStation", true).toBool();
         
