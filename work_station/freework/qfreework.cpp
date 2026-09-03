@@ -815,8 +815,14 @@ void QFreeWork::updatePreStartMonitorState() {
         preStartMonitorConfig_.plcDevice = settings.value("PlcDevice", "InovanceH5uTcp").toString();
         preStartMonitorConfig_.plcIp = settings.value("PlcIp", "127.0.0.1").toString();
         preStartMonitorConfig_.plcPort = settings.value("PlcPort", 502).toInt();
+        preStartMonitorConfig_.plcComPort = settings.value("PlcComPort", settings.value("ComPort", "")).toString();
+        preStartMonitorConfig_.plcBaudRate = settings.value("PlcBaudRate", settings.value("BaudRate", 19200)).toInt();
+        preStartMonitorConfig_.plcSlaveId = settings.value("PlcSlaveId", settings.value("SlaveId", 1)).toInt();
+
+        const QString rawAddr = settings.value("PlcWaitAddress", settings.value("PlcWaitAddressM", "100")).toString().trimmed();
+        preStartMonitorConfig_.plcWaitAddress = rawAddr.isEmpty() ? QStringLiteral("M100") : (rawAddr.at(0).isDigit() ? QStringLiteral("M") + rawAddr : rawAddr);
         preStartMonitorConfig_.plcWaitAddressM = settings.value("PlcWaitAddressM", 100).toInt();
-        preStartMonitorConfig_.plcPollIntervalMs = qMax(50, settings.value("PlcPollIntervalMs", 500).toInt());
+        preStartMonitorConfig_.plcPollIntervalMs = qMax(50, settings.value("PlcPollIntervalMs", 200).toInt());
         preStartMonitorConfig_.scannerIp = settings.value("ScannerIp", "192.168.1.64").toString();
         preStartMonitorConfig_.scannerPort = settings.value("ScannerPort", 2001).toInt();
         preStartMonitorConfig_.scannerTimeoutMs = settings.value("ScannerTimeoutMs", 1000).toInt();
@@ -839,7 +845,7 @@ void QFreeWork::updatePreStartMonitorState() {
         if (!preStartMonitorRunning_) {
             preStartMonitorTimer_->start(preStartMonitorConfig_.plcPollIntervalMs);
             preStartMonitorRunning_ = true;
-            qDebug() << "[FreeWork] Start PreStart Monitor polling on M" << preStartMonitorConfig_.plcWaitAddressM;
+            qDebug() << "[FreeWork] Start PreStart Monitor polling on" << preStartMonitorConfig_.plcWaitAddress;
         }
     } else {
         if (preStartMonitorRunning_) {
@@ -868,6 +874,55 @@ void QFreeWork::onPreStartMonitorTimeout() {
         return;
     }
 
+    const bool isXinjie = preStartMonitorConfig_.plcDevice.contains(QLatin1String("Xinjie"), Qt::CaseInsensitive)
+                          || preStartMonitorConfig_.plcDevice.contains(QLatin1String("Xinje"), Qt::CaseInsensitive);
+
+    if (isXinjie) {
+        modbusManager.setDeviceRoute(ModbusDeviceRoute::XinjiePlcRtu);
+        QVariant isConn;
+        modbusManager.exec(XinjePlcCmd::IsConnected, {}, &isConn, nullptr);
+        if (!isConn.toBool()) {
+            QString err;
+            QVariantMap connectParams;
+            if (!preStartMonitorConfig_.plcComPort.isEmpty())
+                connectParams.insert(QStringLiteral("comPort"), preStartMonitorConfig_.plcComPort);
+            if (preStartMonitorConfig_.plcBaudRate > 0)
+                connectParams.insert(QStringLiteral("baudRate"), preStartMonitorConfig_.plcBaudRate);
+            connectParams.insert(QStringLiteral("slaveId"), preStartMonitorConfig_.plcSlaveId);
+
+            if (!modbusManager.exec(XinjePlcCmd::Connect, connectParams, nullptr, &err)) {
+                static qint64 lastLog = 0;
+                if (QDateTime::currentMSecsSinceEpoch() - lastLog > 5000) {
+                    qDebug() << "[FreeWork] PreStartMonitor auto-connect to Xinjie PLC failed:" << err;
+                    lastLog = QDateTime::currentMSecsSinceEpoch();
+                }
+                return;
+            } else {
+                qDebug() << "[FreeWork] PreStartMonitor auto-connected to Xinjie PLC successfully.";
+            }
+        }
+
+        QString plcErr;
+        QVariant result;
+        bool ok = false;
+        const QString addr = preStartMonitorConfig_.plcWaitAddress.trimmed().toUpper();
+        if (addr.startsWith(QLatin1Char('X'))) {
+            ok = modbusManager.exec(XinjePlcCmd::ReadDiscreteInputs, addr, &result, &plcErr);
+        } else {
+            ok = modbusManager.exec(XinjePlcCmd::ReadCoils, addr, &result, &plcErr);
+        }
+
+        if (ok && result.isValid() && result.toBool() == true) {
+            qDebug() << "[FreeWork] Xinjie PLC Trigger detected on" << addr << "! Stopping monitor and triggering scanner.";
+            preStartMonitorTimer_->stop();
+            preStartMonitorRunning_ = false;
+            QMetaObject::invokeMethod(this, "triggerHikvisionScanner", Qt::QueuedConnection);
+        }
+        return;
+    }
+
+    // Inovance H5U TCP 默认处理
+    modbusManager.setDeviceRoute(ModbusDeviceRoute::InovanceH5uTcp);
     if (!modbusManager.isPlcConnected()) {
         QString err;
         QVariantMap connectParams;
