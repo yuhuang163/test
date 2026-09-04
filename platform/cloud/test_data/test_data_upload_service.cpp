@@ -78,7 +78,8 @@ bool buildUploadBody(const MesPacketData& pack, QJsonObject* body, QString* mess
         return false;
     }
 
-    const QString station = FactoryCloudClient::stationKey();
+    const QString station = pack.cloudStation.trimmed().isEmpty() ? FactoryCloudClient::stationKey()
+                                                                  : pack.cloudStation.trimmed();
     body->insert(QStringLiteral("factoryName"), factoryName);
     body->insert(QStringLiteral("deviceId"), FactoryCloudClient::deviceId());
     body->insert(QStringLiteral("hostName"), QSysInfo::machineHostName());

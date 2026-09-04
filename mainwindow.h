@@ -227,6 +227,10 @@ class MainWindow : public QMainWindow {
     bool startDongleSuctionCsvLog();
     void stopDongleSuctionCsvLog();
     void writeDongleSuctionCsvRow(double tSec, double ch1Kpa, double ch2Kpa, double ch3Kpa);
+    /** 生成吸力专项参数表 CSV 并返回绝对路径；失败返回空串（导出按钮与云端上传共用） */
+    QString exportDongleSuctionParamsCsv();
+    /** 吸力采集结束：参数（分项）+参数表 CSV+曲线图 PNG+曲线 CSV 按特殊工站上传云端 */
+    void uploadDongleSuctionToCloud();
     /** 横轴滑动窗口宽度(s)；跟随时显示 [t-窗口, t]，可拖拽查看更早数据 */
     static constexpr double kDongleSuctionChartWindowSec = 10.0;
     static constexpr int kDongleSuctionChannelCount = 3;

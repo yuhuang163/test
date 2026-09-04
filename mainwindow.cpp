@@ -33,7 +33,10 @@
 #include <QDir>
 #include <QTextStream>
 #include "app_help_menu.h"
+#include "qlog.h"
 #include "platform/cloud/auth/auth_service.h"
+#include "platform/cloud/client/factory_cloud_client.h"
+#include "platform/cloud/test_data/test_data_upload_service.h"
 #include "qatmanager.h"
 #include "qcustomplot.h"
 #include "qsetting.h"
@@ -6092,6 +6095,8 @@ void MainWindow::on_dongle_suction_open_clicked() {
     at->set(DongleCmd::BleDeviceLog, 0);
     at->set(DongleCmd::SetSuctionOsr, suctionOsr);
     at->set(DongleCmd::GetSuction, 1);
+    // 主窗口作为特殊工站：开启采集即起会话，关闭时结案并随会话包上传吸力 CSV
+    Qlog::beginSession(Qlog::kMainWindowLogSlot, stringsn, macAddress, FactoryCloudClient::stationKey().trimmed());
     showlog(QStringLiteral("已开启 Dongle 吸力读取（OSR档位 %1，峰目标 %2±%3 kPa，漏峰间隔>%4s）")
                 .arg(suctionOsr)
                 .arg(dongleSuctionPeakTargetKpa_, 0, 'f', 2)
@@ -6106,8 +6111,66 @@ void MainWindow::on_dongle_suction_close_clicked() {
     flushDongleSuctionChartUi(true);
     flushDongleSuctionCsvPending();
     stopDongleSuctionCsvLog();
+    uploadDongleSuctionToCloud();
     setDongleSuctionPeakParamWidgetsEnabled(true);
     showlog(QStringLiteral("已关闭 Dongle 吸力读取"));
+}
+
+void MainWindow::uploadDongleSuctionToCloud() {
+    if (dongleSuctionChartTimeSec_.isEmpty()) {
+        showlog(QStringLiteral("无吸力采样数据，跳过云端上传"));
+        return;
+    }
+
+    // 吸力曲线：交 Qlog 暂存，测完随会话日志包导出 CSV 上传（表头与吸力页一致）
+    Qlog::setSuctionSamples(Qlog::kMainWindowLogSlot, dongleSuctionChartTimeSec_,
+                            dongleSuctionChartCh1_, dongleSuctionChartCh2_, dongleSuctionChartCh3_);
+
+    // 吸力曲线图 + 参数表：导出后随会话包上传（网页按扩展名分图片/文本预览）
+    const QString dirAbs = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("吸力专项数据"));
+    if (dongleSuctionPlot_ && CommonUtils::ensureDirectory(dirAbs)) {
+        const QString pngAbs = CommonUtils::joinPath(
+            dirAbs, QStringLiteral("吸力曲线_") +
+                        QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss")) +
+                        QStringLiteral(".png"));
+        if (dongleSuctionPlot_->savePng(pngAbs))
+            Qlog::addSuctionExtraFile(Qlog::kMainWindowLogSlot, pngAbs);
+        else
+            showlog(QStringLiteral("吸力曲线 PNG 导出失败"));
+    }
+    const QString paramsCsvAbs = exportDongleSuctionParamsCsv();
+    if (!paramsCsvAbs.isEmpty())
+        Qlog::addSuctionExtraFile(Qlog::kMainWindowLogSlot, paramsCsvAbs);
+
+    // 吸力参数：组云端分项（|名称:值| 格式）；主窗口不经过站，与 MES itemvalue 无冲突
+    const double loValues[kDongleSuctionChannelCount] = {dongleSuctionCh1Min_, dongleSuctionCh2Min_,
+                                                         dongleSuctionCh3Min_};
+    const double hiValues[kDongleSuctionChannelCount] = {dongleSuctionCh1Max_, dongleSuctionCh2Max_,
+                                                         dongleSuctionCh3Max_};
+    QString itemvalue;
+    for (int i = 0; i < kDongleSuctionChannelCount; ++i) {
+        const QString ch = QStringLiteral("CH%1").arg(i + 1);
+        const DongleSuctionChannelPeakMonitor& m = dongleSuctionPeakMonitors_[i];
+        itemvalue += QStringLiteral("|%1最低(kPa):%2|").arg(ch).arg(loValues[i], 0, 'f', 2);
+        itemvalue += QStringLiteral("|%1最高(kPa):%2|").arg(ch).arg(hiValues[i], 0, 'f', 2);
+        itemvalue += QStringLiteral("|%1有效峰数:%2|").arg(ch).arg(m.validPeakCount);
+        itemvalue += QStringLiteral("|%1频率(次/分):%2|").arg(ch).arg(m.freqPerMin);
+    }
+
+    MesPacketData pack;
+    pack.sn = stringsn;
+    pack.mac = macAddress;
+    pack.result = passValue;
+    // 主窗口调试上传无真实产品，固定「未定义」
+    pack.product = QStringLiteral("未定义");
+    pack.itemvalue = itemvalue;
+    // 主窗口特殊工站：云端记录工站名固定为「调试工站」
+    pack.cloudStation = QStringLiteral("调试工站");
+
+    // 结案后 lastSessionInfo 才有效，会话包才能带上吸力 CSV
+    Qlog::endSession(Qlog::kMainWindowLogSlot, pack.result);
+    TestDataUploadService::tryUploadTestAndLogAsync(pack, Qlog::kMainWindowLogSlot);
+    showlog(QStringLiteral("吸力参数与曲线已提交云端上传"));
 }
 
 void MainWindow::on_dongle_suction_clear_chart_clicked() {
@@ -6387,24 +6450,21 @@ void MainWindow::on_spinDongleSegmentCount_valueChanged(int arg1) {
     rebuildDongleSegmentTable();
 }
 
-void MainWindow::on_btnDongleExportParams_clicked() {
+QString MainWindow::exportDongleSuctionParamsCsv() {
     QTableWidget* table = ui->tableDongleSegments;
     if (!table)
-        return;
-    const QString relDir = QStringLiteral("吸力专项数据");
-    if (!CommonUtils::ensureLogDirectory(relDir)) {
-        showlog(QStringLiteral("无法创建吸力专项数据目录：%1").arg(relDir));
-        return;
-    }
+        return {};
+    const QString dirAbs =
+        QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("吸力专项数据"));
+    if (!CommonUtils::ensureDirectory(dirAbs))
+        return {};
     const QString path = CommonUtils::joinPath(
-        relDir, QStringLiteral("吸力专项参数_") +
+        dirAbs, QStringLiteral("吸力专项参数_") +
                     QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss")) +
                     QStringLiteral(".csv"));
     QFile file(path);
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
-        showlog(QStringLiteral("无法创建参数 CSV：%1").arg(path));
-        return;
-    }
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+        return {};
     QTextStream out(&file);
     out.setCodec("UTF-8");
     const int segCount = table->rowCount();
@@ -6426,6 +6486,15 @@ void MainWindow::on_btnDongleExportParams_clicked() {
     out << QStringLiteral("总运行(ms),%1\n").arg(ui->DongleAtPumpTotal->text());
     out << QStringLiteral("日志上报间隔(ms),%1\n").arg(ui->DongleAtFgPrint->text());
     file.close();
+    return path;
+}
+
+void MainWindow::on_btnDongleExportParams_clicked() {
+    const QString path = exportDongleSuctionParamsCsv();
+    if (path.isEmpty()) {
+        showlog(QStringLiteral("无法导出吸力专项参数 CSV"));
+        return;
+    }
     showlog(QStringLiteral("参数列表已导出：%1").arg(path));
 }
 
