@@ -2236,11 +2236,11 @@ void QFreeWork::saveSuctionCurveImageForUpload() {
 }
 
 bool QFreeWork::shouldShowSuctionCurveInTable(const TestCaseDefinition& def) const {
-    const bool isSuction = (def.hook.enabled && (def.hook.hookId == QLatin1String("DONGLE_SUCTION_SAMPLE")
-                                                 || def.hook.hookId == QLatin1String("DONGLE_SUCTION_SAMPLE_SINGLE")))
-                           || def.meta.name.contains(QLatin1String("吸力"))
-                           || def.meta.displayName.contains(QLatin1String("吸力"));
-    if (!isSuction)
+    const bool isTargetStep = def.meta.name.contains(QStringLiteral("单通道吸力"))
+                              || def.meta.name.contains(QStringLiteral("双通道吸力"))
+                              || def.meta.displayName.contains(QStringLiteral("单通道吸力"))
+                              || def.meta.displayName.contains(QStringLiteral("双通道吸力"));
+    if (!isTargetStep)
         return false;
 
     // 仅从具体步骤参数 Param_showCurveInTable 读取，未配置默认 false
@@ -2265,6 +2265,13 @@ void QFreeWork::appendSuctionCurveRowToResultTable(bool pass) {
     if (suctionChartTimeSec_.isEmpty())
         return;
 
+    // 避免重复追加
+    for (int r = 0; r < table->rowCount(); ++r) {
+        auto* it = table->item(r, 0);
+        if (it && it->text() == QStringLiteral("吸力曲线"))
+            return;
+    }
+
     // 所有项测试完成后，在表格底部跨列（合并第 1~3 列）大图展示
     const int row = table->rowCount();
     table->insertRow(row);
@@ -2288,6 +2295,7 @@ void QFreeWork::appendSuctionCurveRowToResultTable(bool pass) {
     }
     const int plotWidth = qMax(420, availWidth - 12);
     const int plotHeight = targetHeight - 8;
+    suctionPlot_->replot();
     QPixmap pix = suctionPlot_->toPixmap(plotWidth, plotHeight, 1.0);
 
     QLabel* imgLabel = new QLabel(table);
