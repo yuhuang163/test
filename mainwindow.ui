@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1667</width>
-    <height>1200</height>
+    <width>2127</width>
+    <height>1202</height>
    </rect>
   </property>
   <property name="sizePolicy">
@@ -4956,411 +4956,8 @@
                    <attribute name="title">
                     <string>吸力专项测试</string>
                    </attribute>
-                   <layout class="QVBoxLayout" name="verticalLayout_dongle_suction">
-                    <property name="spacing">
-                     <number>2</number>
-                    </property>
-                    <property name="leftMargin">
-                     <number>4</number>
-                    </property>
-                    <property name="topMargin">
-                     <number>0</number>
-                    </property>
-                    <property name="rightMargin">
-                     <number>4</number>
-                    </property>
-                    <property name="bottomMargin">
-                     <number>2</number>
-                    </property>
-                    <item>
-                     <widget class="QGroupBox" name="groupBox_dongle_at_pump">
-                      <property name="title">
-                       <string>泵/阀参数设置</string>
-                      </property>
-                      <layout class="QGridLayout" name="gridLayout_12">
-                       <item row="0" column="1">
-                        <layout class="QHBoxLayout" name="horizontalLayout_21">
-                         <property name="topMargin">
-                          <number>0</number>
-                         </property>
-                         <item>
-                          <widget class="QLabel" name="label_dongle_at_pump_sec">
-                           <property name="text">
-                            <string>泵工作时间(ms)</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QLineEdit" name="DongleAtPumpSec">
-                           <property name="maximumSize">
-                            <size>
-                             <width>80</width>
-                             <height>16777215</height>
-                            </size>
-                           </property>
-                           <property name="toolTip">
-                            <string>AT+PUMPSEC=，泵运行毫秒数（默认 5000）</string>
-                           </property>
-                           <property name="text">
-                            <string>5000</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QPushButton" name="btnDongleAtSetPumpSec">
-                           <property name="toolTip">
-                            <string>下发 AT+PUMPSEC=毫秒数</string>
-                           </property>
-                           <property name="text">
-                            <string>设置</string>
-                           </property>
-                          </widget>
-                         </item>
-                        </layout>
-                       </item>
-                       <item row="1" column="0">
-                        <layout class="QHBoxLayout" name="horizontalLayout_dongle_at_pump_param2">
-                         <item>
-                          <widget class="QLabel" name="label_dongle_at_pump_total">
-                           <property name="text">
-                            <string>总运行(ms，0=不限)</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QLineEdit" name="DongleAtPumpTotal">
-                           <property name="maximumSize">
-                            <size>
-                             <width>80</width>
-                             <height>16777215</height>
-                            </size>
-                           </property>
-                           <property name="toolTip">
-                            <string>AT+PUMPTOTAL=，总运行毫秒数（0=不限）</string>
-                           </property>
-                           <property name="text">
-                            <string>0</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QPushButton" name="btnDongleAtSetPumpTotal">
-                           <property name="toolTip">
-                            <string>下发 AT+PUMPTOTAL=总毫秒数</string>
-                           </property>
-                           <property name="text">
-                            <string>设置</string>
-                           </property>
-                          </widget>
-                         </item>
-                        </layout>
-                       </item>
-                       <item row="0" column="0">
-                        <layout class="QHBoxLayout" name="horizontalLayout_dongle_at_pump_param1">
-                         <item>
-                          <widget class="QLabel" name="label_dongle_at_pump_duty">
-                           <property name="text">
-                            <string>泵占空比(0~100)</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QLineEdit" name="DongleAtPumpDuty">
-                           <property name="maximumSize">
-                            <size>
-                             <width>80</width>
-                             <height>16777215</height>
-                            </size>
-                           </property>
-                           <property name="toolTip">
-                            <string>AT+PUMPDUTY=，占空比 0~100</string>
-                           </property>
-                           <property name="text">
-                            <string>50</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QPushButton" name="btnDongleAtSetPumpDuty">
-                           <property name="toolTip">
-                            <string>下发 AT+PUMPDUTY=占空比</string>
-                           </property>
-                           <property name="text">
-                            <string>设置</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QLabel" name="label_dongle_at_pump_freq">
-                           <property name="text">
-                            <string>PWM频率(Hz)</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QLineEdit" name="DongleAtPumpFreq">
-                           <property name="maximumSize">
-                            <size>
-                             <width>80</width>
-                             <height>16777215</height>
-                            </size>
-                           </property>
-                           <property name="toolTip">
-                            <string>AT+PUMPFREQ=，PWM 频率 Hz</string>
-                           </property>
-                           <property name="text">
-                            <string>20000</string>
-                           </property>
-                           <property name="placeholderText">
-                            <string>Hz</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QPushButton" name="btnDongleAtSetPumpFreq">
-                           <property name="toolTip">
-                            <string>下发 AT+PUMPFREQ=频率</string>
-                           </property>
-                           <property name="text">
-                            <string>设置</string>
-                           </property>
-                          </widget>
-                         </item>
-                        </layout>
-                       </item>
-                       <item row="1" column="1">
-                        <layout class="QHBoxLayout" name="horizontalLayout_14">
-                         <property name="topMargin">
-                          <number>0</number>
-                         </property>
-                         <item>
-                          <widget class="QLabel" name="label_dongle_at_pump_off">
-                           <property name="sizePolicy">
-                            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                             <horstretch>0</horstretch>
-                             <verstretch>0</verstretch>
-                            </sizepolicy>
-                           </property>
-                           <property name="text">
-                            <string>泵后全关时间(ms)</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QLineEdit" name="DongleAtPumpOff">
-                           <property name="sizePolicy">
-                            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                             <horstretch>0</horstretch>
-                             <verstretch>0</verstretch>
-                            </sizepolicy>
-                           </property>
-                           <property name="maximumSize">
-                            <size>
-                             <width>80</width>
-                             <height>16777215</height>
-                            </size>
-                           </property>
-                           <property name="toolTip">
-                            <string>AT+PUMPOFF=，泵运行结束后泵阀全部关闭时长 ms（0=不保持全关）</string>
-                           </property>
-                           <property name="text">
-                            <string>0</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QPushButton" name="btnDongleAtSetPumpOff">
-                           <property name="toolTip">
-                            <string>下发 AT+PUMPOFF=毫秒数</string>
-                           </property>
-                           <property name="text">
-                            <string>设置</string>
-                           </property>
-                          </widget>
-                         </item>
-                        </layout>
-                       </item>
-                       <item row="3" column="0">
-                        <layout class="QHBoxLayout" name="horizontalLayout_dongle_at_pump_action">
-                         <item>
-                          <widget class="QPushButton" name="btnDongleAtPumpSetAll">
-                           <property name="toolTip">
-                            <string>按当前输入依次下发 PUMPDUTY/PUMPFREQ/PUMPSEC/PUMPOFF/VALVESEC/VALVEOFF/PUMPTOTAL/FGPRINT</string>
-                           </property>
-                           <property name="text">
-                            <string>一键全部设置</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QPushButton" name="btnDongleAtPumpStatus">
-                           <property name="toolTip">
-                            <string>查询当前泵阀参数：AT+PUMPSTATUS</string>
-                           </property>
-                           <property name="text">
-                            <string>全部读取</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QPushButton" name="btnDongleAtPumpStart">
-                           <property name="toolTip">
-                            <string>AT+PUMPSTART=1，按以上参数开始泵/阀交替运行</string>
-                           </property>
-                           <property name="text">
-                            <string>开始交替运行</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QPushButton" name="btnDongleAtPumpStop">
-                           <property name="toolTip">
-                            <string>AT+PUMPSTOP=1，立即停止</string>
-                           </property>
-                           <property name="text">
-                            <string>立即停止</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QLabel" name="label_dongle_at_pump_rate">
-                           <property name="text">
-                            <string>频率：-- 次/分钟</string>
-                           </property>
-                          </widget>
-                         </item>
-                        </layout>
-                       </item>
-                       <item row="2" column="0">
-                        <layout class="QHBoxLayout" name="horizontalLayout_24">
-                         <property name="topMargin">
-                          <number>0</number>
-                         </property>
-                         <item>
-                          <widget class="QLabel" name="label_dongle_at_fg_print">
-                           <property name="text">
-                            <string>日志上报间隔(ms)</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QLineEdit" name="DongleAtFgPrint">
-                           <property name="maximumSize">
-                            <size>
-                             <width>80</width>
-                             <height>16777215</height>
-                            </size>
-                           </property>
-                           <property name="toolTip">
-                            <string>AT+FGPRINT=，FG 上报间隔 ms（默认 1000）</string>
-                           </property>
-                           <property name="text">
-                            <string>1000</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QPushButton" name="btnDongleAtSetFgPrint">
-                           <property name="enabled">
-                            <bool>true</bool>
-                           </property>
-                           <property name="toolTip">
-                            <string>下发 AT+FGPRINT=间隔</string>
-                           </property>
-                           <property name="text">
-                            <string>设置</string>
-                           </property>
-                          </widget>
-                         </item>
-                        </layout>
-                       </item>
-                       <item row="2" column="1">
-                        <layout class="QHBoxLayout" name="horizontalLayout_23">
-                         <property name="topMargin">
-                          <number>0</number>
-                         </property>
-                         <item>
-                          <widget class="QLabel" name="label_dongle_at_valve_sec">
-                           <property name="text">
-                            <string>阀工作时间(ms)</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QLineEdit" name="DongleAtValveSec">
-                           <property name="maximumSize">
-                            <size>
-                             <width>80</width>
-                             <height>16777215</height>
-                            </size>
-                           </property>
-                           <property name="toolTip">
-                            <string>AT+VALVESEC=，阀运行毫秒数（默认 3000）</string>
-                           </property>
-                           <property name="text">
-                            <string>3000</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QPushButton" name="btnDongleAtSetValveSec">
-                           <property name="toolTip">
-                            <string>下发 AT+VALVESEC=毫秒数</string>
-                           </property>
-                           <property name="text">
-                            <string>设置</string>
-                           </property>
-                          </widget>
-                         </item>
-                        </layout>
-                       </item>
-                       <item row="3" column="1">
-                        <layout class="QHBoxLayout" name="horizontalLayout_dongle_at_pump_param3">
-                         <item>
-                          <widget class="QLabel" name="label_dongle_at_valve_off">
-                           <property name="sizePolicy">
-                            <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-                             <horstretch>0</horstretch>
-                             <verstretch>0</verstretch>
-                            </sizepolicy>
-                           </property>
-                           <property name="text">
-                            <string>阀后全关时间(ms)</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QLineEdit" name="DongleAtValveOff">
-                           <property name="maximumSize">
-                            <size>
-                             <width>80</width>
-                             <height>16777215</height>
-                            </size>
-                           </property>
-                           <property name="toolTip">
-                            <string>AT+VALVEOFF=，阀运行结束后泵阀全部关闭时长 ms（0=不保持全关）</string>
-                           </property>
-                           <property name="text">
-                            <string>0</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QPushButton" name="btnDongleAtSetValveOff">
-                           <property name="toolTip">
-                            <string>下发 AT+VALVEOFF=毫秒数</string>
-                           </property>
-                           <property name="text">
-                            <string>设置</string>
-                           </property>
-                          </widget>
-                         </item>
-                        </layout>
-                       </item>
-                      </layout>
-                     </widget>
-                    </item>
-                    <item>
+                   <layout class="QGridLayout" name="gridLayout_12">
+                    <item row="0" column="0" colspan="2">
                      <widget class="QGroupBox" name="groupBox_dongle_suction_peak_params">
                       <property name="sizePolicy">
                        <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
@@ -5400,114 +4997,7 @@
                          </property>
                         </widget>
                        </item>
-                       <item row="1" column="2">
-                        <widget class="QLabel" name="label_dongle_suction_peak_tolerance">
-                         <property name="text">
-                          <string>峰值容差(kPa)</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="3">
-                        <widget class="QDoubleSpinBox" name="dongleSuctionPeakToleranceSpin">
-                         <property name="decimals">
-                          <number>2</number>
-                         </property>
-                         <property name="minimum">
-                          <double>0.000000000000000</double>
-                         </property>
-                         <property name="maximum">
-                          <double>20.000000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>0.100000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>2.600000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="7">
-                        <widget class="QDoubleSpinBox" name="dongleSuctionPeakMaxGapSpin">
-                         <property name="decimals">
-                          <number>1</number>
-                         </property>
-                         <property name="minimum">
-                          <double>0.500000000000000</double>
-                         </property>
-                         <property name="maximum">
-                          <double>30.000000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>0.500000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>2.500000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="8">
-                        <widget class="QCheckBox" name="dongleSuctionPeakGuideLinesCheck">
-                         <property name="text">
-                          <string>显示峰检辅助线</string>
-                         </property>
-                         <property name="checked">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="6">
-                        <widget class="QLabel" name="label_dongle_suction_peak_max_gap">
-                         <property name="text">
-                          <string>漏峰间隔(s)</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="5">
-                        <widget class="QDoubleSpinBox" name="dongleSuctionPeakDipStartSpin">
-                         <property name="decimals">
-                          <number>2</number>
-                         </property>
-                         <property name="minimum">
-                          <double>-100.000000000000000</double>
-                         </property>
-                         <property name="maximum">
-                          <double>0.000000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>1.000000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>-10.000000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="1">
-                        <widget class="QDoubleSpinBox" name="dongleSuctionPeakTargetSpin">
-                         <property name="decimals">
-                          <number>2</number>
-                         </property>
-                         <property name="minimum">
-                          <double>-100.000000000000000</double>
-                         </property>
-                         <property name="maximum">
-                          <double>0.000000000000000</double>
-                         </property>
-                         <property name="singleStep">
-                          <double>1.000000000000000</double>
-                         </property>
-                         <property name="value">
-                          <double>-36.000000000000000</double>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="1" column="0">
-                        <widget class="QLabel" name="label_dongle_suction_peak_target">
-                         <property name="text">
-                          <string>目标峰值(kPa)</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item row="0" column="0" colspan="9">
+                       <item row="0" column="0" colspan="10">
                         <layout class="QHBoxLayout" name="horizontalLayout_dongle_suction_ctrl">
                          <item>
                           <widget class="QPushButton" name="dongle_suction_open">
@@ -5602,19 +5092,38 @@
                            </property>
                           </widget>
                          </item>
-                         <item>
-                          <widget class="QLabel" name="dongleSuctionPacketIntervalLabel">
-                           <property name="toolTip">
-                            <string>十六进制用包内时间戳间隔，AT 用上位机到达间隔；「均」为指数滑动平均</string>
-                           </property>
-                           <property name="text">
-                            <string>包间隔：-- ms</string>
-                           </property>
-                          </widget>
-                         </item>
                         </layout>
                        </item>
-                       <item row="2" column="0" colspan="9">
+                       <item row="1" column="3">
+                        <widget class="QDoubleSpinBox" name="dongleSuctionPeakToleranceSpin">
+                         <property name="decimals">
+                          <number>2</number>
+                         </property>
+                         <property name="minimum">
+                          <double>0.000000000000000</double>
+                         </property>
+                         <property name="maximum">
+                          <double>20.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.100000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>2.600000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="8" colspan="2">
+                        <widget class="QPushButton" name="btnDongleExportSuctionPng">
+                         <property name="toolTip">
+                          <string>导出当前吸力曲线为 PNG</string>
+                         </property>
+                         <property name="text">
+                          <string>导出吸力曲线PNG</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="2" column="0" colspan="10">
                         <layout class="QHBoxLayout" name="horizontalLayout_dongle_suction_axis">
                          <property name="spacing">
                           <number>4</number>
@@ -5651,6 +5160,35 @@
                            </property>
                            <property name="value">
                             <double>10.000000000000000</double>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QLabel" name="label_dongle_suction_x_tick">
+                           <property name="text">
+                            <string>X刻度(s)</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QDoubleSpinBox" name="dongleSuctionXTickSpin">
+                           <property name="toolTip">
+                            <string>横轴主刻度间隔（分辨率），单位秒</string>
+                           </property>
+                           <property name="decimals">
+                            <number>3</number>
+                           </property>
+                           <property name="minimum">
+                            <double>0.001000000000000</double>
+                           </property>
+                           <property name="maximum">
+                            <double>1000000000.000000000000000</double>
+                           </property>
+                           <property name="singleStep">
+                            <double>0.100000000000000</double>
+                           </property>
+                           <property name="value">
+                            <double>1.000000000000000</double>
                            </property>
                           </widget>
                          </item>
@@ -5713,35 +5251,6 @@
                           </widget>
                          </item>
                          <item>
-                          <widget class="QLabel" name="label_dongle_suction_x_tick">
-                           <property name="text">
-                            <string>X刻度(s)</string>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
-                          <widget class="QDoubleSpinBox" name="dongleSuctionXTickSpin">
-                           <property name="toolTip">
-                            <string>横轴主刻度间隔（分辨率），单位秒</string>
-                           </property>
-                           <property name="decimals">
-                            <number>3</number>
-                           </property>
-                           <property name="minimum">
-                            <double>0.001000000000000</double>
-                           </property>
-                           <property name="maximum">
-                            <double>1000000000.000000000000000</double>
-                           </property>
-                           <property name="singleStep">
-                            <double>0.100000000000000</double>
-                           </property>
-                           <property name="value">
-                            <double>1.000000000000000</double>
-                           </property>
-                          </widget>
-                         </item>
-                         <item>
                           <widget class="QLabel" name="label_dongle_suction_y_tick">
                            <property name="text">
                             <string>Y刻度(kPa)</string>
@@ -5772,10 +5281,311 @@
                          </item>
                         </layout>
                        </item>
+                       <item row="1" column="2">
+                        <widget class="QLabel" name="label_dongle_suction_peak_tolerance">
+                         <property name="text">
+                          <string>峰值容差(kPa)</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="7">
+                        <widget class="QDoubleSpinBox" name="dongleSuctionPeakMaxGapSpin">
+                         <property name="decimals">
+                          <number>1</number>
+                         </property>
+                         <property name="minimum">
+                          <double>0.500000000000000</double>
+                         </property>
+                         <property name="maximum">
+                          <double>30.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.500000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>2.500000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="1">
+                        <widget class="QDoubleSpinBox" name="dongleSuctionPeakTargetSpin">
+                         <property name="decimals">
+                          <number>2</number>
+                         </property>
+                         <property name="minimum">
+                          <double>-100.000000000000000</double>
+                         </property>
+                         <property name="maximum">
+                          <double>0.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>1.000000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>-36.000000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="6">
+                        <widget class="QLabel" name="label_dongle_suction_peak_max_gap">
+                         <property name="text">
+                          <string>漏峰间隔(s)</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="0">
+                        <widget class="QLabel" name="label_dongle_suction_peak_target">
+                         <property name="text">
+                          <string>目标峰值(kPa)</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item row="1" column="5">
+                        <widget class="QDoubleSpinBox" name="dongleSuctionPeakDipStartSpin">
+                         <property name="decimals">
+                          <number>2</number>
+                         </property>
+                         <property name="minimum">
+                          <double>-100.000000000000000</double>
+                         </property>
+                         <property name="maximum">
+                          <double>0.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>1.000000000000000</double>
+                         </property>
+                         <property name="value">
+                          <double>-10.000000000000000</double>
+                         </property>
+                        </widget>
+                       </item>
                       </layout>
                      </widget>
                     </item>
-                    <item>
+                    <item row="0" column="2" rowspan="3">
+                     <widget class="QGroupBox" name="groupBox_dongle_at_pump">
+                      <property name="title">
+                       <string>泵/阀参数设置</string>
+                      </property>
+                      <layout class="QVBoxLayout" name="verticalLayout_dongle_at_pump">
+                       <property name="spacing">
+                        <number>4</number>
+                       </property>
+                       <property name="leftMargin">
+                        <number>4</number>
+                       </property>
+                       <property name="topMargin">
+                        <number>4</number>
+                       </property>
+                       <property name="rightMargin">
+                        <number>4</number>
+                       </property>
+                       <property name="bottomMargin">
+                        <number>4</number>
+                       </property>
+                       <item>
+                        <layout class="QHBoxLayout" name="horizontalLayout_dongle_at_pump_static">
+                         <item>
+                          <widget class="QLabel" name="label_dongle_at_drive_type">
+                           <property name="text">
+                            <string>驱动方式</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QComboBox" name="comboDongleDriveType">
+                           <item>
+                            <property name="text">
+                             <string>泵阀驱动</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>直线电机驱动</string>
+                            </property>
+                           </item>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QLabel" name="label_dongle_at_fg_print">
+                           <property name="text">
+                            <string>日志上报间隔(ms)</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QLineEdit" name="DongleAtFgPrint">
+                           <property name="maximumSize">
+                            <size>
+                             <width>80</width>
+                             <height>16777215</height>
+                            </size>
+                           </property>
+                           <property name="toolTip">
+                            <string>AT+FGPRINT=，FG 上报间隔 ms（默认 1000）</string>
+                           </property>
+                           <property name="text">
+                            <string>1000</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QPushButton" name="btnDongleAtSetFgPrint">
+                           <property name="enabled">
+                            <bool>true</bool>
+                           </property>
+                           <property name="toolTip">
+                            <string>下发 AT+FGPRINT=间隔</string>
+                           </property>
+                           <property name="text">
+                            <string>设置</string>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </item>
+                       <item>
+                        <layout class="QHBoxLayout" name="horizontalLayout_dongle_at_pump_action">
+                         <item>
+                          <widget class="QLabel" name="label_dongle_at_seg_count">
+                           <property name="text">
+                            <string>每轮段数</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QSpinBox" name="spinDongleSegmentCount">
+                           <property name="minimum">
+                            <number>2</number>
+                           </property>
+                           <property name="maximum">
+                            <number>64</number>
+                           </property>
+                           <property name="singleStep">
+                            <number>2</number>
+                           </property>
+                           <property name="value">
+                            <number>8</number>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QPushButton" name="btnDongleAtPumpStatus">
+                           <property name="toolTip">
+                            <string>查询当前泵阀参数：AT+PUMPSTATUS</string>
+                           </property>
+                           <property name="text">
+                            <string>读取设备配置信息</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QPushButton" name="btnDongleExportParams">
+                           <property name="toolTip">
+                            <string>导出当前泵/阀参数列表到 CSV</string>
+                           </property>
+                           <property name="text">
+                            <string>导出参数CSV</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QLabel" name="label_dongle_at_pump_rate">
+                           <property name="text">
+                            <string>频率：-- 次/分钟</string>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </item>
+                       <item>
+                        <layout class="QHBoxLayout" name="horizontalLayout_21">
+                         <item>
+                          <widget class="QLabel" name="label_dongle_at_pump_total">
+                           <property name="text">
+                            <string>总运行(ms，0=不限)</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QLineEdit" name="DongleAtPumpTotal">
+                           <property name="maximumSize">
+                            <size>
+                             <width>80</width>
+                             <height>16777215</height>
+                            </size>
+                           </property>
+                           <property name="toolTip">
+                            <string>AT+PUMPTOTAL=，总运行毫秒数（0=不限）</string>
+                           </property>
+                           <property name="text">
+                            <string>0</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QPushButton" name="btnDongleAtSetPumpTotal">
+                           <property name="toolTip">
+                            <string>下发 AT+PUMPTOTAL=总毫秒数</string>
+                           </property>
+                           <property name="text">
+                            <string>设置</string>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </item>
+                       <item>
+                        <layout class="QHBoxLayout" name="horizontalLayout_14">
+                         <property name="topMargin">
+                          <number>0</number>
+                         </property>
+                         <item>
+                          <widget class="QPushButton" name="btnDongleAtPumpSetAll">
+                           <property name="toolTip">
+                            <string>按当前输入依次下发 DRIVE_TYPE/SEGCOUNT/WORKTIME/PUMPFREQ/PUMPDUTY/INTERVALOFF/PUMPTOTAL/FGPRINT</string>
+                           </property>
+                           <property name="text">
+                            <string>设置全部内容</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QPushButton" name="btnDongleAtPumpStart">
+                           <property name="toolTip">
+                            <string>AT+PUMPSTART=1，按以上参数开始泵/阀交替运行</string>
+                           </property>
+                           <property name="text">
+                            <string>开始交替运行</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QPushButton" name="btnDongleAtPumpStop">
+                           <property name="toolTip">
+                            <string>AT+PUMPSTOP=1，立即停止</string>
+                           </property>
+                           <property name="text">
+                            <string>立即停止</string>
+                           </property>
+                          </widget>
+                         </item>
+                        </layout>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item row="1" column="0">
+                     <widget class="QLabel" name="dongleSuctionPacketIntervalLabel">
+                      <property name="toolTip">
+                       <string>十六进制用包内时间戳间隔，AT 用上位机到达间隔；「均」为指数滑动平均</string>
+                      </property>
+                      <property name="text">
+                       <string>包间隔：-- ms</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="1" rowspan="2">
                      <layout class="QGridLayout" name="gridLayout_dongle_suction_live">
                       <property name="leftMargin">
                        <number>0</number>
@@ -5796,92 +5606,39 @@
                        <number>0</number>
                       </property>
                       <item row="0" column="0">
-                       <widget class="QLabel" name="dongleSuctionLiveCh1Label">
+                       <widget class="QLabel" name="dongleSuctionCh1PeakStatLabel">
                         <property name="text">
-                         <string>第一通道实时：--</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="0" column="1">
-                       <widget class="QLabel" name="dongleSuctionLiveCh2Label">
-                        <property name="text">
-                         <string>第二通道实时：--</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="0" column="2">
-                       <widget class="QLabel" name="dongleSuctionLiveCh3Label">
-                        <property name="text">
-                         <string>第三通道实时：--</string>
+                         <string>CH1 实时-- 最高-- 最低-- 有效0 漏峰0 弱峰0 最大峰-- 频率--</string>
                         </property>
                        </widget>
                       </item>
                       <item row="1" column="0">
-                       <widget class="QLabel" name="dongleSuctionCh1PeakHighLabel">
+                       <widget class="QLabel" name="dongleSuctionCh2PeakStatLabel">
                         <property name="text">
-                         <string>第一通道最高：--</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="1">
-                       <widget class="QLabel" name="dongleSuctionCh2PeakHighLabel">
-                        <property name="text">
-                         <string>第二通道最高：--</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="2">
-                       <widget class="QLabel" name="dongleSuctionCh3PeakHighLabel">
-                        <property name="text">
-                         <string>第三通道最高：--</string>
+                         <string>CH2 实时-- 最高-- 最低-- 有效0 漏峰0 弱峰0 最大峰-- 频率--</string>
                         </property>
                        </widget>
                       </item>
                       <item row="2" column="0">
-                       <widget class="QLabel" name="dongleSuctionCh1PeakLowLabel">
-                        <property name="text">
-                         <string>第一通道最低：--</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="2" column="1">
-                       <widget class="QLabel" name="dongleSuctionCh2PeakLowLabel">
-                        <property name="text">
-                         <string>第二通道最低：--</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="2" column="2">
-                       <widget class="QLabel" name="dongleSuctionCh3PeakLowLabel">
-                        <property name="text">
-                         <string>第三通道最低：--</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="0">
-                       <widget class="QLabel" name="dongleSuctionCh1PeakStatLabel">
-                        <property name="text">
-                         <string>第一通道峰检：有效0 漏峰0 弱峰0 最大峰-- 频率--</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="1">
-                       <widget class="QLabel" name="dongleSuctionCh2PeakStatLabel">
-                        <property name="text">
-                         <string>第二通道峰检：有效0 漏峰0 弱峰0 最大峰-- 频率--</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="2">
                        <widget class="QLabel" name="dongleSuctionCh3PeakStatLabel">
                         <property name="text">
-                         <string>第三通道峰检：有效0 漏峰0 弱峰0 最大峰-- 频率--</string>
+                         <string>CH3 实时-- 最高-- 最低-- 有效0 漏峰0 弱峰0 最大峰-- 频率--</string>
                         </property>
                        </widget>
                       </item>
                      </layout>
                     </item>
-                    <item>
+                    <item row="2" column="0">
+                     <widget class="QCheckBox" name="dongleSuctionPeakGuideLinesCheck">
+                      <property name="text">
+                       <string>显示峰检辅助线</string>
+                      </property>
+                      <property name="checked">
+                       <bool>true</bool>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="3" column="0" colspan="2">
                      <widget class="QWidget" name="dongleSuctionPlotHost" native="true">
                       <property name="sizePolicy">
                        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
@@ -5894,6 +5651,25 @@
                         <width>320</width>
                         <height>360</height>
                        </size>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="3" column="2">
+                     <widget class="QTableWidget" name="tableDongleSegments">
+                      <property name="sizePolicy">
+                       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                        <horstretch>0</horstretch>
+                        <verstretch>0</verstretch>
+                       </sizepolicy>
+                      </property>
+                      <property name="maximumSize">
+                       <size>
+                        <width>16777215</width>
+                        <height>16777215</height>
+                       </size>
+                      </property>
+                      <property name="toolTip">
+                       <string>每轮各段时间/频率/占空比；一段一行（工作段与全关段交替）</string>
                       </property>
                      </widget>
                     </item>
@@ -8373,7 +8149,7 @@ border-color: rgb(255, 165, 0)</string>
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1667</width>
+     <width>2127</width>
      <height>21</height>
     </rect>
    </property>
