@@ -84,6 +84,7 @@ QHash<int, SessionState> g_activeSessions;
 QHash<int, SessionState> g_lastEndedSessions;
 QHash<int, SuctionSampleBuffer> g_suctionSamples;
 QHash<int, QStringList> g_screenInspectFiles;
+QHash<int, QStringList> g_suctionCurveFiles;
 
 bool sessionLogEnabled() {
     return SETTINGS.value(QStringLiteral("FactoryCloud/Log/SessionLogEnabled"), true).toBool();
@@ -1028,6 +1029,76 @@ QString Qlog::exportSuctionSamplesCsv(const QlogSessionInfo& info, QString* erro
     QString rel = outRel;
     rel.replace(QLatin1Char('\\'), QLatin1Char('/'));
     return rel;
+}
+
+void Qlog::addSuctionCurveImageFiles(int slot, const QStringList& absolutePaths) {
+    QMutexLocker lock(&g_sessionMutex);
+    if (absolutePaths.isEmpty()) {
+        g_suctionCurveFiles.remove(slot);
+        return;
+    }
+    QStringList& list = g_suctionCurveFiles[slot];
+    for (const QString& path : absolutePaths) {
+        const QString trimmed = path.trimmed();
+        if (trimmed.isEmpty() || !QFile::exists(trimmed) || list.contains(trimmed)) {
+            continue;
+        }
+        list.append(trimmed);
+    }
+}
+
+QStringList Qlog::exportSuctionCurveImageFiles(const QlogSessionInfo& info, QString* error) {
+    if (!info.valid) {
+        return {};
+    }
+    QStringList srcPaths;
+    {
+        QMutexLocker lock(&g_sessionMutex);
+        if (!g_suctionCurveFiles.contains(info.slot)) {
+            return {};
+        }
+        // take：本轮取走，避免下一轮无采样时又把上一轮图传一遍
+        srcPaths = g_suctionCurveFiles.take(info.slot);
+    }
+    if (srcPaths.isEmpty()) {
+        return {};
+    }
+
+    const QString outDirRel = logRootRelative() + QStringLiteral("/吸力曲线");
+    if (!CommonUtils::ensureLogDirectory(outDirRel)) {
+        if (error) {
+            *error = QStringLiteral("无法创建吸力曲线图片目录");
+        }
+        return {};
+    }
+    const QString outDirAbs = QDir(QCoreApplication::applicationDirPath()).filePath(outDirRel);
+    const QString stem = sessionFileStem(info);
+    QStringList relOut;
+    int index = 0;
+    for (const QString& srcAbs : srcPaths) {
+        if (!QFile::exists(srcAbs)) {
+            continue;
+        }
+        ++index;
+        const QString baseName = QFileInfo(srcAbs).fileName();
+        const QString outName = (srcPaths.size() == 1)
+                                    ? (stem + QStringLiteral("_suction_curve.jpg"))
+                                    : (stem + QLatin1Char('_') + QString::number(index) + QStringLiteral("_suction_curve.jpg"));
+        const QString outAbs = resolveUniqueFilePath(outDirAbs, outName);
+        if (QFile::exists(outAbs)) {
+            QFile::remove(outAbs);
+        }
+        if (!QFile::copy(srcAbs, outAbs)) {
+            if (error) {
+                *error = QStringLiteral("无法复制吸力曲线图片：") + baseName;
+            }
+            continue;
+        }
+        QString rel = outDirRel + QLatin1Char('/') + QFileInfo(outAbs).fileName();
+        rel.replace(QLatin1Char('\\'), QLatin1Char('/'));
+        relOut << rel;
+    }
+    return relOut;
 }
 
 void Qlog::addScreenInspectImageFiles(int slot, const QStringList& absolutePaths) {

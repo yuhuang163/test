@@ -47,6 +47,10 @@ struct PreStartMonitorConfig {
     QString plcDevice;
     QString plcIp;
     int plcPort = 502;
+    QString plcComPort;
+    int plcBaudRate = 19200;
+    int plcSlaveId = 1;
+    QString plcWaitAddress = "M100";
     int plcWaitAddressM = 100;
     int plcPollIntervalMs = 500;
     QString scannerIp = "192.168.1.64";
@@ -429,6 +433,13 @@ class QFreeWork : public test_base {
     /** 采样结束做一次完整 setData + 轴范围 + replot，避免过程中每帧全量重绘 */
     void finalizeSuctionChartPlot();
     void updateSuctionPeakLabels();
+    void appendSuctionCurveRowToResultTable(bool pass);
+    bool shouldShowSuctionCurveInTable(const TestCaseDefinition& def) const;
+    void restoreScanFocus();
+    void saveSuctionCurveImageForUpload();
+
+    bool pendingSuctionCurveRow_ = false;
+    bool pendingSuctionPass_ = true;
 
     double suctionPeakTargetKpa_ = -36.0;
     double suctionPeakToleranceKpa_ = 2.6;
