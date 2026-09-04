@@ -57,14 +57,19 @@ bool TestCaseValidator::validateCase(const TestCaseDefinition& def, QStringList&
         GateTypeDescriptor desc;
         if (!GateRegistry::descriptorFor(def.gate.reportType, desc)) {
             errors.append(QStringLiteral("回传数据类型未登记，请联系工程师"));
-        } else if (TestCaseStore::usesMultiFieldGates(def)) {
-            const QStringList fields = GateRegistry::fieldsFor(def.gate.reportType);
-            for (const TestCaseGate& g : def.gates) {
-                if (!fields.contains(g.field))
-                    errors.append(QStringLiteral("分项判定字段未登记：%1").arg(g.field));
-                if (g.op == TestCaseGateOp::Eq && g.expected.trimmed().isEmpty())
-                    errors.append(QStringLiteral("分项「%1」须填写期望值")
-                                      .arg(GateRegistry::fieldDisplayName(def.gate.reportType, g.field)));
+        } else if (TestCaseStore::usesMultiFieldGates(def)
+                   || def.gate.field.compare(QLatin1String("multi"), Qt::CaseInsensitive) == 0) {
+            if (def.gates.isEmpty()) {
+                errors.append(QStringLiteral("卡控已启用，请至少勾选一项判定"));
+            } else {
+                const QStringList fields = GateRegistry::fieldsFor(def.gate.reportType);
+                for (const TestCaseGate& g : def.gates) {
+                    if (!fields.contains(g.field))
+                        errors.append(QStringLiteral("分项判定字段未登记：%1").arg(g.field));
+                    if (g.op == TestCaseGateOp::Eq && g.expected.trimmed().isEmpty())
+                        errors.append(QStringLiteral("分项「%1」须填写期望值")
+                                          .arg(GateRegistry::fieldDisplayName(def.gate.reportType, g.field)));
+                }
             }
         } else if (!GateRegistry::isAllFieldsGateField(def.gate.field)
                    && !GateRegistry::fieldsFor(def.gate.reportType).contains(def.gate.field)) {

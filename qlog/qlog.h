@@ -138,6 +138,11 @@ class Qlog {
     /** 导出本轮吸力采样 CSV（列同主窗口吸力页），无采样数据时返回空且不置 error */
     static QString exportSuctionSamplesCsv(const QlogSessionInfo& info, QString* error);
 
+    /** 吸力曲线图片按工位暂存绝对路径；传空列表清空。测完导出进会话包 */
+    static void addSuctionCurveImageFiles(int slot, const QStringList& absolutePaths);
+    /** 复制到 所有log/吸力曲线/ 并返回相对路径列表；无图时返回空且不置 error */
+    static QStringList exportSuctionCurveImageFiles(const QlogSessionInfo& info, QString* error);
+
     /** 屏幕检测拍摄图按工位暂存绝对路径；传空列表清空。测完导出进会话包 */
     static void addScreenInspectImageFiles(int slot, const QStringList& absolutePaths);
     /** 复制到 所有log/屏幕检测/ 并返回相对路径列表；无图时返回空且不置 error */

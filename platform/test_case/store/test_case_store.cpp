@@ -1794,7 +1794,9 @@ QVector<TestCaseGate> TestCaseStore::activeGatesForEvaluation(const TestCaseDefi
 }
 
 bool TestCaseStore::usesMultiFieldGates(const TestCaseDefinition& def) {
-    return def.gates.size() > 1;
+    return def.gates.size() > 1
+        || def.gate.field.compare(QLatin1String("multi"), Qt::CaseInsensitive) == 0
+        || (!def.gates.isEmpty() && isMultiFieldGateReportType(def.gate.reportType));
 }
 
 QStringList TestCaseStore::listCaseIniNames() {

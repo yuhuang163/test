@@ -2230,7 +2230,7 @@ void QFreeWork::saveSuctionCurveImageForUpload() {
     // 生成高清晰度（1000x450）吸力曲线并存为 JPEG，注册到云端上报清单
     QPixmap pix = suctionPlot_->toPixmap(1000, 450, 1.0);
     if (!pix.isNull() && pix.toImage().save(curvePath, "JPG", 90)) {
-        Qlog::addScreenInspectImageFiles(getIndex(), {curvePath});
+        Qlog::addSuctionCurveImageFiles(getIndex(), {curvePath});
         showlog(QStringLiteral("吸力曲线图片已生成并注册到云端上报：%1").arg(QFileInfo(curvePath).fileName()));
     }
 }
@@ -2903,6 +2903,7 @@ void QFreeWork::initData(bool deferDongleAtForVisa) {
     // 一并清 Qlog 暂存：上一轮若已投递但未被导出取走，本轮中止时会误传上一轮采样/截图
     Qlog::setSuctionSamples(getIndex(), {}, {}, {}, {});
     Qlog::addScreenInspectImageFiles(getIndex(), {});
+    Qlog::addSuctionCurveImageFiles(getIndex(), {});
     resetSuctionChart();
     // 首步 GPIB 时勿发 AT+SUCTION=0，与单步一致，避免 USB 与 GPIB 并发 ABORT
     if (deferDongleAtForVisa)
