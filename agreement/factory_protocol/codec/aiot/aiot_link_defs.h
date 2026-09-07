@@ -9,7 +9,7 @@ namespace AiotLink {
 constexpr uint8_t kSof = 0x5A;
 
 /** Control 位域 */
-constexpr uint8_t kCtrlVersion = 0x10; // bit4：1=Header 含 Version；分帧时还含 FMN+PSN
+constexpr uint8_t kCtrlVersion = 0x10; // bit4：1=Header 含 Version；含 Version 必带 PSN，分帧再带 FSN+FMN
 constexpr uint8_t kCtrlRsp = 0x08;     // bit3
 constexpr uint8_t kCtrlAck = 0x04;     // bit2
 constexpr uint8_t kCtrlFsnMask = 0x03; // bit1..0（FRA 分帧标志）
@@ -17,7 +17,7 @@ constexpr uint8_t kCtrlFsnNone = 0x00; // 完整应用层包，无 FSN
 constexpr uint8_t kCtrlFsnStart = 0x01;
 constexpr uint8_t kCtrlFsnMiddle = 0x02;
 constexpr uint8_t kCtrlFsnEnd = 0x03;
-/** Version 字段取值 0：分帧时携带 FSN+FMN+PSN（规范 2.0.0） */
+/** Version 字段取值 0：支持 PSN/FSN/FMN 扩展字段（规范 2.0.0） */
 constexpr uint8_t kLinkVersion0 = 0;
 
 /** 应用层 Service ID：Qaiot 只走 FCT&ATE */
@@ -137,6 +137,10 @@ constexpr uint8_t kFctDataTypeProductId = 0x02;
 constexpr uint8_t kFctDataTypeDeviceId = 0x03;
 constexpr uint8_t kFctDataTypeDeviceSecret = 0x04;
 constexpr uint8_t kFctDataTypeMac = 0x05;
+constexpr uint8_t kFctDataTypeTripletNumberId = 0x06; // triplet_number_id 环境id
+/** 三元组环境id取值：0x01 测试环境(默认) / 0x02 正式环境 */
+constexpr uint8_t kFctTripletEnvTest = 0x01;
+constexpr uint8_t kFctTripletEnvProd = 0x02;
 
 /** 传感器类型 dut_sensor_type（CID=0x08/0x09）/ report_data_type（0x18/0x19） */
 constexpr uint8_t kFctSensorTypeImu = 0x00;

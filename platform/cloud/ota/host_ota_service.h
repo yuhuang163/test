@@ -24,6 +24,8 @@ class HostOtaService {
         QString sha256;
         QString releaseNotes;
         QString uploadedAt;
+        QString packageKind;  // "exe"（单文件旧格式）| "manifest"（增量清单）
+        int fileCount = 0;
     };
 
     static CheckResult checkUpdate();

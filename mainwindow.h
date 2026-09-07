@@ -169,8 +169,10 @@ class MainWindow : public QMainWindow {
     bool sendDongleAtLineCmd(const QString& atKey, const QString& value = QString());
     /** AT 测试页整数参数：text 须为不小于 minValue 的整数，上限交设备端判断 */
     bool sendDongleAtIntParam(const QString& atKey, const QString& text, int minValue);
-    /** 泵/阀交替运行频率（次/分钟）= 60000 ÷（泵时间+泵后全关+阀时间+阀后全关） */
+    /** 泵/阀交替运行频率（次/分钟）= 60000 ÷ 一轮所有段时长之和 */
     void updateDongleAtPumpRate();
+    /** 按「每轮段数」重建段参数表（一段一行，工作段含时间/频率/占空比，全关段仅时间） */
+    void rebuildDongleSegmentTable();
     struct DongleSuctionChannelPeakMonitor {
         enum class Phase { AtBaseline, InCycle };
         Phase phase = Phase::AtBaseline;
@@ -211,9 +213,6 @@ class MainWindow : public QMainWindow {
     /** 节流刷新曲线/Label；关闭采集或弹窗打开时可 forceFullReplot 补全未绘制的点 */
     void flushDongleSuctionChartUi(bool forceFullReplot = false);
     void appendDongleSuctionPlotIncremental(QCustomPlot* plot, int& plottedCount);
-    void updateDongleSuctionPeakLabels();
-    /** 把实时/高低/峰检合并进图例通道名（参考产测曲线图例写法） */
-    void updateDongleSuctionPlotOverlay(QCustomPlot* plot);
     /** 峰检参数水平辅助线（目标/容差/基线/下探） */
     void updateDongleSuctionPeakGuideLines(QCustomPlot* plot);
     void updateDongleSuctionPeakGuideLinesAll();
@@ -228,6 +227,10 @@ class MainWindow : public QMainWindow {
     bool startDongleSuctionCsvLog();
     void stopDongleSuctionCsvLog();
     void writeDongleSuctionCsvRow(double tSec, double ch1Kpa, double ch2Kpa, double ch3Kpa);
+    /** 生成吸力专项参数表 CSV 并返回绝对路径；失败返回空串（导出按钮与云端上传共用） */
+    QString exportDongleSuctionParamsCsv();
+    /** 吸力采集结束：参数（分项）+参数表 CSV+曲线图 PNG+曲线 CSV 按特殊工站上传云端 */
+    void uploadDongleSuctionToCloud();
     /** 横轴滑动窗口宽度(s)；跟随时显示 [t-窗口, t]，可拖拽查看更早数据 */
     static constexpr double kDongleSuctionChartWindowSec = 10.0;
     static constexpr int kDongleSuctionChannelCount = 3;
@@ -759,12 +762,10 @@ class MainWindow : public QMainWindow {
     void on_lineDongleAtCustom_returnPressed();
     void on_btnDongleAtSetBleMtu_clicked();
     void on_btnDongleAtSetOtaPkt_clicked();
-    void on_btnDongleAtSetPumpDuty_clicked();
-    void on_btnDongleAtSetPumpFreq_clicked();
-    void on_btnDongleAtSetPumpSec_clicked();
-    void on_btnDongleAtSetPumpOff_clicked();
-    void on_btnDongleAtSetValveSec_clicked();
-    void on_btnDongleAtSetValveOff_clicked();
+    void on_comboDongleDriveType_currentIndexChanged(int index);
+    void on_spinDongleSegmentCount_valueChanged(int arg1);
+    void on_btnDongleExportParams_clicked();
+    void on_btnDongleExportSuctionPng_clicked();
     void on_btnDongleAtSetPumpTotal_clicked();
     void on_btnDongleAtSetFgPrint_clicked();
     void on_btnDongleAtPumpSetAll_clicked();

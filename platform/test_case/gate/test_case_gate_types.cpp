@@ -367,6 +367,7 @@ static void registerDeviceInfoGates() {
             .text("productId", &D::productId, "产品密钥")
             .text("deviceId", &D::deviceId, "设备名")
             .text("key", &D::key, "设备密钥")
+            .number("envId", &D::envId, "环境id", "")
             .commit();
     }
     {

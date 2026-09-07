@@ -1496,6 +1496,8 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     pack.mac = ui->macInput->text().trimmed();
     pack.product = SETTINGS.value("Mes/Product_Name").toString();
     pack.instruct_num = QStringLiteral("079");
+    // 测试总时长（毫秒）随云端上报，供网页详情顶部展示
+    pack.totalTimeMs = static_cast<double>(TestTime.elapsed());
     if (TestResult == failValue) {
         ui->test_result->setText(QStringLiteral("FAIL"));
         ui->test_result->setStyleSheet(

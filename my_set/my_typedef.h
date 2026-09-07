@@ -316,9 +316,13 @@ typedef struct MesPacketData {
     QString product;        // 界面产品型号（Mes/Product_Name，如 V3/W1 Lite/M8）；非 mes_config 的 PROJECT
     QString lotName;        //工单号码
     QString mac;            // mac地址
+    /** 云端上报工站名；空则回退 FactoryCloudClient::stationKey()（主窗口特殊工站置"调试工站"） */
+    QString cloudStation;
     /** 三元组 SKU（GetCustomData ROOTSKU 或步骤 Param_sku） */
     QString sku;
     int elapseTime = 1;     //测试耗时（默认 1，单位由 MES 接口定义）
+    /** 测试总时长（毫秒）；自由工站测试结束写入，云端上报 totalTime 字段 */
+    double totalTimeMs = 0.0;
     int testCount = 1;      //测试次数（默认 1）
     int iskeydata = 0;      // GetTestData 入口分流：0=GetSfcKeyBySfc，1=AddSfcKey，2=GetCustomData(ROOTSKU)
 

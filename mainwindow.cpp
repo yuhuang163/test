@@ -19,6 +19,8 @@
 #include <QTabBar>
 #include <QTableView>
 #include <QTabWidget>
+#include <QTableWidget>
+#include <QTableWidgetItem>
 #include <QVBoxLayout>
 #include <QtConcurrent>
 
@@ -31,7 +33,10 @@
 #include <QDir>
 #include <QTextStream>
 #include "app_help_menu.h"
+#include "qlog.h"
 #include "platform/cloud/auth/auth_service.h"
+#include "platform/cloud/client/factory_cloud_client.h"
+#include "platform/cloud/test_data/test_data_upload_service.h"
 #include "qatmanager.h"
 #include "qcustomplot.h"
 #include "qsetting.h"
@@ -258,16 +263,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     if (ui->screenInspectPage)
         ui->screenInspectPage->bindDesignerUi();
     initDebugTabLayout();
-    // 泵/阀交替运行频率实时跟随四个时长输入框
-    auto bindPumpRateInput = [this](QLineEdit* edit) {
-        if (edit)
-            connect(edit, &QLineEdit::textChanged, this, &MainWindow::updateDongleAtPumpRate);
-    };
-    bindPumpRateInput(ui->DongleAtPumpSec);
-    bindPumpRateInput(ui->DongleAtPumpOff);
-    bindPumpRateInput(ui->DongleAtValveSec);
-    bindPumpRateInput(ui->DongleAtValveOff);
-    updateDongleAtPumpRate();
+    // 泵/阀交替运行频率实时跟随段参数表；段数变化由 spinDongleSegmentCount 槽重建段表
+    if (ui->tableDongleSegments)
+        connect(ui->tableDongleSegments, &QTableWidget::itemChanged, this, &MainWindow::updateDongleAtPumpRate);
+    rebuildDongleSegmentTable();
     screenInspectPage_ = ui->screenInspectPage;
     protocolManager.bindQpb(pb);
     protocolManager.bindQfctp(qfctp);
@@ -286,7 +285,9 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     // pb 指针仅作为现有流程兼容对象保留，不再跟随当前协议类型切换。
     // 当前激活协议由 protocolManager 统一维护。
     if ((selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctp) ||
-        (selectedType == QProtocolManager::ProtocolType::Qaiot && !qaiot) ||
+        ((selectedType == QProtocolManager::ProtocolType::Qaiot ||
+          selectedType == QProtocolManager::ProtocolType::QaiotV2) &&
+         !qaiot) ||
         (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot)) {
         QMessageBox::information(this, "协议提示", "所选协议未就绪，已自动回退到 qpb。");
         protocolManager.setCurrentProtocolType(QProtocolManager::ProtocolType::Qpb);
@@ -1296,7 +1297,9 @@ void MainWindow::applySystemProtocolFromSettings() {
     if (selectedType == QProtocolManager::ProtocolType::Unknown)
         selectedType = QProtocolManager::ProtocolType::Qpb;
     if ((selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctp) ||
-        (selectedType == QProtocolManager::ProtocolType::Qaiot && !qaiot) ||
+        ((selectedType == QProtocolManager::ProtocolType::Qaiot ||
+          selectedType == QProtocolManager::ProtocolType::QaiotV2) &&
+         !qaiot) ||
         (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot)) {
         QMessageBox::information(this, QStringLiteral("协议提示"),
                                  QStringLiteral("所选协议未就绪，已自动回退到 qpb。"));
@@ -5266,8 +5269,16 @@ void MainWindow::resetDongleSuctionPeakMonitor() {
 void MainWindow::updateDongleSuctionPeakMonitorLabels() {
     QLabel* labels[kDongleSuctionChannelCount] = {ui->dongleSuctionCh1PeakStatLabel, ui->dongleSuctionCh2PeakStatLabel,
                                                   ui->dongleSuctionCh3PeakStatLabel};
-    const QString channelNames[kDongleSuctionChannelCount] = {QStringLiteral("第一通道"), QStringLiteral("第二通道"),
-                                                              QStringLiteral("第三通道")};
+    const QString channelNames[kDongleSuctionChannelCount] = {QStringLiteral("CH1"), QStringLiteral("CH2"),
+                                                              QStringLiteral("CH3")};
+    const double liveValues[kDongleSuctionChannelCount] = {
+        dongleSuctionChartCh1_.isEmpty() ? 0.0 : dongleSuctionChartCh1_.last(),
+        dongleSuctionChartCh2_.isEmpty() ? 0.0 : dongleSuctionChartCh2_.last(),
+        dongleSuctionChartCh3_.isEmpty() ? 0.0 : dongleSuctionChartCh3_.last(),
+    };
+    const double hiValues[kDongleSuctionChannelCount] = {dongleSuctionCh1Max_, dongleSuctionCh2Max_, dongleSuctionCh3Max_};
+    const double loValues[kDongleSuctionChannelCount] = {dongleSuctionCh1Min_, dongleSuctionCh2Min_, dongleSuctionCh3Min_};
+    const bool ok = dongleSuctionPeakLabelStatsInit_;
     for (int i = 0; i < kDongleSuctionChannelCount; ++i) {
         if (!labels[i])
             continue;
@@ -5295,15 +5306,29 @@ void MainWindow::updateDongleSuctionPeakMonitorLabels() {
         } else {
             m.freqPerMin = -1;
         }
-        const QString freqText =
-            (m.freqPerMin < 0) ? QStringLiteral("--") : QStringLiteral("%1/min").arg(m.freqPerMin);
-        const QString maxPeakText =
-            m.peakValueInit ? QString::number(m.maxPeakKpa, 'f', 2) : QStringLiteral("--");
-        labels[i]->setText(QStringLiteral("%1峰检：有效%2 漏峰%3 弱峰%4 最大峰%5 频率%6")
+        // 数值左对齐固定宽度，保证 CH1/CH2/CH3 三行各列竖向对齐
+        constexpr int kKpaFieldWidth = 7;   // 负压 2 位小数（如 -100.00）
+        constexpr int kCountFieldWidth = 3; // 峰计数（0~999）
+        constexpr int kFreqFieldWidth = 7;  // 频率（如 1200/min）
+        const QString liveText = (ok ? QString::number(liveValues[i], 'f', 2) : QStringLiteral("--"))
+                                     .leftJustified(kKpaFieldWidth);
+        const QString hiText = (ok ? QString::number(hiValues[i], 'f', 2) : QStringLiteral("--"))
+                                   .leftJustified(kKpaFieldWidth);
+        const QString loText = (ok ? QString::number(loValues[i], 'f', 2) : QStringLiteral("--"))
+                                   .leftJustified(kKpaFieldWidth);
+        const QString maxPeakText = ((ok && m.peakValueInit) ? QString::number(m.maxPeakKpa, 'f', 2)
+                                                             : QStringLiteral("--"))
+                                        .leftJustified(kKpaFieldWidth);
+        const QString freqText = ((m.freqPerMin < 0) ? QStringLiteral("--") : QStringLiteral("%1/min").arg(m.freqPerMin))
+                                     .leftJustified(kFreqFieldWidth);
+        labels[i]->setText(QStringLiteral("%1 实时%2 最高%3 最低%4 有效%5 漏峰%6 弱峰%7 最大峰%8 频率%9")
                                .arg(channelNames[i])
-                               .arg(m.validPeakCount)
-                               .arg(m.missedPeakCount)
-                               .arg(m.weakPeakCount)
+                               .arg(liveText)
+                               .arg(hiText)
+                               .arg(loText)
+                               .arg(QString::number(m.validPeakCount).leftJustified(kCountFieldWidth))
+                               .arg(QString::number(m.missedPeakCount).leftJustified(kCountFieldWidth))
+                               .arg(QString::number(m.weakPeakCount).leftJustified(kCountFieldWidth))
                                .arg(maxPeakText)
                                .arg(freqText));
     }
@@ -5476,32 +5501,10 @@ void MainWindow::setupDongleSuctionPlotWidget(QCustomPlot* plot) {
     while (plot->graphCount() < 3)
         plot->addGraph();
     plot->graph(0)->setPen(QPen(QColor(30, 120, 220), 2));
-    plot->graph(0)->setName(QStringLiteral("CH1"));
     plot->graph(1)->setPen(QPen(QColor(220, 80, 50), 2));
-    plot->graph(1)->setName(QStringLiteral("CH2"));
     plot->graph(2)->setPen(QPen(QColor(50, 160, 80), 2));
-    plot->graph(2)->setName(QStringLiteral("CH3"));
-
-    // 图例放到曲线区下方，避免遮挡波形
-    if (plot->legend && plot->axisRect() && plot->plotLayout()) {
-        if (plot->legend->layout() == plot->axisRect()->insetLayout()) {
-            plot->axisRect()->insetLayout()->take(plot->legend);
-            plot->plotLayout()->addElement(1, 0, plot->legend);
-            plot->plotLayout()->setRowStretchFactor(0, 1);
-            plot->plotLayout()->setRowStretchFactor(1, 0.01);
-        }
-        plot->legend->setVisible(true);
-        plot->legend->setBorderPen(QPen(QColor(120, 120, 120, 50)));
-        // 高透明底，避免挡视线
-        plot->legend->setBrush(QBrush(QColor(255, 255, 255, 40)));
-        plot->legend->setSelectedBrush(QBrush(QColor(255, 255, 255, 40)));
-        plot->legend->setFillOrder(QCPLegend::foColumnsFirst, true);
-        plot->legend->setWrap(3);
-        QFont f = font();
-        f.setPointSize(8);
-        plot->legend->setFont(f);
-        plot->legend->setTextColor(QColor(20, 20, 20, 200));
-    }
+    if (plot->legend)
+        plot->legend->setVisible(false);
 
     const double xInit = dongleSuctionXWindowSec();
     double yMin = -40.0;
@@ -5811,27 +5814,11 @@ void MainWindow::appendDongleSuctionPlotIncremental(QCustomPlot* plot, int& plot
 }
 
 void MainWindow::flushDongleSuctionChartUi(bool forceFullReplot) {
-    if (!dongleSuctionChartCh1_.isEmpty()) {
-        const double ch1Kpa = dongleSuctionChartCh1_.last();
-        const double ch2Kpa = dongleSuctionChartCh2_.last();
-        const double ch3Kpa = dongleSuctionChartCh3_.last();
-        if (ui->dongleSuctionLiveCh1Label)
-            ui->dongleSuctionLiveCh1Label->setText(QStringLiteral("第一通道实时：%1 kPa").arg(ch1Kpa, 0, 'f', 3));
-        if (ui->dongleSuctionLiveCh2Label)
-            ui->dongleSuctionLiveCh2Label->setText(QStringLiteral("第二通道实时：%1 kPa").arg(ch2Kpa, 0, 'f', 3));
-        if (ui->dongleSuctionLiveCh3Label)
-            ui->dongleSuctionLiveCh3Label->setText(QStringLiteral("第三通道实时：%1 kPa").arg(ch3Kpa, 0, 'f', 3));
-    }
     updateDongleSuctionPeakMonitorLabels();
-    updateDongleSuctionPeakLabels();
-    updateDongleSuctionPlotOverlay(dongleSuctionPlot_);
-    updateDongleSuctionPlotOverlay(dongleSuctionPlotPopup_);
 
     if (forceFullReplot) {
         refreshDongleSuctionPlotWidget(dongleSuctionPlot_);
         refreshDongleSuctionPlotWidget(dongleSuctionPlotPopup_);
-        updateDongleSuctionPlotOverlay(dongleSuctionPlot_);
-        updateDongleSuctionPlotOverlay(dongleSuctionPlotPopup_);
         return;
     }
 
@@ -5848,62 +5835,6 @@ void MainWindow::updateDongleSuctionPacketIntervalLabel() {
             : QStringLiteral("包间隔：-- ms");
     if (ui->dongleSuctionPacketIntervalLabel)
         ui->dongleSuctionPacketIntervalLabel->setText(text);
-}
-
-void MainWindow::updateDongleSuctionPlotOverlay(QCustomPlot* plot) {
-    if (!plot || plot->graphCount() < 3)
-        return;
-
-    // 去掉此前独立文字框
-    for (int i = plot->itemCount() - 1; i >= 0; --i) {
-        auto* item = qobject_cast<QCPItemText*>(plot->item(i));
-        if (item && item->objectName() == QLatin1String("dongleSuctionOverlay"))
-            plot->removeItem(item);
-    }
-
-    // 图例在曲线下方：带中文标签，避免看不懂缩写
-    auto fmtName = [](const QString& name, double live, double hi, double lo, bool ok,
-                      const DongleSuctionChannelPeakMonitor& m) {
-        if (!ok)
-            return QStringLiteral("%1 实时-- 最高-- 最低-- 有效0 漏峰0 弱峰0 最大峰-- 频率--").arg(name);
-        const QString freqText =
-            (m.freqPerMin < 0) ? QStringLiteral("--") : QStringLiteral("%1/min").arg(m.freqPerMin);
-        const QString maxPeakText =
-            m.peakValueInit ? QString::number(m.maxPeakKpa, 'f', 2) : QStringLiteral("--");
-        return QStringLiteral("%1 实时%2 最高%3 最低%4 有效%5 漏峰%6 弱峰%7 最大峰%8 频率%9")
-            .arg(name)
-            .arg(live, 0, 'f', 2)
-            .arg(hi, 0, 'f', 2)
-            .arg(lo, 0, 'f', 2)
-            .arg(m.validPeakCount)
-            .arg(m.missedPeakCount)
-            .arg(m.weakPeakCount)
-            .arg(maxPeakText)
-            .arg(freqText);
-    };
-
-    const bool ok = dongleSuctionPeakLabelStatsInit_;
-    const double live1 = (!dongleSuctionChartCh1_.isEmpty()) ? dongleSuctionChartCh1_.last() : 0.0;
-    const double live2 = (!dongleSuctionChartCh2_.isEmpty()) ? dongleSuctionChartCh2_.last() : 0.0;
-    const double live3 = (!dongleSuctionChartCh3_.isEmpty()) ? dongleSuctionChartCh3_.last() : 0.0;
-
-    plot->graph(0)->setName(fmtName(QStringLiteral("CH1"), live1, dongleSuctionCh1Max_, dongleSuctionCh1Min_, ok,
-                                    dongleSuctionPeakMonitors_[0]));
-    plot->graph(1)->setName(fmtName(QStringLiteral("CH2"), live2, dongleSuctionCh2Max_, dongleSuctionCh2Min_, ok,
-                                    dongleSuctionPeakMonitors_[1]));
-    plot->graph(2)->setName(fmtName(QStringLiteral("CH3"), live3, dongleSuctionCh3Max_, dongleSuctionCh3Min_, ok,
-                                    dongleSuctionPeakMonitors_[2]));
-
-    if (plot->legend) {
-        plot->legend->setVisible(true);
-        QFont f = font();
-        f.setPointSize(8);
-        plot->legend->setFont(f);
-        plot->legend->setBorderPen(QPen(QColor(120, 120, 120, 50)));
-        plot->legend->setBrush(QBrush(QColor(255, 255, 255, 40)));
-        plot->legend->setSelectedBrush(QBrush(QColor(255, 255, 255, 40)));
-        plot->legend->setTextColor(QColor(20, 20, 20, 200));
-    }
 }
 
 void MainWindow::openDongleSuctionChartPopup() {
@@ -5925,7 +5856,6 @@ void MainWindow::openDongleSuctionChartPopup() {
     auto* plot = new QCustomPlot(dlg);
     setupDongleSuctionPlotWidget(plot);
     refreshDongleSuctionPlotWidget(plot);
-    updateDongleSuctionPlotOverlay(plot);
     updateDongleSuctionPeakGuideLines(plot);
     layout->addWidget(plot, 1);
 
@@ -5947,39 +5877,22 @@ void MainWindow::initDongleSuctionChart() {
     dongleSuctionPlot_ = new QCustomPlot(ui->dongleSuctionPlotHost);
     layout->addWidget(dongleSuctionPlot_);
     setupDongleSuctionPlotWidget(dongleSuctionPlot_);
-    updateDongleSuctionPlotOverlay(dongleSuctionPlot_);
     dongleSuctionPlot_->setToolTip(QStringLiteral("双击放大；滚轮/拖拽看历史后点「跟随最新」恢复滑动"));
     connect(dongleSuctionPlot_, &QCustomPlot::mouseDoubleClick, this, [this](QMouseEvent*) {
         openDongleSuctionChartPopup();
     });
 
-    // 统计已叠到图内：隐藏上方大块标签，把高度让给曲线
-    const QList<QWidget*> hideLive = {
-        ui->dongleSuctionLiveCh1Label,       ui->dongleSuctionLiveCh2Label,       ui->dongleSuctionLiveCh3Label,
-        ui->dongleSuctionCh1PeakHighLabel,   ui->dongleSuctionCh2PeakHighLabel,   ui->dongleSuctionCh3PeakHighLabel,
-        ui->dongleSuctionCh1PeakLowLabel,    ui->dongleSuctionCh2PeakLowLabel,    ui->dongleSuctionCh3PeakLowLabel,
-        ui->dongleSuctionCh1PeakStatLabel,   ui->dongleSuctionCh2PeakStatLabel,   ui->dongleSuctionCh3PeakStatLabel,
-    };
-    for (QWidget* w : hideLive) {
-        if (w)
-            w->hide();
-    }
     if (ui->dongleSuctionPlotHost) {
         ui->dongleSuctionPlotHost->setMinimumHeight(360);
         QSizePolicy sp = ui->dongleSuctionPlotHost->sizePolicy();
         sp.setVerticalStretch(10);
         ui->dongleSuctionPlotHost->setSizePolicy(sp);
     }
-    if (ui->verticalLayout_dongle_suction && ui->dongleSuctionPlotHost) {
-        for (int i = 0; i < ui->verticalLayout_dongle_suction->count(); ++i) {
-            QLayoutItem* it = ui->verticalLayout_dongle_suction->itemAt(i);
-            if (!it)
-                continue;
-            if (it->widget() == ui->dongleSuctionPlotHost)
-                ui->verticalLayout_dongle_suction->setStretch(i, 10);
-            else
-                ui->verticalLayout_dongle_suction->setStretch(i, 0);
-        }
+    if (ui->gridLayout_12 && ui->dongleSuctionPlotHost) {
+        // 曲线图占满剩余垂直空间（位于网格第 2 行）
+        ui->gridLayout_12->setRowStretch(0, 0);
+        ui->gridLayout_12->setRowStretch(1, 0);
+        ui->gridLayout_12->setRowStretch(2, 1);
     }
 
     // 轴窗口/刻度分辨率改动立即作用于主图/弹窗
@@ -6038,11 +5951,10 @@ void MainWindow::initDongleSuctionChart() {
         for (int c = 0; c < 3; ++c)
             grid->setColumnStretch(c, 0);
     }
-    if (ui->verticalLayout_dongle_suction) {
-        const int last = ui->verticalLayout_dongle_suction->count() - 1;
-        for (int i = 0; i < last; ++i)
-            ui->verticalLayout_dongle_suction->setStretch(i, 0);
-        ui->verticalLayout_dongle_suction->setStretch(last, 1);
+    if (ui->gridLayout_12) {
+        ui->gridLayout_12->setRowStretch(0, 0);
+        ui->gridLayout_12->setRowStretch(1, 0);
+        ui->gridLayout_12->setRowStretch(2, 1);
     }
 
     dongleSuctionPlot_->replot();
@@ -6067,59 +5979,11 @@ void MainWindow::resetDongleSuctionChart() {
     dongleSuctionPeakLabelStatsInit_ = false;
     resetDongleSuctionPeakMonitor();
 
-    if (ui->dongleSuctionLiveCh1Label)
-        ui->dongleSuctionLiveCh1Label->setText(QStringLiteral("第一通道实时：--"));
-    if (ui->dongleSuctionLiveCh2Label)
-        ui->dongleSuctionLiveCh2Label->setText(QStringLiteral("第二通道实时：--"));
-    if (ui->dongleSuctionLiveCh3Label)
-        ui->dongleSuctionLiveCh3Label->setText(QStringLiteral("第三通道实时：--"));
-    if (ui->dongleSuctionCh1PeakHighLabel)
-        ui->dongleSuctionCh1PeakHighLabel->setText(QStringLiteral("第一通道最高：--"));
-    if (ui->dongleSuctionCh1PeakLowLabel)
-        ui->dongleSuctionCh1PeakLowLabel->setText(QStringLiteral("第一通道最低：--"));
-    if (ui->dongleSuctionCh2PeakHighLabel)
-        ui->dongleSuctionCh2PeakHighLabel->setText(QStringLiteral("第二通道最高：--"));
-    if (ui->dongleSuctionCh2PeakLowLabel)
-        ui->dongleSuctionCh2PeakLowLabel->setText(QStringLiteral("第二通道最低：--"));
-    if (ui->dongleSuctionCh3PeakHighLabel)
-        ui->dongleSuctionCh3PeakHighLabel->setText(QStringLiteral("第三通道最高：--"));
-    if (ui->dongleSuctionCh3PeakLowLabel)
-        ui->dongleSuctionCh3PeakLowLabel->setText(QStringLiteral("第三通道最低：--"));
+    updateDongleSuctionPeakMonitorLabels();
 
     updateDongleSuctionPacketIntervalLabel();
     refreshDongleSuctionPlotWidget(dongleSuctionPlot_);
     refreshDongleSuctionPlotWidget(dongleSuctionPlotPopup_);
-}
-
-void MainWindow::updateDongleSuctionPeakLabels() {
-    const bool ch1Ok = dongleSuctionPeakLabelStatsInit_;
-    const bool ch2Ok = dongleSuctionPeakLabelStatsInit_;
-    const bool ch3Ok = dongleSuctionPeakLabelStatsInit_;
-
-    if (ui->dongleSuctionCh1PeakHighLabel) {
-        ui->dongleSuctionCh1PeakHighLabel->setText(ch1Ok ? QStringLiteral("第一通道最高：%1 kPa").arg(dongleSuctionCh1Max_, 0, 'f', 3)
-                                                         : QStringLiteral("第一通道最高：--"));
-    }
-    if (ui->dongleSuctionCh1PeakLowLabel) {
-        ui->dongleSuctionCh1PeakLowLabel->setText(ch1Ok ? QStringLiteral("第一通道最低：%1 kPa").arg(dongleSuctionCh1Min_, 0, 'f', 3)
-                                                        : QStringLiteral("第一通道最低：--"));
-    }
-    if (ui->dongleSuctionCh2PeakHighLabel) {
-        ui->dongleSuctionCh2PeakHighLabel->setText(ch2Ok ? QStringLiteral("第二通道最高：%1 kPa").arg(dongleSuctionCh2Max_, 0, 'f', 3)
-                                                         : QStringLiteral("第二通道最高：--"));
-    }
-    if (ui->dongleSuctionCh2PeakLowLabel) {
-        ui->dongleSuctionCh2PeakLowLabel->setText(ch2Ok ? QStringLiteral("第二通道最低：%1 kPa").arg(dongleSuctionCh2Min_, 0, 'f', 3)
-                                                        : QStringLiteral("第二通道最低：--"));
-    }
-    if (ui->dongleSuctionCh3PeakHighLabel) {
-        ui->dongleSuctionCh3PeakHighLabel->setText(ch3Ok ? QStringLiteral("第三通道最高：%1 kPa").arg(dongleSuctionCh3Max_, 0, 'f', 3)
-                                                         : QStringLiteral("第三通道最高：--"));
-    }
-    if (ui->dongleSuctionCh3PeakLowLabel) {
-        ui->dongleSuctionCh3PeakLowLabel->setText(ch3Ok ? QStringLiteral("第三通道最低：%1 kPa").arg(dongleSuctionCh3Min_, 0, 'f', 3)
-                                                        : QStringLiteral("第三通道最低：--"));
-    }
 }
 
 void MainWindow::appendDongleSuctionChartSample(double ch1Kpa, double ch2Kpa, double ch3Kpa, qint32 dongleTimestampMs) {
@@ -6231,6 +6095,8 @@ void MainWindow::on_dongle_suction_open_clicked() {
     at->set(DongleCmd::BleDeviceLog, 0);
     at->set(DongleCmd::SetSuctionOsr, suctionOsr);
     at->set(DongleCmd::GetSuction, 1);
+    // 主窗口作为特殊工站：开启采集即起会话，关闭时结案并随会话包上传吸力 CSV
+    Qlog::beginSession(Qlog::kMainWindowLogSlot, stringsn, macAddress, FactoryCloudClient::stationKey().trimmed());
     showlog(QStringLiteral("已开启 Dongle 吸力读取（OSR档位 %1，峰目标 %2±%3 kPa，漏峰间隔>%4s）")
                 .arg(suctionOsr)
                 .arg(dongleSuctionPeakTargetKpa_, 0, 'f', 2)
@@ -6245,8 +6111,66 @@ void MainWindow::on_dongle_suction_close_clicked() {
     flushDongleSuctionChartUi(true);
     flushDongleSuctionCsvPending();
     stopDongleSuctionCsvLog();
+    uploadDongleSuctionToCloud();
     setDongleSuctionPeakParamWidgetsEnabled(true);
     showlog(QStringLiteral("已关闭 Dongle 吸力读取"));
+}
+
+void MainWindow::uploadDongleSuctionToCloud() {
+    if (dongleSuctionChartTimeSec_.isEmpty()) {
+        showlog(QStringLiteral("无吸力采样数据，跳过云端上传"));
+        return;
+    }
+
+    // 吸力曲线：交 Qlog 暂存，测完随会话日志包导出 CSV 上传（表头与吸力页一致）
+    Qlog::setSuctionSamples(Qlog::kMainWindowLogSlot, dongleSuctionChartTimeSec_,
+                            dongleSuctionChartCh1_, dongleSuctionChartCh2_, dongleSuctionChartCh3_);
+
+    // 吸力曲线图 + 参数表：导出后随会话包上传（网页按扩展名分图片/文本预览）
+    const QString dirAbs = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("吸力专项数据"));
+    if (dongleSuctionPlot_ && CommonUtils::ensureDirectory(dirAbs)) {
+        const QString pngAbs = CommonUtils::joinPath(
+            dirAbs, QStringLiteral("吸力曲线_") +
+                        QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss")) +
+                        QStringLiteral(".png"));
+        if (dongleSuctionPlot_->savePng(pngAbs))
+            Qlog::addSuctionExtraFile(Qlog::kMainWindowLogSlot, pngAbs);
+        else
+            showlog(QStringLiteral("吸力曲线 PNG 导出失败"));
+    }
+    const QString paramsCsvAbs = exportDongleSuctionParamsCsv();
+    if (!paramsCsvAbs.isEmpty())
+        Qlog::addSuctionExtraFile(Qlog::kMainWindowLogSlot, paramsCsvAbs);
+
+    // 吸力参数：组云端分项（|名称:值| 格式）；主窗口不经过站，与 MES itemvalue 无冲突
+    const double loValues[kDongleSuctionChannelCount] = {dongleSuctionCh1Min_, dongleSuctionCh2Min_,
+                                                         dongleSuctionCh3Min_};
+    const double hiValues[kDongleSuctionChannelCount] = {dongleSuctionCh1Max_, dongleSuctionCh2Max_,
+                                                         dongleSuctionCh3Max_};
+    QString itemvalue;
+    for (int i = 0; i < kDongleSuctionChannelCount; ++i) {
+        const QString ch = QStringLiteral("CH%1").arg(i + 1);
+        const DongleSuctionChannelPeakMonitor& m = dongleSuctionPeakMonitors_[i];
+        itemvalue += QStringLiteral("|%1最低(kPa):%2|").arg(ch).arg(loValues[i], 0, 'f', 2);
+        itemvalue += QStringLiteral("|%1最高(kPa):%2|").arg(ch).arg(hiValues[i], 0, 'f', 2);
+        itemvalue += QStringLiteral("|%1有效峰数:%2|").arg(ch).arg(m.validPeakCount);
+        itemvalue += QStringLiteral("|%1频率(次/分):%2|").arg(ch).arg(m.freqPerMin);
+    }
+
+    MesPacketData pack;
+    pack.sn = stringsn;
+    pack.mac = macAddress;
+    pack.result = passValue;
+    // 主窗口调试上传无真实产品，固定「未定义」
+    pack.product = QStringLiteral("未定义");
+    pack.itemvalue = itemvalue;
+    // 主窗口特殊工站：云端记录工站名固定为「调试工站」
+    pack.cloudStation = QStringLiteral("调试工站");
+
+    // 结案后 lastSessionInfo 才有效，会话包才能带上吸力 CSV
+    Qlog::endSession(Qlog::kMainWindowLogSlot, pack.result);
+    TestDataUploadService::tryUploadTestAndLogAsync(pack, Qlog::kMainWindowLogSlot);
+    showlog(QStringLiteral("吸力参数与曲线已提交云端上传"));
 }
 
 void MainWindow::on_dongle_suction_clear_chart_clicked() {
@@ -6511,34 +6435,88 @@ bool MainWindow::sendDongleAtIntParam(const QString& atKey, const QString& text,
     return sendDongleAtLineCmd(atKey, QString::number(value));
 }
 
-void MainWindow::on_btnDongleAtSetPumpDuty_clicked() {
-    bool ok = false;
-    const int duty = ui->DongleAtPumpDuty->text().trimmed().toInt(&ok);
-    if (!ok || duty < 0 || duty > 100) {
-        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("占空比须为 0~100 的整数"));
+void MainWindow::on_comboDongleDriveType_currentIndexChanged(int index) {
+    // 驱动方式切换即时下发；index 0=泵阀驱动 1=直线电机驱动
+    sendDongleAtLineCmd(QStringLiteral("DRIVE_TYPE"), QString::number(index));
+}
+
+void MainWindow::on_spinDongleSegmentCount_valueChanged(int arg1) {
+    if (arg1 < 2)
+        arg1 = 2;
+    if (arg1 % 2 != 0)
+        ++arg1;  // 每轮段数须为偶数，向上取偶
+    if (arg1 != ui->spinDongleSegmentCount->value())
+        ui->spinDongleSegmentCount->setValue(arg1);
+    rebuildDongleSegmentTable();
+}
+
+QString MainWindow::exportDongleSuctionParamsCsv() {
+    QTableWidget* table = ui->tableDongleSegments;
+    if (!table)
+        return {};
+    const QString dirAbs =
+        QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("吸力专项数据"));
+    if (!CommonUtils::ensureDirectory(dirAbs))
+        return {};
+    const QString path = CommonUtils::joinPath(
+        dirAbs, QStringLiteral("吸力专项参数_") +
+                    QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss")) +
+                    QStringLiteral(".csv"));
+    QFile file(path);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+        return {};
+    QTextStream out(&file);
+    out.setCodec("UTF-8");
+    const int segCount = table->rowCount();
+    out << QStringLiteral("参数,值\n");
+    out << QStringLiteral("驱动方式,%1\n")
+               .arg(ui->comboDongleDriveType->currentIndex() == 1 ? QStringLiteral("直线电机驱动")
+                                                                  : QStringLiteral("泵阀驱动"));
+    out << QStringLiteral("每轮段数,%1\n").arg(ui->spinDongleSegmentCount->value());
+    for (int seg = 0; seg < segCount; ++seg) {
+        const int idx = seg / 2 + 1;  // 该类型段在其类别内的序号（1 起）
+        if (seg % 2 == 0) {  // 工作段
+            out << QStringLiteral("工作段%1时间(ms),%2\n").arg(idx).arg(table->item(seg, 3)->text());
+            out << QStringLiteral("工作段%1频率(Hz),%2\n").arg(idx).arg(table->item(seg, 1)->text());
+            out << QStringLiteral("工作段%1占空比(%),%2\n").arg(idx).arg(table->item(seg, 2)->text());
+        } else {  // 全关段
+            out << QStringLiteral("全关段%1时间(ms),%2\n").arg(idx).arg(table->item(seg, 3)->text());
+        }
+    }
+    out << QStringLiteral("总运行(ms),%1\n").arg(ui->DongleAtPumpTotal->text());
+    out << QStringLiteral("日志上报间隔(ms),%1\n").arg(ui->DongleAtFgPrint->text());
+    file.close();
+    return path;
+}
+
+void MainWindow::on_btnDongleExportParams_clicked() {
+    const QString path = exportDongleSuctionParamsCsv();
+    if (path.isEmpty()) {
+        showlog(QStringLiteral("无法导出吸力专项参数 CSV"));
         return;
     }
-    sendDongleAtLineCmd(QStringLiteral("PUMPDUTY"), QString::number(duty));
+    showlog(QStringLiteral("参数列表已导出：%1").arg(path));
 }
 
-void MainWindow::on_btnDongleAtSetPumpFreq_clicked() {
-    sendDongleAtIntParam(QStringLiteral("PUMPFREQ"), ui->DongleAtPumpFreq->text(), 1);
-}
-
-void MainWindow::on_btnDongleAtSetPumpSec_clicked() {
-    sendDongleAtIntParam(QStringLiteral("PUMPSEC"), ui->DongleAtPumpSec->text(), 1);
-}
-
-void MainWindow::on_btnDongleAtSetPumpOff_clicked() {
-    sendDongleAtIntParam(QStringLiteral("PUMPOFF"), ui->DongleAtPumpOff->text(), 0);
-}
-
-void MainWindow::on_btnDongleAtSetValveSec_clicked() {
-    sendDongleAtIntParam(QStringLiteral("VALVESEC"), ui->DongleAtValveSec->text(), 1);
-}
-
-void MainWindow::on_btnDongleAtSetValveOff_clicked() {
-    sendDongleAtIntParam(QStringLiteral("VALVEOFF"), ui->DongleAtValveOff->text(), 0);
+void MainWindow::on_btnDongleExportSuctionPng_clicked() {
+    if (!dongleSuctionPlot_) {
+        showlog(QStringLiteral("吸力曲线尚未初始化，无法导出"));
+        return;
+    }
+    const QString relDir = QStringLiteral("吸力专项数据");
+    if (!CommonUtils::ensureLogDirectory(relDir)) {
+        showlog(QStringLiteral("无法创建吸力专项数据目录：%1").arg(relDir));
+        return;
+    }
+    const QString path = CommonUtils::joinPath(
+        relDir, QStringLiteral("吸力曲线_") +
+                    QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss")) +
+                    QStringLiteral(".png"));
+    if (!dongleSuctionPlot_->savePng(path)) {
+        showlog(QStringLiteral("吸力曲线 PNG 导出失败：%1").arg(path));
+        return;
+    }
+    showlog(QStringLiteral("吸力曲线已导出：%1").arg(path));
 }
 
 void MainWindow::on_btnDongleAtSetPumpTotal_clicked() {
@@ -6552,38 +6530,9 @@ void MainWindow::on_btnDongleAtSetFgPrint_clicked() {
 
 void MainWindow::on_btnDongleAtPumpSetAll_clicked() {
     bool ok = false;
-    const int duty = ui->DongleAtPumpDuty->text().trimmed().toInt(&ok);
-    if (!ok || duty < 0 || duty > 100) {
-        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("占空比须为 0~100 的整数"));
-        return;
-    }
-    const int freq = ui->DongleAtPumpFreq->text().trimmed().toInt(&ok);
-    if (!ok || freq < 1) {
-        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("PWM 频率须为正整数"));
-        return;
-    }
-    const int pumpSec = ui->DongleAtPumpSec->text().trimmed().toInt(&ok);
-    if (!ok || pumpSec < 1) {
-        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("泵运行毫秒数须为正整数"));
-        return;
-    }
-    const int valveSec = ui->DongleAtValveSec->text().trimmed().toInt(&ok);
-    if (!ok || valveSec < 1) {
-        QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("阀运行毫秒数须为正整数"));
-        return;
-    }
-    const int pumpOff = ui->DongleAtPumpOff->text().trimmed().toInt(&ok);
-    if (!ok || pumpOff < 0) {
-        QMessageBox::warning(this, QStringLiteral("警告"),
-                             QStringLiteral("泵后全关毫秒数须为不小于 0 的整数（0=不保持全关）"));
-        return;
-    }
-    const int valveOff = ui->DongleAtValveOff->text().trimmed().toInt(&ok);
-    if (!ok || valveOff < 0) {
-        QMessageBox::warning(this, QStringLiteral("警告"),
-                             QStringLiteral("阀后全关毫秒数须为不小于 0 的整数（0=不保持全关）"));
-        return;
-    }
+    const int driveType = ui->comboDongleDriveType->currentIndex();
+    const int segCount = ui->spinDongleSegmentCount->value();
+    const int pairCount = segCount / 2;
     const int totalSec = ui->DongleAtPumpTotal->text().trimmed().toInt(&ok);
     if (!ok || totalSec < 0) {
         QMessageBox::warning(this, QStringLiteral("警告"), QStringLiteral("总运行毫秒数须为不小于 0 的整数（0=不限）"));
@@ -6595,25 +6544,69 @@ void MainWindow::on_btnDongleAtPumpSetAll_clicked() {
         return;
     }
 
-    // 依次下发全部参数；短间隔避免 Dongle AT 粘包
-    if (!sendDongleAtLineCmd(QStringLiteral("PUMPDUTY"), QString::number(duty)))
+    // 先校验并收集逐段参数，全部通过后再统一下发，避免半途下发
+    QTableWidget* table = ui->tableDongleSegments;
+    QVector<int> workTime(pairCount), workFreq(pairCount), workDuty(pairCount), offTime(pairCount);
+    for (int seg = 0; seg < segCount; ++seg) {
+        const bool isWork = (seg % 2 == 0);  // 段 1/3/5... 工作段，段 2/4/6... 全关段
+        const int idx = seg / 2;             // 该类型段在其类别内的序号（0 起）
+        const int ms = table->item(seg, 3)->text().trimmed().toInt(&ok);
+        if (!ok || ms < 0) {
+            QMessageBox::warning(this, QStringLiteral("警告"),
+                                 QStringLiteral("第 %1 段时间的毫秒数须为不小于 0 的整数").arg(seg + 1));
+            return;
+        }
+        if (isWork) {
+            if (ms < 1) {
+                QMessageBox::warning(this, QStringLiteral("警告"),
+                                     QStringLiteral("第 %1 段工作时间的毫秒数须为正整数").arg(seg + 1));
+                return;
+            }
+            workTime[idx] = ms;
+            workFreq[idx] = table->item(seg, 1)->text().trimmed().toInt(&ok);
+            if (!ok || workFreq[idx] < 1) {
+                QMessageBox::warning(this, QStringLiteral("警告"),
+                                     QStringLiteral("第 %1 段工作频率须为正整数").arg(seg + 1));
+                return;
+            }
+            workDuty[idx] = table->item(seg, 2)->text().trimmed().toInt(&ok);
+            if (!ok || workDuty[idx] < 0 || workDuty[idx] > 100) {
+                QMessageBox::warning(this, QStringLiteral("警告"),
+                                     QStringLiteral("第 %1 段占空比须为 0~100 的整数").arg(seg + 1));
+                return;
+            }
+        } else {
+            offTime[idx] = ms;
+        }
+    }
+
+    // 依次下发；短间隔避免 Dongle AT 粘包
+    if (!sendDongleAtLineCmd(QStringLiteral("DRIVE_TYPE"), QString::number(driveType)))
         return;
     waitWork(50);
-    if (!sendDongleAtLineCmd(QStringLiteral("PUMPFREQ"), QString::number(freq)))
+    if (!sendDongleAtLineCmd(QStringLiteral("SEGCOUNT"), QString::number(segCount)))
         return;
     waitWork(50);
-    if (!sendDongleAtLineCmd(QStringLiteral("PUMPSEC"), QString::number(pumpSec)))
-        return;
-    waitWork(50);
-    if (!sendDongleAtLineCmd(QStringLiteral("PUMPOFF"), QString::number(pumpOff)))
-        return;
-    waitWork(50);
-    if (!sendDongleAtLineCmd(QStringLiteral("VALVESEC"), QString::number(valveSec)))
-        return;
-    waitWork(50);
-    if (!sendDongleAtLineCmd(QStringLiteral("VALVEOFF"), QString::number(valveOff)))
-        return;
-    waitWork(50);
+    for (int i = 0; i < pairCount; ++i) {
+        if (!sendDongleAtLineCmd(QStringLiteral("WORKTIME"),
+                                 QStringLiteral("%1,%2").arg(i + 1).arg(workTime[i])))
+            return;
+        waitWork(50);
+        if (!sendDongleAtLineCmd(QStringLiteral("PUMPFREQ"),
+                                 QStringLiteral("%1,%2").arg(i + 1).arg(workFreq[i])))
+            return;
+        waitWork(50);
+        if (!sendDongleAtLineCmd(QStringLiteral("PUMPDUTY"),
+                                 QStringLiteral("%1,%2").arg(i + 1).arg(workDuty[i])))
+            return;
+        waitWork(50);
+    }
+    for (int i = 0; i < pairCount; ++i) {
+        if (!sendDongleAtLineCmd(QStringLiteral("INTERVALOFF"),
+                                 QStringLiteral("%1,%2").arg(i + 1).arg(offTime[i])))
+            return;
+        waitWork(50);
+    }
     if (!sendDongleAtLineCmd(QStringLiteral("PUMPTOTAL"), QString::number(totalSec)))
         return;
     waitWork(50);
@@ -6640,18 +6633,74 @@ void MainWindow::on_btnDongleAtPumpStop_clicked() {
 }
 
 void MainWindow::updateDongleAtPumpRate() {
-    if (!ui->label_dongle_at_pump_rate)
+    if (!ui->label_dongle_at_pump_rate || !ui->tableDongleSegments)
         return;
-    bool ok = false;
-    const int pumpSec = ui->DongleAtPumpSec->text().trimmed().toInt(&ok);
-    const int pumpOff = ok ? ui->DongleAtPumpOff->text().trimmed().toInt(&ok) : 0;
-    const int valveSec = ok ? ui->DongleAtValveSec->text().trimmed().toInt(&ok) : 0;
-    const int valveOff = ok ? ui->DongleAtValveOff->text().trimmed().toInt(&ok) : 0;
-    const int cycleMs = pumpSec + pumpOff + valveSec + valveOff;
-    if (!ok || cycleMs <= 0) {
+    QTableWidget* table = ui->tableDongleSegments;
+    int cycleMs = 0;
+    bool valid = true;
+    for (int i = 0; i < table->rowCount(); ++i) {
+        bool ok = false;
+        const QTableWidgetItem* timeItem = table->item(i, 3);
+        if (!timeItem) {
+            valid = false;
+            break;
+        }
+        const int ms = timeItem->text().trimmed().toInt(&ok);
+        if (!ok || ms < 0) {
+            valid = false;
+            break;
+        }
+        cycleMs += ms;
+    }
+    if (!valid || cycleMs <= 0) {
         ui->label_dongle_at_pump_rate->setText(QStringLiteral("频率：-- 次/分钟"));
         return;
     }
     ui->label_dongle_at_pump_rate->setText(
         QStringLiteral("频率：%1 次/分钟").arg(60000.0 / cycleMs, 0, 'f', 2));
+}
+
+void MainWindow::rebuildDongleSegmentTable() {
+    if (!ui->tableDongleSegments)
+        return;
+    int segCount = ui->spinDongleSegmentCount->value();
+    if (segCount < 2)
+        segCount = 2;
+    if (segCount % 2 != 0)
+        ++segCount;
+
+    QTableWidget* table = ui->tableDongleSegments;
+    {
+        const QSignalBlocker blocker(table);  // 重建期间不触发 itemChanged 频率刷新
+        table->clear();
+        table->setColumnCount(4);
+        table->setRowCount(segCount);  // 一段一行：行数 = 每轮段数
+        table->setHorizontalHeaderLabels(
+            {QStringLiteral("类型"), QStringLiteral("频率(Hz)"),
+             QStringLiteral("占空比(%)"), QStringLiteral("运行时间(ms)")});
+        for (int i = 0; i < segCount; ++i) {
+            const bool isWork = (i % 2 == 0);  // 段 1/3/5... 工作时段，段 2/4/6... 间歇时段
+            auto* typeItem = new QTableWidgetItem(isWork ? QStringLiteral("工作时段") : QStringLiteral("间歇时段"));
+            typeItem->setFlags(typeItem->flags() & ~Qt::ItemIsEditable);
+            typeItem->setTextAlignment(Qt::AlignCenter);
+            table->setItem(i, 0, typeItem);
+            table->setItem(i, 3, new QTableWidgetItem(isWork ? QStringLiteral("5000") : QStringLiteral("0")));
+            if (isWork) {
+                table->setItem(i, 1, new QTableWidgetItem(QStringLiteral("20000")));
+                table->setItem(i, 2, new QTableWidgetItem(QStringLiteral("50")));
+            } else {
+                // 间歇时段无频率/占空比，置灰不可编辑
+                auto* freqItem = new QTableWidgetItem(QStringLiteral("-"));
+                freqItem->setFlags(freqItem->flags() & ~Qt::ItemIsEditable);
+                freqItem->setTextAlignment(Qt::AlignCenter);
+                table->setItem(i, 1, freqItem);
+                auto* dutyItem = new QTableWidgetItem(QStringLiteral("-"));
+                dutyItem->setFlags(dutyItem->flags() & ~Qt::ItemIsEditable);
+                dutyItem->setTextAlignment(Qt::AlignCenter);
+                table->setItem(i, 2, dutyItem);
+            }
+        }
+        table->resizeColumnsToContents();
+    }
+    updateDongleAtPumpRate();
 }

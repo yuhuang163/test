@@ -371,7 +371,8 @@ bool LogUploadService::configFromPack(const MesPacketData& pack, UploadConfig* c
     cfg->mac = mac;
     cfg->testResult = pack.result.trimmed();
     // configFromSettings 已写入 SelectedStationName；此处再覆盖保证与当前流程一致
-    const QString station = FactoryCloudClient::stationKey().trimmed();
+    const QString station = pack.cloudStation.trimmed().isEmpty() ? FactoryCloudClient::stationKey().trimmed()
+                                                                  : pack.cloudStation.trimmed();
     if (!station.isEmpty()) {
         cfg->station = station;
     }
@@ -735,6 +736,15 @@ QString LogUploadService::compressSessionArchive(const QlogSessionInfo& info, QS
             relPaths << suctionRel;
         } else if (!suctionErr.isEmpty() && warning) {
             *warning = warning->isEmpty() ? suctionErr : *warning + QStringLiteral("；") + suctionErr;
+        }
+        QString extraErr;
+        const QStringList extraRels = Qlog::exportSuctionExtraFiles(info, &extraErr);
+        for (const QString& extraRel : extraRels) {
+            absPaths << QDir(QCoreApplication::applicationDirPath()).filePath(extraRel);
+            relPaths << extraRel;
+        }
+        if (extraRels.isEmpty() && !extraErr.isEmpty() && warning) {
+            *warning = warning->isEmpty() ? extraErr : *warning + QStringLiteral("；") + extraErr;
         }
     }
     if (SETTINGS.value(QStringLiteral("FactoryCloud/Log/UploadIncludeSuctionCurve"), true).toBool()) {

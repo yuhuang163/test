@@ -20,6 +20,10 @@ QProtocolManager::ProtocolType QProtocolManager::currentProtocolType() const {
 
 void QProtocolManager::setCurrentProtocolType(QProtocolManager::ProtocolType type) {
     currentType_ = type;
+    // QAIOT v2 与 v1 共用同一协议实例，仅链路层封装不同（v2 启用 Version+PSN/FSN/FMN）
+    if (qaiot_) {
+        qaiot_->setUseLinkV2(type == ProtocolType::QaiotV2);
+    }
     syncActivePointer();
 }
 
@@ -36,6 +40,9 @@ QProtocolManager::ProtocolType QProtocolManager::protocolTypeFromString(const st
     if (lower == "qaiot") {
         return ProtocolType::Qaiot;
     }
+    if (lower == "qaiot2") {
+        return ProtocolType::QaiotV2;
+    }
     if (lower == "qroot") {
         return ProtocolType::Qroot;
     }
@@ -50,6 +57,8 @@ std::string QProtocolManager::protocolTypeToString(QProtocolManager::ProtocolTyp
         return "qfctp";
     case ProtocolType::Qaiot:
         return "qaiot";
+    case ProtocolType::QaiotV2:
+        return "qaiot2";
     case ProtocolType::Qroot:
         return "qroot";
     default:
@@ -250,7 +259,7 @@ Qfctp* QProtocolManager::currentQfctp() const {
 }
 
 Qaiot* QProtocolManager::currentQaiot() const {
-    if (currentType_ == ProtocolType::Qaiot) {
+    if (currentType_ == ProtocolType::Qaiot || currentType_ == ProtocolType::QaiotV2) {
         return qaiot_;
     }
     return nullptr;
@@ -272,7 +281,7 @@ bool QProtocolManager::isQfctpProtocolActive() const {
 }
 
 bool QProtocolManager::isQaiotProtocolActive() const {
-    return currentType_ == ProtocolType::Qaiot;
+    return currentType_ == ProtocolType::Qaiot || currentType_ == ProtocolType::QaiotV2;
 }
 
 bool QProtocolManager::isQrootProtocolActive() const {
@@ -288,6 +297,7 @@ void QProtocolManager::syncActivePointer() {
         active_ = qfctp_ ? static_cast<qProtocol*>(qfctp_) : nullptr;
         break;
     case ProtocolType::Qaiot:
+    case ProtocolType::QaiotV2:
         active_ = qaiot_ ? static_cast<qProtocol*>(qaiot_) : nullptr;
         break;
     case ProtocolType::Qroot:

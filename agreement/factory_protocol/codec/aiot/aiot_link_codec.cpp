@@ -31,25 +31,26 @@ QByteArray AiotLinkCodec::buildFrame(const QByteArray& payload, uint8_t control,
     const uint8_t fra = static_cast<uint8_t>(control & AiotLink::kCtrlFsnMask);
     const bool needVersion = (control & AiotLink::kCtrlVersion) != 0;
     const bool needFsn = fra != AiotLink::kCtrlFsnNone;
-    // Version 启用且分帧：Header 再带 FMN+PSN（规范 Version=0）
-    const bool needFmnPsn = needVersion && needFsn;
+    // 带 Version 必带 PSN（无论是否分帧）；带 Version 且分帧再带 FMN（规范 2.0.0）
+    const bool needFmn = needVersion && needFsn;
 
-    // Length = Control(+Version)(+FSN)(+FMN+PSN)+Payload，不含 SOF/Length/CRC
-    const int midLen = 1 + (needVersion ? 1 : 0) + (needFsn ? 1 : 0) + (needFmnPsn ? 2 : 0) + payload.size();
+    // Length = Control(+Version+PSN)(+FSN)(+FMN)+Payload，不含 SOF/Length/CRC
+    const int midLen = 1 + (needVersion ? 2 : 0) + (needFsn ? 1 : 0) + (needFmn ? 1 : 0) + payload.size();
     if (midLen > 0xFFFF)
         return {};
 
     QByteArray mid;
     mid.reserve(midLen);
     mid.append(static_cast<char>(control));
-    if (needVersion)
+    // Header 顺序：Version → PSN → FSN → FMN
+    if (needVersion) {
         mid.append(static_cast<char>(version));
-    if (needFsn)
-        mid.append(static_cast<char>(fsn));
-    if (needFmnPsn) {
-        mid.append(static_cast<char>(fmn));
         mid.append(static_cast<char>(psn));
     }
+    if (needFsn)
+        mid.append(static_cast<char>(fsn));
+    if (needFmn)
+        mid.append(static_cast<char>(fmn));
     mid.append(payload);
 
     // CRC 覆盖 Length + Control(+Version/FSN/FMN/PSN) + Payload
@@ -71,13 +72,15 @@ QByteArray AiotLinkCodec::buildFrame(const QByteArray& payload, uint8_t control,
     return frame;
 }
 
-QVector<QByteArray> AiotLinkCodec::buildFramesForPdu(const QByteArray& pdu, int maxPayload) {
+QVector<QByteArray> AiotLinkCodec::buildFramesForPdu(const QByteArray& pdu, int maxPayload, bool useVersion,
+                                                     uint8_t psn) {
     QVector<QByteArray> frames;
     if (maxPayload < 1)
         maxPayload = 512;
+    const uint8_t verFlag = useVersion ? AiotLink::kCtrlVersion : 0;
     if (pdu.size() <= maxPayload) {
-        // 本机发送仍用 v1.0 单帧（不启 Version）；设备应答可能带 Version=0
-        frames.append(buildFrame(pdu, AiotLink::kCtrlFsnNone));
+        // v1（不启 Version）或 v2（Version+PSN）单帧；设备应答也可能带 Version=0
+        frames.append(buildFrame(pdu, verFlag | AiotLink::kCtrlFsnNone, 0, 0, psn));
         return frames;
     }
 
@@ -95,7 +98,8 @@ QVector<QByteArray> AiotLinkCodec::buildFramesForPdu(const QByteArray& pdu, int 
         // 多分片时首帧也必须带 FSN
         if (offset == 0 && chunk < pdu.size())
             ctrl = AiotLink::kCtrlFsnStart;
-        frames.append(buildFrame(pdu.mid(offset, chunk), ctrl, fsn, static_cast<uint8_t>(totalFrames), 0));
+        frames.append(buildFrame(pdu.mid(offset, chunk), verFlag | ctrl, fsn,
+                                 static_cast<uint8_t>(totalFrames), psn));
         ++fsn;
         offset += chunk;
     }
@@ -160,17 +164,20 @@ bool AiotLinkCodec::feed(const QByteArray& chunk, QVector<Frame>* outFrames) {
                     const uint8_t fra = static_cast<uint8_t>(fr.control & AiotLink::kCtrlFsnMask);
                     const bool needVersion = (fr.control & AiotLink::kCtrlVersion) != 0;
                     const bool needFsn = fra != AiotLink::kCtrlFsnNone;
-                    const bool needFmnPsn = needVersion && needFsn;
+                    const bool needFmn = needVersion && needFsn;
 
                     int payloadOff = 1;
+                    // Header 顺序：Version → PSN → FSN → FMN
                     if (needVersion) {
-                        if (midLen < payloadOff + 1) {
+                        if (midLen < payloadOff + 2) {
                             reset();
                             break;
                         }
                         fr.hasVersion = true;
                         fr.version = static_cast<uint8_t>(body_.at(payloadOff));
-                        ++payloadOff;
+                        fr.hasPsn = true;
+                        fr.psn = static_cast<uint8_t>(body_.at(payloadOff + 1));
+                        payloadOff += 2;
                     }
                     if (needFsn) {
                         if (midLen < payloadOff + 1) {
@@ -181,15 +188,14 @@ bool AiotLinkCodec::feed(const QByteArray& chunk, QVector<Frame>* outFrames) {
                         fr.fsn = static_cast<uint8_t>(body_.at(payloadOff));
                         ++payloadOff;
                     }
-                    if (needFmnPsn) {
-                        if (midLen < payloadOff + 2) {
+                    if (needFmn) {
+                        if (midLen < payloadOff + 1) {
                             reset();
                             break;
                         }
-                        fr.hasFmnPsn = true;
+                        fr.hasFmn = true;
                         fr.fmn = static_cast<uint8_t>(body_.at(payloadOff));
-                        fr.psn = static_cast<uint8_t>(body_.at(payloadOff + 1));
-                        payloadOff += 2;
+                        ++payloadOff;
                     }
                     fr.payload = body_.mid(payloadOff, midLen - payloadOff);
                     outFrames->append(fr);

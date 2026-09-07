@@ -83,6 +83,7 @@ QMutex g_sessionMutex;
 QHash<int, SessionState> g_activeSessions;
 QHash<int, SessionState> g_lastEndedSessions;
 QHash<int, SuctionSampleBuffer> g_suctionSamples;
+QHash<int, QStringList> g_suctionExtraFiles;
 QHash<int, QStringList> g_screenInspectFiles;
 QHash<int, QStringList> g_suctionCurveFiles;
 
@@ -1031,6 +1032,71 @@ QString Qlog::exportSuctionSamplesCsv(const QlogSessionInfo& info, QString* erro
     return rel;
 }
 
+void Qlog::addSuctionExtraFile(int slot, const QString& absolutePath) {
+    QMutexLocker lock(&g_sessionMutex);
+    const QString trimmed = absolutePath.trimmed();
+    if (trimmed.isEmpty()) {
+        g_suctionExtraFiles.remove(slot);
+        return;
+    }
+    QStringList& list = g_suctionExtraFiles[slot];
+    if (!list.contains(trimmed)) {
+        list.append(trimmed);
+    }
+}
+
+QStringList Qlog::exportSuctionExtraFiles(const QlogSessionInfo& info, QString* error) {
+    if (!info.valid) {
+        return {};
+    }
+    QStringList srcPaths;
+    {
+        QMutexLocker lock(&g_sessionMutex);
+        if (!g_suctionExtraFiles.contains(info.slot)) {
+            // 非吸力工站属常态，不置 error
+            return {};
+        }
+        // take：本轮取走，避免下一轮无文件时又把上一轮传一遍
+        srcPaths = g_suctionExtraFiles.take(info.slot);
+    }
+    srcPaths.removeAll(QString());
+
+    const QString outDirRel = logRootRelative() + QStringLiteral("/吸力CSV");
+    if (!CommonUtils::ensureLogDirectory(outDirRel)) {
+        if (error) {
+            *error = QStringLiteral("无法创建吸力CSV目录");
+        }
+        return {};
+    }
+    const QString outDirAbs = QDir(QCoreApplication::applicationDirPath()).filePath(outDirRel);
+    const QString stem = sessionFileStem(info);
+    QStringList relOut;
+    int index = 0;
+    for (const QString& srcAbs : srcPaths) {
+        if (!QFile::exists(srcAbs)) {
+            continue;
+        }
+        ++index;
+        // 序号 + 原文件名，PNG/CSV 同名不互撞；网页按扩展名区分图片/文本预览
+        const QString outName =
+            stem + QLatin1Char('_') + QString::number(index) + QLatin1Char('_') + QFileInfo(srcAbs).fileName();
+        const QString outAbs = resolveUniqueFilePath(outDirAbs, outName);
+        if (QFile::exists(outAbs)) {
+            QFile::remove(outAbs);
+        }
+        if (!QFile::copy(srcAbs, outAbs)) {
+            if (error) {
+                *error = QStringLiteral("无法复制吸力专项文件：") + QFileInfo(srcAbs).fileName();
+            }
+            continue;
+        }
+        QString rel = outDirRel + QLatin1Char('/') + QFileInfo(outAbs).fileName();
+        rel.replace(QLatin1Char('\\'), QLatin1Char('/'));
+        relOut << rel;
+    }
+    return relOut;
+}
+
 void Qlog::addSuctionCurveImageFiles(int slot, const QStringList& absolutePaths) {
     QMutexLocker lock(&g_sessionMutex);
     if (absolutePaths.isEmpty()) {
@@ -1083,7 +1149,8 @@ QStringList Qlog::exportSuctionCurveImageFiles(const QlogSessionInfo& info, QStr
         const QString baseName = QFileInfo(srcAbs).fileName();
         const QString outName = (srcPaths.size() == 1)
                                     ? (stem + QStringLiteral("_suction_curve.jpg"))
-                                    : (stem + QLatin1Char('_') + QString::number(index) + QStringLiteral("_suction_curve.jpg"));
+                                    : (stem + QLatin1Char('_') + QString::number(index) +
+                                       QStringLiteral("_suction_curve.jpg"));
         const QString outAbs = resolveUniqueFilePath(outDirAbs, outName);
         if (QFile::exists(outAbs)) {
             QFile::remove(outAbs);

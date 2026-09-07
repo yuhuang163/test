@@ -14,11 +14,12 @@ class AiotLinkCodec {
         uint8_t control = 0;
         bool hasVersion = false;
         uint8_t version = 0;
-        uint8_t fsn = 0;
+        uint8_t psn = 0; // Packet Sequence Number，Version 启用时必带（无论是否分帧）
+        bool hasPsn = false;
+        uint8_t fsn = 0; // Frame Sequence Number，分帧时有效
         bool hasFsn = false;
         uint8_t fmn = 0; // Frame Max Number，Version 启用且分帧时有效
-        uint8_t psn = 0; // Packet Sequence Number，同上
-        bool hasFmnPsn = false;
+        bool hasFmn = false;
         QByteArray payload;
     };
 
@@ -27,15 +28,17 @@ class AiotLinkCodec {
 
     /**
      * 组装单帧。
-     * control 的 bit4 决定是否带 Version；FRA!=00 时带 FSN；
-     * bit4 且 FRA!=00 时再带 FMN/PSN（version 默认 0）。
+     * control 的 bit4 决定是否带 Version；带 Version 必带 PSN；
+     * FRA!=00 时带 FSN；bit4 且 FRA!=00 时再带 FMN（version 默认 0）。
+     * Header 顺序：Control → Version → PSN → FSN → FMN。
      */
     static QByteArray buildFrame(const QByteArray& payload, uint8_t control = AiotLink::kCtrlFsnNone,
                                  uint8_t fsn = 0, uint8_t fmn = 0, uint8_t psn = 0,
                                  uint8_t version = AiotLink::kLinkVersion0);
 
-    /** 将应用层 PDU 按 maxPayload 切分为若干链路帧（默认不分片、不启 Version）。 */
-    static QVector<QByteArray> buildFramesForPdu(const QByteArray& pdu, int maxPayload = 512);
+    /** 将应用层 PDU 按 maxPayload 切分为若干链路帧；useVersion 时启用 v2（Version+PSN，分帧带 FSN+FMN）。 */
+    static QVector<QByteArray> buildFramesForPdu(const QByteArray& pdu, int maxPayload = 512,
+                                                 bool useVersion = false, uint8_t psn = 0);
 
     /** 喂入字节流，解析出完整帧；失败帧丢弃并继续同步 SOF。 */
     bool feed(const QByteArray& chunk, QVector<Frame>* outFrames);

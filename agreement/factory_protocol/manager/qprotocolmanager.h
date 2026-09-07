@@ -23,6 +23,7 @@ class QProtocolManager : public QObject {
         Qpb,
         Qfctp,
         Qaiot,
+        QaiotV2,
         Qroot,
     };
 

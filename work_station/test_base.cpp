@@ -108,7 +108,9 @@ void test_base::applySystemProtocolFromSettings() {
     if (selectedType == QProtocolManager::ProtocolType::Unknown)
         selectedType = QProtocolManager::ProtocolType::Qpb;
     if ((selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctp) ||
-        (selectedType == QProtocolManager::ProtocolType::Qaiot && !qaiot) ||
+        ((selectedType == QProtocolManager::ProtocolType::Qaiot ||
+          selectedType == QProtocolManager::ProtocolType::QaiotV2) &&
+         !qaiot) ||
         (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot)) {
         selectedType = QProtocolManager::ProtocolType::Qpb;
     }
@@ -130,13 +132,18 @@ void test_base::applyTestCaseProductProtocol(TestCaseProductProtocol protocol) {
     case TestCaseProductProtocol::Qaiot:
         selectedType = QProtocolManager::ProtocolType::Qaiot;
         break;
+    case TestCaseProductProtocol::QaiotV2:
+        selectedType = QProtocolManager::ProtocolType::QaiotV2;
+        break;
     case TestCaseProductProtocol::Qfctp:
     default:
         selectedType = QProtocolManager::ProtocolType::Qfctp;
         break;
     }
     if ((selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctp) ||
-        (selectedType == QProtocolManager::ProtocolType::Qaiot && !qaiot) ||
+        ((selectedType == QProtocolManager::ProtocolType::Qaiot ||
+          selectedType == QProtocolManager::ProtocolType::QaiotV2) &&
+         !qaiot) ||
         (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot)) {
         showlog(QStringLiteral("test_case 协议未就绪，已回退到 qpb"));
         selectedType = QProtocolManager::ProtocolType::Qpb;

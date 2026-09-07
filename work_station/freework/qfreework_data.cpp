@@ -95,7 +95,8 @@ bool caseNeedsDeviceSideParam(const TestCaseDefinition& def) {
         return true;
     if (def.send.channel != TestCaseSendChannel::Product)
         return false;
-    if (def.send.productProtocol != TestCaseProductProtocol::Qaiot)
+    if (def.send.productProtocol != TestCaseProductProtocol::Qaiot &&
+        def.send.productProtocol != TestCaseProductProtocol::QaiotV2)
         return false;
     const QString& cmd = def.send.deviceCmd;
     return cmd == QStringLiteral("Sn") || cmd == QStringLiteral("WriteKey") || cmd == QStringLiteral("MacWrite")
