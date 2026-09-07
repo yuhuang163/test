@@ -1431,7 +1431,7 @@ bool test_base::applyAdaptiveV3ProductBySn(QLineEdit* snEdit) {
     if (!snEdit) {
         return false;
     }
-    QString snText = snEdit->text().trimmed();
+    QString snText = CommonUtils::extractSnFromUrlOrText(snEdit->text());
     snText.remove(QRegularExpression(QStringLiteral("[^0-9A-Za-z]")));
     if (snText.isEmpty()) {
         return false;
@@ -1454,7 +1454,7 @@ QString test_base::parseMacFromSn(const QString& snCode) {
     // 按 SN 长度区分：
     // - 28 位（及更短可解析段）：PCBA SN，从下标 4 取 12 位 hex
     // - 35 位：整机 SN，从下标 11 取 12 位 hex
-    QString sn = snCode;
+    QString sn = CommonUtils::extractSnFromUrlOrText(snCode);
     sn.remove(QRegularExpression("\\s+"));
     constexpr int kMacHexLen = 12;
     constexpr int kPcbaOffset = 4;

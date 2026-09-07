@@ -1080,7 +1080,7 @@ QString formatMacFrom12Hex(const QString& macRawUpper) {
 }
 
 QString parseMacFromSnXwdRule(const QString& snCode) {
-    QString sn = snCode;
+    QString sn = CommonUtils::extractSnFromUrlOrText(snCode);
     sn.remove(QRegularExpression(QStringLiteral("\\s+")));
     // 按长度选偏移（与 test_base 一致，并保留失败时另一偏移兜底）：
     // - ≤28：PCBA SN，优先 offset=4；失败再试 11
