@@ -36,9 +36,7 @@
 #pragma execution_character_set(push, "utf-8")
 #endif
 
-namespace {
-
-QString sha256File(const QString& path) {
+static QString sha256File(const QString& path) {
     QFile file(path);
     if (!file.open(QIODevice::ReadOnly)) {
         return {};
@@ -50,96 +48,10 @@ QString sha256File(const QString& path) {
     return QString::fromLatin1(hash.result().toHex());
 }
 
-bool startDeleteSelfBat(const QString& savePath) {
+static bool launchVbsAndExit(const QString& vbsFileName);
+
+static bool launchVbsAndExit(const QString& vbsFileName) {
     const QString appDir = QCoreApplication::applicationDirPath();
-    const QString appFilePath = QCoreApplication::applicationFilePath();
-    const QString appFileName = QFileInfo(appFilePath).fileName();
-    const QString bakFileName = appFileName + QStringLiteral(".bak");
-    const QString vbsFileName = QDir(appDir).filePath(QStringLiteral("delete_self.vbs"));
-    const QString tempExePath = savePath + QStringLiteral(".tmp");
-    const QString logPath = QDir(appDir).filePath(QStringLiteral("ota_replace.log"));
-    const QString oldPid = QString::number(QCoreApplication::applicationPid());
-
-    auto vbsQuote = [](const QString& path) {
-        return QDir::toNativeSeparators(path).replace(QLatin1Char('"'), QStringLiteral("\"\""));
-    };
-    const QString dirV = vbsQuote(appDir);
-    const QString logV = vbsQuote(logPath);
-    const QString exeV = vbsQuote(appFilePath);
-    const QString bakV = vbsQuote(QDir(appDir).filePath(bakFileName));
-    const QString tmpV = vbsQuote(tempExePath);
-    const QString saveV = vbsQuote(savePath);
-    const QString vbsSelfV = vbsQuote(vbsFileName);
-
-    // 全程 VBS：无黑框；WScript.Sleep 150ms 重试，比 ping 约 1s 快得多
-    QFile vbsFile(vbsFileName);
-    if (!vbsFile.open(QIODevice::WriteOnly | QIODevice::Text))
-        return false;
-    QTextStream vbs(&vbsFile);
-    vbs << "On Error Resume Next\r\n";
-    vbs << "Set sh = CreateObject(\"WScript.Shell\")\r\n";
-    vbs << "Set fso = CreateObject(\"Scripting.FileSystemObject\")\r\n";
-    vbs << "sh.CurrentDirectory = \"" << dirV << "\"\r\n";
-    vbs << "Dim logPath, pid, exePath, bakPath, tmpPath, savePath, vbsPath\r\n";
-    vbs << "logPath = \"" << logV << "\"\r\n";
-    vbs << "pid = \"" << oldPid << "\"\r\n";
-    vbs << "exePath = \"" << exeV << "\"\r\n";
-    vbs << "bakPath = \"" << bakV << "\"\r\n";
-    vbs << "tmpPath = \"" << tmpV << "\"\r\n";
-    vbs << "savePath = \"" << saveV << "\"\r\n";
-    vbs << "vbsPath = \"" << vbsSelfV << "\"\r\n";
-    vbs << "Set logf = fso.CreateTextFile(logPath, True)\r\n";
-    vbs << "logf.WriteLine Now & \" OTA replace start pid=\" & pid\r\n";
-    vbs << "sh.Run \"taskkill /F /PID \" & pid, 0, True\r\n";
-    vbs << "Dim i, movedOk\r\n";
-    vbs << "movedOk = False\r\n";
-    vbs << "For i = 1 To 40\r\n";
-    vbs << "  Err.Clear\r\n";
-    vbs << "  If fso.FileExists(bakPath) Then fso.DeleteFile bakPath, True\r\n";
-    vbs << "  Err.Clear\r\n";
-    vbs << "  fso.MoveFile exePath, bakPath\r\n";
-    vbs << "  If Err.Number = 0 Then\r\n";
-    vbs << "    movedOk = True\r\n";
-    vbs << "    Exit For\r\n";
-    vbs << "  End If\r\n";
-    vbs << "  sh.Run \"taskkill /F /PID \" & pid, 0, True\r\n";
-    vbs << "  WScript.Sleep 150\r\n";
-    vbs << "Next\r\n";
-    vbs << "If Not movedOk Then\r\n";
-    vbs << "  logf.WriteLine \"move old exe to bak failed\"\r\n";
-    vbs << "  logf.Close\r\n";
-    vbs << "  If fso.FileExists(vbsPath) Then fso.DeleteFile vbsPath, True\r\n";
-    vbs << "  WScript.Quit 1\r\n";
-    vbs << "End If\r\n";
-    vbs << "logf.WriteLine \"moved old to bak\"\r\n";
-    vbs << "movedOk = False\r\n";
-    vbs << "For i = 1 To 40\r\n";
-    vbs << "  Err.Clear\r\n";
-    vbs << "  fso.MoveFile tmpPath, savePath\r\n";
-    vbs << "  If Err.Number = 0 Then\r\n";
-    vbs << "    movedOk = True\r\n";
-    vbs << "    Exit For\r\n";
-    vbs << "  End If\r\n";
-    vbs << "  WScript.Sleep 150\r\n";
-    vbs << "Next\r\n";
-    vbs << "If Not movedOk Then\r\n";
-    vbs << "  logf.WriteLine \"move tmp to exe failed\"\r\n";
-    vbs << "  logf.Close\r\n";
-    vbs << "  If fso.FileExists(vbsPath) Then fso.DeleteFile vbsPath, True\r\n";
-    vbs << "  WScript.Quit 1\r\n";
-    vbs << "End If\r\n";
-    vbs << "logf.WriteLine \"replace ok, starting\"\r\n";
-    vbs << "logf.Close\r\n";
-    // 1=正常窗口启动 GUI；False=不等待
-    vbs << "sh.Run \"\"\"\" & savePath & \"\"\"\", 1, False\r\n";
-    vbs << "If fso.FileExists(bakPath) Then fso.DeleteFile bakPath, True\r\n";
-    vbs << "If fso.FileExists(vbsPath) Then fso.DeleteFile vbsPath, True\r\n";
-    vbs << "WScript.Quit 0\r\n";
-    vbsFile.close();
-
-    // 顺手清掉旧 bat，避免残留
-    QFile::remove(QDir(appDir).filePath(QStringLiteral("delete_self.bat")));
-
     bool launched = false;
 #ifdef Q_OS_WIN
     {
@@ -188,7 +100,294 @@ bool startDeleteSelfBat(const QString& savePath) {
     return true;
 }
 
-} // namespace
+// 增量清单里的单个文件：path 为相对部署根目录（applicationDirPath()）的相对路径
+struct OtaFileSpec {
+    QString path;
+    QString sha256;
+    qint64 size = 0;
+};
+
+static bool isSkippedEnvManifestPath(const QString& path) {
+    const QString norm = path.trimmed().replace(QLatin1Char('\\'), QLatin1Char('/'));
+    if (norm.isEmpty()) {
+        return true;
+    }
+    // 运行环境 zip 误打包 OTA 临时目录时，manifest 会出现 updates/staging 等脏路径
+    if (norm.contains(QStringLiteral("/updates/"), Qt::CaseInsensitive)
+        || norm.startsWith(QStringLiteral("updates/"), Qt::CaseInsensitive)
+        || norm.contains(QStringLiteral("/backup/"), Qt::CaseInsensitive)
+        || norm.startsWith(QStringLiteral("backup/"), Qt::CaseInsensitive)) {
+        return true;
+    }
+    return false;
+}
+
+// 去掉 manifest 路径上连续的公共顶层目录（zip 允许多层套文件夹，最终与 appDir 相对路径对齐）
+static QList<OtaFileSpec> normalizeManifestPaths(QList<OtaFileSpec> files) {
+    if (files.isEmpty()) {
+        return files;
+    }
+    for (;;) {
+        QString commonRoot;
+        for (const OtaFileSpec& f : files) {
+            const int slash = f.path.indexOf(QLatin1Char('/'));
+            if (slash <= 0) {
+                return files;
+            }
+            const QString root = f.path.left(slash);
+            if (commonRoot.isEmpty()) {
+                commonRoot = root;
+            } else if (commonRoot != root) {
+                return files;
+            }
+        }
+        if (commonRoot.isEmpty()) {
+            return files;
+        }
+        for (OtaFileSpec& f : files) {
+            f.path = f.path.mid(commonRoot.size() + 1);
+        }
+    }
+}
+
+static QList<OtaFileSpec> fetchEnvManifest(QString* err) {
+    QList<OtaFileSpec> files;
+    const FactoryCloudClient::ApiResult api =
+        FactoryCloudClient::get(QStringLiteral("/host-app/runtime-env/manifest"));
+    if (!api.ok) {
+        if (err) {
+            *err = api.message;
+        }
+        return files;
+    }
+    const QJsonArray arr = api.data.value(QStringLiteral("files")).toArray();
+    for (const QJsonValue& v : arr) {
+        const QJsonObject o = v.toObject();
+        const QString path = o.value(QStringLiteral("path")).toString();
+        if (path.isEmpty() || isSkippedEnvManifestPath(path)) {
+            continue;
+        }
+        OtaFileSpec spec;
+        spec.path = path;
+        spec.sha256 = o.value(QStringLiteral("sha256")).toString().toLower();
+        spec.size = static_cast<qint64>(o.value(QStringLiteral("size")).toDouble());
+        files.append(spec);
+    }
+    return normalizeManifestPaths(files);
+}
+
+// 服务端环境清单 vs 本地磁盘：逐文件算本地 sha256，只挑缺失或内容不一致的文件（v1 不删本地多余文件）
+static QList<OtaFileSpec> diffLocalFiles(const QList<OtaFileSpec>& serverFiles, const QString& appDir) {
+    QList<OtaFileSpec> changed;
+    for (const OtaFileSpec& f : serverFiles) {
+        const QString localSha = sha256File(QDir(appDir).filePath(f.path));
+        if (localSha.isEmpty() || localSha.compare(f.sha256, Qt::CaseInsensitive) != 0) {
+            changed.append(f);
+        }
+    }
+    return changed;
+}
+
+static bool downloadDeltaFiles(const QList<OtaFileSpec>& files, const QString& stagingDir, QString* err) {
+    for (const OtaFileSpec& f : files) {
+        const QString target = QDir(stagingDir).filePath(f.path);
+        QDir().mkpath(QFileInfo(target).absolutePath());
+        QString dlErr;
+        if (!FactoryCloudClient::downloadToFile(QStringLiteral("/host-app/files/") + f.sha256, QUrlQuery(),
+                                                target, &dlErr)) {
+            if (err) {
+                *err = QStringLiteral("下载 %1 失败: %2").arg(f.path, dlErr);
+            }
+            return false;
+        }
+        const QString actual = sha256File(target);
+        if (actual.compare(f.sha256, Qt::CaseInsensitive) != 0) {
+            if (err) {
+                *err = QStringLiteral("%1 sha256 校验失败（期望 %2，实际 %3）")
+                           .arg(f.path, f.sha256,
+                                actual.isEmpty() ? QStringLiteral("无法读取文件") : actual);
+            }
+            return false;
+        }
+    }
+    return true;
+}
+
+static void showRestartCountdown(QWidget* parent) {
+    if (!parent) {
+        return;
+    }
+    QMessageBox* msgBox = new QMessageBox(parent);
+    msgBox->setWindowTitle(QStringLiteral("软件更新"));
+    msgBox->setStandardButtons(QMessageBox::Ok);
+    msgBox->setDefaultButton(QMessageBox::Ok);
+    // 点确定立即继续；未点则倒计时结束后自动关闭
+    int remainSec = 3;
+    auto refreshText = [msgBox, &remainSec]() {
+        msgBox->setText(QStringLiteral("下载完成，即将重启并安装新版本。\n\n"
+                                       "点击「确定」立即重启；%1 秒后自动关闭。")
+                            .arg(remainSec));
+    };
+    refreshText();
+    QTimer* countdown = new QTimer(msgBox);
+    countdown->setInterval(1000);
+    QObject::connect(countdown, &QTimer::timeout, msgBox, [msgBox, countdown, &remainSec, refreshText]() {
+        --remainSec;
+        if (remainSec <= 0) {
+            countdown->stop();
+            msgBox->accept();
+            return;
+        }
+        refreshText();
+    });
+    countdown->start();
+    msgBox->exec();
+    countdown->stop();
+    msgBox->deleteLater();
+}
+
+static bool startOtaReplaceBat(const QList<OtaFileSpec>& changed, const QString& updatesDir) {
+    const QString appDir = QCoreApplication::applicationDirPath();
+    const QString exeName = QFileInfo(QCoreApplication::applicationFilePath()).fileName();
+    const QString stagingDir = QDir(updatesDir).filePath(QStringLiteral("staging"));
+    const QString backupDir = QDir(updatesDir).filePath(QStringLiteral("backup"));
+    const QString vbsFileName = QDir(appDir).filePath(QStringLiteral("ota_replace.vbs"));
+    const QString logPath =
+        QDir(appDir).filePath(QStringLiteral("所有log/上位机log/ota_replace.log"));
+    QDir().mkpath(QFileInfo(logPath).absolutePath());
+    const QString oldPid = QString::number(QCoreApplication::applicationPid());
+
+    auto vbsQuote = [](const QString& path) {
+        return QDir::toNativeSeparators(path).replace(QLatin1Char('"'), QStringLiteral("\"\""));
+    };
+    const QString dirV = vbsQuote(appDir);
+    const QString exeV = vbsQuote(exeName);
+    const QString logV = vbsQuote(logPath);
+    const QString backupDirV = vbsQuote(backupDir);
+    const QString vbsSelfV = vbsQuote(vbsFileName);
+
+    QFile vbsFile(vbsFileName);
+    if (!vbsFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        return false;
+    }
+    QTextStream vbs(&vbsFile);
+    vbs << "On Error Resume Next\r\n";
+    vbs << "Set sh = CreateObject(\"WScript.Shell\")\r\n";
+    vbs << "Set fso = CreateObject(\"Scripting.FileSystemObject\")\r\n";
+    vbs << "sh.CurrentDirectory = \"" << dirV << "\"\r\n";
+    vbs << "Dim pid, exeName, logPath, backupDir, vbsPath\r\n";
+    vbs << "pid = \"" << oldPid << "\"\r\n";
+    vbs << "exeName = \"" << exeV << "\"\r\n";
+    vbs << "logPath = \"" << logV << "\"\r\n";
+    vbs << "backupDir = \"" << backupDirV << "\"\r\n";
+    vbs << "vbsPath = \"" << vbsSelfV << "\"\r\n";
+    vbs << "Sub EnsureDir(p)\r\n";
+    vbs << "  Dim parts, cur, j\r\n";
+    vbs << "  parts = Split(p, \"\\\")\r\n";
+    vbs << "  cur = parts(0)\r\n";
+    vbs << "  For j = 1 To UBound(parts)\r\n";
+    vbs << "    cur = cur & \"\\\" & parts(j)\r\n";
+    vbs << "    If Not fso.FolderExists(cur) Then fso.CreateFolder(cur)\r\n";
+    vbs << "  Next\r\n";
+    vbs << "End Sub\r\n";
+    vbs << "EnsureDir fso.GetParentFolderName(logPath)\r\n";
+    vbs << "Set logf = fso.CreateTextFile(logPath, True)\r\n";
+    vbs << "logf.WriteLine Now & \" OTA replace start pid=\" & pid\r\n";
+
+    const int n = changed.size();
+    vbs << "Dim nFiles\r\n";
+    vbs << "nFiles = " << n << "\r\n";
+    vbs << "Dim staging(), target(), backup()\r\n";
+    vbs << "ReDim staging(nFiles - 1)\r\n";
+    vbs << "ReDim target(nFiles - 1)\r\n";
+    vbs << "ReDim backup(nFiles - 1)\r\n";
+    for (int i = 0; i < n; ++i) {
+        const QString rel = changed.at(i).path;
+        vbs << "staging(" << i << ") = \"" << vbsQuote(QDir(stagingDir).filePath(rel)) << "\"\r\n";
+        vbs << "target(" << i << ") = \"" << vbsQuote(QDir(appDir).filePath(rel)) << "\"\r\n";
+        vbs << "backup(" << i << ") = \"" << vbsQuote(QDir(backupDir).filePath(rel)) << "\"\r\n";
+    }
+
+    vbs << "Sub RollbackAll\r\n";
+    vbs << "  Dim k\r\n";
+    vbs << "  For k = 0 To nFiles - 1\r\n";
+    vbs << "    If fso.FileExists(backup(k)) Then\r\n";
+    vbs << "      EnsureDir fso.GetParentFolderName(target(k))\r\n";
+    vbs << "      If fso.FileExists(target(k)) Then fso.DeleteFile target(k), True\r\n";
+    vbs << "      fso.MoveFile backup(k), target(k)\r\n";
+    vbs << "    End If\r\n";
+    vbs << "  Next\r\n";
+    vbs << "  logf.WriteLine \"rollback done\"\r\n";
+    vbs << "End Sub\r\n";
+
+    // 用 /IM 杀光所有同名进程：本进程启动 VBS 后已 TerminateProcess，但若被多开（无单实例保护），
+    // 其余实例仍锁住 exe 导致 MoveFile 失败，故不能只按自身 pid 杀。
+    vbs << "sh.Run \"taskkill /F /IM \" & exeName, 0, True\r\n";
+    vbs << "Dim i, okMove, retry\r\n";
+    vbs << "For i = 0 To nFiles - 1\r\n";
+    vbs << "  EnsureDir fso.GetParentFolderName(backup(i))\r\n";
+    vbs << "  If fso.FileExists(backup(i)) Then fso.DeleteFile backup(i), True\r\n";
+    vbs << "  If fso.FileExists(target(i)) Then\r\n";
+    vbs << "    okMove = False\r\n";
+    vbs << "    For retry = 1 To 40\r\n";
+    vbs << "      Err.Clear\r\n";
+    vbs << "      fso.MoveFile target(i), backup(i)\r\n";
+    vbs << "      If Err.Number = 0 Then\r\n";
+    vbs << "        okMove = True\r\n";
+    vbs << "        Exit For\r\n";
+    vbs << "      End If\r\n";
+    vbs << "      sh.Run \"taskkill /F /IM \" & exeName, 0, True\r\n";
+    vbs << "      WScript.Sleep 150\r\n";
+    vbs << "    Next\r\n";
+    vbs << "    If Not okMove Then\r\n";
+    vbs << "      logf.WriteLine \"move target to backup failed: \" & target(i)\r\n";
+    vbs << "      logf.Close\r\n";
+    vbs << "      If fso.FileExists(vbsPath) Then fso.DeleteFile vbsPath, True\r\n";
+    vbs << "      WScript.Quit 2\r\n";
+    vbs << "    End If\r\n";
+    vbs << "  End If\r\n";
+    vbs << "  EnsureDir fso.GetParentFolderName(target(i))\r\n";
+    vbs << "  okMove = False\r\n";
+    vbs << "  For retry = 1 To 40\r\n";
+    vbs << "    Err.Clear\r\n";
+    vbs << "    fso.MoveFile staging(i), target(i)\r\n";
+    vbs << "    If Err.Number = 0 Then\r\n";
+    vbs << "      okMove = True\r\n";
+    vbs << "      Exit For\r\n";
+    vbs << "    End If\r\n";
+    vbs << "    WScript.Sleep 150\r\n";
+    vbs << "  Next\r\n";
+    vbs << "  If Not okMove Then\r\n";
+    vbs << "    logf.WriteLine \"move staging to target failed: \" & target(i)\r\n";
+    vbs << "    RollbackAll\r\n";
+    vbs << "    logf.Close\r\n";
+    vbs << "    If fso.FileExists(vbsPath) Then fso.DeleteFile vbsPath, True\r\n";
+    vbs << "    WScript.Quit 3\r\n";
+    vbs << "  End If\r\n";
+    vbs << "Next\r\n";
+
+    // 启动新版本，等 5 秒用 WMI 查进程存活；缺 dll 等典型崩溃会立即退出 → 触发回滚
+    vbs << "sh.Run \"\"\"\" & sh.CurrentDirectory & \"\\\" & exeName & \"\"\"\", 1, False\r\n";
+    vbs << "WScript.Sleep 5000\r\n";
+    vbs << "Dim wmi, col\r\n";
+    vbs << "Set wmi = GetObject(\"winmgmts:\\\\.\\root\\cimv2\")\r\n";
+    vbs << "Set col = wmi.ExecQuery(\"Select Name From Win32_Process Where Name='\" & exeName & \"'\")\r\n";
+    vbs << "If col.Count > 0 Then\r\n";
+    vbs << "  logf.WriteLine \"health check ok\"\r\n";
+    vbs << "  On Error Resume Next\r\n";
+    vbs << "  If fso.FolderExists(backupDir) Then fso.DeleteFolder backupDir, True\r\n";
+    vbs << "Else\r\n";
+    vbs << "  logf.WriteLine \"health check failed, rolling back\"\r\n";
+    vbs << "  RollbackAll\r\n";
+    vbs << "  sh.Run \"\"\"\" & sh.CurrentDirectory & \"\\\" & exeName & \"\"\"\", 1, False\r\n";
+    vbs << "End If\r\n";
+    vbs << "logf.Close\r\n";
+    vbs << "If fso.FileExists(vbsPath) Then fso.DeleteFile vbsPath, True\r\n";
+    vbs << "WScript.Quit 0\r\n";
+    vbsFile.close();
+
+    return launchVbsAndExit(vbsFileName);
+}
 
 void HostOtaService::cleanupStaleBackupProcess() {
     const QString bakName = QFileInfo(QCoreApplication::applicationFilePath()).fileName() + QStringLiteral(".bak");
@@ -258,6 +457,9 @@ HostOtaService::CheckResult HostOtaService::checkUpdate() {
             result.forceUpgrade = latest.value(QStringLiteral("forceUpgrade")).toBool();
             result.releaseNotes = latest.value(QStringLiteral("releaseNotes")).toString();
             result.packageName = latest.value(QStringLiteral("packageName")).toString();
+            result.packageKind = latest.value(QStringLiteral("packageKind")).toString();
+            result.fileCount = latest.value(QStringLiteral("fileCount")).toInt();
+            result.uploadedAt = latest.value(QStringLiteral("uploadedAt")).toString();
         }
     } else {
         result.appVersion = api.data.value(QStringLiteral("latestVersion")).toString();
@@ -268,7 +470,9 @@ HostOtaService::CheckResult HostOtaService::checkUpdate() {
         result.releaseNotes = api.data.value(QStringLiteral("releaseNotes")).toString();
         result.packageName = api.data.value(QStringLiteral("packageName")).toString();
     }
-    result.uploadedAt = api.data.value(QStringLiteral("uploadedAt")).toString();
+    if (result.uploadedAt.isEmpty()) {
+        result.uploadedAt = api.data.value(QStringLiteral("uploadedAt")).toString();
+    }
 
     qDebug() << "[OTA] 检查结果:"
              << "hostNewer=" << result.hostNewer
@@ -295,14 +499,17 @@ bool HostOtaService::downloadAndApply(const CheckResult& info, QWidget* parent, 
     }
 
     const QString appDir = QCoreApplication::applicationDirPath();
-    // 固定覆盖当前运行的 exe 名（TARGET=new_production），不再落地为 package_buildId.exe
-    const QString fileName = QFileInfo(QCoreApplication::applicationFilePath()).fileName();
-    const QString savePath = QDir(appDir).filePath(fileName);
-    const QString tempSavePath = savePath + QStringLiteral(".tmp");
-    // 上次替换失败残留的 .tmp 先清掉，避免下载写不进/脚本误用旧包
-    if (QFile::exists(tempSavePath))
-        QFile::remove(tempSavePath);
+    const QString updatesDir = QDir(appDir).filePath(QStringLiteral("updates"));
+    QDir().mkpath(updatesDir);
 
+    // 清理并重建 staging 目录，避免残留旧文件被误用
+    const QString stagingDir = QDir(updatesDir).filePath(QStringLiteral("staging"));
+    QDir(stagingDir).removeRecursively();
+    QDir().mkpath(stagingDir);
+
+    // 1. 下载新 exe 到 staging（固定覆盖当前运行的 exe 名，TARGET=new_production）
+    const QString exeName = QFileInfo(QCoreApplication::applicationFilePath()).fileName();
+    const QString exeStagingPath = QDir(stagingDir).filePath(exeName);
     QString downloadError;
     const QString url = info.downloadUrl.trimmed();
     if (url.isEmpty()) {
@@ -311,63 +518,58 @@ bool HostOtaService::downloadAndApply(const CheckResult& info, QWidget* parent, 
             downloadQuery.addQueryItem(QStringLiteral("uploadedAt"), info.uploadedAt);
         }
         if (!FactoryCloudClient::downloadToFile(QStringLiteral("/host-app/download/") + info.buildId, downloadQuery,
-                                                tempSavePath, &downloadError)) {
+                                                exeStagingPath, &downloadError)) {
             if (message) {
                 *message = downloadError;
             }
             return false;
         }
-    } else if (!FactoryCloudClient::downloadToFile(url, QUrlQuery(), tempSavePath, &downloadError)) {
+    } else if (!FactoryCloudClient::downloadToFile(url, QUrlQuery(), exeStagingPath, &downloadError)) {
         if (message) {
             *message = downloadError;
         }
         return false;
     }
 
-    if (!info.sha256.isEmpty()) {
-        const QString actual = sha256File(tempSavePath);
-        if (actual.compare(info.sha256, Qt::CaseInsensitive) != 0) {
-            qDebug() << "[OTA] sha256 不匹配: 期望=" << info.sha256 << "实际=" << actual;
-            QFile::remove(tempSavePath);
-            if (message) {
-                *message = QStringLiteral("sha256 校验失败");
-            }
-            return false;
+    const QString exeSha = sha256File(exeStagingPath);
+    if (!info.sha256.isEmpty() && exeSha.compare(info.sha256, Qt::CaseInsensitive) != 0) {
+        qDebug() << "[OTA] exe sha256 不匹配: 期望=" << info.sha256 << "实际=" << exeSha;
+        QFile::remove(exeStagingPath);
+        if (message) {
+            *message = QStringLiteral("exe sha256 校验失败");
         }
+        return false;
     }
+
+    // 2. 拉远端环境清单，与本地磁盘逐文件算 sha256 做差集，只下缺失/变化的 dll 等文件
+    QString envErr;
+    const QList<OtaFileSpec> envFiles = fetchEnvManifest(&envErr);
+    if (!envErr.isEmpty()) {
+        if (message) {
+            *message = envErr;
+        }
+        return false;
+    }
+    const QList<OtaFileSpec> changedEnv = diffLocalFiles(envFiles, appDir);
+    if (!downloadDeltaFiles(changedEnv, stagingDir, &downloadError)) {
+        if (message) {
+            *message = downloadError;
+        }
+        return false;
+    }
+
+    // 3. 组合替换清单：exe 打头 + 差异环境文件（exe 由版本管理单独管，不计入环境清单）
+    QList<OtaFileSpec> changed;
+    OtaFileSpec exeSpec;
+    exeSpec.path = exeName;
+    exeSpec.sha256 = exeSha;
+    changed.append(exeSpec);
+    changed.append(changedEnv);
 
     // 版本号来自 host_ota_version.h 编译进新包，无需写 settings
 
-    if (parent) {
-        QMessageBox* msgBox = new QMessageBox(parent);
-        msgBox->setWindowTitle(QStringLiteral("软件更新"));
-        msgBox->setStandardButtons(QMessageBox::Ok);
-        msgBox->setDefaultButton(QMessageBox::Ok);
-        // 点确定立即继续；未点则倒计时结束后自动关闭
-        int remainSec = 3;
-        auto refreshText = [msgBox, &remainSec]() {
-            msgBox->setText(QStringLiteral("下载完成，即将重启并安装新版本。\n\n"
-                                           "点击「确定」立即重启；%1 秒后自动关闭。")
-                                .arg(remainSec));
-        };
-        refreshText();
-        QTimer* countdown = new QTimer(msgBox);
-        countdown->setInterval(1000);
-        QObject::connect(countdown, &QTimer::timeout, msgBox, [msgBox, countdown, &remainSec, refreshText]() {
-            --remainSec;
-            if (remainSec <= 0) {
-                countdown->stop();
-                msgBox->accept();
-                return;
-            }
-            refreshText();
-        });
-        countdown->start();
-        msgBox->exec();
-        countdown->stop();
-        msgBox->deleteLater();
-    }
-    if (!startDeleteSelfBat(savePath)) {
+    showRestartCountdown(parent);
+    if (!startOtaReplaceBat(changed, updatesDir)) {
         if (message) {
             *message = QStringLiteral("无法启动升级脚本");
         }
@@ -573,6 +775,8 @@ bool HostOtaService::showVersionPicker(QWidget* parent,
     info.forceUpgrade = chosen.value(QStringLiteral("forceUpgrade")).toBool();
     info.releaseNotes = chosen.value(QStringLiteral("releaseNotes")).toString();
     info.packageName = chosen.value(QStringLiteral("packageName")).toString();
+    info.packageKind = chosen.value(QStringLiteral("packageKind")).toString();
+    info.fileCount = chosen.value(QStringLiteral("fileCount")).toInt();
     info.uploadedAt = chosen.value(QStringLiteral("uploadedAt")).toString();
 
     if (!confirmDownloadWithReleaseNotes(parent, info)) {
