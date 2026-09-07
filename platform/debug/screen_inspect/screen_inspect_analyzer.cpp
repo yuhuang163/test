@@ -42,17 +42,11 @@ QVector<quint8> toGrayBytes(const QImage& rgb) {
     return gray;
 }
 
-/** 圆屏掩膜：正方形 ROI 四角黑框不参与颜色/坏点。 */
-struct ScreenCircle {
-    int cx = 0;
-    int cy = 0;
-    int r = 0;
-    bool contains(int x, int y) const {
-        const qint64 dx = x - cx;
-        const qint64 dy = y - cy;
-        return dx * dx + dy * dy <= qint64(r) * qint64(r);
-    }
-};
+using ScreenInspectAnalyzer::ScreenCircle;
+using ScreenInspectAnalyzer::detectScreenCircle;
+} // namespace
+
+namespace ScreenInspectAnalyzer {
 
 /**
  * 在矩形 ROI 内估计圆屏半径：亮屏用径向亮度跌落找边；全黑则用内接圆略内缩。
@@ -169,6 +163,10 @@ ScreenCircle detectScreenCircle(const QImage& rgb, const QRect& roi) {
     c.r = qMax(8, edge * 90 / 100);
     return c;
 }
+
+} // namespace ScreenInspectAnalyzer
+
+namespace {
 
 /** 屏幕 ROI：取偏亮区域包围盒，避免桌面背景把 SSIM 拉低。 */
 QRect detectScreenRoi(const QImage& rgb) {
@@ -929,21 +927,44 @@ Report analyze(const QImage& currRgb, const QImage& refRgb, const Params& p) {
     if (p.enableSsim && !refRgb.isNull()) {
         stepT.start();
         QImage ref = toRgb888(refRgb);
-        if (ref.size() != curr.size())
-            ref = ref.scaled(curr.size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-        // 完整识别圆屏：以外接方框裁切对比（四角黑底一致，不再内缩、不按块跳过）
-        QRect circleBox(circle.cx - circle.r, circle.cy - circle.r, circle.r * 2, circle.r * 2);
+        ScreenCircle refCircle;
+        if (p.refCircleR > 0) {
+            refCircle.cx = p.refCircleCx;
+            refCircle.cy = p.refCircleCy;
+            refCircle.r = p.refCircleR;
+        } else {
+            QRect refRoi = scaleRoiRect(roi, curr.size(), ref.size()).intersected(ref.rect());
+            if (refRoi.width() < 10 || refRoi.height() < 10)
+                refRoi = detectScreenRoi(ref);
+            refCircle = detectScreenCircle(ref, refRoi);
+        }
+        report.refCircleCx = refCircle.cx;
+        report.refCircleCy = refCircle.cy;
+        report.refCircleR = refCircle.r;
+
+        // 分别以各自检测出的圆心进行居中外接裁切对比，彻底消除工装物理摆放偏差
+        const int cr = qMax(8, circle.r);
+        QRect circleBox(circle.cx - cr, circle.cy - cr, cr * 2, cr * 2);
         circleBox = circleBox.intersected(curr.rect());
         if (circleBox.width() < 8 || circleBox.height() < 8)
             circleBox = roi;
+
+        const int rr = qMax(8, refCircle.r > 0 ? refCircle.r : cr);
+        const int rcx = refCircle.r > 0 ? refCircle.cx : (circle.cx * ref.width() / curr.width());
+        const int rcy = refCircle.r > 0 ? refCircle.cy : (circle.cy * ref.height() / curr.height());
+        QRect refBox(rcx - rr, rcy - rr, rr * 2, rr * 2);
+        refBox = refBox.intersected(ref.rect());
+        if (refBox.width() < 8 || refBox.height() < 8)
+            refBox = scaleRoiRect(circleBox, curr.size(), ref.size()).intersected(ref.rect());
+
         QImage a = curr.copy(circleBox);
-        QImage b = ref.copy(circleBox);
+        QImage b = ref.copy(refBox);
         const int maxSide = 256;
-        if (a.width() > maxSide || a.height() > maxSide) {
-            a = a.scaled(maxSide, maxSide, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-            b = b.scaled(a.size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+        if (a.width() > 0 && a.height() > 0 && b.width() > 0 && b.height() > 0) {
+            a = a.scaled(maxSide, maxSide, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+            b = b.scaled(maxSide, maxSide, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+            report.ssim = ssimOnGray(toGrayBytes(a), toGrayBytes(b), a.width(), a.height());
         }
-        report.ssim = ssimOnGray(toGrayBytes(a), toGrayBytes(b), a.width(), a.height());
         msSsim = stepT.elapsed();
     }
     qDebug().noquote() << QStringLiteral("[ScreenInspectAnalyze]")

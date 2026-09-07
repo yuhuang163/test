@@ -2666,6 +2666,9 @@ void QFreeWork::runScreenInspectStep() {
         ap.cachedCircleCy = cachedScreenCircleCy_;
         ap.cachedCircleR = cachedScreenCircleR_;
     }
+    ap.refCircleCx = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCx"), -1).toInt();
+    ap.refCircleCy = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCy"), -1).toInt();
+    ap.refCircleR = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleR"), -1).toInt();
 
     phaseT.restart();
     const ScreenInspectAnalyzer::Report report = ScreenInspectAnalyzer::analyze(curr, ref, ap);
@@ -2697,7 +2700,11 @@ void QFreeWork::runScreenInspectStep() {
                                qMax(1, report.roi.width() * ref.width() / curr.width()),
                                qMax(1, report.roi.height() * ref.height() / curr.height()));
             }
-            if (report.circleR > 0) {
+            if (report.refCircleR > 0) {
+                refCircleCx = report.refCircleCx;
+                refCircleCy = report.refCircleCy;
+                refCircleR = report.refCircleR;
+            } else if (report.circleR > 0) {
                 refCircleCx = report.circleCx * ref.width() / curr.width();
                 refCircleCy = report.circleCy * ref.height() / curr.height();
                 refCircleR = qMax(8, report.circleR * qMin(ref.width(), ref.height()) / qMin(curr.width(), curr.height()));

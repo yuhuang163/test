@@ -14,6 +14,20 @@
  */
 namespace ScreenInspectAnalyzer {
 
+struct ScreenCircle {
+    int cx = -1;
+    int cy = -1;
+    int r = -1;
+    bool contains(int x, int y) const {
+        if (r <= 0) return false;
+        const qint64 dx = x - cx;
+        const qint64 dy = y - cy;
+        return dx * dx + dy * dy <= qint64(r) * qint64(r);
+    }
+};
+
+ScreenCircle detectScreenCircle(const QImage& rgb, const QRect& roi = QRect());
+
 struct Params {
     int deadDiff = 35;
     int expectedColor = -1;
@@ -24,6 +38,9 @@ struct Params {
     int cachedCircleCx = -1;
     int cachedCircleCy = -1;
     int cachedCircleR = -1;
+    int refCircleCx = -1;
+    int refCircleCy = -1;
+    int refCircleR = -1;
 };
 
 inline QRect parseManualRoi(const QString& text) {
@@ -54,6 +71,9 @@ struct Report {
     int circleCx = -1;
     int circleCy = -1;
     int circleR = -1;
+    int refCircleCx = -1;
+    int refCircleCy = -1;
+    int refCircleR = -1;
     QRect roi;
     QImage annotated;
 };

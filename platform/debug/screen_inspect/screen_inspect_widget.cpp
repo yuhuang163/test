@@ -4,6 +4,7 @@
 #include "common_utils.h"
 #include "screen_inspect_analyzer.h"
 #include "screen_inspect_gige_capture.h"
+#include "mainwindow.h"
 
 #include <QCamera>
 #include <QCameraImageCapture>
@@ -64,6 +65,19 @@ struct ScreenInspectUi {
     QPushButton* btnInspect = nullptr;
     QPushButton* btnOpenPreview = nullptr;
     QPushButton* btnClosePreview = nullptr;
+    QPushButton* btnConnectDevice = nullptr;
+    QPushButton* btnDisconnectDevice = nullptr;
+    QLabel* label_deviceConnStatus = nullptr;
+    QPushButton* btnEnterLcdMode = nullptr;
+    QPushButton* btnExitLcdMode = nullptr;
+    QLabel* label_lcdModeStatus = nullptr;
+    QPushButton* btnColorRed = nullptr;
+    QPushButton* btnColorGreen = nullptr;
+    QPushButton* btnColorBlue = nullptr;
+    QPushButton* btnColorWhite = nullptr;
+    QPushButton* btnColorBlack = nullptr;
+    QPushButton* btnLcdColorGray = nullptr;
+    QPushButton* btnLcdColorGrayBar = nullptr;
 };
 
 template <typename T>
@@ -107,6 +121,19 @@ void ScreenInspectWidget::bindDesignerUi() {
     ui->btnInspect = screenInspectFind<QPushButton>(this, "btnInspect");
     ui->btnOpenPreview = screenInspectFind<QPushButton>(this, "btnOpenPreview");
     ui->btnClosePreview = screenInspectFind<QPushButton>(this, "btnClosePreview");
+    ui->btnConnectDevice = screenInspectFind<QPushButton>(this, "btnConnectDevice");
+    ui->btnDisconnectDevice = screenInspectFind<QPushButton>(this, "btnDisconnectDevice");
+    ui->label_deviceConnStatus = screenInspectFind<QLabel>(this, "label_deviceConnStatus");
+    ui->btnEnterLcdMode = screenInspectFind<QPushButton>(this, "btnEnterLcdMode");
+    ui->btnExitLcdMode = screenInspectFind<QPushButton>(this, "btnExitLcdMode");
+    ui->label_lcdModeStatus = screenInspectFind<QLabel>(this, "label_lcdModeStatus");
+    ui->btnColorRed = screenInspectFind<QPushButton>(this, "btnColorRed");
+    ui->btnColorGreen = screenInspectFind<QPushButton>(this, "btnColorGreen");
+    ui->btnColorBlue = screenInspectFind<QPushButton>(this, "btnColorBlue");
+    ui->btnColorWhite = screenInspectFind<QPushButton>(this, "btnColorWhite");
+    ui->btnColorBlack = screenInspectFind<QPushButton>(this, "btnColorBlack");
+    ui->btnLcdColorGray = screenInspectFind<QPushButton>(this, "btnLcdColorGray");
+    ui->btnLcdColorGrayBar = screenInspectFind<QPushButton>(this, "btnLcdColorGrayBar");
     if (!ui->comboBox_camera || !ui->comboBox_expectedColor || !ui->viewfinderHost
         || !ui->verticalLayout_viewfinder || !ui->doubleSpinBox_minSsim || !ui->spinBox_deadDiff
         || !ui->spinBox_maxDead || !ui->doubleSpinBox_mura || !ui->label_currImage || !ui->label_refImage
@@ -176,10 +203,46 @@ void ScreenInspectWidget::bindDesignerUi() {
         SETTINGS.value(QStringLiteral("ScreenInspect/Roi")).toString());
 
     QMetaObject::connectSlotsByName(this);
+    if (ui->btnConnectDevice)
+        connect(ui->btnConnectDevice, &QPushButton::clicked, this, &ScreenInspectWidget::on_btnConnectDevice_clicked);
+    if (ui->btnDisconnectDevice)
+        connect(ui->btnDisconnectDevice, &QPushButton::clicked, this, &ScreenInspectWidget::on_btnDisconnectDevice_clicked);
+    if (ui->btnEnterLcdMode)
+        connect(ui->btnEnterLcdMode, &QPushButton::clicked, this, &ScreenInspectWidget::on_btnEnterLcdMode_clicked);
+    if (ui->btnExitLcdMode)
+        connect(ui->btnExitLcdMode, &QPushButton::clicked, this, &ScreenInspectWidget::on_btnExitLcdMode_clicked);
+    if (ui->btnColorRed)
+        connect(ui->btnColorRed, &QPushButton::clicked, this, &ScreenInspectWidget::on_btnColorRed_clicked);
+    if (ui->btnColorGreen)
+        connect(ui->btnColorGreen, &QPushButton::clicked, this, &ScreenInspectWidget::on_btnColorGreen_clicked);
+    if (ui->btnColorBlue)
+        connect(ui->btnColorBlue, &QPushButton::clicked, this, &ScreenInspectWidget::on_btnColorBlue_clicked);
+    if (ui->btnColorWhite)
+        connect(ui->btnColorWhite, &QPushButton::clicked, this, &ScreenInspectWidget::on_btnColorWhite_clicked);
+    if (ui->btnColorBlack)
+        connect(ui->btnColorBlack, &QPushButton::clicked, this, &ScreenInspectWidget::on_btnColorBlack_clicked);
+    if (ui->btnLcdColorGray)
+        connect(ui->btnLcdColorGray, &QPushButton::clicked, this, &ScreenInspectWidget::on_btnLcdColorGray_clicked);
+    if (ui->btnLcdColorGrayBar)
+        connect(ui->btnLcdColorGrayBar, &QPushButton::clicked, this, &ScreenInspectWidget::on_btnLcdColorGrayBar_clicked);
+
+    if (!connStatusTimer_) {
+        connStatusTimer_ = new QTimer(this);
+        connect(connStatusTimer_, &QTimer::timeout, this, &ScreenInspectWidget::checkConnectionStatus);
+        connStatusTimer_->start(500);
+    }
+    checkConnectionStatus();
+    updateLcdModeUi();
+
     uiBound_ = true;
 }
 
 ScreenInspectWidget::~ScreenInspectWidget() {
+    if (connStatusTimer_) {
+        connStatusTimer_->stop();
+        delete connStatusTimer_;
+        connStatusTimer_ = nullptr;
+    }
     if (ui && ui->label_currImage)
         ui->label_currImage->releaseMouse();
     stopPreview();
@@ -274,6 +337,9 @@ ScreenInspectWidget::InspectParams ScreenInspectWidget::currentParams() const {
     p.maxMuraStd = ui->doubleSpinBox_mura->value();
     p.expectedColor = ui->comboBox_expectedColor->currentData().toInt();
     p.manualRoi = manualRoi_;
+    p.refCircleCx = refCircle_.cx;
+    p.refCircleCy = refCircle_.cy;
+    p.refCircleR = refCircle_.r;
     return p;
 }
 
@@ -505,6 +571,13 @@ void ScreenInspectWidget::on_btnLoadRef_clicked() {
         return;
     }
     applyReferenceImage(img, path);
+    refCircle_.cx = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCx"), -1).toInt();
+    refCircle_.cy = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCy"), -1).toInt();
+    refCircle_.r = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleR"), -1).toInt();
+    if (refCircle_.r <= 0) {
+        updateReferenceCircle();
+    }
+    refreshImageLabels();
     ui->plainTextEdit_screenInspectLog->setPlainText(QStringLiteral("已加载参考图：") + path);
 }
 
@@ -545,24 +618,203 @@ void ScreenInspectWidget::on_btnClearRoi_clicked() {
     ui->plainTextEdit_screenInspectLog->setPlainText(QStringLiteral("已清除划定范围，检测改回自动找屏。"));
 }
 
-void ScreenInspectWidget::on_btnColorBlue_clicked() {
-    ui->comboBox_expectedColor->setCurrentIndex(ui->comboBox_expectedColor->findData(0));
+void ScreenInspectWidget::appendLog(const QString& text) {
+    if (ui && ui->plainTextEdit_screenInspectLog) {
+        ui->plainTextEdit_screenInspectLog->appendPlainText(
+            QStringLiteral("[%1] %2").arg(QDateTime::currentDateTime().toString(QStringLiteral("HH:mm:ss.zzz")), text));
+    }
 }
 
-void ScreenInspectWidget::on_btnColorGreen_clicked() {
-    ui->comboBox_expectedColor->setCurrentIndex(ui->comboBox_expectedColor->findData(1));
+void ScreenInspectWidget::connectDevice() {
+    MainWindow* mw = qobject_cast<MainWindow*>(window());
+    if (!mw || !mw->at) {
+        appendLog(QStringLiteral("Dongle 未就绪或不在主窗口运行"));
+        return;
+    }
+    QString mac;
+    if (mw->ui && mw->ui->macInput && !mw->ui->macInput->text().trimmed().isEmpty() && mw->ui->macInput->text().trimmed() != QStringLiteral("没有mac地址")) {
+        mac = mw->ui->macInput->text().trimmed();
+    } else if (mw->ui && mw->ui->mac_combo && !mw->ui->mac_combo->currentText().trimmed().isEmpty() && mw->ui->mac_combo->currentText().trimmed() != QStringLiteral("没有mac地址")) {
+        mac = mw->ui->mac_combo->currentText().trimmed();
+    } else if (!mw->macAddress.trimmed().isEmpty() && mw->macAddress.trimmed() != QStringLiteral("没有mac地址")) {
+        mac = mw->macAddress.trimmed();
+    }
+    mw->at->resetConnected();
+    mw->at->set(DongleCmd::BleScanConnect, mac);
+    if (!mac.isEmpty()) {
+        appendLog(QStringLiteral("已下发连接指令（BleScanConnect, AT+MAC=%1），正在等待连接...").arg(mac));
+    } else {
+        appendLog(QStringLiteral("已下发自动扫描连接指令（BleScanConnect, AT+MAC=），正在等待连接..."));
+    }
+}
+
+void ScreenInspectWidget::disconnectDevice() {
+    MainWindow* mw = qobject_cast<MainWindow*>(window());
+    if (!mw || !mw->at) {
+        appendLog(QStringLiteral("Dongle 未就绪"));
+        return;
+    }
+    mw->at->set(DongleCmd::BleDisconnect);
+    mw->at->resetConnected();
+    isLcdMode_ = false;
+    updateLcdModeUi();
+    updateConnectionUi(false);
+    appendLog(QStringLiteral("已下发断开蓝牙连接指令（AT+MAC=00:00:00:00:00:00）"));
+}
+
+void ScreenInspectWidget::enterLcdMode(std::function<void()> onDone) {
+    MainWindow* mw = qobject_cast<MainWindow*>(window());
+    if (!mw) {
+        appendLog(QStringLiteral("主窗口未就绪"));
+        if (onDone) onDone();
+        return;
+    }
+    mw->protocolManager.setCurrentProtocolType(QProtocolManager::ProtocolType::Qfctp);
+    mw->protocolManager.set(DeviceCmd::FacMode, 1);
+    appendLog(QStringLiteral("切换协议为 Qfctp，下发【进入工厂模式】(FacMode=1)"));
+    QTimer::singleShot(150, this, [this, mw, onDone]() {
+        mw->protocolManager.set(DeviceCmd::LcdColorTestMode, QVariantMap{{QStringLiteral("enter"), 1}});
+        isLcdMode_ = true;
+        updateLcdModeUi();
+        appendLog(QStringLiteral("下发【进入LCD颜色测试模式】(LcdColorTestMode enter=1)"));
+        if (onDone) {
+            QTimer::singleShot(100, this, onDone);
+        }
+    });
+}
+
+void ScreenInspectWidget::exitLcdMode() {
+    MainWindow* mw = qobject_cast<MainWindow*>(window());
+    if (!mw) {
+        appendLog(QStringLiteral("主窗口未就绪"));
+        return;
+    }
+    mw->protocolManager.setCurrentProtocolType(QProtocolManager::ProtocolType::Qfctp);
+    mw->protocolManager.set(DeviceCmd::LcdColorTestMode, QVariantMap{{QStringLiteral("enter"), 0}});
+    appendLog(QStringLiteral("下发【退出LCD颜色测试模式】(LcdColorTestMode enter=0)"));
+    QTimer::singleShot(150, this, [this, mw]() {
+        mw->protocolManager.set(DeviceCmd::FacMode, 0);
+        isLcdMode_ = false;
+        updateLcdModeUi();
+        appendLog(QStringLiteral("下发【退出工厂模式】(FacMode=0)"));
+    });
+}
+
+void ScreenInspectWidget::sendLcdColor(int colorId, const QString& colorName, int expectedColorVal) {
+    auto doSend = [this, colorId, colorName, expectedColorVal]() {
+        MainWindow* mw = qobject_cast<MainWindow*>(window());
+        if (!mw) return;
+        mw->protocolManager.setCurrentProtocolType(QProtocolManager::ProtocolType::Qfctp);
+        mw->protocolManager.set(DeviceCmd::SetLcdColor, QVariantMap{{QStringLiteral("color"), colorId}});
+        if (ui && ui->comboBox_expectedColor) {
+            for (int i = 0; i < ui->comboBox_expectedColor->count(); ++i) {
+                if (ui->comboBox_expectedColor->itemData(i).toInt() == expectedColorVal) {
+                    ui->comboBox_expectedColor->setCurrentIndex(i);
+                    break;
+                }
+            }
+        }
+        appendLog(QStringLiteral("下发屏幕颜色：%1 (SetLcdColor color=%2)，期望颜色同步切换为：%3")
+                      .arg(colorName).arg(colorId).arg(expectedColorVal >= 0 ? colorName : QStringLiteral("无/自动")));
+    };
+
+    if (!isLcdMode_) {
+        appendLog(QStringLiteral("当前未在 LCD 模式，自动先进入 LCD 模式..."));
+        enterLcdMode(doSend);
+    } else {
+        doSend();
+    }
+}
+
+void ScreenInspectWidget::checkConnectionStatus() {
+    MainWindow* mw = qobject_cast<MainWindow*>(window());
+    if (!mw || !mw->at) {
+        updateConnectionUi(false);
+        return;
+    }
+    updateConnectionUi(mw->at->getConnected());
+}
+
+void ScreenInspectWidget::updateConnectionUi(bool connected) {
+    if (!ui || !ui->label_deviceConnStatus) return;
+    if (connected) {
+        ui->label_deviceConnStatus->setText(QStringLiteral("● 设备已连接"));
+        ui->label_deviceConnStatus->setStyleSheet(QStringLiteral("color: #2e7d32; font-weight: bold;"));
+    } else {
+        ui->label_deviceConnStatus->setText(QStringLiteral("○ 设备未连接"));
+        ui->label_deviceConnStatus->setStyleSheet(QStringLiteral("color: #757575; font-weight: normal;"));
+    }
+}
+
+void ScreenInspectWidget::updateLcdModeUi() {
+    if (!ui || !ui->label_lcdModeStatus) return;
+    if (isLcdMode_) {
+        ui->label_lcdModeStatus->setText(QStringLiteral("● LCD模式已开启"));
+        ui->label_lcdModeStatus->setStyleSheet(QStringLiteral("color: #1976d2; font-weight: bold;"));
+    } else {
+        ui->label_lcdModeStatus->setText(QStringLiteral("○ 未进入LCD模式"));
+        ui->label_lcdModeStatus->setStyleSheet(QStringLiteral("color: #757575; font-weight: normal;"));
+    }
+}
+
+void ScreenInspectWidget::updateReferenceCircle() {
+    if (refImage_.isNull()) {
+        refCircle_ = ScreenInspectAnalyzer::ScreenCircle();
+        return;
+    }
+    QRect roi = manualRoi_.intersected(refImage_.rect());
+    if (roi.width() < 10 || roi.height() < 10)
+        roi = refImage_.rect();
+    refCircle_ = ScreenInspectAnalyzer::detectScreenCircle(refImage_, roi);
+    if (refCircle_.r > 0) {
+        SETTINGS.setValue(QStringLiteral("ScreenInspect/RefCircleCx"), refCircle_.cx);
+        SETTINGS.setValue(QStringLiteral("ScreenInspect/RefCircleCy"), refCircle_.cy);
+        SETTINGS.setValue(QStringLiteral("ScreenInspect/RefCircleR"), refCircle_.r);
+    }
+}
+
+void ScreenInspectWidget::on_btnConnectDevice_clicked() {
+    connectDevice();
+}
+
+void ScreenInspectWidget::on_btnDisconnectDevice_clicked() {
+    disconnectDevice();
+}
+
+void ScreenInspectWidget::on_btnEnterLcdMode_clicked() {
+    enterLcdMode();
+}
+
+void ScreenInspectWidget::on_btnExitLcdMode_clicked() {
+    exitLcdMode();
 }
 
 void ScreenInspectWidget::on_btnColorRed_clicked() {
-    ui->comboBox_expectedColor->setCurrentIndex(ui->comboBox_expectedColor->findData(2));
+    sendLcdColor(1, QStringLiteral("红"), 2);
+}
+
+void ScreenInspectWidget::on_btnColorGreen_clicked() {
+    sendLcdColor(2, QStringLiteral("绿"), 1);
+}
+
+void ScreenInspectWidget::on_btnColorBlue_clicked() {
+    sendLcdColor(3, QStringLiteral("蓝"), 0);
 }
 
 void ScreenInspectWidget::on_btnColorWhite_clicked() {
-    ui->comboBox_expectedColor->setCurrentIndex(ui->comboBox_expectedColor->findData(3));
+    sendLcdColor(5, QStringLiteral("白"), 3);
 }
 
 void ScreenInspectWidget::on_btnColorBlack_clicked() {
-    ui->comboBox_expectedColor->setCurrentIndex(ui->comboBox_expectedColor->findData(4));
+    sendLcdColor(4, QStringLiteral("黑"), 4);
+}
+
+void ScreenInspectWidget::on_btnLcdColorGray_clicked() {
+    sendLcdColor(7, QStringLiteral("灰"), 5);
+}
+
+void ScreenInspectWidget::on_btnLcdColorGrayBar_clicked() {
+    sendLcdColor(6, QStringLiteral("灰度条"), -1);
 }
 
 void ScreenInspectWidget::setBusy(bool busy) {
@@ -591,6 +843,26 @@ void ScreenInspectWidget::showPixmapOnLabel(const QImage& image, QLabel* label) 
 }
 
 /** 在缩略显示图上叠划定 ROI（坐标按原图像素换算）。 */
+QImage paintCircleOverlay(const QImage& src, const QSize& labelSize, const ScreenInspectAnalyzer::ScreenCircle& circle) {
+    if (src.isNull() || labelSize.width() < 8 || labelSize.height() < 8)
+        return src;
+    const Qt::TransformationMode mode =
+        (src.width() * src.height() > 1920 * 1080) ? Qt::FastTransformation : Qt::SmoothTransformation;
+    QImage display = src.scaled(labelSize, Qt::KeepAspectRatio, mode);
+    if (display.isNull() || circle.r <= 0 || src.width() <= 0 || src.height() <= 0)
+        return display;
+    const int dcx = circle.cx * display.width() / src.width();
+    const int dcy = circle.cy * display.height() / src.height();
+    const int dr = qMax(4, circle.r * qMin(display.width(), display.height()) / qMin(src.width(), src.height()));
+    display = display.convertToFormat(QImage::Format_RGB32);
+    QPainter p(&display);
+    p.setRenderHint(QPainter::Antialiasing, true);
+    p.setPen(QPen(QColor(0, 220, 0), 2));
+    p.drawEllipse(QPoint(dcx, dcy), dr, dr);
+    p.end();
+    return display;
+}
+
 QImage paintRoiOverlay(const QImage& src, const QSize& labelSize, const QRect& roiImage) {
     if (src.isNull() || labelSize.width() < 8 || labelSize.height() < 8)
         return src;
@@ -621,9 +893,14 @@ void ScreenInspectWidget::refreshImageLabels() {
     else
         overlay = manualRoi_;
 
-    // 参考图只显示原图，不叠坏点/划定框（坏点只标在拍摄图上）
-    if (!refImage_.isNull())
-        showPixmapOnLabel(refImage_, ui->label_refImage);
+    // 参考图显示：若已识别到基准圆，则叠加绿色基准圆轮廓供直观核对
+    if (!refImage_.isNull() && ui->label_refImage) {
+        if (refCircle_.r > 0) {
+            ui->label_refImage->setPixmap(QPixmap::fromImage(paintCircleOverlay(refImage_, ui->label_refImage->size(), refCircle_)));
+        } else {
+            showPixmapOnLabel(refImage_, ui->label_refImage);
+        }
+    }
 
     const QImage src = annotatedImage_.isNull() ? currImage_ : annotatedImage_;
     if (src.isNull() || !ui->label_currImage)
@@ -658,6 +935,8 @@ void ScreenInspectWidget::saveManualRoi(const QRect& r) {
     }
     manualRoi_ = clipped;
     SETTINGS.setValue(QStringLiteral("ScreenInspect/Roi"), ScreenInspectAnalyzer::formatManualRoi(manualRoi_));
+    updateReferenceCircle();
+    refreshImageLabels();
     ui->plainTextEdit_screenInspectLog->setPlainText(
         QStringLiteral("已划定检测范围：%1,%2 %3x%4（工站步骤共用此范围）")
             .arg(manualRoi_.x())
@@ -745,6 +1024,9 @@ ScreenInspectWidget::InspectReport ScreenInspectWidget::analyze(const QImage& cu
     ap.deadDiff = p.deadDiff;
     ap.expectedColor = p.expectedColor;
     ap.manualRoi = p.manualRoi;
+    ap.refCircleCx = p.refCircleCx;
+    ap.refCircleCy = p.refCircleCy;
+    ap.refCircleR = p.refCircleR;
     const ScreenInspectAnalyzer::Report raw = ScreenInspectAnalyzer::analyze(currRgb, refRgb, ap);
 
     InspectReport report;
@@ -853,6 +1135,7 @@ QString ScreenInspectWidget::inspectDir() const {
 
 void ScreenInspectWidget::applyReferenceImage(const QImage& img, const QString& sourcePath) {
     refImage_ = img.convertToFormat(QImage::Format_RGB888);
+    updateReferenceCircle();
     refreshImageLabels();
     if (!sourcePath.isEmpty())
         SETTINGS.setValue(QStringLiteral("ScreenInspect/ReferencePath"), sourcePath);
@@ -874,5 +1157,12 @@ void ScreenInspectWidget::loadSavedReferenceIfAny() {
     if (img.isNull())
         return;
     applyReferenceImage(img, path);
+    refCircle_.cx = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCx"), -1).toInt();
+    refCircle_.cy = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCy"), -1).toInt();
+    refCircle_.r = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleR"), -1).toInt();
+    if (refCircle_.r <= 0) {
+        updateReferenceCircle();
+    }
+    refreshImageLabels();
     ui->plainTextEdit_screenInspectLog->setPlainText(QStringLiteral("已载入上次参考图：") + path);
 }

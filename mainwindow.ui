@@ -2543,31 +2543,85 @@
                      <number>4</number>
                     </property>
                     <item>
-                     <layout class="QHBoxLayout" name="horizontalLayout_deviceScreen">
-                      <item>
-                       <widget class="QPushButton" name="lcdTestButton">
-                        <property name="toolTip">
-                         <string>向设备循环下发屏幕纯色。</string>
-                        </property>
-                        <property name="text">
-                         <string>切换屏幕颜色</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item>
-                       <spacer name="horizontalSpacer_deviceScreen">
-                        <property name="orientation">
-                         <enum>Qt::Horizontal</enum>
-                        </property>
-                        <property name="sizeHint" stdset="0">
-                         <size>
-                          <width>40</width>
-                          <height>20</height>
-                         </size>
-                        </property>
-                       </spacer>
-                      </item>
-                     </layout>
+                     <widget class="QGroupBox" name="groupBox_deviceScreenControl">
+     <property name="title">
+      <string>设备连接与屏幕控制</string>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_deviceScreen">
+      <item>
+       <widget class="QPushButton" name="btnConnectDevice">
+        <property name="text">
+         <string>连接设备</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnDisconnectDevice">
+        <property name="text">
+         <string>断开连接</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_deviceConnStatus">
+        <property name="text">
+         <string>○ 设备未连接</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="Line" name="line_deviceControl">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnEnterLcdMode">
+        <property name="text">
+         <string>进入LCD模式</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnExitLcdMode">
+        <property name="text">
+         <string>退出LCD模式</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_lcdModeStatus">
+        <property name="text">
+         <string>○ 未进入LCD模式</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer_deviceScreen">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item>
+       <widget class="QPushButton" name="lcdTestButton">
+        <property name="toolTip">
+         <string>向设备循环下发屏幕纯色。</string>
+        </property>
+        <property name="text">
+         <string>循环切色</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
                     </item>
                     <item>
                      <widget class="QGroupBox" name="groupBox_screenInspectCamera">
@@ -2685,76 +2739,90 @@
                     </item>
                     <item>
                      <widget class="QGroupBox" name="groupBox_screenInspectColor">
-                      <property name="sizePolicy">
-                       <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                        <horstretch>0</horstretch>
-                        <verstretch>0</verstretch>
-                       </sizepolicy>
-                      </property>
-                      <property name="title">
-                       <string>坏点算法期望纯色（不发设备）</string>
-                      </property>
-                      <layout class="QHBoxLayout" name="horizontalLayout_color">
-                       <item>
-                        <widget class="QPushButton" name="btnColorBlue">
-                         <property name="text">
-                          <string>蓝</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QPushButton" name="btnColorGreen">
-                         <property name="text">
-                          <string>绿</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QPushButton" name="btnColorRed">
-                         <property name="text">
-                          <string>红</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QPushButton" name="btnColorWhite">
-                         <property name="text">
-                          <string>白</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QPushButton" name="btnColorBlack">
-                         <property name="text">
-                          <string>黑</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QLabel" name="label_expectedColor">
-                         <property name="text">
-                          <string>期望画面</string>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QComboBox" name="comboBox_expectedColor"/>
-                       </item>
-                       <item>
-                        <spacer name="horizontalSpacer_color">
-                         <property name="orientation">
-                          <enum>Qt::Horizontal</enum>
-                         </property>
-                         <property name="sizeHint" stdset="0">
-                          <size>
-                           <width>40</width>
-                           <height>20</height>
-                          </size>
-                         </property>
-                        </spacer>
-                       </item>
-                      </layout>
-                     </widget>
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="title">
+      <string>屏幕颜色控制（直达下发设备并联动期望）</string>
+     </property>
+     <layout class="QHBoxLayout" name="horizontalLayout_color">
+      <item>
+       <widget class="QPushButton" name="btnColorRed">
+        <property name="text">
+         <string>红</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnColorGreen">
+        <property name="text">
+         <string>绿</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnColorBlue">
+        <property name="text">
+         <string>蓝</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnColorWhite">
+        <property name="text">
+         <string>白</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnColorBlack">
+        <property name="text">
+         <string>黑</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnLcdColorGray">
+        <property name="text">
+         <string>灰</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btnLcdColorGrayBar">
+        <property name="text">
+         <string>灰度条</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="label_expectedColor">
+        <property name="text">
+         <string>期望画面</string>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QComboBox" name="comboBox_expectedColor"/>
+      </item>
+      <item>
+       <spacer name="horizontalSpacer_color">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>40</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
                     </item>
                     <item>
                      <widget class="QGroupBox" name="groupBox_screenInspectAction">
