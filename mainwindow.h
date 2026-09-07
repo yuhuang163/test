@@ -84,7 +84,10 @@ QT_END_NAMESPACE
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
+    friend class ScreenInspectWidget;
   public:
+    QatManager* dongleAt() const { return at; }
+    QProtocolManager* activeProtocolManager() { return &protocolManager; }
     /*摄像头传图部分*/
     QByteArray pictureByteArray = 0;
     int cameradatasize = 0;
