@@ -88,6 +88,7 @@ class MainWindow : public QMainWindow {
   public:
     QatManager* dongleAt() const { return at; }
     QProtocolManager* activeProtocolManager() { return &protocolManager; }
+    QString currentUiMacAddress() const;
     /*摄像头传图部分*/
     QByteArray pictureByteArray = 0;
     int cameradatasize = 0;

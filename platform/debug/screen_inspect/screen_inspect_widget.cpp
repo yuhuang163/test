@@ -631,14 +631,7 @@ void ScreenInspectWidget::connectDevice() {
         appendLog(QStringLiteral("Dongle 未就绪或不在主窗口运行"));
         return;
     }
-    QString mac;
-    if (mw->ui && mw->ui->macInput && !mw->ui->macInput->text().trimmed().isEmpty() && mw->ui->macInput->text().trimmed() != QStringLiteral("没有mac地址")) {
-        mac = mw->ui->macInput->text().trimmed();
-    } else if (mw->ui && mw->ui->mac_combo && !mw->ui->mac_combo->currentText().trimmed().isEmpty() && mw->ui->mac_combo->currentText().trimmed() != QStringLiteral("没有mac地址")) {
-        mac = mw->ui->mac_combo->currentText().trimmed();
-    } else if (!mw->macAddress.trimmed().isEmpty() && mw->macAddress.trimmed() != QStringLiteral("没有mac地址")) {
-        mac = mw->macAddress.trimmed();
-    }
+    const QString mac = mw->currentUiMacAddress();
     mw->at->resetConnected();
     mw->at->set(DongleCmd::BleScanConnect, mac);
     if (!mac.isEmpty()) {
