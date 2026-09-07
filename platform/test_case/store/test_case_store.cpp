@@ -1927,6 +1927,21 @@ int TestCaseStore::loadStationProfileVersion(const QString& stationKey) {
     return meta.value(QStringLiteral("Profile/ProfileVersion"), 0).toInt();
 }
 
+bool TestCaseStore::loadStationSkipDefaultPreInspection(const QString& stationKey) {
+    QString key = stationKey.trimmed();
+    if (key.isEmpty())
+        key = loadSelectedFlowStationKey();
+    if (key.isEmpty())
+        return false;
+    const QString metaPath = TestCasePaths::profileMetaPath(key);
+    if (!QFile::exists(metaPath))
+        return false;
+    QSettings meta(metaPath, QSettings::IniFormat);
+    applyTestCaseIniCodec(meta);
+    return meta.value(QStringLiteral("StationCustom/SkipDefaultPreInspection"), false).toBool()
+        || meta.value(QStringLiteral("Profile/SkipDefaultPreInspection"), false).toBool();
+}
+
 QString TestCaseStore::loadSelectedFlowStationName() {
     migrateLegacyFlowMetaToLocalSettings();
     QString name = SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStationName")).toString().trimmed();

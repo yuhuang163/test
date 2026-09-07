@@ -1,6 +1,7 @@
 #include "label_print_service.h"
 
 #include "qfreework.h"
+#include "bydmes.h"
 
 #include "test_case.h"
 
@@ -157,6 +158,70 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
     }
     if (hookId == QStringLiteral("MES_GET_ROOT_SKU")) {
         fw->fetchMesRootSku();
+        return;
+    }
+    if (hookId == QStringLiteral("BYD_MES_GET_UDI_FROM_SN")
+        || hookId == QStringLiteral("BYD_MES_GET_TRANSITION_CODE")
+        || hookId == QStringLiteral("BYD_MES_GET_NEW_SFC")) {
+        const QString wholeSn = fw->resolvedWholeMachineSnText().isEmpty()
+            ? fw->resolvedPcbaSnText().trimmed()
+            : fw->resolvedWholeMachineSnText();
+        if (wholeSn.isEmpty()) {
+            fw->markActiveTestCaseStepDone(false, QStringLiteral("开局整机SN为空"), QStringLiteral("失败"));
+            fw->showlog(QStringLiteral("获取 UDI 失败：开局整机 SN 为空，请先扫码"));
+            return;
+        }
+
+        QString transitionCode = fw->resolvedTransitionCode();
+        QString err;
+        if (hookId != QStringLiteral("BYD_MES_GET_NEW_SFC") || transitionCode.isEmpty()) {
+            fw->showlog(QStringLiteral("MES 请求：GetSfcKeyByValue 查过渡码，整机SN=%1").arg(wholeSn));
+            if (!bydmes::queryTransitionCodeByKeyValue(wholeSn, &transitionCode, &err)) {
+                fw->markActiveTestCaseStepDone(false, err, QStringLiteral("失败"));
+                fw->showlog(QStringLiteral("获取过渡码失败：%1").arg(err));
+                return;
+            }
+            fw->showlog(QStringLiteral("获取过渡码成功：sfc=%1").arg(transitionCode));
+            if (hookId == QStringLiteral("BYD_MES_GET_TRANSITION_CODE")) {
+                fw->setTransitionCodeAndNewSfc(transitionCode, QString());
+                fw->markActiveTestCaseStepDone(true, transitionCode, QStringLiteral("通过"));
+                return;
+            }
+        }
+
+        QString newSfc;
+        fw->showlog(QStringLiteral("MES 请求：GetOldSfcSerialze 查 newSfc，过渡码=%1").arg(transitionCode));
+        if (!bydmes::queryNewSfcByOldSfc(transitionCode, &newSfc, &err)) {
+            fw->markActiveTestCaseStepDone(false, err, QStringLiteral("失败"));
+            fw->showlog(QStringLiteral("获取 newSfc 失败：%1").arg(err));
+            return;
+        }
+        fw->showlog(QStringLiteral("获取 newSfc 成功：%1").arg(newSfc));
+        fw->setTransitionCodeAndNewSfc(transitionCode, newSfc);
+        fw->markActiveTestCaseStepDone(true, newSfc, QStringLiteral("通过"));
+        return;
+    }
+    if (hookId == QStringLiteral("BYD_MES_START_BY_NEW_SFC")) {
+        QString sfc = fw->resolvedNewSfc();
+        if (sfc.isEmpty()) {
+            sfc = fw->pack.sn.trimmed();
+        }
+        if (sfc.isEmpty()) {
+            fw->markActiveTestCaseStepDone(false, QStringLiteral("newSfc 为空"), QStringLiteral("失败"));
+            fw->showlog(QStringLiteral("站前检查失败：未找到有效 newSfc/SFC"));
+            return;
+        }
+        fw->showlog(QStringLiteral("MES 站前检查：Start，SFC=%1").arg(sfc));
+        QString err;
+        if (!bydmes::executeStartBySfc(sfc, &err)) {
+            fw->markActiveTestCaseStepDone(false, err, QStringLiteral("失败"));
+            fw->showlog(QStringLiteral("站前检查失败：%1").arg(err));
+            fw->solveMesData(fw->getIndex(), err);
+            return;
+        }
+        fw->solveMesSucess(fw->getIndex());
+        fw->showlog(QStringLiteral("站前检查通过：SFC=%1").arg(sfc));
+        fw->markActiveTestCaseStepDone(true, sfc, QStringLiteral("通过"));
         return;
     }
     if (hookId == QStringLiteral("LIGHT_SENSOR_GOLDEN_CALIB")) {

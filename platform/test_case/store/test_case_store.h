@@ -58,6 +58,8 @@ class TestCaseStore {
     static bool saveStationDeviceSideConfig(const QString& stationKey, const TestCaseDeviceSideConfig& config);
     /** profiles/{工站}/profile.ini [Profile/ProfileVersion]；stationKey 空则当前选中工站，缺失返回 0 */
     static int loadStationProfileVersion(const QString& stationKey = QString());
+    /** profiles/{工站}/profile.ini [StationCustom/SkipDefaultPreInspection] 或 [Profile/SkipDefaultPreInspection] */
+    static bool loadStationSkipDefaultPreInspection(const QString& stationKey = QString());
     static bool saveStationFlowItems(const QString& stationKey, const QVector<TestFlowItemEntry>& items,
                                      bool stopFlowOnTestFail = true);
     static bool saveStationFlowItems(const QString& stationKey, const QVector<TestFlowItemEntry>& items,

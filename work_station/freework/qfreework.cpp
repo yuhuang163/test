@@ -1080,7 +1080,7 @@ QString formatMacFrom12Hex(const QString& macRawUpper) {
 }
 
 QString parseMacFromSnXwdRule(const QString& snCode) {
-    QString sn = snCode;
+    QString sn = CommonUtils::extractSnFromUrlOrText(snCode);
     sn.remove(QRegularExpression(QStringLiteral("\\s+")));
     // 按长度选偏移（与 test_base 一致，并保留失败时另一偏移兜底）：
     // - ≤28：PCBA SN，优先 offset=4；失败再试 11
@@ -1148,6 +1148,15 @@ void QFreeWork::setWholeMachineSn(const QString& sn) {
     // 三元组整机 SN 只回填界面，供写入/校验；MES 过站 SFC 仍用开局过程码 mesProcessCode_
     if (ui && ui->getMac) {
         ui->getMac->setText(wholeMachineSn_);
+    }
+}
+
+void QFreeWork::setTransitionCodeAndNewSfc(const QString& transitionCode, const QString& newSfc) {
+    transitionCode_ = transitionCode.trimmed();
+    newSfc_ = newSfc.trimmed();
+    if (!newSfc_.isEmpty()) {
+        mesProcessCode_ = newSfc_;
+        pack.sn = newSfc_;
     }
 }
 
@@ -2952,6 +2961,8 @@ void QFreeWork::initData(bool deferDongleAtForVisa) {
     ui->battary_voltage->setText("电压为:");
     deviceTailSnFromDevice = "";
     wholeMachineSn_.clear();
+    transitionCode_.clear();
+    newSfc_.clear();
     mesProcessCode_.clear();
     pack.sku.clear();
     tupleData_ = TupleApplyResult{};
@@ -3124,9 +3135,16 @@ void QFreeWork::on_getMac_returnPressed() {
     ui->test_result->setText("WAIT");
     ui->test_result->setStyleSheet("font-size: 40px; background-color: #808080; color: black;  "
                                    "border-radius: 10px; padding: 10px; text-align: center; ");
+    const QString cleanedSn = CommonUtils::extractSnFromUrlOrText(ui->getMac->text());
+    if (!cleanedSn.isEmpty()) {
+        ui->getMac->setText(cleanedSn);
+    }
     applyAdaptiveV3ProductBySn(ui->getMac);
 
-    if (!validateSnFormat(ui->getMac->text())) {
+    const bool skipDefaultPreInspect = TestCaseStore::loadStationSkipDefaultPreInspection(activeFlowStationKey_)
+        || activeStationDisplayName().contains(QStringLiteral("恢复出厂设置"));
+
+    if (!skipDefaultPreInspect && !validateSnFormat(ui->getMac->text())) {
         ui->getMac->clear();
         return;
     }
@@ -3137,8 +3155,12 @@ void QFreeWork::on_getMac_returnPressed() {
     processGetMesTestValue(); // mes获取
     // getMac(ui->getMac->text());             // 文件获取
     if (ui->isusemes->checkState()) {
-        processInspection(ui->getMac->text());
-        appendStationResult(testItems, "MES启动", "0.0000", passValue);
+        if (!skipDefaultPreInspect) {
+            processInspection(ui->getMac->text());
+            appendStationResult(testItems, "MES启动", "0.0000", passValue);
+        } else {
+            showlog(QStringLiteral("本工站已启用自定义 MES 工步，跳过开局整机 SN 站前检查"));
+        }
     }
 }
 
