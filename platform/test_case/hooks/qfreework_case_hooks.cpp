@@ -179,6 +179,7 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
             if (!bydmes::queryTransitionCodeByKeyValue(wholeSn, &transitionCode, &err)) {
                 fw->markActiveTestCaseStepDone(false, err, QStringLiteral("失败"));
                 fw->showlog(QStringLiteral("获取过渡码失败：%1").arg(err));
+                fw->solveMesData(fw->getIndex(), err);
                 return;
             }
             fw->showlog(QStringLiteral("获取过渡码成功：sfc=%1").arg(transitionCode));
@@ -194,6 +195,7 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         if (!bydmes::queryNewSfcByOldSfc(transitionCode, &newSfc, &err)) {
             fw->markActiveTestCaseStepDone(false, err, QStringLiteral("失败"));
             fw->showlog(QStringLiteral("获取 newSfc 失败：%1").arg(err));
+            fw->solveMesData(fw->getIndex(), err);
             return;
         }
         fw->showlog(QStringLiteral("获取 newSfc 成功：%1").arg(newSfc));

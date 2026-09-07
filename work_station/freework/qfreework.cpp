@@ -3141,8 +3141,7 @@ void QFreeWork::on_getMac_returnPressed() {
     }
     applyAdaptiveV3ProductBySn(ui->getMac);
 
-    const bool skipDefaultPreInspect = TestCaseStore::loadStationSkipDefaultPreInspection(activeFlowStationKey_)
-        || activeFlowStationKey_.contains(QStringLiteral("恢复出厂设置"));
+    const bool skipDefaultPreInspect = TestCaseStore::loadStationSkipDefaultPreInspection(activeFlowStationKey_);
 
     if (!skipDefaultPreInspect && !validateSnFormat(ui->getMac->text())) {
         ui->getMac->clear();

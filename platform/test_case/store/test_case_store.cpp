@@ -1939,6 +1939,7 @@ bool TestCaseStore::loadStationSkipDefaultPreInspection(const QString& stationKe
     QSettings meta(metaPath, QSettings::IniFormat);
     applyTestCaseIniCodec(meta);
     return meta.value(QStringLiteral("StationCustom/SkipDefaultPreInspection"), false).toBool()
+        || meta.value(QStringLiteral("Station/SkipDefaultPreInspection"), false).toBool()
         || meta.value(QStringLiteral("Profile/SkipDefaultPreInspection"), false).toBool();
 }
 
