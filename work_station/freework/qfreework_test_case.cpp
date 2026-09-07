@@ -1781,7 +1781,10 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
         ctx->waitWork(def.timing.delayBeforeMs);
 
     if (def.hook.enabled) {
-        TestCaseHookRegistry::invoke(def.hook.hookId, ctx);
+        if (!TestCaseHookRegistry::invoke(def.hook.hookId, ctx)) {
+            ctx->showlog(QStringLiteral("Hook [%1] 执行失败：未找到已注册的处理函数").arg(def.hook.hookId));
+            ctx->markActiveTestCaseStepDone(false, QStringLiteral("未注册Hook: %1").arg(def.hook.hookId), QStringLiteral("失败"));
+        }
         return;
     }
 

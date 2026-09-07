@@ -1749,6 +1749,10 @@ const QHash<QString, QString>& hookDisplayNameMap() {
         {QStringLiteral("FREE_INSTR_CMW_GPRF_2402_2M"), QStringLiteral("并联 CMW 播放 2402 BLE2M")},
         {QStringLiteral("FREE_INSTR_CMW_GPRF_2440_2M"), QStringLiteral("并联 CMW 播放 2440 BLE2M")},
         {QStringLiteral("FREE_INSTR_CMW_GPRF_2480_2M"), QStringLiteral("并联 CMW 播放 2480 BLE2M")},
+        {QStringLiteral("BYD_MES_GET_UDI_FROM_SN"), QStringLiteral("BYD MES 获取过渡码与UDI(newSfc)")},
+        {QStringLiteral("BYD_MES_GET_TRANSITION_CODE"), QStringLiteral("BYD MES 通过整机SN获取过渡码")},
+        {QStringLiteral("BYD_MES_GET_NEW_SFC"), QStringLiteral("BYD MES 通过过渡码获取 newSfc")},
+        {QStringLiteral("BYD_MES_START_BY_NEW_SFC"), QStringLiteral("BYD MES 使用 newSfc 进行站前检查")},
     };
     return map;
 }

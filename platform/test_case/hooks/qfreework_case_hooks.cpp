@@ -499,6 +499,10 @@ void QFreeWorkTestCaseHookRegistrar::registerAll() {
     registerDispatchHook(QStringLiteral("FREE_INSTR_CMW_GPRF_P4"));
     registerDispatchHook(QStringLiteral("FREE_INSTR_CMW_GPRF_P5"));
     registerDispatchHook(QStringLiteral("PROD_INST_STOP_RX_PER"));
+    registerDispatchHook(QStringLiteral("BYD_MES_GET_UDI_FROM_SN"));
+    registerDispatchHook(QStringLiteral("BYD_MES_GET_TRANSITION_CODE"));
+    registerDispatchHook(QStringLiteral("BYD_MES_GET_NEW_SFC"));
+    registerDispatchHook(QStringLiteral("BYD_MES_START_BY_NEW_SFC"));
 }
 
 void registerQFreeWorkCatalogTestCaseHooks() {
