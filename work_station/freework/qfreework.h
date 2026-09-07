@@ -121,6 +121,9 @@ class QFreeWork : public test_base {
     /** 本地整机 SN（三元组申请等写入，可扩展其它来源） */
     QString resolvedWholeMachineSnText() const;
     void setWholeMachineSn(const QString& sn);
+    QString resolvedTransitionCode() const { return transitionCode_; }
+    QString resolvedNewSfc() const { return newSfc_; }
+    void setTransitionCodeAndNewSfc(const QString& transitionCode, const QString& newSfc);
     QString resolveTestCaseSendPlaceholder(const QString& text) const;
     QVariant resolveTestCaseSendParamTree(const QVariant& param) const;
     bool prepareTupleProductWriteForTestCase(const TestCaseDefinition& def, DeviceCmd cmd, const QVariant& wireParam);
@@ -152,6 +155,8 @@ class QFreeWork : public test_base {
     QString snBinding;
     QString deviceTailSnFromDevice = "";
     QString wholeMachineSn_;
+    QString transitionCode_;
+    QString newSfc_;
     /** BYD 开局扫码过程码：MES Start/Complete/AddSfcKey 的 SFC；勿被 MES 主板 SN / 三元组整机 SN 冲掉 */
     QString mesProcessCode_;
     QString macAddress = "没有mac地址";
