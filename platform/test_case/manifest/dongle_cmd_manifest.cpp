@@ -35,11 +35,11 @@ const Row kRows[] = {
     {DongleCmd::SetSuctionOsr, "SetSuctionOsr", u8"吸力 OSR 档位", DeviceCmdParamKind::Int,
      u8"AT+SUCTIONOSR=1..4\n1=1024X/8ms 2=2048X/10ms 3=4096X/11ms 4=8192X/16ms（默认）", kSet},
     {DongleCmd::SampleSuctionDual, "SampleSuctionDual", u8"采集双通道吸力", DeviceCmdParamKind::JsonMap,
-     u8"可选：sampleDurationMs/IntervalMs；峰识别 peakBaselineKpa/peakDipStartKpa；minPeakCount 最少完整周期峰数（默认3）；offsetKpa 吸力修正（最终=原始+修正）\r\n"
+     u8"可选：sampleDurationMs/IntervalMs；峰识别 peakBaselineKpa/peakDipStartKpa；minPeakCount 最少完整周期峰数（默认3）；offsetKpa 吸力修正（最终=原始+修正）；showCurveInTable（结果表格嵌入吸力曲线图，默认true）\r\n"
      u8"判定：CH1/CH2 各自完整「吸→回基线」周期峰；Gate 配 ch1PeakKpa/ch2PeakKpa/sideDiffKpa（可加 peakCount）",
      kGet, "ProtocolDongleSuctionPeakData", "peakKpa"},
     {DongleCmd::SampleSuctionSingle, "SampleSuctionSingle", u8"采集单通道吸力", DeviceCmdParamKind::JsonMap,
-     u8"可选：channel=1|2|3、sampleDurationMs/IntervalMs；峰识别 peakBaselineKpa/peakDipStartKpa；minPeakCount（默认3）；offsetKpa 吸力修正（最终=原始+修正）\r\n"
+     u8"可选：channel=1|2|3、sampleDurationMs/IntervalMs；峰识别 peakBaselineKpa/peakDipStartKpa；minPeakCount（默认3）；offsetKpa 吸力修正（最终=原始+修正）；showCurveInTable（结果表格嵌入吸力曲线图，默认true）\r\n"
      u8"Gate：peakKpa=各周期峰值均须在范围内；peakDiffKpa=最大峰值-最小峰值；可卡 peakCount",
      kGet, "ProtocolDongleSuctionPeakData", "peakKpa"},
     {DongleCmd::AdcSwitch, "AdcSwitch", u8"高量程采样开关", DeviceCmdParamKind::Int, u8"0=关 1=开（AT+HSADC）", kSet},
