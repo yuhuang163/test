@@ -253,7 +253,25 @@ bool sendAndCollectXwdReadOnceReply(SerialChannel* channel, QSerialPort* port, c
     return true;
 }
 
-bool ensureJieliBtBoxProductUartOpen(QFreeWork* ctx, QString* errorMessage) {
+static int resolveJieliBtBoxBaudRate(const QFreeWork* ctx, const QVariant& sendParam) {
+    constexpr int kDefaultBaud = 460800;
+    if (!ctx || !sendParam.canConvert<QVariantMap>())
+        return kDefaultBaud;
+    const QVariantMap map = ctx->resolveTestCaseSendParamTree(sendParam).toMap();
+    static const char* kKeys[] = {"baudRate", "BaudRate", "baud"};
+    for (const char* key : kKeys) {
+        const QString qkey = QString::fromLatin1(key);
+        if (!map.contains(qkey))
+            continue;
+        bool ok = false;
+        const int baud = map.value(qkey).toInt(&ok);
+        if (ok && baud > 0)
+            return baud;
+    }
+    return kDefaultBaud;
+}
+
+bool ensureJieliBtBoxProductUartOpen(QFreeWork* ctx, int baudRate, QString* errorMessage) {
     if (!ctx) {
         if (errorMessage)
             *errorMessage = QStringLiteral("工站上下文无效");
@@ -272,8 +290,11 @@ bool ensureJieliBtBoxProductUartOpen(QFreeWork* ctx, QString* errorMessage) {
         return false;
     }
 
-    // 杰理盒子固定 460800（可用 SETTINGS 覆盖）
-    const int baudRate = SETTINGS.value(QStringLiteral("JieliBtBox/BaudRate"), 460800).toInt();
+    if (baudRate <= 0) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("步骤 Param_baudRate 无效");
+        return false;
+    }
     if (ctx->productBaudRate != baudRate) {
         ctx->productBaudRate = baudRate;
         if (ctx->productSerialPort && ctx->productSerialPort->isOpen())
@@ -3036,8 +3057,9 @@ void QFreeWork::executeFixtureJieliBtBoxCase(const TestCaseDefinition& def) {
         return;
     }
 
+    const int baudRate = resolveJieliBtBoxBaudRate(this, def.send.param);
     QString errStr;
-    if (!ensureJieliBtBoxProductUartOpen(this, &errStr)) {
+    if (!ensureJieliBtBoxProductUartOpen(this, baudRate, &errStr)) {
         showlog(errStr);
         markActiveTestCaseStepDone(false, QStringLiteral("串口未连接"), QStringLiteral("失败"));
         return;
@@ -3055,8 +3077,9 @@ void QFreeWork::executeFixtureJieliBtBoxCase(const TestCaseDefinition& def) {
         timeoutMs = 3000;
 
     const QString portName = getProductcomNameCombo() ? getProductcomNameCombo()->currentText().trimmed() : QString();
-    showlog(QStringLiteral("等待杰理蓝牙盒子频偏/RSSI（产品串口 %1，超时 %2ms）")
+    showlog(QStringLiteral("等待杰理蓝牙盒子频偏/RSSI（产品串口 %1 @ %2，超时 %3ms）")
                 .arg(portName.isEmpty() ? QStringLiteral("-") : portName)
+                .arg(baudRate)
                 .arg(timeoutMs));
     JieliBtBoxRfInfo info;
     if (!JieliBtBoxDevice::waitForRfInfo(productSerialChannel_, timeoutMs, &info, &errStr)) {

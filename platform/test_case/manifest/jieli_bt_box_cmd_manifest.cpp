@@ -7,9 +7,10 @@ using JieliBtBoxCmdManifest::Row;
 constexpr uint8_t kGet = TestCaseCmdManifest::kSendActionGet;
 
 const Row kRows[] = {
-    {JieliBtBoxCmd::WaitRfInfo, "WaitRfInfo", u8"等待频偏与RSSI上报", DeviceCmdParamKind::None,
-     u8"走工位「产品串口(仪器)」：上电后等待杰理盒子 TLV 上报，解析 T=7 频偏、T=8 RSSI（小端 int32）", kGet,
-     "ProtocolJieliBtBoxData", "rssi"},
+    {JieliBtBoxCmd::WaitRfInfo, "WaitRfInfo", u8"等待频偏与RSSI上报", DeviceCmdParamKind::JsonMap,
+     u8"走工位「产品串口(仪器)」：上电后等待杰理盒子 TLV 上报，解析 T=7 频偏、T=8 RSSI（小端 int32）\r\n"
+     u8"Param_baudRate 产品串口波特率（默认 460800）",
+     kGet, "ProtocolJieliBtBoxData", "rssi"},
 };
 
 } // namespace
