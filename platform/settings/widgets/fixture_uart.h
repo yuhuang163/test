@@ -85,6 +85,7 @@ class Fixture_uart : public QWidget {
     void onManagerDisconnected();
     void onManagerError(int error, const QString& message);
 
+    void on_FixturecomNameCombo_currentTextChanged(const QString& text);
     void on_plcDeviceCombo_currentIndexChanged(int index);
     void on_plcComPortCombo_currentTextChanged(const QString& text);
     void on_plcBaudRateCombo_currentTextChanged(const QString& text);

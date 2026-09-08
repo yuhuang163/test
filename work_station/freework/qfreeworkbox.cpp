@@ -37,16 +37,8 @@ QFreeWorkBox::QFreeWorkBox(QWidget* parent) : box_base(parent), ui(new Ui::QFree
         if (Fixture_uart_ui == nullptr) {
             Fixture_uart_ui = new Fixture_uart;
             connect(Fixture_uart_ui, SIGNAL(send_data_to_mechine_start()), this, SLOT(startTest()));
-            // Fixture_uart_ui->fixBaudRate = 115200;
-
-            QString masterFixturecomName = SETTINGS.value(QString("mechine/0/masterFixturecomName")).toString();
-            Fixture_uart_ui->ui->FixturecomNameCombo->setCurrentText(masterFixturecomName);
         } else {
             Fixture_uart_ui->reloadStationConfig();
-            QString masterFixturecomName = SETTINGS.value(QString("mechine/0/masterFixturecomName")).toString();
-            if (!masterFixturecomName.isEmpty()) {
-                Fixture_uart_ui->ui->FixturecomNameCombo->setCurrentText(masterFixturecomName);
-            }
         }
         Fixture_uart_ui->raise();
         Fixture_uart_ui->show();
@@ -77,6 +69,19 @@ QString QFreeWorkBox::resolvedFixtureComName(int stationIndex) {
     const auto readPort = [](const QString& key) -> QString {
         return SETTINGS.value(key).toString().trimmed();
     };
+
+    const QString stationKey = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationKey());
+    if (!stationKey.isEmpty()) {
+        const QString flowPath = TestCasePaths::profileFlowPath(stationKey);
+        if (QFile::exists(flowPath)) {
+            QSettings flowSettings(flowPath, QSettings::IniFormat);
+            flowSettings.setIniCodec("UTF-8");
+            const QString flowPort = flowSettings.value(QStringLiteral("PreStart_Monitor/FixtureComPort")).toString().trimmed();
+            if (!flowPort.isEmpty())
+                return flowPort;
+        }
+    }
+
     QString port = readPort(QStringLiteral("mechine/%1/masterFixturecomName").arg(stationIndex));
     if (!port.isEmpty())
         return port;

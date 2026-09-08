@@ -122,6 +122,7 @@ void Fixture_uart::loadPreStartMonitorConfig() {
     const QString flowPath = TestCasePaths::profileFlowPath(stationKey);
     updateWindowTitleWithStation();
 
+    ui->FixturecomNameCombo->blockSignals(true);
     ui->plcDeviceCombo->blockSignals(true);
     ui->plcComPortCombo->blockSignals(true);
     ui->plcBaudRateCombo->blockSignals(true);
@@ -135,11 +136,26 @@ void Fixture_uart::loadPreStartMonitorConfig() {
     settings.setIniCodec("UTF-8");
     settings.beginGroup(QStringLiteral("PreStart_Monitor"));
 
+    QString fixtureCom = settings.value(QStringLiteral("FixtureComPort")).toString().trimmed();
+    if (fixtureCom.isEmpty()) {
+        fixtureCom = SETTINGS.value(QStringLiteral("mechine/0/masterFixturecomName")).toString().trimmed();
+    }
+    if (!fixtureCom.isEmpty()) {
+        ui->FixturecomNameCombo->setEditText(fixtureCom);
+        if (ui->FixturecomNameCombo->findText(fixtureCom) >= 0) {
+            ui->FixturecomNameCombo->setCurrentText(fixtureCom);
+        }
+    }
+
     const QString dev = settings.value(QStringLiteral("PlcDevice"), QStringLiteral("XinjiePlcRtu")).toString();
     int idx = ui->plcDeviceCombo->findData(dev);
     ui->plcDeviceCombo->setCurrentIndex(idx >= 0 ? idx : 0);
 
-    const QString comPort = settings.value(QStringLiteral("PlcComPort")).toString();
+    QString comPort = settings.value(QStringLiteral("PlcComPort")).toString().trimmed();
+    if (comPort.isEmpty()) {
+        comPort = SETTINGS.value(QStringLiteral("XINJE_PLC/ComPort"),
+                  SETTINGS.value(QStringLiteral("PreStart_Monitor/PlcComPort"), QString())).toString().trimmed();
+    }
     ui->plcComPortCombo->setEditText(comPort);
     if (ui->plcComPortCombo->findText(comPort) >= 0) {
         ui->plcComPortCombo->setCurrentText(comPort);
@@ -163,9 +179,12 @@ void Fixture_uart::loadPreStartMonitorConfig() {
     const QString scannerIp = settings.value(QStringLiteral("ScannerIp"), QStringLiteral("192.168.1.64")).toString().trimmed();
     ui->scannerIpLineEdit->setText(scannerIp.isEmpty() ? QStringLiteral("192.168.1.64") : scannerIp);
     ui->scannerPortSpinBox->setValue(settings.value(QStringLiteral("ScannerPort"), 2001).toInt());
-    const bool missingScannerIp = !settings.contains(QStringLiteral("ScannerIp"));
+    const bool missingAny = !settings.contains(QStringLiteral("ScannerIp")) ||
+                            !settings.contains(QStringLiteral("PlcComPort")) ||
+                            !settings.contains(QStringLiteral("FixtureComPort"));
     settings.endGroup();
 
+    ui->FixturecomNameCombo->blockSignals(false);
     ui->plcDeviceCombo->blockSignals(false);
     ui->plcComPortCombo->blockSignals(false);
     ui->plcBaudRateCombo->blockSignals(false);
@@ -178,7 +197,7 @@ void Fixture_uart::loadPreStartMonitorConfig() {
     updateDeviceFieldsVisibility();
     isConfigLoading_ = false;
 
-    if (missingScannerIp && !flowPath.isEmpty()) {
+    if (missingAny && !flowPath.isEmpty()) {
         savePreStartMonitorConfig();
     }
 }
@@ -199,6 +218,12 @@ void Fixture_uart::savePreStartMonitorConfig() {
     settings.beginGroup(QStringLiteral("PreStart_Monitor"));
     if (!settings.contains(QStringLiteral("Enabled"))) {
         settings.setValue(QStringLiteral("Enabled"), true);
+    }
+    const QString fixturePort = ui->FixturecomNameCombo->currentText().trimmed();
+    settings.setValue(QStringLiteral("FixtureComPort"), fixturePort);
+    if (!fixturePort.isEmpty()) {
+        SETTINGS.setValue(QStringLiteral("mechine/0/masterFixturecomName"), fixturePort);
+        SETTINGS.sync();
     }
     settings.setValue(QStringLiteral("PlcDevice"), ui->plcDeviceCombo->currentData().toString());
     settings.setValue(QStringLiteral("PlcComPort"), ui->plcComPortCombo->currentText().trimmed());
@@ -227,6 +252,10 @@ void Fixture_uart::savePreStartMonitorConfig() {
             }
         }
     }
+}
+
+void Fixture_uart::on_FixturecomNameCombo_currentTextChanged(const QString&) {
+    savePreStartMonitorConfig();
 }
 
 void Fixture_uart::on_plcDeviceCombo_currentIndexChanged(int) {
