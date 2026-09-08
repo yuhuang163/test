@@ -27,6 +27,7 @@ struct ScreenCircle {
 };
 
 ScreenCircle detectScreenCircle(const QImage& rgb, const QRect& roi = QRect());
+QRect detectScreenRoi(const QImage& rgb);
 
 struct Params {
     int deadDiff = 35;

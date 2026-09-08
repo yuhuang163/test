@@ -164,10 +164,6 @@ ScreenCircle detectScreenCircle(const QImage& rgb, const QRect& roi) {
     return c;
 }
 
-} // namespace ScreenInspectAnalyzer
-
-namespace {
-
 /** 屏幕 ROI：取偏亮区域包围盒，避免桌面背景把 SSIM 拉低。 */
 QRect detectScreenRoi(const QImage& rgb) {
     const QImage img = toRgb888(rgb);
@@ -218,6 +214,10 @@ QRect detectScreenRoi(const QImage& rgb) {
     const int my = qMax(2, (y1 - y0) / 25);
     return QRect(x0 + mx, y0 + my, (x1 - x0 + 1) - 2 * mx, (y1 - y0 + 1) - 2 * my).intersected(QRect(0, 0, w, h));
 }
+
+} // namespace ScreenInspectAnalyzer
+
+namespace {
 
 double ssimOnGray(const QVector<quint8>& a, const QVector<quint8>& b, int w, int h) {
     if (a.size() != b.size() || w < 8 || h < 8)
