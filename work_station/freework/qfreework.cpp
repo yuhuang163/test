@@ -828,7 +828,7 @@ void QFreeWork::updatePreStartMonitorState() {
         }
         if (plcDev.isEmpty()) {
             const QString comCheck = settings.value(QStringLiteral("PlcComPort"), settings.value(QStringLiteral("ComPort"))).toString().trimmed();
-            if (!comCheck.isEmpty() || SETTINGS.contains(QStringLiteral("XINJE_PLC/ComPort"))
+            if (!comCheck.isEmpty() || !SETTINGS.value(QStringLiteral("XINJE_PLC/ComPort")).toString().trimmed().isEmpty()
                 || activeFlowStationKey_.contains(QStringLiteral("半成品"))
                 || activeFlowStationKey_.contains(QStringLiteral("组装"))
                 || activeFlowStationKey_.contains(QStringLiteral("Wellness"), Qt::CaseInsensitive)) {

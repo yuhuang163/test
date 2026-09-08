@@ -1986,7 +1986,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                                 ? GateRegistry::formatStepDisplay(gatesForEval.first(), gatesForEval,
                                                                  QStringLiteral("ProtocolMeasureData"),
                                                                  QVariant::fromValue(measureData), gatesForEval.size() > 1)
-                                : GateStepDisplay{detail, QStringLiteral("1"), true};
+                                : GateStepDisplay{detail, QStringLiteral("1")};
                             if (display.testData.isEmpty())
                                 display.testData = detail;
                             ctx->markActiveTestCaseStepDone(true, display.testData, display.ask);
