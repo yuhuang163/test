@@ -280,7 +280,13 @@ bool copyDirectoryRecursively(const QString& srcDir, const QString& dstDir) {
     return true;
 }
 
-void ensureProfileDirectory(const QString& stationKey, const QString& displayName, const QString& createdFrom) {
+inline void ensureProfileDirectory(const QString& stationKey, const QString& displayName, const QString& createdFrom) {
+    TestCaseStore::ensureProfileDirectory(stationKey, displayName, createdFrom);
+}
+
+} // namespace
+
+void TestCaseStore::ensureProfileDirectory(const QString& stationKey, const QString& displayName, const QString& createdFrom) {
     const QString key = stationKey.trimmed();
     if (key.isEmpty())
         return;
@@ -310,8 +316,6 @@ void ensureProfileDirectory(const QString& stationKey, const QString& displayNam
         }
     }
 }
-
-} // namespace
 
 QVector<TestFlowStationEntry> TestCaseStore::defaultFlowStationPresets() {
     return builtinFlowStationPresets();
