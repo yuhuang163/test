@@ -189,6 +189,10 @@ constexpr const char kHintFacMode[] =
 constexpr const char kHintSuctionMode[] =
     u8"FCTP 吸力测试模式：enter=1 进入，0 退出\r\n示例：Param_enter=1 或 {\"enter\":1}\r\n"
     u8"注意：Qroot 开泵档位请改用「吸力测试(档位)」+ switch/mode/level";
+constexpr const char kHintCompensationSet[] =
+    u8"Qfctp 测试服务 TLV 0x000D：enable/on/enter=1 开启，0 关闭\r\n"
+    u8"示例：Param_enable=1 或 Param_on=0\r\n"
+    u8"Qaiot：吸力补偿模式 Type=0x04，Param_on=1/0";
 constexpr const char kHintBtRfMode[] =
     u8"蓝牙 RF 测试模式开关：Param_enter 或 Param_on，1=开/进入，0=关/退出\r\n"
     u8"示例：进入 Param_enter=1；退出 Param_enter=0（或 Param_on=1/0）\r\n"
@@ -334,7 +338,8 @@ const Row kRows[] = {
     {DeviceCmd::LightReportControl, "LightReportControl", u8"光感上报控制", DeviceCmdParamKind::JsonMap,
      u8"Qfctp 测试服务 TLV 0x001D：start=1 开启上报 / start=0 关闭\r\n示例：Param_start=1", kSet},
     {DeviceCmd::LightCalibWrite, "LightCalibWrite", u8"传感器校准写入", DeviceCmdParamKind::JsonMap, kHintLightCalibWrite, kSet},
-    {DeviceCmd::CompensationSet, "CompensationSet", u8"补偿参数", DeviceCmdParamKind::None, nullptr, kSet},
+    {DeviceCmd::CompensationSet, "CompensationSet", u8"吸力补偿(开/关)", DeviceCmdParamKind::JsonMap,
+     kHintCompensationSet, kSet},
     {DeviceCmd::NowMusicInfo, "NowMusicInfo", u8"当前音乐信息", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::SdCardInfo, "SdCardInfo", u8"存储卡信息", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::LightSensorInfo, "LightSensorInfo", u8"环境光传感器信息", DeviceCmdParamKind::None, nullptr, kGet},

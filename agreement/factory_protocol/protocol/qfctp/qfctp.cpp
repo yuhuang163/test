@@ -991,6 +991,8 @@ bool Qfctp::setCaseAgingExit() {
 
 /** enter / on / value：1=进入/开，0=退出/关；缺省按进入(1)，避免旧 None 参数空 map 误发 00 */
 static uint8_t fctpEnterOnFlag(const QVariantMap& map) {
+    if (map.contains(QStringLiteral("enable")))
+        return map.value(QStringLiteral("enable")).toInt() != 0 ? 1u : 0u;
     if (map.contains(QStringLiteral("enter")))
         return map.value(QStringLiteral("enter")).toInt() != 0 ? 1u : 0u;
     if (map.contains(QStringLiteral("on")))
@@ -1131,8 +1133,9 @@ bool Qfctp::getCaseMacRead() {
 }
 
 bool Qfctp::setCaseCompensationSet(const QVariantMap& map) {
-    const uint8_t v = map.value("enable").toInt() != 0 ? 1u : 0u;
-    return sendTestsServiceTlv(kTlvCompensationSet, QByteArray(1, static_cast<char>(v)), "吸力补偿开关");
+    const uint8_t v = fctpEnterOnFlag(map);
+    return sendTestsServiceTlv(kTlvCompensationSet, QByteArray(1, static_cast<char>(v)),
+                               v ? "开启吸力补偿" : "关闭吸力补偿");
 }
 
 bool Qfctp::setCaseLcdColorTestMode(const QVariantMap& map) {
