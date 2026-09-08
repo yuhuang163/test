@@ -923,6 +923,7 @@ void MainWindow::initQaiotFeatureButtons() {
                {QStringLiteral("吸力模式"), 3},
                {QStringLiteral("吸力补偿"), 4},
                {QStringLiteral("ATE模式"), 5},
+               {QStringLiteral("单机模式"), 6},
                {QStringLiteral("空闲模式"), 0}});
     fillCombo(ui->qaiot_sim_key,
               {{QStringLiteral("电源"), 0x01},
@@ -942,7 +943,8 @@ void MainWindow::initQaiotFeatureButtons() {
                {QStringLiteral("老化(2)"), 2},
                {QStringLiteral("吸力(3)"), 3},
                {QStringLiteral("补偿(4)"), 4},
-               {QStringLiteral("ATE(5)"), 5}},
+               {QStringLiteral("ATE(5)"), 5},
+               {QStringLiteral("单机(6)"), 6}},
               2);
     fillCombo(ui->qaiot_cycle_type,
               {{QStringLiteral("IMU(0)"), 0},

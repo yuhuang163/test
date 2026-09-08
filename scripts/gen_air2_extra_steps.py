@@ -272,6 +272,30 @@ def main() -> None:
             ),
         ),
         (
+            "进入单机模式",
+            dict(
+                action="Set",
+                cmd="FacMode",
+                params={"mode": "6", "on": "1"},
+                delay_after=300,
+                mes="FREEMAN_MODE_ON",
+            ),
+        ),
+        (
+            "读取单机模式状态",
+            dict(action="Get", cmd="AgingStatusRead", params={"mode": "6"}, mes="FREEMAN_MODE_STATUS"),
+        ),
+        (
+            "退出单机模式",
+            dict(
+                action="Set",
+                cmd="FacMode",
+                params={"mode": "6", "on": "0"},
+                delay_after=300,
+                mes="FREEMAN_MODE_OFF",
+            ),
+        ),
+        (
             "读取吸力测试模式状态",
             dict(
                 action="Get",
@@ -335,6 +359,9 @@ def main() -> None:
         "进入ATE模式",
         "读取ATE模式状态",
         "退出ATE模式",
+        "进入单机模式",
+        "读取单机模式状态",
+        "退出单机模式",
     ]
 
     raw = FLOW.read_bytes().decode("utf-8")

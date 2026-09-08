@@ -106,8 +106,8 @@ constexpr const char kHintCycleReportWrite[] =
     u8"被动上报 CID=0x19：ReportType=ProtocolAiotCycleReportData Field=dataType/accX/…\r\n"
     u8"卡控配置回包：ReportType=ProtocolAiotCycleReportConfigData Field=enable/dataType/intervalTime";
 constexpr const char kHintAgingStatusRead[] =
-    u8"Qaiot CID=0x01 读工厂模式：Param_mode=0~5（默认 2 老化）\r\n"
-    u8"0 idle / 1 factory / 2 aging / 3 suction / 4 compensate / 5 ate\r\n"
+    u8"Qaiot CID=0x01 读工厂模式：Param_mode=0~6（默认 2 老化）\r\n"
+    u8"0 idle / 1 factory / 2 aging / 3 suction / 4 compensate / 5 ate / 6 freeman\r\n"
     u8"老化(mode=2) Ack 0x23 可为 18B：使能+完成+双温+堵转次数(2)+阈值(2)+电流×5\r\n"
     u8"卡控/显示：ReportType=ProtocolRootAgingHistoryData\r\n"
     u8"Field=status/finishedFlag/batteryMaxTempC/flangeMaxTempC/stallCount/stallThreshold/stallCurrent0~4";
@@ -184,7 +184,7 @@ constexpr const char kHintBurningMode[] =
 constexpr const char kHintSleep[] = u8"休眠：switch=1 进入，0 退出\r\n示例：{\"switch\":1}";
 constexpr const char kHintFacMode[] =
     u8"工厂模式：Param_on/value=1 进入 0 退出；Param_mode 模式类型\r\n"
-    u8"0 idle / 1 factory_test / 2 aging / 3 suction / 4 suction_compensate / 5 ate\r\n"
+    u8"0 idle / 1 factory_test / 2 aging / 3 suction / 4 suction_compensate / 5 ate / 6 freeman\r\n"
     u8"示例：Param_mode=1 Param_on=1";
 constexpr const char kHintSuctionMode[] =
     u8"FCTP 吸力测试模式：enter=1 进入，0 退出\r\n示例：Param_enter=1 或 {\"enter\":1}\r\n"
@@ -192,7 +192,7 @@ constexpr const char kHintSuctionMode[] =
 constexpr const char kHintCompensationSet[] =
     u8"Qfctp 测试服务 TLV 0x000D：enable/on/enter=1 开启，0 关闭\r\n"
     u8"示例：Param_enable=1 或 Param_on=0\r\n"
-    u8"Qaiot：吸力补偿模式 Type=0x04，Param_on=1/0";
+    u8"Qaiot：吸力补偿模式 Type=0x04，Param_enable/on=1/0";
 constexpr const char kHintBtRfMode[] =
     u8"蓝牙 RF 测试模式开关：Param_enter 或 Param_on，1=开/进入，0=关/退出\r\n"
     u8"示例：进入 Param_enter=1；退出 Param_enter=0（或 Param_on=1/0）\r\n"
@@ -439,7 +439,11 @@ QVariant normalizeSendParam(DeviceCmd cmd, const QVariant& param) {
 
     switch (cmd) {
     case DeviceCmd::ForbidSleep:
+        return jsonMapIntValue(map, 1);
     case DeviceCmd::FacMode:
+        // 含 Param_mode 时须保留 map（Qaiot 多工厂模式 type）；仅 on/value 时仍兼容 Qpb/Qfctp 的 int
+        if (map.contains(QStringLiteral("mode")))
+            return map;
         return jsonMapIntValue(map, 1);
     case DeviceCmd::FacResult: {
         if (map.contains(QStringLiteral("done")))

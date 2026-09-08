@@ -597,6 +597,8 @@ QString fctModeName(quint8 mode) {
         return QStringLiteral("吸力补偿模式");
     case AiotLink::kFctModeAte:
         return QStringLiteral("ATE自动化测试模式");
+    case AiotLink::kFctModeFreeman:
+        return QStringLiteral("单机模式");
     default:
         return QStringLiteral("模式0x%1").arg(mode, 2, 16, QChar('0'));
     }
@@ -1666,7 +1668,11 @@ void Qaiot::set(DeviceCmd cmd, const QVariant& data) {
     }
     case DeviceCmd::CompensationSet: {
         // 吸力补偿模式 Type=0x04
-        const int enable = map.value(QStringLiteral("on"), map.value(QStringLiteral("switch"), map.value(QStringLiteral("value"), 1))).toInt();
+        const int enable = map.value(QStringLiteral("enable"),
+                                     map.value(QStringLiteral("on"),
+                                               map.value(QStringLiteral("switch"),
+                                                         map.value(QStringLiteral("value"), 1))))
+                               .toInt();
         QList<TlvNode> modeChildren;
         modeChildren.append(makeLeaf(AiotLink::kFctGetTlvModeType, u8(AiotLink::kFctModeSuctionCompensate)));
         modeChildren.append(makeLeaf(AiotLink::kFctGetTlvModeStatus, u8(enable ? 0x01 : 0x00)));

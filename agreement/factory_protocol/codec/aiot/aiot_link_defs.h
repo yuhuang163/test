@@ -179,6 +179,7 @@ constexpr uint8_t kFctModeAging = 0x02;
 constexpr uint8_t kFctModeSuction = 0x03;
 constexpr uint8_t kFctModeSuctionCompensate = 0x04;
 constexpr uint8_t kFctModeAte = 0x05;
+constexpr uint8_t kFctModeFreeman = 0x06; // 单机模式，可与 factory/aging/ate 等并存
 
 /** 通用错误码 Type */
 constexpr uint8_t kTlvErrorCode = 127;
