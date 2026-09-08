@@ -548,6 +548,7 @@ HEADERS += \
     work_station/camera/cameratest.h \
     work_station/freework/qfreework.h \
     work_station/freework/qfreeworkbox.h \
+    work_station/freework/pre_start_monitor_config.h \
     work_station/freework/shared_instrument.h \
     agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp.h \
     agreement/modbus_protocol/device/hikvision_scanner/hikvision_scanner_tcp.h \
