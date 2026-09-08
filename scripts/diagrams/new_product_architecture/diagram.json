@@ -1,0 +1,667 @@
+{
+  "version": 2,
+  "nodes": [
+    {
+      "type": "frame",
+      "id": "root",
+      "x": 0,
+      "y": 0,
+      "width": 1280,
+      "height": "fit-content",
+      "layout": "vertical",
+      "gap": 20,
+      "padding": 24,
+      "children": [
+        {
+          "type": "text",
+          "id": "title",
+          "width": "fill-container",
+          "height": "fit-content",
+          "text": "new_product_test 上位机代码框架",
+          "fontSize": 26,
+          "textColor": "#1F2329",
+          "textAlign": "center"
+        },
+        {
+          "type": "text",
+          "id": "subtitle",
+          "width": "fill-container",
+          "height": "fit-content",
+          "text": "Qt 5.15 · MSVC · C++17 · new_production.pro",
+          "fontSize": 13,
+          "textColor": "#646A73",
+          "textAlign": "center"
+        },
+        {
+          "type": "frame",
+          "id": "layers",
+          "width": "fill-container",
+          "height": "fit-content",
+          "layout": "vertical",
+          "gap": 16,
+          "padding": 0,
+          "children": [
+            {
+              "type": "frame",
+              "id": "row-entry",
+              "width": "fill-container",
+              "height": "fit-content",
+              "layout": "horizontal",
+              "gap": 24,
+              "padding": 0,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "width": 88,
+                  "height": "fit-content",
+                  "text": "入口层",
+                  "fontSize": 18,
+                  "textColor": "#1F2329",
+                  "textAlign": "right"
+                },
+                {
+                  "type": "frame",
+                  "id": "layer-entry",
+                  "width": "fill-container",
+                  "height": "fit-content",
+                  "fillColor": "#F0F4FC",
+                  "borderColor": "#5178C6",
+                  "borderWidth": 2,
+                  "borderRadius": 8,
+                  "layout": "horizontal",
+                  "gap": 12,
+                  "padding": 20,
+                  "alignItems": "stretch",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "n-main",
+                      "width": "fill-container",
+                      "height": "fit-content",
+                      "layout": "vertical",
+                      "gap": 6,
+                      "padding": 12,
+                      "alignItems": "center",
+                      "fillColor": "#FFFFFF",
+                      "borderColor": "#5178C6",
+                      "borderWidth": 2,
+                      "borderRadius": 8,
+                      "children": [
+                        { "type": "text", "width": "fit-content", "height": "fit-content", "text": "main.cpp", "fontSize": 14, "textColor": "#1F2329" },
+                        { "type": "text", "width": "fit-content", "height": "fit-content", "text": "QApplication / 翻译 / QSS", "fontSize": 12, "textColor": "#646A73" }
+                      ]
+                    },
+                    {
+                      "type": "rect",
+                      "id": "n-login",
+                      "width": "fill-container",
+                      "height": "fit-content",
+                      "text": "login_dialog\nauth_service",
+                      "fillColor": "#FFFFFF",
+                      "borderColor": "#5178C6",
+                      "borderWidth": 2,
+                      "borderRadius": 8,
+                      "fontSize": 13,
+                      "textAlign": "center",
+                      "verticalAlign": "middle"
+                    },
+                    {
+                      "type": "rect",
+                      "id": "n-ota",
+                      "width": "fill-container",
+                      "height": "fit-content",
+                      "text": "host_ota_service\ntest_case_sync",
+                      "fillColor": "#FFFFFF",
+                      "borderColor": "#5178C6",
+                      "borderWidth": 2,
+                      "borderRadius": 8,
+                      "fontSize": 13,
+                      "textAlign": "center",
+                      "verticalAlign": "middle"
+                    },
+                    {
+                      "type": "rect",
+                      "id": "n-settings",
+                      "width": "fill-container",
+                      "height": "fit-content",
+                      "text": "SETTINGS\nAbIni.h 工站编号",
+                      "fillColor": "#FFFFFF",
+                      "borderColor": "#5178C6",
+                      "borderWidth": 2,
+                      "borderRadius": 8,
+                      "fontSize": 13,
+                      "textAlign": "center",
+                      "verticalAlign": "middle"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "row-shell",
+              "width": "fill-container",
+              "height": "fit-content",
+              "layout": "horizontal",
+              "gap": 24,
+              "padding": 0,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "width": 88,
+                  "height": "fit-content",
+                  "text": "容器层",
+                  "fontSize": 18,
+                  "textColor": "#1F2329",
+                  "textAlign": "right"
+                },
+                {
+                  "type": "frame",
+                  "id": "layer-shell",
+                  "width": "fill-container",
+                  "height": "fit-content",
+                  "fillColor": "#EAE2FE",
+                  "borderColor": "#8569CB",
+                  "borderWidth": 2,
+                  "borderRadius": 8,
+                  "layout": "horizontal",
+                  "gap": 12,
+                  "padding": 20,
+                  "alignItems": "stretch",
+                  "children": [
+                    {
+                      "type": "rect",
+                      "id": "n-box",
+                      "width": "fill-container",
+                      "height": "fit-content",
+                      "text": "box_base\nCreatWindow 1拖N\nTotallyTask",
+                      "fillColor": "#FFFFFF",
+                      "borderColor": "#8569CB",
+                      "borderWidth": 2,
+                      "borderRadius": 8,
+                      "fontSize": 13,
+                      "textAlign": "center",
+                      "verticalAlign": "middle"
+                    },
+                    {
+                      "type": "rect",
+                      "id": "n-mw",
+                      "width": "fill-container",
+                      "height": "fit-content",
+                      "text": "MainWindow\nLegacy 主测试",
+                      "fillColor": "#FFFFFF",
+                      "borderColor": "#8569CB",
+                      "borderWidth": 2,
+                      "borderRadius": 8,
+                      "fontSize": 13,
+                      "textAlign": "center",
+                      "verticalAlign": "middle"
+                    },
+                    {
+                      "type": "rect",
+                      "id": "n-fa",
+                      "width": "fill-container",
+                      "height": "fit-content",
+                      "text": "factory_analyzer\ntools/ 产测分析",
+                      "fillColor": "#FFFFFF",
+                      "borderColor": "#8569CB",
+                      "borderWidth": 2,
+                      "borderRadius": 8,
+                      "fontSize": 13,
+                      "textAlign": "center",
+                      "verticalAlign": "middle"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "row-station",
+              "width": "fill-container",
+              "height": "fit-content",
+              "layout": "horizontal",
+              "gap": 24,
+              "padding": 0,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "width": 88,
+                  "height": "fit-content",
+                  "text": "工站层",
+                  "fontSize": 18,
+                  "textColor": "#1F2329",
+                  "textAlign": "right"
+                },
+                {
+                  "type": "frame",
+                  "id": "layer-station",
+                  "width": "fill-container",
+                  "height": "fit-content",
+                  "fillColor": "#DFF5E5",
+                  "borderColor": "#509863",
+                  "borderWidth": 2,
+                  "borderRadius": 8,
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": 20,
+                  "alignItems": "stretch",
+                  "children": [
+                    {
+                      "type": "rect",
+                      "id": "n-testbase",
+                      "width": "fill-container",
+                      "height": "fit-content",
+                      "text": "test_base · startTask / stepRuntime_ / sendCommandWithRetry / TestResult / showlog",
+                      "fillColor": "#FFFFFF",
+                      "borderColor": "#509863",
+                      "borderWidth": 2,
+                      "borderRadius": 8,
+                      "fontSize": 13,
+                      "textAlign": "center",
+                      "verticalAlign": "middle"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "station-sub",
+                      "width": "fill-container",
+                      "height": "fit-content",
+                      "layout": "horizontal",
+                      "gap": 12,
+                      "padding": 0,
+                      "alignItems": "stretch",
+                      "children": [
+                        {
+                          "type": "frame",
+                          "id": "sub-freework",
+                          "width": "fill-container",
+                          "height": "fit-content",
+                          "layout": "vertical",
+                          "gap": 8,
+                          "padding": 12,
+                          "fillColor": "#FFFFFF",
+                          "borderColor": "#509863",
+                          "borderWidth": 2,
+                          "borderRadius": 8,
+                          "children": [
+                            { "type": "text", "width": "fill-container", "height": "fit-content", "text": "自由工站 freework", "fontSize": 14, "textAlign": "center" },
+                            { "type": "rect", "width": "fill-container", "height": "fit-content", "text": "QFreeWorkBox", "fillColor": "#FFFFFF", "borderColor": "#509863", "borderWidth": 2, "borderRadius": 8, "fontSize": 12, "textAlign": "center" },
+                            { "type": "rect", "width": "fill-container", "height": "fit-content", "text": "TestCaseRunner\nINI 步骤编排", "fillColor": "#FFFFFF", "borderColor": "#509863", "borderWidth": 2, "borderRadius": 8, "fontSize": 12, "textAlign": "center" }
+                          ]
+                        },
+                        {
+                          "type": "frame",
+                          "id": "sub-special",
+                          "width": "fill-container",
+                          "height": "fit-content",
+                          "layout": "vertical",
+                          "gap": 8,
+                          "padding": 12,
+                          "fillColor": "#FFFFFF",
+                          "borderColor": "#509863",
+                          "borderWidth": 2,
+                          "borderRadius": 8,
+                          "children": [
+                            { "type": "text", "width": "fill-container", "height": "fit-content", "text": "专用工站 × N 通道", "fontSize": 14, "textAlign": "center" },
+                            {
+                              "type": "frame",
+                              "layout": "horizontal",
+                              "gap": 8,
+                              "padding": 0,
+                              "width": "fill-container",
+                              "height": "fit-content",
+                              "children": [
+                                { "type": "rect", "width": "fill-container", "height": "fit-content", "text": "motor\nimu", "fillColor": "#FFFFFF", "borderColor": "#509863", "borderWidth": 2, "borderRadius": 8, "fontSize": 12, "textAlign": "center" },
+                                { "type": "rect", "width": "fill-container", "height": "fit-content", "text": "screen\ncamera", "fillColor": "#FFFFFF", "borderColor": "#509863", "borderWidth": 2, "borderRadius": 8, "fontSize": 12, "textAlign": "center" },
+                                { "type": "rect", "width": "fill-container", "height": "fit-content", "text": "wifi_ble\npcba", "fillColor": "#FFFFFF", "borderColor": "#509863", "borderWidth": 2, "borderRadius": 8, "fontSize": 12, "textAlign": "center" }
+                              ]
+                            },
+                            {
+                              "type": "frame",
+                              "layout": "horizontal",
+                              "gap": 8,
+                              "padding": 0,
+                              "width": "fill-container",
+                              "height": "fit-content",
+                              "children": [
+                                { "type": "rect", "width": "fill-container", "height": "fit-content", "text": "key\nsuction", "fillColor": "#FFFFFF", "borderColor": "#509863", "borderWidth": 2, "borderRadius": 8, "fontSize": 12, "textAlign": "center" },
+                                { "type": "rect", "width": "fill-container", "height": "fit-content", "text": "pressure\nageing", "fillColor": "#FFFFFF", "borderColor": "#509863", "borderWidth": 2, "borderRadius": 8, "fontSize": 12, "textAlign": "center" },
+                                { "type": "rect", "width": "fill-container", "height": "fit-content", "text": "quiescent\ncurrent", "fillColor": "#FFFFFF", "borderColor": "#509863", "borderWidth": 2, "borderRadius": 8, "fontSize": 12, "textAlign": "center" }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "row-platform",
+              "width": "fill-container",
+              "height": "fit-content",
+              "layout": "horizontal",
+              "gap": 24,
+              "padding": 0,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "width": 88,
+                  "height": "fit-content",
+                  "text": "平台层",
+                  "fontSize": 18,
+                  "textColor": "#1F2329",
+                  "textAlign": "right"
+                },
+                {
+                  "type": "frame",
+                  "id": "layer-platform",
+                  "width": "fill-container",
+                  "height": "fit-content",
+                  "fillColor": "#FEF1CE",
+                  "borderColor": "#D4B45B",
+                  "borderWidth": 2,
+                  "borderRadius": 8,
+                  "layout": "horizontal",
+                  "gap": 12,
+                  "padding": 20,
+                  "alignItems": "stretch",
+                  "children": [
+                    {
+                      "type": "frame",
+                      "id": "n-tc",
+                      "width": "fill-container",
+                      "height": "fit-content",
+                      "layout": "vertical",
+                      "gap": 6,
+                      "padding": 12,
+                      "fillColor": "#FFFFFF",
+                      "borderColor": "#D4B45B",
+                      "borderWidth": 2,
+                      "borderRadius": 8,
+                      "children": [
+                        { "type": "text", "width": "fit-content", "height": "fit-content", "text": "test_case", "fontSize": 13, "textAlign": "center" },
+                        { "type": "text", "width": "fit-content", "height": "fit-content", "text": "Runner · Hook · Manifest\nGate · INI · Validator", "fontSize": 11, "textColor": "#646A73", "textAlign": "center" }
+                      ]
+                    },
+                    {
+                      "type": "rect",
+                      "id": "n-set",
+                      "width": "fill-container",
+                      "height": "fit-content",
+                      "text": "settings\nqsetting 读写 SETTINGS",
+                      "fillColor": "#FFFFFF",
+                      "borderColor": "#D4B45B",
+                      "borderWidth": 2,
+                      "borderRadius": 8,
+                      "fontSize": 12,
+                      "textAlign": "center",
+                      "verticalAlign": "middle"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "n-cloud",
+                      "width": "fill-container",
+                      "height": "fit-content",
+                      "layout": "vertical",
+                      "gap": 6,
+                      "padding": 12,
+                      "fillColor": "#FFFFFF",
+                      "borderColor": "#D4B45B",
+                      "borderWidth": 2,
+                      "borderRadius": 8,
+                      "children": [
+                        { "type": "text", "width": "fit-content", "height": "fit-content", "text": "platform/cloud", "fontSize": 13, "textAlign": "center" },
+                        { "type": "text", "width": "fit-content", "height": "fit-content", "text": "auth · ota · log_upload\nsync · factory_cloud", "fontSize": 11, "textColor": "#646A73", "textAlign": "center" }
+                      ]
+                    },
+                    {
+                      "type": "rect",
+                      "id": "n-driver",
+                      "width": "fill-container",
+                      "height": "fit-content",
+                      "text": "driver / instrument\nserial_channel",
+                      "fillColor": "#FFFFFF",
+                      "borderColor": "#D4B45B",
+                      "borderWidth": 2,
+                      "borderRadius": 8,
+                      "fontSize": 12,
+                      "textAlign": "center",
+                      "verticalAlign": "middle"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "row-agreement",
+              "width": "fill-container",
+              "height": "fit-content",
+              "layout": "horizontal",
+              "gap": 24,
+              "padding": 0,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "width": 88,
+                  "height": "fit-content",
+                  "text": "协议层",
+                  "fontSize": 18,
+                  "textColor": "#1F2329",
+                  "textAlign": "right"
+                },
+                {
+                  "type": "frame",
+                  "id": "layer-agreement",
+                  "width": "fill-container",
+                  "height": "fit-content",
+                  "fillColor": "#FEE3E2",
+                  "borderColor": "#D25D5A",
+                  "borderWidth": 2,
+                  "borderRadius": 8,
+                  "layout": "vertical",
+                  "gap": 12,
+                  "padding": 20,
+                  "alignItems": "stretch",
+                  "children": [
+                    {
+                      "type": "rect",
+                      "id": "n-pattern",
+                      "width": "fill-container",
+                      "height": "fit-content",
+                      "text": "统一模式：Manager → Codec → Device",
+                      "fillColor": "#1F2329",
+                      "borderColor": "#1F2329",
+                      "borderWidth": 2,
+                      "borderRadius": 8,
+                      "fontSize": 14,
+                      "textColor": "#FFFFFF",
+                      "textAlign": "center",
+                      "verticalAlign": "middle"
+                    },
+                    {
+                      "type": "frame",
+                      "id": "agreement-grid",
+                      "width": "fill-container",
+                      "height": "fit-content",
+                      "layout": "horizontal",
+                      "gap": 10,
+                      "padding": 0,
+                      "alignItems": "stretch",
+                      "children": [
+                        { "type": "rect", "id": "ag-fp", "width": "fill-container", "height": "fit-content", "text": "factory_protocol\nQProtocolManager\nqfctp / qroot", "fillColor": "#FFFFFF", "borderColor": "#D25D5A", "borderWidth": 2, "borderRadius": 8, "fontSize": 11, "textAlign": "center" },
+                        { "type": "rect", "id": "ag-at", "width": "fill-container", "height": "fit-content", "text": "at_protocol\nQatManager\ndongle AT", "fillColor": "#FFFFFF", "borderColor": "#D25D5A", "borderWidth": 2, "borderRadius": 8, "fontSize": 11, "textAlign": "center" },
+                        { "type": "rect", "id": "ag-fx", "width": "fill-container", "height": "fit-content", "text": "fixture_protocol\nQFixtureManager\nasd9026a / xwd", "fillColor": "#FFFFFF", "borderColor": "#D25D5A", "borderWidth": 2, "borderRadius": 8, "fontSize": 11, "textAlign": "center" },
+                        { "type": "rect", "id": "ag-mb", "width": "fill-container", "height": "fit-content", "text": "modbus_protocol\nQModbusManager", "fillColor": "#FFFFFF", "borderColor": "#D25D5A", "borderWidth": 2, "borderRadius": 8, "fontSize": 11, "textAlign": "center" },
+                        { "type": "rect", "id": "ag-sc", "width": "fill-container", "height": "fit-content", "text": "scpi_protocol\nQScpiManager\n仪器 SCPI", "fillColor": "#FFFFFF", "borderColor": "#D25D5A", "borderWidth": 2, "borderRadius": 8, "fontSize": 11, "textAlign": "center" },
+                        { "type": "rect", "id": "ag-ms", "width": "fill-container", "height": "fit-content", "text": "mes_protocol\nQMesManager\nbydmes / wksmes", "fillColor": "#FFFFFF", "borderColor": "#D25D5A", "borderWidth": 2, "borderRadius": 8, "fontSize": 11, "textAlign": "center" }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "row-business",
+              "width": "fill-container",
+              "height": "fit-content",
+              "layout": "horizontal",
+              "gap": 24,
+              "padding": 0,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "width": 88,
+                  "height": "fit-content",
+                  "text": "业务层",
+                  "fontSize": 18,
+                  "textColor": "#1F2329",
+                  "textAlign": "right"
+                },
+                {
+                  "type": "frame",
+                  "id": "layer-business",
+                  "width": "fill-container",
+                  "height": "fit-content",
+                  "fillColor": "#EAE2FE",
+                  "borderColor": "#8569CB",
+                  "borderWidth": 2,
+                  "borderRadius": 8,
+                  "layout": "horizontal",
+                  "gap": 12,
+                  "padding": 20,
+                  "alignItems": "stretch",
+                  "children": [
+                    { "type": "rect", "id": "b-tuple", "width": "fill-container", "height": "fit-content", "text": "business/tuple\n三元组 / MES 上报", "fillColor": "#FFFFFF", "borderColor": "#8569CB", "borderWidth": 2, "borderRadius": 8, "fontSize": 12, "textAlign": "center" },
+                    { "type": "rect", "id": "b-ota", "width": "fill-container", "height": "fit-content", "text": "ble_ota\n蓝牙 OTA", "fillColor": "#FFFFFF", "borderColor": "#8569CB", "borderWidth": 2, "borderRadius": 8, "fontSize": 12, "textAlign": "center" },
+                    { "type": "rect", "id": "b-cmw", "width": "fill-container", "height": "fit-content", "text": "cmw_gprf\n射频仪表", "fillColor": "#FFFFFF", "borderColor": "#8569CB", "borderWidth": 2, "borderRadius": 8, "fontSize": 12, "textAlign": "center" },
+                    { "type": "rect", "id": "b-plc", "width": "fill-container", "height": "fit-content", "text": "plc_v3_fixture\nPLC V3 治具", "fillColor": "#FFFFFF", "borderColor": "#8569CB", "borderWidth": 2, "borderRadius": 8, "fontSize": 12, "textAlign": "center" }
+                  ]
+                }
+              ]
+            },
+            {
+              "type": "frame",
+              "id": "row-common",
+              "width": "fill-container",
+              "height": "fit-content",
+              "layout": "horizontal",
+              "gap": 24,
+              "padding": 0,
+              "alignItems": "center",
+              "children": [
+                {
+                  "type": "text",
+                  "width": 88,
+                  "height": "fit-content",
+                  "text": "公共层",
+                  "fontSize": 18,
+                  "textColor": "#1F2329",
+                  "textAlign": "right"
+                },
+                {
+                  "type": "frame",
+                  "id": "layer-common",
+                  "width": "fill-container",
+                  "height": "fit-content",
+                  "fillColor": "#F0F4FC",
+                  "borderColor": "#5178C6",
+                  "borderWidth": 2,
+                  "borderRadius": 8,
+                  "layout": "horizontal",
+                  "gap": 12,
+                  "padding": 20,
+                  "alignItems": "stretch",
+                  "children": [
+                    { "type": "rect", "id": "c-utils", "width": "fill-container", "height": "fit-content", "text": "common/\nCommonUtils", "fillColor": "#FFFFFF", "borderColor": "#5178C6", "borderWidth": 2, "borderRadius": 8, "fontSize": 12, "textAlign": "center" },
+                    { "type": "rect", "id": "c-ini", "width": "fill-container", "height": "fit-content", "text": "my_set/\nSETTINGS AbIni", "fillColor": "#FFFFFF", "borderColor": "#5178C6", "borderWidth": 2, "borderRadius": 8, "fontSize": 12, "textAlign": "center" },
+                    { "type": "rect", "id": "c-log", "width": "fill-container", "height": "fit-content", "text": "qlog/\n分级日志上传", "fillColor": "#FFFFFF", "borderColor": "#5178C6", "borderWidth": 2, "borderRadius": 8, "fontSize": 12, "textAlign": "center" },
+                    { "type": "rect", "id": "c-lib", "width": "fill-container", "height": "fit-content", "text": "lib/\nqcustomplot · nfc · usb", "fillColor": "#FFFFFF", "borderColor": "#5178C6", "borderWidth": 2, "borderRadius": 8, "fontSize": 12, "textAlign": "center" }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "type": "rect",
+          "id": "note-flow",
+          "width": 420,
+          "height": "fit-content",
+          "fillColor": "#C9E8EF",
+          "borderColor": "#5178C6",
+          "borderWidth": 2,
+          "borderRadius": 8,
+          "text": "测试链路：扫码 → startTask → INI 步骤 → sendCommandWithRetry → gate 卡控 → MES/三元组上报",
+          "fontSize": 12,
+          "textColor": "#1F2329",
+          "textAlign": "left",
+          "verticalAlign": "middle"
+        }
+      ]
+    },
+    {
+      "type": "connector",
+      "id": "c-entry-shell",
+      "connector": {
+        "from": "layer-entry",
+        "to": "layer-shell",
+        "fromAnchor": "bottom",
+        "toAnchor": "top",
+        "lineColor": "#BBBFC4",
+        "lineWidth": 2,
+        "endArrow": "arrow"
+      }
+    },
+    {
+      "type": "connector",
+      "id": "c-shell-station",
+      "connector": {
+        "from": "n-box",
+        "to": "n-testbase",
+        "fromAnchor": "bottom",
+        "toAnchor": "top",
+        "lineColor": "#BBBFC4",
+        "lineWidth": 2,
+        "endArrow": "arrow",
+        "label": "1拖N"
+      }
+    },
+    {
+      "type": "connector",
+      "id": "c-station-platform",
+      "connector": {
+        "from": "n-testbase",
+        "to": "layer-platform",
+        "fromAnchor": "bottom",
+        "toAnchor": "top",
+        "lineColor": "#BBBFC4",
+        "lineWidth": 2,
+        "endArrow": "arrow"
+      }
+    },
+    {
+      "type": "connector",
+      "id": "c-station-agreement",
+      "connector": {
+        "from": "n-testbase",
+        "to": "layer-agreement",
+        "fromAnchor": "bottom",
+        "toAnchor": "top",
+        "lineColor": "#BBBFC4",
+        "lineWidth": 2,
+        "endArrow": "arrow"
+      }
+    }
+  ]
+}
