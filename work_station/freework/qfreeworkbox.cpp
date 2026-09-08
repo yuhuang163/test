@@ -11,6 +11,8 @@
 #include "qfreework.h"
 #include "screen_inspect_analyzer.h"
 #include "shared_instrument.h"
+#include "test_case_paths.h"
+#include "test_case_store.h"
 #include "ui_qfreeworkbox.h"
 
 QFreeWorkBox::QFreeWorkBox(QWidget* parent) : box_base(parent), ui(new Ui::QFreeWorkBox) {
