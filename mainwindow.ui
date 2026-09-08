@@ -2853,6 +2853,23 @@
                           </widget>
                          </item>
                          <item>
+                          <widget class="QPushButton" name="btnCalibrateCircle">
+                           <property name="toolTip">
+                            <string>在纯色（推荐白屏或绿屏）易识别画面下点击此按钮，一次性标定参考图圆屏区域。后续更换任何参考图（包括灰阶条）都将固定复用此圆，无需重新识别。</string>
+                           </property>
+                           <property name="text">
+                            <string>标定参考圆</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QLabel" name="label_circleStatus">
+                           <property name="text">
+                            <string>○ 参考圆: 未标定</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
                           <widget class="QPushButton" name="btnCapture">
                            <property name="text">
                             <string>采集当前图</string>
@@ -2880,6 +2897,16 @@
                            </property>
                            <property name="checked">
                             <bool>true</bool>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <widget class="QCheckBox" name="checkBox_reuseCircle">
+                           <property name="toolTip">
+                            <string>勾选后，当前测试图将复用上一张纯色图测试出的圆屏（适用于灰度条等暗色图），避免重新动态抓圆错位。</string>
+                           </property>
+                           <property name="text">
+                            <string>复用上次圆屏</string>
                            </property>
                           </widget>
                          </item>

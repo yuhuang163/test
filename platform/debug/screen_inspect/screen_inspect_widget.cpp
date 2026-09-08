@@ -78,6 +78,9 @@ struct ScreenInspectUi {
     QPushButton* btnColorBlack = nullptr;
     QPushButton* btnLcdColorGray = nullptr;
     QPushButton* btnLcdColorGrayBar = nullptr;
+    QPushButton* btnCalibrateCircle = nullptr;
+    QLabel* label_circleStatus = nullptr;
+    QCheckBox* checkBox_reuseCircle = nullptr;
 };
 
 template <typename T>
@@ -134,6 +137,9 @@ void ScreenInspectWidget::bindDesignerUi() {
     ui->btnColorBlack = screenInspectFind<QPushButton>(this, "btnColorBlack");
     ui->btnLcdColorGray = screenInspectFind<QPushButton>(this, "btnLcdColorGray");
     ui->btnLcdColorGrayBar = screenInspectFind<QPushButton>(this, "btnLcdColorGrayBar");
+    ui->btnCalibrateCircle = screenInspectFind<QPushButton>(this, "btnCalibrateCircle");
+    ui->label_circleStatus = screenInspectFind<QLabel>(this, "label_circleStatus");
+    ui->checkBox_reuseCircle = screenInspectFind<QCheckBox>(this, "checkBox_reuseCircle");
     if (!ui->comboBox_camera || !ui->comboBox_expectedColor || !ui->viewfinderHost
         || !ui->verticalLayout_viewfinder || !ui->doubleSpinBox_minSsim || !ui->spinBox_deadDiff
         || !ui->spinBox_maxDead || !ui->doubleSpinBox_mura || !ui->label_currImage || !ui->label_refImage
@@ -225,6 +231,10 @@ void ScreenInspectWidget::bindDesignerUi() {
         connect(ui->btnLcdColorGray, &QPushButton::clicked, this, &ScreenInspectWidget::on_btnLcdColorGray_clicked);
     if (ui->btnLcdColorGrayBar)
         connect(ui->btnLcdColorGrayBar, &QPushButton::clicked, this, &ScreenInspectWidget::on_btnLcdColorGrayBar_clicked);
+    if (ui->btnCalibrateCircle)
+        connect(ui->btnCalibrateCircle, &QPushButton::clicked, this, &ScreenInspectWidget::on_btnCalibrateCircle_clicked);
+    if (ui->checkBox_reuseCircle)
+        connect(ui->checkBox_reuseCircle, &QCheckBox::toggled, this, &ScreenInspectWidget::on_checkBox_reuseCircle_toggled);
 
     if (!connStatusTimer_) {
         connStatusTimer_ = new QTimer(this);
@@ -233,6 +243,7 @@ void ScreenInspectWidget::bindDesignerUi() {
     }
     checkConnectionStatus();
     updateLcdModeUi();
+    updateCircleStatusUi();
 
     uiBound_ = true;
 }
@@ -270,6 +281,12 @@ void ScreenInspectWidget::loadThresholdsFromSettings() {
     ui->spinBox_deadDiff->setValue(SETTINGS.value("ScreenInspect/DeadPixelDiff", 35).toInt());
     ui->spinBox_maxDead->setValue(SETTINGS.value("ScreenInspect/MaxDeadPixels", 8).toInt());
     ui->doubleSpinBox_mura->setValue(SETTINGS.value("ScreenInspect/MuraStdMax", 22.0).toDouble());
+    if (ui->checkBox_reuseCircle)
+        ui->checkBox_reuseCircle->setChecked(SETTINGS.value(QStringLiteral("ScreenInspect/ReuseCircle"), false).toBool());
+    refCircle_.cx = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCx"), -1).toInt();
+    refCircle_.cy = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCy"), -1).toInt();
+    refCircle_.r = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleR"), -1).toInt();
+    updateCircleStatusUi();
     const QString src = SETTINGS.value(QStringLiteral("ScreenInspect/CameraSource"), QStringLiteral("usb"))
                             .toString()
                             .trimmed()
@@ -292,6 +309,8 @@ void ScreenInspectWidget::saveThresholdsToSettings() {
     SETTINGS.setValue("ScreenInspect/DeadPixelDiff", ui->spinBox_deadDiff->value());
     SETTINGS.setValue("ScreenInspect/MaxDeadPixels", ui->spinBox_maxDead->value());
     SETTINGS.setValue("ScreenInspect/MuraStdMax", ui->doubleSpinBox_mura->value());
+    if (ui->checkBox_reuseCircle)
+        SETTINGS.setValue(QStringLiteral("ScreenInspect/ReuseCircle"), ui->checkBox_reuseCircle->isChecked());
     SETTINGS.setValue("ScreenInspect/CameraIndex", ui->comboBox_camera->currentIndex());
     SETTINGS.setValue(QStringLiteral("ScreenInspect/CameraSource"),
                       isGigESource() ? QStringLiteral("gige") : QStringLiteral("usb"));
@@ -340,6 +359,17 @@ ScreenInspectWidget::InspectParams ScreenInspectWidget::currentParams() const {
     p.refCircleCx = refCircle_.cx;
     p.refCircleCy = refCircle_.cy;
     p.refCircleR = refCircle_.r;
+    if (ui && ui->checkBox_reuseCircle && ui->checkBox_reuseCircle->isChecked()) {
+        if (lastDetectedCircle_.r > 0) {
+            p.cachedCircleCx = lastDetectedCircle_.cx;
+            p.cachedCircleCy = lastDetectedCircle_.cy;
+            p.cachedCircleR = lastDetectedCircle_.r;
+        } else if (refCircle_.r > 0) {
+            p.cachedCircleCx = refCircle_.cx;
+            p.cachedCircleCy = refCircle_.cy;
+            p.cachedCircleR = refCircle_.r;
+        }
+    }
     return p;
 }
 
@@ -574,9 +604,7 @@ void ScreenInspectWidget::on_btnLoadRef_clicked() {
     refCircle_.cx = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCx"), -1).toInt();
     refCircle_.cy = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCy"), -1).toInt();
     refCircle_.r = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleR"), -1).toInt();
-    if (refCircle_.r <= 0) {
-        updateReferenceCircle();
-    }
+    updateCircleStatusUi();
     refreshImageLabels();
     ui->plainTextEdit_screenInspectLog->setPlainText(QStringLiteral("已加载参考图：") + path);
 }
@@ -751,19 +779,61 @@ void ScreenInspectWidget::updateLcdModeUi() {
 }
 
 void ScreenInspectWidget::updateReferenceCircle() {
-    if (refImage_.isNull()) {
-        refCircle_ = ScreenInspectAnalyzer::ScreenCircle();
+    calibrateReferenceCircle();
+}
+
+void ScreenInspectWidget::calibrateReferenceCircle() {
+    const QImage& srcImg = !currImage_.isNull() ? currImage_ : refImage_;
+    if (srcImg.isNull()) {
+        ui->plainTextEdit_screenInspectLog->setPlainText(
+            QStringLiteral("标定失败：请先采集当前图（建议在纯色如白屏/绿屏下）或加载参考图。"));
         return;
     }
-    QRect roi = manualRoi_.intersected(refImage_.rect());
+    QRect roi = manualRoi_.intersected(srcImg.rect());
     if (roi.width() < 10 || roi.height() < 10)
-        roi = refImage_.rect();
-    refCircle_ = ScreenInspectAnalyzer::detectScreenCircle(refImage_, roi);
-    if (refCircle_.r > 0) {
-        SETTINGS.setValue(QStringLiteral("ScreenInspect/RefCircleCx"), refCircle_.cx);
-        SETTINGS.setValue(QStringLiteral("ScreenInspect/RefCircleCy"), refCircle_.cy);
-        SETTINGS.setValue(QStringLiteral("ScreenInspect/RefCircleR"), refCircle_.r);
+        roi = ScreenInspectAnalyzer::detectScreenRoi(srcImg);
+    const ScreenInspectAnalyzer::ScreenCircle circle = ScreenInspectAnalyzer::detectScreenCircle(srcImg, roi);
+    if (circle.r <= 0) {
+        ui->plainTextEdit_screenInspectLog->setPlainText(
+            QStringLiteral("标定失败：未能识别到有效圆屏，请调整相机视野或使用更容易识别的纯色图片（如白屏/绿屏）。"));
+        return;
     }
+    refCircle_ = circle;
+    lastDetectedCircle_ = circle;
+    SETTINGS.setValue(QStringLiteral("ScreenInspect/RefCircleCx"), refCircle_.cx);
+    SETTINGS.setValue(QStringLiteral("ScreenInspect/RefCircleCy"), refCircle_.cy);
+    SETTINGS.setValue(QStringLiteral("ScreenInspect/RefCircleR"), refCircle_.r);
+    updateCircleStatusUi();
+    refreshImageLabels();
+    appendLog(QStringLiteral("已完成参考圆标定：圆心(%1, %2)，半径 %3 (来源：%4)")
+                  .arg(refCircle_.cx)
+                  .arg(refCircle_.cy)
+                  .arg(refCircle_.r)
+                  .arg(!currImage_.isNull() ? QStringLiteral("当前实拍图") : QStringLiteral("参考图")));
+}
+
+void ScreenInspectWidget::updateCircleStatusUi() {
+    if (!ui || !ui->label_circleStatus)
+        return;
+    if (refCircle_.r > 0) {
+        ui->label_circleStatus->setText(
+            QStringLiteral("● 参考圆: R=%1 (%2,%3)")
+                .arg(refCircle_.r)
+                .arg(refCircle_.cx)
+                .arg(refCircle_.cy));
+        ui->label_circleStatus->setStyleSheet(QStringLiteral("color: #2e7d32; font-weight: bold;"));
+    } else {
+        ui->label_circleStatus->setText(QStringLiteral("○ 参考圆: 未标定"));
+        ui->label_circleStatus->setStyleSheet(QStringLiteral("color: #d32f2f; font-weight: normal;"));
+    }
+}
+
+void ScreenInspectWidget::on_btnCalibrateCircle_clicked() {
+    calibrateReferenceCircle();
+}
+
+void ScreenInspectWidget::on_checkBox_reuseCircle_toggled(bool) {
+    saveThresholdsToSettings();
 }
 
 void ScreenInspectWidget::on_btnConnectDevice_clicked() {
@@ -928,7 +998,6 @@ void ScreenInspectWidget::saveManualRoi(const QRect& r) {
     }
     manualRoi_ = clipped;
     SETTINGS.setValue(QStringLiteral("ScreenInspect/Roi"), ScreenInspectAnalyzer::formatManualRoi(manualRoi_));
-    updateReferenceCircle();
     refreshImageLabels();
     ui->plainTextEdit_screenInspectLog->setPlainText(
         QStringLiteral("已划定检测范围：%1,%2 %3x%4（工站步骤共用此范围）")
@@ -1017,6 +1086,9 @@ ScreenInspectWidget::InspectReport ScreenInspectWidget::analyze(const QImage& cu
     ap.deadDiff = p.deadDiff;
     ap.expectedColor = p.expectedColor;
     ap.manualRoi = p.manualRoi;
+    ap.cachedCircleCx = p.cachedCircleCx;
+    ap.cachedCircleCy = p.cachedCircleCy;
+    ap.cachedCircleR = p.cachedCircleR;
     ap.refCircleCx = p.refCircleCx;
     ap.refCircleCy = p.refCircleCy;
     ap.refCircleR = p.refCircleR;
@@ -1027,6 +1099,9 @@ ScreenInspectWidget::InspectReport ScreenInspectWidget::analyze(const QImage& cu
     report.deadPixels = raw.deadPixels;
     report.muraStd = raw.muraStd;
     report.roi = raw.roi;
+    report.circleCx = raw.circleCx;
+    report.circleCy = raw.circleCy;
+    report.circleR = raw.circleR;
     report.annotated = raw.annotated;
 
     QStringList reasons;
@@ -1068,6 +1143,11 @@ ScreenInspectWidget::InspectReport ScreenInspectWidget::analyze(const QImage& cu
 }
 
 void ScreenInspectWidget::applyReport(const InspectReport& report) {
+    if (report.circleR > 0) {
+        lastDetectedCircle_.cx = report.circleCx;
+        lastDetectedCircle_.cy = report.circleCy;
+        lastDetectedCircle_.r = report.circleR;
+    }
     annotatedImage_ = report.annotated;
     refreshImageLabels();
     saveCaptureFiles(currImage_, annotatedImage_);
@@ -1128,7 +1208,6 @@ QString ScreenInspectWidget::inspectDir() const {
 
 void ScreenInspectWidget::applyReferenceImage(const QImage& img, const QString& sourcePath) {
     refImage_ = img.convertToFormat(QImage::Format_RGB888);
-    updateReferenceCircle();
     refreshImageLabels();
     if (!sourcePath.isEmpty())
         SETTINGS.setValue(QStringLiteral("ScreenInspect/ReferencePath"), sourcePath);
@@ -1153,9 +1232,7 @@ void ScreenInspectWidget::loadSavedReferenceIfAny() {
     refCircle_.cx = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCx"), -1).toInt();
     refCircle_.cy = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCy"), -1).toInt();
     refCircle_.r = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleR"), -1).toInt();
-    if (refCircle_.r <= 0) {
-        updateReferenceCircle();
-    }
+    updateCircleStatusUi();
     refreshImageLabels();
     ui->plainTextEdit_screenInspectLog->setPlainText(QStringLiteral("已载入上次参考图：") + path);
 }

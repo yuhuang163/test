@@ -819,12 +819,52 @@ void QFreeWork::updatePreStartMonitorState() {
     
     if (settings.contains("Enabled") && settings.value("Enabled").toBool()) {
         preStartMonitorConfig_.enabled = true;
-        preStartMonitorConfig_.plcDevice = settings.value("PlcDevice", "InovanceH5uTcp").toString();
-        preStartMonitorConfig_.plcIp = settings.value("PlcIp", "127.0.0.1").toString();
-        preStartMonitorConfig_.plcPort = settings.value("PlcPort", 502).toInt();
-        preStartMonitorConfig_.plcComPort = settings.value("PlcComPort", settings.value("ComPort", "")).toString();
-        preStartMonitorConfig_.plcBaudRate = settings.value("PlcBaudRate", settings.value("BaudRate", 19200)).toInt();
-        preStartMonitorConfig_.plcSlaveId = settings.value("PlcSlaveId", settings.value("SlaveId", 1)).toInt();
+        QString plcDev = settings.value(QStringLiteral("PlcDevice")).toString().trimmed();
+        if (plcDev.isEmpty()) {
+            plcDev = SETTINGS.value(QStringLiteral("PreStart_Monitor/PlcDevice")).toString().trimmed();
+        }
+        if (plcDev.isEmpty()) {
+            plcDev = SETTINGS.value(QStringLiteral("PlcDevice")).toString().trimmed();
+        }
+        if (plcDev.isEmpty()) {
+            const QString comCheck = settings.value(QStringLiteral("PlcComPort"), settings.value(QStringLiteral("ComPort"))).toString().trimmed();
+            if (!comCheck.isEmpty() || SETTINGS.contains(QStringLiteral("XINJE_PLC/ComPort"))
+                || activeFlowStationKey_.contains(QStringLiteral("半成品"))
+                || activeFlowStationKey_.contains(QStringLiteral("组装"))
+                || activeFlowStationKey_.contains(QStringLiteral("Wellness"), Qt::CaseInsensitive)) {
+                plcDev = QStringLiteral("XinjiePlcRtu");
+            } else {
+                plcDev = QStringLiteral("InovanceH5uTcp");
+            }
+        }
+        preStartMonitorConfig_.plcDevice = plcDev;
+        preStartMonitorConfig_.plcIp = settings.value("PlcIp", SETTINGS.value("PlcIp", "127.0.0.1")).toString();
+        preStartMonitorConfig_.plcPort = settings.value("PlcPort", SETTINGS.value("PlcPort", 502)).toInt();
+
+        QString comPort = settings.value(QStringLiteral("PlcComPort"), settings.value(QStringLiteral("ComPort"), QString())).toString().trimmed();
+        if (comPort.isEmpty()) {
+            comPort = SETTINGS.value(QStringLiteral("PreStart_Monitor/PlcComPort"), QString()).toString().trimmed();
+        }
+        if (comPort.isEmpty()) {
+            comPort = SETTINGS.value(QStringLiteral("XINJE_PLC/ComPort_Station%1").arg(getIndex()),
+                                     SETTINGS.value(QStringLiteral("XINJE_PLC/ComPort"), QString())).toString().trimmed();
+        }
+        if (comPort.isEmpty() && ui && ui->usbcomNameCombo && !ui->usbcomNameCombo->currentText().trimmed().isEmpty()) {
+            comPort = ui->usbcomNameCombo->currentText().trimmed();
+        }
+        if (comPort.isEmpty() && ui && ui->jigComNameCombo && !ui->jigComNameCombo->currentText().trimmed().isEmpty()) {
+            comPort = ui->jigComNameCombo->currentText().trimmed();
+        }
+        preStartMonitorConfig_.plcComPort = comPort;
+
+        preStartMonitorConfig_.plcBaudRate = settings.value(QStringLiteral("PlcBaudRate"),
+            settings.value(QStringLiteral("BaudRate"),
+            SETTINGS.value(QStringLiteral("PreStart_Monitor/PlcBaudRate"),
+            SETTINGS.value(QStringLiteral("XINJE_PLC/BaudRate"), 19200)))).toInt();
+        preStartMonitorConfig_.plcSlaveId = settings.value(QStringLiteral("PlcSlaveId"),
+            settings.value(QStringLiteral("SlaveId"),
+            SETTINGS.value(QStringLiteral("PreStart_Monitor/PlcSlaveId"),
+            SETTINGS.value(QStringLiteral("XINJE_PLC/SlaveId"), 1)))).toInt();
 
         const QString rawAddr = settings.value("PlcWaitAddress", settings.value("PlcWaitAddressM", "100")).toString().trimmed();
         preStartMonitorConfig_.plcWaitAddress = rawAddr.isEmpty() ? QStringLiteral("M100") : (rawAddr.at(0).isDigit() ? QStringLiteral("M") + rawAddr : rawAddr);
@@ -852,13 +892,23 @@ void QFreeWork::updatePreStartMonitorState() {
         if (!preStartMonitorRunning_) {
             preStartMonitorTimer_->start(preStartMonitorConfig_.plcPollIntervalMs);
             preStartMonitorRunning_ = true;
-            qDebug() << "[FreeWork] Start PreStart Monitor polling on" << preStartMonitorConfig_.plcWaitAddress;
+            const bool isXinjie = preStartMonitorConfig_.plcDevice.contains(QLatin1String("Xinjie"), Qt::CaseInsensitive)
+                                  || preStartMonitorConfig_.plcDevice.contains(QLatin1String("Xinje"), Qt::CaseInsensitive);
+            const QString startLog = QStringLiteral("[PreStartMonitor] 启动按键监控: 设备=%1, 串口/IP=%2, 轮询地址=%3, 周期=%4ms")
+                                        .arg(preStartMonitorConfig_.plcDevice)
+                                        .arg(isXinjie ? (preStartMonitorConfig_.plcComPort.isEmpty() ? QStringLiteral("未配置COM口") : preStartMonitorConfig_.plcComPort)
+                                                      : QStringLiteral("%1:%2").arg(preStartMonitorConfig_.plcIp).arg(preStartMonitorConfig_.plcPort))
+                                        .arg(preStartMonitorConfig_.plcWaitAddress)
+                                        .arg(preStartMonitorConfig_.plcPollIntervalMs);
+            qDebug().noquote() << startLog;
+            showlog(startLog);
         }
     } else {
         if (preStartMonitorRunning_) {
             preStartMonitorTimer_->stop();
             preStartMonitorRunning_ = false;
             qDebug() << "[FreeWork] Stop PreStart Monitor polling";
+            showlog(QStringLiteral("[PreStartMonitor] 停止按键监控"));
         }
     }
 }
@@ -891,21 +941,48 @@ void QFreeWork::onPreStartMonitorTimeout() {
         if (!isConn.toBool()) {
             QString err;
             QVariantMap connectParams;
-            if (!preStartMonitorConfig_.plcComPort.isEmpty())
-                connectParams.insert(QStringLiteral("comPort"), preStartMonitorConfig_.plcComPort);
+            QString comPort = preStartMonitorConfig_.plcComPort;
+            if (comPort.isEmpty()) {
+                comPort = SETTINGS.value(QStringLiteral("XINJE_PLC/ComPort_Station%1").arg(getIndex()),
+                          SETTINGS.value(QStringLiteral("XINJE_PLC/ComPort"), QString())).toString().trimmed();
+            }
+            if (comPort.isEmpty()) {
+                comPort = SETTINGS.value(QStringLiteral("PreStart_Monitor/PlcComPort"), QString()).toString().trimmed();
+            }
+            if (comPort.isEmpty() && ui && ui->usbcomNameCombo && !ui->usbcomNameCombo->currentText().trimmed().isEmpty()) {
+                comPort = ui->usbcomNameCombo->currentText().trimmed();
+            }
+            if (comPort.isEmpty() && ui && ui->jigComNameCombo && !ui->jigComNameCombo->currentText().trimmed().isEmpty()) {
+                comPort = ui->jigComNameCombo->currentText().trimmed();
+            }
+            if (!comPort.isEmpty()) {
+                connectParams.insert(QStringLiteral("comPort"), comPort);
+                preStartMonitorConfig_.plcComPort = comPort;
+            }
             if (preStartMonitorConfig_.plcBaudRate > 0)
                 connectParams.insert(QStringLiteral("baudRate"), preStartMonitorConfig_.plcBaudRate);
             connectParams.insert(QStringLiteral("slaveId"), preStartMonitorConfig_.plcSlaveId);
 
             if (!modbusManager.exec(XinjePlcCmd::Connect, connectParams, nullptr, &err)) {
-                static qint64 lastLog = 0;
-                if (QDateTime::currentMSecsSinceEpoch() - lastLog > 5000) {
-                    qDebug() << "[FreeWork] PreStartMonitor auto-connect to Xinjie PLC failed:" << err;
-                    lastLog = QDateTime::currentMSecsSinceEpoch();
+                static qint64 lastConnLog = 0;
+                const QString failMsg = QStringLiteral("[信捷PLC按键监控] 串口连接失败: %1 (COM=%2, 波特率=%3, 站号=%4)")
+                                            .arg(err)
+                                            .arg(comPort.isEmpty() ? QStringLiteral("未配置") : comPort)
+                                            .arg(preStartMonitorConfig_.plcBaudRate)
+                                            .arg(preStartMonitorConfig_.plcSlaveId);
+                qDebug().noquote() << failMsg;
+                if (QDateTime::currentMSecsSinceEpoch() - lastConnLog > 2000) {
+                    showlog(failMsg);
+                    lastConnLog = QDateTime::currentMSecsSinceEpoch();
                 }
                 return;
             } else {
-                qDebug() << "[FreeWork] PreStartMonitor auto-connected to Xinjie PLC successfully.";
+                const QString okMsg = QStringLiteral("[信捷PLC按键监控] 串口连接成功: %1 @ %2bps (站号=%3)")
+                                          .arg(comPort)
+                                          .arg(preStartMonitorConfig_.plcBaudRate)
+                                          .arg(preStartMonitorConfig_.plcSlaveId);
+                qDebug().noquote() << okMsg;
+                showlog(okMsg);
             }
         }
 
@@ -919,11 +996,30 @@ void QFreeWork::onPreStartMonitorTimeout() {
             ok = modbusManager.exec(XinjePlcCmd::ReadCoils, addr, &result, &plcErr);
         }
 
-        if (ok && result.isValid() && result.toBool() == true) {
-            qDebug() << "[FreeWork] Xinjie PLC Trigger detected on" << addr << "! Stopping monitor and triggering scanner.";
-            preStartMonitorTimer_->stop();
-            preStartMonitorRunning_ = false;
-            QMetaObject::invokeMethod(this, "triggerHikvisionScanner", Qt::QueuedConnection);
+        if (ok) {
+            const bool triggered = (result.isValid() && result.toBool());
+            const int readVal = result.toInt();
+            const QString logMsg = QStringLiteral("[信捷PLC按键监控] COM=%1 轮询地址: %2, 读值: %3 (%4)")
+                                      .arg(preStartMonitorConfig_.plcComPort.isEmpty() ? QStringLiteral("(默认)") : preStartMonitorConfig_.plcComPort)
+                                      .arg(addr)
+                                      .arg(readVal)
+                                      .arg(triggered ? QStringLiteral("● 按键已按下/触发") : QStringLiteral("○ 按键未按下/空闲"));
+            qDebug().noquote() << logMsg;
+            showlog(logMsg);
+
+            if (triggered) {
+                qDebug() << "[FreeWork] Xinjie PLC Trigger detected on" << addr << "! Stopping monitor and triggering scanner.";
+                showlog(QStringLiteral("[信捷PLC按键监控] 检测到启动按键信号 (%1=1)，停止监控并触发扫码枪...").arg(addr));
+                preStartMonitorTimer_->stop();
+                preStartMonitorRunning_ = false;
+                QMetaObject::invokeMethod(this, "triggerHikvisionScanner", Qt::QueuedConnection);
+            }
+        } else {
+            const QString errLog = QStringLiteral("[信捷PLC按键监控] COM=%1 读取地址 %2 失败: %3")
+                                      .arg(preStartMonitorConfig_.plcComPort.isEmpty() ? QStringLiteral("(默认)") : preStartMonitorConfig_.plcComPort)
+                                      .arg(addr, plcErr);
+            qDebug().noquote() << errLog;
+            showlog(errLog);
         }
         return;
     }
@@ -942,13 +1038,22 @@ void QFreeWork::onPreStartMonitorTimeout() {
         
         if (!modbusManager.exec(PlcCmd::Connect, connectParams, nullptr, &err)) {
             static qint64 lastLog = 0;
-            if (QDateTime::currentMSecsSinceEpoch() - lastLog > 5000) {
-                qDebug() << "[FreeWork] PreStartMonitor auto-connect to PLC failed:" << err;
+            if (QDateTime::currentMSecsSinceEpoch() - lastLog > 2000) {
+                const QString failMsg = QStringLiteral("[H5U PLC按键监控] 连接失败: %1 (IP=%2:%3)")
+                                            .arg(err)
+                                            .arg(preStartMonitorConfig_.plcIp)
+                                            .arg(preStartMonitorConfig_.plcPort);
+                qDebug().noquote() << failMsg;
+                showlog(failMsg);
                 lastLog = QDateTime::currentMSecsSinceEpoch();
             }
             return;
         } else {
-            qDebug() << "[FreeWork] PreStartMonitor auto-connected to PLC successfully.";
+            const QString okMsg = QStringLiteral("[H5U PLC按键监控] TCP已连接: %1:%2")
+                                      .arg(preStartMonitorConfig_.plcIp)
+                                      .arg(preStartMonitorConfig_.plcPort);
+            qDebug().noquote() << okMsg;
+            showlog(okMsg);
         }
     }
 
@@ -957,12 +1062,28 @@ void QFreeWork::onPreStartMonitorTimeout() {
     QVariant result;
     bool ok = modbusManager.exec(PlcCmd::ReadCoil, param, &result, &plcErr);
     
-    if (ok && result.isValid() && result.toBool() == true) {
-        qDebug() << "[FreeWork] PLC Trigger detected! Stopping monitor and triggering scanner.";
-        preStartMonitorTimer_->stop();
-        preStartMonitorRunning_ = false;
-        
-        QMetaObject::invokeMethod(this, "triggerHikvisionScanner", Qt::QueuedConnection);
+    if (ok) {
+        const bool triggered = (result.isValid() && result.toBool());
+        const int readVal = result.toInt();
+        const QString logMsg = QStringLiteral("[H5U PLC按键监控] 轮询地址: M%1, 读值: %2 (%3)")
+                                  .arg(preStartMonitorConfig_.plcWaitAddressM)
+                                  .arg(readVal)
+                                  .arg(triggered ? QStringLiteral("● 按键已按下/触发") : QStringLiteral("○ 按键未按下/空闲"));
+        qDebug().noquote() << logMsg;
+        showlog(logMsg);
+
+        if (triggered) {
+            qDebug() << "[FreeWork] PLC Trigger detected! Stopping monitor and triggering scanner.";
+            showlog(QStringLiteral("[H5U PLC按键监控] 检测到启动按键信号 (M%1=1)，停止监控并触发扫码枪...").arg(preStartMonitorConfig_.plcWaitAddressM));
+            preStartMonitorTimer_->stop();
+            preStartMonitorRunning_ = false;
+            QMetaObject::invokeMethod(this, "triggerHikvisionScanner", Qt::QueuedConnection);
+        }
+    } else {
+        const QString errLog = QStringLiteral("[H5U PLC按键监控] 读取地址 M%1 失败: %2")
+                                  .arg(preStartMonitorConfig_.plcWaitAddressM).arg(plcErr);
+        qDebug().noquote() << errLog;
+        showlog(errLog);
     }
 }
 
@@ -2665,6 +2786,13 @@ void QFreeWork::runScreenInspectStep() {
         ap.cachedCircleCx = cachedScreenCircleCx_;
         ap.cachedCircleCy = cachedScreenCircleCy_;
         ap.cachedCircleR = cachedScreenCircleR_;
+    } else if (reuseCircleRoi) {
+        const int fallbackR = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleR"), -1).toInt();
+        if (fallbackR > 0) {
+            ap.cachedCircleCx = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCx"), -1).toInt();
+            ap.cachedCircleCy = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCy"), -1).toInt();
+            ap.cachedCircleR = fallbackR;
+        }
     }
     ap.refCircleCx = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCx"), -1).toInt();
     ap.refCircleCy = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCy"), -1).toInt();

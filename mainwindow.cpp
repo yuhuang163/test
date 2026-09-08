@@ -6712,8 +6712,6 @@ QString MainWindow::currentUiMacAddress() const {
     };
     if (ui && ui->macInput && usable(ui->macInput->text()))
         return ui->macInput->text().trimmed();
-    if (ui && ui->mac_combo && usable(ui->mac_combo->currentText()))
-        return ui->mac_combo->currentText().trimmed();
     if (usable(macAddress))
         return macAddress.trimmed();
     return {};
