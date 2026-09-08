@@ -40,14 +40,24 @@ class Fixture_uart : public QWidget {
     machine_command_id_e lastCommid() const;
     void setLastCommid(machine_command_id_e commandId);
 
+    void reloadStationConfig();
+    QString currentStationKey() const;
+
     int fixBaudRate = 9600;
+
+  protected:
+    void showEvent(QShowEvent* event) override;
+    void hideEvent(QHideEvent* event) override;
+    void closeEvent(QCloseEvent* event) override;
 
   private:
     QFixtureManager* fixtureManager_ = nullptr;
     QTimer* scanSerialPortsTimer_ = nullptr;
+    bool isConfigLoading_ = false;
 
     void loadPreStartMonitorConfig();
     void savePreStartMonitorConfig();
+    void updateWindowTitleWithStation();
 
     void updateDeviceFieldsVisibility();
 
@@ -78,9 +88,12 @@ class Fixture_uart : public QWidget {
     void on_plcDeviceCombo_currentIndexChanged(int index);
     void on_plcComPortCombo_currentTextChanged(const QString& text);
     void on_plcBaudRateCombo_currentTextChanged(const QString& text);
+    void on_plcIpLineEdit_textChanged(const QString& text);
     void on_plcIpLineEdit_editingFinished();
     void on_plcPortSpinBox_valueChanged(int value);
+    void on_plcWaitAddressLineEdit_textChanged(const QString& text);
     void on_plcWaitAddressLineEdit_editingFinished();
+    void on_scannerIpLineEdit_textChanged(const QString& text);
     void on_scannerIpLineEdit_editingFinished();
     void on_scannerPortSpinBox_valueChanged(int value);
 };

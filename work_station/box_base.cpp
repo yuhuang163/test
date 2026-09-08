@@ -579,6 +579,11 @@ void box_base::refreshFlowUiOnAllFreeWork() {
         auto* box = qobject_cast<box_base*>(w);
         if (!box)
             continue;
+        if (auto* freeBox = qobject_cast<QFreeWorkBox*>(box)) {
+            if (auto* fixtureUart = freeBox->fixtureUartWidget()) {
+                fixtureUart->reloadStationConfig();
+            }
+        }
         for (test_base* t : box->testList) {
             auto* fw = qobject_cast<QFreeWork*>(t);
             if (!fw)

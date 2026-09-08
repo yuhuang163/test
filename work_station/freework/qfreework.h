@@ -50,8 +50,8 @@ struct PreStartMonitorConfig {
     QString plcComPort;
     int plcBaudRate = 19200;
     int plcSlaveId = 1;
-    QString plcWaitAddress = "M100";
-    int plcWaitAddressM = 100;
+    QString plcWaitAddress = "M5";
+    int plcWaitAddressM = 5;
     int plcPollIntervalMs = 500;
     QString scannerIp = "192.168.1.64";
     int scannerPort = 2001;
@@ -76,6 +76,7 @@ class QFreeWork : public test_base {
     bool runSingleTestCaseStep(const QString& stationKey, const QString& caseName, QString* errorOut = nullptr);
     /** 设置页切换工站后：重载有序步骤与串口显隐（含 applyStationSerialUiConfig） */
     void refreshStationFlowUi() { refreshOrderedTestIndexes(); }
+    void updatePreStartMonitorState();
 
     Ui::QFreeWork* ui;
 
@@ -519,7 +520,6 @@ class QFreeWork : public test_base {
     PreStartMonitorConfig preStartMonitorConfig_;
     QTimer* preStartMonitorTimer_ = nullptr;
     bool preStartMonitorRunning_ = false;
-    void updatePreStartMonitorState();
 
   private slots:
     void triggerHikvisionScanner();

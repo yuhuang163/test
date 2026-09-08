@@ -141,7 +141,7 @@
         <item row="5" column="1">
          <widget class="QLineEdit" name="plcWaitAddressLineEdit">
           <property name="placeholderText">
-           <string>如 M100 或 X0</string>
+           <string>如 M5 或 M100</string>
           </property>
          </widget>
         </item>

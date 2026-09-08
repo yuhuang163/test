@@ -866,9 +866,9 @@ void QFreeWork::updatePreStartMonitorState() {
             SETTINGS.value(QStringLiteral("PreStart_Monitor/PlcSlaveId"),
             SETTINGS.value(QStringLiteral("XINJE_PLC/SlaveId"), 1)))).toInt();
 
-        const QString rawAddr = settings.value("PlcWaitAddress", settings.value("PlcWaitAddressM", "100")).toString().trimmed();
-        preStartMonitorConfig_.plcWaitAddress = rawAddr.isEmpty() ? QStringLiteral("M100") : (rawAddr.at(0).isDigit() ? QStringLiteral("M") + rawAddr : rawAddr);
-        preStartMonitorConfig_.plcWaitAddressM = settings.value("PlcWaitAddressM", 100).toInt();
+        const QString rawAddr = settings.value("PlcWaitAddress", settings.value("PlcWaitAddressM", "5")).toString().trimmed();
+        preStartMonitorConfig_.plcWaitAddress = rawAddr.isEmpty() ? QStringLiteral("M5") : (rawAddr.at(0).isDigit() ? QStringLiteral("M") + rawAddr : rawAddr);
+        preStartMonitorConfig_.plcWaitAddressM = settings.value("PlcWaitAddressM", 5).toInt();
         preStartMonitorConfig_.plcPollIntervalMs = qMax(50, settings.value("PlcPollIntervalMs", 500).toInt());
         preStartMonitorConfig_.scannerIp = settings.value("ScannerIp", "127.0.0.1").toString();
         preStartMonitorConfig_.scannerPort = settings.value("ScannerPort", 2001).toInt();
@@ -988,12 +988,17 @@ void QFreeWork::onPreStartMonitorTimeout() {
 
         QString plcErr;
         QVariant result;
-        bool ok = false;
-        const QString addr = preStartMonitorConfig_.plcWaitAddress.trimmed().toUpper();
+        QString addr = preStartMonitorConfig_.plcWaitAddress.trimmed().toUpper();
+        if (!addr.isEmpty() && addr.at(0).isDigit()) {
+            addr = QStringLiteral("M") + addr;
+        }
+        QVariantMap param;
+        param.insert(QStringLiteral("address"), addr);
+        param.insert(QStringLiteral("quantity"), 1);
         if (addr.startsWith(QLatin1Char('X'))) {
-            ok = modbusManager.exec(XinjePlcCmd::ReadDiscreteInputs, addr, &result, &plcErr);
+            ok = modbusManager.exec(XinjePlcCmd::ReadDiscreteInputs, param, &result, &plcErr);
         } else {
-            ok = modbusManager.exec(XinjePlcCmd::ReadCoils, addr, &result, &plcErr);
+            ok = modbusManager.exec(XinjePlcCmd::ReadCoils, param, &result, &plcErr);
         }
 
         if (ok) {

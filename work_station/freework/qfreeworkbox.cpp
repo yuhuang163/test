@@ -41,6 +41,12 @@ QFreeWorkBox::QFreeWorkBox(QWidget* parent) : box_base(parent), ui(new Ui::QFree
 
             QString masterFixturecomName = SETTINGS.value(QString("mechine/0/masterFixturecomName")).toString();
             Fixture_uart_ui->ui->FixturecomNameCombo->setCurrentText(masterFixturecomName);
+        } else {
+            Fixture_uart_ui->reloadStationConfig();
+            QString masterFixturecomName = SETTINGS.value(QString("mechine/0/masterFixturecomName")).toString();
+            if (!masterFixturecomName.isEmpty()) {
+                Fixture_uart_ui->ui->FixturecomNameCombo->setCurrentText(masterFixturecomName);
+            }
         }
         Fixture_uart_ui->raise();
         Fixture_uart_ui->show();

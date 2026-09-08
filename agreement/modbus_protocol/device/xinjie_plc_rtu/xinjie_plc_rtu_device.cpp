@@ -97,12 +97,31 @@ bool validateRtuFrame(const QByteArray& frame, quint8 slaveId, quint8 expectedFc
 }
 
 QString addressFromParam(const QVariant& param) {
+    if (param.userType() == QMetaType::QString || param.type() == QVariant::String) {
+        const QString s = param.toString().trimmed();
+        if (!s.isEmpty())
+            return s;
+    }
+    if (param.userType() == QMetaType::Int || param.type() == QVariant::Int) {
+        return QStringLiteral("M%1").arg(param.toInt());
+    }
     if (param.canConvert<QVariantMap>()) {
         const QVariantMap map = param.toMap();
         if (map.contains(QStringLiteral("address")))
             return map.value(QStringLiteral("address")).toString().trimmed();
         if (map.contains(QStringLiteral("addr")))
             return map.value(QStringLiteral("addr")).toString().trimmed();
+        if (map.contains(QStringLiteral("m")))
+            return map.value(QStringLiteral("m")).toString().trimmed();
+        if (map.contains(QStringLiteral("mLeft")))
+            return map.value(QStringLiteral("mLeft")).toString().trimmed();
+        if (map.contains(QStringLiteral("mRight")))
+            return map.value(QStringLiteral("mRight")).toString().trimmed();
+    }
+    if (param.canConvert<QString>()) {
+        const QString s = param.toString().trimmed();
+        if (!s.isEmpty())
+            return s;
     }
     return QString();
 }
