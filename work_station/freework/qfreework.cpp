@@ -888,13 +888,52 @@ void QFreeWork::updatePreStartMonitorState() {
 
     ui->autoStartCheckBox->setVisible(preStartMonitorConfig_.enabled);
 
-    if (preStartMonitorConfig_.enabled && !isTestContinue && ui->autoStartCheckBox->isChecked()) {
+    // 一拖多时 PLC 串口独占且按键共用：仅主工位负责开启按键监控，从工位不轮询 PLC 避免串口占用冲突
+    if (!isPrimaryMonitorStation()) {
+        if (preStartMonitorRunning_) {
+            preStartMonitorTimer_->stop();
+            preStartMonitorRunning_ = false;
+        }
+        // 如果是从工位状态改变（例如测试结束），通知主工位刷新监控状态
+        for (QWidget* w : QApplication::topLevelWidgets()) {
+            if (auto* b = qobject_cast<box_base*>(w)) {
+                if (b->testList.contains(this) && !b->testList.isEmpty()) {
+                    if (auto* primary = qobject_cast<QFreeWork*>(b->testList.first())) {
+                        if (primary != this) {
+                            primary->updatePreStartMonitorState();
+                        }
+                    }
+                    break;
+                }
+            }
+        }
+        return;
+    }
+
+    // 主工位检查：如果同框内有任何工位正在测试中，按键监控暂不启动，待全部测完再启动
+    bool anyTesting = isTestContinue;
+    for (QWidget* w : QApplication::topLevelWidgets()) {
+        if (auto* b = qobject_cast<box_base*>(w)) {
+            if (b->testList.contains(this)) {
+                for (test_base* t : b->testList) {
+                    if (t && t->isTestContinue) {
+                        anyTesting = true;
+                        break;
+                    }
+                }
+                break;
+            }
+        }
+    }
+
+    if (preStartMonitorConfig_.enabled && !anyTesting && ui->autoStartCheckBox->isChecked()) {
         if (!preStartMonitorRunning_) {
             preStartMonitorTimer_->start(preStartMonitorConfig_.plcPollIntervalMs);
             preStartMonitorRunning_ = true;
             const bool isXinjie = preStartMonitorConfig_.plcDevice.contains(QLatin1String("Xinjie"), Qt::CaseInsensitive)
                                   || preStartMonitorConfig_.plcDevice.contains(QLatin1String("Xinje"), Qt::CaseInsensitive);
-            const QString startLog = QStringLiteral("[PreStartMonitor] 启动按键监控: 设备=%1, 串口/IP=%2, 轮询地址=%3, 周期=%4ms")
+            const QString startLog = QStringLiteral("[PreStartMonitor] (主工位#%1) 启动PLC公共按键监控: 设备=%2, 串口/IP=%3, 轮询地址=%4, 周期=%5ms")
+                                        .arg(getIndex())
                                         .arg(preStartMonitorConfig_.plcDevice)
                                         .arg(isXinjie ? (preStartMonitorConfig_.plcComPort.isEmpty() ? QStringLiteral("未配置COM口") : preStartMonitorConfig_.plcComPort)
                                                       : QStringLiteral("%1:%2").arg(preStartMonitorConfig_.plcIp).arg(preStartMonitorConfig_.plcPort))
@@ -1014,11 +1053,11 @@ void QFreeWork::onPreStartMonitorTimeout() {
             showlog(logMsg);
 
             if (triggered) {
-                qDebug() << "[FreeWork] Xinjie PLC Trigger detected on" << addr << "! Stopping monitor and triggering scanner.";
-                showlog(QStringLiteral("[信捷PLC按键监控] 检测到启动按键信号 (%1=1)，停止监控并触发扫码枪...").arg(addr));
+                qDebug() << "[FreeWork] Xinjie PLC Trigger detected on" << addr << "! Stopping monitor and triggering all station scanners.";
+                showlog(QStringLiteral("[信捷PLC按键监控] 检测到启动按键信号 (%1=1)，停止监控并联动触发一拖多所有扫码枪...").arg(addr));
                 preStartMonitorTimer_->stop();
                 preStartMonitorRunning_ = false;
-                QMetaObject::invokeMethod(this, "triggerHikvisionScanner", Qt::QueuedConnection);
+                triggerAllStationScanners();
             }
         } else {
             const QString errLog = QStringLiteral("[信捷PLC按键监控] COM=%1 读取地址 %2 失败: %3")
@@ -1079,17 +1118,58 @@ void QFreeWork::onPreStartMonitorTimeout() {
         showlog(logMsg);
 
         if (triggered) {
-            qDebug() << "[FreeWork] PLC Trigger detected! Stopping monitor and triggering scanner.";
-            showlog(QStringLiteral("[H5U PLC按键监控] 检测到启动按键信号 (M%1=1)，停止监控并触发扫码枪...").arg(preStartMonitorConfig_.plcWaitAddressM));
+            qDebug() << "[FreeWork] PLC Trigger detected! Stopping monitor and triggering all station scanners.";
+            showlog(QStringLiteral("[H5U PLC按键监控] 检测到启动按键信号 (M%1=1)，停止监控并联动触发一拖多所有扫码枪...").arg(preStartMonitorConfig_.plcWaitAddressM));
             preStartMonitorTimer_->stop();
             preStartMonitorRunning_ = false;
-            QMetaObject::invokeMethod(this, "triggerHikvisionScanner", Qt::QueuedConnection);
+            triggerAllStationScanners();
         }
     } else {
         const QString errLog = QStringLiteral("[H5U PLC按键监控] 读取地址 M%1 失败: %2")
                                   .arg(preStartMonitorConfig_.plcWaitAddressM).arg(plcErr);
         qDebug().noquote() << errLog;
         showlog(errLog);
+    }
+}
+
+bool QFreeWork::isPrimaryMonitorStation() const {
+    for (QWidget* w : QApplication::topLevelWidgets()) {
+        if (auto* b = qobject_cast<box_base*>(w)) {
+            if (b->testList.contains(const_cast<QFreeWork*>(this))) {
+                return (b->testList.isEmpty() || b->testList.first() == this || getIndex() <= 1);
+            }
+        }
+    }
+    return getIndex() <= 1;
+}
+
+void QFreeWork::triggerAllStationScanners() {
+    box_base* myBox = nullptr;
+    for (QWidget* w : QApplication::topLevelWidgets()) {
+        if (auto* b = qobject_cast<box_base*>(w)) {
+            if (b->testList.contains(this)) {
+                myBox = b;
+                break;
+            }
+        }
+    }
+
+    if (myBox && !myBox->testList.isEmpty()) {
+        int triggeredCount = 0;
+        for (test_base* t : myBox->testList) {
+            if (auto* fw = qobject_cast<QFreeWork*>(t)) {
+                if (!fw->isTestContinue) {
+                    fw->showlog(QStringLiteral("[信捷PLC联动] 收到公共PLC启动信号，向本工位扫码枪(IP: %1:%2)发送启动指令...")
+                                    .arg(fw->preStartMonitorConfig_.scannerIp)
+                                    .arg(fw->preStartMonitorConfig_.scannerPort));
+                    QMetaObject::invokeMethod(fw, "triggerHikvisionScanner", Qt::QueuedConnection);
+                    ++triggeredCount;
+                }
+            }
+        }
+        showlog(QStringLiteral("[信捷PLC联动] 已向本窗口 %1 个一拖多工位同步触发扫码枪指令").arg(triggeredCount));
+    } else {
+        QMetaObject::invokeMethod(this, "triggerHikvisionScanner", Qt::QueuedConnection);
     }
 }
 

@@ -77,6 +77,8 @@ class QFreeWork : public test_base {
     /** 设置页切换工站后：重载有序步骤与串口显隐（含 applyStationSerialUiConfig） */
     void refreshStationFlowUi() { refreshOrderedTestIndexes(); }
     void updatePreStartMonitorState();
+    bool isPrimaryMonitorStation() const;
+    void triggerAllStationScanners();
 
     Ui::QFreeWork* ui;
 
