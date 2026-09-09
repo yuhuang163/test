@@ -33,6 +33,7 @@
 #include <QDir>
 #include <QTextStream>
 #include "app_help_menu.h"
+#include "host_ota_service.h"
 #include "qlog.h"
 #include "platform/cloud/auth/auth_service.h"
 #include "platform/cloud/client/factory_cloud_client.h"
@@ -597,6 +598,13 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
         refreshSettingsMenuVisibility();
     };
     helpCb.onCheckUpdate = [this]() { checkAndUpdateFile(); };
+    helpCb.onRollbackPrevious = [this]() {
+        QString msg;
+        HostOtaService::rollbackToPreviousVersion(this, &msg);
+        if (!msg.isEmpty()) {
+            showlog(msg);
+        }
+    };
     QMenu* helpMenu = AppHelpMenu::install(ui->menubar, this, helpCb);
     AppHelpMenu::ensureRightmost(ui->menubar, helpMenu);
 

@@ -129,13 +129,14 @@ void stopRemoteDesktopSession(const QString& sessionId) {
 }
 
 /** 上位机关闭时清理全部远控 Agent（含未登记/PyInstaller 残留） */
-void stopAllRemoteDesktopSessions() {
+void stopAllRemoteDesktopSessions(bool quickStop = false) {
     QList<qint64> pids;
     {
         QMutexLocker locker(&g_remoteDesktopMutex);
         pids = g_remoteDesktopPids.values();
         g_remoteDesktopPids.clear();
     }
+    const int waitMs = quickStop ? 0 : 5000;
     for (const qint64 pid : pids) {
         if (pid <= 0) {
             continue;
@@ -143,13 +144,20 @@ void stopAllRemoteDesktopSessions() {
         QProcess killer;
         killer.start(QStringLiteral("taskkill"),
                      {QStringLiteral("/PID"), QString::number(pid), QStringLiteral("/T"), QStringLiteral("/F")});
-        killer.waitForFinished(5000);
+        if (waitMs > 0) {
+            killer.waitForFinished(waitMs);
+        }
     }
     // 兜底：按进程名杀干净，避免关闭上位机后 remote_agent.exe 仍挂后台
     QProcess byName;
     byName.start(QStringLiteral("taskkill"),
                  {QStringLiteral("/IM"), QStringLiteral("remote_agent.exe"), QStringLiteral("/T"),
                   QStringLiteral("/F")});
+    if (quickStop) {
+        // OTA 不锁 exe，异步清理即可，避免 taskkill 空等 8s
+        qDebug() << QStringLiteral("[RemoteDesktop] OTA 快速清理 Agent（不等待 taskkill）");
+        return;
+    }
     byName.waitForFinished(8000);
     qDebug() << QStringLiteral("[RemoteDesktop] 已清理全部 Agent 进程");
 }
@@ -1308,7 +1316,7 @@ void TestCaseSyncService::startDeviceAgent() {
     QtConcurrent::run([]() { heartbeatAndPollCommands(); });
 }
 
-void TestCaseSyncService::stopDeviceAgent() {
+void TestCaseSyncService::stopDeviceAgent(bool quickStop) {
     if (!g_agentStopped.testAndSetRelaxed(0, 1)) {
         return;
     }
@@ -1323,6 +1331,8 @@ void TestCaseSyncService::stopDeviceAgent() {
         delete g_cmdTimer;
         g_cmdTimer = nullptr;
     }
-    stopAllRemoteDesktopSessions();
-    QThreadPool::globalInstance()->waitForDone(3000);
+    stopAllRemoteDesktopSessions(quickStop);
+    if (!quickStop) {
+        QThreadPool::globalInstance()->waitForDone(3000);
+    }
 }

@@ -484,6 +484,13 @@ void box_base::ShowData(QMainWindow* parent) {
         refreshSettingsMenuVisibility();
     };
     helpCb.onCheckUpdate = [this]() { checkAndUpdateFile(); };
+    helpCb.onRollbackPrevious = [this]() {
+        QString msg;
+        HostOtaService::rollbackToPreviousVersion(this, &msg);
+        if (!msg.isEmpty()) {
+            emit sendBoxLog(msg);
+        }
+    };
     QMenu* helpMenu = AppHelpMenu::install(parent->menuBar(), this, helpCb);
     QTimer::singleShot(0, parent, [parent, helpMenu]() {
         AppHelpMenu::ensureRightmost(parent->menuBar(), helpMenu);

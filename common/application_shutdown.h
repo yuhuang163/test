@@ -6,6 +6,8 @@ class ApplicationShutdown {
   public:
     /** 停云端 Agent、结束主循环、关串口/仪器等（可重复调用）。 */
     static void prepareForExit();
+    /** OTA 替换前：停 Agent、刷日志，短等待后台任务（避免关窗 waitForDone 3s 拖慢升级）。 */
+    static void prepareForOtaReplace();
     /** OTA：先 prepare，再延迟强杀进程树并 exit（box 工站 TotallyTask 也依赖 taskkill）。 */
     static void scheduleForceExitForOta(int delayMs = 800);
 };

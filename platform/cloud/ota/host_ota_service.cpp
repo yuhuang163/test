@@ -1,9 +1,12 @@
 #include "host_ota_service.h"
 
+#include "application_shutdown.h"
 #include "auth_service.h"
 #include "factory_cloud_client.h"
 
 #include "my_set/my_typedef.h"
+
+#include <algorithm>
 
 #include <QAbstractItemView>
 #include <QCoreApplication>
@@ -11,11 +14,16 @@
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDir>
+#include <QElapsedTimer>
 #include <QFile>
 #include <QFileInfo>
 #include <QInputDialog>
+#include <QDateTime>
+#include <QDirIterator>
 #include <QJsonArray>
+#include <QJsonDocument>
 #include <QJsonObject>
+#include <QMap>
 #include <QLabel>
 #include <QListWidget>
 #include <QMessageBox>
@@ -30,6 +38,7 @@
 #ifdef Q_OS_WIN
 #include <qt_windows.h>
 #include <shellapi.h>
+#include <tlhelp32.h>
 #endif
 
 #if _MSC_VER >= 1600
@@ -49,6 +58,104 @@ static QString sha256File(const QString& path) {
 }
 
 static bool launchVbsAndExit(const QString& vbsFileName);
+
+#ifdef Q_OS_WIN
+/** 枚举当前所有同名 exe 的 PID，供 OTA VBS 按 PID 异步 taskkill（避免 /IM 同步等待十几秒）。 */
+static QString collectMatchingProcessPidsCsv(const QString& imageName) {
+    QStringList pids;
+    const std::wstring nameW = imageName.toStdWString();
+    HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snap == INVALID_HANDLE_VALUE) {
+        return {};
+    }
+    PROCESSENTRY32W pe;
+    pe.dwSize = sizeof(pe);
+    if (Process32FirstW(snap, &pe)) {
+        do {
+            if (_wcsicmp(pe.szExeFile, nameW.c_str()) == 0) {
+                pids << QString::number(static_cast<qint64>(pe.th32ProcessID));
+            }
+        } while (Process32NextW(snap, &pe));
+    }
+    CloseHandle(snap);
+    return pids.join(QLatin1Char(','));
+}
+#endif
+
+static void appendVbsKillHostProcesses(QTextStream& vbs) {
+    vbs << "Sub KillHostProcesses\r\n";
+    vbs << "  Dim pidArr, p, nKilled\r\n";
+    vbs << "  nKilled = 0\r\n";
+    vbs << "  pidArr = Split(killPids, \",\")\r\n";
+    vbs << "  For Each p In pidArr\r\n";
+    vbs << "    p = Trim(p)\r\n";
+    vbs << "    If Len(p) > 0 Then\r\n";
+    vbs << "      sh.Run \"taskkill /F /PID \" & p & \" /T\", 0, False\r\n";
+    vbs << "      nKilled = nKilled + 1\r\n";
+    vbs << "    End If\r\n";
+    vbs << "  Next\r\n";
+    vbs << "  If nKilled = 0 Then\r\n";
+    vbs << "    sh.Run \"taskkill /F /IM \"\"\" & exeName & \"\"\" /T\", 0, False\r\n";
+    vbs << "  End If\r\n";
+    vbs << "End Sub\r\n";
+}
+
+static void appendVbsIsProcessAlive(QTextStream& vbs) {
+    vbs << "Function IsProcessAlive\r\n";
+    vbs << "  Dim exec, out\r\n";
+    vbs << "  IsProcessAlive = False\r\n";
+    vbs << "  Set exec = sh.Exec(\"cmd /c tasklist /NH /FI \"\"IMAGENAME eq \" & exeName & \"\"\"\")\r\n";
+    vbs << "  Do While exec.Status = 0\r\n";
+    vbs << "    WScript.Sleep 30\r\n";
+    vbs << "  Loop\r\n";
+    vbs << "  out = exec.StdOut.ReadAll\r\n";
+    vbs << "  IsProcessAlive = (InStr(1, out, exeName, vbTextCompare) > 0)\r\n";
+    vbs << "End Function\r\n";
+}
+
+struct RollbackFileEntry {
+    QString backupPath;
+    QString targetPath;
+};
+
+static bool isUnderUpdatesTree(const QString& nativePath) {
+    const QString norm = QDir::fromNativeSeparators(nativePath).toLower();
+    return norm.contains(QStringLiteral("/updates/")) || norm.endsWith(QStringLiteral("/updates"));
+}
+
+static QList<RollbackFileEntry> collectRollbackFiles(const QString& appDir) {
+    QMap<QString, RollbackFileEntry> byTargetLower;
+    const QString backupRoot = QDir(appDir).filePath(QStringLiteral("updates/backup"));
+    if (QDir(backupRoot).exists()) {
+        QDirIterator backupIt(backupRoot, QDir::Files, QDirIterator::Subdirectories);
+        while (backupIt.hasNext()) {
+            const QString backupPath = backupIt.next();
+            const QString rel = QDir(backupRoot).relativeFilePath(backupPath);
+            if (rel.isEmpty()) {
+                continue;
+            }
+            const QString targetPath = QDir(appDir).filePath(rel);
+            byTargetLower.insert(targetPath.toLower(), {backupPath, targetPath});
+        }
+    }
+
+    QDirIterator bakIt(appDir, QStringList{QStringLiteral("*.bak")}, QDir::Files, QDirIterator::Subdirectories);
+    while (bakIt.hasNext()) {
+        const QString backupPath = bakIt.next();
+        if (isUnderUpdatesTree(backupPath)) {
+            continue;
+        }
+        QString targetPath = backupPath;
+        if (targetPath.endsWith(QStringLiteral(".bak"), Qt::CaseInsensitive)) {
+            targetPath.chop(4);
+        }
+        if (targetPath.isEmpty() || byTargetLower.contains(targetPath.toLower())) {
+            continue;
+        }
+        byTargetLower.insert(targetPath.toLower(), {backupPath, targetPath});
+    }
+    return byTargetLower.values();
+}
 
 static bool launchVbsAndExit(const QString& vbsFileName) {
     const QString appDir = QCoreApplication::applicationDirPath();
@@ -106,6 +213,41 @@ struct OtaFileSpec {
     QString sha256;
     qint64 size = 0;
 };
+
+static void writeRollbackInfoJson(const QString& appDir, const QList<OtaFileSpec>& changed) {
+    QJsonObject root;
+    root.insert(QStringLiteral("createdAt"),
+               QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss")));
+    QJsonArray files;
+    for (const OtaFileSpec& spec : changed) {
+        if (!spec.path.isEmpty()) {
+            files.append(spec.path);
+        }
+    }
+    root.insert(QStringLiteral("files"), files);
+    const QString infoPath = QDir(appDir).filePath(QStringLiteral("updates/rollback_info.json"));
+    QDir().mkpath(QFileInfo(infoPath).absolutePath());
+    QFile infoFile(infoPath);
+    if (infoFile.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        infoFile.write(QJsonDocument(root).toJson(QJsonDocument::Compact));
+    }
+}
+
+static QString readLastRollbackInfoSummary(const QString& appDir) {
+    const QString infoPath = QDir(appDir).filePath(QStringLiteral("updates/rollback_info.json"));
+    QFile infoFile(infoPath);
+    if (!infoFile.open(QIODevice::ReadOnly)) {
+        return {};
+    }
+    const QJsonObject root = QJsonDocument::fromJson(infoFile.readAll()).object();
+    const QString createdAt = root.value(QStringLiteral("createdAt")).toString().trimmed();
+    const int fileCount = root.value(QStringLiteral("files")).toArray().size();
+    if (createdAt.isEmpty() && fileCount <= 0) {
+        return {};
+    }
+    return QStringLiteral("上次升级时间：%1，备份文件数：%2").arg(createdAt.isEmpty() ? QStringLiteral("未知") : createdAt)
+        .arg(fileCount);
+}
 
 static bool isSkippedEnvManifestPath(const QString& path) {
     const QString norm = path.trimmed().replace(QLatin1Char('\\'), QLatin1Char('/'));
@@ -222,7 +364,7 @@ static void showRestartCountdown(QWidget* parent) {
     msgBox->setStandardButtons(QMessageBox::Ok);
     msgBox->setDefaultButton(QMessageBox::Ok);
     // 点确定立即继续；未点则倒计时结束后自动关闭
-    int remainSec = 3;
+    int remainSec = 1;
     auto refreshText = [msgBox, &remainSec]() {
         msgBox->setText(QStringLiteral("下载完成，即将重启并安装新版本。\n\n"
                                        "点击「确定」立即重启；%1 秒后自动关闭。")
@@ -246,16 +388,58 @@ static void showRestartCountdown(QWidget* parent) {
     msgBox->deleteLater();
 }
 
+static QList<OtaFileSpec> orderOtaReplaceFiles(const QList<OtaFileSpec>& changed, const QString& exeName) {
+    QList<OtaFileSpec> ordered = changed;
+    std::stable_sort(ordered.begin(), ordered.end(),
+                     [&exeName](const OtaFileSpec& a, const OtaFileSpec& b) {
+                         const bool aExe =
+                             QFileInfo(a.path).fileName().compare(exeName, Qt::CaseInsensitive) == 0;
+                         const bool bExe =
+                             QFileInfo(b.path).fileName().compare(exeName, Qt::CaseInsensitive) == 0;
+                         if (aExe == bExe) {
+                             return false;
+                         }
+                         return !aExe && bExe;
+                     });
+    return ordered;
+}
+
 static bool startOtaReplaceBat(const QList<OtaFileSpec>& changed, const QString& updatesDir) {
     const QString appDir = QCoreApplication::applicationDirPath();
     const QString exeName = QFileInfo(QCoreApplication::applicationFilePath()).fileName();
+    const QList<OtaFileSpec> orderedChanged = orderOtaReplaceFiles(changed, exeName);
     const QString stagingDir = QDir(updatesDir).filePath(QStringLiteral("staging"));
     const QString backupDir = QDir(updatesDir).filePath(QStringLiteral("backup"));
     const QString vbsFileName = QDir(appDir).filePath(QStringLiteral("ota_replace.vbs"));
-    const QString logPath =
-        QDir(appDir).filePath(QStringLiteral("所有log/上位机log/ota_replace.log"));
+    const QString logPath = QDir(appDir).filePath(QStringLiteral("ota_replace.log"));
     QDir().mkpath(QFileInfo(logPath).absolutePath());
     const QString oldPid = QString::number(QCoreApplication::applicationPid());
+    const int n = orderedChanged.size();
+    QElapsedTimer hostTimer;
+    hostTimer.start();
+    {
+        QFile hostLog(logPath);
+        if (hostLog.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            QTextStream out(&hostLog);
+            const auto hostLine = [&](const QString& msg) {
+                out << QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss.zzz"))
+                    << QStringLiteral(" [host +") << hostTimer.elapsed() << QStringLiteral("ms] ") << msg
+                    << "\r\n";
+            };
+            hostLine(QStringLiteral("OTA replace plan files=%1 pid=%2").arg(n).arg(oldPid));
+            for (const OtaFileSpec& spec : orderedChanged) {
+                hostLine(QStringLiteral("  file: ") + spec.path);
+            }
+        }
+    }
+    const auto appendHostLog = [&](const QString& msg) {
+        QFile hostLog(logPath);
+        if (hostLog.open(QIODevice::Append | QIODevice::Text)) {
+            QTextStream out(&hostLog);
+            out << QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-dd HH:mm:ss.zzz"))
+                << QStringLiteral(" [host +") << hostTimer.elapsed() << QStringLiteral("ms] ") << msg << "\r\n";
+        }
+    };
 
     auto vbsQuote = [](const QString& path) {
         return QDir::toNativeSeparators(path).replace(QLatin1Char('"'), QStringLiteral("\"\""));
@@ -265,6 +449,11 @@ static bool startOtaReplaceBat(const QList<OtaFileSpec>& changed, const QString&
     const QString logV = vbsQuote(logPath);
     const QString backupDirV = vbsQuote(backupDir);
     const QString vbsSelfV = vbsQuote(vbsFileName);
+#ifdef Q_OS_WIN
+    const QString killPidsCsv = collectMatchingProcessPidsCsv(exeName);
+#else
+    const QString killPidsCsv;
+#endif
 
     QFile vbsFile(vbsFileName);
     if (!vbsFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
@@ -275,12 +464,13 @@ static bool startOtaReplaceBat(const QList<OtaFileSpec>& changed, const QString&
     vbs << "Set sh = CreateObject(\"WScript.Shell\")\r\n";
     vbs << "Set fso = CreateObject(\"Scripting.FileSystemObject\")\r\n";
     vbs << "sh.CurrentDirectory = \"" << dirV << "\"\r\n";
-    vbs << "Dim pid, exeName, logPath, backupDir, vbsPath\r\n";
+    vbs << "Dim pid, exeName, logPath, backupDir, vbsPath, killPids\r\n";
     vbs << "pid = \"" << oldPid << "\"\r\n";
     vbs << "exeName = \"" << exeV << "\"\r\n";
     vbs << "logPath = \"" << logV << "\"\r\n";
     vbs << "backupDir = \"" << backupDirV << "\"\r\n";
     vbs << "vbsPath = \"" << vbsSelfV << "\"\r\n";
+    vbs << "killPids = \"" << killPidsCsv << "\"\r\n";
     vbs << "Sub EnsureDir(p)\r\n";
     vbs << "  Dim parts, cur, j\r\n";
     vbs << "  parts = Split(p, \"\\\")\r\n";
@@ -290,19 +480,27 @@ static bool startOtaReplaceBat(const QList<OtaFileSpec>& changed, const QString&
     vbs << "    If Not fso.FolderExists(cur) Then fso.CreateFolder(cur)\r\n";
     vbs << "  Next\r\n";
     vbs << "End Sub\r\n";
-    vbs << "EnsureDir fso.GetParentFolderName(logPath)\r\n";
-    vbs << "Set logf = fso.CreateTextFile(logPath, True)\r\n";
-    vbs << "logf.WriteLine Now & \" OTA replace start pid=\" & pid\r\n";
-
-    const int n = changed.size();
+    vbs << "Dim tStart, logf\r\n";
+    vbs << "tStart = Timer\r\n";
+    vbs << "Sub LogStep(msg)\r\n";
+    vbs << "  Dim dt\r\n";
+    vbs << "  dt = Timer - tStart\r\n";
+    vbs << "  If dt < 0 Then dt = dt + 86400\r\n";
+    vbs << "  logf.WriteLine Now & \" [vbs +\" & Round(dt, 3) & \"s] \" & msg\r\n";
+    vbs << "End Sub\r\n";
     vbs << "Dim nFiles\r\n";
     vbs << "nFiles = " << n << "\r\n";
-    vbs << "Dim staging(), target(), backup()\r\n";
+    vbs << "EnsureDir fso.GetParentFolderName(logPath)\r\n";
+    vbs << "Set logf = fso.OpenTextFile(logPath, 8, True)\r\n";
+    vbs << "LogStep \"vbs start pid=\" & pid & \" nFiles=\" & nFiles\r\n";
+    vbs << "Dim staging(), target(), backup(), relPath()\r\n";
     vbs << "ReDim staging(nFiles - 1)\r\n";
     vbs << "ReDim target(nFiles - 1)\r\n";
     vbs << "ReDim backup(nFiles - 1)\r\n";
+    vbs << "ReDim relPath(nFiles - 1)\r\n";
     for (int i = 0; i < n; ++i) {
-        const QString rel = changed.at(i).path;
+        const QString rel = orderedChanged.at(i).path;
+        vbs << "relPath(" << i << ") = \"" << vbsQuote(rel) << "\"\r\n";
         vbs << "staging(" << i << ") = \"" << vbsQuote(QDir(stagingDir).filePath(rel)) << "\"\r\n";
         vbs << "target(" << i << ") = \"" << vbsQuote(QDir(appDir).filePath(rel)) << "\"\r\n";
         vbs << "backup(" << i << ") = \"" << vbsQuote(QDir(backupDir).filePath(rel)) << "\"\r\n";
@@ -320,73 +518,263 @@ static bool startOtaReplaceBat(const QList<OtaFileSpec>& changed, const QString&
     vbs << "  logf.WriteLine \"rollback done\"\r\n";
     vbs << "End Sub\r\n";
 
-    // 用 /IM 杀光所有同名进程：本进程启动 VBS 后已 TerminateProcess，但若被多开（无单实例保护），
-    // 其余实例仍锁住 exe 导致 MoveFile 失败，故不能只按自身 pid 杀。
-    vbs << "sh.Run \"taskkill /F /IM \" & exeName, 0, True\r\n";
-    vbs << "Dim i, okMove, retry\r\n";
+    // host 已 TerminateProcess；VBS 按枚举 PID 异步 taskkill，避免 /IM 同步等待十几秒。
+    appendVbsKillHostProcesses(vbs);
+    appendVbsIsProcessAlive(vbs);
+    vbs << "LogStep \"taskkill begin pids=\" & killPids\r\n";
+    vbs << "KillHostProcesses\r\n";
+    vbs << "LogStep \"taskkill async sent, sleep 400ms\"\r\n";
+    vbs << "WScript.Sleep 400\r\n";
+    vbs << "Dim i, okMove, retry, hc, alive\r\n";
     vbs << "For i = 0 To nFiles - 1\r\n";
+    vbs << "  LogStep \"file \" & (i + 1) & \"/\" & nFiles & \" begin \" & relPath(i)\r\n";
     vbs << "  EnsureDir fso.GetParentFolderName(backup(i))\r\n";
     vbs << "  If fso.FileExists(backup(i)) Then fso.DeleteFile backup(i), True\r\n";
     vbs << "  If fso.FileExists(target(i)) Then\r\n";
     vbs << "    okMove = False\r\n";
-    vbs << "    For retry = 1 To 40\r\n";
+    vbs << "    For retry = 1 To 12\r\n";
     vbs << "      Err.Clear\r\n";
     vbs << "      fso.MoveFile target(i), backup(i)\r\n";
     vbs << "      If Err.Number = 0 Then\r\n";
     vbs << "        okMove = True\r\n";
     vbs << "        Exit For\r\n";
     vbs << "      End If\r\n";
-    vbs << "      sh.Run \"taskkill /F /IM \" & exeName, 0, True\r\n";
-    vbs << "      WScript.Sleep 150\r\n";
+    vbs << "      If retry = 5 Or retry = 10 Then\r\n";
+    vbs << "        LogStep \"file \" & relPath(i) & \" backup retry=\" & retry & \" err=\" & Err.Number\r\n";
+    vbs << "        KillHostProcesses\r\n";
+    vbs << "      End If\r\n";
+    vbs << "      WScript.Sleep 100\r\n";
     vbs << "    Next\r\n";
     vbs << "    If Not okMove Then\r\n";
-    vbs << "      logf.WriteLine \"move target to backup failed: \" & target(i)\r\n";
+    vbs << "      LogStep \"move target to backup FAILED \" & target(i)\r\n";
     vbs << "      logf.Close\r\n";
     vbs << "      If fso.FileExists(vbsPath) Then fso.DeleteFile vbsPath, True\r\n";
     vbs << "      WScript.Quit 2\r\n";
     vbs << "    End If\r\n";
+    vbs << "    LogStep \"file \" & relPath(i) & \" backup ok retry=\" & retry\r\n";
+    vbs << "  Else\r\n";
+    vbs << "    LogStep \"file \" & relPath(i) & \" backup skip (target missing)\"\r\n";
     vbs << "  End If\r\n";
     vbs << "  EnsureDir fso.GetParentFolderName(target(i))\r\n";
     vbs << "  okMove = False\r\n";
-    vbs << "  For retry = 1 To 40\r\n";
+    vbs << "  For retry = 1 To 10\r\n";
     vbs << "    Err.Clear\r\n";
     vbs << "    fso.MoveFile staging(i), target(i)\r\n";
     vbs << "    If Err.Number = 0 Then\r\n";
     vbs << "      okMove = True\r\n";
     vbs << "      Exit For\r\n";
     vbs << "    End If\r\n";
-    vbs << "    WScript.Sleep 150\r\n";
+    vbs << "    If retry = 1 Or retry = 5 Or retry = 10 Then\r\n";
+    vbs << "      LogStep \"file \" & relPath(i) & \" replace retry=\" & retry & \" err=\" & Err.Number\r\n";
+    vbs << "    End If\r\n";
+    vbs << "    WScript.Sleep 80\r\n";
     vbs << "  Next\r\n";
     vbs << "  If Not okMove Then\r\n";
-    vbs << "    logf.WriteLine \"move staging to target failed: \" & target(i)\r\n";
+    vbs << "    LogStep \"move staging to target FAILED \" & target(i)\r\n";
     vbs << "    RollbackAll\r\n";
     vbs << "    logf.Close\r\n";
     vbs << "    If fso.FileExists(vbsPath) Then fso.DeleteFile vbsPath, True\r\n";
     vbs << "    WScript.Quit 3\r\n";
     vbs << "  End If\r\n";
+    vbs << "  LogStep \"file \" & relPath(i) & \" replace ok retry=\" & retry\r\n";
     vbs << "Next\r\n";
+    vbs << "LogStep \"all files replaced, launching exe\"\r\n";
 
-    // 启动新版本，等 5 秒用 WMI 查进程存活；缺 dll 等典型崩溃会立即退出 → 触发回滚
+    // 先替换完 dll 再换 exe；tasklist 轮询比 WMI 首次连接快一个数量级
     vbs << "sh.Run \"\"\"\" & sh.CurrentDirectory & \"\\\" & exeName & \"\"\"\", 1, False\r\n";
-    vbs << "WScript.Sleep 5000\r\n";
-    vbs << "Dim wmi, col\r\n";
-    vbs << "Set wmi = GetObject(\"winmgmts:\\\\.\\root\\cimv2\")\r\n";
-    vbs << "Set col = wmi.ExecQuery(\"Select Name From Win32_Process Where Name='\" & exeName & \"'\")\r\n";
-    vbs << "If col.Count > 0 Then\r\n";
-    vbs << "  logf.WriteLine \"health check ok\"\r\n";
-    vbs << "  On Error Resume Next\r\n";
-    vbs << "  If fso.FolderExists(backupDir) Then fso.DeleteFolder backupDir, True\r\n";
+    vbs << "LogStep \"exe launch requested\"\r\n";
+    vbs << "alive = False\r\n";
+    vbs << "For hc = 1 To 12\r\n";
+    vbs << "  WScript.Sleep 300\r\n";
+    vbs << "  If IsProcessAlive Then\r\n";
+    vbs << "    alive = True\r\n";
+    vbs << "    LogStep \"health check ok poll=\" & hc\r\n";
+    vbs << "    Exit For\r\n";
+    vbs << "  End If\r\n";
+    vbs << "  If hc = 1 Or hc = 4 Or hc = 8 Or hc = 12 Then LogStep \"health check waiting poll=\" & hc\r\n";
+    vbs << "Next\r\n";
+    vbs << "If alive Then\r\n";
+    vbs << "  LogStep \"health check ok, keep backup for manual rollback\"\r\n";
     vbs << "Else\r\n";
-    vbs << "  logf.WriteLine \"health check failed, rolling back\"\r\n";
+    vbs << "  LogStep \"health check failed, rolling back\"\r\n";
     vbs << "  RollbackAll\r\n";
     vbs << "  sh.Run \"\"\"\" & sh.CurrentDirectory & \"\\\" & exeName & \"\"\"\", 1, False\r\n";
     vbs << "End If\r\n";
+    vbs << "LogStep \"vbs finished\"\r\n";
+    vbs << "logf.Close\r\n";
+    vbs << "If fso.FileExists(vbsPath) Then fso.DeleteFile vbsPath, True\r\n";
+    vbs << "WScript.Quit 0\r\n";
+    vbsFile.close();
+
+    writeRollbackInfoJson(appDir, changed);
+    appendHostLog(QStringLiteral("vbs script written bytes=%1").arg(QFileInfo(vbsFileName).size()));
+    ApplicationShutdown::prepareForOtaReplace();
+    appendHostLog(QStringLiteral("prepareForOtaReplace done"));
+    appendHostLog(QStringLiteral("launching wscript"));
+    return launchVbsAndExit(vbsFileName);
+}
+
+static bool startOtaRollbackVbs(const QList<RollbackFileEntry>& entries) {
+    if (entries.isEmpty()) {
+        return false;
+    }
+    const QString appDir = QCoreApplication::applicationDirPath();
+    const QString exeName = QFileInfo(QCoreApplication::applicationFilePath()).fileName();
+    const QString vbsFileName = QDir(appDir).filePath(QStringLiteral("ota_rollback.vbs"));
+    const QString logPath =
+        QDir(appDir).filePath(QStringLiteral("所有log/上位机log/ota_rollback.log"));
+    QDir().mkpath(QFileInfo(logPath).absolutePath());
+    const QString oldPid = QString::number(QCoreApplication::applicationPid());
+
+    auto vbsQuote = [](const QString& path) {
+        return QDir::toNativeSeparators(path).replace(QLatin1Char('"'), QStringLiteral("\"\""));
+    };
+    const QString dirV = vbsQuote(appDir);
+    const QString exeV = vbsQuote(exeName);
+    const QString logV = vbsQuote(logPath);
+    const QString vbsSelfV = vbsQuote(vbsFileName);
+#ifdef Q_OS_WIN
+    const QString killPidsCsv = collectMatchingProcessPidsCsv(exeName);
+#else
+    const QString killPidsCsv;
+#endif
+
+    QFile vbsFile(vbsFileName);
+    if (!vbsFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        return false;
+    }
+    QTextStream vbs(&vbsFile);
+    vbs << "On Error Resume Next\r\n";
+    vbs << "Set sh = CreateObject(\"WScript.Shell\")\r\n";
+    vbs << "Set fso = CreateObject(\"Scripting.FileSystemObject\")\r\n";
+    vbs << "sh.CurrentDirectory = \"" << dirV << "\"\r\n";
+    vbs << "Dim pid, exeName, logPath, vbsPath, killPids\r\n";
+    vbs << "pid = \"" << oldPid << "\"\r\n";
+    vbs << "exeName = \"" << exeV << "\"\r\n";
+    vbs << "logPath = \"" << logV << "\"\r\n";
+    vbs << "vbsPath = \"" << vbsSelfV << "\"\r\n";
+    vbs << "killPids = \"" << killPidsCsv << "\"\r\n";
+    vbs << "Sub EnsureDir(p)\r\n";
+    vbs << "  Dim parts, cur, j\r\n";
+    vbs << "  parts = Split(p, \"\\\")\r\n";
+    vbs << "  cur = parts(0)\r\n";
+    vbs << "  For j = 1 To UBound(parts)\r\n";
+    vbs << "    cur = cur & \"\\\" & parts(j)\r\n";
+    vbs << "    If Not fso.FolderExists(cur) Then fso.CreateFolder(cur)\r\n";
+    vbs << "  Next\r\n";
+    vbs << "End Sub\r\n";
+    vbs << "EnsureDir fso.GetParentFolderName(logPath)\r\n";
+    vbs << "Set logf = fso.CreateTextFile(logPath, True)\r\n";
+    vbs << "logf.WriteLine Now & \" OTA rollback start pid=\" & pid\r\n";
+
+    const int n = entries.size();
+    vbs << "Dim nFiles\r\n";
+    vbs << "nFiles = " << n << "\r\n";
+    vbs << "Dim backup(), target()\r\n";
+    vbs << "ReDim backup(nFiles - 1)\r\n";
+    vbs << "ReDim target(nFiles - 1)\r\n";
+    for (int i = 0; i < n; ++i) {
+        vbs << "backup(" << i << ") = \"" << vbsQuote(entries.at(i).backupPath) << "\"\r\n";
+        vbs << "target(" << i << ") = \"" << vbsQuote(entries.at(i).targetPath) << "\"\r\n";
+    }
+
+    appendVbsKillHostProcesses(vbs);
+    vbs << "KillHostProcesses\r\n";
+    vbs << "WScript.Sleep 400\r\n";
+    vbs << "Dim i, okMove, retry\r\n";
+    vbs << "For i = 0 To nFiles - 1\r\n";
+    vbs << "  If fso.FileExists(backup(i)) Then\r\n";
+    vbs << "    EnsureDir fso.GetParentFolderName(target(i))\r\n";
+    vbs << "    If fso.FileExists(target(i)) Then fso.DeleteFile target(i), True\r\n";
+    vbs << "    okMove = False\r\n";
+    vbs << "    For retry = 1 To 40\r\n";
+    vbs << "      Err.Clear\r\n";
+    vbs << "      fso.MoveFile backup(i), target(i)\r\n";
+    vbs << "      If Err.Number = 0 Then\r\n";
+    vbs << "        okMove = True\r\n";
+    vbs << "        Exit For\r\n";
+    vbs << "      End If\r\n";
+    vbs << "      KillHostProcesses\r\n";
+    vbs << "      WScript.Sleep 150\r\n";
+    vbs << "    Next\r\n";
+    vbs << "    If okMove Then\r\n";
+    vbs << "      logf.WriteLine \"restored: \" & target(i)\r\n";
+    vbs << "    Else\r\n";
+    vbs << "      logf.WriteLine \"restore failed: \" & target(i)\r\n";
+    vbs << "    End If\r\n";
+    vbs << "  End If\r\n";
+    vbs << "Next\r\n";
+    vbs << "sh.Run \"\"\"\" & sh.CurrentDirectory & \"\\\" & exeName & \"\"\"\", 1, False\r\n";
+    vbs << "logf.WriteLine \"rollback finished\"\r\n";
     vbs << "logf.Close\r\n";
     vbs << "If fso.FileExists(vbsPath) Then fso.DeleteFile vbsPath, True\r\n";
     vbs << "WScript.Quit 0\r\n";
     vbsFile.close();
 
     return launchVbsAndExit(vbsFileName);
+}
+
+bool HostOtaService::hasPreviousVersionBackup() {
+    const QString appDir = QCoreApplication::applicationDirPath();
+    const QList<RollbackFileEntry> entries = collectRollbackFiles(appDir);
+    for (const RollbackFileEntry& entry : entries) {
+        if (QFileInfo::exists(entry.backupPath)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool HostOtaService::rollbackToPreviousVersion(QWidget* parent, QString* message) {
+    const QString appDir = QCoreApplication::applicationDirPath();
+    QList<RollbackFileEntry> entries;
+    const QList<RollbackFileEntry> collected = collectRollbackFiles(appDir);
+    for (const RollbackFileEntry& entry : collected) {
+        if (QFileInfo::exists(entry.backupPath)) {
+            entries.append(entry);
+        }
+    }
+    if (entries.isEmpty()) {
+        if (message) {
+            *message = QStringLiteral("未找到可回退的备份（updates/backup 或 *.bak）");
+        }
+        if (parent) {
+            QMessageBox::information(parent, QStringLiteral("回退上一版本"), message ? *message : QString());
+        }
+        return false;
+    }
+
+    const QString exeName = QFileInfo(QCoreApplication::applicationFilePath()).fileName();
+    const QString summary = readLastRollbackInfoSummary(appDir);
+    QString detail = QStringLiteral("将把 %1 个文件还原为升级前版本（含 %2）。\n\n确认后程序将退出并重启。")
+                         .arg(entries.size())
+                         .arg(exeName);
+    if (!summary.isEmpty()) {
+        detail = summary + QStringLiteral("\n\n") + detail;
+    }
+    if (parent) {
+        if (QMessageBox::question(parent, QStringLiteral("回退上一版本"), detail, QMessageBox::Yes | QMessageBox::No,
+                                  QMessageBox::No) != QMessageBox::Yes) {
+            if (message) {
+                *message = QStringLiteral("用户取消回退");
+            }
+            return false;
+        }
+    }
+
+    if (!startOtaRollbackVbs(entries)) {
+        if (message) {
+            *message = QStringLiteral("无法启动回退脚本");
+        }
+        if (parent) {
+            QMessageBox::warning(parent, QStringLiteral("回退上一版本"), message ? *message : QString());
+        }
+        return false;
+    }
+    if (message) {
+        *message = QStringLiteral("正在回退并重启…");
+    }
+    return true;
 }
 
 void HostOtaService::cleanupStaleBackupProcess() {
@@ -563,8 +951,8 @@ bool HostOtaService::downloadAndApply(const CheckResult& info, QWidget* parent, 
     OtaFileSpec exeSpec;
     exeSpec.path = exeName;
     exeSpec.sha256 = exeSha;
-    changed.append(exeSpec);
     changed.append(changedEnv);
+    changed.append(exeSpec);
 
     // 版本号来自 host_ota_version.h 编译进新包，无需写 settings
 

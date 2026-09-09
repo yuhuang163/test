@@ -24,6 +24,18 @@ void ApplicationShutdown::prepareForExit() {
     QThreadPool::globalInstance()->waitForDone(3000);
 }
 
+void ApplicationShutdown::prepareForOtaReplace() {
+    static bool done = false;
+    if (done) {
+        return;
+    }
+    done = true;
+
+    TestCaseSyncService::stopDeviceAgent(true);
+    Qlog::flushLogBuffers();
+    QThreadPool::globalInstance()->waitForDone(800);
+}
+
 void ApplicationShutdown::scheduleForceExitForOta(int delayMs) {
     prepareForExit();
     QTimer::singleShot(delayMs, []() {
