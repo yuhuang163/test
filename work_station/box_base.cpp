@@ -20,6 +20,7 @@
 #include "qfreeworkbox.h"
 #include "host_ota_service.h"
 #include "app_help_menu.h"
+#include "application_shutdown.h"
 #include "platform/cloud/auth/auth_service.h"
 
 #if _MSC_VER >= 1600
@@ -272,6 +273,8 @@ box_base::~box_base() {
 void box_base::closeEvent(QCloseEvent*) {
     qDebug() << "box_base关闭";
     isTestContinue = 0;
+    // 立刻停云端心跳/命令轮询，避免关窗后 QtConcurrent HTTP（最长 120s）拖住进程退出
+    ApplicationShutdown::prepareForExit();
     // 先保存串口，再关子窗口（避免关窗过程中下拉被清空后写空值）
     saveCustom();
     for (auto* x : testList) {
@@ -340,6 +343,7 @@ void box_base::TotallyTask() {
     }
 
     Qlog::saveResidentLog(QStringLiteral("TotallyTask"), QStringLiteral("退出主任务环"));
+    ApplicationShutdown::prepareForExit();
 }
 // void box_base::TotallyTask() {
 //     QList<QThread*> threads;

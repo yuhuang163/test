@@ -48,6 +48,9 @@ constexpr int kCommandPollIntervalMs = 800;
 
 QAtomicInt g_heartbeatBusy(0);
 QAtomicInt g_commandPollBusy(0);
+QAtomicInt g_agentStopped(0);
+QTimer* g_hbTimer = nullptr;
+QTimer* g_cmdTimer = nullptr;
 
 QMutex g_remoteDesktopMutex;
 QHash<QString, qint64> g_remoteDesktopPids; // sessionId -> pid
@@ -1115,6 +1118,9 @@ TestCaseSyncService::SyncResult TestCaseSyncService::syncStepsLibraryFromCloud()
 }
 
 void TestCaseSyncService::heartbeatAndPollCommands() {
+    if (g_agentStopped.loadRelaxed()) {
+        return;
+    }
     if (!g_heartbeatBusy.testAndSetRelaxed(0, 1)) {
         Qlog::saveResidentLog(QStringLiteral("heartbeat"),
                               QStringLiteral("跳过：上一次心跳仍在执行（可能堆积占用）"));
@@ -1183,6 +1189,9 @@ void TestCaseSyncService::heartbeatAndPollCommands() {
 }
 
 void TestCaseSyncService::pollDeviceCommands() {
+    if (g_agentStopped.loadRelaxed()) {
+        return;
+    }
     if (!g_commandPollBusy.testAndSetRelaxed(0, 1)) {
         Qlog::saveResidentLog(QStringLiteral("cmdPoll"),
                               QStringLiteral("跳过：上一次命令轮询仍在执行（可能堆积占用）"));
@@ -1282,19 +1291,38 @@ void TestCaseSyncService::startDeviceAgent() {
                               .arg(kHeartbeatIntervalMs)
                               .arg(kCommandPollIntervalMs));
 
-    auto* hbTimer = new QTimer(qApp);
-    hbTimer->setInterval(kHeartbeatIntervalMs);
-    QObject::connect(hbTimer, &QTimer::timeout, qApp, []() {
+    g_hbTimer = new QTimer(qApp);
+    g_hbTimer->setInterval(kHeartbeatIntervalMs);
+    QObject::connect(g_hbTimer, &QTimer::timeout, qApp, []() {
         QtConcurrent::run([]() { heartbeatAndPollCommands(); });
     });
-    hbTimer->start();
+    g_hbTimer->start();
 
-    auto* cmdTimer = new QTimer(qApp);
-    cmdTimer->setInterval(kCommandPollIntervalMs);
-    QObject::connect(cmdTimer, &QTimer::timeout, qApp, []() {
+    g_cmdTimer = new QTimer(qApp);
+    g_cmdTimer->setInterval(kCommandPollIntervalMs);
+    QObject::connect(g_cmdTimer, &QTimer::timeout, qApp, []() {
         QtConcurrent::run([]() { pollDeviceCommands(); });
     });
-    cmdTimer->start();
+    g_cmdTimer->start();
 
     QtConcurrent::run([]() { heartbeatAndPollCommands(); });
+}
+
+void TestCaseSyncService::stopDeviceAgent() {
+    if (!g_agentStopped.testAndSetRelaxed(0, 1)) {
+        return;
+    }
+    Qlog::saveResidentLog(QStringLiteral("agent"), QStringLiteral("停止常驻心跳/命令轮询"));
+    if (g_hbTimer) {
+        g_hbTimer->stop();
+        delete g_hbTimer;
+        g_hbTimer = nullptr;
+    }
+    if (g_cmdTimer) {
+        g_cmdTimer->stop();
+        delete g_cmdTimer;
+        g_cmdTimer = nullptr;
+    }
+    stopAllRemoteDesktopSessions();
+    QThreadPool::globalInstance()->waitForDone(3000);
 }

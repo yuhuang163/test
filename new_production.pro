@@ -210,6 +210,7 @@ INCLUDEPATH += platform/driver/process
 SOURCES += \
     common/common_utils.cpp \
     common/app_help_menu.cpp \
+    common/application_shutdown.cpp \
     platform/debug/screen_inspect/screen_inspect_widget.cpp \
     platform/debug/screen_inspect/screen_inspect_analyzer.cpp \
     platform/debug/screen_inspect/screen_inspect_capture.cpp \
@@ -377,6 +378,7 @@ SOURCES += \
 HEADERS += \
     common/common_utils.h \
     common/app_help_menu.h \
+    common/application_shutdown.h \
     platform/debug/screen_inspect/screen_inspect_widget.h \
     platform/debug/screen_inspect/screen_inspect_analyzer.h \
     platform/debug/screen_inspect/screen_inspect_capture.h \
