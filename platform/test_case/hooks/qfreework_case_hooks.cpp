@@ -6,6 +6,7 @@
 #include "test_case.h"
 
 #include "qprotocol_types.h"
+#include "plc_station_sync_barrier.h"
 
 #include <QDialog>
 #include <QDialogButtonBox>
@@ -446,6 +447,30 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         fw->startProductInstrumentStopReceiveAndPer(QString());
         return;
     }
+    if (hookId == QStringLiteral("PLC_SYNC_WRITE_COIL")) {
+        PlcStationSyncBarrier::instance().executeSyncWriteCoil(fw, fw->activeTestCase());
+        return;
+    }
+    if (hookId == QStringLiteral("PLC_SYNC_READ_COIL")) {
+        PlcStationSyncBarrier::instance().executeSyncReadCoil(fw, fw->activeTestCase());
+        return;
+    }
+    if (hookId == QStringLiteral("PLC_SYNC_WRITE_M10")) {
+        PlcStationSyncBarrier::instance().executeSyncWriteCoil(fw, fw->activeTestCase(), QStringLiteral("M10"));
+        return;
+    }
+    if (hookId == QStringLiteral("PLC_SYNC_WRITE_M11")) {
+        PlcStationSyncBarrier::instance().executeSyncWriteCoil(fw, fw->activeTestCase(), QStringLiteral("M11"));
+        return;
+    }
+    if (hookId == QStringLiteral("PLC_SYNC_READ_M0")) {
+        PlcStationSyncBarrier::instance().executeSyncReadCoil(fw, fw->activeTestCase(), QStringLiteral("M0"));
+        return;
+    }
+    if (hookId == QStringLiteral("PLC_SYNC_READ_M1")) {
+        PlcStationSyncBarrier::instance().executeSyncReadCoil(fw, fw->activeTestCase(), QStringLiteral("M1"));
+        return;
+    }
 }
 
 void QFreeWorkTestCaseHookRegistrar::registerAll() {
@@ -505,6 +530,12 @@ void QFreeWorkTestCaseHookRegistrar::registerAll() {
     registerDispatchHook(QStringLiteral("BYD_MES_GET_TRANSITION_CODE"));
     registerDispatchHook(QStringLiteral("BYD_MES_GET_NEW_SFC"));
     registerDispatchHook(QStringLiteral("BYD_MES_START_BY_NEW_SFC"));
+    registerDispatchHook(QStringLiteral("PLC_SYNC_WRITE_COIL"));
+    registerDispatchHook(QStringLiteral("PLC_SYNC_READ_COIL"));
+    registerDispatchHook(QStringLiteral("PLC_SYNC_WRITE_M10"));
+    registerDispatchHook(QStringLiteral("PLC_SYNC_WRITE_M11"));
+    registerDispatchHook(QStringLiteral("PLC_SYNC_READ_M0"));
+    registerDispatchHook(QStringLiteral("PLC_SYNC_READ_M1"));
 }
 
 void registerQFreeWorkCatalogTestCaseHooks() {

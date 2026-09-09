@@ -5,19 +5,19 @@
 #pragma execution_character_set(push, "utf-8")
 #endif
 
-#include <iterator>
-#if defined(_MSC_VER) && _MSC_VER >= 1930
-namespace stdext {
-    template <class _Iter>
-    constexpr _Iter make_checked_array_iterator(_Iter _Ptr, size_t) noexcept {
-        return _Ptr;
-    }
-    template <class _Iter>
-    constexpr _Iter make_unchecked_array_iterator(_Iter _Ptr) noexcept {
-        return _Ptr;
-    }
-}
+#include <qglobal.h>
+
+// 兼容所有版本 MSVC（从 2019 到 2026 各版本）：
+// 消除 Qt 5.15 对微软非标扩展 stdext::make_checked_array_iterator 的依赖，避免重载冲突 C2668 与缺失 C2653
+#ifdef QT_MAKE_CHECKED_ARRAY_ITERATOR
+#undef QT_MAKE_CHECKED_ARRAY_ITERATOR
 #endif
+#define QT_MAKE_CHECKED_ARRAY_ITERATOR(x, N) (x)
+
+#ifdef QT_MAKE_UNCHECKED_ARRAY_ITERATOR
+#undef QT_MAKE_UNCHECKED_ARRAY_ITERATOR
+#endif
+#define QT_MAKE_UNCHECKED_ARRAY_ITERATOR(x) (x)
 
 // --- PCH 常用 Qt（已去掉重复项与 MES/设置页整页 UI，仅保留多数 TU 会用到的）---
 #include <qserialport.h>     // 串口通信类

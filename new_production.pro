@@ -315,6 +315,7 @@ SOURCES += \
     platform/test_case/hooks/test_case_hook_registry.cpp \
     platform/test_case/hooks/qfreework_case_hooks.cpp \
     platform/test_case/hooks/qfreework_hook_steps.cpp \
+    platform/test_case/hooks/plc_station_sync_barrier.cpp \
     platform/test_case/catalog/cmd_catalog_base.cpp \
     platform/test_case/catalog/cmd_manifest_catalogs.cpp \
     platform/test_case/catalog/test_case_send_dispatch.cpp \
@@ -501,6 +502,7 @@ HEADERS += \
     platform/test_case/validator/test_case_validator.h \
     platform/test_case/runner/test_case_runner.h \
     platform/test_case/hooks/test_case_hook_registry.h \
+    platform/test_case/hooks/plc_station_sync_barrier.h \
     platform/cloud/test_record/test_record_store.h \
     platform/cloud/log_upload/log_upload_service.h \
     platform/cloud/client/factory_cloud_client.h \

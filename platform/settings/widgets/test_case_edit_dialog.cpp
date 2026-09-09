@@ -1753,6 +1753,12 @@ const QHash<QString, QString>& hookDisplayNameMap() {
         {QStringLiteral("BYD_MES_GET_TRANSITION_CODE"), QStringLiteral("BYD MES 通过整机SN获取过渡码")},
         {QStringLiteral("BYD_MES_GET_NEW_SFC"), QStringLiteral("BYD MES 通过过渡码获取 newSfc")},
         {QStringLiteral("BYD_MES_START_BY_NEW_SFC"), QStringLiteral("BYD MES 使用 newSfc 进行站前检查")},
+        {QStringLiteral("PLC_SYNC_WRITE_COIL"), QStringLiteral("[一拖多同步] 统一写线圈(到齐后写一次)")},
+        {QStringLiteral("PLC_SYNC_READ_COIL"), QStringLiteral("[一拖多同步] 统一监控线圈(到齐后监听)")},
+        {QStringLiteral("PLC_SYNC_WRITE_M10"), QStringLiteral("[一拖多同步] 统一写M10脉冲复位")},
+        {QStringLiteral("PLC_SYNC_WRITE_M11"), QStringLiteral("[一拖多同步] 统一写M11脉冲复位")},
+        {QStringLiteral("PLC_SYNC_READ_M0"), QStringLiteral("[一拖多同步] 统一监听M0按键信号")},
+        {QStringLiteral("PLC_SYNC_READ_M1"), QStringLiteral("[一拖多同步] 统一监听M1按键信号")},
     };
     return map;
 }
