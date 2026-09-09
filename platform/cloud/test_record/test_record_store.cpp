@@ -49,6 +49,70 @@ bool isItemResultToken(QString v) {
         v == QStringLiteral("通过") || v == QStringLiteral("失败") || v == QStringLiteral("不通过");
 }
 
+QString unescapeMesSegmentField(QString v) {
+    QString out;
+    out.reserve(v.size());
+    for (int i = 0; i < v.size(); ++i) {
+        const QChar c = v.at(i);
+        if (c == QLatin1Char('\\') && i + 1 < v.size()) {
+            const QChar next = v.at(i + 1);
+            if (next == QLatin1Char(':')) {
+                out.append(QLatin1Char(':'));
+                ++i;
+                continue;
+            }
+            if (next == QLatin1Char('\\')) {
+                out.append(QLatin1Char('\\'));
+                ++i;
+                continue;
+            }
+        }
+        if (c == QChar(0xFF5C)) {
+            out.append(QLatin1Char('|'));
+            continue;
+        }
+        out.append(c);
+    }
+    return out;
+}
+
+QStringList splitMesSegmentFields(const QString& segment) {
+    QStringList parts;
+    QString current;
+    current.reserve(segment.size());
+    for (int i = 0; i < segment.size(); ++i) {
+        const QChar c = segment.at(i);
+        if (c == QLatin1Char('\\') && i + 1 < segment.size()) {
+            current.append(c);
+            current.append(segment.at(i + 1));
+            ++i;
+            continue;
+        }
+        if (c == QLatin1Char(':')) {
+            parts.append(current);
+            current.clear();
+            continue;
+        }
+        current.append(c);
+    }
+    parts.append(current);
+    return parts;
+}
+
+int indexOfUnescapedColon(const QString& text) {
+    for (int i = 0; i < text.size(); ++i) {
+        const QChar c = text.at(i);
+        if (c == QLatin1Char('\\') && i + 1 < text.size()) {
+            ++i;
+            continue;
+        }
+        if (c == QLatin1Char(':')) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 QString sanitizeSqlIdent(const QString& raw) {
     QString out;
     out.reserve(raw.size());
@@ -260,6 +324,14 @@ bool TestRecordStore::ensureUploadQueueTable() {
     return true;
 }
 
+QString TestRecordStore::escapeMesSegmentField(const QString& value) {
+    QString v = value;
+    v.replace(QLatin1Char('\\'), QStringLiteral("\\\\"));
+    v.replace(QLatin1Char('|'), QStringLiteral("｜"));
+    v.replace(QLatin1Char(':'), QStringLiteral("\\:"));
+    return v;
+}
+
 QVector<TestRecordStore::ParsedItem> TestRecordStore::parseItemValue(const MesPacketData& pack) {
     QVector<ParsedItem> items;
     QString inner = pack.itemvalue.trimmed();
@@ -283,16 +355,16 @@ QVector<TestRecordStore::ParsedItem> TestRecordStore::parseItemValue(const MesPa
         item.standardValue.clear();
         item.unit.clear();
         item.costTime.clear();
-        const QStringList parts = kv.split(QLatin1Char(':'), QString::KeepEmptyParts);
+        const QStringList parts = splitMesSegmentFields(kv);
         if (parts.size() >= 6) {
-            item.name = parts.at(0).trimmed();
-            item.value = parts.at(1).trimmed();
-            item.maxValue = parts.at(2).trimmed();
-            item.minValue = parts.at(3).trimmed();
-            item.standardValue = parts.at(4).trimmed();
-            item.unit = parts.at(5).trimmed();
+            item.name = unescapeMesSegmentField(parts.at(0).trimmed());
+            item.value = unescapeMesSegmentField(parts.at(1).trimmed());
+            item.maxValue = unescapeMesSegmentField(parts.at(2).trimmed());
+            item.minValue = unescapeMesSegmentField(parts.at(3).trimmed());
+            item.standardValue = unescapeMesSegmentField(parts.at(4).trimmed());
+            item.unit = unescapeMesSegmentField(parts.at(5).trimmed());
             if (parts.size() >= 7) {
-                item.result = parts.at(6).trimmed();
+                item.result = unescapeMesSegmentField(parts.at(6).trimmed());
                 // 兼容旧版自由工站：RESULT 误写成 FAIL;实测值
                 if (item.value.isEmpty() && item.result.contains(QLatin1Char(';'))) {
                     const int semi = item.result.indexOf(QLatin1Char(';'));
@@ -304,11 +376,11 @@ QVector<TestRecordStore::ParsedItem> TestRecordStore::parseItemValue(const MesPa
                 }
             }
             if (parts.size() >= 8) {
-                item.costTime = parts.at(7).trimmed();
+                item.costTime = unescapeMesSegmentField(parts.at(7).trimmed());
             }
         } else if (parts.size() == 2) {
-            item.name = parts.at(0).trimmed();
-            const QString v = parts.at(1).trimmed();
+            item.name = unescapeMesSegmentField(parts.at(0).trimmed());
+            const QString v = unescapeMesSegmentField(parts.at(1).trimmed());
             // 形如 "ITEM:PASS/FAIL/NG"：把 item_result 放进去，item_value 留空
             if (isItemResultToken(v)) {
                 item.result = v;
@@ -316,12 +388,12 @@ QVector<TestRecordStore::ParsedItem> TestRecordStore::parseItemValue(const MesPa
                 item.value = v;
             }
         } else {
-            const int colon = kv.indexOf(QLatin1Char(':'));
+            const int colon = indexOfUnescapedColon(kv);
             if (colon <= 0) {
                 continue;
             }
-            item.name = kv.left(colon).trimmed();
-            const QString v = kv.mid(colon + 1).trimmed();
+            item.name = unescapeMesSegmentField(kv.left(colon).trimmed());
+            const QString v = unescapeMesSegmentField(kv.mid(colon + 1).trimmed());
             if (isItemResultToken(v)) {
                 item.result = v;
             } else {

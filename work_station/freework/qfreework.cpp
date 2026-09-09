@@ -234,12 +234,6 @@ void applyTestItemPromptFont(QMessageBox* box) {
     }
 }
 
-/** MES 分段用 | 拼接，value 内禁止裸 |，避免解析错位。 */
-QString sanitizeMesValuePipes(QString v) {
-    v.replace(QLatin1Char('|'), QStringLiteral("｜"));
-    return v;
-}
-
 static void appendOneMesStep(QVector<QFreeWorkMesSegment>* out, const QString& name,
                               const QString& value, const QString& maxValue, const QString& minValue,
                               const QString& standardValue, const QString& unit, const QString& result,
@@ -247,9 +241,10 @@ static void appendOneMesStep(QVector<QFreeWorkMesSegment>* out, const QString& n
     const QString n = name.trimmed();
     if (n.isEmpty())
         return;
-    out->append({sanitizeMesValuePipes(n), sanitizeMesValuePipes(value), sanitizeMesValuePipes(maxValue),
-                 sanitizeMesValuePipes(minValue), sanitizeMesValuePipes(standardValue),
-                 sanitizeMesValuePipes(unit), sanitizeMesValuePipes(result), sanitizeMesValuePipes(costTime)});
+    out->append({TestRecordStore::escapeMesSegmentField(n), TestRecordStore::escapeMesSegmentField(value),
+                 TestRecordStore::escapeMesSegmentField(maxValue), TestRecordStore::escapeMesSegmentField(minValue),
+                 TestRecordStore::escapeMesSegmentField(standardValue), TestRecordStore::escapeMesSegmentField(unit),
+                 TestRecordStore::escapeMesSegmentField(result), TestRecordStore::escapeMesSegmentField(costTime)});
 }
 
 /** 每段格式 NAME:VALUE:MAX:MIN:STANDARD:UNIT:RESULT:COSTTIME，多段用 | 连接。 */
@@ -618,7 +613,7 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     ui->productDisconnectButton->setEnabled(false);
     updateMainStyle("Ubuntu.qss");
     applyFreeWorkExtraTabsVisible(false);
-    
+
     setupFreeWorkTabBar(ui->tabWidget);
     scanSerialPorts(); // 要搜索一下一开始
     ui->test_result->setText("WAIT");
@@ -812,11 +807,11 @@ void QFreeWork::updatePreStartMonitorState() {
     QSettings settings(flowPath, QSettings::IniFormat);
     settings.setIniCodec("UTF-8");
     settings.beginGroup("PreStart_Monitor");
-    
+
     ui->autoStartCheckBox->blockSignals(true);
     ui->autoStartCheckBox->setChecked(settings.value("IsAutoStartChecked", false).toBool());
     ui->autoStartCheckBox->blockSignals(false);
-    
+
     if (settings.contains("Enabled") && settings.value("Enabled").toBool()) {
         preStartMonitorConfig_.enabled = true;
         preStartMonitorConfig_.plcDevice = settings.value("PlcDevice", "InovanceH5uTcp").toString();
@@ -834,7 +829,7 @@ void QFreeWork::updatePreStartMonitorState() {
         preStartMonitorConfig_.scannerPort = settings.value("ScannerPort", 2001).toInt();
         preStartMonitorConfig_.scannerTimeoutMs = settings.value("ScannerTimeoutMs", 1000).toInt();
         preStartMonitorConfig_.autoIncrementIpByStation = settings.value("AutoIncrementIpByStation", true).toBool();
-        
+
         if (preStartMonitorConfig_.autoIncrementIpByStation) {
             QStringList parts = preStartMonitorConfig_.scannerIp.split('.');
             if (parts.size() == 4) {
@@ -939,7 +934,7 @@ void QFreeWork::onPreStartMonitorTimeout() {
         if (preStartMonitorConfig_.plcPort > 0) {
             connectParams.insert(QStringLiteral("port"), preStartMonitorConfig_.plcPort);
         }
-        
+
         if (!modbusManager.exec(PlcCmd::Connect, connectParams, nullptr, &err)) {
             static qint64 lastLog = 0;
             if (QDateTime::currentMSecsSinceEpoch() - lastLog > 5000) {
@@ -956,12 +951,12 @@ void QFreeWork::onPreStartMonitorTimeout() {
     QVariant param = preStartMonitorConfig_.plcWaitAddressM;
     QVariant result;
     bool ok = modbusManager.exec(PlcCmd::ReadCoil, param, &result, &plcErr);
-    
+
     if (ok && result.isValid() && result.toBool() == true) {
         qDebug() << "[FreeWork] PLC Trigger detected! Stopping monitor and triggering scanner.";
         preStartMonitorTimer_->stop();
         preStartMonitorRunning_ = false;
-        
+
         QMetaObject::invokeMethod(this, "triggerHikvisionScanner", Qt::QueuedConnection);
     }
 }
@@ -972,7 +967,7 @@ void QFreeWork::onPreStartMonitorTimeout() {
 
 void QFreeWork::triggerHikvisionScanner() {
     showlog("检测到 PLC 启动信号，正在触发扫码枪...");
-    
+
     PreStartMonitorConfig cfg = preStartMonitorConfig_;
     auto watcher = new QFutureWatcher<QString>(this);
     connect(watcher, &QFutureWatcher<QString>::finished, this, [this, watcher]() {
@@ -1003,6 +998,55 @@ void QFreeWork::triggerHikvisionScanner() {
         return result;
     });
     watcher->setFuture(future);
+}
+
+void QFreeWork::logCurrentUiMesConfig(const QString& phase) {
+    const QString phaseTag = phase.trimmed().isEmpty() ? QStringLiteral("当前") : phase.trimmed();
+    QString stationKey = activeFlowStationKey_.trimmed();
+    if (stationKey.isEmpty()) {
+        stationKey = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationKey());
+    }
+    const QString stationName = TestCaseStore::loadSelectedFlowStationName();
+    const bool useMes = ui && ui->isusemes && ui->isusemes->isChecked();
+    const bool formMes = ui && ui->isformmes && ui->isformmes->isChecked();
+    const bool justBind = ui && ui->just_banding && ui->just_banding->isChecked();
+    const bool mesDefaultOff = SETTINGS.value(QStringLiteral("SYSTEM/MesDefaultUnchecked"), false).toBool();
+    const bool lockUi = SETTINGS.value(QStringLiteral("SYSTEM/LockProductUI"), false).toBool();
+    const bool cloudUpload = SETTINGS.value(QStringLiteral("FactoryCloud/Feature/TestDataUpload"), true).toBool();
+    const bool xwdFactory = pack.factory.trimmed().compare(QStringLiteral("xwd"), Qt::CaseInsensitive) == 0;
+    const bool localMacFromSn = !formMes || xwdFactory;
+    QString mesNet = SETTINGS.value(QStringLiteral("Mes/NET")).toString().trimmed();
+    if (mesNet.isEmpty()) {
+        mesNet = SETTINGS.value(QStringLiteral("MES/NET")).toString().trimmed();
+    }
+
+    showlog(QStringLiteral("【界面配置/%1】工站=%2(%3) 厂别=%4 工位=%5")
+                .arg(phaseTag, stationName, stationKey, pack.factory)
+                .arg(getIndex()));
+    showlog(QStringLiteral("【界面配置/%1】是否过站=%2 从MES取MAC=%3 仅绑定MAC=%4 单步调试=%5")
+                .arg(phaseTag)
+                .arg(useMes ? QStringLiteral("勾选") : QStringLiteral("未勾选"))
+                .arg(formMes ? QStringLiteral("勾选") : QStringLiteral("未勾选"))
+                .arg(justBind ? QStringLiteral("勾选") : QStringLiteral("未勾选"))
+                .arg(singleStepDebugRun_ ? QStringLiteral("是") : QStringLiteral("否")));
+    showlog(QStringLiteral("【界面配置/%1】MES工站号=%2 员工号=%3 产品=%4 MES地址=%5")
+                .arg(phaseTag, pack.machineNo, pack.Employee_ID, pack.product,
+                     mesNet.isEmpty() ? QStringLiteral("(默认欣旺达)") : mesNet));
+    showlog(QStringLiteral("【界面配置/%1】MesDefaultUnchecked=%2 LockProductUI=%3 路特云端上报=%4 MAC来源=%5")
+                .arg(phaseTag)
+                .arg(mesDefaultOff ? QStringLiteral("是") : QStringLiteral("否"))
+                .arg(lockUi ? QStringLiteral("是") : QStringLiteral("否"))
+                .arg(cloudUpload ? QStringLiteral("开启") : QStringLiteral("关闭"))
+                .arg(localMacFromSn ? QStringLiteral("本地SN解析") : QStringLiteral("MES拉取")));
+    if (!mesProcessCode_.isEmpty()) {
+        showlog(QStringLiteral("【界面配置/%1】MES过程码=%2").arg(phaseTag, mesProcessCode_));
+    }
+    if (!useMes) {
+        showlog(QStringLiteral("【界面配置/%1】注意：未勾选过站，测试结束不会上报 MES（路特云端/本地库仍可能写入）")
+                    .arg(phaseTag));
+    } else if (singleStepDebugRun_) {
+        showlog(QStringLiteral("【界面配置/%1】注意：单步调试模式，测试结束不会上报 MES").arg(phaseTag));
+    }
 }
 
 void QFreeWork::beginUiStartTest() {
@@ -1527,6 +1571,7 @@ void QFreeWork::finalizeTestFlowIfComplete() {
         pack.remark.clear(); // 避免上轮 NG 备注残留
     }
 
+    logCurrentUiMesConfig(QStringLiteral("收尾"));
     finishTestRecord(pack, ui->isusemes->checkState());
 
     qDebug() << "测试结束";
@@ -2998,7 +3043,11 @@ void QFreeWork::applyPlcStepResult(const PlcV3RunResult& result, PlcV3Command co
         return;
     }
     if (command == PlcV3Command::TouchKey) {
-        stepRuntime_.pass = true;
+        // PLC 整步期间若 BLE 已判失败，勿覆盖 pass（否则云端/MES 分项误记 PASS）
+        const bool bleAlreadyFailed = stepRuntime_.done && !stepRuntime_.pass;
+        if (!bleAlreadyFailed) {
+            stepRuntime_.pass = true;
+        }
         if (finishStepRuntime) {
             stepRuntime_.testData = result.summary;
             stepRuntime_.done = true;
@@ -3133,6 +3182,7 @@ void QFreeWork::on_getMac_returnPressed() {
     // 开局扫码即 MES 过程码（过站 SFC），后续 MES 主板 SN / 三元组整机 SN 不得覆盖此字段
     mesProcessCode_ = ui->getMac->text().trimmed();
     pack.sn = mesProcessCode_;
+    logCurrentUiMesConfig(QStringLiteral("扫码"));
     showlog("正在查询mac地址");
     processGetMesTestValue(); // mes获取
     // getMac(ui->getMac->text());             // 文件获取

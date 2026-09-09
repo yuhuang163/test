@@ -38,6 +38,9 @@ class TestRecordStore {
 
     static QVector<ParsedItem> parseItemValue(const MesPacketData& pack);
 
+    /** MES 分段字段转义：| 与 ASCII :，避免 itemvalue 解析错位（云端/MES 共用）。 */
+    static QString escapeMesSegmentField(const QString& value);
+
     /** 写入待补传队列；成功返回队列 id，失败返回 0 */
     qint64 enqueueCloudUpload(const QJsonObject& payload);
 

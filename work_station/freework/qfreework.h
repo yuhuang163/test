@@ -249,6 +249,8 @@ class QFreeWork : public test_base {
     bool currentOrderedStepIsDongleBleConnect() const;
     bool canRunOrderedTestStepLoop() const;
     void beginUiStartTest();
+    /** 打印当前界面 MES/工站/过站相关配置，便于产线核对「测完但未过站」等问题 */
+    void logCurrentUiMesConfig(const QString& phase);
     /** 主动 BleDisconnect 后禁止 startTask 里用当前 MAC 自动重连，直到显式扫描/直连或新一轮测试 */
     bool suppressProductBleAutoReconnect_ = false;
 
