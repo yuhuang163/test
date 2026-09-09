@@ -5,6 +5,20 @@
 #pragma execution_character_set(push, "utf-8")
 #endif
 
+#include <iterator>
+#if defined(_MSC_VER) && _MSC_VER >= 1930
+namespace stdext {
+    template <class _Iter>
+    constexpr _Iter make_checked_array_iterator(_Iter _Ptr, size_t) noexcept {
+        return _Ptr;
+    }
+    template <class _Iter>
+    constexpr _Iter make_unchecked_array_iterator(_Iter _Ptr) noexcept {
+        return _Ptr;
+    }
+}
+#endif
+
 // --- PCH 常用 Qt（已去掉重复项与 MES/设置页整页 UI，仅保留多数 TU 会用到的）---
 #include <qserialport.h>     // 串口通信类
 #include <qserialportinfo.h> // 串口信息类

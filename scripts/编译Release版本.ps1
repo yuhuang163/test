@@ -26,9 +26,41 @@ $ProFile = Join-Path $RepoRoot "new_production.pro"
 $BuildDirName = "Desktop_Qt_5_15_2_MSVC2019_64bit-Release"
 $BuildDir = Join-Path $RepoRoot "build\$BuildDirName"
 
-$QtDir = if ($env:NEW_PRODUCT_QT_DIR) { $env:NEW_PRODUCT_QT_DIR } else { "D:\Qt\5.15.2\msvc2019_64" }
+function Find-QtDir {
+    if ($env:NEW_PRODUCT_QT_DIR -and (Test-Path (Join-Path $env:NEW_PRODUCT_QT_DIR "bin\qmake.exe"))) {
+        return $env:NEW_PRODUCT_QT_DIR
+    }
+    $candidates = @(
+        "F:\qt5152\5.15.2\msvc2019_64",
+        "D:\Qt\5.15.2\msvc2019_64",
+        "C:\Qt\5.15.2\msvc2019_64",
+        "E:\Qt\5.15.2\msvc2019_64"
+    )
+    foreach ($c in $candidates) {
+        if (Test-Path (Join-Path $c "bin\qmake.exe")) { return $c }
+    }
+    return "D:\Qt\5.15.2\msvc2019_64"
+}
+
+function Find-Jom {
+    if ($env:NEW_PRODUCT_JOM -and (Test-Path $env:NEW_PRODUCT_JOM)) {
+        return $env:NEW_PRODUCT_JOM
+    }
+    $candidates = @(
+        "F:\Qt19\bin\jom\jom.exe",
+        "D:\Qt\Tools\QtCreator\bin\jom\jom.exe",
+        "C:\Qt\Tools\QtCreator\bin\jom\jom.exe",
+        "E:\Qt\Tools\QtCreator\bin\jom\jom.exe"
+    )
+    foreach ($c in $candidates) {
+        if (Test-Path $c) { return $c }
+    }
+    return "D:\Qt\Tools\QtCreator\bin\jom\jom.exe"
+}
+
+$QtDir = Find-QtDir
 $Qmake = Join-Path $QtDir "bin\qmake.exe"
-$Jom = if ($env:NEW_PRODUCT_JOM) { $env:NEW_PRODUCT_JOM } else { "D:\Qt\Tools\QtCreator\bin\jom\jom.exe" }
+$Jom = Find-Jom
 
 function Find-VcVars64 {
     if ($env:NEW_PRODUCT_VCVARS) {
@@ -216,6 +248,20 @@ if (Test-Path -LiteralPath $exePath) {
     Write-Host ""
     Write-Host "BUILD OK: $($exe.FullName)" -ForegroundColor Green
     Write-Host "time:   $($exe.LastWriteTime)"
+
+    # 确保 Qt 平台插件 platforms\qwindows.dll 存在，避免运行时报 could not find the Qt platform plugin windows
+    $platformsDir = Join-Path $binDir "platforms"
+    $qwindowsDll = Join-Path $platformsDir "qwindows.dll"
+    if (-not (Test-Path -LiteralPath $qwindowsDll)) {
+        $srcPlatforms = Join-Path $RepoRoot "路特上位机运行环境\platforms"
+        if (Test-Path -LiteralPath $srcPlatforms) {
+            Copy-Item -Path $srcPlatforms -Destination $platformsDir -Recurse -Force
+            Write-Host "deployed: platforms\qwindows.dll (from runtime env)" -ForegroundColor Cyan
+        } elseif (Test-Path -LiteralPath (Join-Path $QtDir "plugins\platforms")) {
+            Copy-Item -Path (Join-Path $QtDir "plugins\platforms") -Destination $platformsDir -Recurse -Force
+            Write-Host "deployed: platforms\qwindows.dll (from Qt plugins)" -ForegroundColor Cyan
+        }
+    }
 } else {
     Write-Host ""
     Write-Host "BUILD OK but missing $exePath" -ForegroundColor Yellow

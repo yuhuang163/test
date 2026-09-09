@@ -103,6 +103,9 @@ class QFreeWork : public test_base {
     const TestCaseDefinition& activeTestCase() const {
         return activeTestCase_;
     }
+    QString activeFlowStationKey() const {
+        return activeFlowStationKey_;
+    }
     QString currentMacAddress() const;
     QString parseMacFromSn(const QString& snCode) const;
     /** 扫码框 / MES 下发的 PCBA SN（非整机 SN） */
