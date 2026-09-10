@@ -77,6 +77,7 @@ struct Report {
     int refCircleR = -1;
     QRect roi;
     QImage annotated;
+    QImage annotatedRef;
 };
 
 Report analyze(const QImage& currRgb, const QImage& refRgb, const Params& p);

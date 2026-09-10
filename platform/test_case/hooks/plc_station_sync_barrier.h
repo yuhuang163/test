@@ -52,6 +52,8 @@ class PlcStationSyncBarrier {
 
     QList<QFreeWork*> collectActiveTestingStations(QFreeWork* ctx);
     QString resolveTargetCoilAddress(const TestCaseDefinition& def, const QString& defaultAddr);
+    QVariantMap resolvePlcExecutionParams(QFreeWork* ctx, const TestCaseDefinition& def, const QString& addr,
+                                          const QVariantMap& extra = QVariantMap());
     void releaseSessionRef(const QString& sessionKey, SyncSession* session);
 };
 

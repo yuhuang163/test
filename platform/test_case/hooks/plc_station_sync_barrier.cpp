@@ -9,6 +9,8 @@
 #include <QElapsedTimer>
 #include <QThread>
 
+#include "my_set/AbIni.h"
+
 PlcStationSyncBarrier& PlcStationSyncBarrier::instance() {
     static PlcStationSyncBarrier barrier;
     return barrier;
@@ -64,6 +66,49 @@ QString PlcStationSyncBarrier::resolveTargetCoilAddress(const TestCaseDefinition
     return defaultAddr.trimmed().isEmpty() ? QStringLiteral("M0") : defaultAddr.trimmed();
 }
 
+QVariantMap PlcStationSyncBarrier::resolvePlcExecutionParams(QFreeWork* ctx, const TestCaseDefinition& def,
+                                                            const QString& addr, const QVariantMap& extra) {
+    QVariantMap map;
+    if (def.send.param.canConvert<QVariantMap>()) {
+        map = def.send.param.toMap();
+    }
+    for (auto it = extra.cbegin(); it != extra.cend(); ++it) {
+        map.insert(it.key(), it.value());
+    }
+    map.insert(QStringLiteral("address"), addr);
+
+    // 现场 PLC 默认波特率取夹具波特率（默认 9600），N81，从站 1
+    if (!map.contains(QStringLiteral("baudRate"))) {
+        int baud = SETTINGS.value(QStringLiteral("XINJE_PLC/BaudRate"),
+                   SETTINGS.value(QStringLiteral("mechine/0/masterFixtureBaudRate"),
+                   SETTINGS.value(QStringLiteral("Fixture/BaudRate"), 9600))).toInt();
+        map.insert(QStringLiteral("baudRate"), baud > 0 ? baud : 9600);
+    }
+    if (!map.contains(QStringLiteral("parity"))) {
+        map.insert(QStringLiteral("parity"), QStringLiteral("none"));
+    }
+    if (!map.contains(QStringLiteral("slaveId"))) {
+        map.insert(QStringLiteral("slaveId"), 1);
+    }
+
+    // 串口自动解析：如果步骤未填 comPort，自动复用主界面「连接治具串口」配置的夹具串口
+    if (!map.contains(QStringLiteral("comPort")) || map.value(QStringLiteral("comPort")).toString().trimmed().isEmpty()) {
+        QString port = SETTINGS.value(QStringLiteral("XINJE_PLC/ComPort")).toString().trimmed();
+        if (port.isEmpty())
+            port = SETTINGS.value(QStringLiteral("mechine/0/masterFixturecomName")).toString().trimmed();
+        if (port.isEmpty())
+            port = SETTINGS.value(QStringLiteral("mechine/masterFixturecomName")).toString().trimmed();
+        if (port.isEmpty() && ctx) {
+            const int mechineIdx = qMax(0, ctx->getIndex() - 1);
+            port = SETTINGS.value(QStringLiteral("mechine/%1/usbcomName").arg(mechineIdx)).toString().trimmed();
+        }
+        if (!port.isEmpty()) {
+            map.insert(QStringLiteral("comPort"), port);
+        }
+    }
+    return map;
+}
+
 void PlcStationSyncBarrier::releaseSessionRef(const QString& sessionKey, SyncSession* session) {
     QMutexLocker locker(&mutex_);
     if (!session)
@@ -99,13 +144,16 @@ void PlcStationSyncBarrier::executeSyncWriteCoil(QFreeWork* ctx, const TestCaseD
 
     // 单工位模式：直接执行，不傻等
     if (totalActive <= 1) {
-        ctx->showlog(QStringLiteral("[PLC单工位写线圈] 目标: %1 (值=%2, 脉冲=%3, 保持%4ms)")
-                         .arg(addr).arg(writeVal ? 1 : 0).arg(pulse ? "是" : "否").arg(pulseHoldMs));
-
         ctx->modbusManager.setDeviceRoute(ModbusDeviceRoute::XinjiePlcRtu);
-        QVariantMap writeParam;
-        writeParam.insert(QStringLiteral("address"), addr);
-        writeParam.insert(QStringLiteral("value"), writeVal);
+        QVariantMap extra;
+        extra.insert(QStringLiteral("value"), writeVal);
+        QVariantMap writeParam = resolvePlcExecutionParams(ctx, def, addr, extra);
+        const QString comPort = writeParam.value(QStringLiteral("comPort")).toString();
+        const int baudRate = writeParam.value(QStringLiteral("baudRate"), 9600).toInt();
+
+        ctx->showlog(QStringLiteral("[PLC单工位写线圈] 目标: %1 (值=%2, 脉冲=%3, 保持%4ms) | 串口: %5 @ %6bps N81")
+                         .arg(addr).arg(writeVal ? 1 : 0).arg(pulse ? "是" : "否").arg(pulseHoldMs).arg(comPort).arg(baudRate));
+
         QString errStr;
         bool ok = ctx->modbusManager.exec(XinjePlcCmd::WriteCoil, writeParam, nullptr, &errStr);
         if (ok && pulse) {
@@ -157,13 +205,16 @@ void PlcStationSyncBarrier::executeSyncWriteCoil(QFreeWork* ctx, const TestCaseD
 
     if (isLeader) {
         // 所有在测工站到齐，由 Leader 执行一次统一写入
-        ctx->showlog(QStringLiteral("[一拖多同步写线圈] 所有在测工站已到齐(%1/%2)！由工位%3统一向治具写线圈: %4 (脉冲=%5)")
-                         .arg(requiredCount).arg(requiredCount).arg(ctx->getIndex()).arg(addr).arg(pulse ? "是" : "否"));
-
         ctx->modbusManager.setDeviceRoute(ModbusDeviceRoute::XinjiePlcRtu);
-        QVariantMap writeParam;
-        writeParam.insert(QStringLiteral("address"), addr);
-        writeParam.insert(QStringLiteral("value"), writeVal);
+        QVariantMap extra;
+        extra.insert(QStringLiteral("value"), writeVal);
+        QVariantMap writeParam = resolvePlcExecutionParams(ctx, def, addr, extra);
+        const QString comPort = writeParam.value(QStringLiteral("comPort")).toString();
+        const int baudRate = writeParam.value(QStringLiteral("baudRate"), 9600).toInt();
+
+        ctx->showlog(QStringLiteral("[一拖多同步写线圈] 所有在测工站已到齐(%1/%2)！由工位%3统一向治具写线圈: %4 (脉冲=%5) | 串口: %6 @ %7bps N81")
+                         .arg(requiredCount).arg(requiredCount).arg(ctx->getIndex()).arg(addr).arg(pulse ? "是" : "否").arg(comPort).arg(baudRate));
+
         QString errStr;
         bool ok = ctx->modbusManager.exec(XinjePlcCmd::WriteCoil, writeParam, nullptr, &errStr);
         if (ok && pulse) {
@@ -242,8 +293,16 @@ void PlcStationSyncBarrier::executeSyncReadCoil(QFreeWork* ctx, const TestCaseDe
 
     // 单工位模式：直接监控
     if (totalActive <= 1) {
-        ctx->showlog(QStringLiteral("[PLC单工位监控] 监控地址: %1，超时 %2ms").arg(addr).arg(timeoutMs));
         ctx->modbusManager.setDeviceRoute(ModbusDeviceRoute::XinjiePlcRtu);
+        QVariantMap extra;
+        extra.insert(QStringLiteral("quantity"), 1);
+        QVariantMap param = resolvePlcExecutionParams(ctx, def, addr, extra);
+        const QString comPort = param.value(QStringLiteral("comPort")).toString();
+        const int baudRate = param.value(QStringLiteral("baudRate"), 9600).toInt();
+
+        ctx->showlog(QStringLiteral("[PLC单工位监控] 监控地址: %1，超时 %2ms | 串口: %3 @ %4bps N81")
+                         .arg(addr).arg(timeoutMs).arg(comPort).arg(baudRate));
+
         QElapsedTimer timer;
         timer.start();
         int sampleIdx = 0;
@@ -254,9 +313,6 @@ void PlcStationSyncBarrier::executeSyncReadCoil(QFreeWork* ctx, const TestCaseDe
             }
             QVariant resultVal;
             QString errStr;
-            QVariantMap param;
-            param.insert(QStringLiteral("address"), addr);
-            param.insert(QStringLiteral("quantity"), 1);
             bool ok = ctx->modbusManager.exec(XinjePlcCmd::ReadCoils, param, &resultVal, &errStr);
             ++sampleIdx;
             if (ok && resultVal.toBool()) {
@@ -306,10 +362,16 @@ void PlcStationSyncBarrier::executeSyncReadCoil(QFreeWork* ctx, const TestCaseDe
 
     if (isLeader) {
         // 所有工站到齐，由 Leader 开始统一轮询监控该线圈
-        ctx->showlog(QStringLiteral("[一拖多同步监控] 所有在测工站已到齐(%1/%2)！由工位%3启动集中轮询治具信号 [%4]，超时 %5ms...")
-                         .arg(requiredCount).arg(requiredCount).arg(ctx->getIndex()).arg(addr).arg(timeoutMs));
-
         ctx->modbusManager.setDeviceRoute(ModbusDeviceRoute::XinjiePlcRtu);
+        QVariantMap extra;
+        extra.insert(QStringLiteral("quantity"), 1);
+        QVariantMap param = resolvePlcExecutionParams(ctx, def, addr, extra);
+        const QString comPort = param.value(QStringLiteral("comPort")).toString();
+        const int baudRate = param.value(QStringLiteral("baudRate"), 9600).toInt();
+
+        ctx->showlog(QStringLiteral("[一拖多同步监控] 所有在测工站已到齐(%1/%2)！由工位%3启动集中轮询治具信号 [%4]，超时 %5ms | 串口: %6 @ %7bps N81")
+                         .arg(requiredCount).arg(requiredCount).arg(ctx->getIndex()).arg(addr).arg(timeoutMs).arg(comPort).arg(baudRate));
+
         QElapsedTimer pollTimer;
         pollTimer.start();
         bool triggered = false;
@@ -322,9 +384,6 @@ void PlcStationSyncBarrier::executeSyncReadCoil(QFreeWork* ctx, const TestCaseDe
 
             QVariant resultVal;
             QString errStr;
-            QVariantMap param;
-            param.insert(QStringLiteral("address"), addr);
-            param.insert(QStringLiteral("quantity"), 1);
             bool ok = ctx->modbusManager.exec(XinjePlcCmd::ReadCoils, param, &resultVal, &errStr);
             ++sampleIdx;
 

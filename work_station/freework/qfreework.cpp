@@ -2243,7 +2243,7 @@ void QFreeWork::updateScreenInspectPreview() {
     if (ui->label_screenInspectRefCaption) {
         ui->label_screenInspectRefCaption->setText(
             screenInspectCalibGuides_ ? QStringLiteral("参考图（校准线）")
-                                      : QStringLiteral("标准参考图（无标注）"));
+                                      : QStringLiteral("标准参考图（圆屏划线）"));
     }
     fitScreenInspectThumb(ui->label_screenInspectShot, shot, QStringLiteral("尚无拍摄图"),
                           screenInspectAnnotated_.isNull() ? roi : QRect());
@@ -2287,7 +2287,7 @@ void QFreeWork::showScreenInspectViewer() {
     addPane(screenInspectCalibGuides_ ? QStringLiteral("本次拍摄（校准线）")
                                       : QStringLiteral("本次拍摄（坏点标注）"),
             !screenInspectAnnotated_.isNull() ? screenInspectAnnotated_ : screenInspectCapture_);
-    addPane(screenInspectCalibGuides_ ? QStringLiteral("参考图（校准线）") : QStringLiteral("标准参考图"),
+    addPane(screenInspectCalibGuides_ ? QStringLiteral("参考图（校准线）") : QStringLiteral("标准参考图（圆屏划线）"),
             screenInspectReference_);
     root->addLayout(pics, 1);
     auto* buttons = new QDialogButtonBox(dlg);
@@ -2588,31 +2588,31 @@ void QFreeWork::runScreenInspectStep() {
     const QString dir = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("screen_inspect"));
     CommonUtils::ensureDirectory(dir);
     QStringList uploadImagePaths;
-    // 参考图也叠同一套识别框/圆屏线，便于归档对照
+    // 参考图也叠同一套基准识别框/圆屏线，便于归档对照与上报
     QImage refMarked;
     if (!ref.isNull()) {
-        QRect refRoi = report.roi;
-        int refCircleCx = -1;
-        int refCircleCy = -1;
-        int refCircleR = -1;
-        if (curr.width() > 0 && curr.height() > 0 && ref.width() > 0 && ref.height() > 0) {
-            if (curr.size() != ref.size() && !report.roi.isNull()) {
-                refRoi = QRect(report.roi.x() * ref.width() / curr.width(),
-                               report.roi.y() * ref.height() / curr.height(),
-                               qMax(1, report.roi.width() * ref.width() / curr.width()),
-                               qMax(1, report.roi.height() * ref.height() / curr.height()));
+        if (!report.annotatedRef.isNull()) {
+            refMarked = report.annotatedRef;
+        } else {
+            QRect refRoi = report.roi;
+            int refCircleCx = -1;
+            int refCircleCy = -1;
+            int refCircleR = -1;
+            if (curr.width() > 0 && curr.height() > 0 && ref.width() > 0 && ref.height() > 0) {
+                if (curr.size() != ref.size() && !report.roi.isNull()) {
+                    refRoi = QRect(report.roi.x() * ref.width() / curr.width(),
+                                   report.roi.y() * ref.height() / curr.height(),
+                                   qMax(1, report.roi.width() * ref.width() / curr.width()),
+                                   qMax(1, report.roi.height() * ref.height() / curr.height()));
+                }
+                if (report.refCircleR > 0) {
+                    refCircleCx = report.refCircleCx;
+                    refCircleCy = report.refCircleCy;
+                    refCircleR = report.refCircleR;
+                }
             }
-            if (report.refCircleR > 0) {
-                refCircleCx = report.refCircleCx;
-                refCircleCy = report.refCircleCy;
-                refCircleR = report.refCircleR;
-            } else if (report.circleR > 0) {
-                refCircleCx = report.circleCx * ref.width() / curr.width();
-                refCircleCy = report.circleCy * ref.height() / curr.height();
-                refCircleR = qMax(8, report.circleR * qMin(ref.width(), ref.height()) / qMin(curr.width(), curr.height()));
-            }
+            refMarked = ScreenInspectAnalyzer::drawGuides(ref, refRoi, refCircleCx, refCircleCy, refCircleR);
         }
-        refMarked = ScreenInspectAnalyzer::drawGuides(ref, refRoi, refCircleCx, refCircleCy, refCircleR);
     }
     // 高分辨率 PNG 压缩极慢（曾出现分析完后 UI 卡死近 1 分钟）；证据图改 JPEG，识别仍用内存原图
     // 存盘再压长边，避免数千万像素 JPEG 编码拖慢节拍
@@ -2652,7 +2652,7 @@ void QFreeWork::runScreenInspectStep() {
     if (!uploadImagePaths.isEmpty())
         Qlog::addScreenInspectImageFiles(getIndex(), uploadImagePaths);
     phaseT.restart();
-    rememberScreenInspectImages(curr, report.annotated, ref, dir, false);
+    rememberScreenInspectImages(curr, report.annotated, !refMarked.isNull() ? refMarked : ref, dir, false);
     const qint64 msPreview = phaseT.elapsed();
     // 分阶段耗时写入 UI 日志，便于现场确认是拍照还是识别/存图慢
     showlog(QStringLiteral("屏幕检测耗时：拍照(含预热)%1ms 识别分析%2ms 存图%3ms 预览%4ms；图%5x%6 坏点=%7 分析裁剪坏点=%8 相似度=%9")

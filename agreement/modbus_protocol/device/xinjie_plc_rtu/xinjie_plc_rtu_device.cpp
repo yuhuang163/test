@@ -232,14 +232,25 @@ XinjePlcRtuDevice::Config XinjePlcRtuDevice::configFromSettings() const {
         SETTINGS.value(QStringLiteral("XINJE_PLC/ComPort_Station%1").arg(st), QString()).toString().trimmed();
     if (comPort.isEmpty())
         comPort = SETTINGS.value(QStringLiteral("XINJE_PLC/ComPort"), QString()).toString().trimmed();
+    // 优先复用主界面「连接治具串口」窗口所配置的夹具串口（masterFixturecomName）
+    if (comPort.isEmpty())
+        comPort = SETTINGS.value(QStringLiteral("mechine/0/masterFixturecomName"), QString()).toString().trimmed();
+    if (comPort.isEmpty())
+        comPort = SETTINGS.value(QStringLiteral("mechine/masterFixturecomName"), QString()).toString().trimmed();
     // 未单独配置时复用工位界面「万用表串口」（mechine/0、mechine/1…）
     if (comPort.isEmpty()) {
         const int mechineIdx = qMax(0, st - 1);
         comPort = SETTINGS.value(QStringLiteral("mechine/%1/usbcomName").arg(mechineIdx)).toString().trimmed();
     }
     cfg.comPort = normalizeComPort(comPort);
+
+    int defBaud = SETTINGS.value(QStringLiteral("mechine/0/masterFixtureBaudRate"),
+                  SETTINGS.value(QStringLiteral("Fixture/BaudRate"), 9600)).toInt();
+    if (defBaud <= 0)
+        defBaud = 9600;
+
     cfg.baudRate = SETTINGS.value(QStringLiteral("XINJE_PLC/BaudRate_Station%1").arg(st),
-                                  SETTINGS.value(QStringLiteral("XINJE_PLC/BaudRate"), 19200))
+                                  SETTINGS.value(QStringLiteral("XINJE_PLC/BaudRate"), defBaud))
                        .toInt();
     cfg.slaveId = quint8(SETTINGS.value(QStringLiteral("XINJE_PLC/SlaveId_Station%1").arg(st),
                                         SETTINGS.value(QStringLiteral("XINJE_PLC/SlaveId"), 1))
@@ -255,7 +266,7 @@ XinjePlcRtuDevice::Config XinjePlcRtuDevice::configFromSettings() const {
                        SETTINGS.value(QStringLiteral("XINJE_PLC/RtsMode"), QStringLiteral("none")))
             .toString());
     cfg.parity = parityFromText(SETTINGS.value(QStringLiteral("XINJE_PLC/Parity_Station%1").arg(st),
-                                               SETTINGS.value(QStringLiteral("XINJE_PLC/Parity"), QString()))
+                                               SETTINGS.value(QStringLiteral("XINJE_PLC/Parity"), QStringLiteral("none")))
                                     .toString(),
                                 cfg.parity);
     return cfg;

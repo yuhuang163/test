@@ -316,6 +316,7 @@ void ScreenInspectWidget::saveThresholdsToSettings() {
                       isGigESource() ? QStringLiteral("gige") : QStringLiteral("usb"));
     if (ui->lineEdit_gigeIp)
         SETTINGS.setValue(QStringLiteral("ScreenInspect/GigEIp"), ui->lineEdit_gigeIp->text().trimmed());
+    SETTINGS.sync();
 }
 
 bool ScreenInspectWidget::isGigESource() const {
@@ -562,16 +563,36 @@ void ScreenInspectWidget::onStillImage(int, const QImage& image) {
     }
     currImage_ = image.convertToFormat(QImage::Format_RGB888);
     const qint64 msConv = t.restart();
+
+    // 采图成功后自动识别圆屏并持久化同步，无需手动额外标定
+    QRect autoRoi = manualRoi_.intersected(currImage_.rect());
+    if (autoRoi.width() < 10 || autoRoi.height() < 10)
+        autoRoi = ScreenInspectAnalyzer::detectScreenRoi(currImage_);
+    const ScreenInspectAnalyzer::ScreenCircle autoCircle = ScreenInspectAnalyzer::detectScreenCircle(currImage_, autoRoi);
+    if (autoCircle.r > 0) {
+        refCircle_ = autoCircle;
+        lastDetectedCircle_ = autoCircle;
+        SETTINGS.setValue(QStringLiteral("ScreenInspect/RefCircleCx"), refCircle_.cx);
+        SETTINGS.setValue(QStringLiteral("ScreenInspect/RefCircleCy"), refCircle_.cy);
+        SETTINGS.setValue(QStringLiteral("ScreenInspect/RefCircleR"), refCircle_.r);
+        SETTINGS.sync();
+        updateCircleStatusUi();
+    }
+
     annotatedImage_ = currImage_;
     refreshImageLabels();
     const qint64 msUi = t.restart();
     // PNG 压缩高分辨率图很慢，勿堵 UI
     saveCaptureFiles(currImage_, QImage());
     const qint64 msSaveKick = t.elapsed();
+    const QString circleInfo = autoCircle.r > 0
+        ? QStringLiteral(" [自动标定基准圆: R=%1 (%2,%3)]").arg(autoCircle.r).arg(autoCircle.cx).arg(autoCircle.cy)
+        : QString();
     const QString uiLog =
-        QStringLiteral("采集成功 %1x%2\n[耗时] UI线程 convert=%3ms 刷新预览=%4ms 触发存盘=%5ms")
+        QStringLiteral("采集成功 %1x%2%3\n[耗时] UI线程 convert=%4ms 刷新预览=%5ms 触发存盘=%6ms")
             .arg(currImage_.width())
             .arg(currImage_.height())
+            .arg(circleInfo)
             .arg(msConv)
             .arg(msUi)
             .arg(msSaveKick);
@@ -631,7 +652,8 @@ void ScreenInspectWidget::on_btnSaveAsRef_clicked() {
             ? QDir(app).relativeFilePath(clean).replace(QLatin1Char('\\'), QLatin1Char('/'))
             : clean;
     applyReferenceImage(currImage_, stored);
-    ui->plainTextEdit_screenInspectLog->setPlainText(QStringLiteral("当前图已保存为参考图：") + stored);
+    calibrateReferenceCircle();
+    ui->plainTextEdit_screenInspectLog->setPlainText(QStringLiteral("当前图已保存为参考图并标定基准圆：") + stored);
 }
 
 void ScreenInspectWidget::on_btnInspect_clicked() {
@@ -803,6 +825,7 @@ void ScreenInspectWidget::calibrateReferenceCircle() {
     SETTINGS.setValue(QStringLiteral("ScreenInspect/RefCircleCx"), refCircle_.cx);
     SETTINGS.setValue(QStringLiteral("ScreenInspect/RefCircleCy"), refCircle_.cy);
     SETTINGS.setValue(QStringLiteral("ScreenInspect/RefCircleR"), refCircle_.r);
+    SETTINGS.sync();
     updateCircleStatusUi();
     refreshImageLabels();
     appendLog(QStringLiteral("已完成参考圆标定：圆心(%1, %2)，半径 %3 (来源：%4)")

@@ -28,6 +28,19 @@ Fixture_uart::Fixture_uart(QWidget* parent) : QWidget(parent), ui(new Ui::Fixtur
     ui->setupUi(this);
     ui->FixturecomNameCombo->clear();
 
+    ui->FixtureBaudRateCombo->clear();
+    ui->FixtureBaudRateCombo->addItems({QStringLiteral("9600"), QStringLiteral("115200"), QStringLiteral("19200"), QStringLiteral("38400"), QStringLiteral("57600")});
+    connect(ui->FixtureBaudRateCombo, &QComboBox::currentTextChanged, this, [this](const QString& text) {
+        bool ok = false;
+        int b = text.toInt(&ok);
+        if (ok && b > 0) {
+            fixBaudRate = b;
+            SETTINGS.setValue(QStringLiteral("mechine/0/masterFixtureBaudRate"), fixBaudRate);
+            SETTINGS.setValue(QStringLiteral("Fixture/BaudRate"), fixBaudRate);
+            SETTINGS.sync();
+        }
+    });
+
     ui->plcDeviceCombo->addItem(QStringLiteral("串口通信 (Modbus RTU)"), QStringLiteral("XinjiePlcRtu"));
     ui->plcDeviceCombo->addItem(QStringLiteral("网口通信 (Modbus TCP)"), QStringLiteral("InovanceH5uTcp"));
 
@@ -147,6 +160,16 @@ void Fixture_uart::loadPreStartMonitorConfig() {
         }
     }
 
+    const int savedFixtureBaud = SETTINGS.value(QStringLiteral("mechine/0/masterFixtureBaudRate"),
+                                 SETTINGS.value(QStringLiteral("Fixture/BaudRate"), 9600)).toInt();
+    fixBaudRate = savedFixtureBaud > 0 ? savedFixtureBaud : 9600;
+    ui->FixtureBaudRateCombo->setCurrentText(QString::number(fixBaudRate));
+
+    // 下方自动扫码配置组：仅在当前工站显式启用自动扫码时显示，一般工站自动隐藏保持界面简洁
+    const bool hasAutoScan = settings.contains(QStringLiteral("Enabled")) && settings.value(QStringLiteral("Enabled")).toBool();
+    ui->preStartMonitorGroup->setVisible(hasAutoScan);
+    adjustSize();
+
     const QString dev = settings.value(QStringLiteral("PlcDevice"), QStringLiteral("XinjiePlcRtu")).toString();
     int idx = ui->plcDeviceCombo->findData(dev);
     ui->plcDeviceCombo->setCurrentIndex(idx >= 0 ? idx : 0);
@@ -223,8 +246,15 @@ void Fixture_uart::savePreStartMonitorConfig() {
     settings.setValue(QStringLiteral("FixtureComPort"), fixturePort);
     if (!fixturePort.isEmpty()) {
         SETTINGS.setValue(QStringLiteral("mechine/0/masterFixturecomName"), fixturePort);
-        SETTINGS.sync();
     }
+    bool okBaud = false;
+    const int fixtureBaud = ui->FixtureBaudRateCombo->currentText().toInt(&okBaud);
+    if (okBaud && fixtureBaud > 0) {
+        fixBaudRate = fixtureBaud;
+        SETTINGS.setValue(QStringLiteral("mechine/0/masterFixtureBaudRate"), fixBaudRate);
+        SETTINGS.setValue(QStringLiteral("Fixture/BaudRate"), fixBaudRate);
+    }
+    SETTINGS.sync();
     settings.setValue(QStringLiteral("PlcDevice"), ui->plcDeviceCombo->currentData().toString());
     settings.setValue(QStringLiteral("PlcComPort"), ui->plcComPortCombo->currentText().trimmed());
     settings.setValue(QStringLiteral("PlcBaudRate"), ui->plcBaudRateCombo->currentText().toInt());
@@ -305,6 +335,14 @@ void Fixture_uart::on_plcWaitAddressLineEdit_editingFinished() {
 
 void Fixture_uart::on_FixtureconnectButton_clicked() {
     const QString portName = ui->FixturecomNameCombo->currentText();
+    bool okBaud = false;
+    const int curBaud = ui->FixtureBaudRateCombo->currentText().toInt(&okBaud);
+    if (okBaud && curBaud > 0) {
+        fixBaudRate = curBaud;
+        SETTINGS.setValue(QStringLiteral("mechine/0/masterFixtureBaudRate"), fixBaudRate);
+        SETTINGS.setValue(QStringLiteral("Fixture/BaudRate"), fixBaudRate);
+        SETTINGS.sync();
+    }
     if (fixtureManager_->open(portName, fixBaudRate)) {
         // Success handled by connected signal
     } else {
