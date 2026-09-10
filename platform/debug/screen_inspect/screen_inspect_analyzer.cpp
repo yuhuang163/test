@@ -807,7 +807,7 @@ QImage drawAnnotated(const QImage& rgb, const QRect& roi, const ScreenCircle& ci
     p.setRenderHint(QPainter::Antialiasing, true);
     p.setPen(QPen(QColor(0, 200, 0), 2));
     p.drawRect(drawRoi.adjusted(0, 0, -1, -1));
-    if (drawCircle.r >= 8)
+    if (drawCircle.r >= 2)
         p.drawEllipse(QPoint(drawCircle.cx, drawCircle.cy), drawCircle.r, drawCircle.r);
     p.setPen(QPen(QColor(220, 0, 0), 2));
     for (const QPoint& pt : drawPts)
@@ -849,7 +849,9 @@ QImage drawGuides(const QImage& rgb, const QRect& roiIn, const QImage* circleFro
             circle.cy = sc.cy * img.height() / src.height();
             circle.r = qMax(8, sc.r * qMin(img.width(), img.height()) / qMin(src.width(), src.height()));
         } else {
-            circle = detectScreenCircle(img, roi);
+            circle.cx = img.width() / 2;
+            circle.cy = img.height() / 2;
+            circle.r = qMin(img.width(), img.height()) / 2;
         }
     } else {
         circle = detectScreenCircle(img, roi);
@@ -868,7 +870,9 @@ QImage drawGuides(const QImage& rgb, const QRect& roiIn, int circleCx, int circl
         circle.cy = circleCy;
         circle.r = circleR;
     } else {
-        circle = detectScreenCircle(img, roi);
+        circle.cx = img.width() / 2;
+        circle.cy = img.height() / 2;
+        circle.r = qMin(img.width(), img.height()) / 2;
     }
     return drawAnnotated(img, roi, circle, {});
 }
@@ -932,13 +936,33 @@ Report analyze(const QImage& currRgb, const QImage& refRgb, const Params& p) {
         if (refRoi.width() < 10 || refRoi.height() < 10)
             refRoi = detectScreenRoi(ref);
 
+        // 参考图上不跑找圆算法，直接采用现有标定的圆屏参数；若未提供则按缓存圆或当前实拍圆直接划线
         ScreenCircle refCircle;
         if (p.refCircleR > 0) {
             refCircle.cx = p.refCircleCx;
             refCircle.cy = p.refCircleCy;
             refCircle.r = p.refCircleR;
-        } else {
-            refCircle = detectScreenCircle(ref, refRoi);
+        } else if (p.cachedCircleR > 0) {
+            refCircle.cx = p.cachedCircleCx;
+            refCircle.cy = p.cachedCircleCy;
+            refCircle.r = p.cachedCircleR;
+        } else if (circle.r > 0) {
+            refCircle.cx = circle.cx;
+            refCircle.cy = circle.cy;
+            refCircle.r = circle.r;
+        }
+
+        // 若参考图与实拍图分辨率不同，进行几何比例换算
+        if (refCircle.r > 0 && curr.width() > 0 && curr.height() > 0 && ref.width() > 0 && ref.height() > 0) {
+            if (curr.size() != ref.size()) {
+                refCircle.cx = refCircle.cx * ref.width() / curr.width();
+                refCircle.cy = refCircle.cy * ref.height() / curr.height();
+                refCircle.r = qMax(8, refCircle.r * qMin(ref.width(), ref.height()) / qMin(curr.width(), curr.height()));
+            }
+        } else if (refCircle.r <= 0) {
+            refCircle.cx = ref.width() / 2;
+            refCircle.cy = ref.height() / 2;
+            refCircle.r = qMin(ref.width(), ref.height()) / 2;
         }
 
         // 方式 A（两者联动缩放）：如果步骤中缩小了实拍图圆屏区域，参考图对比与划线半径按同等比例联动缩放，保证视野几何严格对齐

@@ -2568,9 +2568,33 @@ void QFreeWork::runScreenInspectStep() {
             ap.cachedCircleR = fallbackR;
         }
     }
-    ap.refCircleCx = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCx"), -1).toInt();
-    ap.refCircleCy = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCy"), -1).toInt();
-    ap.refCircleR = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleR"), -1).toInt();
+    auto readIniCircle = [](const QString& key) -> int {
+        const QVariant v = SETTINGS.value(key);
+        if (v.isValid() && !v.isNull()) {
+            bool ok = false;
+            const int val = v.toInt(&ok);
+            if (ok && val > 0)
+                return val;
+        }
+        return -1;
+    };
+    int rCx = readIniCircle(QStringLiteral("ScreenInspect/RefCircleCx"));
+    if (rCx <= 0) rCx = readIniCircle(QStringLiteral("ScreenInspect/refCircleCx"));
+    int rCy = readIniCircle(QStringLiteral("ScreenInspect/RefCircleCy"));
+    if (rCy <= 0) rCy = readIniCircle(QStringLiteral("ScreenInspect/refCircleCy"));
+    int rR = readIniCircle(QStringLiteral("ScreenInspect/RefCircleR"));
+    if (rR <= 0) rR = readIniCircle(QStringLiteral("ScreenInspect/refCircleR"));
+
+    // 若未在 ini 中显式配置，但已有缓存/历史标定圆，也作为基准圆参数传给分析器
+    if (rR <= 0 && cachedScreenCircleR_ > 0) {
+        rCx = cachedScreenCircleCx_;
+        rCy = cachedScreenCircleCy_;
+        rR = cachedScreenCircleR_;
+    }
+
+    ap.refCircleCx = rCx;
+    ap.refCircleCy = rCy;
+    ap.refCircleR = rR;
 
     phaseT.restart();
     const ScreenInspectAnalyzer::Report report = ScreenInspectAnalyzer::analyze(curr, ref, ap);
@@ -2595,9 +2619,14 @@ void QFreeWork::runScreenInspectStep() {
             refMarked = report.annotatedRef;
         } else {
             QRect refRoi = report.roi;
-            int refCircleCx = -1;
-            int refCircleCy = -1;
-            int refCircleR = -1;
+            int refCircleCx = (report.refCircleCx > 0) ? report.refCircleCx : ap.refCircleCx;
+            int refCircleCy = (report.refCircleCy > 0) ? report.refCircleCy : ap.refCircleCy;
+            int refCircleR = (report.refCircleR > 0) ? report.refCircleR : ap.refCircleR;
+            if (refCircleR <= 0 && report.circleR > 0) {
+                refCircleCx = report.circleCx;
+                refCircleCy = report.circleCy;
+                refCircleR = report.circleR;
+            }
             if (curr.width() > 0 && curr.height() > 0 && ref.width() > 0 && ref.height() > 0) {
                 if (curr.size() != ref.size() && !report.roi.isNull()) {
                     refRoi = QRect(report.roi.x() * ref.width() / curr.width(),
@@ -2605,10 +2634,10 @@ void QFreeWork::runScreenInspectStep() {
                                    qMax(1, report.roi.width() * ref.width() / curr.width()),
                                    qMax(1, report.roi.height() * ref.height() / curr.height()));
                 }
-                if (report.refCircleR > 0) {
-                    refCircleCx = report.refCircleCx;
-                    refCircleCy = report.refCircleCy;
-                    refCircleR = report.refCircleR;
+                if (curr.size() != ref.size() && refCircleR > 0) {
+                    refCircleCx = refCircleCx * ref.width() / curr.width();
+                    refCircleCy = refCircleCy * ref.height() / curr.height();
+                    refCircleR = qMax(8, refCircleR * qMin(ref.width(), ref.height()) / qMin(curr.width(), curr.height()));
                 }
             }
             refMarked = ScreenInspectAnalyzer::drawGuides(ref, refRoi, refCircleCx, refCircleCy, refCircleR);
@@ -2665,6 +2694,10 @@ void QFreeWork::runScreenInspectStep() {
                 .arg(report.deadPixels)
                 .arg(ap.enableDeadPixels ? QStringLiteral("开") : QStringLiteral("跳过"))
                 .arg(ap.enableSsim ? QStringLiteral("开") : QStringLiteral("跳过")));
+    showlog(QStringLiteral("【圆屏标定状态】ini配置: R=%1 (cx=%2, cy=%3) | 参考图生效: R=%4 (cx=%5, cy=%6) | 实拍图: R=%7 (cx=%8, cy=%9)")
+                .arg(ap.refCircleR).arg(ap.refCircleCx).arg(ap.refCircleCy)
+                .arg(report.refCircleR).arg(report.refCircleCx).arg(report.refCircleCy)
+                .arg(report.circleR).arg(report.circleCx).arg(report.circleCy));
     qDebug().noquote() << QStringLiteral("[ScreenInspectStep]")
                        << QStringLiteral("size=%1x%2 grab=%3ms analyze=%4ms save=%5ms preview=%6ms dead=%7")
                               .arg(curr.width())
