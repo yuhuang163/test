@@ -251,6 +251,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
                                           qfctp(new Qfctp(dongleSerialPort)),
                                           qaiot(new Qaiot(dongleSerialPort)),
                                           qroot(new Qroot(dongleSerialPort)),
+                                          qroot2(new Qroot2(dongleSerialPort)),
                                           at(new QatManager(dongleSerialPort, this)),
                                           qimuc(new imu_calibrate),
                                           basicInfoModel(new TestModel),
@@ -273,6 +274,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     protocolManager.bindQfctp(qfctp);
     protocolManager.bindQaiot(qaiot);
     protocolManager.bindQroot(qroot);
+    protocolManager.bindQroot2(qroot2);
     const std::string protocolName =
         SETTINGS.value("SYSTEM/ProtocolType", "qpb").toString().toStdString();
     auto selectedType = QProtocolManager::protocolTypeFromString(protocolName);
@@ -289,7 +291,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
         ((selectedType == QProtocolManager::ProtocolType::Qaiot ||
           selectedType == QProtocolManager::ProtocolType::QaiotV2) &&
          !qaiot) ||
-        (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot)) {
+        (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot) ||
+        (selectedType == QProtocolManager::ProtocolType::Qroot2 && !qroot2)) {
         QMessageBox::information(this, "协议提示", "所选协议未就绪，已自动回退到 qpb。");
         protocolManager.setCurrentProtocolType(QProtocolManager::ProtocolType::Qpb);
     } else {
@@ -1310,7 +1313,8 @@ void MainWindow::applySystemProtocolFromSettings() {
         ((selectedType == QProtocolManager::ProtocolType::Qaiot ||
           selectedType == QProtocolManager::ProtocolType::QaiotV2) &&
          !qaiot) ||
-        (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot)) {
+        (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot) ||
+        (selectedType == QProtocolManager::ProtocolType::Qroot2 && !qroot2)) {
         QMessageBox::information(this, QStringLiteral("协议提示"),
                                  QStringLiteral("所选协议未就绪，已自动回退到 qpb。"));
         selectedType = QProtocolManager::ProtocolType::Qpb;

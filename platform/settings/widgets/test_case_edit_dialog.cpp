@@ -935,6 +935,8 @@ void fillProductProtocolCombo(QComboBox* box) {
                  DeviceCmdCatalog::productProtocolToIni(TestCaseProductProtocol::Qpb));
     box->addItem(DeviceCmdCatalog::productProtocolUiLabel(TestCaseProductProtocol::Qroot),
                  DeviceCmdCatalog::productProtocolToIni(TestCaseProductProtocol::Qroot));
+    box->addItem(DeviceCmdCatalog::productProtocolUiLabel(TestCaseProductProtocol::Qroot2),
+                 DeviceCmdCatalog::productProtocolToIni(TestCaseProductProtocol::Qroot2));
     box->addItem(DeviceCmdCatalog::productProtocolUiLabel(TestCaseProductProtocol::Qaiot),
                  DeviceCmdCatalog::productProtocolToIni(TestCaseProductProtocol::Qaiot));
     box->addItem(DeviceCmdCatalog::productProtocolUiLabel(TestCaseProductProtocol::QaiotV2),

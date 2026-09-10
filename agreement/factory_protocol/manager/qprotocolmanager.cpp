@@ -7,6 +7,7 @@
 #include "qfctp.h"
 #include "qaiot.h"
 #include "qroot.h"
+#include "qroot2.h"
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
 #endif
@@ -46,6 +47,9 @@ QProtocolManager::ProtocolType QProtocolManager::protocolTypeFromString(const st
     if (lower == "qroot") {
         return ProtocolType::Qroot;
     }
+    if (lower == "qroot2") {
+        return ProtocolType::Qroot2;
+    }
     return ProtocolType::Unknown;
 }
 
@@ -61,6 +65,8 @@ std::string QProtocolManager::protocolTypeToString(QProtocolManager::ProtocolTyp
         return "qaiot2";
     case ProtocolType::Qroot:
         return "qroot";
+    case ProtocolType::Qroot2:
+        return "qroot2";
     default:
         return "unknown";
     }
@@ -113,6 +119,15 @@ void QProtocolManager::bindQroot(Qroot* root) {
         unbindProtocolUpstream(qroot_);
         qroot_ = root;
         bindProtocolUpstream(qroot_);
+    }
+    syncActivePointer();
+}
+
+void QProtocolManager::bindQroot2(Qroot2* root2) {
+    if (qroot2_ != root2) {
+        unbindProtocolUpstream(qroot2_);
+        qroot2_ = root2;
+        bindProtocolUpstream(qroot2_);
     }
     syncActivePointer();
 }
@@ -272,6 +287,13 @@ Qroot* QProtocolManager::currentQroot() const {
     return nullptr;
 }
 
+Qroot2* QProtocolManager::currentQroot2() const {
+    if (currentType_ == ProtocolType::Qroot2) {
+        return qroot2_;
+    }
+    return nullptr;
+}
+
 bool QProtocolManager::isQpbProtocolActive() const {
     return currentType_ == ProtocolType::Qpb;
 }
@@ -288,6 +310,10 @@ bool QProtocolManager::isQrootProtocolActive() const {
     return currentType_ == ProtocolType::Qroot;
 }
 
+bool QProtocolManager::isQroot2ProtocolActive() const {
+    return currentType_ == ProtocolType::Qroot2;
+}
+
 void QProtocolManager::syncActivePointer() {
     switch (currentType_) {
     case ProtocolType::Qpb:
@@ -302,6 +328,9 @@ void QProtocolManager::syncActivePointer() {
         break;
     case ProtocolType::Qroot:
         active_ = qroot_ ? static_cast<qProtocol*>(qroot_) : nullptr;
+        break;
+    case ProtocolType::Qroot2:
+        active_ = qroot2_ ? static_cast<qProtocol*>(qroot2_) : nullptr;
         break;
     default:
         active_ = nullptr;

@@ -48,6 +48,7 @@ typedef enum {
 
 class Qfctp;
 class Qroot;
+class Qroot2;
 class Qaiot;
 
 class test_base : public QWidget {
@@ -171,6 +172,7 @@ class test_base : public QWidget {
     Qfctp* qfctp = nullptr;
     Qaiot* qaiot = nullptr;
     Qroot* qroot = nullptr;
+    Qroot2* qroot2 = nullptr;
     QProtocolManager protocolManager;
     QModbusManager modbusManager;
     QatManager* at = nullptr;

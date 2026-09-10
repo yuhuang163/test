@@ -626,6 +626,15 @@ enum class DeviceCmd {
     RootEnterOta,         // 【Qroot】Req 0xFC+0x03 进入 OTA
     RootSystemControl,    // 【已拆分/兼容】旧「系统控制」聚合命令；新步骤请用 ShipMode/DevReset/RootEnterOta/FactoryReset
 
+    // 【Qroot2/Air1】AA55 帧结构同 Qroot，CID 表独立
+    Root2PoseSwitch,   // Req 0xDB body 0关1开
+    Root2PoseCalib,    // Req 0xDD body 0x01
+    Root2BowlCalib,    // Req 0xAE body 0空碗 1满碗
+    Root2ModeSet,      // Req 0xA2 body 01刺激 02吸乳 03混合
+    Root2LevelSet,     // Req 0xA3 body 档位1-15
+    Root2KeyTest,      // Req 0xA6 按键测试读
+    Root2LedControl,   // Req 0x90 body 02+color+state
+
     // get commands
     NowMusicInfo,       // 【Qpb】当前播放音乐信息（无参/可空 param，get_now_music_info）
     SdCardInfo,         // 【Qpb】SD 卡信息（无参，get_sd_card_info）

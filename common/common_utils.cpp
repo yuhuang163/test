@@ -370,7 +370,7 @@ static const ProductEntry kProductTable[] = {
     {"M8P",      "qaiot", false, "M8P",      false},
     {"W1 Lite",  "qroot", true, "W1 Lite",  true},
     {"W1",       "qroot", true, "W1",       true}, 
-    {"Air1",       "qroot", true, "Air1",       true}, 
+    {"Air1",       "qroot2", true, "Air1",       true},
 };
 
 /** 主窗口 BLE 扫描过滤名补充项（无产品映射，仅作筛选提示）。 */
@@ -585,4 +585,97 @@ void CommonUtils::waitWorkPumpEvents(int ms) {
     timer.start();
     while (timer.elapsed() < ms)
         QCoreApplication::processEvents(QEventLoop::AllEvents);
+}
+
+bool CommonUtils::looksLikeMeasurementUnit(const QString& token) {
+    const QString t = token.trimmed();
+    if (t.isEmpty() || t.size() > 8)
+        return false;
+    if (t.contains(QLatin1Char('=')))
+        return false;
+    for (const QChar c : t) {
+        if (c.isDigit())
+            return false;
+        if (c.isLetter())
+            continue;
+        switch (c.unicode()) {
+        case '%':
+        case 0x00B0: // °
+        case 0x2103: // ℃
+        case 0x2109: // ℉
+        case 0x00B5: // µ
+        case 0x03A9: // Ω
+        case '/':
+            continue;
+        default:
+            return false;
+        }
+    }
+    return true;
+}
+
+QPair<QString, QString> CommonUtils::splitMesValueAndUnit(const QString& testData, const QString& knownUnit) {
+    QString value = testData.trimmed();
+    QString unit = knownUnit.trimmed();
+    if (value.isEmpty())
+        return {value, unit};
+
+    if (!unit.isEmpty() && value.endsWith(unit)) {
+        const int cut = value.size() - unit.size();
+        if (cut == 0) {
+            value.clear();
+        } else if (value.at(cut - 1).isSpace()) {
+            value = value.left(cut - 1).trimmed();
+        } else if (!value.at(cut - 1).isLetterOrNumber()) {
+            value = value.left(cut).trimmed();
+        }
+        return {value, unit};
+    }
+
+    if (unit.isEmpty() && value.contains(QLatin1Char(' '))) {
+        const int sp = value.lastIndexOf(QLatin1Char(' '));
+        if (sp > 0) {
+            const QString left = value.left(sp).trimmed();
+            const QString right = value.mid(sp + 1).trimmed();
+            static const QRegularExpression numRe(QStringLiteral(R"(^-?\d+(?:\.\d+)?$)"));
+            if (numRe.match(left).hasMatch() && looksLikeMeasurementUnit(right))
+                return {left, right};
+        }
+    }
+    return {value, unit};
+}
+
+QString CommonUtils::cloudUploadNumericValue(const QString& testData) {
+    const QString s = testData.trimmed();
+    if (s.isEmpty() || s == QLatin1String("-"))
+        return {};
+
+    static const QRegularExpression pureNumRe(QStringLiteral(R"(^-?\d+(?:\.\d+)?$)"));
+    if (pureNumRe.match(s).hasMatch())
+        return s;
+
+    static const QRegularExpression kvRe(
+        QStringLiteral(R"((?:^|[\s;])(?:read|write|CH\d+)=(\d+(?:\.\d+)?))"),
+        QRegularExpression::CaseInsensitiveOption);
+    QRegularExpressionMatchIterator it = kvRe.globalMatch(s);
+    QString lastKv;
+    while (it.hasNext())
+        lastKv = it.next().captured(1);
+    if (!lastKv.isEmpty())
+        return lastKv;
+
+    static const QRegularExpression bracketRe(QStringLiteral(R"(\[([\d,\s]+)\])"));
+    const QRegularExpressionMatch bm = bracketRe.match(s);
+    if (bm.hasMatch()) {
+        const QStringList parts = bm.captured(1).split(QLatin1Char(','), Qt::SkipEmptyParts);
+        if (!parts.isEmpty()) {
+            const QString lastNum = parts.last().trimmed();
+            bool ok = false;
+            lastNum.toDouble(&ok);
+            if (ok)
+                return lastNum;
+        }
+    }
+
+    return {};
 }

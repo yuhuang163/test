@@ -40,8 +40,19 @@ constexpr const char kHintWriteKey[] =
     u8"Qroot：Req 0xFA，密钥 ≤16 字节截断";
 constexpr const char kHintSoftVersionRead[] =
     u8"Qroot：Req 0x91，回包 soft_version(2B)+hw_version(1B)\r\n"
+    u8"Qroot2/Air1：Req 0xA5 body 0x01；Ack byte2=软版 byte3=硬版\r\n"
     u8"Qaiot：Param_field=soft_version|hw_version|res_version（默认固件）\r\n"
     u8"卡控：ReportType=ProtocolBaseInfoData，Field 与上对应，Op=compareVersions";
+constexpr const char kHintQroot2ModeSet[] =
+    u8"Qroot2/Air1：Req 0xA2，body=01刺激 02吸乳 03混合\r\n示例：Param_mode=2";
+constexpr const char kHintQroot2LevelSet[] =
+    u8"Qroot2/Air1：Req 0xA3，body=档位1-15\r\n示例：Param_level=5";
+constexpr const char kHintQroot2LedControl[] =
+    u8"Qroot2/Air1：Req 0x90，body=02+color+state\r\n"
+    u8"color：00红 01白 02绿；state：01开 00关\r\n示例：Param_color=0 Param_on=1";
+constexpr const char kHintQroot2KeyTest[] =
+    u8"Qroot2/Air1：Req 0xA6 body 0x01\r\n"
+    u8"Ack：byte1启动/暂停 byte2模式 byte3档位\r\n卡控：ProtocolButtonStateData";
 constexpr const char kHintPeriphState[] =
     u8"Qaiot 读传感器 CID=0x08：Param_type=0x00~0x0D\r\n"
     u8"00 IMU(回 36B=9×float LE: kx..bz) / 04 电容fsensor(回 1B 0/1)\r\n"
@@ -279,6 +290,17 @@ const Row kRows[] = {
     {DeviceCmd::RootHeatLevelControl, "RootHeatLevelControl", u8"加热档位", DeviceCmdParamKind::JsonMap,
      kHintRootHeatLevelControl, kSet, "ProtocolResultData", "result"},
     {DeviceCmd::RootPumpControl, "RootPumpControl", u8"吸奶器控制", DeviceCmdParamKind::JsonMap, kHintRootPumpControl, kSet},
+    {DeviceCmd::Root2PoseSwitch, "Root2PoseSwitch", u8"姿态开关", DeviceCmdParamKind::JsonMap,
+     u8"Qroot2/Air1：Req 0xDB body 0关1开\r\n示例：Param_on=1", kSet},
+    {DeviceCmd::Root2PoseCalib, "Root2PoseCalib", u8"姿态校准", DeviceCmdParamKind::None,
+     u8"Qroot2/Air1：Req 0xDD body 0x01", kSet},
+    {DeviceCmd::Root2BowlCalib, "Root2BowlCalib", u8"空/满碗校准", DeviceCmdParamKind::JsonMap,
+     u8"Qroot2/Air1：Req 0xAE body 0空碗 1满碗\r\n示例：Param_value=0", kSet},
+    {DeviceCmd::Root2ModeSet, "Root2ModeSet", u8"设置模式", DeviceCmdParamKind::JsonMap, kHintQroot2ModeSet, kSet},
+    {DeviceCmd::Root2LevelSet, "Root2LevelSet", u8"设置档位", DeviceCmdParamKind::JsonMap, kHintQroot2LevelSet, kSet},
+    {DeviceCmd::Root2KeyTest, "Root2KeyTest", u8"按键测试", DeviceCmdParamKind::None, kHintQroot2KeyTest, kGet,
+     "ProtocolButtonStateData", "keyButtonId"},
+    {DeviceCmd::Root2LedControl, "Root2LedControl", u8"控制灯光", DeviceCmdParamKind::JsonMap, kHintQroot2LedControl, kSet},
     {DeviceCmd::PressSensorTemp, "PressSensorTemp", u8"压力传感器温度", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::UartReceive, "UartReceive", u8"串口接收开关", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::RgbColor, "RgbColor", u8"RGB颜色", DeviceCmdParamKind::None, nullptr, kSet},

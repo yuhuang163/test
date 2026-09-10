@@ -36,6 +36,7 @@
 #include "qfctp.h"
 #include "qaiot.h"
 #include "qroot.h"
+#include "qroot2.h"
 #include "common_utils.h"
 #include "dongle_phy.h"
 #include "test_data_upload_service.h"
@@ -83,6 +84,7 @@ test_base::test_base(QWidget* parent) : QWidget(parent),
                                         qfctp(new Qfctp(dongleSerialPort)),
                                         qaiot(new Qaiot(dongleSerialPort)),
                                         qroot(new Qroot(dongleSerialPort)),
+                                        qroot2(new Qroot2(dongleSerialPort)),
                                         at(new QatManager(dongleSerialPort, this)),
                                         usbSerialPort(usbSerialChannel_->port()),
                                         scpiUsbManager_(this),
@@ -95,6 +97,7 @@ test_base::test_base(QWidget* parent) : QWidget(parent),
     protocolManager.bindQfctp(qfctp);
     protocolManager.bindQaiot(qaiot);
     protocolManager.bindQroot(qroot);
+    protocolManager.bindQroot2(qroot2);
     // 非 test_case 工站仍用 SETTINGS 初值；自由工站 Product 步在 beginStep 按 case ini 的 Protocol= 覆盖
     applySystemProtocolFromSettings();
 
@@ -111,7 +114,8 @@ void test_base::applySystemProtocolFromSettings() {
         ((selectedType == QProtocolManager::ProtocolType::Qaiot ||
           selectedType == QProtocolManager::ProtocolType::QaiotV2) &&
          !qaiot) ||
-        (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot)) {
+        (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot) ||
+        (selectedType == QProtocolManager::ProtocolType::Qroot2 && !qroot2)) {
         selectedType = QProtocolManager::ProtocolType::Qpb;
     }
     if (protocolManager.currentProtocolType() == selectedType)
@@ -129,6 +133,9 @@ void test_base::applyTestCaseProductProtocol(TestCaseProductProtocol protocol) {
     case TestCaseProductProtocol::Qroot:
         selectedType = QProtocolManager::ProtocolType::Qroot;
         break;
+    case TestCaseProductProtocol::Qroot2:
+        selectedType = QProtocolManager::ProtocolType::Qroot2;
+        break;
     case TestCaseProductProtocol::Qaiot:
         selectedType = QProtocolManager::ProtocolType::Qaiot;
         break;
@@ -144,7 +151,8 @@ void test_base::applyTestCaseProductProtocol(TestCaseProductProtocol protocol) {
         ((selectedType == QProtocolManager::ProtocolType::Qaiot ||
           selectedType == QProtocolManager::ProtocolType::QaiotV2) &&
          !qaiot) ||
-        (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot)) {
+        (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot) ||
+        (selectedType == QProtocolManager::ProtocolType::Qroot2 && !qroot2)) {
         showlog(QStringLiteral("test_case 协议未就绪，已回退到 qpb"));
         selectedType = QProtocolManager::ProtocolType::Qpb;
     }

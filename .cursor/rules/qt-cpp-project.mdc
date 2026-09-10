@@ -18,6 +18,7 @@ alwaysApply: true
 
 - **配置**：统一通过 **`SETTINGS`（`Abini.h` / Ini）** 读写；键名已有惯例如 `BLE/LowRssi`、`BLE/HighRssi`、`Current/LowCharCurrent`、`Current/HighCharCurrent`、`BATTARY/standbattary`、`TestOrderMeta/SelectedStation` 等，新增项沿用 **`分类/键名`**，并在 **`platform/settings/qsetting`** 做加载/保存/UI（避免「只写代码、设置页缺项」）。
 - **测试结果**：继承 **`test_base`** 的工站使用 **`passValue` / `failValue`**（中文「通过」「失败」）、**`TestResult`** 与 **`showlog`**；表格分项用 **`TestItem` + `testResultTableUpdate`**。与用户可见结论用 **`showlog`**，调试细节可用 **`qDebug()`**。
+- **云端分项 VALUE**：界面 **`testData` / 表格可保留** `index=0 read=34` 等可读串；写入 MES/测试数据上报前在 **`appendTestCaseMes` / `appendMultiGateTestCaseMes`** 经 **`CommonUtils::cloudUploadNumericValue`** 抽纯数字再入库（抽不到则保留原文）。新增 Hook 勿把说明性前缀直接当 VALUE 上报。
 - **字符串比对**：期望值与实测比较优先 **`compareVersions`**（与现有关键键测等逻辑一致），不要随意换成裸 `==` 除非周边代码如此。
 - **头文件 / Qt**：保持与邻文件一致的包含风格（工程内多为 **`#include "..."`**，Qt 模块多为小写 **`#include <qxxx.h>`** 形式）。
 - **代码整齐性**：对齐同一类语句的换行与缩进风格（尤其是 `if / else if` 条件链）；尽量使用单行条件，必要多行时保证括号配对且 `&& / ||` 的换行位置与邻近代码一致，避免把 `&&` 留到括号外导致语法错误。

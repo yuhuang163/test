@@ -421,6 +421,8 @@ TestCaseProductProtocol DeviceCmdCatalog::productProtocolFromIni(const QString& 
         return TestCaseProductProtocol::Qpb;
     if (t.compare(QStringLiteral("Qroot"), Qt::CaseInsensitive) == 0)
         return TestCaseProductProtocol::Qroot;
+    if (t.compare(QStringLiteral("Qroot2"), Qt::CaseInsensitive) == 0)
+        return TestCaseProductProtocol::Qroot2;
     if (t.compare(QStringLiteral("Qaiot"), Qt::CaseInsensitive) == 0)
         return TestCaseProductProtocol::Qaiot;
     if (t.compare(QStringLiteral("Qaiot2"), Qt::CaseInsensitive) == 0)
@@ -434,6 +436,8 @@ QString DeviceCmdCatalog::productProtocolToIni(TestCaseProductProtocol protocol)
         return QStringLiteral("Qpb");
     case TestCaseProductProtocol::Qroot:
         return QStringLiteral("Qroot");
+    case TestCaseProductProtocol::Qroot2:
+        return QStringLiteral("Qroot2");
     case TestCaseProductProtocol::Qaiot:
         return QStringLiteral("Qaiot");
     case TestCaseProductProtocol::QaiotV2:
@@ -449,6 +453,8 @@ QString DeviceCmdCatalog::productProtocolUiLabel(TestCaseProductProtocol protoco
         return QStringLiteral("QPB");
     case TestCaseProductProtocol::Qroot:
         return QStringLiteral("Qroot");
+    case TestCaseProductProtocol::Qroot2:
+        return QStringLiteral("Qroot2 (Air1)");
     case TestCaseProductProtocol::Qaiot:
         return QStringLiteral("QAIOT V1");
     case TestCaseProductProtocol::QaiotV2:

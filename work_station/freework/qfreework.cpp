@@ -494,28 +494,16 @@ void QFreeWork::appendTestCaseMes(const TestCaseDefinition& def, bool pass, cons
         }
         }
     }
-    // MES VALUE 保持无单位；UNIT 单独上报（界面 testData 可能已带单位后缀）
-    QString unit = def.gate.enabled ? GateRegistry::unitFor(def.gate.reportType, def.gate.field) : QString();
-    if (!unit.isEmpty() && value.endsWith(unit)) {
-        value = value.left(value.size() - unit.size()).trimmed();
-    } else if (unit.isEmpty() && value.contains(QLatin1Char(' '))) {
-        // ProtocolMeasureData 等运行时单位：从「12.3 mA」拆出末段作为 UNIT
-        const int sp = value.lastIndexOf(QLatin1Char(' '));
-        if (sp > 0) {
-            const QString maybeUnit = value.mid(sp + 1).trimmed();
-            bool looksNumeric = !maybeUnit.isEmpty();
-            for (const QChar c : maybeUnit) {
-                if (!(c.isDigit() || c == QLatin1Char('.') || c == QLatin1Char('-') || c == QLatin1Char('+'))) {
-                    looksNumeric = false;
-                    break;
-                }
-            }
-            if (!maybeUnit.isEmpty() && !looksNumeric && maybeUnit.size() <= 8) {
-                unit = maybeUnit;
-                value = value.left(sp).trimmed();
-            }
-        }
-    }
+    // MES VALUE/UNIT 拆分：Gate 显式单位 + 仅「纯数字 空格 物理单位」兜底（见 CommonUtils::splitMesValueAndUnit）
+    const QString gateUnit =
+        def.gate.enabled ? GateRegistry::unitFor(def.gate.reportType, def.gate.field) : QString();
+    const QPair<QString, QString> mesParts = CommonUtils::splitMesValueAndUnit(value, gateUnit);
+    value = mesParts.first;
+    const QString unit = mesParts.second;
+    // 云端曲线：VALUE 尽量纯数字；界面 testData 仍可含 index/read= 等（见 CommonUtils::cloudUploadNumericValue）
+    const QString cloudNum = CommonUtils::cloudUploadNumericValue(value);
+    if (!cloudNum.isEmpty())
+        value = cloudNum;
     const QString costTime = QString::number(stepRuntime_.caseTimer.isValid() ? stepRuntime_.caseTimer.elapsed() : 0);
     appendOneMesStep(&freeWorkMesSegments_, tag, value, maxVal, minVal, stdVal, unit, resultVal, costTime);
 }
@@ -541,10 +529,13 @@ void QFreeWork::appendMultiGateTestCaseMes(const QVector<TestCaseGate>& gates, c
         // 与单字段 appendTestCaseMes 一致：VALUE 取实测值，UNIT 单独带上下限
         const GateStepDisplay disp =
             GateRegistry::formatStepDisplay(ge, QVector<TestCaseGate>{ge}, reportType, payload, false);
-        QString value = disp.testData.trimmed();
-        QString unit = GateRegistry::unitFor(reportType, ge.field, payload);
-        if (!unit.isEmpty() && value.endsWith(unit))
-            value = value.left(value.size() - unit.size()).trimmed();
+        const QPair<QString, QString> mesParts =
+            CommonUtils::splitMesValueAndUnit(disp.testData.trimmed(), GateRegistry::unitFor(reportType, ge.field, payload));
+        QString value = mesParts.first;
+        const QString unit = mesParts.second;
+        const QString cloudNum = CommonUtils::cloudUploadNumericValue(value);
+        if (!cloudNum.isEmpty())
+            value = cloudNum;
 
         QString maxVal, minVal, stdVal;
         switch (ge.op) {

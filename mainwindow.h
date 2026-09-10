@@ -50,6 +50,7 @@ class QAction;
 #include "qfctp.h"
 #include "qaiot.h"
 #include "qroot.h"
+#include "qroot2.h"
 #include "root_ble_ota.h"
 #include "root_ble_ota2.h"
 #include "serial_channel.h"
@@ -321,6 +322,7 @@ class MainWindow : public QMainWindow {
     Qfctp* qfctp = nullptr;
     Qaiot* qaiot = nullptr;
     Qroot* qroot = nullptr;
+    Qroot2* qroot2 = nullptr;
     Qpb* pb = nullptr;
     QatManager* at = nullptr;
     QButtonGroup* OTAGroup = new QButtonGroup(this);
