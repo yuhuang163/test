@@ -97,7 +97,9 @@ ScreenCircle detectScreenCircle(const QImage& rgb, const QRect& roi) {
             const int dynamicW = x1 - x0;
             const int dynamicH = y1 - y0;
             const int dynamicRMax = qMin(dynamicW, dynamicH) / 2;
-            if (dynamicRMax >= 8 && dynamicH >= r.height() * 0.4 && dynamicW >= r.width() * 0.4) {
+            // 只要亮区尺寸有效（如大于16像素且达到ROI的8%以上），即判定为真实圆屏区域，避免高分辨率全画幅下因占比<40%被误拒
+            const int minSide = qMax(16, qMin(r.width(), r.height()) * 8 / 100);
+            if (dynamicRMax >= 8 && dynamicW >= minSide && dynamicH >= minSide) {
                 c.cx = (x0 + x1) / 2;
                 c.cy = (y0 + y1) / 2;
                 rMax = dynamicRMax;
