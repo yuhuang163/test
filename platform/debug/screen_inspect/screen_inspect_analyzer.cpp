@@ -940,11 +940,27 @@ Report analyze(const QImage& currRgb, const QImage& refRgb, const Params& p) {
         } else {
             refCircle = detectScreenCircle(ref, refRoi);
         }
+
+        // 方式 A（两者联动缩放）：如果步骤中缩小了实拍图圆屏区域，参考图对比与划线半径按同等比例联动缩放，保证视野几何严格对齐
+        double scale = 1.0;
+        const double baseRefR = p.refCircleR > 0 ? p.refCircleR : refCircle.r;
+        if (baseRefR > 8 && circle.r > 8) {
+            const double currBaseR = (curr.size() == ref.size())
+                ? baseRefR
+                : (baseRefR * qMin(curr.width(), curr.height()) / qMin(ref.width(), ref.height()));
+            if (currBaseR > 8) {
+                scale = static_cast<double>(circle.r) / currBaseR;
+            }
+        }
+        const int effectiveRefR = qMax(8, static_cast<int>(refCircle.r * scale + 0.5));
+        ScreenCircle drawRefCircle = refCircle;
+        drawRefCircle.r = effectiveRefR;
+
         report.refCircleCx = refCircle.cx;
         report.refCircleCy = refCircle.cy;
-        report.refCircleR = refCircle.r;
+        report.refCircleR = effectiveRefR;
 
-        report.annotatedRef = drawAnnotated(ref, refRoi, refCircle, {});
+        report.annotatedRef = drawAnnotated(ref, refRoi, drawRefCircle, {});
 
         if (p.enableSsim) {
             stepT.start();
@@ -955,7 +971,7 @@ Report analyze(const QImage& currRgb, const QImage& refRgb, const Params& p) {
             if (circleBox.width() < 8 || circleBox.height() < 8)
                 circleBox = roi;
 
-            const int rr = qMax(8, refCircle.r > 0 ? refCircle.r : cr);
+            const int rr = effectiveRefR;
             const int rcx = refCircle.r > 0 ? refCircle.cx : (circle.cx * ref.width() / curr.width());
             const int rcy = refCircle.r > 0 ? refCircle.cy : (circle.cy * ref.height() / curr.height());
             QRect refBox(rcx - rr, rcy - rr, rr * 2, rr * 2);
