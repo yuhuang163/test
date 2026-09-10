@@ -965,18 +965,8 @@ Report analyze(const QImage& currRgb, const QImage& refRgb, const Params& p) {
             refCircle.r = qMin(ref.width(), ref.height()) / 2;
         }
 
-        // 方式 A（两者联动缩放）：如果步骤中缩小了实拍图圆屏区域，参考图对比与划线半径按同等比例联动缩放，保证视野几何严格对齐
-        double scale = 1.0;
-        const double baseRefR = p.refCircleR > 0 ? p.refCircleR : refCircle.r;
-        if (baseRefR > 8 && circle.r > 8) {
-            const double currBaseR = (curr.size() == ref.size())
-                ? baseRefR
-                : (baseRefR * qMin(curr.width(), curr.height()) / qMin(ref.width(), ref.height()));
-            if (currBaseR > 8) {
-                scale = static_cast<double>(circle.r) / currBaseR;
-            }
-        }
-        const int effectiveRefR = qMax(8, static_cast<int>(refCircle.r * scale + 0.5));
+        // 直接采用换算后的标定圆作为参考图的最终画线圆，严禁进行多余的二次重复缩小
+        const int effectiveRefR = refCircle.r;
         ScreenCircle drawRefCircle = refCircle;
         drawRefCircle.r = effectiveRefR;
 
