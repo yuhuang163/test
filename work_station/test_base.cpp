@@ -967,11 +967,11 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc, int timeo
     // timeoutMs：步骤「指令超时」总时长（不是重试间隔）
     const int totalMs = qMax(100, timeoutMs);
     commandRetryTimeoutMs_ = totalMs;
-    // 窗口内按间隔补发；蓝牙连接类指令只发一次，避免 DCON 重入打断 Dongle 连接流程
+    // 窗口内按 totalMs/3 间隔补发（下限 200ms，无上限）
     int intervalMs = totalMs;
     if (allowResend) {
         const int thirdMs = totalMs / 3;
-        intervalMs = qBound(200, thirdMs > 0 ? thirdMs : 200, 2000);
+        intervalMs = qMax(200, thirdMs > 0 ? thirdMs : 200);
         if (intervalMs >= totalMs)
             intervalMs = totalMs;
     }

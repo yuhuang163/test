@@ -647,7 +647,7 @@ double huilingParamDouble(const QVariantMap& map, const QString& key, double fal
 }
 
 /** 是否为「等待蓝牙连上」类 Dongle 指令（扫连/直连/按名/OTA/App/主连）。
- *  超时宜 ≥18s；sendCommandWithRetry 第三参 allowResend=false（只发一次，勿窗口内重发 DCON）。
+ *  超时宜 ≥18s；sendCommandWithRetry 第三参 allowResend=true（窗口内按间隔补发 AT+MAC）。
  *  是否须等连接成功才过步，由 TestCaseRunner::needAsyncDone（流程侧）决定，不是第三参。 */
 bool isDongleBleConnectCmd(DongleCmd cmd) {
     return cmd == DongleCmd::BleScanConnect || cmd == DongleCmd::BleDirectConnect
@@ -2405,8 +2405,8 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                 ctx->at->resetConnected();
             ctx->setCommandWaitSource(CommandWaitSource::DongleAt);
             const int bleTimeoutMs = qMax(timeoutMs > 0 ? timeoutMs : 18000, 18000);
-            // allowResend=false：扫连后只发一次连接指令
-            ctx->sendCommandWithRetry(sendFn, bleTimeoutMs, false);
+            // allowResend=true：18s 窗口内按间隔补发 AT+MAC
+            ctx->sendCommandWithRetry(sendFn, bleTimeoutMs, true);
             return;
         }
 
@@ -2440,8 +2440,8 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
             timeoutMs = qMax(timeoutMs > 0 ? timeoutMs : 18000, 18000);
             ctx->setCommandWaitSource(CommandWaitSource::DongleAt);
-            // allowResend=false：连接过程只发一次，避免窗口内重发打断 Dongle；结案靠连接态/needAsyncDone
-            ctx->sendCommandWithRetry(sendFn, timeoutMs, false);
+            // allowResend=true：18s 窗口内按间隔补发 AT+MAC；结案靠连接态/needAsyncDone
+            ctx->sendCommandWithRetry(sendFn, timeoutMs, true);
             return;
         }
 
