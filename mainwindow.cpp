@@ -6704,3 +6704,15 @@ void MainWindow::rebuildDongleSegmentTable() {
     }
     updateDongleAtPumpRate();
 }
+
+QString MainWindow::currentUiMacAddress() const {
+    auto usable = [](const QString& s) {
+        const QString t = s.trimmed();
+        return !t.isEmpty() && t != QStringLiteral("没有mac地址");
+    };
+    if (ui && ui->macInput && usable(ui->macInput->text()))
+        return ui->macInput->text().trimmed();
+    if (usable(macAddress))
+        return macAddress.trimmed();
+    return {};
+}

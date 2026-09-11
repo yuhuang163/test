@@ -108,6 +108,11 @@ class CommonUtils {
     static bool isRssiOpenRangeGate(const QString& reportType, const QString& field);
 
     /**
+     * 扫码文本清洗：支持从 URL（如 https://qr.momcozy.com/...&sn=XXX）或纯文本中提取 SN。
+     */
+    static QString extractSnFromUrlOrText(const QString& raw);
+
+    /**
      * 按毫秒等待并泵 Qt 事件（等同工站 waitWork），避免 Windows 上 QThread::msleep 被量化到 ~15ms。
      */
     static void waitWorkPumpEvents(int ms);

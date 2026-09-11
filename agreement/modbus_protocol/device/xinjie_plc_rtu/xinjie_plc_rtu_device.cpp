@@ -97,12 +97,31 @@ bool validateRtuFrame(const QByteArray& frame, quint8 slaveId, quint8 expectedFc
 }
 
 QString addressFromParam(const QVariant& param) {
+    if (param.userType() == QMetaType::QString || param.type() == QVariant::String) {
+        const QString s = param.toString().trimmed();
+        if (!s.isEmpty())
+            return s;
+    }
+    if (param.userType() == QMetaType::Int || param.type() == QVariant::Int) {
+        return QStringLiteral("M%1").arg(param.toInt());
+    }
     if (param.canConvert<QVariantMap>()) {
         const QVariantMap map = param.toMap();
         if (map.contains(QStringLiteral("address")))
             return map.value(QStringLiteral("address")).toString().trimmed();
         if (map.contains(QStringLiteral("addr")))
             return map.value(QStringLiteral("addr")).toString().trimmed();
+        if (map.contains(QStringLiteral("m")))
+            return map.value(QStringLiteral("m")).toString().trimmed();
+        if (map.contains(QStringLiteral("mLeft")))
+            return map.value(QStringLiteral("mLeft")).toString().trimmed();
+        if (map.contains(QStringLiteral("mRight")))
+            return map.value(QStringLiteral("mRight")).toString().trimmed();
+    }
+    if (param.canConvert<QString>()) {
+        const QString s = param.toString().trimmed();
+        if (!s.isEmpty())
+            return s;
     }
     return QString();
 }
@@ -213,14 +232,25 @@ XinjePlcRtuDevice::Config XinjePlcRtuDevice::configFromSettings() const {
         SETTINGS.value(QStringLiteral("XINJE_PLC/ComPort_Station%1").arg(st), QString()).toString().trimmed();
     if (comPort.isEmpty())
         comPort = SETTINGS.value(QStringLiteral("XINJE_PLC/ComPort"), QString()).toString().trimmed();
+    // 优先复用主界面「连接治具串口」窗口所配置的夹具串口（masterFixturecomName）
+    if (comPort.isEmpty())
+        comPort = SETTINGS.value(QStringLiteral("mechine/0/masterFixturecomName"), QString()).toString().trimmed();
+    if (comPort.isEmpty())
+        comPort = SETTINGS.value(QStringLiteral("mechine/masterFixturecomName"), QString()).toString().trimmed();
     // 未单独配置时复用工位界面「万用表串口」（mechine/0、mechine/1…）
     if (comPort.isEmpty()) {
         const int mechineIdx = qMax(0, st - 1);
         comPort = SETTINGS.value(QStringLiteral("mechine/%1/usbcomName").arg(mechineIdx)).toString().trimmed();
     }
     cfg.comPort = normalizeComPort(comPort);
+
+    int defBaud = SETTINGS.value(QStringLiteral("mechine/0/masterFixtureBaudRate"),
+                  SETTINGS.value(QStringLiteral("Fixture/BaudRate"), 9600)).toInt();
+    if (defBaud <= 0)
+        defBaud = 9600;
+
     cfg.baudRate = SETTINGS.value(QStringLiteral("XINJE_PLC/BaudRate_Station%1").arg(st),
-                                  SETTINGS.value(QStringLiteral("XINJE_PLC/BaudRate"), 19200))
+                                  SETTINGS.value(QStringLiteral("XINJE_PLC/BaudRate"), defBaud))
                        .toInt();
     cfg.slaveId = quint8(SETTINGS.value(QStringLiteral("XINJE_PLC/SlaveId_Station%1").arg(st),
                                         SETTINGS.value(QStringLiteral("XINJE_PLC/SlaveId"), 1))
@@ -236,7 +266,7 @@ XinjePlcRtuDevice::Config XinjePlcRtuDevice::configFromSettings() const {
                        SETTINGS.value(QStringLiteral("XINJE_PLC/RtsMode"), QStringLiteral("none")))
             .toString());
     cfg.parity = parityFromText(SETTINGS.value(QStringLiteral("XINJE_PLC/Parity_Station%1").arg(st),
-                                               SETTINGS.value(QStringLiteral("XINJE_PLC/Parity"), QString()))
+                                               SETTINGS.value(QStringLiteral("XINJE_PLC/Parity"), QStringLiteral("none")))
                                     .toString(),
                                 cfg.parity);
     return cfg;

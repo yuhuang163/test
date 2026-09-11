@@ -6,10 +6,14 @@
 #include "serial_channel.h"
 #include "ui_fixture_uart.h"
 
+#include "pre_start_monitor_config.h"
+#include "qmodbusmanager.h"
+
 #include <QHash>
 #include <QMutex>
 
 class SerialChannel;
+class QTimer;
 
 namespace Ui {
 class QFreeWorkBox;
@@ -47,6 +51,18 @@ class QFreeWorkBox : public box_base {
     QMutex* sharedTempLoggerMutex(int deviceIndex0Based);
     void releaseSharedTempLoggerIfIdle();
 
+    /** 共享 PLC 按键监控与一拖多扫码枪联动 */
+    void updatePlcMonitorState();
+    void triggerAllStationScanners();
+    bool isAnyStationTesting() const;
+    void releaseSharedPlcIfIdle();
+
+  public slots:
+    void checkAllover(int fixtureNumber) override;
+
+  protected:
+    void closeEvent(QCloseEvent* event) override;
+
   private:
     static QString resolvedFixtureComName(int stationIndex);
     Fixture_uart* Fixture_uart_ui = nullptr;
@@ -55,8 +71,15 @@ class QFreeWorkBox : public box_base {
     QHash<int, QMutex*> sharedTempLoggerMutexes_;
     QHash<int, SerialChannel::OpenParams> sharedTempLoggerOpenParams_;
 
+    // 全局共享 PLC 按键监控
+    QModbusManager sharedPlcModbusManager_;
+    QTimer* plcMonitorTimer_ = nullptr;
+    bool plcMonitorRunning_ = false;
+    PreStartMonitorConfig sharedPlcConfig_;
+
   private slots:
     void startTest();
+    void onPlcMonitorTimeout();
 };
 
 #endif // QFREEWORKBOX_H

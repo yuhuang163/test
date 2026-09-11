@@ -24,7 +24,15 @@ int parseIndexNumber(const QString& numText, XinjePlcArea area) {
 
 XinjePlcAddress parseXinjePlcAddress(const QString& text, bool accessCoil) {
     XinjePlcAddress out;
-    const QString raw = text.trimmed();
+    QString raw = text.trimmed();
+    if (raw.isEmpty()) {
+        out.error = QStringLiteral("信捷地址不能为空");
+        return out;
+    }
+    // 若仅输入纯数字（如 5），自动补全为 M 区域线圈（如 M5）
+    if (raw.at(0).isDigit()) {
+        raw.prepend(QLatin1Char('M'));
+    }
     if (raw.size() < 2) {
         out.error = QStringLiteral("信捷地址过短: %1").arg(raw);
         return out;

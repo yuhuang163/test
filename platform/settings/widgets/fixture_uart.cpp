@@ -1,12 +1,15 @@
 #include "fixture_uart.h"
 
+#include <QApplication>
 #include <QElapsedTimer>
 #include <QFile>
 #include <QMessageBox>
 #include <QSettings>
 #include <QTimer>
 
+#include "box_base.h"
 #include "qdebug.h"
+#include "qfreework.h"
 #include "qlog.h"
 #include "serial_channel.h"
 #include "test_case_paths.h"
@@ -19,16 +22,30 @@
 #endif
 
 Fixture_uart::Fixture_uart(QWidget* parent) : QWidget(parent), ui(new Ui::Fixture_uart), fixtureManager_(new QFixtureManager(this)) {
+    isConfigLoading_ = true;
     // 串口解析在 QtConcurrent 线程 emit，跨线程 QueuedConnection 须注册自定义类型
     qRegisterMetaType<FixturePacketData>("FixturePacketData");
     ui->setupUi(this);
     ui->FixturecomNameCombo->clear();
 
+    ui->FixtureBaudRateCombo->clear();
+    ui->FixtureBaudRateCombo->addItems({QStringLiteral("9600"), QStringLiteral("115200"), QStringLiteral("19200"), QStringLiteral("38400"), QStringLiteral("57600")});
+    connect(ui->FixtureBaudRateCombo, &QComboBox::currentTextChanged, this, [this](const QString& text) {
+        bool ok = false;
+        int b = text.toInt(&ok);
+        if (ok && b > 0) {
+            fixBaudRate = b;
+            SETTINGS.setValue(QStringLiteral("mechine/0/masterFixtureBaudRate"), fixBaudRate);
+            SETTINGS.setValue(QStringLiteral("Fixture/BaudRate"), fixBaudRate);
+            SETTINGS.sync();
+        }
+    });
+
     ui->plcDeviceCombo->addItem(QStringLiteral("串口通信 (Modbus RTU)"), QStringLiteral("XinjiePlcRtu"));
     ui->plcDeviceCombo->addItem(QStringLiteral("网口通信 (Modbus TCP)"), QStringLiteral("InovanceH5uTcp"));
 
     ui->plcBaudRateCombo->clear();
-    ui->plcBaudRateCombo->addItems({QStringLiteral("115200"), QStringLiteral("19200"), QStringLiteral("9600"), QStringLiteral("38400"), QStringLiteral("57600")});
+    ui->plcBaudRateCombo->addItems({QStringLiteral("19200"), QStringLiteral("115200"), QStringLiteral("9600"), QStringLiteral("38400"), QStringLiteral("57600")});
 
     scanSerialPorts();
     scanSerialPortsTimer_ = new QTimer(this);
@@ -50,10 +67,50 @@ Fixture_uart::Fixture_uart(QWidget* parent) : QWidget(parent), ui(new Ui::Fixtur
     connect(fixtureManager_, &QFixtureManager::send_data_to_mechine_press, this, &Fixture_uart::send_data_to_mechine_press);
 
     loadPreStartMonitorConfig();
+    isConfigLoading_ = false;
 }
 
 Fixture_uart::~Fixture_uart() {
+    savePreStartMonitorConfig();
     delete ui;
+}
+
+void Fixture_uart::showEvent(QShowEvent* event) {
+    QWidget::showEvent(event);
+    loadPreStartMonitorConfig();
+}
+
+void Fixture_uart::hideEvent(QHideEvent* event) {
+    savePreStartMonitorConfig();
+    QWidget::hideEvent(event);
+}
+
+void Fixture_uart::closeEvent(QCloseEvent* event) {
+    savePreStartMonitorConfig();
+    QWidget::closeEvent(event);
+}
+
+void Fixture_uart::reloadStationConfig() {
+    loadPreStartMonitorConfig();
+}
+
+QString Fixture_uart::currentStationKey() const {
+    QString stationKey = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationKey());
+    if (stationKey.isEmpty() || TestCaseStore::loadStationFlowItems(stationKey).isEmpty()) {
+        const QString byName = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationName());
+        if (!byName.isEmpty())
+            stationKey = byName;
+    }
+    if (stationKey.isEmpty())
+        stationKey = QStringLiteral("default");
+    return stationKey;
+}
+
+void Fixture_uart::updateWindowTitleWithStation() {
+    const QString key = currentStationKey();
+    const QString name = TestCaseStore::flowStationDisplayName(key);
+    const QString stationLabel = name.isEmpty() ? key : name;
+    setWindowTitle(QStringLiteral("治具串口与自动扫码配置 - %1").arg(stationLabel));
 }
 
 void Fixture_uart::updateDeviceFieldsVisibility() {
@@ -72,11 +129,13 @@ void Fixture_uart::updateDeviceFieldsVisibility() {
 }
 
 void Fixture_uart::loadPreStartMonitorConfig() {
-    QString stationKey = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationKey());
-    if (stationKey.isEmpty())
-        stationKey = QStringLiteral("default");
-    const QString flowPath = TestCasePaths::profileFlowPath(stationKey);
+    isConfigLoading_ = true;
 
+    const QString stationKey = currentStationKey();
+    const QString flowPath = TestCasePaths::profileFlowPath(stationKey);
+    updateWindowTitleWithStation();
+
+    ui->FixturecomNameCombo->blockSignals(true);
     ui->plcDeviceCombo->blockSignals(true);
     ui->plcComPortCombo->blockSignals(true);
     ui->plcBaudRateCombo->blockSignals(true);
@@ -90,20 +149,65 @@ void Fixture_uart::loadPreStartMonitorConfig() {
     settings.setIniCodec("UTF-8");
     settings.beginGroup(QStringLiteral("PreStart_Monitor"));
 
+    QString fixtureCom = settings.value(QStringLiteral("FixtureComPort")).toString().trimmed();
+    if (fixtureCom.isEmpty()) {
+        fixtureCom = SETTINGS.value(QStringLiteral("mechine/0/masterFixturecomName")).toString().trimmed();
+    }
+    if (!fixtureCom.isEmpty()) {
+        ui->FixturecomNameCombo->setEditText(fixtureCom);
+        if (ui->FixturecomNameCombo->findText(fixtureCom) >= 0) {
+            ui->FixturecomNameCombo->setCurrentText(fixtureCom);
+        }
+    }
+
+    const int savedFixtureBaud = SETTINGS.value(QStringLiteral("mechine/0/masterFixtureBaudRate"),
+                                 SETTINGS.value(QStringLiteral("Fixture/BaudRate"), 9600)).toInt();
+    fixBaudRate = savedFixtureBaud > 0 ? savedFixtureBaud : 9600;
+    ui->FixtureBaudRateCombo->setCurrentText(QString::number(fixBaudRate));
+
+    // 下方自动扫码配置组：仅在当前工站显式启用自动扫码时显示，一般工站自动隐藏保持界面简洁
+    const bool hasAutoScan = settings.contains(QStringLiteral("Enabled")) && settings.value(QStringLiteral("Enabled")).toBool();
+    ui->preStartMonitorGroup->setVisible(hasAutoScan);
+    adjustSize();
+
     const QString dev = settings.value(QStringLiteral("PlcDevice"), QStringLiteral("XinjiePlcRtu")).toString();
     int idx = ui->plcDeviceCombo->findData(dev);
     ui->plcDeviceCombo->setCurrentIndex(idx >= 0 ? idx : 0);
 
-    ui->plcComPortCombo->setEditText(settings.value(QStringLiteral("PlcComPort")).toString());
-    ui->plcBaudRateCombo->setEditText(settings.value(QStringLiteral("PlcBaudRate"), QStringLiteral("115200")).toString());
+    QString comPort = settings.value(QStringLiteral("PlcComPort")).toString().trimmed();
+    if (comPort.isEmpty()) {
+        comPort = SETTINGS.value(QStringLiteral("XINJE_PLC/ComPort"),
+                  SETTINGS.value(QStringLiteral("PreStart_Monitor/PlcComPort"), QString())).toString().trimmed();
+    }
+    ui->plcComPortCombo->setEditText(comPort);
+    if (ui->plcComPortCombo->findText(comPort) >= 0) {
+        ui->plcComPortCombo->setCurrentText(comPort);
+    }
+
+    const QString baud = settings.value(QStringLiteral("PlcBaudRate"), QStringLiteral("19200")).toString();
+    ui->plcBaudRateCombo->setEditText(baud);
+    if (ui->plcBaudRateCombo->findText(baud) >= 0) {
+        ui->plcBaudRateCombo->setCurrentText(baud);
+    }
+
     ui->plcIpLineEdit->setText(settings.value(QStringLiteral("PlcIp"), QStringLiteral("127.0.0.1")).toString());
     ui->plcPortSpinBox->setValue(settings.value(QStringLiteral("PlcPort"), 502).toInt());
-    ui->plcWaitAddressLineEdit->setText(settings.value(QStringLiteral("PlcWaitAddress"), QStringLiteral("M100")).toString());
 
-    ui->scannerIpLineEdit->setText(settings.value(QStringLiteral("ScannerIp"), QStringLiteral("192.168.1.64")).toString());
+    // 默认线圈为 M5
+    const QString waitAddr = settings.value(QStringLiteral("PlcWaitAddress"),
+        settings.value(QStringLiteral("PlcWaitAddressM"), QStringLiteral("M5"))).toString();
+    ui->plcWaitAddressLineEdit->setText(waitAddr.isEmpty() ? QStringLiteral("M5") : waitAddr);
+
+    // 扫码枪 IP 与端口（默认 192.168.1.64 : 2001）
+    const QString scannerIp = settings.value(QStringLiteral("ScannerIp"), QStringLiteral("192.168.1.64")).toString().trimmed();
+    ui->scannerIpLineEdit->setText(scannerIp.isEmpty() ? QStringLiteral("192.168.1.64") : scannerIp);
     ui->scannerPortSpinBox->setValue(settings.value(QStringLiteral("ScannerPort"), 2001).toInt());
+    const bool missingAny = !settings.contains(QStringLiteral("ScannerIp")) ||
+                            !settings.contains(QStringLiteral("PlcComPort")) ||
+                            !settings.contains(QStringLiteral("FixtureComPort"));
     settings.endGroup();
 
+    ui->FixturecomNameCombo->blockSignals(false);
     ui->plcDeviceCombo->blockSignals(false);
     ui->plcComPortCombo->blockSignals(false);
     ui->plcBaudRateCombo->blockSignals(false);
@@ -114,19 +218,43 @@ void Fixture_uart::loadPreStartMonitorConfig() {
     ui->scannerPortSpinBox->blockSignals(false);
 
     updateDeviceFieldsVisibility();
+    isConfigLoading_ = false;
+
+    if (missingAny && !flowPath.isEmpty()) {
+        savePreStartMonitorConfig();
+    }
 }
 
 void Fixture_uart::savePreStartMonitorConfig() {
-    QString stationKey = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationKey());
-    if (stationKey.isEmpty())
-        stationKey = QStringLiteral("default");
-    const QString flowPath = TestCasePaths::profileFlowPath(stationKey);
-    if (!QFile::exists(flowPath))
+    if (isConfigLoading_)
         return;
+
+    const QString stationKey = currentStationKey();
+    if (stationKey.isEmpty())
+        return;
+
+    TestCaseStore::ensureProfileDirectory(stationKey, TestCaseStore::flowStationDisplayName(stationKey), QString());
+    const QString flowPath = TestCasePaths::profileFlowPath(stationKey);
 
     QSettings settings(flowPath, QSettings::IniFormat);
     settings.setIniCodec("UTF-8");
     settings.beginGroup(QStringLiteral("PreStart_Monitor"));
+    if (!settings.contains(QStringLiteral("Enabled"))) {
+        settings.setValue(QStringLiteral("Enabled"), true);
+    }
+    const QString fixturePort = ui->FixturecomNameCombo->currentText().trimmed();
+    settings.setValue(QStringLiteral("FixtureComPort"), fixturePort);
+    if (!fixturePort.isEmpty()) {
+        SETTINGS.setValue(QStringLiteral("mechine/0/masterFixturecomName"), fixturePort);
+    }
+    bool okBaud = false;
+    const int fixtureBaud = ui->FixtureBaudRateCombo->currentText().toInt(&okBaud);
+    if (okBaud && fixtureBaud > 0) {
+        fixBaudRate = fixtureBaud;
+        SETTINGS.setValue(QStringLiteral("mechine/0/masterFixtureBaudRate"), fixBaudRate);
+        SETTINGS.setValue(QStringLiteral("Fixture/BaudRate"), fixBaudRate);
+    }
+    SETTINGS.sync();
     settings.setValue(QStringLiteral("PlcDevice"), ui->plcDeviceCombo->currentData().toString());
     settings.setValue(QStringLiteral("PlcComPort"), ui->plcComPortCombo->currentText().trimmed());
     settings.setValue(QStringLiteral("PlcBaudRate"), ui->plcBaudRateCombo->currentText().toInt());
@@ -142,10 +270,30 @@ void Fixture_uart::savePreStartMonitorConfig() {
     settings.setValue(QStringLiteral("ScannerIp"), ui->scannerIpLineEdit->text().trimmed());
     settings.setValue(QStringLiteral("ScannerPort"), ui->scannerPortSpinBox->value());
     settings.endGroup();
+    settings.sync();
+
+    // 通知所有打开的自由工站即时生效新配置
+    for (QWidget* w : QApplication::topLevelWidgets()) {
+        if (auto* box = qobject_cast<box_base*>(w)) {
+            for (test_base* t : box->testList) {
+                if (auto* fw = qobject_cast<QFreeWork*>(t)) {
+                    fw->updatePreStartMonitorState();
+                }
+            }
+        }
+    }
+}
+
+void Fixture_uart::on_FixturecomNameCombo_currentTextChanged(const QString&) {
+    savePreStartMonitorConfig();
 }
 
 void Fixture_uart::on_plcDeviceCombo_currentIndexChanged(int) {
     updateDeviceFieldsVisibility();
+    savePreStartMonitorConfig();
+}
+
+void Fixture_uart::on_plcIpLineEdit_textChanged(const QString&) {
     savePreStartMonitorConfig();
 }
 
@@ -154,6 +302,10 @@ void Fixture_uart::on_plcIpLineEdit_editingFinished() {
 }
 
 void Fixture_uart::on_plcPortSpinBox_valueChanged(int) {
+    savePreStartMonitorConfig();
+}
+
+void Fixture_uart::on_scannerIpLineEdit_textChanged(const QString&) {
     savePreStartMonitorConfig();
 }
 
@@ -173,12 +325,24 @@ void Fixture_uart::on_plcBaudRateCombo_currentTextChanged(const QString&) {
     savePreStartMonitorConfig();
 }
 
+void Fixture_uart::on_plcWaitAddressLineEdit_textChanged(const QString&) {
+    savePreStartMonitorConfig();
+}
+
 void Fixture_uart::on_plcWaitAddressLineEdit_editingFinished() {
     savePreStartMonitorConfig();
 }
 
 void Fixture_uart::on_FixtureconnectButton_clicked() {
     const QString portName = ui->FixturecomNameCombo->currentText();
+    bool okBaud = false;
+    const int curBaud = ui->FixtureBaudRateCombo->currentText().toInt(&okBaud);
+    if (okBaud && curBaud > 0) {
+        fixBaudRate = curBaud;
+        SETTINGS.setValue(QStringLiteral("mechine/0/masterFixtureBaudRate"), fixBaudRate);
+        SETTINGS.setValue(QStringLiteral("Fixture/BaudRate"), fixBaudRate);
+        SETTINGS.sync();
+    }
     if (fixtureManager_->open(portName, fixBaudRate)) {
         // Success handled by connected signal
     } else {
@@ -193,8 +357,14 @@ void Fixture_uart::on_FixturedisconnectButton_clicked() {
 void Fixture_uart::scanSerialPorts() {
     QElapsedTimer timer;
     timer.start();
-    SerialChannel::updateComboBoxPorts(ui->FixturecomNameCombo);
-    SerialChannel::updateComboBoxPorts(ui->plcComPortCombo);
+    {
+        QSignalBlocker blocker(ui->FixturecomNameCombo);
+        SerialChannel::updateComboBoxPorts(ui->FixturecomNameCombo);
+    }
+    {
+        QSignalBlocker blocker(ui->plcComPortCombo);
+        SerialChannel::updateComboBoxPorts(ui->plcComPortCombo);
+    }
     Qlog::saveResidentLog(QStringLiteral("scanPorts"),
                           QStringLiteral("fixture cost=%1ms").arg(timer.elapsed()));
 }

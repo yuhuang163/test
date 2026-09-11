@@ -5,6 +5,9 @@
 #include <QRect>
 #include <QWidget>
 
+#include <functional>
+#include "screen_inspect_analyzer.h"
+
 class QCamera;
 class QCameraImageCapture;
 class QCameraViewfinder;
@@ -41,6 +44,14 @@ class ScreenInspectWidget : public QWidget {
     void on_btnColorRed_clicked();
     void on_btnColorWhite_clicked();
     void on_btnColorBlack_clicked();
+    void on_btnLcdColorGray_clicked();
+    void on_btnLcdColorGrayBar_clicked();
+    void on_btnConnectDevice_clicked();
+    void on_btnDisconnectDevice_clicked();
+    void on_btnEnterLcdMode_clicked();
+    void on_btnExitLcdMode_clicked();
+    void on_btnCalibrateCircle_clicked();
+    void on_checkBox_reuseCircle_toggled(bool checked);
     void on_comboBox_cameraSource_currentIndexChanged(int index);
 
   private:
@@ -51,6 +62,12 @@ class ScreenInspectWidget : public QWidget {
         double maxMuraStd = 22.0;
         int expectedColor = -1; // -1 自动；0~5 蓝绿红白黑灰
         QRect manualRoi;
+        int cachedCircleCx = -1;
+        int cachedCircleCy = -1;
+        int cachedCircleR = -1;
+        int refCircleCx = -1;
+        int refCircleCy = -1;
+        int refCircleR = -1;
     };
 
     struct InspectReport {
@@ -58,6 +75,9 @@ class ScreenInspectWidget : public QWidget {
         int deadPixels = 0;
         double muraStd = 0.0;
         QRect roi;
+        int circleCx = -1;
+        int circleCy = -1;
+        int circleR = -1;
         bool pass = false;
         QString summary;
         QImage annotated;
@@ -88,6 +108,19 @@ class ScreenInspectWidget : public QWidget {
     QRect labelPosToImage(const QPoint& pos) const;
     void saveManualRoi(const QRect& r);
 
+    void connectDevice();
+    void disconnectDevice();
+    void enterLcdMode(std::function<void()> onDone = nullptr);
+    void exitLcdMode();
+    void sendLcdColor(int colorId, const QString& colorName, int expectedColorVal);
+    void checkConnectionStatus();
+    void updateConnectionUi(bool connected);
+    void updateLcdModeUi();
+    void updateReferenceCircle();
+    void calibrateReferenceCircle();
+    void updateCircleStatusUi();
+    void appendLog(const QString& text);
+
     ScreenInspectUi* ui = nullptr;
     bool uiBound_ = false;
     QCamera* camera_ = nullptr;
@@ -104,6 +137,11 @@ class ScreenInspectWidget : public QWidget {
     QPoint roiDragStart_;
     QPoint roiDragCur_;
     bool roiDragging_ = false;
+
+    ScreenInspectAnalyzer::ScreenCircle refCircle_;
+    ScreenInspectAnalyzer::ScreenCircle lastDetectedCircle_;
+    bool isLcdMode_ = false;
+    QTimer* connStatusTimer_ = nullptr;
 };
 
 #endif // SCREEN_INSPECT_WIDGET_H
