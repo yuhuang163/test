@@ -66,7 +66,7 @@ class Qroot2 : public qProtocol {
     void drainRxBuffer();
     void handleFrame(quint8 ct, quint8 cid, const QByteArray& body);
 
-    void sendDeviceSnWrite(const QByteArray& sn);
+    void sendDeviceSnWrite(const QByteArray& sn, quint8 snType);
     bool setSn(const QVariant& data);
     static QByteArray buildLedControlBody(const QVariant& data);
     static QByteArray buildSuctionModeLevel(const QVariant& data, quint8* modeOut, quint8* levelOut);
@@ -76,6 +76,7 @@ class Qroot2 : public qProtocol {
     quint8 pendingCid_ = 0;
     bool hasPending_ = false;
     ProtocolSnType pendingSnType_ = ProtocolSnType::TailSn;
+    QByteArray pendingWriteSn_;
 
     DonglePhyRxCodec phyRx_{kDonglePhyRxAcceptFacOnly, "[Qroot2]"};
 };

@@ -450,6 +450,11 @@ void test_base::openDongleSerialPort() {
                     .arg(QString::fromStdString(
                         QProtocolManager::protocolTypeToString(protocolManager.currentProtocolType()))));
         emit send_dongle_serialPort_state(1);
+        showlog(QStringLiteral("Dongle 串口已打开，等待固件初始化 %1ms").arg(kDongleOpenSettleMs));
+        QElapsedTimer timer;
+        timer.start();
+        while (timer.elapsed() < kDongleOpenSettleMs)
+            QCoreApplication::processEvents();
     } else {
         showlog(QStringLiteral("串口被占用！"));
     }

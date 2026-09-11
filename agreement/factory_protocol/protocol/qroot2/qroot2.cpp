@@ -15,8 +15,18 @@ constexpr quint8 kSop0 = 0xAA;
 constexpr quint8 kSop1 = 0x55;
 constexpr int kHeaderSize = 5;
 constexpr int kMaxFrameBodyLen = 64;
+constexpr int kAir1SnFieldLen = 35;
 
 } // namespace
+
+// Air1 读/写 SN 应答：首字节为状态，后续为定长 SN 区；勿用 fromUtf8(body) 否则遇 \\0 截成空串
+static QString decodeAir1SnFieldBody(const QByteArray& body) {
+    if (body.isEmpty())
+        return QString();
+    if (body.size() >= 2)
+        return QString::fromLatin1(body.constData() + 1, body.size() - 1).trimmed();
+    return QString::fromLatin1(body).trimmed();
+}
 
 QByteArray Qroot2::wrapPhyPacket(const QByteArray& innerPacket) {
     return wrapDonglePhyTxPacket(innerPacket, kDonglePhyChannelFac);
@@ -250,10 +260,29 @@ void Qroot2::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
     case PoseSwitch:
     case PoseCalib:
     case PowerOff:
-    case DeviceSnWrite:
-        emit sendGetProductResponse(1);
+    case DeviceSnWrite: {
+        bool pass = false;
+        if (body.isEmpty()) {
+            pass = true;
+        } else if (body.size() == 1) {
+            const quint8 code = static_cast<quint8>(body.at(0));
+            pass = (code == 0xFF || code == 0x00);
+            qDebug().noquote() << "[Qroot2] DeviceSN write ack code=" << Qt::hex << code;
+        } else if (body.size() >= 2) {
+            const quint8 head = static_cast<quint8>(body.at(0));
+            const QString echo = decodeAir1SnFieldBody(body);
+            qDebug().noquote() << "[Qroot2] DeviceSN write ack, head=" << Qt::hex << head << "echo=" << echo;
+            pass = (head == 0x00 && !echo.isEmpty());
+            if (pass && !pendingWriteSn_.isEmpty()) {
+                const QString expected = QString::fromLatin1(pendingWriteSn_).trimmed();
+                pass = echo.startsWith(expected);
+            }
+        }
+        pendingWriteSn_.clear();
+        emit sendGetProductResponse(pass ? 1 : 0);
         hasPending_ = false;
         break;
+    }
     case SoftVersion:
         if (body.size() >= 1) {
             ProtocolBaseInfoData info;
@@ -281,7 +310,7 @@ void Qroot2::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
         if (!body.isEmpty()) {
             ProtocolSnData sn;
             sn.type = pendingSnType_;
-            sn.value = QString::fromUtf8(body.left(40)).trimmed();
+            sn.value = decodeAir1SnFieldBody(body);
             qDebug().noquote() << "[Qroot2] DeviceSN:" << sn.value;
             emitReport(QStringLiteral("ProtocolSnData"), QVariant::fromValue(sn));
         }
@@ -363,21 +392,31 @@ QByteArray Qroot2::buildSuctionModeLevel(const QVariant& data, quint8* modeOut, 
     return QByteArray();
 }
 
-void Qroot2::sendDeviceSnWrite(const QByteArray& sn) {
-    QByteArray body;
-    const QByteArray payload = sn.left(40);
-    body.append(static_cast<char>(payload.size()));
-    body.append(payload);
-    sendPacket(Req, DeviceSnWrite, body);
+void Qroot2::sendDeviceSnWrite(const QByteArray& sn, quint8 snType) {
+    Q_UNUSED(snType);
+    // 写 SN：AA 55 00 A1 (len) (SN) (chk)；len=CAL=SN 字节数，body 仅 SN 明文，无 which_sn/补零
+    pendingWriteSn_ = sn.left(40);
+    sendPacket(Req, DeviceSnWrite, pendingWriteSn_);
 }
 
 bool Qroot2::setSn(const QVariant& data) {
+    // 测试流程 normalizeSendParam 会归一成 DeviceSnPayload；须先解包，勿直接 toString
+    if (data.canConvert<DeviceSnPayload>()) {
+        const DeviceSnPayload payload = data.value<DeviceSnPayload>();
+        if (payload.sn.isEmpty()) {
+            qWarning() << "[Qroot2] SN写入参数为空";
+            return false;
+        }
+        const quint8 snType = static_cast<quint8>(payload.which_sn);
+        sendDeviceSnWrite(payload.sn, snType != 0 ? snType : static_cast<quint8>(FacDevInfoType_TAIL_SN));
+        return true;
+    }
     const QByteArray sn = truncateUtf8Bytes(data, 40, QStringLiteral("sn"));
     if (sn.isEmpty()) {
         qWarning() << "[Qroot2] SN写入参数为空";
         return false;
     }
-    sendDeviceSnWrite(sn);
+    sendDeviceSnWrite(sn, static_cast<quint8>(FacDevInfoType_TAIL_SN));
     return true;
 }
 
@@ -449,7 +488,8 @@ void Qroot2::get(DeviceCmd cmd, const QVariant& param) {
     case DeviceCmd::Sn: {
         const auto which = static_cast<FacDevInfoType>(param.toInt());
         pendingSnType_ = (which == FacDevInfoType_BOARD_SN) ? ProtocolSnType::BoardSn : ProtocolSnType::TailSn;
-        sendPacket(Req, DeviceSnRead, QByteArray(1, '\x01'));
+        const quint8 snType = static_cast<quint8>(which != FacDevInfoType_WIFI_INFO ? which : FacDevInfoType_TAIL_SN);
+        sendPacket(Req, DeviceSnRead, QByteArray(1, static_cast<char>(snType)));
         return;
     }
     default:

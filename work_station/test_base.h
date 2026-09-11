@@ -90,6 +90,7 @@ class test_base : public QWidget {
     int usbBaudRate = 115200;
     int dongleBaudRate = 921600;
     int dongleOutTime = 10;
+    static constexpr int kDongleOpenSettleMs = 100;
 
     // --- 通用工具 ---
     void waitWork(int ms);
