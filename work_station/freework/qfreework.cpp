@@ -710,6 +710,49 @@ void QFreeWork::showEvent(QShowEvent* event) {
     refreshBydMesResourceDisplay();
 }
 
+void QFreeWork::prepareAbortUploadPack(MesPacketData* abortPack) {
+    if (!abortPack) {
+        return;
+    }
+    // 分项 MES 缓存在步骤收尾时写入；中止时优先用它，避免 joinFreeWorkMesItemvalue 空列表生成 SUMMARY 占位
+    if (!freeWorkMesSegments_.isEmpty()) {
+        abortPack->itemvalue = joinFreeWorkMesItemvalue(freeWorkMesSegments_, failValue, failValue);
+    } else if (QTableWidget* table = testResultTable()) {
+        QStringList parts;
+        for (int row = 0; row < table->rowCount(); ++row) {
+            QTableWidgetItem* nameCell = table->item(row, 0);
+            if (!nameCell)
+                continue;
+            const QString name = nameCell->text().trimmed();
+            if (name.isEmpty())
+                continue;
+            const QString value = table->item(row, 1) ? table->item(row, 1)->text().trimmed() : QString();
+            QString resultVal;
+            if (QTableWidgetItem* resultCell = table->item(row, 2)) {
+                const QString r = resultCell->text().trimmed();
+                if (r == passValue)
+                    resultVal = QStringLiteral("PASS");
+                else if (r == failValue)
+                    resultVal = QStringLiteral("FAIL");
+            }
+            parts << name + QLatin1Char(':') + value + QStringLiteral(":::::") + resultVal + QLatin1Char(':');
+        }
+        if (!parts.isEmpty()) {
+            abortPack->itemvalue = QStringLiteral("|") + parts.join(QStringLiteral("|")) + QStringLiteral("|");
+        }
+    }
+    if (!mesProcessCode_.isEmpty()) {
+        abortPack->sn = mesProcessCode_;
+    } else if (ui && ui->getMac) {
+        abortPack->sn = ui->getMac->text().trimmed();
+    }
+    if (ui && ui->macInput) {
+        abortPack->mac = ui->macInput->text().trimmed();
+    }
+    abortPack->totalTimeMs = static_cast<double>(TestTime.elapsed());
+    test_base::prepareAbortUploadPack(abortPack);
+}
+
 void QFreeWork::refreshOrderedTestIndexes() {
     const QString stationName = TestCaseStore::loadSelectedFlowStationName();
 

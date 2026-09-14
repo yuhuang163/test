@@ -354,6 +354,7 @@ class QFreeWork : public test_base {
     void applyStationSerialUiConfig();
     bool eventFilter(QObject* watched, QEvent* event) override;
     void showEvent(QShowEvent* event) override;
+    void prepareAbortUploadPack(MesPacketData* pack) override;
     void reportBydSfcKey(const QString& dataName, const QVariant& dataValue, int qty = 1);
     void reportBydBluetoothMesKeyMaterials();
     /** MES GetCustomData：取 DATA 中 NAME=ROOTSKU 的 VALUE，写入 pack.sku */

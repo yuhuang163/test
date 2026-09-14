@@ -620,20 +620,31 @@ void test_base::flushPendingTestCsv() {
     testCsvAccumItems_.clear();
 }
 
+void test_base::prepareAbortUploadPack(MesPacketData* abortPack) {
+    if (!abortPack) {
+        return;
+    }
+    if (abortPack->sn.trimmed().isEmpty()) {
+        abortPack->sn = sessionSnForLog();
+    }
+    if (abortPack->mac.trimmed().isEmpty()) {
+        abortPack->mac = sessionMacForLog();
+    }
+    if (abortPack->itemvalue.trimmed().isEmpty()) {
+        const QString table = exportTableContent();
+        if (!table.isEmpty() && table != QStringLiteral("不存在表格")) {
+            abortPack->itemvalue = table;
+        }
+    }
+}
+
 void test_base::abortTestSessionAndUpload() {
     flushPendingTestCsv();
     if (!Qlog::hasActiveSession(m_index)) {
         return;
     }
     MesPacketData abortPack = pack;
-    const QString sn = sessionSnForLog();
-    const QString mac = sessionMacForLog();
-    if (!sn.isEmpty()) {
-        abortPack.sn = sn;
-    }
-    if (!mac.isEmpty()) {
-        abortPack.mac = mac;
-    }
+    prepareAbortUploadPack(&abortPack);
     abortPack.result = QStringLiteral("ABORT");
     Qlog::endSession(m_index, QStringLiteral("ABORT"));
     TestDataUploadService::tryUploadTestAndLogAsync(abortPack, m_index);
@@ -650,9 +661,6 @@ void test_base::showlog(QString msg) {
     Qlog::logUi(m_index, msg);
     if (msgEdit()) {
         msgEdit()->appendPlainText(msg);
-    }
-    if (msg.contains(QStringLiteral("触发停止测试"))) {
-        abortTestSessionAndUpload();
     }
 }
 
@@ -1363,9 +1371,20 @@ void test_base::ensureSnInputLatinIme() {
     le->installEventFilter(this);
 }
 
+void test_base::ensureEndTestAbortHook() {
+    QPushButton* btn = getEndTestButton();
+    if (!btn || endTestAbortHookInstalled_) {
+        return;
+    }
+    // pressed 先于 clicked/on_stopTest_clicked，避免中止槽清空 SN/MAC 后无法组包上报
+    connect(btn, &QPushButton::pressed, this, [this]() { abortTestSessionAndUpload(); });
+    endTestAbortHookInstalled_ = true;
+}
+
 void test_base::showEvent(QShowEvent* event) {
     QWidget::showEvent(event);
     ensureSnInputLatinIme();
+    ensureEndTestAbortHook();
 }
 
 bool test_base::eventFilter(QObject* watched, QEvent* event) {
