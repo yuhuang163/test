@@ -48,22 +48,28 @@ QList<QFreeWork*> PlcStationSyncBarrier::collectActiveTestingStations(QFreeWork*
 }
 
 QString PlcStationSyncBarrier::resolveTargetCoilAddress(const TestCaseDefinition& def, const QString& defaultAddr) {
+    QString raw;
     const QVariant param = def.send.param;
     if (param.userType() == QMetaType::QString || param.type() == QVariant::String) {
-        const QString s = param.toString().trimmed();
-        if (!s.isEmpty())
-            return s;
-    }
-    if (param.canConvert<QVariantMap>()) {
+        raw = param.toString().trimmed();
+    } else if (param.canConvert<QVariantMap>()) {
         const QVariantMap map = param.toMap();
-        if (map.contains(QStringLiteral("address")))
-            return map.value(QStringLiteral("address")).toString().trimmed();
-        if (map.contains(QStringLiteral("addr")))
-            return map.value(QStringLiteral("addr")).toString().trimmed();
-        if (map.contains(QStringLiteral("m")))
-            return map.value(QStringLiteral("m")).toString().trimmed();
+        if (map.contains(QStringLiteral("address")) && !map.value(QStringLiteral("address")).toString().trimmed().isEmpty())
+            raw = map.value(QStringLiteral("address")).toString().trimmed();
+        else if (map.contains(QStringLiteral("addr")) && !map.value(QStringLiteral("addr")).toString().trimmed().isEmpty())
+            raw = map.value(QStringLiteral("addr")).toString().trimmed();
+        else if (map.contains(QStringLiteral("m")) && !map.value(QStringLiteral("m")).toString().trimmed().isEmpty())
+            raw = map.value(QStringLiteral("m")).toString().trimmed();
     }
-    return defaultAddr.trimmed().isEmpty() ? QStringLiteral("M0") : defaultAddr.trimmed();
+    if (raw.isEmpty())
+        raw = defaultAddr.trimmed();
+    if (raw.isEmpty())
+        raw = QStringLiteral("M0");
+    bool isPureNum = false;
+    raw.toInt(&isPureNum);
+    if (isPureNum)
+        raw = QStringLiteral("M") + raw;
+    return raw.toUpper();
 }
 
 QVariantMap PlcStationSyncBarrier::resolvePlcExecutionParams(QFreeWork* ctx, const TestCaseDefinition& def,
