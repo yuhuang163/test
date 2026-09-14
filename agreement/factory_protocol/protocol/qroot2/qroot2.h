@@ -52,7 +52,7 @@ class Qroot2 : public qProtocol {
 
     static quint8 checksum8(const QByteArray& data);
     static QByteArray buildPacket(quint8 ct, quint8 cid, const QByteArray& body);
-    static QString formatMacFromWire(const QByteArray& mac6);
+    static QString formatMacFromWire(const QByteArray& body);
     static QString formatSoftVersion(const QByteArray& body);
     static QByteArray parseMacToWire(const QVariant& data);
     static quint8 parseOnOffParam(const QVariant& data, quint8 defaultValue = 1);
