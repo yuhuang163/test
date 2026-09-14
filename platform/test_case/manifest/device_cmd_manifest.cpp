@@ -47,12 +47,18 @@ constexpr const char kHintQroot2ModeSet[] =
     u8"Qroot2/Air1：Req 0xA2，body=01刺激 02吸乳 03混合\r\n示例：Param_mode=2";
 constexpr const char kHintQroot2LevelSet[] =
     u8"Qroot2/Air1：Req 0xA3，body=档位1-15\r\n示例：Param_level=5";
+constexpr const char kHintQroot2PumpState[] =
+    u8"Qroot2/Air1：Req 0xA4，控制泵启动/暂停\r\n"
+    u8"body：01运行 00暂停\r\n示例：Param_on=1 或 Param_state=1";
 constexpr const char kHintQroot2LedControl[] =
     u8"Qroot2/Air1：Req 0x90，body=02+color+state\r\n"
     u8"color：00红 01白 02绿；state：01开 00关\r\n示例：Param_color=0 Param_on=1";
 constexpr const char kHintQroot2KeyTest[] =
-    u8"Qroot2/Air1：Req 0xA6 body 0x01\r\n"
-    u8"Ack：byte1启动/暂停 byte2模式 byte3档位\r\n卡控：ProtocolButtonStateData";
+    u8"Qroot2/Air1：Req 0xA6，空 body (AA 55 00 A6 00 5A)\r\n"
+    u8"Ack：byte1泵状态(0/1) byte2模式(1~5) byte3档位(1~15)\r\n卡控：ProtocolButtonStateData";
+constexpr const char kHintQroot2StateRead[] =
+    u8"Qroot2/Air1：Req 0xA6，读回泵状态、模式与档位\r\n"
+    u8"Ack：byte1泵状态(0/1) byte2模式(1~5) byte3档位(1~15)\r\n卡控：ProtocolButtonStateData(level/mode/pump_state)";
 constexpr const char kHintPeriphState[] =
     u8"Qaiot 读传感器 CID=0x08：Param_type=0x00~0x0D\r\n"
     u8"00 IMU(回 36B=9×float LE: kx..bz) / 04 电容fsensor(回 1B 0/1)\r\n"
@@ -298,8 +304,11 @@ const Row kRows[] = {
      u8"Qroot2/Air1：Req 0xAE body 0空碗 1满碗\r\n示例：Param_value=0", kSet},
     {DeviceCmd::Root2ModeSet, "Root2ModeSet", u8"设置模式", DeviceCmdParamKind::JsonMap, kHintQroot2ModeSet, kSet},
     {DeviceCmd::Root2LevelSet, "Root2LevelSet", u8"设置档位", DeviceCmdParamKind::JsonMap, kHintQroot2LevelSet, kSet},
+    {DeviceCmd::Root2PumpState, "Root2PumpState", u8"控制运行暂停", DeviceCmdParamKind::JsonMap, kHintQroot2PumpState, kSet},
     {DeviceCmd::Root2KeyTest, "Root2KeyTest", u8"按键测试", DeviceCmdParamKind::None, kHintQroot2KeyTest, kGet,
      "ProtocolButtonStateData", "keyButtonId"},
+    {DeviceCmd::Root2StateRead, "Root2StateRead", u8"读取运行状态", DeviceCmdParamKind::None, kHintQroot2StateRead, kGet,
+     "ProtocolButtonStateData", "level"},
     {DeviceCmd::Root2LedControl, "Root2LedControl", u8"控制灯光", DeviceCmdParamKind::JsonMap, kHintQroot2LedControl, kSet},
     {DeviceCmd::PressSensorTemp, "PressSensorTemp", u8"压力传感器温度", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::UartReceive, "UartReceive", u8"串口接收开关", DeviceCmdParamKind::None, nullptr, kSet},

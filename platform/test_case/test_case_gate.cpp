@@ -533,15 +533,15 @@ double fieldValueFromVariant(const QString& reportType, const QString& field, co
         }
     } else if (reportType == QLatin1String("ProtocolButtonStateData")) {
         const auto d = payload.value<ProtocolButtonStateData>();
-        if (field == QLatin1String("modeButtonState")) {
+        if (field == QLatin1String("modeButtonState") || field == QLatin1String("mode")) {
             ok = true;
             return d.modeButtonState;
         }
-        if (field == QLatin1String("powerButtonState")) {
+        if (field == QLatin1String("powerButtonState") || field == QLatin1String("pump_state") || field == QLatin1String("state")) {
             ok = true;
             return d.powerButtonState;
         }
-        if (field == QLatin1String("keyButtonId")) {
+        if (field == QLatin1String("keyButtonId") || field == QLatin1String("level")) {
             ok = true;
             return d.keyButtonId;
         }
@@ -1094,15 +1094,15 @@ QString fieldStringFromVariant(const QString& reportType, const QString& field, 
         }
     } else if (reportType == QLatin1String("ProtocolButtonStateData")) {
         const auto d = payload.value<ProtocolButtonStateData>();
-        if (field == QLatin1String("modeButtonState")) {
+        if (field == QLatin1String("modeButtonState") || field == QLatin1String("mode")) {
             ok = true;
             return QString::number(d.modeButtonState);
         }
-        if (field == QLatin1String("powerButtonState")) {
+        if (field == QLatin1String("powerButtonState") || field == QLatin1String("pump_state") || field == QLatin1String("state")) {
             ok = true;
             return QString::number(d.powerButtonState);
         }
-        if (field == QLatin1String("keyButtonId")) {
+        if (field == QLatin1String("keyButtonId") || field == QLatin1String("level")) {
             ok = true;
             return QString::number(d.keyButtonId);
         }

@@ -152,6 +152,10 @@ quint8 Qroot2::parseOnOffParam(const QVariant& data, quint8 defaultValue) {
         const QVariantMap map = data.toMap();
         if (map.contains(QStringLiteral("on")))
             return map.value(QStringLiteral("on")).toInt() != 0 ? 1 : 0;
+        if (map.contains(QStringLiteral("state")))
+            return map.value(QStringLiteral("state")).toInt() != 0 ? 1 : 0;
+        if (map.contains(QStringLiteral("pump_state")))
+            return map.value(QStringLiteral("pump_state")).toInt() != 0 ? 1 : 0;
         if (map.contains(QStringLiteral("value")))
             return map.value(QStringLiteral("value")).toInt() != 0 ? 1 : 0;
         if (map.contains(QStringLiteral("switch")))
@@ -263,6 +267,7 @@ void Qroot2::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
     case MacWrite:
     case ModeSet:
     case LevelSet:
+    case PumpState:
     case BowlCalib:
     case PoseSwitch:
     case PoseCalib:
@@ -341,11 +346,11 @@ void Qroot2::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
             } else if (body.size() >= 2) {
                 btn.keyButtonId = static_cast<quint8>(body.at(1));
             }
-            qDebug().noquote() << "[Qroot2] KeyTest start/pause=" << btn.powerButtonState
+            qDebug().noquote() << "[Qroot2] 0xA6 State: pump_state=" << btn.powerButtonState
                                << "mode=" << btn.modeButtonState << "level=" << btn.keyButtonId;
             emitReport(QStringLiteral("ProtocolButtonStateData"), QVariant::fromValue(btn));
             ProtocolResultData result;
-            result.result = static_cast<quint8>(body.at(0)) == 0 ? 0 : 1;
+            result.result = static_cast<quint8>(body.at(0)) == 0 ? 1 : 0;
             emitReport(QStringLiteral("ProtocolResultData"), QVariant::fromValue(result));
         }
         emit sendGetProductResponse(1);
@@ -458,6 +463,9 @@ void Qroot2::set(DeviceCmd cmd, const QVariant& data) {
     case DeviceCmd::Root2LevelSet:
         sendPacket(Req, LevelSet, QByteArray(1, static_cast<char>(qBound(1, static_cast<int>(parseUInt8Param(data, 1, QStringLiteral("level"))), 15))));
         return;
+    case DeviceCmd::Root2PumpState:
+        sendPacket(Req, PumpState, QByteArray(1, static_cast<char>(parseOnOffParam(data, 1))));
+        return;
     case DeviceCmd::Root2LedControl:
     case DeviceCmd::LedColor:
     case DeviceCmd::LedTest:
@@ -503,8 +511,10 @@ void Qroot2::get(DeviceCmd cmd, const QVariant& param) {
         sendPacket(Req, MacRead, QByteArray(1, '\x01'));
         return;
     case DeviceCmd::Root2KeyTest:
+    case DeviceCmd::Root2StateRead:
     case DeviceCmd::ButtonState:
-        sendPacket(Req, KeyTest, QByteArray(1, '\x01'));
+        // 请求帧（空 body）：AA 55 00 A6 00 5A
+        sendPacket(Req, KeyTest, QByteArray());
         return;
     case DeviceCmd::Sn: {
         const auto which = static_cast<FacDevInfoType>(param.toInt());
