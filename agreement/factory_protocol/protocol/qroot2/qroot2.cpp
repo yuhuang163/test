@@ -362,8 +362,8 @@ QByteArray Qroot2::buildLedControlBody(const QVariant& data) {
     } else {
         state = parseOnOffParam(data, 1);
     }
+    // Air1 灯控 body 仅 颜色+状态 两字节：color 0x02=红灯（其它值按固件定义），state 0关1开
     QByteArray body;
-    body.append(static_cast<char>(kLedControlSubCmd));
     body.append(static_cast<char>(color));
     body.append(static_cast<char>(state));
     return body;

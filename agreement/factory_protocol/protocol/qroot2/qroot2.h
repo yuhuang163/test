@@ -48,7 +48,6 @@ class Qroot2 : public qProtocol {
     };
 
     static constexpr quint8 kAir1PowerOffParam = 0x04;
-    static constexpr quint8 kLedControlSubCmd = 0x02;
 
     static quint8 checksum8(const QByteArray& data);
     static QByteArray buildPacket(quint8 ct, quint8 cid, const QByteArray& body);

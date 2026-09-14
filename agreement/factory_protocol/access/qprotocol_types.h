@@ -633,7 +633,7 @@ enum class DeviceCmd {
     Root2ModeSet,      // Req 0xA2 body 01刺激 02吸乳 03混合
     Root2LevelSet,     // Req 0xA3 body 档位1-15
     Root2KeyTest,      // Req 0xA6 按键测试读
-    Root2LedControl,   // Req 0x90 body 02+color+state
+    Root2LedControl,   // Req 0x90 body color+state（color 0x02红 0x03绿…，state 0关1开）
 
     // get commands
     NowMusicInfo,       // 【Qpb】当前播放音乐信息（无参/可空 param，get_now_music_info）
