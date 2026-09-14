@@ -40,6 +40,7 @@ class Qroot2 : public qProtocol {
         DeviceSnWrite = 0xA1,
         ModeSet = 0xA2,
         LevelSet = 0xA3,
+        PumpState = 0xA4,
         KeyTest = 0xA6,
         BowlCalib = 0xAE,
         PoseSwitch = 0xDB,

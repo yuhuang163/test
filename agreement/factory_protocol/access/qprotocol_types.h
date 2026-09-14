@@ -632,7 +632,9 @@ enum class DeviceCmd {
     Root2BowlCalib,    // Req 0xAE body 0空碗 1满碗
     Root2ModeSet,      // Req 0xA2 body 01刺激 02吸乳 03混合
     Root2LevelSet,     // Req 0xA3 body 档位1-15
+    Root2PumpState,    // Req 0xA4 body 0暂停 1运行 (控制泵启动/暂停)
     Root2KeyTest,      // Req 0xA6 按键测试读
+    Root2StateRead,    // Req 0xA6 读回泵状态/模式/档位
     Root2LedControl,   // Req 0x90 body 02+color+state
 
     // get commands

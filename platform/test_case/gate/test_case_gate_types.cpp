@@ -372,7 +372,10 @@ static void registerDeviceInfoGates() {
     }
     {
         using D = ProtocolButtonStateData;
-        GateType<D>("ProtocolButtonStateData", "按键状态")
+        GateType<D>("ProtocolButtonStateData", "按键与运行状态")
+            .number("level", &D::keyButtonId, "档位 (level 1~15)", "")
+            .number("mode", &D::modeButtonState, "模式 (mode 1~5)", "")
+            .number("pump_state", &D::powerButtonState, "泵工作状态 (0暂停/1运行)", "")
             .number("modeButtonState", &D::modeButtonState, "模式键状态", "")
             .number("powerButtonState", &D::powerButtonState, "电源键状态", "")
             .number("keyButtonId", &D::keyButtonId, "按键编号", "")
