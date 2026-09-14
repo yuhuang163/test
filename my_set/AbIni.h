@@ -5,6 +5,19 @@
 #pragma execution_character_set(push, "utf-8")
 #endif
 
+#include <qglobal.h>
+
+// 修复部分版本 MSVC 与 Qt 5.15 的微软非标扩展 stdext::make_checked_array_iterator 冲突 C2668 或缺失 C2653
+#ifdef QT_MAKE_CHECKED_ARRAY_ITERATOR
+#undef QT_MAKE_CHECKED_ARRAY_ITERATOR
+#endif
+#define QT_MAKE_CHECKED_ARRAY_ITERATOR(x, N) (x)
+
+#ifdef QT_MAKE_UNCHECKED_ARRAY_ITERATOR
+#undef QT_MAKE_UNCHECKED_ARRAY_ITERATOR
+#endif
+#define QT_MAKE_UNCHECKED_ARRAY_ITERATOR(x) (x)
+
 // --- PCH 常用 Qt（已去掉重复项与 MES/设置页整页 UI，仅保留多数 TU 会用到的）---
 #include <qserialport.h>     // 串口通信类
 #include <qserialportinfo.h> // 串口信息类

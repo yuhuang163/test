@@ -272,10 +272,11 @@ void Qroot2::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
             const quint8 head = static_cast<quint8>(body.at(0));
             const QString echo = decodeAir1SnFieldBody(body);
             qDebug().noquote() << "[Qroot2] DeviceSN write ack, head=" << Qt::hex << head << "echo=" << echo;
-            pass = (head == 0x00 && !echo.isEmpty());
-            if (pass && !pendingWriteSn_.isEmpty()) {
+            pass = (head == 0x00);
+            if (pass && !pendingWriteSn_.isEmpty() && !echo.isEmpty()) {
                 const QString expected = QString::fromLatin1(pendingWriteSn_).trimmed();
-                pass = echo.startsWith(expected);
+                // 固件回包只返回前35位SN，而发送的是39位(后补4个0)；校验以 head==0x00 为主，回显与发送前缀匹配
+                pass = expected.startsWith(echo) || echo.startsWith(expected);
             }
         }
         pendingWriteSn_.clear();
@@ -394,8 +395,15 @@ QByteArray Qroot2::buildSuctionModeLevel(const QVariant& data, quint8* modeOut, 
 
 void Qroot2::sendDeviceSnWrite(const QByteArray& sn, quint8 snType) {
     Q_UNUSED(snType);
-    // 写 SN：AA 55 00 A1 (len) (SN) (chk)；len=CAL=SN 字节数，body 仅 SN 明文，无 which_sn/补零
-    pendingWriteSn_ = sn.left(40);
+    // 写 SN：AA 55 00 A1 (len) (SN) (chk)；len=CAL=SN 字节数，body 为 SN 明文
+    // 产品要求写入39位，如传入标准的35位SN，自动在末尾补足4个'0'达到39位
+    QByteArray wireSn = sn.trimmed();
+    if (wireSn.size() < 39) {
+        wireSn = wireSn.leftJustified(39, '0');
+    } else if (wireSn.size() > 39) {
+        wireSn = wireSn.left(39);
+    }
+    pendingWriteSn_ = wireSn;
     sendPacket(Req, DeviceSnWrite, pendingWriteSn_);
 }
 
