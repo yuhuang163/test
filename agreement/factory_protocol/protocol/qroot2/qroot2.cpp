@@ -83,13 +83,20 @@ bool Qroot2::sendPacket(quint8 ct, quint8 cid, const QByteArray& body) {
     return true;
 }
 
-QString Qroot2::formatMacFromWire(const QByteArray& mac6) {
-    if (mac6.size() != 6)
+QString Qroot2::formatMacFromWire(const QByteArray& body) {
+    // Air1 协议：Body 固定为 1 字节状态码 + 12 字节 ASCII HEX 字符串（如 0x00 + "DAE10000042F"）
+    if (body.size() < 13)
         return {};
+
+    const QString hexStr = QString::fromLatin1(body.constData() + 1, 12).trimmed().toUpper();
+    if (hexStr.size() != 12)
+        return {};
+
     QStringList parts;
     parts.reserve(6);
-    for (int i = 5; i >= 0; --i)
-        parts.append(QString::number(static_cast<quint8>(mac6.at(i)), 16).rightJustified(2, QLatin1Char('0')).toUpper());
+    for (int i = 0; i < 12; i += 2) {
+        parts.append(hexStr.mid(i, 2));
+    }
     return parts.join(QLatin1Char(':'));
 }
 
@@ -299,10 +306,16 @@ void Qroot2::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
         hasPending_ = false;
         break;
     case MacRead:
-        if (body.size() >= 6) {
-            ProtocolMacData mac;
-            mac.mac = formatMacFromWire(body.left(6));
-            emitReport(QStringLiteral("ProtocolMacData"), QVariant::fromValue(mac));
+        if (body.size() >= 13) {
+            const quint8 status = static_cast<quint8>(body.at(0));
+            if (status == 0x00) {
+                ProtocolMacData mac;
+                mac.mac = formatMacFromWire(body);
+                qDebug().noquote() << "[Qroot2] MAC:" << mac.mac;
+                emitReport(QStringLiteral("ProtocolMacData"), QVariant::fromValue(mac));
+            } else {
+                qWarning() << "[Qroot2] MacRead status fail:" << status;
+            }
         }
         emit sendGetProductResponse(1);
         hasPending_ = false;
