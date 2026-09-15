@@ -200,7 +200,8 @@ QString sendParamKeyZhLabel(const QString& key) {
 bool hookUsesSendParamUi(const QString& hookId) {
     return hookId == QLatin1String("COUNTDOWN_WAIT") || hookId == QLatin1String("LIGHT_SENSOR_GOLDEN_CALIB")
         || hookId == QLatin1String("LIGHT_SENSOR_CALIB_WRITE") || hookId == QLatin1String("LIGHT_SENSOR_CALIB_READ")
-        || hookId == QLatin1String("VES_CH1_SET_BRIGHTNESS");
+        || hookId == QLatin1String("VES_CH1_SET_BRIGHTNESS")
+        || hookId.startsWith(QLatin1String("PLC_SYNC_"));
 }
 
 QVariantMap hookSendParamDefaultMap(const QString& hookId) {
@@ -243,6 +244,25 @@ QVariantMap hookSendParamDefaultMap(const QString& hookId) {
         QVariantMap map;
         map.insert(QStringLiteral("baud"), QStringLiteral("9600"));
         map.insert(QStringLiteral("brightness"), QStringLiteral("22"));
+        return map;
+    }
+    if (hookId.startsWith(QLatin1String("PLC_SYNC_WRITE"))) {
+        QVariantMap map;
+        QString defAddr = QStringLiteral("M10");
+        if (hookId == QLatin1String("PLC_SYNC_WRITE_M11"))
+            defAddr = QStringLiteral("M11");
+        map.insert(QStringLiteral("address"), defAddr);
+        map.insert(QStringLiteral("pulse"), QStringLiteral("true"));
+        map.insert(QStringLiteral("pulseHoldMs"), QStringLiteral("200"));
+        map.insert(QStringLiteral("value"), QStringLiteral("true"));
+        return map;
+    }
+    if (hookId.startsWith(QLatin1String("PLC_SYNC_READ"))) {
+        QVariantMap map;
+        QString defAddr = QStringLiteral("M0");
+        if (hookId == QLatin1String("PLC_SYNC_READ_M1"))
+            defAddr = QStringLiteral("M1");
+        map.insert(QStringLiteral("address"), defAddr);
         return map;
     }
     return {};
@@ -1381,7 +1401,18 @@ void applyHookSendParamUi(Ui::TestCaseEditDialog* ui, const QString& hookId, con
     const QVariantMap tmpl = hookSendParamDefaultMap(hookId);
     const QVariantMap current =
         userMap.isEmpty() ? readSendParamMapFromTable(ui->tableWidget_sendParam) : userMap;
-    setSendParamTableFromMapWithTemplate(ui->tableWidget_sendParam, current, tmpl);
+    // 严格过滤：Hook 参数表仅保留当前 Hook 模板声明的参数，彻底清除其他步骤遗留的电流、电压等无关参数
+    QVariantMap filteredUserMap;
+    if (!tmpl.isEmpty()) {
+        for (auto it = current.cbegin(); it != current.cend(); ++it) {
+            if (tmpl.contains(it.key())) {
+                filteredUserMap.insert(it.key(), it.value());
+            }
+        }
+    } else {
+        filteredUserMap = current;
+    }
+    setSendParamTableFromMapWithTemplate(ui->tableWidget_sendParam, filteredUserMap, tmpl);
     ui->stackedWidget_param->setCurrentWidget(ui->page_paramJson);
     ui->label_param->setVisible(true);
     ui->stackedWidget_param->setVisible(true);
@@ -1407,6 +1438,15 @@ void applyHookSendParamUi(Ui::TestCaseEditDialog* ui, const QString& hookId, con
     } else if (hookId == QLatin1String("VES_CH1_SET_BRIGHTNESS")) {
         uiSchema.hint = QStringLiteral(
             "走工位治具串口，协议固定通道 1；Param_brightness：亮度 0~255（默认 22）");
+    } else if (hookId.startsWith(QLatin1String("PLC_SYNC_WRITE"))) {
+        uiSchema.hint = QStringLiteral(
+            "address：PLC线圈地址（如 M10/M11/M20/Y0，支持任意自定义修改）；"
+            "pulse：是否脉冲动作（true/false，默认 true 即 写ON->延时->写OFF）；"
+            "pulseHoldMs：脉冲保持时间（ms，默认 200）；"
+            "value：写入值（true/false，默认 true）");
+    } else if (hookId.startsWith(QLatin1String("PLC_SYNC_READ"))) {
+        uiSchema.hint = QStringLiteral(
+            "address：PLC监控线圈地址（如 M0/M1/M5/X0，支持任意自定义修改，全员到齐后轮询监听该线圈，检测到置 1 放行）");
     }
     applySendParamHintToUi(uiSchema, true, ui->label_sendParamHint, ui->tableWidget_sendParam, ui->spinBox_intParam,
                            ui->pushButton_addParamRow, ui->pushButton_removeParamRow,
@@ -1753,12 +1793,12 @@ const QHash<QString, QString>& hookDisplayNameMap() {
         {QStringLiteral("BYD_MES_GET_TRANSITION_CODE"), QStringLiteral("BYD MES 通过整机SN获取过渡码")},
         {QStringLiteral("BYD_MES_GET_NEW_SFC"), QStringLiteral("BYD MES 通过过渡码获取 newSfc")},
         {QStringLiteral("BYD_MES_START_BY_NEW_SFC"), QStringLiteral("BYD MES 使用 newSfc 进行站前检查")},
-        {QStringLiteral("PLC_SYNC_WRITE_COIL"), QStringLiteral("[一拖多同步] 统一写线圈(到齐后写一次)")},
-        {QStringLiteral("PLC_SYNC_READ_COIL"), QStringLiteral("[一拖多同步] 统一监控线圈(到齐后监听)")},
-        {QStringLiteral("PLC_SYNC_WRITE_M10"), QStringLiteral("[一拖多同步] 统一写M10脉冲复位")},
-        {QStringLiteral("PLC_SYNC_WRITE_M11"), QStringLiteral("[一拖多同步] 统一写M11脉冲复位")},
-        {QStringLiteral("PLC_SYNC_READ_M0"), QStringLiteral("[一拖多同步] 统一监听M0按键信号")},
-        {QStringLiteral("PLC_SYNC_READ_M1"), QStringLiteral("[一拖多同步] 统一监听M1按键信号")},
+        {QStringLiteral("PLC_SYNC_WRITE_COIL"), QStringLiteral("[一拖多同步] 统一写线圈(自定义线圈)")},
+        {QStringLiteral("PLC_SYNC_READ_COIL"), QStringLiteral("[一拖多同步] 统一监控线圈(自定义线圈)")},
+        {QStringLiteral("PLC_SYNC_WRITE_M10"), QStringLiteral("[一拖多同步] 统一写M10脉冲复位(默认M10/可改)")},
+        {QStringLiteral("PLC_SYNC_WRITE_M11"), QStringLiteral("[一拖多同步] 统一写M11脉冲复位(默认M11/可改)")},
+        {QStringLiteral("PLC_SYNC_READ_M0"), QStringLiteral("[一拖多同步] 统一监听M0按键信号(默认M0/可改)")},
+        {QStringLiteral("PLC_SYNC_READ_M1"), QStringLiteral("[一拖多同步] 统一监听M1按键信号(默认M1/可改)")},
     };
     return map;
 }
@@ -2317,10 +2357,18 @@ void TestCaseEditDialog::updateHookFieldsEnabled() {
         ui->label_param->setText(QStringLiteral("步骤参数"));
         setSendCommandFieldRowsVisible(ui, false);
         const QVariantMap current = readSendParamMapFromTable(ui->tableWidget_sendParam);
-        if (!current.contains(QStringLiteral("seconds")) && !current.contains(QStringLiteral("waitSeconds")))
-            applyHookSendParamUi(ui, hookId, QVariantMap());
+        const QVariantMap tmpl = hookSendParamDefaultMap(hookId);
+        bool hasMatchingKey = false;
+        for (const QString& k : tmpl.keys()) {
+            if (current.contains(k)) {
+                hasMatchingKey = true;
+                break;
+            }
+        }
+        if (hasMatchingKey)
+            applyHookSendParamUi(ui, hookId, current);
         else
-            applyHookSendParamUi(ui, hookId);
+            applyHookSendParamUi(ui, hookId, QVariantMap());
         return;
     }
 
