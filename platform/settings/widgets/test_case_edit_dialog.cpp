@@ -2476,7 +2476,7 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     {
         int timeoutMs = def.timing.commandTimeoutMs;
         if (timeoutMs <= 0)
-            timeoutMs = def.gate.enabled ? 8000 : 300;
+            timeoutMs = def.gate.enabled ? 8000 : 3000;
         ui->spinBox_commandTimeout->setValue(timeoutMs);
     }
     ui->checkBox_waitReply->setChecked(def.timing.waitReply);
