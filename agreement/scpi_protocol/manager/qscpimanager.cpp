@@ -116,32 +116,32 @@ void QScpiManager::loadHuilingVisaFromSettings() {
     setHuilingProfilePatch(HuilingWfp60hScpiProfile::fromVisaPowerSettings());
 }
 
-bool QScpiManager::loadAgilent66319dVisaFromParamMap(const QVariantMap& map, int timeoutMs) {
-    const QString visaAddress = map.value(QStringLiteral("visaAddress")).toString().trimmed();
-    if (visaAddress.isEmpty()) {
+bool QScpiManager::loadVisaProgrammablePowerFromParamMap(ScpiDeviceRoute route, const QVariantMap& map, int timeoutMs) {
+    if (!isVisaProgrammablePowerRoute(route))
         return false;
-    }
+    const QString visaAddress = map.value(QStringLiteral("visaAddress")).toString().trimmed();
+    if (visaAddress.isEmpty())
+        return false;
     ScpiVisaLinkConfig link;
     link.visaAddress = visaAddress;
     link.timeoutMs = timeoutMs > 0 ? timeoutMs : 3000;
     setVisaConfig(link);
-    setDeviceRoute(ScpiDeviceRoute::Agilent66319d);
-    setHuilingProfilePatch(Agilent66319dScpiProfileUtil::fromParamMap(map));
+    setDeviceRoute(route);
+    if (route == ScpiDeviceRoute::Agilent66319d)
+        setHuilingProfilePatch(Agilent66319dScpiProfileUtil::fromParamMap(map));
+    else if (route == ScpiDeviceRoute::GenericVisaPower)
+        setHuilingProfilePatch(HuilingWfp60hScpiProfile::fromGenericVisaPowerParamMap(map));
+    else
+        setHuilingProfilePatch(HuilingWfp60hScpiProfile::fromParamMap(map));
     return true;
 }
 
+bool QScpiManager::loadAgilent66319dVisaFromParamMap(const QVariantMap& map, int timeoutMs) {
+    return loadVisaProgrammablePowerFromParamMap(ScpiDeviceRoute::Agilent66319d, map, timeoutMs);
+}
+
 bool QScpiManager::loadHuilingVisaFromParamMap(const QVariantMap& map, int timeoutMs) {
-    const QString visaAddress = map.value(QStringLiteral("visaAddress")).toString().trimmed();
-    if (visaAddress.isEmpty()) {
-        return false;
-    }
-    ScpiVisaLinkConfig link;
-    link.visaAddress = visaAddress;
-    link.timeoutMs = timeoutMs > 0 ? timeoutMs : 3000;
-    setVisaConfig(link);
-    setDeviceRoute(ScpiDeviceRoute::HuilingWfp60h);
-    setHuilingProfilePatch(HuilingWfp60hScpiProfile::fromParamMap(map));
-    return true;
+    return loadVisaProgrammablePowerFromParamMap(ScpiDeviceRoute::HuilingWfp60h, map, timeoutMs);
 }
 
 void QScpiManager::loadCmwVisaFromSettings() {
@@ -172,6 +172,7 @@ IScpiDevice* QScpiManager::activeDevice() {
     switch (deviceRoute_) {
     case ScpiDeviceRoute::HuilingWfp60h:
     case ScpiDeviceRoute::Agilent66319d:
+    case ScpiDeviceRoute::GenericVisaPower:
         return &huilingDevice_;
     case ScpiDeviceRoute::RsCmw100:
         return &cmwDevice_;
@@ -214,14 +215,14 @@ bool QScpiManager::feedRx(const QByteArray& chunk) {
 }
 
 bool QScpiManager::sendCustomMessage(const QVariantMap& map) {
-    if (deviceRoute_ != ScpiDeviceRoute::HuilingWfp60h && deviceRoute_ != ScpiDeviceRoute::Agilent66319d) {
+    if (!isVisaProgrammablePowerRoute(deviceRoute_)) {
         return false;
     }
     return huilingDevice_.sendCustomMessage(map);
 }
 
 void QScpiManager::onLineReceived(const QString& line) {
-    if (deviceRoute_ == ScpiDeviceRoute::HuilingWfp60h || deviceRoute_ == ScpiDeviceRoute::Agilent66319d) {
+    if (isVisaProgrammablePowerRoute(deviceRoute_)) {
         huilingDevice_.handleLineReceived(line);
     }
 }

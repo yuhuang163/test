@@ -536,6 +536,25 @@ QVariantMap defaultVisaConfigureParamMap(ScpiDeviceRoute route) {
         map.insert(QStringLiteral("scpiChannelSelectCmd"), QStringLiteral("INST OUT%1"));
         return map;
     }
+    if (route == ScpiDeviceRoute::GenericVisaPower) {
+        map.insert(QStringLiteral("visaAddress"), QStringLiteral("GPIB0::5::INSTR"));
+        map.insert(QStringLiteral("voltage"), QStringLiteral("5.0"));
+        map.insert(QStringLiteral("current"), QStringLiteral("2.0"));
+        map.insert(QStringLiteral("currentRange"), QString());
+        map.insert(QStringLiteral("scpiSetVoltageCmd"), QStringLiteral("VOLT %1"));
+        map.insert(QStringLiteral("scpiSetCurrentCmd"), QStringLiteral("CURR %1"));
+        map.insert(QStringLiteral("scpiOutputOnCmd"), QStringLiteral("OUTP ON"));
+        map.insert(QStringLiteral("scpiOutputOffCmd"), QStringLiteral("OUTP OFF"));
+        map.insert(QStringLiteral("scpiReadVoltageCmd"), QStringLiteral("MEAS:VOLT?"));
+        map.insert(QStringLiteral("scpiReadCurrentCmd"), QStringLiteral("MEAS:CURR?"));
+        map.insert(QStringLiteral("scpiSetCurrentRangeCmd"), QString());
+        map.insert(QStringLiteral("sharedPair"), QStringLiteral("false"));
+        map.insert(QStringLiteral("stationsPerDevice"), QStringLiteral("1"));
+        map.insert(QStringLiteral("visaAddress0"), QString());
+        map.insert(QStringLiteral("visaAddress1"), QString());
+        map.insert(QStringLiteral("scpiChannelSelectCmd"), QString());
+        return map;
+    }
     map.insert(QStringLiteral("visaAddress"), QStringLiteral("TCPIP::localhost::5026::SOCKET"));
     map.insert(QStringLiteral("voltage"), QStringLiteral("12.0"));
     map.insert(QStringLiteral("current"), QStringLiteral("2.5"));
@@ -555,6 +574,10 @@ QVariantMap defaultVisaReadCurrentParamMap(ScpiDeviceRoute route) {
         map.insert(QStringLiteral("currentRange"), QStringLiteral("3"));
         map.insert(QStringLiteral("scpiSetCurrentRangeCmd"), QStringLiteral("SENS:CURR:RANG %1"));
         map.insert(QStringLiteral("scpiReadCurrentCmd"), QStringLiteral("MEAS:CURR:DC?"));
+    } else if (route == ScpiDeviceRoute::GenericVisaPower) {
+        map.insert(QStringLiteral("scpiReadCurrentCmd"), QStringLiteral("MEAS:CURR?"));
+        map.insert(QStringLiteral("currentRange"), QString());
+        map.insert(QStringLiteral("scpiSetCurrentRangeCmd"), QString());
     } else {
         map.insert(QStringLiteral("scpiReadCurrentCmd"), QStringLiteral("MEAS1:CURR:DC?"));
     }
@@ -566,7 +589,7 @@ QVariantMap defaultVisaReadCurrentParamMap(ScpiDeviceRoute route) {
 QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString& device, const QString& cmdName) {
     if (channel == TestCaseSendChannel::Scpi) {
         const ScpiDeviceRoute route = ScpiPeriphCmdCatalog::deviceFromIni(device);
-        if (route == ScpiDeviceRoute::HuilingWfp60h || route == ScpiDeviceRoute::Agilent66319d) {
+        if (isVisaProgrammablePowerRoute(route)) {
             if (cmdName == QLatin1String("ConfigureProgrammablePower"))
                 return defaultVisaConfigureParamMap(route);
             if (cmdName == QLatin1String("ReadProgrammableCurrent"))
@@ -575,6 +598,8 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
                 QVariantMap map;
                 if (route == ScpiDeviceRoute::Agilent66319d)
                     map.insert(QStringLiteral("scpiReadVoltageCmd"), QStringLiteral("MEAS:VOLT:DC?"));
+                else if (route == ScpiDeviceRoute::GenericVisaPower)
+                    map.insert(QStringLiteral("scpiReadVoltageCmd"), QStringLiteral("MEAS:VOLT?"));
                 else
                     map.insert(QStringLiteral("scpiReadVoltageCmd"), QStringLiteral("MEAS1:VOLT:DC?"));
                 return map;
@@ -1319,7 +1344,7 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
         if (row) {
             out.valid = true;
             out.hint = ScpiPeriphCmdCatalog::paramUiHint(devRoute, name);
-            if ((devRoute == ScpiDeviceRoute::HuilingWfp60h || devRoute == ScpiDeviceRoute::Agilent66319d)
+            if (isVisaProgrammablePowerRoute(devRoute)
                 && (name == QLatin1String("ConfigureProgrammablePower")
                     || name == QLatin1String("ReadProgrammableVoltage")
                     || name == QLatin1String("ReadProgrammableCurrent")

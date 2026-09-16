@@ -2201,7 +2201,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
         const QVariant resolvedParam = ctx->resolveTestCaseSendParamTree(def.send.param);
         QString errStr;
 
-        if (devRoute == ScpiDeviceRoute::HuilingWfp60h || devRoute == ScpiDeviceRoute::Agilent66319d) {
+        if (isVisaProgrammablePowerRoute(devRoute)) {
             const HuilingScpiStepParams stepParams =
                 splitHuilingScpiStepParam(resolvedParam, def.send.deviceCmd);
             QVariantMap linkMap = stepParams.linkMap;
@@ -2234,9 +2234,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                 VisaChannel::discardIdleSharedSession(resolvedVisaAddr);
             }
             const bool visaReady =
-                devRoute == ScpiDeviceRoute::Agilent66319d
-                    ? ctx->scpiVisaManager()->loadAgilent66319dVisaFromParamMap(visaLoadMap, visaTimeoutMs)
-                    : ctx->scpiVisaManager()->loadHuilingVisaFromParamMap(visaLoadMap, visaTimeoutMs);
+                ctx->scpiVisaManager()->loadVisaProgrammablePowerFromParamMap(devRoute, visaLoadMap, visaTimeoutMs);
             if (!visaReady) {
                 ctx->showlog(QStringLiteral("%1：请在「配置Visa程控电源」步骤填写 Param_visaAddress，"
                                            "或一拖多共享时填 Param_sharedPair=true 与 Param_visaAddress0/1")

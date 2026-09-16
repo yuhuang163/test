@@ -3,6 +3,7 @@
 #include "scpi_transport.h"
 
 #include <QDebug>
+#include <QStringList>
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
@@ -130,27 +131,35 @@ bool HuilingWfp60hScpiDevice::set(HuilingScpiCmd cmd, const QVariant& data) {
         // 模板须含 %1；勿把 *IDN? 等查询填进设压/设流
         const QString voltTmpl = profile.scpiSetVoltageCmd.trimmed();
         const QString currTmpl = profile.scpiSetCurrentCmd.trimmed();
-        if (!voltTmpl.contains(QLatin1String("%1")) || voltTmpl.contains(QLatin1Char('?'))) {
-            qDebug().noquote() << "[Scpi] 设电压模板非法（须含 %1 且非查询）:" << voltTmpl;
-            return false;
+        QStringList lines;
+        if (!voltTmpl.isEmpty()) {
+            if (!voltTmpl.contains(QLatin1String("%1")) || voltTmpl.contains(QLatin1Char('?'))) {
+                qDebug().noquote() << "[Scpi] 设电压模板非法（须含 %1 且非查询）:" << voltTmpl;
+                return false;
+            }
+            lines.append(voltTmpl.arg(QString::number(voltageV, 'f', 3)));
         }
-        if (!currTmpl.contains(QLatin1String("%1")) || currTmpl.contains(QLatin1Char('?'))) {
-            qDebug().noquote() << "[Scpi] 设电流模板非法（须含 %1 且非查询）:" << currTmpl;
-            return false;
+        if (!currTmpl.isEmpty()) {
+            if (!currTmpl.contains(QLatin1String("%1")) || currTmpl.contains(QLatin1Char('?'))) {
+                qDebug().noquote() << "[Scpi] 设电流模板非法（须含 %1 且非查询）:" << currTmpl;
+                return false;
+            }
+            lines.append(currTmpl.arg(QString::number(currentA, 'f', 3)));
         }
-        const QString voltLine = voltTmpl.arg(QString::number(voltageV, 'f', 3));
-        const QString currLine = currTmpl.arg(QString::number(currentA, 'f', 3));
+        if (lines.isEmpty())
+            return true;
         // VISA/GPIB：两笔连续写易第二笔 ABORT；SCPI 分号合并为一次总线事务
-        if (visaSync) {
-            const QString combined = voltLine + QLatin1Char(';') + currLine;
+        if (visaSync && lines.size() == 2) {
+            const QString combined = lines.at(0) + QLatin1Char(';') + lines.at(1);
             qDebug().noquote() << "[Scpi] TX volt+curr:" << combined;
             return transport_->writeLine(combined);
         }
-        qDebug().noquote() << "[Scpi] TX volt:" << voltLine;
-        if (!transport_->writeLine(voltLine))
-            return false;
-        qDebug().noquote() << "[Scpi] TX curr:" << currLine;
-        return transport_->writeLine(currLine);
+        for (const QString& line : lines) {
+            qDebug().noquote() << "[Scpi] TX:" << line;
+            if (!transport_->writeLine(line))
+                return false;
+        }
+        return true;
     }
     case HuilingScpiCmd::ProgrammablePowerOutput: {
         if (!writePowerChannelSelectIfConfigured(profile))

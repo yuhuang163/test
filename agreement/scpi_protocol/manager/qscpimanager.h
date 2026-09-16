@@ -56,6 +56,8 @@ class QScpiManager : public QObject {
     bool loadHuilingVisaFromParamMap(const QVariantMap& map, int timeoutMs = 3000);
     /** 从工站步骤 Param 加载 Agilent 66319D（仅步骤 ini，不读全局 VisaPower）。 */
     bool loadAgilent66319dVisaFromParamMap(const QVariantMap& map, int timeoutMs = 3000);
+    /** 会凌 / 66319D / GenericVisaPower：按 route 选默认 SCPI 模板，再套 Param。 */
+    bool loadVisaProgrammablePowerFromParamMap(ScpiDeviceRoute route, const QVariantMap& map, int timeoutMs = 3000);
     /** 从 SETTINGS 加载 VISA CMW100 路由。 */
     void loadCmwVisaFromSettings();
 
