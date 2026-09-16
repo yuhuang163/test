@@ -254,6 +254,7 @@ QVariantMap hookSendParamDefaultMap(const QString& hookId) {
         map.insert(QStringLiteral("address"), defAddr);
         map.insert(QStringLiteral("pulse"), QStringLiteral("true"));
         map.insert(QStringLiteral("pulseHoldMs"), QStringLiteral("200"));
+        map.insert(QStringLiteral("syncWaitMs"), QStringLiteral("120000"));
         map.insert(QStringLiteral("value"), QStringLiteral("true"));
         return map;
     }
@@ -263,6 +264,7 @@ QVariantMap hookSendParamDefaultMap(const QString& hookId) {
         if (hookId == QLatin1String("PLC_SYNC_READ_M1"))
             defAddr = QStringLiteral("M1");
         map.insert(QStringLiteral("address"), defAddr);
+        map.insert(QStringLiteral("syncWaitMs"), QStringLiteral("120000"));
         return map;
     }
     return {};
@@ -1443,10 +1445,12 @@ void applyHookSendParamUi(Ui::TestCaseEditDialog* ui, const QString& hookId, con
             "address：PLC线圈地址（如 M10/M11/M20/Y0，支持任意自定义修改）；"
             "pulse：是否脉冲动作（true/false，默认 true 即 写ON->延时->写OFF）；"
             "pulseHoldMs：脉冲保持时间（ms，默认 200）；"
+            "syncWaitMs：等待所有工位扫码到齐时间（ms，默认 120000）；"
             "value：写入值（true/false，默认 true）");
     } else if (hookId.startsWith(QLatin1String("PLC_SYNC_READ"))) {
         uiSchema.hint = QStringLiteral(
-            "address：PLC监控线圈地址（如 M0/M1/M5/X0，支持任意自定义修改，全员到齐后轮询监听该线圈，检测到置 1 放行）");
+            "address：PLC监控线圈地址（如 M0/M1/M5/X0，支持任意自定义修改）；"
+            "syncWaitMs：等待所有工位扫码到齐时间（ms，默认 120000）；全员到齐后轮询线圈，检测到置 1 放行");
     }
     applySendParamHintToUi(uiSchema, true, ui->label_sendParamHint, ui->tableWidget_sendParam, ui->spinBox_intParam,
                            ui->pushButton_addParamRow, ui->pushButton_removeParamRow,
@@ -2548,10 +2552,15 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     ui->lineEdit_gateLow->setText(QString::number(def.gate.low));
     ui->lineEdit_gateHigh->setText(QString::number(def.gate.high));
     ui->lineEdit_gateExpected->setText(def.gate.expected);
-    ui->checkBox_hookEnabled->setChecked(def.hook.enabled);
-    const int hookIdx = comboIndexByData(ui->comboBox_hookId, def.hook.hookId);
-    if (hookIdx >= 0)
-        ui->comboBox_hookId->setCurrentIndex(hookIdx);
+    {
+        // 加载时先稳定 Hook 选择，避免中途信号用旧 Hook 模板重建参数表并覆盖已保存值。
+        const QSignalBlocker hookEnabledBlocker(ui->checkBox_hookEnabled);
+        const QSignalBlocker hookIdBlocker(ui->comboBox_hookId);
+        ui->checkBox_hookEnabled->setChecked(def.hook.enabled);
+        const int hookIdx = comboIndexByData(ui->comboBox_hookId, def.hook.hookId);
+        if (hookIdx >= 0)
+            ui->comboBox_hookId->setCurrentIndex(hookIdx);
+    }
 
     updateGateFieldsEnabled();
     updatePromptFieldsEnabled();

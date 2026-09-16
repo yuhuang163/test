@@ -1,6 +1,7 @@
 #include "qfixturemanager.h"
 
 #include <QDateTime>
+#include <QElapsedTimer>
 #include <QEventLoop>
 #include <QDebug>
 #include <QThread>
@@ -101,6 +102,67 @@ QString QFixtureManager::portName() const {
 
 QString QFixtureManager::errorString() const {
     return fixtureSerialPort_ ? fixtureSerialPort_->errorString() : QString();
+}
+
+bool QFixtureManager::sendRawFrame(const QByteArray& frame, QString* errorMessage) {
+    if (!isOpen()) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("治具串口未打开");
+        return false;
+    }
+    if (frame.isEmpty()) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("发送帧为空");
+        return false;
+    }
+    fixtureSerialPortTimer_->stop();
+    fixtureSerialPortBuf_.clear();
+    fixtureSerialPort_->clear(QSerialPort::Input);
+    writeFixturePort(frame);
+    if (!fixtureSerialPort_->waitForBytesWritten(500)) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("治具串口写入超时");
+        return false;
+    }
+    return true;
+}
+
+bool QFixtureManager::exchangeRawFrame(const QByteArray& request, QByteArray* response, int timeoutMs,
+                                       QString* errorMessage) {
+    if (!response) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("接收缓冲为空");
+        return false;
+    }
+    response->clear();
+    if (!sendRawFrame(request, errorMessage))
+        return false;
+
+    QElapsedTimer timer;
+    timer.start();
+    bool received = false;
+    while (timer.elapsed() < timeoutMs) {
+        const int waitMs = received ? 30 : qMin(100, timeoutMs - static_cast<int>(timer.elapsed()));
+        if (waitMs <= 0 || !fixtureSerialPort_->waitForReadyRead(waitMs)) {
+            if (received)
+                break;
+            continue;
+        }
+        received = true;
+        fixtureSerialPortBuf_.append(fixtureSerialPort_->readAll());
+    }
+    *response = fixtureSerialPortBuf_;
+    fixtureSerialPortBuf_.clear();
+    fixtureSerialPortTimer_->stop();
+    if (response->isEmpty()) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("治具串口等待应答超时");
+        return false;
+    }
+    qDebug().noquote() << "FIXTURE RX(原始交换):" << QString::fromLatin1(response->toHex(' ').toUpper());
+    if (log_)
+        log_->save_fixture_uart_log(0, *response);
+    return true;
 }
 
 void QFixtureManager::sendPcbaFrame(const QByteArray& frame) {

@@ -36,6 +36,8 @@ class QFreeWorkBox : public box_base {
     /** 治具 test_case 防呆：按配置自动创建窗口并连接串口；autoConnectedOut 表示本次是否新连上。 */
     Fixture_uart* ensureFixtureUartConnected(int stationIndex, QString* detailOut = nullptr,
                                              bool* autoConnectedOut = nullptr);
+    /** M8 PLC Hook 专用的一拖多治具串口，与程控电源/普通治具串口物理隔离。 */
+    Fixture_uart* ensurePlcFixtureUartConnected(QString* detailOut = nullptr);
     /** 顶部“连接治具串口”窗口当前选择的端口；窗口未打开时读取已保存配置。 */
     QString selectedFixtureComName(int stationIndex) const;
     /** 一拖多工位共用同一个 ASD9026A 串口对象，避免重复打开顶部治具串口。 */
@@ -65,7 +67,9 @@ class QFreeWorkBox : public box_base {
 
   private:
     static QString resolvedFixtureComName(int stationIndex);
+    static QString resolvedPlcFixtureComName();
     Fixture_uart* Fixture_uart_ui = nullptr;
+    Fixture_uart* plcFixtureUartUi_ = nullptr;
     Asd9026aDevice* asd9026aDevice_ = nullptr;
     QHash<int, SerialChannel*> sharedTempLoggerChannels_;
     QHash<int, QMutex*> sharedTempLoggerMutexes_;
