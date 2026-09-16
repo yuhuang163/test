@@ -14,6 +14,7 @@
 
 class SerialChannel;
 class QTimer;
+class QTabWidget;
 
 namespace Ui {
 class QFreeWorkBox;
@@ -68,8 +69,14 @@ class QFreeWorkBox : public box_base {
   private:
     static QString resolvedFixtureComName(int stationIndex);
     static QString resolvedPlcFixtureComName();
+    /** 治具串口 + PLC治具串口合并到同一窗口的两个标签页；show=false 时仅创建不弹窗。 */
+    void ensureFixturePortsWindow(bool show = true, int tabIndex = 0);
+
+    QWidget* fixturePortsWindow_ = nullptr;
+    QTabWidget* fixturePortsTabs_ = nullptr;
     Fixture_uart* Fixture_uart_ui = nullptr;
     Fixture_uart* plcFixtureUartUi_ = nullptr;
+    Fixture_uart* preStartMonitorUi_ = nullptr;
     Asd9026aDevice* asd9026aDevice_ = nullptr;
     QHash<int, SerialChannel*> sharedTempLoggerChannels_;
     QHash<int, QMutex*> sharedTempLoggerMutexes_;

@@ -16,10 +16,16 @@ class Fixture_uart;
 class QFixtureManager;
 class QTimer;
 
+enum class FixtureUartRole {
+    FixturePort,
+    PlcSharedPort,
+    PreStartMonitor
+};
+
 class Fixture_uart : public QWidget {
     Q_OBJECT
   public:
-    explicit Fixture_uart(QWidget* parent = nullptr, bool plcSharedPort = false);
+    explicit Fixture_uart(QWidget* parent = nullptr, FixtureUartRole role = FixtureUartRole::FixturePort);
     ~Fixture_uart();
 
     Ui::Fixture_uart* ui;
@@ -58,10 +64,14 @@ class Fixture_uart : public QWidget {
     QTimer* scanSerialPortsTimer_ = nullptr;
     bool isConfigLoading_ = false;
     bool plcSharedPort_ = false;
+    FixtureUartRole role_ = FixtureUartRole::FixturePort;
 
-    void loadPreStartMonitorConfig();
+    void loadStationPageConfig();
+    void saveFixturePortConfig();
     void savePreStartMonitorConfig();
     void updateWindowTitleWithStation();
+    void applyRolePageVisibility();
+    void applyPreStartMonitorFormEnabled(bool enabled);
 
     void updateDeviceFieldsVisibility();
 
@@ -101,6 +111,7 @@ class Fixture_uart : public QWidget {
     void on_scannerIpLineEdit_textChanged(const QString& text);
     void on_scannerIpLineEdit_editingFinished();
     void on_scannerPortSpinBox_valueChanged(int value);
+    void on_preStartMonitorEnabledCheckBox_toggled(bool checked);
 };
 
 #if _MSC_VER >= 1600
