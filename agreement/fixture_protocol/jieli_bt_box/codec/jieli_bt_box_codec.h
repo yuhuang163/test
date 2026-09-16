@@ -11,7 +11,7 @@
 /** 杰理蓝牙盒子串口 TLV 上报：CRC16-XMODEM(LEN+body) | LEN | MASK | {L,T,V}* */
 struct JieliBtBoxRfInfo {
     QByteArray mac;          // T=1，6 字节
-    qint32 freqOffset = 0;   // T=7，小端 int32；例 1B 00 00 00 → 27
+    qint32 freqOffset = 0;   // T=7，小端 int32，单位 kHz；例 1B 00 00 00 → 27
     qint32 rssi = 0;         // T=8，小端 int32；例 CD FF FF FF → -51
     quint32 mask = 0;
     bool hasMac = false;

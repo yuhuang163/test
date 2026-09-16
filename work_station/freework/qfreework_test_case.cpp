@@ -3158,8 +3158,9 @@ void QFreeWork::executeFixtureJieliBtBoxCase(const TestCaseDefinition& def) {
         return;
     }
 
-    const QString macText = QString::fromLatin1(info.mac.toHex(':')).toUpper();
-    const QString detail = QStringLiteral("频偏=%1 RSSI=%2%3")
+    // MES/云端分项按 : 切字段，MAC 不用 ASCII 冒号
+    const QString macText = QString::fromLatin1(info.mac.toHex('-')).toUpper();
+    const QString detail = QStringLiteral("频偏=%1kHz RSSI=%2dBm%3")
                                .arg(info.freqOffset)
                                .arg(info.rssi)
                                .arg(macText.isEmpty() ? QString() : QStringLiteral(" MAC=%1").arg(macText));

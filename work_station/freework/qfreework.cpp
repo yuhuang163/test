@@ -234,9 +234,10 @@ void applyTestItemPromptFont(QMessageBox* box) {
     }
 }
 
-/** MES 分段用 | 拼接，value 内禁止裸 |，避免解析错位。 */
+/** MES 分段用 | 拼接、字段用 : 分隔；value 内禁止裸 | 与 :（否则 MAC 的 DC:20:… 会被拆到上限/下限列）。 */
 QString sanitizeMesValuePipes(QString v) {
     v.replace(QLatin1Char('|'), QStringLiteral("｜"));
+    v.replace(QLatin1Char(':'), QStringLiteral("："));
     return v;
 }
 
@@ -618,7 +619,7 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     ui->productDisconnectButton->setEnabled(false);
     updateMainStyle("Ubuntu.qss");
     applyFreeWorkExtraTabsVisible(false);
-    
+
     setupFreeWorkTabBar(ui->tabWidget);
     scanSerialPorts(); // 要搜索一下一开始
     ui->test_result->setText("WAIT");
@@ -817,7 +818,7 @@ void QFreeWork::updatePreStartMonitorState() {
     QSettings settings(flowPath, QSettings::IniFormat);
     settings.setIniCodec("UTF-8");
     settings.beginGroup("PreStart_Monitor");
-    
+
     ui->autoStartCheckBox->blockSignals(true);
     ui->autoStartCheckBox->setChecked(settings.value("IsAutoStartChecked", false).toBool());
     ui->autoStartCheckBox->setVisible(settings.value("Enabled", false).toBool());

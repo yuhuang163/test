@@ -283,7 +283,15 @@ QVector<TestRecordStore::ParsedItem> TestRecordStore::parseItemValue(const MesPa
         item.standardValue.clear();
         item.unit.clear();
         item.costTime.clear();
-        const QStringList parts = kv.split(QLatin1Char(':'), QString::KeepEmptyParts);
+        QStringList parts = kv.split(QLatin1Char(':'), QString::KeepEmptyParts);
+        // NAME:VALUE:MAX:MIN:STANDARD:UNIT:RESULT:COSTTIME；VALUE 含冒号（MAC）时并回实测值
+        if (parts.size() > 8) {
+            const QString mergedValue = parts.mid(1, parts.size() - 7).join(QLatin1Char(':'));
+            QStringList fixed;
+            fixed << parts.at(0) << mergedValue;
+            fixed << parts.mid(parts.size() - 6);
+            parts = fixed;
+        }
         if (parts.size() >= 6) {
             item.name = parts.at(0).trimmed();
             item.value = parts.at(1).trimmed();
