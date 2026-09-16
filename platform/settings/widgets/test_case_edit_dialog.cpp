@@ -666,6 +666,12 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
         if (cmdName == QLatin1String("SuctionMode")) {
             return QVariantMap{{QStringLiteral("enter"), QStringLiteral("1")}};
         }
+        if (cmdName == QLatin1String("BurningMode")) {
+            return QVariantMap{{QStringLiteral("mode"), QStringLiteral("1")}};
+        }
+        if (cmdName == QLatin1String("Root2BowlCalib")) {
+            return QVariantMap{{QStringLiteral("value"), QStringLiteral("0")}};
+        }
         return {};
     }
     if (channel == TestCaseSendChannel::Dongle) {

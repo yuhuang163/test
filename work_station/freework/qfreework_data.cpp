@@ -1852,7 +1852,9 @@ void QFreeWork::refreshButton(ProtocolButtonStateData data) {
     // 步骤 Gate 等待 qroot 0x9A 按键上报：按 keyButtonId 与 Gate/Expected 比对（错键继续等，不结束步骤）
     if (testCaseStepActive_ && !activeTestCase_.hook.enabled && activeTestCase_.gate.enabled
         && activeTestCase_.gate.reportType == QStringLiteral("ProtocolButtonStateData")) {
-        if (data.keyButtonId == 0)
+        const QString field = activeTestCase_.gate.field.trimmed();
+        // Qroot 0x9A 空闲上报 keyButtonId=0 可忽略；Qroot2 0xA6 用 pump_state/mode/level，0 也是有效快照
+        if (data.keyButtonId == 0 && field.compare(QStringLiteral("keyButtonId"), Qt::CaseInsensitive) == 0)
             return;
         QVector<TestCaseGate> gates = TestCaseStore::activeGatesForEvaluation(activeTestCase_);
         if (gates.isEmpty())

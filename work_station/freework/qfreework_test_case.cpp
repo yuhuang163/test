@@ -1020,6 +1020,15 @@ bool QFreeWork::isActiveTestCaseStep(const QString& stepLabel) const {
     return testCaseStepActive_ && activeTestCaseStepLabel_ == stepLabel.trimmed();
 }
 
+bool QFreeWork::shouldHoldCommandRetryUntilGatePass() const {
+    // 弹窗+按键卡控：0xA6 等轮询回包未匹配时继续窗口内重发，勿因第一次 ACK 结束等待
+    if (!testCaseStepActive_ || stepRuntime_.done)
+        return false;
+    if (!activeTestCase_.meta.promptEnabled || !activeTestCase_.gate.enabled)
+        return false;
+    return activeTestCase_.gate.reportType == QStringLiteral("ProtocolButtonStateData");
+}
+
 bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVariant& payload) {
     if (!testCaseStepActive_ || !activeTestCase_.gate.enabled)
         return false;

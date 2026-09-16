@@ -554,7 +554,7 @@ enum class DeviceCmd {
     MotorCaliResultParam,  // 【Qpb】电机校准结果参数（uint，set_motor_cali_result_param）
     WifiConnect,           // 【Qpb】连 WiFi（WifiConnectPayload / QVariantMap{name,password} / WifiInfo，set_connect_wifi）
     Music,                 // 【Qpb】音乐控制/曲目数据（QByteArray，set_music）
-    BurningMode,           // 【主入口】老化模式统一入口（推荐 QVariantMap{mode,seconds,switch?/enter?}）；Qpb/Qfctp/Qroot(0xAF) 均兼容
+    BurningMode,           // 【主入口】老化模式；Qpb/Qfctp；Qroot Notify 0xAF；Qroot2 Req 0xAF body 0自检/1老化
     BrushRecord,           // 【Qpb】使用记录写入（FacSetBrushRecord，set_brush_record）
     BrushTime,             // 【Qpb】使用计时相关（int，set_brush_time）
     Sleep,                 // 【主入口】休眠/待机控制；Qpb 走 set_sleeep，Qfctp 映射待机 TLV
@@ -620,7 +620,7 @@ enum class DeviceCmd {
     RootPumpTestEnter,    // 0x9D 主机泵测试进入
     RootPumpTestExit,     // 0x9E 主机泵测试退出
     RootSuctionTest,           // 0x81 吸力测试（REQ 3B：switch+mode+level）
-    RootPumpStallCurrentQuery, // 0x82 读取泵堵电流（Req 无参；Ack 2B 堵转 ADC 大端）
+    RootPumpStallCurrentQuery, // 0x82 读泵电流；Qroot 堵转 ADC；Qroot2 检测电压 mV（大端 uint16）
     RootAgingHistoryQuery,     // 0x9C 读取老化历史信息（Req 无参；Ack 16B）
     RootHeatLevelControl,      // 0x83 加热档位控制（REQ 2B：switch+level L1~L3）
     RootPumpControl,           // 0xC0 吸奶器控制（REQ 10B，ACK 回显 controlType）
@@ -630,7 +630,7 @@ enum class DeviceCmd {
     // 【Qroot2/Air1】AA55 帧结构同 Qroot，CID 表独立
     Root2PoseSwitch,   // Req 0xDB body 0关1开
     Root2PoseCalib,    // Req 0xDD body 0x01
-    Root2BowlCalib,    // Req 0xAE body 0空碗 1满碗
+    Root2BowlCalib,    // Req 0xAE body 0空碗 1满碗（固件当场采样，不下发电容）
     Root2ModeSet,      // Req 0xA2 body 01刺激 02吸乳 03混合
     Root2LevelSet,     // Req 0xA3 body 档位1-15
     Root2PumpState,    // Req 0xA4 body 0暂停 1运行 (控制泵启动/暂停)

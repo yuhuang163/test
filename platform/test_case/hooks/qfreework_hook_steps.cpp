@@ -25,6 +25,7 @@ struct DeferredSuctionLogFlush {
 
 struct SuctionCycleExtract {
     QVector<double> peaks;
+    QVector<int> peakIndexes; // 各周期最低点在 samples 中的下标，供曲线标注
     QVector<double> baselineReturns; // 每个完整周期峰后、下一次入峰前的回基线最高点
 };
 
@@ -34,6 +35,7 @@ static SuctionCycleExtract extractSuctionCycles(const QVector<double>& samples, 
     PeakPhase phase = PeakPhase::AtBaseline;
     bool cycleMinInit = false;
     double cycleMinKpa = 0.0;
+    int cycleMinIndex = 0;
     bool trackingReturn = false;
     bool returnInit = false;
     double returnMaxKpa = 0.0;
@@ -43,10 +45,12 @@ static SuctionCycleExtract extractSuctionCycles(const QVector<double>& samples, 
         trackingReturn = false;
         returnInit = false;
     };
-    for (double kpa : samples) {
+    for (int i = 0; i < samples.size(); ++i) {
+        const double kpa = samples.at(i);
         if (kpa >= baseline) {
             if (phase == PeakPhase::InCycle && cycleMinInit && cycleMinKpa <= dipStart) {
                 out.peaks.append(cycleMinKpa);
+                out.peakIndexes.append(cycleMinIndex);
                 trackingReturn = true;
                 returnMaxKpa = kpa;
                 returnInit = true;
@@ -65,15 +69,18 @@ static SuctionCycleExtract extractSuctionCycles(const QVector<double>& samples, 
                 finishReturnPlateau();
                 phase = PeakPhase::InCycle;
                 cycleMinKpa = kpa;
+                cycleMinIndex = i;
                 cycleMinInit = true;
             } else if (!cycleMinInit || kpa < cycleMinKpa) {
                 cycleMinKpa = kpa;
+                cycleMinIndex = i;
                 cycleMinInit = true;
             }
             continue;
         }
         if (phase == PeakPhase::InCycle && (!cycleMinInit || kpa < cycleMinKpa)) {
             cycleMinKpa = kpa;
+            cycleMinIndex = i;
             cycleMinInit = true;
         }
     }
@@ -298,6 +305,21 @@ void QFreeWork::runDongleSuctionSampleStep() {
     const SuctionCycleExtract ch2Cycles = extractSuctionCycles(dongleSuctionCh2Samples_, baseline, dipStart);
     const QVector<double>& ch1Peaks = ch1Cycles.peaks;
     const QVector<double>& ch2Peaks = ch2Cycles.peaks;
+    if (!ch1Peaks.isEmpty() || !ch2Peaks.isEmpty()) {
+        QStringList stats;
+        if (!ch1Peaks.isEmpty()) {
+            stats << QStringLiteral("CH1最低峰值 %1 kPa  最高峰值 %2 kPa")
+                         .arg(*std::min_element(ch1Peaks.cbegin(), ch1Peaks.cend()), 0, 'f', 3)
+                         .arg(*std::max_element(ch1Peaks.cbegin(), ch1Peaks.cend()), 0, 'f', 3);
+        }
+        if (!ch2Peaks.isEmpty()) {
+            stats << QStringLiteral("CH2最低峰值 %1 kPa  最高峰值 %2 kPa")
+                         .arg(*std::min_element(ch2Peaks.cbegin(), ch2Peaks.cend()), 0, 'f', 3)
+                         .arg(*std::max_element(ch2Peaks.cbegin(), ch2Peaks.cend()), 0, 'f', 3);
+        }
+        applySuctionChartTestPeakOverlay(ch1Cycles.peakIndexes, ch1Peaks, ch2Cycles.peakIndexes, ch2Peaks,
+                                         stats.join(QStringLiteral("\n")));
+    }
     const int minPeaks = qMax(1, suctionMinPeakCount_);
     if (ch1Peaks.size() < minPeaks || ch2Peaks.size() < minPeaks) {
         TestResult = failValue;
@@ -496,6 +518,25 @@ void QFreeWork::runDongleSuctionSampleSingleStep() {
     const SuctionCycleExtract cycles = extractSuctionCycles(samples, baseline, dipStart);
     const QVector<double>& cyclePeaks = cycles.peaks;
     const int minPeaks = qMax(1, suctionMinPeakCount_);
+
+    if (!cyclePeaks.isEmpty()) {
+        const double strongest = *std::min_element(cyclePeaks.cbegin(), cyclePeaks.cend());
+        const double weakest = *std::max_element(cyclePeaks.cbegin(), cyclePeaks.cend());
+        const QString stats = QStringLiteral("最低峰值 %1 kPa\n最高峰值 %2 kPa\n峰值差 %3 kPa")
+                                  .arg(strongest, 0, 'f', 3)
+                                  .arg(weakest, 0, 'f', 3)
+                                  .arg(weakest - strongest, 0, 'f', 3);
+        QVector<int> ch1Idx, ch2Idx;
+        QVector<double> ch1K, ch2K;
+        if (chIndex == 1) {
+            ch2Idx = cycles.peakIndexes;
+            ch2K = cyclePeaks;
+        } else {
+            ch1Idx = cycles.peakIndexes;
+            ch1K = cyclePeaks;
+        }
+        applySuctionChartTestPeakOverlay(ch1Idx, ch1K, ch2Idx, ch2K, stats);
+    }
 
     if (cyclePeaks.isEmpty()) {
         showlog(QStringLiteral("采集单通道吸力失败：%1 未识别到有效吸气峰值（基线≥%2，入峰<%3）")
