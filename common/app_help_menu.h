@@ -13,6 +13,7 @@ class AppHelpMenu {
     struct HostCallbacks {
         std::function<void()> onAccountSwitched; // 登录成功后刷新状态栏/设置可见性
         std::function<void()> onCheckUpdate;
+        std::function<void()> onRollbackPrevious;
     };
 
     /** 在 menuBar 末尾安装「帮助」；工站若随后还会 addAction，请再调 ensureRightmost（可用 singleShot(0)）。 */

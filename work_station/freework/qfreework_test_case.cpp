@@ -253,7 +253,25 @@ bool sendAndCollectXwdReadOnceReply(SerialChannel* channel, QSerialPort* port, c
     return true;
 }
 
-bool ensureJieliBtBoxProductUartOpen(QFreeWork* ctx, QString* errorMessage) {
+static int resolveJieliBtBoxBaudRate(const QFreeWork* ctx, const QVariant& sendParam) {
+    constexpr int kDefaultBaud = 460800;
+    if (!ctx || !sendParam.canConvert<QVariantMap>())
+        return kDefaultBaud;
+    const QVariantMap map = ctx->resolveTestCaseSendParamTree(sendParam).toMap();
+    static const char* kKeys[] = {"baudRate", "BaudRate", "baud"};
+    for (const char* key : kKeys) {
+        const QString qkey = QString::fromLatin1(key);
+        if (!map.contains(qkey))
+            continue;
+        bool ok = false;
+        const int baud = map.value(qkey).toInt(&ok);
+        if (ok && baud > 0)
+            return baud;
+    }
+    return kDefaultBaud;
+}
+
+bool ensureJieliBtBoxProductUartOpen(QFreeWork* ctx, int baudRate, QString* errorMessage) {
     if (!ctx) {
         if (errorMessage)
             *errorMessage = QStringLiteral("工站上下文无效");
@@ -272,8 +290,11 @@ bool ensureJieliBtBoxProductUartOpen(QFreeWork* ctx, QString* errorMessage) {
         return false;
     }
 
-    // 杰理盒子固定 460800（可用 SETTINGS 覆盖）
-    const int baudRate = SETTINGS.value(QStringLiteral("JieliBtBox/BaudRate"), 460800).toInt();
+    if (baudRate <= 0) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("步骤 Param_baudRate 无效");
+        return false;
+    }
     if (ctx->productBaudRate != baudRate) {
         ctx->productBaudRate = baudRate;
         if (ctx->productSerialPort && ctx->productSerialPort->isOpen())
@@ -626,7 +647,7 @@ double huilingParamDouble(const QVariantMap& map, const QString& key, double fal
 }
 
 /** 是否为「等待蓝牙连上」类 Dongle 指令（扫连/直连/按名/OTA/App/主连）。
- *  超时宜 ≥18s；sendCommandWithRetry 第三参 allowResend=false（只发一次，勿窗口内重发 DCON）。
+ *  超时宜 ≥18s；sendCommandWithRetry 第三参 allowResend=true（窗口内按间隔补发 AT+MAC）。
  *  是否须等连接成功才过步，由 TestCaseRunner::needAsyncDone（流程侧）决定，不是第三参。 */
 bool isDongleBleConnectCmd(DongleCmd cmd) {
     return cmd == DongleCmd::BleScanConnect || cmd == DongleCmd::BleDirectConnect
@@ -2475,8 +2496,8 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                 ctx->at->resetConnected();
             ctx->setCommandWaitSource(CommandWaitSource::DongleAt);
             const int bleTimeoutMs = qMax(timeoutMs > 0 ? timeoutMs : 18000, 18000);
-            // allowResend=false：扫连后只发一次连接指令
-            ctx->sendCommandWithRetry(sendFn, bleTimeoutMs, false);
+            // allowResend=true：18s 窗口内按间隔补发 AT+MAC
+            ctx->sendCommandWithRetry(sendFn, bleTimeoutMs, true);
             return;
         }
 
@@ -2510,8 +2531,8 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
             timeoutMs = qMax(timeoutMs > 0 ? timeoutMs : 18000, 18000);
             ctx->setCommandWaitSource(CommandWaitSource::DongleAt);
-            // allowResend=false：连接过程只发一次，避免窗口内重发打断 Dongle；结案靠连接态/needAsyncDone
-            ctx->sendCommandWithRetry(sendFn, timeoutMs, false);
+            // allowResend=true：18s 窗口内按间隔补发 AT+MAC；结案靠连接态/needAsyncDone
+            ctx->sendCommandWithRetry(sendFn, timeoutMs, true);
             return;
         }
 
@@ -3127,8 +3148,9 @@ void QFreeWork::executeFixtureJieliBtBoxCase(const TestCaseDefinition& def) {
         return;
     }
 
+    const int baudRate = resolveJieliBtBoxBaudRate(this, def.send.param);
     QString errStr;
-    if (!ensureJieliBtBoxProductUartOpen(this, &errStr)) {
+    if (!ensureJieliBtBoxProductUartOpen(this, baudRate, &errStr)) {
         showlog(errStr);
         markActiveTestCaseStepDone(false, QStringLiteral("串口未连接"), QStringLiteral("失败"));
         return;
@@ -3146,8 +3168,9 @@ void QFreeWork::executeFixtureJieliBtBoxCase(const TestCaseDefinition& def) {
         timeoutMs = 3000;
 
     const QString portName = getProductcomNameCombo() ? getProductcomNameCombo()->currentText().trimmed() : QString();
-    showlog(QStringLiteral("等待杰理蓝牙盒子频偏/RSSI（产品串口 %1，超时 %2ms）")
+    showlog(QStringLiteral("等待杰理蓝牙盒子频偏/RSSI（产品串口 %1 @ %2，超时 %3ms）")
                 .arg(portName.isEmpty() ? QStringLiteral("-") : portName)
+                .arg(baudRate)
                 .arg(timeoutMs));
     JieliBtBoxRfInfo info;
     if (!JieliBtBoxDevice::waitForRfInfo(productSerialChannel_, timeoutMs, &info, &errStr)) {
@@ -3156,8 +3179,9 @@ void QFreeWork::executeFixtureJieliBtBoxCase(const TestCaseDefinition& def) {
         return;
     }
 
-    const QString macText = QString::fromLatin1(info.mac.toHex(':')).toUpper();
-    const QString detail = QStringLiteral("频偏=%1 RSSI=%2%3")
+    // MES/云端分项按 : 切字段，MAC 不用 ASCII 冒号
+    const QString macText = QString::fromLatin1(info.mac.toHex('-')).toUpper();
+    const QString detail = QStringLiteral("频偏=%1kHz RSSI=%2dBm%3")
                                .arg(info.freqOffset)
                                .arg(info.rssi)
                                .arg(macText.isEmpty() ? QString() : QStringLiteral(" MAC=%1").arg(macText));

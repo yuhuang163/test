@@ -40,8 +40,25 @@ constexpr const char kHintWriteKey[] =
     u8"Qroot：Req 0xFA，密钥 ≤16 字节截断";
 constexpr const char kHintSoftVersionRead[] =
     u8"Qroot：Req 0x91，回包 soft_version(2B)+hw_version(1B)\r\n"
+    u8"Qroot2/Air1：Req 0xA5 body 0x01；Ack byte2=软版 byte3=硬版\r\n"
     u8"Qaiot：Param_field=soft_version|hw_version|res_version（默认固件）\r\n"
     u8"卡控：ReportType=ProtocolBaseInfoData，Field 与上对应，Op=compareVersions";
+constexpr const char kHintQroot2ModeSet[] =
+    u8"Qroot2/Air1：Req 0xA2，body=01刺激 02吸乳 03混合\r\n示例：Param_mode=2";
+constexpr const char kHintQroot2LevelSet[] =
+    u8"Qroot2/Air1：Req 0xA3，body=档位1-15\r\n示例：Param_level=5";
+constexpr const char kHintQroot2PumpState[] =
+    u8"Qroot2/Air1：Req 0xA4，控制泵启动/暂停\r\n"
+    u8"body：01运行 00暂停\r\n示例：Param_on=1 或 Param_state=1";
+constexpr const char kHintQroot2LedControl[] =
+    u8"Qroot2/Air1：Req 0x90，body=02+color+state\r\n"
+    u8"color：00红 01白 02绿；state：01开 00关\r\n示例：Param_color=0 Param_on=1";
+constexpr const char kHintQroot2KeyTest[] =
+    u8"Qroot2/Air1：Req 0xA6，空 body (AA 55 00 A6 00 5A)\r\n"
+    u8"Ack：byte1泵状态(0/1) byte2模式(1~5) byte3档位(1~15)\r\n卡控：ProtocolButtonStateData";
+constexpr const char kHintQroot2StateRead[] =
+    u8"Qroot2/Air1：Req 0xA6，读回泵状态、模式与档位\r\n"
+    u8"Ack：byte1泵状态(0/1) byte2模式(1~5) byte3档位(1~15)\r\n卡控：ProtocolButtonStateData(level/mode/pump_state)";
 constexpr const char kHintPeriphState[] =
     u8"Qaiot 读传感器 CID=0x08：Param_type=0x00~0x0D\r\n"
     u8"00 IMU(回 36B=9×float LE: kx..bz) / 04 电容fsensor(回 1B 0/1)\r\n"
@@ -106,8 +123,8 @@ constexpr const char kHintCycleReportWrite[] =
     u8"被动上报 CID=0x19：ReportType=ProtocolAiotCycleReportData Field=dataType/accX/…\r\n"
     u8"卡控配置回包：ReportType=ProtocolAiotCycleReportConfigData Field=enable/dataType/intervalTime";
 constexpr const char kHintAgingStatusRead[] =
-    u8"Qaiot CID=0x01 读工厂模式：Param_mode=0~5（默认 2 老化）\r\n"
-    u8"0 idle / 1 factory / 2 aging / 3 suction / 4 compensate / 5 ate\r\n"
+    u8"Qaiot CID=0x01 读工厂模式：Param_mode=0~6（默认 2 老化）\r\n"
+    u8"0 idle / 1 factory / 2 aging / 3 suction / 4 compensate / 5 ate / 6 freeman\r\n"
     u8"老化(mode=2) Ack 0x23 可为 18B：使能+完成+双温+堵转次数(2)+阈值(2)+电流×5\r\n"
     u8"卡控/显示：ReportType=ProtocolRootAgingHistoryData\r\n"
     u8"Field=status/finishedFlag/batteryMaxTempC/flangeMaxTempC/stallCount/stallThreshold/stallCurrent0~4";
@@ -184,11 +201,15 @@ constexpr const char kHintBurningMode[] =
 constexpr const char kHintSleep[] = u8"休眠：switch=1 进入，0 退出\r\n示例：{\"switch\":1}";
 constexpr const char kHintFacMode[] =
     u8"工厂模式：Param_on/value=1 进入 0 退出；Param_mode 模式类型\r\n"
-    u8"0 idle / 1 factory_test / 2 aging / 3 suction / 4 suction_compensate / 5 ate\r\n"
+    u8"0 idle / 1 factory_test / 2 aging / 3 suction / 4 suction_compensate / 5 ate / 6 freeman\r\n"
     u8"示例：Param_mode=1 Param_on=1";
 constexpr const char kHintSuctionMode[] =
     u8"FCTP 吸力测试模式：enter=1 进入，0 退出\r\n示例：Param_enter=1 或 {\"enter\":1}\r\n"
     u8"注意：Qroot 开泵档位请改用「吸力测试(档位)」+ switch/mode/level";
+constexpr const char kHintCompensationSet[] =
+    u8"Qfctp 测试服务 TLV 0x000D：enable/on/enter=1 开启，0 关闭\r\n"
+    u8"示例：Param_enable=1 或 Param_on=0\r\n"
+    u8"Qaiot：吸力补偿模式 Type=0x04，Param_enable/on=1/0";
 constexpr const char kHintBtRfMode[] =
     u8"蓝牙 RF 测试模式开关：Param_enter 或 Param_on，1=开/进入，0=关/退出\r\n"
     u8"示例：进入 Param_enter=1；退出 Param_enter=0（或 Param_on=1/0）\r\n"
@@ -275,6 +296,20 @@ const Row kRows[] = {
     {DeviceCmd::RootHeatLevelControl, "RootHeatLevelControl", u8"加热档位", DeviceCmdParamKind::JsonMap,
      kHintRootHeatLevelControl, kSet, "ProtocolResultData", "result"},
     {DeviceCmd::RootPumpControl, "RootPumpControl", u8"吸奶器控制", DeviceCmdParamKind::JsonMap, kHintRootPumpControl, kSet},
+    {DeviceCmd::Root2PoseSwitch, "Root2PoseSwitch", u8"姿态开关", DeviceCmdParamKind::JsonMap,
+     u8"Qroot2/Air1：Req 0xDB body 0关1开\r\n示例：Param_on=1", kSet},
+    {DeviceCmd::Root2PoseCalib, "Root2PoseCalib", u8"姿态校准", DeviceCmdParamKind::None,
+     u8"Qroot2/Air1：Req 0xDD body 0x01", kSet},
+    {DeviceCmd::Root2BowlCalib, "Root2BowlCalib", u8"空/满碗校准", DeviceCmdParamKind::JsonMap,
+     u8"Qroot2/Air1：Req 0xAE body 0空碗 1满碗\r\n示例：Param_value=0", kSet},
+    {DeviceCmd::Root2ModeSet, "Root2ModeSet", u8"设置模式", DeviceCmdParamKind::JsonMap, kHintQroot2ModeSet, kSet},
+    {DeviceCmd::Root2LevelSet, "Root2LevelSet", u8"设置档位", DeviceCmdParamKind::JsonMap, kHintQroot2LevelSet, kSet},
+    {DeviceCmd::Root2PumpState, "Root2PumpState", u8"控制运行暂停", DeviceCmdParamKind::JsonMap, kHintQroot2PumpState, kSet},
+    {DeviceCmd::Root2KeyTest, "Root2KeyTest", u8"按键测试", DeviceCmdParamKind::None, kHintQroot2KeyTest, kGet,
+     "ProtocolButtonStateData", "keyButtonId"},
+    {DeviceCmd::Root2StateRead, "Root2StateRead", u8"读取运行状态", DeviceCmdParamKind::None, kHintQroot2StateRead, kGet,
+     "ProtocolButtonStateData", "level"},
+    {DeviceCmd::Root2LedControl, "Root2LedControl", u8"控制灯光", DeviceCmdParamKind::JsonMap, kHintQroot2LedControl, kSet},
     {DeviceCmd::PressSensorTemp, "PressSensorTemp", u8"压力传感器温度", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::UartReceive, "UartReceive", u8"串口接收开关", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::RgbColor, "RgbColor", u8"RGB颜色", DeviceCmdParamKind::None, nullptr, kSet},
@@ -334,7 +369,8 @@ const Row kRows[] = {
     {DeviceCmd::LightReportControl, "LightReportControl", u8"光感上报控制", DeviceCmdParamKind::JsonMap,
      u8"Qfctp 测试服务 TLV 0x001D：start=1 开启上报 / start=0 关闭\r\n示例：Param_start=1", kSet},
     {DeviceCmd::LightCalibWrite, "LightCalibWrite", u8"传感器校准写入", DeviceCmdParamKind::JsonMap, kHintLightCalibWrite, kSet},
-    {DeviceCmd::CompensationSet, "CompensationSet", u8"补偿参数", DeviceCmdParamKind::None, nullptr, kSet},
+    {DeviceCmd::CompensationSet, "CompensationSet", u8"吸力补偿(开/关)", DeviceCmdParamKind::JsonMap,
+     kHintCompensationSet, kSet},
     {DeviceCmd::NowMusicInfo, "NowMusicInfo", u8"当前音乐信息", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::SdCardInfo, "SdCardInfo", u8"存储卡信息", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::LightSensorInfo, "LightSensorInfo", u8"环境光传感器信息", DeviceCmdParamKind::None, nullptr, kGet},
@@ -434,7 +470,11 @@ QVariant normalizeSendParam(DeviceCmd cmd, const QVariant& param) {
 
     switch (cmd) {
     case DeviceCmd::ForbidSleep:
+        return jsonMapIntValue(map, 1);
     case DeviceCmd::FacMode:
+        // 含 Param_mode 时须保留 map（Qaiot 多工厂模式 type）；仅 on/value 时仍兼容 Qpb/Qfctp 的 int
+        if (map.contains(QStringLiteral("mode")))
+            return map;
         return jsonMapIntValue(map, 1);
     case DeviceCmd::FacResult: {
         if (map.contains(QStringLiteral("done")))

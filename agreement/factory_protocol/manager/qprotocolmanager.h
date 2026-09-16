@@ -12,6 +12,7 @@ class Qpb;
 class Qfctp;
 class Qaiot;
 class Qroot;
+class Qroot2;
 
 class QProtocolManager : public QObject {
     Q_OBJECT
@@ -25,6 +26,7 @@ class QProtocolManager : public QObject {
         Qaiot,
         QaiotV2,
         Qroot,
+        Qroot2,
     };
 
     ProtocolType currentProtocolType() const;
@@ -37,12 +39,14 @@ class QProtocolManager : public QObject {
     void bindQfctp(Qfctp* fctp);
     void bindQaiot(Qaiot* aiot);
     void bindQroot(Qroot* root);
+    void bindQroot2(Qroot2* root2);
 
     qProtocol* currentProtocol() const;
     Qpb* currentQpb() const;
     Qfctp* currentQfctp() const;
     Qaiot* currentQaiot() const;
     Qroot* currentQroot() const;
+    Qroot2* currentQroot2() const;
     bool hasActiveProtocol() const;
 
     // 统一转发入口：上层只依赖管理器，不直接依赖具体协议实现。
@@ -67,6 +71,7 @@ class QProtocolManager : public QObject {
     bool isQfctpProtocolActive() const;
     bool isQaiotProtocolActive() const;
     bool isQrootProtocolActive() const;
+    bool isQroot2ProtocolActive() const;
 
   signals:
     /** 统一上行数据信封（与 qProtocol::reportReceived 对齐） */
@@ -84,6 +89,7 @@ class QProtocolManager : public QObject {
     Qfctp* qfctp_ = nullptr;
     Qaiot* qaiot_ = nullptr;
     Qroot* qroot_ = nullptr;
+    Qroot2* qroot2_ = nullptr;
     qProtocol* active_ = nullptr;
 };
 

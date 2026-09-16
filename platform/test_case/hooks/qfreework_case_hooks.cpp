@@ -98,10 +98,12 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         }
         fw->stepRuntime_.testData = QString::fromUtf8(tailSn);
         fw->setCommandWaitSource(CommandWaitSource::ProductProtocol);
+        // Hook 单独发指令，须带上本步 Timing/CommandTimeoutMs，不能走 sendCommandWithRetry 默认 300ms
+        const int snTimeoutMs = TestCaseRunner::commandTimeoutMs(fw->activeTestCase());
         fw->sendCommandWithRetry([fw, tailSn]() {
             fw->protocolManager.set(DeviceCmd::Sn,
                                     QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, tailSn}));
-        });
+        }, snTimeoutMs);
         return;
     }
     if (hookId == QStringLiteral("PRINT_WHOLE_MACHINE_SN")) {
@@ -349,10 +351,11 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
             fw->ui->macLabel->setText(QStringLiteral("蓝牙mac: ") + macText);
         fw->stepRuntime_.testData = macText;
         fw->setCommandWaitSource(CommandWaitSource::ProductProtocol);
+        const int macTimeoutMs = TestCaseRunner::commandTimeoutMs(fw->activeTestCase());
         fw->sendCommandWithRetry([fw, macText]() {
             fw->protocolManager.set(DeviceCmd::MacWrite, macText);
             fw->showlog(QStringLiteral("已发送写MAC（自动流程）: %1").arg(macText));
-        });
+        }, macTimeoutMs);
         return;
     }
     if (hookId == QStringLiteral("PLC_MODBUS_CONN")) {

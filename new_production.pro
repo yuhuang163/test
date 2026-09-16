@@ -105,6 +105,7 @@ INCLUDEPATH += agreement/factory_protocol/protocol/qpb
 INCLUDEPATH += agreement/factory_protocol/protocol/qfctp
 INCLUDEPATH += agreement/factory_protocol/protocol/qaiot
 INCLUDEPATH += agreement/factory_protocol/protocol/qroot
+INCLUDEPATH += agreement/factory_protocol/protocol/qroot2
 INCLUDEPATH += agreement/factory_protocol/protocol
 INCLUDEPATH += business/ble_ota
 INCLUDEPATH += business/tuple
@@ -210,6 +211,7 @@ INCLUDEPATH += platform/driver/process
 SOURCES += \
     common/common_utils.cpp \
     common/app_help_menu.cpp \
+    common/application_shutdown.cpp \
     platform/debug/screen_inspect/screen_inspect_widget.cpp \
     platform/debug/screen_inspect/screen_inspect_analyzer.cpp \
     platform/debug/screen_inspect/screen_inspect_capture.cpp \
@@ -241,6 +243,7 @@ SOURCES += \
     agreement/factory_protocol/protocol/qaiot/qaiot.cpp \
     agreement/factory_protocol/protocol/qfctp/qfctp.cpp \
     agreement/factory_protocol/protocol/qroot/qroot.cpp \
+    agreement/factory_protocol/protocol/qroot2/qroot2.cpp \
     business/ble_ota/root_ble_ota2.cpp \
     agreement/factory_protocol/access/qprotocol.cpp \
     agreement/factory_protocol/access/dongle_phy_codec.cpp \
@@ -378,6 +381,7 @@ SOURCES += \
 HEADERS += \
     common/common_utils.h \
     common/app_help_menu.h \
+    common/application_shutdown.h \
     platform/debug/screen_inspect/screen_inspect_widget.h \
     platform/debug/screen_inspect/screen_inspect_analyzer.h \
     platform/debug/screen_inspect/screen_inspect_capture.h \
@@ -412,6 +416,7 @@ HEADERS += \
     agreement/factory_protocol/protocol/qaiot/qaiot.h \
     agreement/factory_protocol/protocol/qfctp/qfctp.h \
     agreement/factory_protocol/protocol/qroot/qroot.h \
+    agreement/factory_protocol/protocol/qroot2/qroot2.h \
     business/ble_ota/root_ble_ota2.h \
     agreement/factory_protocol/access/qprotocol.h \
     agreement/factory_protocol/access/qprotocol_types.h \

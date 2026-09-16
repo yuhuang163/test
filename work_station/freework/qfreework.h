@@ -246,6 +246,8 @@ class QFreeWork : public test_base {
     bool currentOrderedStepIsDongleBleConnect() const;
     bool canRunOrderedTestStepLoop() const;
     void beginUiStartTest();
+    /** 打印当前界面 MES/工站/过站相关配置，便于产线核对「测完但未过站」等问题 */
+    void logCurrentUiMesConfig(const QString& phase);
     /** 主动 BleDisconnect 后禁止 startTask 里用当前 MAC 自动重连，直到显式扫描/直连或新一轮测试 */
     bool suppressProductBleAutoReconnect_ = false;
 
@@ -349,6 +351,7 @@ class QFreeWork : public test_base {
     void applyStationSerialUiConfig();
     bool eventFilter(QObject* watched, QEvent* event) override;
     void showEvent(QShowEvent* event) override;
+    void prepareAbortUploadPack(MesPacketData* pack) override;
     void reportBydSfcKey(const QString& dataName, const QVariant& dataValue, int qty = 1);
     void reportBydBluetoothMesKeyMaterials();
     /** MES GetCustomData：取 DATA 中 NAME=ROOTSKU 的 VALUE，写入 pack.sku */

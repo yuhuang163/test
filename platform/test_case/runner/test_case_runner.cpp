@@ -102,7 +102,7 @@ int TestCaseRunner::commandTimeoutMs(const TestCaseDefinition& def) {
     if (def.send.channel == TestCaseSendChannel::ProductSerial)
         return 30000;
     if (isDongleBleConnectStep(def))
-        return 6000;
+        return 18000;
     return def.gate.enabled ? 8000 : 3000;
 }
 

@@ -4,6 +4,7 @@
 #include <QByteArray>
 #include <QDateTime>
 #include <QElapsedTimer>
+#include <QPair>
 #include <QString>
 #include <QStringList>
 #include <QtGlobal>
@@ -78,6 +79,18 @@ class CommonUtils {
     static bool compareVersions(const QString& versionList, const QString& versionToCompare);
     static QString trimmed(const QString& text);
     static bool equalsIgnoreCase(const QString& left, const QString& right);
+    /** MES/界面 testData 末段是否为物理量单位（mA、mV、%、℃ 等），非 key=value 说明段。 */
+    static bool looksLikeMeasurementUnit(const QString& token);
+    /**
+     * 从 testData 拆出 MES 的 VALUE 与 UNIT：优先 knownUnit（Gate/清单）；否则仅「纯数字 + 空格 + 物理单位」。
+     * index=0 write=30、CH1=6 等说明串整段保留在 VALUE，不误拆进 UNIT。
+     */
+    static QPair<QString, QString> splitMesValueAndUnit(const QString& testData, const QString& knownUnit = QString());
+    /**
+     * 云端/MES 分项 VALUE：界面 testData 可保留 index/read= 等说明，上报时尽量抽成纯数字供曲线/分析。
+     * 抽不到则返回空，调用方保留原文。
+     */
+    static QString cloudUploadNumericValue(const QString& testData);
     static QString formatList(const QStringList& items, const QString& separator = QStringLiteral(", "));
     /** MAC 比对用：去掉 : - 空白后转大写。 */
     static QString normalizeMac(QString mac);
