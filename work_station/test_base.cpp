@@ -1114,42 +1114,38 @@ void test_base::updateTestData(QVector<TestItem>& testItems) {
     }
     testResultTableUpdate(testItems);
 }
-/** 表格「数据」列只展示 MES 关键原因，完整原文走 showlog。 */
+/** 表格「数据」列只展示 MES 关键原因（冒号后 / 错误信息），完整原文走 showlog。 */
 static QString briefMesErrorForTable(const QString& msg) {
     const QString src = msg.trimmed();
     if (src.isEmpty())
         return src;
+
+    auto stripOuterParen = [](QString text) {
+        text = text.trimmed();
+        if (text.endsWith(QStringLiteral(")")) || text.endsWith(QStringLiteral("）")))
+            text.chop(1);
+        return text.trimmed();
+    };
 
     const int labelPos = src.indexOf(QStringLiteral("错误信息"));
     if (labelPos >= 0) {
         QString rest = src.mid(labelPos + QStringLiteral("错误信息").size()).trimmed();
         if (rest.startsWith(QStringLiteral(":")) || rest.startsWith(QStringLiteral("：")))
             rest = rest.mid(1).trimmed();
-        if (rest.endsWith(QStringLiteral(")")) || rest.endsWith(QStringLiteral("）")))
-            rest.chop(1);
-        rest = rest.trimmed();
+        rest = stripOuterParen(rest);
         if (!rest.isEmpty())
             return rest;
     }
 
-    QString brief = src;
-    if (brief.startsWith(QStringLiteral("站前检查失败：")))
-        brief = brief.mid(QStringLiteral("站前检查失败：").size()).trimmed();
-    else if (brief.startsWith(QStringLiteral("站前检查失败:")))
-        brief = brief.mid(QStringLiteral("站前检查失败:").size()).trimmed();
-    else if (brief.startsWith(QStringLiteral("工序校验失败：")))
-        brief = brief.mid(QStringLiteral("工序校验失败：").size()).trimmed();
-    else if (brief.startsWith(QStringLiteral("工序校验失败:")))
-        brief = brief.mid(QStringLiteral("工序校验失败:").size()).trimmed();
-    else if (brief.startsWith(QStringLiteral("工序检验失败：")))
-        brief = brief.mid(QStringLiteral("工序检验失败：").size()).trimmed();
-    else if (brief.startsWith(QStringLiteral("工序检验失败:")))
-        brief = brief.mid(QStringLiteral("工序检验失败:").size()).trimmed();
-    else if (brief.startsWith(QStringLiteral("网络请求错误：")))
-        brief = brief.mid(QStringLiteral("网络请求错误：").size()).trimmed();
-    else if (brief.startsWith(QStringLiteral("网络请求错误:")))
-        brief = brief.mid(QStringLiteral("网络请求错误:").size()).trimmed();
-    return brief.isEmpty() ? src : brief;
+    const int colonAscii = src.lastIndexOf(QStringLiteral(":"));
+    const int colonWide = src.lastIndexOf(QStringLiteral("："));
+    const int colon = qMax(colonAscii, colonWide);
+    if (colon >= 0 && colon + 1 < src.size()) {
+        const QString rest = stripOuterParen(src.mid(colon + 1));
+        if (!rest.isEmpty())
+            return rest;
+    }
+    return src;
 }
 
 void test_base::solveMesSucess(const int mechines) {
