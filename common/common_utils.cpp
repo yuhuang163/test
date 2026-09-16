@@ -502,11 +502,32 @@ const SnPatternPreset kSnPatternPresets[] = {
     {"V3Pro 固定15位", "^[0-9a-zA-Z]{15}$"},
     {"固定18位", "^[0-9a-zA-Z]{18}$"},
     {"固定28位", "^[0-9a-zA-Z]{28}$"},
+    {"固定35位整机码", "^[0-9a-zA-Z]{35}$"},
 };
 // clang-format on
 
 bool CommonUtils::isSnPatternEnabled(const QString& pattern) {
     return !pattern.trimmed().isEmpty();
+}
+
+QString CommonUtils::extractSnFromUrlOrText(const QString& raw) {
+    QString text = raw.trimmed();
+    if (text.isEmpty()) {
+        return {};
+    }
+    // 包含 URL 时（如 https://qr.momcozy.com/apps/?v=1&type=device&model=V3&sn=V300BBBBHYQDFA10002BF810L68FFN10011）
+    if (text.contains(QStringLiteral("http://"), Qt::CaseInsensitive)
+        || text.contains(QStringLiteral("https://"), Qt::CaseInsensitive)
+        || text.contains(QStringLiteral("sn="), Qt::CaseInsensitive)) {
+        static const QRegularExpression re(QStringLiteral("[?&]sn=([^&\\s]+)"), QRegularExpression::CaseInsensitiveOption);
+        const QRegularExpressionMatch m = re.match(text);
+        if (m.hasMatch()) {
+            text = m.captured(1).trimmed();
+        }
+    }
+    // 过滤前后非字母数字字符（如中文括号【】、引号等）
+    text.remove(QRegularExpression(QStringLiteral("^[^0-9A-Za-z]+|[^0-9A-Za-z]+$")));
+    return text;
 }
 
 bool CommonUtils::matchSnPattern(const QString& sn, const QString& pattern) {

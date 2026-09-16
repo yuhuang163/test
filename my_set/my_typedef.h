@@ -118,6 +118,18 @@ class SettingsManager {
         return value(key, QVariant());
     }
 
+    bool contains(const QString& key) const {
+        const QString full = fullKey(key);
+        if (!settingsUseLocalFile(full)) {
+            QSettings& ini = baseIni();
+            enter(ini);
+            const bool has = ini.contains(key);
+            leave(ini);
+            return has;
+        }
+        return !value(key).isNull();
+    }
+
     QVariant value(const QString& key, const QVariant& defaultValue) const {
         const QString full = fullKey(key);
         if (!settingsUseLocalFile(full)) {

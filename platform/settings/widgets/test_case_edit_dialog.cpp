@@ -1751,6 +1751,16 @@ const QHash<QString, QString>& hookDisplayNameMap() {
         {QStringLiteral("FREE_INSTR_CMW_GPRF_2402_2M"), QStringLiteral("并联 CMW 播放 2402 BLE2M")},
         {QStringLiteral("FREE_INSTR_CMW_GPRF_2440_2M"), QStringLiteral("并联 CMW 播放 2440 BLE2M")},
         {QStringLiteral("FREE_INSTR_CMW_GPRF_2480_2M"), QStringLiteral("并联 CMW 播放 2480 BLE2M")},
+        {QStringLiteral("BYD_MES_GET_UDI_FROM_SN"), QStringLiteral("BYD MES 获取过渡码与UDI(newSfc)")},
+        {QStringLiteral("BYD_MES_GET_TRANSITION_CODE"), QStringLiteral("BYD MES 通过整机SN获取过渡码")},
+        {QStringLiteral("BYD_MES_GET_NEW_SFC"), QStringLiteral("BYD MES 通过过渡码获取 newSfc")},
+        {QStringLiteral("BYD_MES_START_BY_NEW_SFC"), QStringLiteral("BYD MES 使用 newSfc 进行站前检查")},
+        {QStringLiteral("PLC_SYNC_WRITE_COIL"), QStringLiteral("[一拖多同步] 统一写线圈(到齐后写一次)")},
+        {QStringLiteral("PLC_SYNC_READ_COIL"), QStringLiteral("[一拖多同步] 统一监控线圈(到齐后监听)")},
+        {QStringLiteral("PLC_SYNC_WRITE_M10"), QStringLiteral("[一拖多同步] 统一写M10脉冲复位")},
+        {QStringLiteral("PLC_SYNC_WRITE_M11"), QStringLiteral("[一拖多同步] 统一写M11脉冲复位")},
+        {QStringLiteral("PLC_SYNC_READ_M0"), QStringLiteral("[一拖多同步] 统一监听M0按键信号")},
+        {QStringLiteral("PLC_SYNC_READ_M1"), QStringLiteral("[一拖多同步] 统一监听M1按键信号")},
     };
     return map;
 }
@@ -2468,7 +2478,7 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     {
         int timeoutMs = def.timing.commandTimeoutMs;
         if (timeoutMs <= 0)
-            timeoutMs = def.gate.enabled ? 8000 : 300;
+            timeoutMs = def.gate.enabled ? 8000 : 3000;
         ui->spinBox_commandTimeout->setValue(timeoutMs);
     }
     ui->checkBox_waitReply->setChecked(def.timing.waitReply);

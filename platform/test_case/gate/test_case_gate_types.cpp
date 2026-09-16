@@ -440,7 +440,7 @@ static void registerFixtureAndRfGates() {
         GateType<D>("ProtocolJieliBtBoxData", "杰理蓝牙盒子RF")
             .withUnpack(unpackJieli)
             .number("rssi", &D::rssi, "RSSI(dBm)", "dBm")
-            .number("freqOffset", &D::freqOffset, "频偏", "Hz")
+            .number("freqOffset", &D::freqOffset, "频偏(kHz)", "kHz")
             .mac("mac", &D::mac, "MAC地址")
             .commit();
     }

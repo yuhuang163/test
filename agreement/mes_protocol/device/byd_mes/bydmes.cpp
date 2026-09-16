@@ -695,6 +695,181 @@ QByteArray bydmes::sendRequest(const QString& method, const QJsonObject& param, 
     return responseData;
 }
 
+static QByteArray bydMesSendStaticGetRequest(const QString& method, const QJsonObject& param, QString* errorMessage) {
+    const QString net = bydmes::externalSettingsValue(QStringLiteral("NET")).trimmed();
+    if (net.isEmpty()) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("BYD MES 未配置 NET/JSONURL（mes_config.ini）");
+        }
+        return {};
+    }
+    QUrl url(net);
+    QUrlQuery query;
+    query.addQueryItem(QStringLiteral("method"), method);
+    const QString paramStr = bydMesBuildServiceParam(method, param);
+    query.addQueryItem(QStringLiteral("param"), paramStr);
+    url.setQuery(query);
+
+    qDebug().noquote() << QStringLiteral("BYD MES static request (param): ") + paramStr;
+
+    QNetworkAccessManager manager;
+    QNetworkRequest request(url);
+    QNetworkReply* reply = manager.get(request);
+
+    QEventLoop loop;
+    QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
+    loop.exec();
+
+    QByteArray responseData;
+    if (reply->error() == QNetworkReply::NoError) {
+        responseData = reply->readAll();
+        qDebug() << "BYD MES static response:" << QString::fromUtf8(responseData);
+    } else if (errorMessage != nullptr) {
+        *errorMessage = QStringLiteral("网络请求失败: ") + reply->errorString();
+    }
+
+    reply->deleteLater();
+    return responseData;
+}
+
+bool bydmes::queryTransitionCodeByKeyValue(const QString& keyValue, QString* transitionCode, QString* errorMessage) {
+    const QString sn = keyValue.trimmed();
+    if (sn.isEmpty()) {
+        if (errorMessage) *errorMessage = QStringLiteral("整机 SN 为空");
+        return false;
+    }
+    QJsonObject param;
+    param[QStringLiteral("LOGIN_ID")] = externalSettingsValue(QStringLiteral("LoginID"), QStringLiteral("-1"));
+    param[QStringLiteral("CLIENT_ID")] = externalSettingsValue(QStringLiteral("ClientID"), QStringLiteral("1"));
+    param[QStringLiteral("KEY_VALUE")] = sn;
+
+    QString netError;
+    const QByteArray resp = bydMesSendStaticGetRequest(QStringLiteral("GetSfcKeyByValue"), param, &netError);
+    if (!netError.isEmpty()) {
+        if (errorMessage) *errorMessage = QStringLiteral("GetSfcKeyByValue 请求失败: ") + netError;
+        return false;
+    }
+
+    QJsonParseError parseErr;
+    const QJsonDocument doc = QJsonDocument::fromJson(resp, &parseErr);
+    if (parseErr.error != QJsonParseError::NoError || !doc.isObject()) {
+        if (errorMessage) *errorMessage = QStringLiteral("GetSfcKeyByValue 返回不是有效 JSON: ") + QString::fromUtf8(resp);
+        return false;
+    }
+    const QJsonObject obj = doc.object();
+    const QString result = obj.value(QStringLiteral("RESULT")).toString().trimmed().toUpper();
+    if (result != QStringLiteral("PASS") && result != QStringLiteral("OK") && result != QStringLiteral("SUCCESS")) {
+        const QString msg = obj.value(QStringLiteral("MESSAGE")).toString();
+        if (errorMessage) *errorMessage = QStringLiteral("GetSfcKeyByValue 失败: ") + (msg.isEmpty() ? QString::fromUtf8(resp) : msg);
+        return false;
+    }
+
+    const QJsonArray keys = obj.value(QStringLiteral("KEYS")).toArray();
+    QString foundSfc;
+    for (const QJsonValue& v : keys) {
+        if (!v.isObject()) continue;
+        const QJsonObject item = v.toObject();
+        const QString sfc = item.value(QStringLiteral("sfc")).toString().trimmed();
+        if (!sfc.isEmpty()) {
+            foundSfc = sfc;
+            if (item.value(QStringLiteral("name")).toString().compare(QStringLiteral("SN"), Qt::CaseInsensitive) == 0
+                || item.value(QStringLiteral("value")).toString().trimmed() == sn) {
+                break;
+            }
+        }
+    }
+    if (foundSfc.isEmpty()) {
+        if (errorMessage) *errorMessage = QStringLiteral("GetSfcKeyByValue 成功但未找到 sfc 过渡码");
+        return false;
+    }
+    if (transitionCode) {
+        *transitionCode = foundSfc;
+    }
+    return true;
+}
+
+bool bydmes::queryNewSfcByOldSfc(const QString& oldSfc, QString* newSfc, QString* errorMessage) {
+    const QString sfc = oldSfc.trimmed();
+    if (sfc.isEmpty()) {
+        if (errorMessage) *errorMessage = QStringLiteral("过渡码 (OLD_SFC) 为空");
+        return false;
+    }
+    QJsonObject param;
+    param[QStringLiteral("LOGIN_ID")] = externalSettingsValue(QStringLiteral("LoginID"), QStringLiteral("-1"));
+    param[QStringLiteral("CLIENT_ID")] = externalSettingsValue(QStringLiteral("ClientID"), QStringLiteral("1"));
+    param[QStringLiteral("OLD_SFC")] = sfc;
+
+    QString netError;
+    const QByteArray resp = bydMesSendStaticGetRequest(QStringLiteral("GetOldSfcSerialze"), param, &netError);
+    if (!netError.isEmpty()) {
+        if (errorMessage) *errorMessage = QStringLiteral("GetOldSfcSerialze 请求失败: ") + netError;
+        return false;
+    }
+
+    QJsonParseError parseErr;
+    const QJsonDocument doc = QJsonDocument::fromJson(resp, &parseErr);
+    if (parseErr.error != QJsonParseError::NoError || !doc.isObject()) {
+        if (errorMessage) *errorMessage = QStringLiteral("GetOldSfcSerialze 返回不是有效 JSON: ") + QString::fromUtf8(resp);
+        return false;
+    }
+    const QJsonObject obj = doc.object();
+    const QString result = obj.value(QStringLiteral("RESULT")).toString().trimmed().toUpper();
+    if (result != QStringLiteral("PASS") && result != QStringLiteral("OK") && result != QStringLiteral("SUCCESS")) {
+        const QString msg = obj.value(QStringLiteral("MESSAGE")).toString();
+        if (errorMessage) *errorMessage = QStringLiteral("GetOldSfcSerialze 失败: ") + (msg.isEmpty() ? QString::fromUtf8(resp) : msg);
+        return false;
+    }
+
+    const QJsonObject data = obj.value(QStringLiteral("DATA")).toObject();
+    const QString resolved = data.value(QStringLiteral("newSfc")).toString().trimmed();
+    if (resolved.isEmpty()) {
+        if (errorMessage) *errorMessage = QStringLiteral("GetOldSfcSerialze 成功但未找到 DATA.newSfc 字段");
+        return false;
+    }
+    if (newSfc) {
+        *newSfc = resolved;
+    }
+    return true;
+}
+
+bool bydmes::executeStartBySfc(const QString& sfc, QString* errorMessage) {
+    const QString code = sfc.trimmed();
+    if (code.isEmpty()) {
+        if (errorMessage) *errorMessage = QStringLiteral("站前检查 SFC 为空");
+        return false;
+    }
+    QJsonObject param;
+    param[QStringLiteral("LOGIN_ID")] = externalSettingsValue(QStringLiteral("LoginID"), QStringLiteral("-1"));
+    param[QStringLiteral("CLIENT_ID")] = externalSettingsValue(QStringLiteral("ClientID"), QStringLiteral("1"));
+    param[QStringLiteral("SFC")] = code;
+    param[QStringLiteral("STATION_ID")] = externalSettingsValue(QStringLiteral("StationID"));
+    param[QStringLiteral("LINE")] = externalSettingsValue(QStringLiteral("Line"));
+    param[QStringLiteral("SHOPORDER")] = externalSettingsValue(QStringLiteral("Resource"));
+    param[QStringLiteral("SCHEDULING_ID")] = externalSettingsValue(QStringLiteral("SchedulingID"));
+
+    QString netError;
+    const QByteArray resp = bydMesSendStaticGetRequest(QStringLiteral("Start"), param, &netError);
+    if (!netError.isEmpty()) {
+        if (errorMessage) *errorMessage = QStringLiteral("Start 请求失败: ") + netError;
+        return false;
+    }
+
+    QJsonParseError parseErr;
+    const QJsonDocument doc = QJsonDocument::fromJson(resp, &parseErr);
+    if (parseErr.error != QJsonParseError::NoError || !doc.isObject()) {
+        if (errorMessage) *errorMessage = QStringLiteral("Start 返回不是有效 JSON: ") + QString::fromUtf8(resp);
+        return false;
+    }
+    const QJsonObject obj = doc.object();
+    const QString result = obj.value(QStringLiteral("RESULT")).toString().trimmed().toUpper();
+    if (result != QStringLiteral("PASS") && result != QStringLiteral("OK") && result != QStringLiteral("SUCCESS")) {
+        const QString msg = obj.value(QStringLiteral("MESSAGE")).toString();
+        if (errorMessage) *errorMessage = QStringLiteral("Start 失败: ") + (msg.isEmpty() ? QString::fromUtf8(resp) : msg);
+        return false;
+    }
+    return true;
+}
+
 // =============================================================================
 // ⑧ Qmes 对外槽：站前 / 取过程码 SN / 过站上报
 // =============================================================================

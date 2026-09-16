@@ -42,17 +42,11 @@ QVector<quint8> toGrayBytes(const QImage& rgb) {
     return gray;
 }
 
-/** 圆屏掩膜：正方形 ROI 四角黑框不参与颜色/坏点。 */
-struct ScreenCircle {
-    int cx = 0;
-    int cy = 0;
-    int r = 0;
-    bool contains(int x, int y) const {
-        const qint64 dx = x - cx;
-        const qint64 dy = y - cy;
-        return dx * dx + dy * dy <= qint64(r) * qint64(r);
-    }
-};
+using ScreenInspectAnalyzer::ScreenCircle;
+using ScreenInspectAnalyzer::detectScreenCircle;
+} // namespace
+
+namespace ScreenInspectAnalyzer {
 
 /**
  * 在矩形 ROI 内估计圆屏半径：亮屏用径向亮度跌落找边；全黑则用内接圆略内缩。
@@ -103,7 +97,9 @@ ScreenCircle detectScreenCircle(const QImage& rgb, const QRect& roi) {
             const int dynamicW = x1 - x0;
             const int dynamicH = y1 - y0;
             const int dynamicRMax = qMin(dynamicW, dynamicH) / 2;
-            if (dynamicRMax >= 8 && dynamicH >= r.height() * 0.4 && dynamicW >= r.width() * 0.4) {
+            // 只要亮区尺寸有效（如大于16像素且达到ROI的8%以上），即判定为真实圆屏区域，避免高分辨率全画幅下因占比<40%被误拒
+            const int minSide = qMax(16, qMin(r.width(), r.height()) * 8 / 100);
+            if (dynamicRMax >= 8 && dynamicW >= minSide && dynamicH >= minSide) {
                 c.cx = (x0 + x1) / 2;
                 c.cy = (y0 + y1) / 2;
                 rMax = dynamicRMax;
@@ -151,22 +147,22 @@ ScreenCircle detectScreenCircle(const QImage& rgb, const QRect& roi) {
         ++innerN;
     }
     const int innerMean = innerN > 0 ? innerSum / innerN : 0;
-    // 黑屏/暗屏：亮边检测不可靠，用 ROI 内接圆略内缩避开四角
+    // 黑屏/暗屏：亮边检测不可靠，用 ROI 内接圆
     if (innerMean < 55) {
-        c.r = qMax(8, rMax * 92 / 100);
+        c.r = qMax(8, rMax);
         return c;
     }
 
     const int thr = qMax(40, innerMean * 55 / 100);
-    int edge = rMax * 92 / 100;
+    int edge = rMax;
     for (int i = rMax; i >= rMax / 5; --i) {
         if (mean[i] >= thr) {
             edge = i;
             break;
         }
     }
-    // 内缩到较亮实心区，避开圆屏边缘亮暗过渡带
-    c.r = qMax(8, edge * 90 / 100);
+    // 恢复 100% 真实圆屏外轮廓半径，取消内缩
+    c.r = qMax(8, edge);
     return c;
 }
 
@@ -220,6 +216,10 @@ QRect detectScreenRoi(const QImage& rgb) {
     const int my = qMax(2, (y1 - y0) / 25);
     return QRect(x0 + mx, y0 + my, (x1 - x0 + 1) - 2 * mx, (y1 - y0 + 1) - 2 * my).intersected(QRect(0, 0, w, h));
 }
+
+} // namespace ScreenInspectAnalyzer
+
+namespace {
 
 double ssimOnGray(const QVector<quint8>& a, const QVector<quint8>& b, int w, int h) {
     if (a.size() != b.size() || w < 8 || h < 8)
@@ -807,7 +807,7 @@ QImage drawAnnotated(const QImage& rgb, const QRect& roi, const ScreenCircle& ci
     p.setRenderHint(QPainter::Antialiasing, true);
     p.setPen(QPen(QColor(0, 200, 0), 2));
     p.drawRect(drawRoi.adjusted(0, 0, -1, -1));
-    if (drawCircle.r >= 8)
+    if (drawCircle.r >= 2)
         p.drawEllipse(QPoint(drawCircle.cx, drawCircle.cy), drawCircle.r, drawCircle.r);
     p.setPen(QPen(QColor(220, 0, 0), 2));
     for (const QPoint& pt : drawPts)
@@ -849,7 +849,9 @@ QImage drawGuides(const QImage& rgb, const QRect& roiIn, const QImage* circleFro
             circle.cy = sc.cy * img.height() / src.height();
             circle.r = qMax(8, sc.r * qMin(img.width(), img.height()) / qMin(src.width(), src.height()));
         } else {
-            circle = detectScreenCircle(img, roi);
+            circle.cx = img.width() / 2;
+            circle.cy = img.height() / 2;
+            circle.r = qMin(img.width(), img.height()) / 2;
         }
     } else {
         circle = detectScreenCircle(img, roi);
@@ -868,7 +870,9 @@ QImage drawGuides(const QImage& rgb, const QRect& roiIn, int circleCx, int circl
         circle.cy = circleCy;
         circle.r = circleR;
     } else {
-        circle = detectScreenCircle(img, roi);
+        circle.cx = img.width() / 2;
+        circle.cy = img.height() / 2;
+        circle.r = qMin(img.width(), img.height()) / 2;
     }
     return drawAnnotated(img, roi, circle, {});
 }
@@ -926,25 +930,79 @@ Report analyze(const QImage& currRgb, const QImage& refRgb, const Params& p) {
     const qint64 msAnno = stepT.elapsed();
 
     qint64 msSsim = 0;
-    if (p.enableSsim && !refRgb.isNull()) {
-        stepT.start();
+    if (!refRgb.isNull()) {
         QImage ref = toRgb888(refRgb);
-        if (ref.size() != curr.size())
-            ref = ref.scaled(curr.size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
-        // 完整识别圆屏：以外接方框裁切对比（四角黑底一致，不再内缩、不按块跳过）
-        QRect circleBox(circle.cx - circle.r, circle.cy - circle.r, circle.r * 2, circle.r * 2);
-        circleBox = circleBox.intersected(curr.rect());
-        if (circleBox.width() < 8 || circleBox.height() < 8)
-            circleBox = roi;
-        QImage a = curr.copy(circleBox);
-        QImage b = ref.copy(circleBox);
-        const int maxSide = 256;
-        if (a.width() > maxSide || a.height() > maxSide) {
-            a = a.scaled(maxSide, maxSide, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-            b = b.scaled(a.size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+        QRect refRoi = scaleRoiRect(roi, curr.size(), ref.size()).intersected(ref.rect());
+        if (refRoi.width() < 10 || refRoi.height() < 10)
+            refRoi = detectScreenRoi(ref);
+
+        // 参考图上不跑找圆算法，直接采用现有标定的圆屏参数；若未提供则按缓存圆或当前实拍圆直接划线
+        ScreenCircle refCircle;
+        if (p.refCircleR > 0) {
+            refCircle.cx = p.refCircleCx;
+            refCircle.cy = p.refCircleCy;
+            refCircle.r = p.refCircleR;
+        } else if (p.cachedCircleR > 0) {
+            refCircle.cx = p.cachedCircleCx;
+            refCircle.cy = p.cachedCircleCy;
+            refCircle.r = p.cachedCircleR;
+        } else if (circle.r > 0) {
+            refCircle.cx = circle.cx;
+            refCircle.cy = circle.cy;
+            refCircle.r = circle.r;
         }
-        report.ssim = ssimOnGray(toGrayBytes(a), toGrayBytes(b), a.width(), a.height());
-        msSsim = stepT.elapsed();
+
+        // 若参考图与实拍图分辨率不同，进行几何比例换算
+        if (refCircle.r > 0 && curr.width() > 0 && curr.height() > 0 && ref.width() > 0 && ref.height() > 0) {
+            if (curr.size() != ref.size()) {
+                refCircle.cx = refCircle.cx * ref.width() / curr.width();
+                refCircle.cy = refCircle.cy * ref.height() / curr.height();
+                refCircle.r = qMax(8, refCircle.r * qMin(ref.width(), ref.height()) / qMin(curr.width(), curr.height()));
+            }
+        } else if (refCircle.r <= 0) {
+            refCircle.cx = ref.width() / 2;
+            refCircle.cy = ref.height() / 2;
+            refCircle.r = qMin(ref.width(), ref.height()) / 2;
+        }
+
+        // 直接采用换算后的标定圆作为参考图的最终画线圆，严禁进行多余的二次重复缩小
+        const int effectiveRefR = refCircle.r;
+        ScreenCircle drawRefCircle = refCircle;
+        drawRefCircle.r = effectiveRefR;
+
+        report.refCircleCx = refCircle.cx;
+        report.refCircleCy = refCircle.cy;
+        report.refCircleR = effectiveRefR;
+
+        report.annotatedRef = drawAnnotated(ref, refRoi, drawRefCircle, {});
+
+        if (p.enableSsim) {
+            stepT.start();
+            // 分别以各自检测出的圆心进行居中外接裁切对比，彻底消除工装物理摆放偏差
+            const int cr = qMax(8, circle.r);
+            QRect circleBox(circle.cx - cr, circle.cy - cr, cr * 2, cr * 2);
+            circleBox = circleBox.intersected(curr.rect());
+            if (circleBox.width() < 8 || circleBox.height() < 8)
+                circleBox = roi;
+
+            const int rr = effectiveRefR;
+            const int rcx = refCircle.r > 0 ? refCircle.cx : (circle.cx * ref.width() / curr.width());
+            const int rcy = refCircle.r > 0 ? refCircle.cy : (circle.cy * ref.height() / curr.height());
+            QRect refBox(rcx - rr, rcy - rr, rr * 2, rr * 2);
+            refBox = refBox.intersected(ref.rect());
+            if (refBox.width() < 8 || refBox.height() < 8)
+                refBox = scaleRoiRect(circleBox, curr.size(), ref.size()).intersected(ref.rect());
+
+            QImage a = curr.copy(circleBox);
+            QImage b = ref.copy(refBox);
+            const int maxSide = 256;
+            if (a.width() > 0 && a.height() > 0 && b.width() > 0 && b.height() > 0) {
+                a = a.scaled(maxSide, maxSide, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+                b = b.scaled(maxSide, maxSide, Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+                report.ssim = ssimOnGray(toGrayBytes(a), toGrayBytes(b), a.width(), a.height());
+            }
+            msSsim = stepT.elapsed();
+        }
     }
     qDebug().noquote() << QStringLiteral("[ScreenInspectAnalyze]")
                        << QStringLiteral("size=%1x%2 rgb=%3 roi=%4 circle=%5,%6 r=%7 color=%8 dead=%9 anno=%10 ssim=%11 total=%12")

@@ -23,6 +23,9 @@ class TestCaseStore {
                                    QString* errorOut = nullptr);
     /** 将旧平铺 ini 迁入 steps/，并为各工站生成 profiles 目录（幂等） */
     static void ensureFilesystemLayout();
+    /** 确保工站 profiles 目录及 profile.ini 存在 */
+    static void ensureProfileDirectory(const QString& stationKey, const QString& displayName = QString(),
+                                       const QString& createdFrom = QString());
     /** 云端下载/外部覆盖 profiles 后：按目录重扫并登记 FlowStations（不依赖进程内一次性迁移标志） */
     static void reregisterFlowStationsFromProfiles();
     /** 运行时实际参与判定的卡控列表（gates 优先，否则单项 gate） */
@@ -58,6 +61,8 @@ class TestCaseStore {
     static bool saveStationDeviceSideConfig(const QString& stationKey, const TestCaseDeviceSideConfig& config);
     /** profiles/{工站}/profile.ini [Profile/ProfileVersion]；stationKey 空则当前选中工站，缺失返回 0 */
     static int loadStationProfileVersion(const QString& stationKey = QString());
+    /** profiles/{工站}/profile.ini [StationCustom/SkipDefaultPreInspection] 或 [Profile/SkipDefaultPreInspection] */
+    static bool loadStationSkipDefaultPreInspection(const QString& stationKey = QString());
     static bool saveStationFlowItems(const QString& stationKey, const QVector<TestFlowItemEntry>& items,
                                      bool stopFlowOnTestFail = true);
     static bool saveStationFlowItems(const QString& stationKey, const QVector<TestFlowItemEntry>& items,

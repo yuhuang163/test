@@ -42,22 +42,7 @@ struct QFreeWorkMesSegment {
     QString costTime;
 };
 
-struct PreStartMonitorConfig {
-    bool enabled = false;
-    QString plcDevice;
-    QString plcIp;
-    int plcPort = 502;
-    QString plcComPort;
-    int plcBaudRate = 19200;
-    int plcSlaveId = 1;
-    QString plcWaitAddress = "M100";
-    int plcWaitAddressM = 100;
-    int plcPollIntervalMs = 500;
-    QString scannerIp = "192.168.1.64";
-    int scannerPort = 2001;
-    int scannerTimeoutMs = 1000;
-    bool autoIncrementIpByStation = true;
-};
+#include "pre_start_monitor_config.h"
 
 class QFreeWork : public test_base {
     Q_OBJECT
@@ -76,6 +61,10 @@ class QFreeWork : public test_base {
     bool runSingleTestCaseStep(const QString& stationKey, const QString& caseName, QString* errorOut = nullptr);
     /** 设置页切换工站后：重载有序步骤与串口显隐（含 applyStationSerialUiConfig） */
     void refreshStationFlowUi() { refreshOrderedTestIndexes(); }
+    void updatePreStartMonitorState();
+    bool isPrimaryMonitorStation() const;
+    void triggerAllStationScanners();
+    void triggerScanner(const QString& scannerIp, int scannerPort, int scannerTimeoutMs);
 
     Ui::QFreeWork* ui;
 
@@ -114,6 +103,9 @@ class QFreeWork : public test_base {
     const TestCaseDefinition& activeTestCase() const {
         return activeTestCase_;
     }
+    QString activeFlowStationKey() const {
+        return activeFlowStationKey_;
+    }
     QString currentMacAddress() const;
     QString parseMacFromSn(const QString& snCode) const;
     /** 扫码框 / MES 下发的 PCBA SN（非整机 SN） */
@@ -121,6 +113,9 @@ class QFreeWork : public test_base {
     /** 本地整机 SN（三元组申请等写入，可扩展其它来源） */
     QString resolvedWholeMachineSnText() const;
     void setWholeMachineSn(const QString& sn);
+    QString resolvedTransitionCode() const { return transitionCode_; }
+    QString resolvedNewSfc() const { return newSfc_; }
+    void setTransitionCodeAndNewSfc(const QString& transitionCode, const QString& newSfc);
     QString resolveTestCaseSendPlaceholder(const QString& text) const;
     QVariant resolveTestCaseSendParamTree(const QVariant& param) const;
     bool prepareTupleProductWriteForTestCase(const TestCaseDefinition& def, DeviceCmd cmd, const QVariant& wireParam);
@@ -152,6 +147,8 @@ class QFreeWork : public test_base {
     QString snBinding;
     QString deviceTailSnFromDevice = "";
     QString wholeMachineSn_;
+    QString transitionCode_;
+    QString newSfc_;
     /** BYD 开局扫码过程码：MES Start/Complete/AddSfcKey 的 SFC；勿被 MES 主板 SN / 三元组整机 SN 冲掉 */
     QString mesProcessCode_;
     QString macAddress = "没有mac地址";
@@ -517,7 +514,6 @@ class QFreeWork : public test_base {
     PreStartMonitorConfig preStartMonitorConfig_;
     QTimer* preStartMonitorTimer_ = nullptr;
     bool preStartMonitorRunning_ = false;
-    void updatePreStartMonitorState();
 
   private slots:
     void triggerHikvisionScanner();

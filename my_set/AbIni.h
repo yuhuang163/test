@@ -7,7 +7,8 @@
 
 #include <qglobal.h>
 
-// 修复部分版本 MSVC 与 Qt 5.15 的微软非标扩展 stdext::make_checked_array_iterator 冲突 C2668 或缺失 C2653
+// 兼容所有版本 MSVC（从 2019 到 2026 各版本）：
+// 消除 Qt 5.15 对微软非标扩展 stdext::make_checked_array_iterator 的依赖，避免重载冲突 C2668 与缺失 C2653
 #ifdef QT_MAKE_CHECKED_ARRAY_ITERATOR
 #undef QT_MAKE_CHECKED_ARRAY_ITERATOR
 #endif

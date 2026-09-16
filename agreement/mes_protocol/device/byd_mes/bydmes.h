@@ -23,6 +23,22 @@ class bydmes : public Qmes {
     /// 从已登记的外部 mes_config.ini 读取键值（如 Resource）；未登记时尝试 loadExternalMesConfig
     static QString externalSettingsValue(const QString& key, const QString& fallback = QString());
 
+    /**
+     * V3 恢复出厂设置工位专享：
+     * 1. 根据整机 SN（KEY_VALUE）调用 GetSfcKeyByValue 获取过渡码（KEYS[0].sfc）。
+     */
+    static bool queryTransitionCodeByKeyValue(const QString& keyValue, QString* transitionCode, QString* errorMessage = nullptr);
+
+    /**
+     * 2. 根据过渡码（OLD_SFC）调用 GetOldSfcSerialze 获取 newSfc（DATA.newSfc 镭雕 UDI）。
+     */
+    static bool queryNewSfcByOldSfc(const QString& oldSfc, QString* newSfc, QString* errorMessage = nullptr);
+
+    /**
+     * 3. 使用 newSfc 调用 Start 接口进行站前检查。
+     */
+    static bool executeStartBySfc(const QString& sfc, QString* errorMessage = nullptr);
+
     void LogIn(MesPacketData pack) override;
     void ProcessInspection(MesPacketData pack) override;
     void TestPass(MesPacketData pack) override;

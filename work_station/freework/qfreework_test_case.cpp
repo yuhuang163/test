@@ -1802,7 +1802,10 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
         ctx->waitWork(def.timing.delayBeforeMs);
 
     if (def.hook.enabled) {
-        TestCaseHookRegistry::invoke(def.hook.hookId, ctx);
+        if (!TestCaseHookRegistry::invoke(def.hook.hookId, ctx)) {
+            ctx->showlog(QStringLiteral("Hook [%1] 执行失败：未找到已注册的处理函数").arg(def.hook.hookId));
+            ctx->markActiveTestCaseStepDone(false, QStringLiteral("未注册Hook: %1").arg(def.hook.hookId), QStringLiteral("失败"));
+        }
         return;
     }
 
@@ -1945,6 +1948,88 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             }
         } else if (devRoute == ModbusDeviceRoute::XinjiePlcRtu) {
             XinjePlcCmd xjCmd = xinjiePlcCmdFromName(def.send.deviceCmd);
+            if ((xjCmd == XinjePlcCmd::ReadCoils || xjCmd == XinjePlcCmd::ReadDiscreteInputs)
+                && def.send.action == TestCaseSendAction::Get && def.gate.enabled) {
+                const int timeoutMs = qMax(1000, TestCaseRunner::commandTimeoutMs(def));
+                const int intervalMs = 150;
+                ctx->showlog(QStringLiteral("信捷 PLC [%1] 等待按键卡控：超时 %2ms，轮询间隔 %3ms")
+                                 .arg(def.send.deviceCmd).arg(timeoutMs).arg(intervalMs));
+                QElapsedTimer waitTimer;
+                waitTimer.start();
+                int sampleIdx = 0;
+                ProtocolMeasureData lastData;
+                while (waitTimer.elapsed() < timeoutMs && !ctx->isActiveTestCaseStepDone()) {
+                    if (!ctx->isTestContinue) {
+                        ctx->markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
+                        return;
+                    }
+                    QVariant resultVal;
+                    QString errStr;
+                    bool ok = ctx->modbusManager.exec(xjCmd, resolvedParam, &resultVal, &errStr);
+                    ++sampleIdx;
+                    if (ok) {
+                        ProtocolMeasureData measureData;
+                        measureData.deviceName = deviceKey;
+                        measureData.type = QStringLiteral("XinjiePlc");
+                        if (resultVal.type() == QVariant::Bool) {
+                            measureData.valueText = resultVal.toBool() ? QStringLiteral("1") : QStringLiteral("0");
+                            measureData.value = resultVal.toBool() ? 1.0 : 0.0;
+                        } else {
+                            measureData.valueText = resultVal.toString();
+                            measureData.value = resultVal.toDouble();
+                        }
+                        measureData.isOk = true;
+                        lastData = measureData;
+
+                        ctx->showlog(QStringLiteral("[信捷PLC按键卡控] 采样#%1 读值: %2 (%3)")
+                                         .arg(sampleIdx)
+                                         .arg(measureData.valueText)
+                                         .arg(measureData.value == 1.0 ? QStringLiteral("● 按键已按下/触发") : QStringLiteral("○ 按键未按下/空闲")));
+
+                        QVector<TestCaseGate> gatesForEval = TestCaseStore::activeGatesForEvaluation(def);
+                        bool pass = false;
+                        QString detail;
+                        if (!gatesForEval.isEmpty()) {
+                            if (gatesForEval.size() > 1) {
+                                GateRegistry::evaluateAll(gatesForEval, QStringLiteral("ProtocolMeasureData"),
+                                                          QVariant::fromValue(measureData), pass, detail);
+                            } else {
+                                GateRegistry::evaluate(gatesForEval.first(), QStringLiteral("ProtocolMeasureData"),
+                                                       QVariant::fromValue(measureData), pass, detail);
+                            }
+                        } else {
+                            pass = (measureData.value == 1.0);
+                            detail = pass ? QStringLiteral("按键按下(1)") : QStringLiteral("按键未按下(0)");
+                        }
+
+                        if (pass) {
+                            GateStepDisplay display = !gatesForEval.isEmpty()
+                                ? GateRegistry::formatStepDisplay(gatesForEval.first(), gatesForEval,
+                                                                 QStringLiteral("ProtocolMeasureData"),
+                                                                 QVariant::fromValue(measureData), gatesForEval.size() > 1)
+                                : GateStepDisplay{detail, QStringLiteral("1")};
+                            if (display.testData.isEmpty())
+                                display.testData = detail;
+                            ctx->markActiveTestCaseStepDone(true, display.testData, display.ask);
+                            ctx->showlog(QStringLiteral("信捷 PLC 按键卡控通过：%1").arg(detail));
+                            return;
+                        }
+                    } else {
+                        ctx->showlog(QStringLiteral("[信捷PLC按键卡控] 采样#%1 读取失败: %2").arg(sampleIdx).arg(errStr));
+                    }
+
+                    QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+                    QThread::msleep(static_cast<unsigned long>(intervalMs));
+                }
+
+                if (!ctx->isActiveTestCaseStepDone()) {
+                    ctx->showlog(QStringLiteral("信捷 PLC 按键卡控超时（%1ms内未满足条件，最后读值=%2）")
+                                     .arg(timeoutMs).arg(lastData.valueText.isEmpty() ? QStringLiteral("无") : lastData.valueText));
+                    ctx->markActiveTestCaseStepDone(false, lastData.valueText.isEmpty() ? QStringLiteral("超时未触发") : lastData.valueText, QStringLiteral("失败"));
+                }
+                return;
+            }
+
             QVariant resultVal;
             bool ok = ctx->modbusManager.exec(xjCmd, resolvedParam, &resultVal, &errStr);
             if (!ok) {
@@ -1954,9 +2039,17 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                 ProtocolMeasureData measureData;
                 measureData.deviceName = deviceKey;
                 measureData.type = QStringLiteral("XinjiePlc");
-                measureData.valueText = resultVal.toString();
-                measureData.value = resultVal.toDouble();
+                if (resultVal.type() == QVariant::Bool) {
+                    measureData.valueText = resultVal.toBool() ? QStringLiteral("1") : QStringLiteral("0");
+                    measureData.value = resultVal.toBool() ? 1.0 : 0.0;
+                } else {
+                    measureData.valueText = resultVal.toString();
+                    measureData.value = resultVal.toDouble();
+                }
                 measureData.isOk = true;
+                ctx->showlog(QStringLiteral("信捷 PLC [%1] 读值: %2 (%3)")
+                                 .arg(def.send.deviceCmd, measureData.valueText)
+                                 .arg(measureData.value == 1.0 ? QStringLiteral("按键按下/触发") : QStringLiteral("未触发")));
                 ctx->onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolMeasureData"),
                                                           QVariant::fromValue(measureData)));
             } else {
@@ -3088,8 +3181,9 @@ void QFreeWork::executeFixtureJieliBtBoxCase(const TestCaseDefinition& def) {
         return;
     }
 
-    const QString macText = QString::fromLatin1(info.mac.toHex(':')).toUpper();
-    const QString detail = QStringLiteral("频偏=%1 RSSI=%2%3")
+    // MES/云端分项按 : 切字段，MAC 不用 ASCII 冒号
+    const QString macText = QString::fromLatin1(info.mac.toHex('-')).toUpper();
+    const QString detail = QStringLiteral("频偏=%1kHz RSSI=%2dBm%3")
                                .arg(info.freqOffset)
                                .arg(info.rssi)
                                .arg(macText.isEmpty() ? QString() : QStringLiteral(" MAC=%1").arg(macText));
