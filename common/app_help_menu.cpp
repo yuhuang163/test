@@ -77,13 +77,25 @@ QMenu* AppHelpMenu::install(QMenuBar* menuBar, QWidget* dialogParent, const Host
 
     helpMenu->addSeparator();
 
+    const bool otaMenuVisible = SETTINGS.value(QStringLiteral("SYSTEM/ShowUpperComputerOTAFunc")).toBool();
+
+    QAction* rollbackPrevious = helpMenu->addAction(QStringLiteral("回退上一版本..."));
+    QObject::connect(rollbackPrevious, &QAction::triggered, dialogParent, [callbacks]() {
+        if (callbacks.onRollbackPrevious) {
+            callbacks.onRollbackPrevious();
+        }
+    });
+    if (!otaMenuVisible) {
+        rollbackPrevious->setVisible(false);
+    }
+
     QAction* checkUpdate = helpMenu->addAction(QStringLiteral("检查更新..."));
     QObject::connect(checkUpdate, &QAction::triggered, dialogParent, [callbacks]() {
         if (callbacks.onCheckUpdate) {
             callbacks.onCheckUpdate();
         }
     });
-    if (!SETTINGS.value(QStringLiteral("SYSTEM/ShowUpperComputerOTAFunc")).toBool()) {
+    if (!otaMenuVisible) {
         checkUpdate->setVisible(false);
     }
 

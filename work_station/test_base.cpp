@@ -36,6 +36,7 @@
 #include "qfctp.h"
 #include "qaiot.h"
 #include "qroot.h"
+#include "qroot2.h"
 #include "common_utils.h"
 #include "dongle_phy.h"
 #include "test_data_upload_service.h"
@@ -83,6 +84,7 @@ test_base::test_base(QWidget* parent) : QWidget(parent),
                                         qfctp(new Qfctp(dongleSerialPort)),
                                         qaiot(new Qaiot(dongleSerialPort)),
                                         qroot(new Qroot(dongleSerialPort)),
+                                        qroot2(new Qroot2(dongleSerialPort)),
                                         at(new QatManager(dongleSerialPort, this)),
                                         usbSerialPort(usbSerialChannel_->port()),
                                         scpiUsbManager_(this),
@@ -95,6 +97,7 @@ test_base::test_base(QWidget* parent) : QWidget(parent),
     protocolManager.bindQfctp(qfctp);
     protocolManager.bindQaiot(qaiot);
     protocolManager.bindQroot(qroot);
+    protocolManager.bindQroot2(qroot2);
     // 非 test_case 工站仍用 SETTINGS 初值；自由工站 Product 步在 beginStep 按 case ini 的 Protocol= 覆盖
     applySystemProtocolFromSettings();
 
@@ -111,7 +114,8 @@ void test_base::applySystemProtocolFromSettings() {
         ((selectedType == QProtocolManager::ProtocolType::Qaiot ||
           selectedType == QProtocolManager::ProtocolType::QaiotV2) &&
          !qaiot) ||
-        (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot)) {
+        (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot) ||
+        (selectedType == QProtocolManager::ProtocolType::Qroot2 && !qroot2)) {
         selectedType = QProtocolManager::ProtocolType::Qpb;
     }
     if (protocolManager.currentProtocolType() == selectedType)
@@ -129,6 +133,9 @@ void test_base::applyTestCaseProductProtocol(TestCaseProductProtocol protocol) {
     case TestCaseProductProtocol::Qroot:
         selectedType = QProtocolManager::ProtocolType::Qroot;
         break;
+    case TestCaseProductProtocol::Qroot2:
+        selectedType = QProtocolManager::ProtocolType::Qroot2;
+        break;
     case TestCaseProductProtocol::Qaiot:
         selectedType = QProtocolManager::ProtocolType::Qaiot;
         break;
@@ -144,7 +151,8 @@ void test_base::applyTestCaseProductProtocol(TestCaseProductProtocol protocol) {
         ((selectedType == QProtocolManager::ProtocolType::Qaiot ||
           selectedType == QProtocolManager::ProtocolType::QaiotV2) &&
          !qaiot) ||
-        (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot)) {
+        (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot) ||
+        (selectedType == QProtocolManager::ProtocolType::Qroot2 && !qroot2)) {
         showlog(QStringLiteral("test_case 协议未就绪，已回退到 qpb"));
         selectedType = QProtocolManager::ProtocolType::Qpb;
     }
@@ -442,6 +450,11 @@ void test_base::openDongleSerialPort() {
                     .arg(QString::fromStdString(
                         QProtocolManager::protocolTypeToString(protocolManager.currentProtocolType()))));
         emit send_dongle_serialPort_state(1);
+        showlog(QStringLiteral("Dongle 串口已打开，等待固件初始化 %1ms").arg(kDongleOpenSettleMs));
+        QElapsedTimer timer;
+        timer.start();
+        while (timer.elapsed() < kDongleOpenSettleMs)
+            QCoreApplication::processEvents();
     } else {
         showlog(QStringLiteral("串口被占用！"));
     }
@@ -607,20 +620,31 @@ void test_base::flushPendingTestCsv() {
     testCsvAccumItems_.clear();
 }
 
+void test_base::prepareAbortUploadPack(MesPacketData* abortPack) {
+    if (!abortPack) {
+        return;
+    }
+    if (abortPack->sn.trimmed().isEmpty()) {
+        abortPack->sn = sessionSnForLog();
+    }
+    if (abortPack->mac.trimmed().isEmpty()) {
+        abortPack->mac = sessionMacForLog();
+    }
+    if (abortPack->itemvalue.trimmed().isEmpty()) {
+        const QString table = exportTableContent();
+        if (!table.isEmpty() && table != QStringLiteral("不存在表格")) {
+            abortPack->itemvalue = table;
+        }
+    }
+}
+
 void test_base::abortTestSessionAndUpload() {
     flushPendingTestCsv();
     if (!Qlog::hasActiveSession(m_index)) {
         return;
     }
     MesPacketData abortPack = pack;
-    const QString sn = sessionSnForLog();
-    const QString mac = sessionMacForLog();
-    if (!sn.isEmpty()) {
-        abortPack.sn = sn;
-    }
-    if (!mac.isEmpty()) {
-        abortPack.mac = mac;
-    }
+    prepareAbortUploadPack(&abortPack);
     abortPack.result = QStringLiteral("ABORT");
     Qlog::endSession(m_index, QStringLiteral("ABORT"));
     TestDataUploadService::tryUploadTestAndLogAsync(abortPack, m_index);
@@ -637,9 +661,6 @@ void test_base::showlog(QString msg) {
     Qlog::logUi(m_index, msg);
     if (msgEdit()) {
         msgEdit()->appendPlainText(msg);
-    }
-    if (msg.contains(QStringLiteral("触发停止测试"))) {
-        abortTestSessionAndUpload();
     }
 }
 
@@ -954,11 +975,11 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc, int timeo
     // timeoutMs：步骤「指令超时」总时长（不是重试间隔）
     const int totalMs = qMax(100, timeoutMs);
     commandRetryTimeoutMs_ = totalMs;
-    // 窗口内按间隔补发；蓝牙连接类指令只发一次，避免 DCON 重入打断 Dongle 连接流程
+    // 窗口内按 totalMs/3 间隔补发（下限 200ms，无上限）
     int intervalMs = totalMs;
     if (allowResend) {
         const int thirdMs = totalMs / 3;
-        intervalMs = qBound(200, thirdMs > 0 ? thirdMs : 200, 2000);
+        intervalMs = qMax(200, thirdMs > 0 ? thirdMs : 200);
         if (intervalMs >= totalMs)
             intervalMs = totalMs;
     }
@@ -1350,9 +1371,20 @@ void test_base::ensureSnInputLatinIme() {
     le->installEventFilter(this);
 }
 
+void test_base::ensureEndTestAbortHook() {
+    QPushButton* btn = getEndTestButton();
+    if (!btn || endTestAbortHookInstalled_) {
+        return;
+    }
+    // pressed 先于 clicked/on_stopTest_clicked，避免中止槽清空 SN/MAC 后无法组包上报
+    connect(btn, &QPushButton::pressed, this, [this]() { abortTestSessionAndUpload(); });
+    endTestAbortHookInstalled_ = true;
+}
+
 void test_base::showEvent(QShowEvent* event) {
     QWidget::showEvent(event);
     ensureSnInputLatinIme();
+    ensureEndTestAbortHook();
 }
 
 bool test_base::eventFilter(QObject* watched, QEvent* event) {

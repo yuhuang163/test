@@ -248,9 +248,10 @@ static void appendOneMesStep(QVector<QFreeWorkMesSegment>* out, const QString& n
     const QString n = name.trimmed();
     if (n.isEmpty())
         return;
-    out->append({sanitizeMesValuePipes(n), sanitizeMesValuePipes(value), sanitizeMesValuePipes(maxValue),
-                 sanitizeMesValuePipes(minValue), sanitizeMesValuePipes(standardValue),
-                 sanitizeMesValuePipes(unit), sanitizeMesValuePipes(result), sanitizeMesValuePipes(costTime)});
+    out->append({TestRecordStore::escapeMesSegmentField(n), TestRecordStore::escapeMesSegmentField(value),
+                 TestRecordStore::escapeMesSegmentField(maxValue), TestRecordStore::escapeMesSegmentField(minValue),
+                 TestRecordStore::escapeMesSegmentField(standardValue), TestRecordStore::escapeMesSegmentField(unit),
+                 TestRecordStore::escapeMesSegmentField(result), TestRecordStore::escapeMesSegmentField(costTime)});
 }
 
 /** 每段格式 NAME:VALUE:MAX:MIN:STANDARD:UNIT:RESULT:COSTTIME，多段用 | 连接。 */
@@ -500,28 +501,16 @@ void QFreeWork::appendTestCaseMes(const TestCaseDefinition& def, bool pass, cons
         }
         }
     }
-    // MES VALUE 保持无单位；UNIT 单独上报（界面 testData 可能已带单位后缀）
-    QString unit = def.gate.enabled ? GateRegistry::unitFor(def.gate.reportType, def.gate.field) : QString();
-    if (!unit.isEmpty() && value.endsWith(unit)) {
-        value = value.left(value.size() - unit.size()).trimmed();
-    } else if (unit.isEmpty() && value.contains(QLatin1Char(' '))) {
-        // ProtocolMeasureData 等运行时单位：从「12.3 mA」拆出末段作为 UNIT
-        const int sp = value.lastIndexOf(QLatin1Char(' '));
-        if (sp > 0) {
-            const QString maybeUnit = value.mid(sp + 1).trimmed();
-            bool looksNumeric = !maybeUnit.isEmpty();
-            for (const QChar c : maybeUnit) {
-                if (!(c.isDigit() || c == QLatin1Char('.') || c == QLatin1Char('-') || c == QLatin1Char('+'))) {
-                    looksNumeric = false;
-                    break;
-                }
-            }
-            if (!maybeUnit.isEmpty() && !looksNumeric && maybeUnit.size() <= 8) {
-                unit = maybeUnit;
-                value = value.left(sp).trimmed();
-            }
-        }
-    }
+    // MES VALUE/UNIT 拆分：Gate 显式单位 + 仅「纯数字 空格 物理单位」兜底（见 CommonUtils::splitMesValueAndUnit）
+    const QString gateUnit =
+        def.gate.enabled ? GateRegistry::unitFor(def.gate.reportType, def.gate.field) : QString();
+    const QPair<QString, QString> mesParts = CommonUtils::splitMesValueAndUnit(value, gateUnit);
+    value = mesParts.first;
+    const QString unit = mesParts.second;
+    // 云端曲线：VALUE 尽量纯数字；界面 testData 仍可含 index/read= 等（见 CommonUtils::cloudUploadNumericValue）
+    const QString cloudNum = CommonUtils::cloudUploadNumericValue(value);
+    if (!cloudNum.isEmpty())
+        value = cloudNum;
     const QString costTime = QString::number(stepRuntime_.caseTimer.isValid() ? stepRuntime_.caseTimer.elapsed() : 0);
     appendOneMesStep(&freeWorkMesSegments_, tag, value, maxVal, minVal, stdVal, unit, resultVal, costTime);
 }
@@ -547,10 +536,13 @@ void QFreeWork::appendMultiGateTestCaseMes(const QVector<TestCaseGate>& gates, c
         // 与单字段 appendTestCaseMes 一致：VALUE 取实测值，UNIT 单独带上下限
         const GateStepDisplay disp =
             GateRegistry::formatStepDisplay(ge, QVector<TestCaseGate>{ge}, reportType, payload, false);
-        QString value = disp.testData.trimmed();
-        QString unit = GateRegistry::unitFor(reportType, ge.field, payload);
-        if (!unit.isEmpty() && value.endsWith(unit))
-            value = value.left(value.size() - unit.size()).trimmed();
+        const QPair<QString, QString> mesParts =
+            CommonUtils::splitMesValueAndUnit(disp.testData.trimmed(), GateRegistry::unitFor(reportType, ge.field, payload));
+        QString value = mesParts.first;
+        const QString unit = mesParts.second;
+        const QString cloudNum = CommonUtils::cloudUploadNumericValue(value);
+        if (!cloudNum.isEmpty())
+            value = cloudNum;
 
         QString maxVal, minVal, stdVal;
         switch (ge.op) {
@@ -723,6 +715,49 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
 void QFreeWork::showEvent(QShowEvent* event) {
     test_base::showEvent(event);
     refreshBydMesResourceDisplay();
+}
+
+void QFreeWork::prepareAbortUploadPack(MesPacketData* abortPack) {
+    if (!abortPack) {
+        return;
+    }
+    // 分项 MES 缓存在步骤收尾时写入；中止时优先用它，避免 joinFreeWorkMesItemvalue 空列表生成 SUMMARY 占位
+    if (!freeWorkMesSegments_.isEmpty()) {
+        abortPack->itemvalue = joinFreeWorkMesItemvalue(freeWorkMesSegments_, failValue, failValue);
+    } else if (QTableWidget* table = testResultTable()) {
+        QStringList parts;
+        for (int row = 0; row < table->rowCount(); ++row) {
+            QTableWidgetItem* nameCell = table->item(row, 0);
+            if (!nameCell)
+                continue;
+            const QString name = nameCell->text().trimmed();
+            if (name.isEmpty())
+                continue;
+            const QString value = table->item(row, 1) ? table->item(row, 1)->text().trimmed() : QString();
+            QString resultVal;
+            if (QTableWidgetItem* resultCell = table->item(row, 2)) {
+                const QString r = resultCell->text().trimmed();
+                if (r == passValue)
+                    resultVal = QStringLiteral("PASS");
+                else if (r == failValue)
+                    resultVal = QStringLiteral("FAIL");
+            }
+            parts << name + QLatin1Char(':') + value + QStringLiteral(":::::") + resultVal + QLatin1Char(':');
+        }
+        if (!parts.isEmpty()) {
+            abortPack->itemvalue = QStringLiteral("|") + parts.join(QStringLiteral("|")) + QStringLiteral("|");
+        }
+    }
+    if (!mesProcessCode_.isEmpty()) {
+        abortPack->sn = mesProcessCode_;
+    } else if (ui && ui->getMac) {
+        abortPack->sn = ui->getMac->text().trimmed();
+    }
+    if (ui && ui->macInput) {
+        abortPack->mac = ui->macInput->text().trimmed();
+    }
+    abortPack->totalTimeMs = static_cast<double>(TestTime.elapsed());
+    test_base::prepareAbortUploadPack(abortPack);
 }
 
 void QFreeWork::refreshOrderedTestIndexes() {
@@ -899,6 +934,55 @@ void QFreeWork::triggerScanner(const QString& scannerIp, int scannerPort, int sc
         return result;
     });
     watcher->setFuture(future);
+}
+
+void QFreeWork::logCurrentUiMesConfig(const QString& phase) {
+    const QString phaseTag = phase.trimmed().isEmpty() ? QStringLiteral("当前") : phase.trimmed();
+    QString stationKey = activeFlowStationKey_.trimmed();
+    if (stationKey.isEmpty()) {
+        stationKey = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationKey());
+    }
+    const QString stationName = TestCaseStore::loadSelectedFlowStationName();
+    const bool useMes = ui && ui->isusemes && ui->isusemes->isChecked();
+    const bool formMes = ui && ui->isformmes && ui->isformmes->isChecked();
+    const bool justBind = ui && ui->just_banding && ui->just_banding->isChecked();
+    const bool mesDefaultOff = SETTINGS.value(QStringLiteral("SYSTEM/MesDefaultUnchecked"), false).toBool();
+    const bool lockUi = SETTINGS.value(QStringLiteral("SYSTEM/LockProductUI"), false).toBool();
+    const bool cloudUpload = SETTINGS.value(QStringLiteral("FactoryCloud/Feature/TestDataUpload"), true).toBool();
+    const bool xwdFactory = pack.factory.trimmed().compare(QStringLiteral("xwd"), Qt::CaseInsensitive) == 0;
+    const bool localMacFromSn = !formMes || xwdFactory;
+    QString mesNet = SETTINGS.value(QStringLiteral("Mes/NET")).toString().trimmed();
+    if (mesNet.isEmpty()) {
+        mesNet = SETTINGS.value(QStringLiteral("MES/NET")).toString().trimmed();
+    }
+
+    showlog(QStringLiteral("【界面配置/%1】工站=%2(%3) 厂别=%4 工位=%5")
+                .arg(phaseTag, stationName, stationKey, pack.factory)
+                .arg(getIndex()));
+    showlog(QStringLiteral("【界面配置/%1】是否过站=%2 从MES取MAC=%3 仅绑定MAC=%4 单步调试=%5")
+                .arg(phaseTag)
+                .arg(useMes ? QStringLiteral("勾选") : QStringLiteral("未勾选"))
+                .arg(formMes ? QStringLiteral("勾选") : QStringLiteral("未勾选"))
+                .arg(justBind ? QStringLiteral("勾选") : QStringLiteral("未勾选"))
+                .arg(singleStepDebugRun_ ? QStringLiteral("是") : QStringLiteral("否")));
+    showlog(QStringLiteral("【界面配置/%1】MES工站号=%2 员工号=%3 产品=%4 MES地址=%5")
+                .arg(phaseTag, pack.machineNo, pack.Employee_ID, pack.product,
+                     mesNet.isEmpty() ? QStringLiteral("(默认欣旺达)") : mesNet));
+    showlog(QStringLiteral("【界面配置/%1】MesDefaultUnchecked=%2 LockProductUI=%3 路特云端上报=%4 MAC来源=%5")
+                .arg(phaseTag)
+                .arg(mesDefaultOff ? QStringLiteral("是") : QStringLiteral("否"))
+                .arg(lockUi ? QStringLiteral("是") : QStringLiteral("否"))
+                .arg(cloudUpload ? QStringLiteral("开启") : QStringLiteral("关闭"))
+                .arg(localMacFromSn ? QStringLiteral("本地SN解析") : QStringLiteral("MES拉取")));
+    if (!mesProcessCode_.isEmpty()) {
+        showlog(QStringLiteral("【界面配置/%1】MES过程码=%2").arg(phaseTag, mesProcessCode_));
+    }
+    if (!useMes) {
+        showlog(QStringLiteral("【界面配置/%1】注意：未勾选过站，测试结束不会上报 MES（路特云端/本地库仍可能写入）")
+                    .arg(phaseTag));
+    } else if (singleStepDebugRun_) {
+        showlog(QStringLiteral("【界面配置/%1】注意：单步调试模式，测试结束不会上报 MES").arg(phaseTag));
+    }
 }
 
 void QFreeWork::beginUiStartTest() {
@@ -1432,6 +1516,7 @@ void QFreeWork::finalizeTestFlowIfComplete() {
         pack.remark.clear(); // 避免上轮 NG 备注残留
     }
 
+    logCurrentUiMesConfig(QStringLiteral("收尾"));
     finishTestRecord(pack, ui->isusemes->checkState());
 
     qDebug() << "测试结束";
@@ -2952,7 +3037,11 @@ void QFreeWork::applyPlcStepResult(const PlcV3RunResult& result, PlcV3Command co
         return;
     }
     if (command == PlcV3Command::TouchKey) {
-        stepRuntime_.pass = true;
+        // PLC 整步期间若 BLE 已判失败，勿覆盖 pass（否则云端/MES 分项误记 PASS）
+        const bool bleAlreadyFailed = stepRuntime_.done && !stepRuntime_.pass;
+        if (!bleAlreadyFailed) {
+            stepRuntime_.pass = true;
+        }
         if (finishStepRuntime) {
             stepRuntime_.testData = result.summary;
             stepRuntime_.done = true;
@@ -3093,6 +3182,7 @@ void QFreeWork::on_getMac_returnPressed() {
     // 开局扫码即 MES 过程码（过站 SFC），后续 MES 主板 SN / 三元组整机 SN 不得覆盖此字段
     mesProcessCode_ = ui->getMac->text().trimmed();
     pack.sn = mesProcessCode_;
+    logCurrentUiMesConfig(QStringLiteral("扫码"));
     showlog("正在查询mac地址");
     processGetMesTestValue(); // mes获取
     // getMac(ui->getMac->text());             // 文件获取

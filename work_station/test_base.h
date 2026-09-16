@@ -48,6 +48,7 @@ typedef enum {
 
 class Qfctp;
 class Qroot;
+class Qroot2;
 class Qaiot;
 
 class test_base : public QWidget {
@@ -89,6 +90,7 @@ class test_base : public QWidget {
     int usbBaudRate = 115200;
     int dongleBaudRate = 921600;
     int dongleOutTime = 10;
+    static constexpr int kDongleOpenSettleMs = 100;
 
     // --- 通用工具 ---
     void waitWork(int ms);
@@ -171,6 +173,7 @@ class test_base : public QWidget {
     Qfctp* qfctp = nullptr;
     Qaiot* qaiot = nullptr;
     Qroot* qroot = nullptr;
+    Qroot2* qroot2 = nullptr;
     QProtocolManager protocolManager;
     QModbusManager modbusManager;
     QatManager* at = nullptr;
@@ -333,6 +336,8 @@ class test_base : public QWidget {
 
     QString sessionSnForLog();
     QString sessionMacForLog();
+    /** 中止上报前补全 pack（自由工站填 MES 分项等；默认回退结果表导出） */
+    virtual void prepareAbortUploadPack(MesPacketData* pack);
     void abortTestSessionAndUpload();
     void flushPendingTestCsv();
     void closeEvent(QCloseEvent* event) override;
@@ -344,9 +349,12 @@ class test_base : public QWidget {
     QString receivedData = "";
     STATE_INDEPENDENT_E independent_state = STATE_INVALID;
     bool snInputLatinImeReady_ = false;
+    bool endTestAbortHookInstalled_ = false;
     void initData();
     /** SN 扫码框：禁用中文组合输入，获焦时切到英文输入法 */
     void ensureSnInputLatinIme();
+    /** 停止测试按钮按下时统一触发中止上报（先于 clicked 槽，避免界面被清空） */
+    void ensureEndTestAbortHook();
     void saveDongleUartLog(QString data);
     void getMacAddress(const QByteArray& byte);
     bool isCommandRetryResponseAccepted(const QObject* source) const;

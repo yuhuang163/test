@@ -40,6 +40,11 @@ class HostOtaService {
     static bool showVersionPicker(QWidget* parent,
                                   const std::function<void(const QString&)>& logFn = nullptr);
 
+    /** 是否存在可回退的上一次升级备份（updates/backup 或运行目录 *.bak）。 */
+    static bool hasPreviousVersionBackup();
+    /** 将备份还原并重启上位机；成功时会退出当前进程。 */
+    static bool rollbackToPreviousVersion(QWidget* parent, QString* message = nullptr);
+
     /** BaseUrl 已配置且开启 OTA 时走云端；返回 true 表示已处理（含「已是最新」），false 表示应走旧版目录扫描 */
     static bool tryInteractiveUpdate(QWidget* parent,
                                      const std::function<void(const QString&)>& logFn = nullptr);

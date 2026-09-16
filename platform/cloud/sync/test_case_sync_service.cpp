@@ -48,6 +48,9 @@ constexpr int kCommandPollIntervalMs = 800;
 
 QAtomicInt g_heartbeatBusy(0);
 QAtomicInt g_commandPollBusy(0);
+QAtomicInt g_agentStopped(0);
+QTimer* g_hbTimer = nullptr;
+QTimer* g_cmdTimer = nullptr;
 
 QMutex g_remoteDesktopMutex;
 QHash<QString, qint64> g_remoteDesktopPids; // sessionId -> pid
@@ -126,13 +129,14 @@ void stopRemoteDesktopSession(const QString& sessionId) {
 }
 
 /** 上位机关闭时清理全部远控 Agent（含未登记/PyInstaller 残留） */
-void stopAllRemoteDesktopSessions() {
+void stopAllRemoteDesktopSessions(bool quickStop = false) {
     QList<qint64> pids;
     {
         QMutexLocker locker(&g_remoteDesktopMutex);
         pids = g_remoteDesktopPids.values();
         g_remoteDesktopPids.clear();
     }
+    const int waitMs = quickStop ? 0 : 5000;
     for (const qint64 pid : pids) {
         if (pid <= 0) {
             continue;
@@ -140,13 +144,20 @@ void stopAllRemoteDesktopSessions() {
         QProcess killer;
         killer.start(QStringLiteral("taskkill"),
                      {QStringLiteral("/PID"), QString::number(pid), QStringLiteral("/T"), QStringLiteral("/F")});
-        killer.waitForFinished(5000);
+        if (waitMs > 0) {
+            killer.waitForFinished(waitMs);
+        }
     }
     // 兜底：按进程名杀干净，避免关闭上位机后 remote_agent.exe 仍挂后台
     QProcess byName;
     byName.start(QStringLiteral("taskkill"),
                  {QStringLiteral("/IM"), QStringLiteral("remote_agent.exe"), QStringLiteral("/T"),
                   QStringLiteral("/F")});
+    if (quickStop) {
+        // OTA 不锁 exe，异步清理即可，避免 taskkill 空等 8s
+        qDebug() << QStringLiteral("[RemoteDesktop] OTA 快速清理 Agent（不等待 taskkill）");
+        return;
+    }
     byName.waitForFinished(8000);
     qDebug() << QStringLiteral("[RemoteDesktop] 已清理全部 Agent 进程");
 }
@@ -1115,6 +1126,9 @@ TestCaseSyncService::SyncResult TestCaseSyncService::syncStepsLibraryFromCloud()
 }
 
 void TestCaseSyncService::heartbeatAndPollCommands() {
+    if (g_agentStopped.loadRelaxed()) {
+        return;
+    }
     if (!g_heartbeatBusy.testAndSetRelaxed(0, 1)) {
         Qlog::saveResidentLog(QStringLiteral("heartbeat"),
                               QStringLiteral("跳过：上一次心跳仍在执行（可能堆积占用）"));
@@ -1183,6 +1197,9 @@ void TestCaseSyncService::heartbeatAndPollCommands() {
 }
 
 void TestCaseSyncService::pollDeviceCommands() {
+    if (g_agentStopped.loadRelaxed()) {
+        return;
+    }
     if (!g_commandPollBusy.testAndSetRelaxed(0, 1)) {
         Qlog::saveResidentLog(QStringLiteral("cmdPoll"),
                               QStringLiteral("跳过：上一次命令轮询仍在执行（可能堆积占用）"));
@@ -1282,19 +1299,40 @@ void TestCaseSyncService::startDeviceAgent() {
                               .arg(kHeartbeatIntervalMs)
                               .arg(kCommandPollIntervalMs));
 
-    auto* hbTimer = new QTimer(qApp);
-    hbTimer->setInterval(kHeartbeatIntervalMs);
-    QObject::connect(hbTimer, &QTimer::timeout, qApp, []() {
+    g_hbTimer = new QTimer(qApp);
+    g_hbTimer->setInterval(kHeartbeatIntervalMs);
+    QObject::connect(g_hbTimer, &QTimer::timeout, qApp, []() {
         QtConcurrent::run([]() { heartbeatAndPollCommands(); });
     });
-    hbTimer->start();
+    g_hbTimer->start();
 
-    auto* cmdTimer = new QTimer(qApp);
-    cmdTimer->setInterval(kCommandPollIntervalMs);
-    QObject::connect(cmdTimer, &QTimer::timeout, qApp, []() {
+    g_cmdTimer = new QTimer(qApp);
+    g_cmdTimer->setInterval(kCommandPollIntervalMs);
+    QObject::connect(g_cmdTimer, &QTimer::timeout, qApp, []() {
         QtConcurrent::run([]() { pollDeviceCommands(); });
     });
-    cmdTimer->start();
+    g_cmdTimer->start();
 
     QtConcurrent::run([]() { heartbeatAndPollCommands(); });
+}
+
+void TestCaseSyncService::stopDeviceAgent(bool quickStop) {
+    if (!g_agentStopped.testAndSetRelaxed(0, 1)) {
+        return;
+    }
+    Qlog::saveResidentLog(QStringLiteral("agent"), QStringLiteral("停止常驻心跳/命令轮询"));
+    if (g_hbTimer) {
+        g_hbTimer->stop();
+        delete g_hbTimer;
+        g_hbTimer = nullptr;
+    }
+    if (g_cmdTimer) {
+        g_cmdTimer->stop();
+        delete g_cmdTimer;
+        g_cmdTimer = nullptr;
+    }
+    stopAllRemoteDesktopSessions(quickStop);
+    if (!quickStop) {
+        QThreadPool::globalInstance()->waitForDone(3000);
+    }
 }

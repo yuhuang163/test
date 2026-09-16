@@ -33,6 +33,7 @@
 #include <QDir>
 #include <QTextStream>
 #include "app_help_menu.h"
+#include "host_ota_service.h"
 #include "qlog.h"
 #include "platform/cloud/auth/auth_service.h"
 #include "platform/cloud/client/factory_cloud_client.h"
@@ -250,6 +251,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
                                           qfctp(new Qfctp(dongleSerialPort)),
                                           qaiot(new Qaiot(dongleSerialPort)),
                                           qroot(new Qroot(dongleSerialPort)),
+                                          qroot2(new Qroot2(dongleSerialPort)),
                                           at(new QatManager(dongleSerialPort, this)),
                                           qimuc(new imu_calibrate),
                                           basicInfoModel(new TestModel),
@@ -272,6 +274,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     protocolManager.bindQfctp(qfctp);
     protocolManager.bindQaiot(qaiot);
     protocolManager.bindQroot(qroot);
+    protocolManager.bindQroot2(qroot2);
     const std::string protocolName =
         SETTINGS.value("SYSTEM/ProtocolType", "qpb").toString().toStdString();
     auto selectedType = QProtocolManager::protocolTypeFromString(protocolName);
@@ -288,7 +291,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
         ((selectedType == QProtocolManager::ProtocolType::Qaiot ||
           selectedType == QProtocolManager::ProtocolType::QaiotV2) &&
          !qaiot) ||
-        (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot)) {
+        (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot) ||
+        (selectedType == QProtocolManager::ProtocolType::Qroot2 && !qroot2)) {
         QMessageBox::information(this, "协议提示", "所选协议未就绪，已自动回退到 qpb。");
         protocolManager.setCurrentProtocolType(QProtocolManager::ProtocolType::Qpb);
     } else {
@@ -597,6 +601,13 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
         refreshSettingsMenuVisibility();
     };
     helpCb.onCheckUpdate = [this]() { checkAndUpdateFile(); };
+    helpCb.onRollbackPrevious = [this]() {
+        QString msg;
+        HostOtaService::rollbackToPreviousVersion(this, &msg);
+        if (!msg.isEmpty()) {
+            showlog(msg);
+        }
+    };
     QMenu* helpMenu = AppHelpMenu::install(ui->menubar, this, helpCb);
     AppHelpMenu::ensureRightmost(ui->menubar, helpMenu);
 
@@ -923,6 +934,7 @@ void MainWindow::initQaiotFeatureButtons() {
                {QStringLiteral("吸力模式"), 3},
                {QStringLiteral("吸力补偿"), 4},
                {QStringLiteral("ATE模式"), 5},
+               {QStringLiteral("单机模式"), 6},
                {QStringLiteral("空闲模式"), 0}});
     fillCombo(ui->qaiot_sim_key,
               {{QStringLiteral("电源"), 0x01},
@@ -942,7 +954,8 @@ void MainWindow::initQaiotFeatureButtons() {
                {QStringLiteral("老化(2)"), 2},
                {QStringLiteral("吸力(3)"), 3},
                {QStringLiteral("补偿(4)"), 4},
-               {QStringLiteral("ATE(5)"), 5}},
+               {QStringLiteral("ATE(5)"), 5},
+               {QStringLiteral("单机(6)"), 6}},
               2);
     fillCombo(ui->qaiot_cycle_type,
               {{QStringLiteral("IMU(0)"), 0},
@@ -1300,7 +1313,8 @@ void MainWindow::applySystemProtocolFromSettings() {
         ((selectedType == QProtocolManager::ProtocolType::Qaiot ||
           selectedType == QProtocolManager::ProtocolType::QaiotV2) &&
          !qaiot) ||
-        (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot)) {
+        (selectedType == QProtocolManager::ProtocolType::Qroot && !qroot) ||
+        (selectedType == QProtocolManager::ProtocolType::Qroot2 && !qroot2)) {
         QMessageBox::information(this, QStringLiteral("协议提示"),
                                  QStringLiteral("所选协议未就绪，已自动回退到 qpb。"));
         selectedType = QProtocolManager::ProtocolType::Qpb;

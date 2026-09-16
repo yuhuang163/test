@@ -331,6 +331,7 @@ void qsetting::loadConfig() {
         ui->comboBox_systemProtocolType->addItem(QStringLiteral("qaiot v1（Momcozy FCT&ATE）"), QStringLiteral("qaiot"));
         ui->comboBox_systemProtocolType->addItem(QStringLiteral("qaiot v2（Momcozy FCT&ATE）"), QStringLiteral("qaiot2"));
         ui->comboBox_systemProtocolType->addItem(QStringLiteral("qroot（吸奶器 PCBA·蓝牙）"), QStringLiteral("qroot"));
+        ui->comboBox_systemProtocolType->addItem(QStringLiteral("qroot2（Air1·蓝牙）"), QStringLiteral("qroot2"));
     }
     {
         const QString proto = SETTINGS.value(QStringLiteral("SYSTEM/ProtocolType"), QStringLiteral("qpb"))
