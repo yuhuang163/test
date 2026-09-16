@@ -7,6 +7,7 @@
 #include <QSettings>
 #include <QTimer>
 #include <QVariantMap>
+#include <QVector>
 
 #include "qlog.h"
 #include "qproduct.h"
@@ -17,29 +18,51 @@
 #pragma execution_character_set(push, "utf-8")
 #endif
 
-namespace {
-
 struct DeferredSuctionLogFlush {
     DeferredSuctionLogFlush() { Qlog::setBufferedLogFlushDeferred(true); }
     ~DeferredSuctionLogFlush() { Qlog::setBufferedLogFlushDeferred(false); }
 };
 
-QVector<double> extractSuctionCyclePeaks(const QVector<double>& samples, double baseline, double dipStart) {
-    QVector<double> cyclePeaks;
+struct SuctionCycleExtract {
+    QVector<double> peaks;
+    QVector<double> baselineReturns; // 每个完整周期峰后、下一次入峰前的回基线最高点
+};
+
+static SuctionCycleExtract extractSuctionCycles(const QVector<double>& samples, double baseline, double dipStart) {
+    SuctionCycleExtract out;
     enum class PeakPhase { AtBaseline, InCycle };
     PeakPhase phase = PeakPhase::AtBaseline;
     bool cycleMinInit = false;
     double cycleMinKpa = 0.0;
+    bool trackingReturn = false;
+    bool returnInit = false;
+    double returnMaxKpa = 0.0;
+    auto finishReturnPlateau = [&]() {
+        if (trackingReturn && returnInit)
+            out.baselineReturns.append(returnMaxKpa);
+        trackingReturn = false;
+        returnInit = false;
+    };
     for (double kpa : samples) {
         if (kpa >= baseline) {
-            if (phase == PeakPhase::InCycle && cycleMinInit && cycleMinKpa <= dipStart)
-                cyclePeaks.append(cycleMinKpa);
+            if (phase == PeakPhase::InCycle && cycleMinInit && cycleMinKpa <= dipStart) {
+                out.peaks.append(cycleMinKpa);
+                trackingReturn = true;
+                returnMaxKpa = kpa;
+                returnInit = true;
+            } else if (phase == PeakPhase::AtBaseline && trackingReturn) {
+                if (!returnInit || kpa > returnMaxKpa) {
+                    returnMaxKpa = kpa;
+                    returnInit = true;
+                }
+            }
             phase = PeakPhase::AtBaseline;
             cycleMinInit = false;
             continue;
         }
         if (kpa < dipStart) {
             if (phase == PeakPhase::AtBaseline) {
+                finishReturnPlateau();
                 phase = PeakPhase::InCycle;
                 cycleMinKpa = kpa;
                 cycleMinInit = true;
@@ -54,10 +77,50 @@ QVector<double> extractSuctionCyclePeaks(const QVector<double>& samples, double 
             cycleMinInit = true;
         }
     }
-    return cyclePeaks;
+    finishReturnPlateau();
+    return out;
 }
 
-} // namespace
+static double pickSuctionValueForRange(const QVector<double>& values, bool hasRange, double lo, double hi) {
+    if (values.isEmpty())
+        return 0.0;
+    if (hasRange) {
+        for (double v : values) {
+            if (v < lo || v > hi)
+                return v;
+        }
+    }
+    return *std::min_element(values.cbegin(), values.cend());
+}
+
+static bool suctionBaselineReturnGateRange(const TestCaseDefinition& def, double* lo, double* hi) {
+    for (const TestCaseGate& g : TestCaseStore::activeGatesForEvaluation(def)) {
+        if (!g.enabled || g.op != TestCaseGateOp::Range)
+            continue;
+        if (g.field != QLatin1String("baselineReturnKpa"))
+            continue;
+        double a = g.low;
+        double b = g.high;
+        GateRegistry::resolveRangeBounds(g, a, b);
+        if (lo)
+            *lo = a;
+        if (hi)
+            *hi = b;
+        return true;
+    }
+    return false;
+}
+
+static QString formatSuctionReturnStats(const QVector<double>& returns) {
+    if (returns.isEmpty())
+        return QStringLiteral("回基线次数=0");
+    const double lo = *std::min_element(returns.cbegin(), returns.cend());
+    const double hi = *std::max_element(returns.cbegin(), returns.cend());
+    return QStringLiteral("回基线 %1 次，最低=%2 最高=%3")
+        .arg(returns.size())
+        .arg(lo, 0, 'f', 3)
+        .arg(hi, 0, 'f', 3);
+}
 
 void QFreeWork::startPlcKeyButtonTest(const QString& testName, const QString& promptText, const QString& expectedKey,
                                       const QString& enableKey, int keyIndex0To6, bool useCapacitanceRead) {
@@ -231,8 +294,10 @@ void QFreeWork::runDongleSuctionSampleStep() {
     // 与单通道相同：完整「吸→回基线」周期才记峰，拦截一直保持吸力不放气
     const double baseline = suctionPeakBaselineKpa_ + suctionOffsetKpa_;
     const double dipStart = suctionPeakDipStartKpa_ + suctionOffsetKpa_;
-    const QVector<double> ch1Peaks = extractSuctionCyclePeaks(dongleSuctionCh1Samples_, baseline, dipStart);
-    const QVector<double> ch2Peaks = extractSuctionCyclePeaks(dongleSuctionCh2Samples_, baseline, dipStart);
+    const SuctionCycleExtract ch1Cycles = extractSuctionCycles(dongleSuctionCh1Samples_, baseline, dipStart);
+    const SuctionCycleExtract ch2Cycles = extractSuctionCycles(dongleSuctionCh2Samples_, baseline, dipStart);
+    const QVector<double>& ch1Peaks = ch1Cycles.peaks;
+    const QVector<double>& ch2Peaks = ch2Cycles.peaks;
     const int minPeaks = qMax(1, suctionMinPeakCount_);
     if (ch1Peaks.size() < minPeaks || ch2Peaks.size() < minPeaks) {
         TestResult = failValue;
@@ -257,6 +322,12 @@ void QFreeWork::runDongleSuctionSampleStep() {
     peak.highKpa = ch1Weak;
     peak.peakDiffKpa = peak.sideDiffKpa;
     peak.peakCount = qMin(ch1Peaks.size(), ch2Peaks.size());
+    QVector<double> bothReturns = ch1Cycles.baselineReturns;
+    bothReturns += ch2Cycles.baselineReturns;
+    double retLo = -1.0;
+    double retHi = 0.0;
+    const bool hasRetGate = suctionBaselineReturnGateRange(activeTestCase_, &retLo, &retHi);
+    peak.baselineReturnKpa = pickSuctionValueForRange(bothReturns, hasRetGate, retLo, retHi);
 
     // 各完整周期峰均须落在对应通道允许范围（优先 Gate 分项，否则 Param 目标±容差）
     double ch1Lo = suctionPeakTargetKpa_ - suctionPeakToleranceKpa_;
@@ -279,7 +350,7 @@ void QFreeWork::runDongleSuctionSampleStep() {
     }
     // 判定只看各通道最强峰（周期峰里的最低点）；单个周期偶发偏差不判失败，
     // 「一直吸住不放气」已由上面的完整周期峰数卡住。
-    showlog(QStringLiteral("采样完成：点 %1，CH1完整峰 %2 个 最强=%3（最弱=%4），CH2完整峰 %5 个 最强=%6（最弱=%7），通道峰差=%8")
+    showlog(QStringLiteral("采样完成：点 %1，CH1完整峰 %2 个 最强=%3（最弱=%4），CH2完整峰 %5 个 最强=%6（最弱=%7），通道峰差=%8；CH1%9；CH2%10")
                 .arg(dongleSuctionCh1Samples_.size())
                 .arg(ch1Peaks.size())
                 .arg(peak.ch1PeakKpa, 0, 'f', 3)
@@ -287,7 +358,9 @@ void QFreeWork::runDongleSuctionSampleStep() {
                 .arg(ch2Peaks.size())
                 .arg(peak.ch2PeakKpa, 0, 'f', 3)
                 .arg(ch2Weak, 0, 'f', 3)
-                .arg(peak.sideDiffKpa, 0, 'f', 3));
+                .arg(peak.sideDiffKpa, 0, 'f', 3)
+                .arg(formatSuctionReturnStats(ch1Cycles.baselineReturns))
+                .arg(formatSuctionReturnStats(ch2Cycles.baselineReturns)));
 
     const QVariant payload = QVariant::fromValue(peak);
     if (activeTestCase_.gate.enabled
@@ -420,7 +493,8 @@ void QFreeWork::runDongleSuctionSampleSingleStep() {
     // 切勿用窗口绝对值最高-最低（会把基线≈0 算进去，diff≈40+）
     const double baseline = suctionPeakBaselineKpa_ + suctionOffsetKpa_;
     const double dipStart = suctionPeakDipStartKpa_ + suctionOffsetKpa_;
-    const QVector<double> cyclePeaks = extractSuctionCyclePeaks(samples, baseline, dipStart);
+    const SuctionCycleExtract cycles = extractSuctionCycles(samples, baseline, dipStart);
+    const QVector<double>& cyclePeaks = cycles.peaks;
     const int minPeaks = qMax(1, suctionMinPeakCount_);
 
     if (cyclePeaks.isEmpty()) {
@@ -450,6 +524,10 @@ void QFreeWork::runDongleSuctionSampleSingleStep() {
     peak.ch2PeakKpa = (chIndex == 1) ? peak.peakKpa : 0.0;
     peak.sideDiffKpa = peak.peakDiffKpa;
     peak.peakCount = cyclePeaks.size();
+    double retLo = -1.0;
+    double retHi = 0.0;
+    const bool hasRetGate = suctionBaselineReturnGateRange(activeTestCase_, &retLo, &retHi);
+    peak.baselineReturnKpa = pickSuctionValueForRange(cycles.baselineReturns, hasRetGate, retLo, retHi);
 
     // 峰值允许范围：优先 Gate 中 peakKpa 分项，否则用步骤 Param 目标±容差
     double peakLo = suctionPeakTargetKpa_ - suctionPeakToleranceKpa_;
@@ -462,13 +540,14 @@ void QFreeWork::runDongleSuctionSampleSingleStep() {
         }
     }
     // 判定只看最强峰（周期峰里的最低点）；单个周期偶发偏差不判失败
-    showlog(QStringLiteral("采样完成：点 %1，完整峰 %2 个（要求≥%3），最强=%4 最弱=%5 峰值差=%6")
+    showlog(QStringLiteral("采样完成：点 %1，完整峰 %2 个（要求≥%3），最强=%4 最弱=%5 峰值差=%6，%7")
                 .arg(samples.size())
                 .arg(cyclePeaks.size())
                 .arg(minPeaks)
                 .arg(peak.peakKpa, 0, 'f', 3)
                 .arg(peak.highKpa, 0, 'f', 3)
-                .arg(peak.peakDiffKpa, 0, 'f', 3));
+                .arg(peak.peakDiffKpa, 0, 'f', 3)
+                .arg(formatSuctionReturnStats(cycles.baselineReturns)));
 
     const QVariant payload = QVariant::fromValue(peak);
     if (activeTestCase_.gate.enabled
@@ -1073,7 +1152,7 @@ void QFreeWork::runHikvisionScannerReadStep() {
     if (def.send.param.canConvert<QVariantMap>()) {
         map = resolveTestCaseSendParamTree(def.send.param).toMap();
     }
-    
+
     QString ip = map.value(QStringLiteral("ip")).toString().trimmed();
     int port = map.value(QStringLiteral("port"), 2001).toInt();
     int timeout = map.value(QStringLiteral("timeout"), 1000).toInt();
@@ -1085,7 +1164,7 @@ void QFreeWork::runHikvisionScannerReadStep() {
     }
 
     showlog(QStringLiteral("正在触发扫码枪（IP: %1, Port: %2, Timeout: %3ms）").arg(ip).arg(port).arg(timeout));
-    
+
     QString barcode;
     QString error;
     HikvisionScannerTcp scanner;
@@ -1094,7 +1173,7 @@ void QFreeWork::runHikvisionScannerReadStep() {
         ok = scanner.sendStartAndRead(&barcode, timeout, &error);
         scanner.disconnectDevice();
     }
-    
+
     if (ok) {
         showlog(QStringLiteral("扫码成功: %1").arg(barcode));
         // 用户要求：扫码结果回填入原本扫码输入的sn填窗中

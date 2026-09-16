@@ -52,6 +52,17 @@ QFreeWorkBox::QFreeWorkBox(QWidget* parent) : box_base(parent), ui(new Ui::QFree
         Fixture_uart_ui->activateWindow();
     });
 
+    QAction* plcFixtureConnectAct = ui->menubar->addAction("连接PLC治具串口");
+    connect(plcFixtureConnectAct, &QAction::triggered, this, [this]() {
+        if (plcFixtureUartUi_ == nullptr)
+            plcFixtureUartUi_ = new Fixture_uart(nullptr, true);
+        else
+            plcFixtureUartUi_->reloadStationConfig();
+        plcFixtureUartUi_->raise();
+        plcFixtureUartUi_->show();
+        plcFixtureUartUi_->activateWindow();
+    });
+
     QAction* startTest_act = ui->menubar->addAction("开始测试");
     connect(startTest_act, &QAction::triggered, this, &QFreeWorkBox::startTest);
 
@@ -69,6 +80,7 @@ QFreeWorkBox::~QFreeWorkBox() {
         SETTINGS.sync();
     }
     delete Fixture_uart_ui;
+    delete plcFixtureUartUi_;
     qDeleteAll(sharedTempLoggerMutexes_);
     sharedTempLoggerMutexes_.clear();
     delete ui;
@@ -129,6 +141,22 @@ QString QFreeWorkBox::selectedFixtureComName(int stationIndex) const {
             return selectedPort;
     }
     return resolvedFixtureComName(stationIndex);
+}
+
+QString QFreeWorkBox::resolvedPlcFixtureComName() {
+    const QString stationKey = TestCaseStore::resolveFlowStationKey(TestCaseStore::loadSelectedFlowStationKey());
+    if (!stationKey.isEmpty()) {
+        const QString flowPath = TestCasePaths::profileFlowPath(stationKey);
+        if (QFile::exists(flowPath)) {
+            QSettings flowSettings(flowPath, QSettings::IniFormat);
+            flowSettings.setIniCodec("UTF-8");
+            const QString flowPort =
+                flowSettings.value(QStringLiteral("PreStart_Monitor/PlcFixtureComPort")).toString().trimmed();
+            if (!flowPort.isEmpty())
+                return flowPort;
+        }
+    }
+    return SETTINGS.value(QStringLiteral("M8_FIXTURE_PLC/ComPort")).toString().trimmed();
 }
 
 void QFreeWorkBox::releaseSharedAsd9026aIfIdle() {
@@ -237,6 +265,31 @@ Fixture_uart* QFreeWorkBox::ensureFixtureUartConnected(int stationIndex, QString
     if (autoConnectedOut)
         *autoConnectedOut = true;
     return Fixture_uart_ui;
+}
+
+Fixture_uart* QFreeWorkBox::ensurePlcFixtureUartConnected(QString* detailOut) {
+    if (plcFixtureUartUi_ == nullptr)
+        plcFixtureUartUi_ = new Fixture_uart(nullptr, true);
+    if (plcFixtureUartUi_->isFixtureSerialOpen()) {
+        if (detailOut)
+            *detailOut = plcFixtureUartUi_->ui->FixturecomNameCombo->currentText().trimmed();
+        return plcFixtureUartUi_;
+    }
+    const QString port = resolvedPlcFixtureComName();
+    if (port.isEmpty()) {
+        if (detailOut)
+            *detailOut = QStringLiteral("未配置“连接PLC治具串口”");
+        return nullptr;
+    }
+    plcFixtureUartUi_->reloadStationConfig();
+    if (!plcFixtureUartUi_->tryOpenSerialPort(port, true)) {
+        if (detailOut)
+            *detailOut = QStringLiteral("自动连接PLC治具串口失败：%1").arg(port);
+        return nullptr;
+    }
+    if (detailOut)
+        *detailOut = port;
+    return plcFixtureUartUi_;
 }
 
 bool QFreeWorkBox::isAnyStationTesting() const {
@@ -553,4 +606,3 @@ void QFreeWorkBox::triggerAllStationScanners() {
     }
     emit sendBoxLog(QStringLiteral("[PLC按键联动] 已向 %1 个一拖多工位并发发送扫码指令").arg(triggeredCount));
 }
-

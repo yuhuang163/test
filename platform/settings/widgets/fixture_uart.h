@@ -19,7 +19,7 @@ class QTimer;
 class Fixture_uart : public QWidget {
     Q_OBJECT
   public:
-    explicit Fixture_uart(QWidget* parent = nullptr);
+    explicit Fixture_uart(QWidget* parent = nullptr, bool plcSharedPort = false);
     ~Fixture_uart();
 
     Ui::Fixture_uart* ui;
@@ -32,6 +32,9 @@ class Fixture_uart : public QWidget {
     bool tryOpenSerialPort(const QString& portName, bool autoConnect = false);
     void closeSerialPort();
     void sendPcbaFrame(const QByteArray& frame);
+    bool sendRawFrame(const QByteArray& frame, QString* errorMessage = nullptr);
+    bool exchangeRawFrame(const QByteArray& request, QByteArray* response, int timeoutMs,
+                          QString* errorMessage = nullptr);
 
     /** 压感工站多机同步发令时的延时与上次命令记录（委托 QFixtureManager）。 */
     void delay_msec(unsigned int msec);
@@ -54,6 +57,7 @@ class Fixture_uart : public QWidget {
     QFixtureManager* fixtureManager_ = nullptr;
     QTimer* scanSerialPortsTimer_ = nullptr;
     bool isConfigLoading_ = false;
+    bool plcSharedPort_ = false;
 
     void loadPreStartMonitorConfig();
     void savePreStartMonitorConfig();

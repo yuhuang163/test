@@ -466,6 +466,7 @@ struct ProtocolDongleSuctionPeakData {
     double ch2PeakKpa = 0.0;  // 双通道：CH2 各完整周期峰值中最强
     double sideDiffKpa = 0.0; // 双通道：|CH1峰值-CH2峰值|
     int peakCount = 0;        // 完整周期峰个数（双通道取两口较少者）
+    double baselineReturnKpa = 0.0; // 峰后回基线最高点（不合格周期优先填该周期值，供范围卡控）
 };
 
 /** USB 电流表 / 治具振幅仪上行 */

@@ -1003,6 +1003,8 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
 
     out.hook.enabled = ini.value(QStringLiteral("Hook/Enabled"), false).toBool();
     out.hook.hookId = ini.value(QStringLiteral("Hook/HookId")).toString().trimmed();
+    if (hookUsesGenericSendParamMap(out))
+        mergeSendParamMapInto(out.send.param, readSendParamMap(ini));
 
     // 旧 AT 钩子迁移为 Dongle ini（BT_SCAN_MAC / BT_DIRECT_DCON）
     if (out.hook.enabled) {
@@ -1108,14 +1110,6 @@ void supplementMissingHookSendParamsFromLibrary(const QString& stepId, TestCaseD
     QVariantMap current;
     if (def.send.param.canConvert<QVariantMap>())
         current = def.send.param.toMap();
-    const auto hasSeconds = [&]() {
-        if (current.contains(QStringLiteral("seconds")) && current.value(QStringLiteral("seconds")).toInt() > 0)
-            return true;
-        return current.contains(QStringLiteral("waitSeconds"))
-               && current.value(QStringLiteral("waitSeconds")).toInt() > 0;
-    };
-    if (hasSeconds())
-        return;
 
     TestCaseDefinition library;
     const QString libraryPath = TestCasePaths::stepLibraryPath(stepId);
@@ -1124,8 +1118,14 @@ void supplementMissingHookSendParamsFromLibrary(const QString& stepId, TestCaseD
         && !loadCaseDefinitionFromIniFile(legacyPath, stepId, library)) {
         return;
     }
-    if (library.send.param.canConvert<QVariantMap>())
-        mergeSendParamMapInto(def.send.param, library.send.param.toMap());
+    if (!library.send.param.canConvert<QVariantMap>())
+        return;
+    const QVariantMap defaults = library.send.param.toMap();
+    for (auto it = defaults.cbegin(); it != defaults.cend(); ++it) {
+        if (!current.contains(it.key()))
+            current.insert(it.key(), it.value());
+    }
+    def.send.param = current;
 }
 
 void supplementMissingGateFromLibrary(const QString& stationKey, const QString& stepId, TestCaseDefinition& def) {
