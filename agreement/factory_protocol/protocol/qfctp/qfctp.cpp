@@ -20,6 +20,17 @@ static uint16_t qfctpReadLe16(const uint8_t* p) {
     return static_cast<uint16_t>(p[0]) | (static_cast<uint16_t>(p[1]) << 8);
 }
 
+static uint32_t qfctpReadLe32(const uint8_t* p) {
+    return static_cast<uint32_t>(p[0]) | (static_cast<uint32_t>(p[1]) << 8) | (static_cast<uint32_t>(p[2]) << 16)
+           | (static_cast<uint32_t>(p[3]) << 24);
+}
+
+static float qfctpReadLeFloat(const uint8_t* p) {
+    float value = 0.f;
+    std::memcpy(&value, p, sizeof(value));
+    return value;
+}
+
 /// 按键电容 4 字节 → uint32；与现场约定一致：大端=0123，小端=2301（高低16位字交换）
 static quint32 qfctpNormalizeKeyCapU32(quint32 raw) {
     // 部分固件 4 字节中高 16 位为电容、低 16 位为保留/噪声；全 32 位会远大于卡控上限。
@@ -130,8 +141,14 @@ static QByteArray qfctpParseValueString(const QString& text, bool* ok) {
 static constexpr uint16_t kTestsService = COMM_PROTOCOL_TESTS_SERVICE;
 static constexpr uint16_t kSystemConfigService = COMM_PROTOCOL_SYSTEM_CONFIG_SERVICE;
 static constexpr uint16_t kAlgoService = COMM_PROTOCOL_ALGO_SERVICE;
+static constexpr uint16_t kAlgoTlvSampleOnoffSet = 0x0000;
+static constexpr uint16_t kAlgoTlvSampleIntervalSet = 0x0001;
+static constexpr uint16_t kAlgoTlvSampleOnoffGet = 0x0002;
+static constexpr uint16_t kAlgoTlvSampleIntervalGet = 0x0003;
 static constexpr uint16_t kAlgoTlvSampleDataNum = 0x0004;
+static constexpr uint16_t kAlgoTlvSampleAirPressureData = 0x0005;
 static constexpr uint16_t kAlgoTlvSampleLightSensorData = 0x0006;
+static constexpr int kAlgoAirPressureSampleSize = 24;
 static uint32_t qfctpMakeResponseKey(uint16_t serviceId, uint16_t tlvType) {
     return (static_cast<uint32_t>(serviceId) << 16) | static_cast<uint32_t>(tlvType);
 }
@@ -348,6 +365,11 @@ void Qfctp::registerResponseHandlers() {
 
     registerResponseHandler(kSystemConfigService, kTlvFwVersionRead, QStringLiteral("handleRspFwVersionRead"), &Qfctp::handleRspFwVersionRead);
     registerResponseHandler(kSystemConfigService, kTlvMacRead, QStringLiteral("handleRspMacRead"), &Qfctp::handleRspMacRead);
+
+    registerResponseHandler(kAlgoService, kAlgoTlvSampleOnoffGet, QStringLiteral("handleRspAirPressureSampleOnoffGet"),
+                            &Qfctp::handleRspAirPressureSampleOnoffGet);
+    registerResponseHandler(kAlgoService, kAlgoTlvSampleIntervalGet, QStringLiteral("handleRspAirPressureSampleIntervalGet"),
+                            &Qfctp::handleRspAirPressureSampleIntervalGet);
 }
 
 void Qfctp::registerResponseHandler(uint16_t serviceId, uint16_t tlvType, const QString& responseName, ResponseHandler handler) {
@@ -672,6 +694,38 @@ void Qfctp::handleRspChargeCurrentRead(const uint8_t* mainValue, uint16_t mainLe
     }
 }
 
+void Qfctp::handleRspAirPressureSampleOnoffGet(const uint8_t* mainValue, uint16_t mainLen) {
+    if (mainValue == nullptr)
+        return;
+    const QString rawHex = QByteArray(reinterpret_cast<const char*>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
+    if (mainLen >= 1) {
+        const int on = static_cast<int>(static_cast<uint8_t>(mainValue[0]));
+        const QString onText = on != 0 ? QStringLiteral("开启") : QStringLiteral("关闭");
+        qInfo() << "FCTP 气压采样开关读取" << onText << "raw=" << rawHex;
+        emitReport(QStringLiteral("ProtocolPbDate"),
+                   QStringLiteral("FCTP 气压采样开关读取 value=%1 raw=%2").arg(onText).arg(rawHex));
+        emitReport(QStringLiteral("ProtocolAckData"), QVariant::fromValue(ProtocolAckData{on}));
+    } else {
+        qWarning() << "FCTP 气压采样开关读取长度异常 len=" << mainLen << "raw=" << rawHex;
+    }
+}
+
+void Qfctp::handleRspAirPressureSampleIntervalGet(const uint8_t* mainValue, uint16_t mainLen) {
+    const QString rawHex = (mainValue != nullptr && mainLen > 0)
+                               ? QByteArray(reinterpret_cast<const char*>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper()
+                               : QString();
+    if (mainValue != nullptr && mainLen >= 4) {
+        const uint32_t intervalMs = qfctpReadLe32(mainValue);
+        qInfo() << "FCTP 气压采样间隔读取 intervalMs=" << intervalMs << "raw=" << rawHex;
+        emitReport(QStringLiteral("ProtocolPbDate"),
+                   QStringLiteral("FCTP 气压采样间隔读取 intervalMs=%1 raw=%2").arg(intervalMs).arg(rawHex));
+        emitReport(QStringLiteral("ProtocolTypeData"), QVariant::fromValue(ProtocolTypeData{static_cast<int>(intervalMs)}));
+    } else {
+        qInfo() << "FCTP 气压采样间隔读取(空实现) len=" << mainLen << "raw=" << rawHex;
+        emitReport(QStringLiteral("ProtocolPbDate"), QStringLiteral("FCTP 气压采样间隔读取 raw=%1").arg(rawHex));
+    }
+}
+
 void Qfctp::handleRspChargeCurrentSet(const uint8_t* mainValue, uint16_t mainLen) {
     if (mainValue != nullptr) {
         const QString rawHex = QByteArray(reinterpret_cast<const char*>(mainValue), static_cast<int>(mainLen)).toHex(' ').toUpper();
@@ -692,7 +746,7 @@ void Qfctp::handleRspChargeCurrentSet(const uint8_t* mainValue, uint16_t mainLen
 
 void Qfctp::handleNotifyService(uint16_t serviceId, const uint8_t* tlvs, uint16_t serviceLen) {
     uint16_t off = 0;
-    int algoLightSampleCount = -1;
+    int algoSampleCount = -1;
     while (tlvs != nullptr && off + COMM_PROTOCOL_TLV_HEADER_SIZE <= serviceLen) {
         const uint8_t* p = tlvs + off;
         const uint16_t type = qfctpReadLe16(p);
@@ -737,11 +791,59 @@ void Qfctp::handleNotifyService(uint16_t serviceId, const uint8_t* tlvs, uint16_
             buttonData.keyButtonId = static_cast<int>(encoderId);
             emitReport(QStringLiteral("ProtocolButtonStateData"), QVariant::fromValue(buttonData));
         } else if (serviceId == kAlgoService && type == kAlgoTlvSampleDataNum && len == 2) {
-            algoLightSampleCount = static_cast<int>(qfctpReadLe16(value));
+            algoSampleCount = static_cast<int>(qfctpReadLe16(value));
             const QByteArray raw(reinterpret_cast<const char*>(value), static_cast<int>(len));
             const QString rawHex = raw.toHex(' ').toUpper();
-            qInfo() << "FCTP 光感采样个数" << "count=" << algoLightSampleCount << "raw=" << rawHex;
-            emitReport(QStringLiteral("ProtocolPbDate"), QString("FCTP 光感采样个数 count=%1 raw=%2").arg(algoLightSampleCount).arg(rawHex));
+            qInfo() << "FCTP ALGO采样个数" << "count=" << algoSampleCount << "raw=" << rawHex;
+            emitReport(QStringLiteral("ProtocolPbDate"), QString("FCTP ALGO采样个数 count=%1 raw=%2").arg(algoSampleCount).arg(rawHex));
+        } else if (serviceId == kAlgoService && type == kAlgoTlvSampleAirPressureData && len > 0) {
+            const QByteArray raw(reinterpret_cast<const char*>(value), static_cast<int>(len));
+            const QString rawHex = raw.toHex(' ').toUpper();
+            const int pointCount = algoSampleCount > 0 ? algoSampleCount : (len / kAlgoAirPressureSampleSize);
+            ProtocolAirPressureSampleData airData;
+            airData.samples.reserve(pointCount);
+            QStringList leftValues;
+            QStringList rightValues;
+            leftValues.reserve(pointCount);
+            rightValues.reserve(pointCount);
+            for (int i = 0; i < pointCount; ++i) {
+                const int base = i * kAlgoAirPressureSampleSize;
+                if (base + kAlgoAirPressureSampleSize > len)
+                    break;
+                ProtocolAirPressureSamplePoint point;
+                point.timestamp = qfctpReadLe32(value + base);
+                point.airPressureLeft = qfctpReadLeFloat(value + base + 4);
+                point.airPressureRight = qfctpReadLeFloat(value + base + 8);
+                airData.samples.append(point);
+                leftValues << QString::number(point.airPressureLeft, 'f', 3);
+                rightValues << QString::number(point.airPressureRight, 'f', 3);
+            }
+            if (!airData.samples.isEmpty()) {
+                const auto& first = airData.samples.first();
+                qInfo() << "FCTP 气压采样上报"
+                        << "count=" << airData.samples.size()
+                        << "left=" << leftValues.join(QStringLiteral(","))
+                        << "right=" << rightValues.join(QStringLiteral(","))
+                        << "raw=" << rawHex;
+                emitReport(QStringLiteral("ProtocolPbDate"),
+                           QStringLiteral("FCTP 气压采样上报 count=%1 left=%2 right=%3 raw=%4")
+                               .arg(airData.samples.size())
+                               .arg(leftValues.join(QStringLiteral(",")))
+                               .arg(rightValues.join(QStringLiteral(",")))
+                               .arg(rawHex));
+                emitReport(QStringLiteral("ProtocolAirPressureSampleData"), QVariant::fromValue(airData));
+                ProtocolPressSampleData legacy;
+                legacy.timeStamp = static_cast<int>(first.timestamp);
+                legacy.valueValues.reserve(airData.samples.size() * 2);
+                for (const ProtocolAirPressureSamplePoint& point : airData.samples) {
+                    legacy.valueValues.append(static_cast<int>(point.airPressureLeft * 1000.f));
+                    legacy.valueValues.append(static_cast<int>(point.airPressureRight * 1000.f));
+                }
+                emitReport(QStringLiteral("ProtocolPressSampleData"), QVariant::fromValue(legacy));
+            } else {
+                qWarning() << "FCTP 气压采样上报长度不足 len=" << len << "raw=" << rawHex;
+                emitReport(QStringLiteral("ProtocolPbDate"), QStringLiteral("FCTP 气压采样上报 raw=%1").arg(rawHex));
+            }
         } else if (serviceId == kAlgoService && type == kAlgoTlvSampleLightSensorData && len > 0) {
             // 协议 8.2.31：光感数据上报（NOTIFY，Algo Service TLV 0x0006）
             const QByteArray raw(reinterpret_cast<const char*>(value), static_cast<int>(len));
@@ -755,7 +857,7 @@ void Qfctp::handleNotifyService(uint16_t serviceId, const uint8_t* tlvs, uint16_
 
             if (sampleSize > 0) {
                 const int firstSample = qfctpReadLe16(value);
-                const QString countText = (algoLightSampleCount >= 0) ? QString::number(algoLightSampleCount) : QStringLiteral("N/A");
+                const QString countText = (algoSampleCount >= 0) ? QString::number(algoSampleCount) : QStringLiteral("N/A");
                 if ((len % 2) != 0) {
                     qWarning() << "FCTP 光感上报长度非偶数" << "len=" << len << "raw=" << rawHex;
                 }
@@ -902,6 +1004,10 @@ bool Qfctp::sendServiceTlv(uint16_t serviceId, uint16_t tlvType, QByteArray valu
 
 bool Qfctp::sendTestsServiceTlv(uint16_t tlvType, QByteArray value, const char* actionName) {
     return sendRequest(kTestsService, tlvType, value, actionName);
+}
+
+bool Qfctp::sendAlgoServiceTlv(uint16_t tlvType, QByteArray value, const char* actionName) {
+    return sendRequest(kAlgoService, tlvType, value, actionName);
 }
 
 bool Qfctp::sendRequest(uint16_t serviceId, uint16_t tlvType, const QByteArray& value, const char* actionName) {
@@ -1107,6 +1213,42 @@ bool Qfctp::setCaseLightCalibWrite(const QVariantMap& map) {
     value.append(static_cast<char>((calib >> 16) & 0xFF));
     value.append(static_cast<char>((calib >> 24) & 0xFF));
     return sendTestsServiceTlv(kTlvLightCalibWrite, value, "光感校准写入");
+}
+
+bool Qfctp::setCaseAirPressureSampleOnoff(const QVariant& data) {
+    uint8_t v = 0;
+    if (data.canConvert<int>()) {
+        v = data.toInt() != 0 ? 1u : 0u;
+    } else {
+        v = fctpEnterOnFlag(data.toMap());
+    }
+    return sendAlgoServiceTlv(kAlgoTlvSampleOnoffSet, QByteArray(1, static_cast<char>(v)), v ? "开启气压采样" : "关闭气压采样");
+}
+
+bool Qfctp::setCaseAirPressureSampleInterval(const QVariantMap& map) {
+    uint32_t intervalMs = map.value(QStringLiteral("intervalMs")).toUInt();
+    if (!map.contains(QStringLiteral("intervalMs")) && map.contains(QStringLiteral("value"))) {
+        intervalMs = map.value(QStringLiteral("value")).toUInt();
+    }
+    if (intervalMs == 0) {
+        qWarning() << "Qfctp 气压采样间隔非法:" << intervalMs;
+        return false;
+    }
+    QByteArray value;
+    value.append(static_cast<char>(intervalMs & 0xFFu));
+    value.append(static_cast<char>((intervalMs >> 8) & 0xFFu));
+    value.append(static_cast<char>((intervalMs >> 16) & 0xFFu));
+    value.append(static_cast<char>((intervalMs >> 24) & 0xFFu));
+    return sendAlgoServiceTlv(kAlgoTlvSampleIntervalSet, value,
+                            QStringLiteral("设置气压采样间隔 %1ms").arg(intervalMs).toUtf8().constData());
+}
+
+bool Qfctp::getCaseAirPressureSampleOnoff() {
+    return sendAlgoServiceTlv(kAlgoTlvSampleOnoffGet, {}, "读取气压采样开关");
+}
+
+bool Qfctp::getCaseAirPressureSampleInterval() {
+    return sendAlgoServiceTlv(kAlgoTlvSampleIntervalGet, {}, "读取气压采样间隔");
 }
 
 bool Qfctp::setCaseChargeCurrentSet(const QVariantMap& map) {
@@ -1367,6 +1509,14 @@ void Qfctp::set(DeviceCmd cmd, const QVariant& data) {
         if (setCaseCompensationSet(data.toMap()))
             return;
         break;
+    case DeviceCmd::PressCollect:
+        if (setCaseAirPressureSampleOnoff(data))
+            return;
+        break;
+    case DeviceCmd::PressSampleIntervalSet:
+        if (setCaseAirPressureSampleInterval(data.toMap()))
+            return;
+        break;
     case DeviceCmd::LcdColorTestMode:
         if (setCaseLcdColorTestMode(data.toMap()))
             return;
@@ -1460,6 +1610,14 @@ void Qfctp::get(DeviceCmd cmd, const QVariant& param) {
         break;
     case DeviceCmd::GetBattery:
         if (getCaseBatteryRead())
+            return;
+        break;
+    case DeviceCmd::PressSampleOnoffGet:
+        if (getCaseAirPressureSampleOnoff())
+            return;
+        break;
+    case DeviceCmd::PressSampleIntervalGet:
+        if (getCaseAirPressureSampleInterval())
             return;
         break;
     default:

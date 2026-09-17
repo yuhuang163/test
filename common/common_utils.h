@@ -106,6 +106,8 @@ class CommonUtils {
     static QString protocolForProduct(const QString& productName);
     /** 工站显示名是否属于指定产品：自由/默认工站通用；其余须以完整产品名开头（W1 Lite 不含仅以 W1 开头的工站）。 */
     static bool stationBelongsToProduct(const QString& stationDisplayName, const QString& productName);
+    /** 工站显示名 → BLE 扫描过滤名（如 V3Pro 工站 → V3 Pro）；无映射返回空串。 */
+    static QString dongleBroadcastFilterForStation(const QString& stationDisplayName);
     static bool resolveDongleDeviceMapping(const QString& dongleName, QString* productOut, QString* protocolOut);
 
     /** SN 校验：pattern 为空表示不卡控 */

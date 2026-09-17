@@ -1791,6 +1791,30 @@ void QFreeWork::refreshPhotosensitiveData(ProtocolPhotosensitiveData data) {
     evaluateActiveTestCaseGate(QStringLiteral("ProtocolPhotosensitiveData"), QVariant::fromValue(data));
 }
 
+void QFreeWork::refreshAirPressureSampleData(ProtocolAirPressureSampleData data) {
+    if (!airPressureCollecting_)
+        return;
+    const bool useRight =
+        !airPressureSampleBothChannels_
+        && airPressureSampleChannel_.compare(QStringLiteral("right"), Qt::CaseInsensitive) == 0;
+    for (const ProtocolAirPressureSamplePoint& point : data.samples) {
+        if (airPressureSampleBothChannels_) {
+            if (airPressureSamples_.size() < airPressureTargetCount_)
+                airPressureSamples_.append(static_cast<double>(point.airPressureLeft));
+            if (airPressureRightSamples_.size() < airPressureTargetCount_)
+                airPressureRightSamples_.append(static_cast<double>(point.airPressureRight));
+            if (airPressureSamples_.size() >= airPressureTargetCount_
+                && airPressureRightSamples_.size() >= airPressureTargetCount_)
+                break;
+            continue;
+        }
+        if (airPressureSamples_.size() >= airPressureTargetCount_)
+            break;
+        airPressureSamples_.append(useRight ? static_cast<double>(point.airPressureRight)
+                                            : static_cast<double>(point.airPressureLeft));
+    }
+}
+
 void QFreeWork::refreshLightCalibData(ProtocolLightCalibData data) {
     lightCalibReadValid_ = true;
     lightCalibReadValue_ = static_cast<int>(static_cast<int32_t>(data.calibValue));

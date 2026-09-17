@@ -394,6 +394,8 @@ class QFreeWork : public test_base {
     void runLightSensorCalibWriteStep();
     /** 光感校准：仅回读校准值（可对本点及已采点做范围+差值卡控）。 */
     void runLightSensorCalibReadStep();
+    /** FCTP ALGO 气压采样：逐点卡控，不取平均。 */
+    void runAirPressureSampleStep();
     /** 清空本轮光感五点回读缓存（开测 / 单步调试 / index=0 写入时调用）。 */
     void resetLightSensorFivePointState();
     /**
@@ -494,6 +496,12 @@ class QFreeWork : public test_base {
     bool suctionChartTimerStarted_ = false;
     bool lightSensorCollecting_ = false;
     QVector<int> lightSensorSamples_;
+    bool airPressureCollecting_ = false;
+    int airPressureTargetCount_ = 10;
+    bool airPressureSampleBothChannels_ = false;
+    QString airPressureSampleChannel_ = QStringLiteral("left");
+    QVector<double> airPressureSamples_;
+    QVector<double> airPressureRightSamples_;
     bool lightCalibReadValid_ = false;
     int lightCalibReadValue_ = 0;
     /** 本轮五点光感回读值（index0~4）；bit i 表示 lightCalibFivePointValues_[i] 已采到。 */
@@ -557,6 +565,7 @@ class QFreeWork : public test_base {
     void refreshRootHeatTemp(quint8 temp) override;
     void refreshResultCode(ProtocolResultData data) override;
     void refreshPhotosensitiveData(ProtocolPhotosensitiveData data) override;
+    void refreshAirPressureSampleData(ProtocolAirPressureSampleData data) override;
     void refreshLightCalibData(ProtocolLightCalibData data) override;
     void refreshFlangeStatus(ProtocolTypeData data) override;
     void refreshPumpStallCurrent(ProtocolPumpStallCurrentData data) override;

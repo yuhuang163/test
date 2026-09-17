@@ -639,6 +639,20 @@ void test_base::refreshPbData(QString data) {
     msgEdit()->appendPlainText(data);
 }
 
+void test_base::refreshAirPressureSampleDataAndLegacy(const ProtocolAirPressureSampleData& airData) {
+    refreshAirPressureSampleData(airData);
+    if (airData.samples.isEmpty())
+        return;
+    ProtocolPressSampleData legacy;
+    legacy.timeStamp = static_cast<int>(airData.samples.first().timestamp);
+    legacy.valueValues.reserve(airData.samples.size() * 2);
+    for (const ProtocolAirPressureSamplePoint& point : airData.samples) {
+        legacy.valueValues.append(static_cast<int>(point.airPressureLeft * 1000.f));
+        legacy.valueValues.append(static_cast<int>(point.airPressureRight * 1000.f));
+    }
+    refreshPressSensorData(legacy);
+}
+
 QString test_base::sessionSnForLog() {
     if (QLineEdit* le = getMacLineEdit()) {
         return le->text().trimmed();
@@ -840,6 +854,8 @@ void test_base::onProtocolReport(const ProtocolReport& report) {
         refreshPressCalibData(payload.value<ProtocolPressCalibResultData>());
     } else if (reportType == "ProtocolPressSampleData" && payload.canConvert<ProtocolPressSampleData>()) {
         refreshPressSensorData(payload.value<ProtocolPressSampleData>());
+    } else if (reportType == "ProtocolAirPressureSampleData" && payload.canConvert<ProtocolAirPressureSampleData>()) {
+        refreshAirPressureSampleDataAndLegacy(payload.value<ProtocolAirPressureSampleData>());
     } else if (reportType == "ProtocolBrushControlData" && payload.canConvert<ProtocolBrushControlData>()) {
         refreshBrushControlState(payload.value<ProtocolBrushControlData>());
     } else if (reportType == "ProtocolLedControlData" && payload.canConvert<ProtocolLedControlData>()) {

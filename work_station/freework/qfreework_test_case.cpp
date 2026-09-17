@@ -994,6 +994,10 @@ void QFreeWork::setActiveTestCase(const TestCaseDefinition& def) {
     currentSampleAnyMatchActive_ = false;
     currentSampleCount_ = 0;
     currentSampleLastValueText_.clear();
+    airPressureCollecting_ = false;
+    airPressureSampleBothChannels_ = false;
+    airPressureSamples_.clear();
+    airPressureRightSamples_.clear();
 }
 
 void QFreeWork::clearActiveTestCase() {
@@ -1005,6 +1009,10 @@ void QFreeWork::clearActiveTestCase() {
     currentSampleAnyMatchActive_ = false;
     currentSampleCount_ = 0;
     currentSampleLastValueText_.clear();
+    airPressureCollecting_ = false;
+    airPressureSampleBothChannels_ = false;
+    airPressureSamples_.clear();
+    airPressureRightSamples_.clear();
 }
 
 void QFreeWork::applyRuntimeSnGateExpected(QVector<TestCaseGate>& gates) {

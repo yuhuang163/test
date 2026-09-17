@@ -5,6 +5,7 @@
 
 #include <QDialog>
 
+class QLabel;
 class QShowEvent;
 class QTableWidget;
 
@@ -56,6 +57,7 @@ class TestCaseEditDialog : public QDialog {
     Ui::TestCaseEditDialog* ui = nullptr;
     /** 一项回包多项卡控（外设状态 / PCBA治具数据包） */
     QTableWidget* tableWidget_multiGates_ = nullptr;
+    QLabel* label_gateTableHint_ = nullptr;
     /** 打开对话框时的配置名（用于改名后删除旧 ini） */
     QString originalCaseName_;
     /** 当前工站 Profile 键；非空时保存工站参数覆盖 */
