@@ -60,7 +60,10 @@ class QFreeWork : public test_base {
      */
     bool runSingleTestCaseStep(const QString& stationKey, const QString& caseName, QString* errorOut = nullptr);
     /** 设置页切换工站后：重载有序步骤与串口显隐（含 applyStationSerialUiConfig） */
-    void refreshStationFlowUi() { refreshOrderedTestIndexes(); }
+    void refreshStationFlowUi() {
+        refreshOrderedTestIndexes();
+        applyStationSerialUiConfig();
+    }
     void updatePreStartMonitorState();
     bool isPrimaryMonitorStation() const;
     void triggerAllStationScanners();

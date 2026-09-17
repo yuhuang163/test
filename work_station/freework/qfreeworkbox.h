@@ -12,6 +12,7 @@
 #include <QHash>
 #include <QMutex>
 
+class QAction;
 class SerialChannel;
 class QTimer;
 
@@ -33,6 +34,8 @@ class QFreeWorkBox : public box_base {
     Fixture_uart* fixtureUartWidget() const {
         return Fixture_uart_ui;
     }
+    /** 懒创建顶部治具串口窗口（不自动 open）。 */
+    void ensureFixtureUartWidgetCreated();
     /** 治具 test_case 防呆：按配置自动创建窗口并连接串口；autoConnectedOut 表示本次是否新连上。 */
     Fixture_uart* ensureFixtureUartConnected(int stationIndex, QString* detailOut = nullptr,
                                              bool* autoConnectedOut = nullptr);
@@ -56,16 +59,20 @@ class QFreeWorkBox : public box_base {
     void triggerAllStationScanners();
     bool isAnyStationTesting() const;
     void releaseSharedPlcIfIdle();
+    /** 按当前选中工站 flow.ini [SerialUi] 刷新顶部「连接治具串口」菜单文案。 */
+    void applyFixtureMenuLabel();
 
   public slots:
     void checkAllover(int fixtureNumber) override;
 
   protected:
     void closeEvent(QCloseEvent* event) override;
+    void abortBlockingWaits() override;
 
   private:
     static QString resolvedFixtureComName(int stationIndex);
     Fixture_uart* Fixture_uart_ui = nullptr;
+    QAction* fixtureConnectAct_ = nullptr;
     Asd9026aDevice* asd9026aDevice_ = nullptr;
     QHash<int, SerialChannel*> sharedTempLoggerChannels_;
     QHash<int, QMutex*> sharedTempLoggerMutexes_;

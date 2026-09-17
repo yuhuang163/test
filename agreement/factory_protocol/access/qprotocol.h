@@ -23,7 +23,12 @@ class qProtocol : public QObject {
     // 统一通用消息发送入口（由具体协议实现；不支持时返回 false）。
     virtual bool sendCustomMessage(const QVariantMap& map) = 0;
 
+    /** 产品串口直连：不经 Dongle 物理层，不发/不收 8×0xCC(0xAA) 包头 */
+    void setSkipDonglePhyWrap(bool skip);
+    bool skipDonglePhyWrap() const;
+
   protected:
+    bool skipDonglePhyWrap_ = false;
     void emitReport(const QString& reportType, const QVariant& payload = QVariant()) {
         emit reportReceived(ProtocolReport(reportType, payload));
     }

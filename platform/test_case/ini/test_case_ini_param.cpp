@@ -177,7 +177,7 @@ void writeGenericHookSendParamMap(QSettings& ini, const TestCaseDefinition& def)
         writeSendParamMap(ini, map);
         return;
     }
-    if (def.send.channel == TestCaseSendChannel::Product) {
+    if (def.send.channel == TestCaseSendChannel::Product || def.send.channel == TestCaseSendChannel::ProductSerial) {
         DeviceCmd cmd;
         if (!cmdEnumFromName(DeviceCmdCatalog::catalog(), def.send.deviceCmd, cmd))
             writeSendParamMap(ini, map);

@@ -51,7 +51,8 @@ class Qroot : public qProtocol {
         DeviceSnRead = 0xA0,
         DeviceSnWrite = 0xA1,
         MacRead = 0xA2,
-        MacWrite = 0xA3,
+        MacWrite = 0xA3,       // 写 MAC（经 Dongle 蓝牙透传）
+        MacWritePcba = 0x95,   // 写 MAC（产品串口直连 PCBA，M8/M9/M5 协议 3.1.19）
         AgingEnter = 0xAF,
         PumpControl = 0xC0,
         BatteryInfo = 0xE0,

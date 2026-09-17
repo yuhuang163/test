@@ -1,6 +1,7 @@
 #include "qfixturemanager.h"
 
 #include <QDateTime>
+#include <QElapsedTimer>
 #include <QEventLoop>
 #include <QDebug>
 #include <QThread>
@@ -9,6 +10,7 @@
 #include "camera_fixture_device.h"
 #include "imu_fixture_device.h"
 #include "hz_pcba_fixture_device.h"
+#include "jieli_bt_box_codec.h"
 #include "press_fixture_device.h"
 #include "qlog.h"
 
@@ -51,6 +53,7 @@ QFixtureManager::QFixtureManager(QObject* parent)
 }
 
 QFixtureManager::~QFixtureManager() {
+    abortPendingWaits();
     running_.store(false);
     future_.waitForFinished();
     close();
@@ -72,6 +75,7 @@ bool QFixtureManager::open(const QString& portName, int baudRate) {
     fixtureSerialPort_->setFlowControl(QSerialPort::NoFlowControl);
 
     if (fixtureSerialPort_->open(QIODevice::ReadWrite)) {
+        abortWait_.store(false);
         fixtureSerialPort_->setRequestToSend(true);
         fixtureSerialPort_->setDataTerminalReady(true);
         fixtureSerialPort_->setDataTerminalReady(true);
@@ -84,6 +88,7 @@ bool QFixtureManager::open(const QString& portName, int baudRate) {
 }
 
 void QFixtureManager::close() {
+    abortPendingWaits();
     if (fixtureSerialPort_->isOpen()) {
         fixtureSerialPort_->close();
         emit disconnected();
@@ -101,6 +106,67 @@ QString QFixtureManager::portName() const {
 
 QString QFixtureManager::errorString() const {
     return fixtureSerialPort_ ? fixtureSerialPort_->errorString() : QString();
+}
+
+int QFixtureManager::baudRate() const {
+    return fixtureSerialPort_ ? fixtureSerialPort_->baudRate() : 0;
+}
+
+bool QFixtureManager::applyBaudRate(int baudRate) {
+    if (!fixtureSerialPort_ || !fixtureSerialPort_->isOpen() || baudRate <= 0)
+        return false;
+    if (fixtureSerialPort_->baudRate() == baudRate)
+        return true;
+    return fixtureSerialPort_->setBaudRate(baudRate);
+}
+
+void QFixtureManager::abortPendingWaits() {
+    abortWait_.store(true);
+    emit waitAbortRequested();
+}
+
+void QFixtureManager::resetWaitAbort() {
+    abortWait_.store(false);
+}
+
+bool QFixtureManager::waitForRawFrame(QByteArray* outFrame, int timeoutMs) {
+    if (!outFrame)
+        return false;
+    outFrame->clear();
+    if (!isOpen())
+        return false;
+
+    const int waitMs = qMax(1, timeoutMs);
+    QElapsedTimer timer;
+    timer.start();
+    while (timer.elapsed() < waitMs && isOpen() && !abortWait_.load()) {
+        const int remainMs = waitMs - static_cast<int>(timer.elapsed());
+        if (remainMs <= 0)
+            break;
+        const int chunkMs = qMin(200, remainMs);
+
+        QEventLoop loop;
+        QTimer timeout;
+        timeout.setSingleShot(true);
+        QByteArray captured;
+        const QMetaObject::Connection frameConn =
+            connect(this, &QFixtureManager::rawFrameReceived, &loop, [&](const QByteArray& frame) {
+                captured = frame;
+                loop.quit();
+            });
+        const QMetaObject::Connection abortConn =
+            connect(this, &QFixtureManager::waitAbortRequested, &loop, &QEventLoop::quit);
+        connect(&timeout, &QTimer::timeout, &loop, &QEventLoop::quit);
+        timeout.start(chunkMs);
+        loop.exec();
+        disconnect(frameConn);
+        disconnect(abortConn);
+        if (!captured.isEmpty()) {
+            *outFrame = captured;
+            return true;
+        }
+    }
+    return false;
 }
 
 void QFixtureManager::sendPcbaFrame(const QByteArray& frame) {
@@ -129,7 +195,12 @@ void QFixtureManager::readFixtureSerialPortData() {
     fixtureSerialPortBuf_.clear();
 
     qDebug().noquote() << "FIXTURE RX:" << QString::fromLatin1(dataTemp.toHex(' ').toUpper());
-    hzPcbaDevice_->onRx(dataTemp);
+    emit rawFrameReceived(dataTemp);
+    // 杰理盒子 TLV 帧勿喂 PCBA 环缓冲，否则会刷「串口数据流错误寻找下一帧」
+    QByteArray jieliProbe;
+    const bool jieliChunk = JieliBtBoxCodec::tryExtractFrame(dataTemp, &jieliProbe, nullptr) && !jieliProbe.isEmpty();
+    if (!jieliChunk)
+        hzPcbaDevice_->onRx(dataTemp);
     dispatchTextProtocols(dataTemp);
     if (log_)
         log_->save_fixture_uart_log(0, dataTemp);

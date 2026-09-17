@@ -66,13 +66,13 @@ bool Qroot2::sendPacket(quint8 ct, quint8 cid, const QByteArray& body) {
         return false;
     }
     const QByteArray frame = buildPacket(ct, cid, body);
-    const QByteArray phyPacket = wrapPhyPacket(frame);
-    if (phyPacket.isEmpty()) {
+    const QByteArray wirePacket = skipDonglePhyWrap() ? frame : wrapPhyPacket(frame);
+    if (wirePacket.isEmpty()) {
         qWarning() << "[Qroot2] dongle 封包失败";
         return false;
     }
-    const qint64 n = serialPort_->write(phyPacket);
-    if (!serialPort_->waitForBytesWritten(3000) || n != phyPacket.size()) {
+    const qint64 n = serialPort_->write(wirePacket);
+    if (!serialPort_->waitForBytesWritten(3000) || n != wirePacket.size()) {
         qWarning() << "[Qroot2] write failed";
         return false;
     }
@@ -197,6 +197,11 @@ QByteArray Qroot2::truncateUtf8Bytes(const QVariant& data, int maxLen, const QSt
 void Qroot2::parseCmd(const QByteArray& byte) {
     if (byte.isEmpty())
         return;
+    if (skipDonglePhyWrap()) {
+        rxBuffer_.append(byte);
+        drainRxBuffer();
+        return;
+    }
     QList<QByteArray> innerPackets;
     feedPhyRx(byte, innerPackets);
     for (const QByteArray& inner : innerPackets)

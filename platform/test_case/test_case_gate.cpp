@@ -1255,6 +1255,7 @@ GateSendBinding GateRegistry::bindingForSend(TestCaseSendChannel channel, const 
 
     switch (channel) {
     case TestCaseSendChannel::Product:
+    case TestCaseSendChannel::ProductSerial:
         if (const DeviceCmdManifest::Row* row = DeviceCmdManifest::findByEnumName(cmd))
             applyRow(row->gateReportType, row->gateDefaultField);
         break;
@@ -1292,7 +1293,6 @@ GateSendBinding GateRegistry::bindingForSend(TestCaseSendChannel channel, const 
                 ModbusCmdManifest::findByDeviceAndName(ModbusPeriphCmdCatalog::deviceFromIni(protocolOrDevice), cmd))
             applyRow(row->gateReportType, row->gateDefaultField);
         break;
-    case TestCaseSendChannel::ProductSerial:
     case TestCaseSendChannel::Cloud:
         break;
     }

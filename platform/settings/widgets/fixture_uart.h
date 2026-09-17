@@ -32,6 +32,10 @@ class Fixture_uart : public QWidget {
     bool tryOpenSerialPort(const QString& portName, bool autoConnect = false);
     void closeSerialPort();
     void sendPcbaFrame(const QByteArray& frame);
+    QFixtureManager* fixtureManager() const {
+        return fixtureManager_;
+    }
+    void setFixBaudRate(int baudRate);
 
     /** 压感工站多机同步发令时的延时与上次命令记录（委托 QFixtureManager）。 */
     void delay_msec(unsigned int msec);

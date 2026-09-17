@@ -30,6 +30,7 @@
 #include <QString>
 #include <QTimer>
 #include <algorithm>
+#include <functional>
 #include "dongle_at_types.h"
 #include "qcoreapplication.h"
 #include "qprocess.h"
@@ -92,12 +93,27 @@ test_base::test_base(QWidget* parent) : QWidget(parent),
                                         jigSerialPort(jigSerialChannel_->port()),
                                         jig(new XwdFixtureDevice(jigSerialPort)),
                                         productSerialPort(productSerialChannel_->port()),
-                                        product(new Qproduct(productSerialPort, this)) {
+                                        product(new Qproduct(productSerialPort, this)),
+                                        pbDirect(new Qpb(productSerialPort)),
+                                        qfctpDirect(new Qfctp(productSerialPort)),
+                                        qaiotDirect(new Qaiot(productSerialPort)),
+                                        qrootDirect(new Qroot(productSerialPort)),
+                                        qroot2Direct(new Qroot2(productSerialPort)) {
     protocolManager.bindQpb(pb);
     protocolManager.bindQfctp(qfctp);
     protocolManager.bindQaiot(qaiot);
     protocolManager.bindQroot(qroot);
     protocolManager.bindQroot2(qroot2);
+    pbDirect->setSkipDonglePhyWrap(true);
+    qfctpDirect->setSkipDonglePhyWrap(true);
+    qaiotDirect->setSkipDonglePhyWrap(true);
+    qrootDirect->setSkipDonglePhyWrap(true);
+    qroot2Direct->setSkipDonglePhyWrap(true);
+    productSerialProtocolManager.bindQpb(pbDirect);
+    productSerialProtocolManager.bindQfctp(qfctpDirect);
+    productSerialProtocolManager.bindQaiot(qaiotDirect);
+    productSerialProtocolManager.bindQroot(qrootDirect);
+    productSerialProtocolManager.bindQroot2(qroot2Direct);
     // 非 test_case 工站仍用 SETTINGS 初值；自由工站 Product 步在 beginStep 按 case ini 的 Protocol= 覆盖
     applySystemProtocolFromSettings();
 
@@ -124,29 +140,63 @@ void test_base::applySystemProtocolFromSettings() {
     showlog(QStringLiteral("切换设备协议：%1")
                 .arg(QString::fromStdString(QProtocolManager::protocolTypeToString(selectedType))));
 }
-void test_base::applyTestCaseProductProtocol(TestCaseProductProtocol protocol) {
-    QProtocolManager::ProtocolType selectedType = QProtocolManager::ProtocolType::Qfctp;
+namespace {
+
+QProtocolManager::ProtocolType productProtocolTypeFromCase(TestCaseProductProtocol protocol) {
     switch (protocol) {
     case TestCaseProductProtocol::Qpb:
-        selectedType = QProtocolManager::ProtocolType::Qpb;
-        break;
+        return QProtocolManager::ProtocolType::Qpb;
     case TestCaseProductProtocol::Qroot:
-        selectedType = QProtocolManager::ProtocolType::Qroot;
-        break;
+        return QProtocolManager::ProtocolType::Qroot;
     case TestCaseProductProtocol::Qroot2:
-        selectedType = QProtocolManager::ProtocolType::Qroot2;
-        break;
+        return QProtocolManager::ProtocolType::Qroot2;
     case TestCaseProductProtocol::Qaiot:
-        selectedType = QProtocolManager::ProtocolType::Qaiot;
-        break;
+        return QProtocolManager::ProtocolType::Qaiot;
     case TestCaseProductProtocol::QaiotV2:
-        selectedType = QProtocolManager::ProtocolType::QaiotV2;
-        break;
+        return QProtocolManager::ProtocolType::QaiotV2;
     case TestCaseProductProtocol::Qfctp:
     default:
-        selectedType = QProtocolManager::ProtocolType::Qfctp;
-        break;
+        return QProtocolManager::ProtocolType::Qfctp;
     }
+}
+
+void applyProductProtocolToManager(QProtocolManager& manager, TestCaseProductProtocol protocol,
+                                   const std::function<void(const QString&)>& logFn) {
+    QProtocolManager::ProtocolType selectedType = productProtocolTypeFromCase(protocol);
+    if (manager.currentProtocolType() == selectedType)
+        return;
+    manager.setCurrentProtocolType(selectedType);
+    if (logFn) {
+        logFn(QStringLiteral("切换设备协议：%1")
+                  .arg(QString::fromStdString(QProtocolManager::protocolTypeToString(selectedType))));
+    }
+}
+
+} // namespace
+
+void test_base::applyTestCaseProductProtocol(TestCaseProductProtocol protocol) {
+    applyTestCaseProductProtocol(protocol, TestCaseSendChannel::Product);
+    applyProductProtocolToManager(productSerialProtocolManager, protocol, {});
+}
+
+void test_base::applyTestCaseProductProtocol(TestCaseProductProtocol protocol, TestCaseSendChannel channel) {
+    QProtocolManager::ProtocolType selectedType = productProtocolTypeFromCase(protocol);
+    const bool productSerialChannel = channel == TestCaseSendChannel::ProductSerial;
+    if (productSerialChannel) {
+        if ((selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctpDirect) ||
+            ((selectedType == QProtocolManager::ProtocolType::Qaiot ||
+              selectedType == QProtocolManager::ProtocolType::QaiotV2) &&
+             !qaiotDirect) ||
+            (selectedType == QProtocolManager::ProtocolType::Qroot && !qrootDirect) ||
+            (selectedType == QProtocolManager::ProtocolType::Qroot2 && !qroot2Direct)) {
+            showlog(QStringLiteral("产品串口 test_case 协议未就绪，已回退到 qpb"));
+            selectedType = QProtocolManager::ProtocolType::Qpb;
+        }
+        applyProductProtocolToManager(productSerialProtocolManager, protocol,
+                                      [this](const QString& msg) { showlog(msg); });
+        return;
+    }
+
     if ((selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctp) ||
         ((selectedType == QProtocolManager::ProtocolType::Qaiot ||
           selectedType == QProtocolManager::ProtocolType::QaiotV2) &&
@@ -156,11 +206,19 @@ void test_base::applyTestCaseProductProtocol(TestCaseProductProtocol protocol) {
         showlog(QStringLiteral("test_case 协议未就绪，已回退到 qpb"));
         selectedType = QProtocolManager::ProtocolType::Qpb;
     }
-    if (protocolManager.currentProtocolType() == selectedType)
-        return;
-    protocolManager.setCurrentProtocolType(selectedType);
-    showlog(QStringLiteral("切换设备协议：%1")
-                .arg(QString::fromStdString(QProtocolManager::protocolTypeToString(selectedType))));
+    if (protocolManager.currentProtocolType() != selectedType) {
+        protocolManager.setCurrentProtocolType(selectedType);
+        showlog(QStringLiteral("切换设备协议：%1")
+                    .arg(QString::fromStdString(QProtocolManager::protocolTypeToString(selectedType))));
+    }
+}
+
+QProtocolManager& test_base::productProtocolManager(TestCaseSendChannel channel) {
+    return channel == TestCaseSendChannel::ProductSerial ? productSerialProtocolManager : protocolManager;
+}
+
+const QProtocolManager& test_base::productProtocolManager(TestCaseSendChannel channel) const {
+    return channel == TestCaseSendChannel::ProductSerial ? productSerialProtocolManager : protocolManager;
 }
 
 void test_base::setupModbusManager() {
@@ -210,6 +268,7 @@ void test_base::initData() {
 }
 void test_base::signalAndslot() {
     connect(&protocolManager, &QProtocolManager::reportReceived, this, &test_base::onProtocolReport);
+    connect(&productSerialProtocolManager, &QProtocolManager::reportReceived, this, &test_base::onProtocolReport);
     connect(at, &QatManager::reportReceived, this, &test_base::onDongleAtReport);
     connect(&scpiUsbManager_, &QScpiManager::measureReadingReceived, this, &test_base::onScpiUsbMeasureReadingReceived);
     connect(&scpiUsbManager_, &QScpiManager::programmablePowerVoltageRead, this, &test_base::onScpiUsbProgrammablePowerVoltageRead);
@@ -222,6 +281,7 @@ void test_base::signalAndslot() {
     connect(jig, &XwdFixtureDevice::reportReceived, this, &test_base::onJigInstrumentReport);
 
     connect(&protocolManager, SIGNAL(sendGetProductResponse(int)), this, SLOT(solveGetBrushResponse(int)));
+    connect(&productSerialProtocolManager, SIGNAL(sendGetProductResponse(int)), this, SLOT(solveGetBrushResponse(int)));
     connect(at, SIGNAL(sendGetProductResponse(int)), this, SLOT(solveGetBrushResponse(int)));
 
     connect(scanSerialPortsTimer, SIGNAL(timeout()), this, SLOT(scanSerialPorts()));
@@ -533,6 +593,7 @@ void test_base::closeJigSerialPort() {
 }
 
 void test_base::onProductSerialFrame(const QByteArray& dataTemp) {
+    productSerialProtocolManager.parseCmd(dataTemp);
     if (product) {
         product->setLogSlot(m_index);
         product->parseCmd(dataTemp);

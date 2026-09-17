@@ -735,6 +735,16 @@
           </widget>
          </item>
          <item>
+          <widget class="QPushButton" name="pushButton_testFlowSerialUi">
+           <property name="toolTip">
+            <string>配置当前工站工位界面三路串口是否显示、标签名称，以及顶部「连接治具串口」菜单文案</string>
+           </property>
+           <property name="text">
+            <string>串口显示配置</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <spacer name="horizontalSpacer">
            <property name="orientation">
             <enum>Qt::Horizontal</enum>

@@ -306,15 +306,36 @@ void TestCaseStore::ensureProfileDirectory(const QString& stationKey, const QStr
         syncTestCaseIni(meta, metaPath);
         return;
     }
+    QSettings meta(metaPath, QSettings::IniFormat);
+    applyTestCaseIniCodec(meta);
+    bool dirty = false;
+    if (meta.value(QStringLiteral("Profile/StationKey")).toString().trimmed() != key) {
+        meta.setValue(QStringLiteral("Profile/StationKey"), key);
+        dirty = true;
+    }
     if (!displayName.isEmpty()) {
-        QSettings meta(metaPath, QSettings::IniFormat);
-        applyTestCaseIniCodec(meta);
-        const QString cur = meta.value(QStringLiteral("Profile/DisplayName")).toString();
-        if (cur != displayName.trimmed()) {
-            meta.setValue(QStringLiteral("Profile/DisplayName"), displayName.trimmed());
-            syncTestCaseIni(meta, metaPath);
+        const QString trimmedName = displayName.trimmed();
+        if (meta.value(QStringLiteral("Profile/DisplayName")).toString().trimmed() != trimmedName) {
+            meta.setValue(QStringLiteral("Profile/DisplayName"), trimmedName);
+            dirty = true;
         }
     }
+    if (dirty)
+        syncTestCaseIni(meta, metaPath);
+}
+
+static void resetCopiedProfileMeta(const QString& stationKey, const QString& displayName, const QString& createdFrom) {
+    const QString metaPath = TestCasePaths::profileMetaPath(stationKey);
+    QSettings meta(metaPath, QSettings::IniFormat);
+    applyTestCaseIniCodec(meta);
+    meta.setValue(QStringLiteral("Profile/StationKey"), stationKey);
+    meta.setValue(QStringLiteral("Profile/DisplayName"), displayName);
+    if (!createdFrom.isEmpty())
+        meta.setValue(QStringLiteral("Profile/CreatedFrom"), createdFrom.trimmed());
+    meta.setValue(QStringLiteral("Profile/CreatedAt"), QDateTime::currentDateTime().toString(Qt::ISODate));
+    meta.setValue(QStringLiteral("Profile/ProfileVersion"), 1);
+    meta.setValue(QStringLiteral("Profile/StepsLibraryVersion"), 1);
+    syncTestCaseIni(meta, metaPath);
 }
 
 QVector<TestFlowStationEntry> TestCaseStore::defaultFlowStationPresets() {
@@ -454,7 +475,7 @@ QString TestCaseStore::resolveFlowStationKey(const QString& displayNameOrKey) {
     return t;
 }
 
-bool TestCaseStore::addFlowStation(const QString& displayName, QString* errorOut) {
+bool TestCaseStore::addFlowStation(const QString& displayName, QString* errorOut, const QString& preferredKey) {
     const QString name = displayName.trimmed();
     if (name.isEmpty()) {
         if (errorOut)
@@ -466,7 +487,6 @@ bool TestCaseStore::addFlowStation(const QString& displayName, QString* errorOut
 
     const QString presetKey = lookupPresetKeyFromDisplayName(name);
     QVector<TestFlowStationEntry> catalog = loadFlowStationCatalog();
-    QString key = presetKey;
     for (const TestFlowStationEntry& entry : catalog) {
         if (entry.displayName == name) {
             if (errorOut)
@@ -474,16 +494,45 @@ bool TestCaseStore::addFlowStation(const QString& displayName, QString* errorOut
             return false;
         }
     }
-    if (!key.isEmpty()) {
+
+    auto keyTakenByOtherName = [&](const QString& candidate) {
+        const QString k = candidate.trimmed();
+        if (k.isEmpty())
+            return false;
         for (const TestFlowStationEntry& entry : catalog) {
-        if (entry.key.compare(key, Qt::CaseInsensitive) == 0) {
-                key = QString();
-                break;
+            if (entry.key.compare(k, Qt::CaseInsensitive) == 0 && entry.displayName != name)
+                return true;
         }
+        return false;
+    };
+
+    QString key;
+    const QString preferred = preferredKey.trimmed();
+    if (!preferred.isEmpty()) {
+        if (!isAsciiFlowStationKey(preferred)) {
+            if (errorOut)
+                *errorOut = QStringLiteral("工站编号格式无效：%1").arg(preferred);
+            return false;
+        }
+        if (keyTakenByOtherName(preferred)) {
+            if (errorOut)
+                *errorOut = QStringLiteral("工站编号已被其它工站占用：%1").arg(preferred);
+            return false;
+        }
+        key = preferred;
+    } else {
+        key = presetKey;
+        if (!key.isEmpty()) {
+            for (const TestFlowStationEntry& entry : catalog) {
+                if (entry.key.compare(key, Qt::CaseInsensitive) == 0) {
+                    key = QString();
+                    break;
+                }
+            }
+        }
+        if (key.isEmpty())
+            key = allocateCustomFlowStationKey(catalog);
     }
-    }
-    if (key.isEmpty())
-        key = allocateCustomFlowStationKey(catalog);
     catalog.append({key, name});
     if (!saveFlowStationCatalog(catalog))
         return false;
@@ -493,7 +542,7 @@ bool TestCaseStore::addFlowStation(const QString& displayName, QString* errorOut
 
 bool TestCaseStore::copyFlowStation(const QString& sourceStationKey, const QString& newDisplayName,
                                     const QVector<TestFlowItemEntry>& items, bool stopFlowOnTestFail,
-                                    QString* outNewKey, QString* errorOut) {
+                                    QString* outNewKey, QString* errorOut, const QString& preferredNewKey) {
     const QString src = resolveFlowStationKey(sourceStationKey.trimmed());
     if (src.isEmpty()) {
         if (errorOut)
@@ -514,7 +563,7 @@ bool TestCaseStore::copyFlowStation(const QString& sourceStationKey, const QStri
         return false;
     }
 
-    if (!addFlowStation(newDisplayName, errorOut))
+    if (!addFlowStation(newDisplayName, errorOut, preferredNewKey))
         return false;
 
     const QString newKey = resolveFlowStationKey(newDisplayName.trimmed());
@@ -526,7 +575,7 @@ bool TestCaseStore::copyFlowStation(const QString& sourceStationKey, const QStri
     const QString srcProfile = TestCasePaths::profileDir(src);
     if (QDir(srcProfile).exists()) {
         copyDirectoryRecursively(srcProfile, TestCasePaths::profileDir(newKey));
-        ensureProfileDirectory(newKey, newDisplayName.trimmed(), src);
+        resetCopiedProfileMeta(newKey, newDisplayName.trimmed(), src);
     } else {
         ensureProfileDirectory(newKey, newDisplayName.trimmed(), QString());
     }
@@ -606,6 +655,87 @@ bool TestCaseStore::renameFlowStation(const QString& stationKey, const QString& 
             QDir(newDir).removeRecursively();
         QDir().rename(legacyKeyDir, newDir);
     }
+    return true;
+}
+
+bool TestCaseStore::alignFlowStationKey(const QString& displayName, const QString& cloudKey, QString* errorOut) {
+    const QString name = displayName.trimmed();
+    const QString newKey = cloudKey.trimmed();
+    if (name.isEmpty() || newKey.isEmpty()) {
+        if (errorOut)
+            *errorOut = QStringLiteral("工站名称或编号无效");
+        return false;
+    }
+    if (!isAsciiFlowStationKey(newKey)) {
+        if (errorOut)
+            *errorOut = QStringLiteral("云端工站编号格式无效：%1").arg(newKey);
+        return false;
+    }
+
+    QVector<TestFlowStationEntry> catalog = loadFlowStationCatalog();
+    QString oldKey;
+    for (const TestFlowStationEntry& entry : catalog) {
+        if (entry.displayName == name) {
+            oldKey = entry.key.trimmed();
+            break;
+        }
+    }
+    if (oldKey.compare(newKey, Qt::CaseInsensitive) == 0) {
+        ensureProfileDirectory(newKey, name, QString());
+        const QString metaPath = TestCasePaths::profileMetaPath(newKey);
+        if (QFile::exists(metaPath)) {
+            QSettings meta(metaPath, QSettings::IniFormat);
+            applyTestCaseIniCodec(meta);
+            if (meta.value(QStringLiteral("Profile/StationKey")).toString().trimmed() != newKey) {
+                meta.setValue(QStringLiteral("Profile/StationKey"), newKey);
+                meta.setValue(QStringLiteral("Profile/DisplayName"), name);
+                syncTestCaseIni(meta, metaPath);
+            }
+        }
+        return true;
+    }
+
+    for (const TestFlowStationEntry& entry : catalog) {
+        if (entry.key.compare(newKey, Qt::CaseInsensitive) == 0 && entry.displayName != name) {
+            if (errorOut) {
+                *errorOut = QStringLiteral("云端编号 %1 已被本机工站「%2」占用，无法对齐")
+                                .arg(newKey, entry.displayName);
+            }
+            return false;
+        }
+    }
+
+    QVector<TestFlowStationEntry> next;
+    next.reserve(catalog.size());
+    for (const TestFlowStationEntry& entry : catalog) {
+        const bool sameName = entry.displayName == name;
+        const bool sameOldKey =
+            !oldKey.isEmpty() && entry.key.compare(oldKey, Qt::CaseInsensitive) == 0;
+        if (sameName || sameOldKey)
+            continue;
+        if (entry.key.compare(newKey, Qt::CaseInsensitive) == 0)
+            continue;
+        next.append(entry);
+    }
+    next.append({newKey, name});
+    if (!saveFlowStationCatalog(next))
+        return false;
+
+    if (!oldKey.isEmpty())
+        migrateFlowStationIniData(oldKey, newKey, name);
+
+    ensureProfileDirectory(newKey, name, QString());
+    const QString metaPath = TestCasePaths::profileMetaPath(newKey);
+    QSettings meta(metaPath, QSettings::IniFormat);
+    applyTestCaseIniCodec(meta);
+    meta.setValue(QStringLiteral("Profile/StationKey"), newKey);
+    meta.setValue(QStringLiteral("Profile/DisplayName"), name);
+    syncTestCaseIni(meta, metaPath);
+
+    const QString selected = loadSelectedFlowStationKey().trimmed();
+    const QString selectedName = loadSelectedFlowStationName().trimmed();
+    if ((!oldKey.isEmpty() && selected.compare(oldKey, Qt::CaseInsensitive) == 0) || selectedName == name)
+        saveSelectedFlowStation(newKey, name);
     return true;
 }
 
@@ -1221,6 +1351,7 @@ void applyCaseIniOverlay(QSettings& overlay, TestCaseDefinition& def) {
                 }
                 def.send.param = normalizeScpiModbusParamFromMap(merged);
             } else if (def.send.channel == TestCaseSendChannel::Product
+                       || def.send.channel == TestCaseSendChannel::ProductSerial
                        || (def.send.channel == TestCaseSendChannel::Fixture
                            && (def.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera
                                || def.send.fixtureProtocol == TestCaseFixtureProtocol::VesLight))) {
@@ -1589,7 +1720,7 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
                          def.send.action == TestCaseSendAction::Get ? QStringLiteral("Get") : QStringLiteral("Set"));
         }
         TestCaseSendDispatch::writeSendParamToIni(ini, def.send);
-        if (def.send.channel == TestCaseSendChannel::Product)
+        if (def.send.channel == TestCaseSendChannel::Product || def.send.channel == TestCaseSendChannel::ProductSerial)
             writeGenericHookSendParamMap(ini, def);
         ini.setValue(QStringLiteral("Timing/DelayBeforeMs"), def.timing.delayBeforeMs);
         ini.setValue(QStringLiteral("Timing/DelayAfterMs"), def.timing.delayAfterMs);
@@ -1634,7 +1765,7 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
     else if (def.send.channel == TestCaseSendChannel::Scpi)
         channelStr = QStringLiteral("Scpi");
     ini.setValue(QStringLiteral("Send/Channel"), channelStr);
-    if (def.send.channel == TestCaseSendChannel::Product)
+    if (def.send.channel == TestCaseSendChannel::Product || def.send.channel == TestCaseSendChannel::ProductSerial)
         ini.setValue(QStringLiteral("Send/Protocol"), DeviceCmdCatalog::productProtocolToIni(def.send.productProtocol));
     else if (def.send.channel == TestCaseSendChannel::Fixture) {
         ini.setValue(QStringLiteral("Send/Protocol"), FixturePcbaCmdCatalog::fixtureProtocolToIni(def.send.fixtureProtocol));
@@ -1661,7 +1792,7 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
             ini.setValue(QStringLiteral("Send/Device"), def.send.device);
     }
     TestCaseSendDispatch::writeSendParamToIni(ini, def.send);
-    if (def.send.channel == TestCaseSendChannel::Product)
+    if (def.send.channel == TestCaseSendChannel::Product || def.send.channel == TestCaseSendChannel::ProductSerial)
         writeGenericHookSendParamMap(ini, def);
 
     ini.setValue(QStringLiteral("Timing/DelayBeforeMs"), def.timing.delayBeforeMs);
@@ -2040,21 +2171,36 @@ bool TestCaseStore::loadStationStopFlowOnTestFail(const QString& stationKey, boo
 namespace {
 
 void readSerialUiFieldsFromGroup(QSettings& ini, TestCaseSerialUiConfig& out) {
+    if (ini.contains(QStringLiteral("DongleVisible")))
+        out.dongleVisible = ini.value(QStringLiteral("DongleVisible"), true).toBool();
     if (ini.contains(QStringLiteral("JigVisible")))
         out.jigVisible = ini.value(QStringLiteral("JigVisible"), true).toBool();
     if (ini.contains(QStringLiteral("ProductVisible")))
         out.productVisible = ini.value(QStringLiteral("ProductVisible"), true).toBool();
     if (ini.contains(QStringLiteral("UsbVisible")))
         out.usbVisible = ini.value(QStringLiteral("UsbVisible"), true).toBool();
+    if (ini.contains(QStringLiteral("DongleBaudRate")))
+        out.dongleBaudRate = ini.value(QStringLiteral("DongleBaudRate"), 921600).toInt();
     const QString jigLabel = ini.value(QStringLiteral("JigLabel")).toString().trimmed();
     if (!jigLabel.isEmpty())
         out.jigLabel = jigLabel;
     const QString productLabel = ini.value(QStringLiteral("ProductLabel")).toString().trimmed();
     if (!productLabel.isEmpty())
         out.productLabel = productLabel;
+    if (ini.contains(QStringLiteral("JigBaudRate")))
+        out.jigBaudRate = ini.value(QStringLiteral("JigBaudRate"), 115200).toInt();
+    if (ini.contains(QStringLiteral("ProductBaudRate")))
+        out.productBaudRate = ini.value(QStringLiteral("ProductBaudRate"), 115200).toInt();
     const QString usbLabel = ini.value(QStringLiteral("UsbLabel")).toString().trimmed();
     if (!usbLabel.isEmpty())
         out.usbLabel = usbLabel;
+    if (ini.contains(QStringLiteral("UsbBaudRate")))
+        out.usbBaudRate = ini.value(QStringLiteral("UsbBaudRate"), 115200).toInt();
+    const QString fixtureMenuLabel = ini.value(QStringLiteral("FixtureMenuLabel")).toString().trimmed();
+    if (!fixtureMenuLabel.isEmpty())
+        out.fixtureMenuLabel = fixtureMenuLabel;
+    if (ini.contains(QStringLiteral("FixtureBaudRate")))
+        out.fixtureBaudRate = ini.value(QStringLiteral("FixtureBaudRate"), 9600).toInt();
 }
 
 } // namespace
@@ -2103,12 +2249,19 @@ bool TestCaseStore::saveStationSerialUiConfig(const QString& stationKey, const T
     QSettings profileIni(profileFlow, QSettings::IniFormat);
     applyTestCaseIniCodec(profileIni);
     profileIni.beginGroup(QStringLiteral("SerialUi"));
+    profileIni.setValue(QStringLiteral("DongleVisible"), config.dongleVisible);
+    profileIni.setValue(QStringLiteral("DongleBaudRate"), config.dongleBaudRate > 0 ? config.dongleBaudRate : 921600);
     profileIni.setValue(QStringLiteral("JigVisible"), config.jigVisible);
-    profileIni.setValue(QStringLiteral("ProductVisible"), config.productVisible);
-    profileIni.setValue(QStringLiteral("UsbVisible"), config.usbVisible);
     profileIni.setValue(QStringLiteral("JigLabel"), config.jigLabel);
+    profileIni.setValue(QStringLiteral("JigBaudRate"), config.jigBaudRate > 0 ? config.jigBaudRate : 115200);
+    profileIni.setValue(QStringLiteral("ProductVisible"), config.productVisible);
     profileIni.setValue(QStringLiteral("ProductLabel"), config.productLabel);
+    profileIni.setValue(QStringLiteral("ProductBaudRate"), config.productBaudRate > 0 ? config.productBaudRate : 115200);
+    profileIni.setValue(QStringLiteral("UsbVisible"), config.usbVisible);
     profileIni.setValue(QStringLiteral("UsbLabel"), config.usbLabel);
+    profileIni.setValue(QStringLiteral("UsbBaudRate"), config.usbBaudRate > 0 ? config.usbBaudRate : 115200);
+    profileIni.setValue(QStringLiteral("FixtureMenuLabel"), config.fixtureMenuLabel);
+    profileIni.setValue(QStringLiteral("FixtureBaudRate"), config.fixtureBaudRate > 0 ? config.fixtureBaudRate : 9600);
     profileIni.endGroup();
     syncTestCaseIni(profileIni, profileFlow);
     return true;

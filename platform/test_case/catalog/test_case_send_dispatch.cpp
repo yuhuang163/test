@@ -116,7 +116,7 @@ const CatalogBinding* catalogBinding(TestCaseSendChannel channel, TestCaseFixtur
     case TestCaseSendChannel::Cloud:
         return &kCloud;
     case TestCaseSendChannel::ProductSerial:
-        return &kProductSerial;
+        return &kDevice;
     case TestCaseSendChannel::Fixture:
         switch (fixtureProtocol) {
         case TestCaseFixtureProtocol::Asd9026a:
@@ -169,6 +169,15 @@ void loadModbusScpiParamFromIni(const QSettings& ini, TestCaseSend& send) {
 } // namespace
 
 void appendCatalogValidationErrors(const TestCaseSend& send, QStringList& errors) {
+    if (send.channel == TestCaseSendChannel::ProductSerial) {
+        int cmd = 0;
+        CmdManifestCatalog& instrumentCatalog = ProductSerialCmdCatalog::catalog();
+        if (instrumentCatalog.cmdFromName(send.deviceCmd, cmd)) {
+            if (!instrumentCatalog.isCmdForAction(cmd, send.action))
+                errors.append(QString::fromUtf8(u8"产品串口指令仅支持「设置」"));
+            return;
+        }
+    }
     const CatalogBinding* binding = catalogBinding(send.channel, send.fixtureProtocol);
     if (!binding) {
         if (send.channel == TestCaseSendChannel::Fixture)
@@ -264,6 +273,15 @@ void loadSendParamFromIni(const QSettings& ini, TestCaseSend& send, bool mergePr
         loadModbusScpiParamFromIni(ini, send);
         return;
     }
+    if (send.channel == TestCaseSendChannel::ProductSerial) {
+        int cmd = 0;
+        CmdManifestCatalog& instrumentCatalog = ProductSerialCmdCatalog::catalog();
+        if (instrumentCatalog.cmdFromName(send.deviceCmd, cmd)) {
+            send.action = instrumentCatalog.actionFor(cmd);
+            send.param = QVariant();
+            return;
+        }
+    }
     const CatalogBinding* binding = catalogBinding(send.channel, send.fixtureProtocol);
     if (!binding)
         return;
@@ -281,7 +299,8 @@ void loadSendParamFromIni(const QSettings& ini, TestCaseSend& send, bool mergePr
     } else {
         catalog.paramFromIniGroup(ini, cmd, send.param);
     }
-    if (mergeProductHookParamMap && send.channel == TestCaseSendChannel::Product)
+    if (mergeProductHookParamMap
+        && (send.channel == TestCaseSendChannel::Product || send.channel == TestCaseSendChannel::ProductSerial))
         mergeSendParamMapInto(send.param, readSendParamMap(ini));
 }
 
@@ -290,8 +309,11 @@ void writeSendParamToIni(QSettings& ini, const TestCaseSend& send) {
         writeScpiModbusParamToIni(ini, send.param);
         return;
     }
-    if (send.channel == TestCaseSendChannel::ProductSerial)
-        return;
+    if (send.channel == TestCaseSendChannel::ProductSerial) {
+        int cmd = 0;
+        if (ProductSerialCmdCatalog::catalog().cmdFromName(send.deviceCmd, cmd))
+            return;
+    }
     const CatalogBinding* binding = catalogBinding(send.channel, send.fixtureProtocol);
     if (!binding)
         return;

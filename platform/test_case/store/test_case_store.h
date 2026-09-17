@@ -84,14 +84,19 @@ class TestCaseStore {
     static QString flowStationDisplayName(const QString& stationKey);
     /** 显示名或已有键 → 流程 ini 使用的工站键（预设如 自由工站→FREE_WORK） */
     static QString resolveFlowStationKey(const QString& displayNameOrKey);
-    static bool addFlowStation(const QString& displayName, QString* errorOut = nullptr);
-    /** 复制工站流程（功能块列表与 StopFlowOnTestFail）到新工站。 */
+    /** preferredKey 非空时优先采用（须未被其它工站占用） */
+    static bool addFlowStation(const QString& displayName, QString* errorOut = nullptr,
+                               const QString& preferredKey = QString());
+    /** 复制工站流程（功能块列表与 StopFlowOnTestFail）到新工站。preferredNewKey 非空时采用云端/指定编号。 */
     static bool copyFlowStation(const QString& sourceStationKey, const QString& newDisplayName,
                                 const QVector<TestFlowItemEntry>& items, bool stopFlowOnTestFail,
-                                QString* outNewKey = nullptr, QString* errorOut = nullptr);
+                                QString* outNewKey = nullptr, QString* errorOut = nullptr,
+                                const QString& preferredNewKey = QString());
     static bool renameFlowStation(const QString& stationKey, const QString& newDisplayName,
                                   QString* errorOut = nullptr);
     static bool removeFlowStation(const QString& stationKey, QString* errorOut = nullptr);
+    /** 将指定显示名的工站编号对齐为云端裁定值（更新 catalog、profile.ini、当前选中工站） */
+    static bool alignFlowStationKey(const QString& displayName, const QString& cloudKey, QString* errorOut = nullptr);
 };
 
 #endif // PLATFORM_TEST_CASE_STORE_H

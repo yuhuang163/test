@@ -610,7 +610,7 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
         }
         return {};
     }
-    if (channel == TestCaseSendChannel::Product) {
+    if (channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial) {
         if (cmdName == QLatin1String("RootSuctionTest")) {
             return QVariantMap{{QStringLiteral("switch"), QStringLiteral("1")},
                                {QStringLiteral("mode"), QStringLiteral("1")},
@@ -999,13 +999,6 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
         items.reserve(names.size());
         for (const QString& name : names)
             items.append({TupleCmdCatalog::catalog().cmdUiLabel(name), name});
-    } else if (channel == TestCaseSendChannel::ProductSerial) {
-        const QStringList names = ProductSerialCmdCatalog::catalog().allCmdNames(TestCaseSendAction::Set);
-        items.reserve(names.size());
-        for (const QString& name : names) {
-            if (ProductSerialCmd cmd; cmdEnumFromName(ProductSerialCmdCatalog::catalog(), name, cmd) && ProductSerialCmdCatalog::catalog().isCmdForAction(static_cast<int>(cmd), action))
-                items.append({ProductSerialCmdCatalog::catalog().cmdUiLabel(name), name});
-        }
     } else if (channel == TestCaseSendChannel::Fixture) {
         const TestCaseFixtureProtocol proto = FixturePcbaCmdCatalog::fixtureProtocolFromIni(device);
         if (proto == TestCaseFixtureProtocol::Asd9026a) {
@@ -1062,7 +1055,8 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
     std::sort(items.begin(), items.end(), [](const QPair<QString, QString>& a, const QPair<QString, QString>& b) {
         return a.first.localeAwareCompare(b.first) < 0;
     });
-    if (channel == TestCaseSendChannel::Product && !keepCmdIfMissing.isEmpty()) {
+    if ((channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial)
+        && !keepCmdIfMissing.isEmpty()) {
         bool found = false;
         for (const auto& item : items) {
             if (item.second == keepCmdIfMissing) {
@@ -1168,18 +1162,6 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
                 out.valid = true;
                 out.hint = TupleCmdCatalog::catalog().paramUiHint(name);
                 out.kind = sendParamUiKindFromSchema(schema.kind);
-            }
-        }
-        return out;
-    }
-    if (channel == TestCaseSendChannel::ProductSerial) {
-        ProductSerialCmd serialCmd;
-        if (cmdEnumFromName(ProductSerialCmdCatalog::catalog(), name, serialCmd)) {
-            DeviceCmdParamSchema schema;
-            if (ProductSerialCmdCatalog::catalog().paramSchemaFor(static_cast<int>(serialCmd), schema)) {
-                out.valid = true;
-                out.hint = ProductSerialCmdCatalog::catalog().paramUiHint(name);
-                out.kind = SendCmdParamKind::None;
             }
         }
         return out;
@@ -2426,8 +2408,6 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     const int channelIdx = comboIndexByData(ui->comboBox_sendChannel, sendChannelComboData(channel));
     if (channelIdx >= 0)
         ui->comboBox_sendChannel->setCurrentIndex(channelIdx);
-    ui->comboBox_action->setEnabled(channel != TestCaseSendChannel::ProductSerial);
-
     ui->comboBox_productProtocol->blockSignals(true);
     fillProtocolComboForChannel(ui->comboBox_productProtocol, channel);
     QString protoIni;
@@ -2590,8 +2570,9 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
 void TestCaseEditDialog::updateProductProtocolRowVisible() {
     const TestCaseSendChannel channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
     const bool showProtocol =
-        channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::Fixture ||
-        channel == TestCaseSendChannel::Modbus || channel == TestCaseSendChannel::Scpi;
+        channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial
+        || channel == TestCaseSendChannel::Fixture || channel == TestCaseSendChannel::Modbus
+        || channel == TestCaseSendChannel::Scpi;
     ui->label_productProtocol->setVisible(showProtocol);
     ui->comboBox_productProtocol->setVisible(showProtocol);
     if (showProtocol) {
@@ -2608,13 +2589,6 @@ void TestCaseEditDialog::onSendChannelChanged(int) {
     const TestCaseSendChannel channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
     fillProtocolComboForChannel(ui->comboBox_productProtocol, channel);
     updateProductProtocolRowVisible();
-    const bool serial = channel == TestCaseSendChannel::ProductSerial;
-    ui->comboBox_action->setEnabled(!serial);
-    if (serial) {
-        const int setIdx = comboIndexByData(ui->comboBox_action, QStringLiteral("Set"));
-        if (setIdx >= 0)
-            ui->comboBox_action->setCurrentIndex(setIdx);
-    }
     refreshDeviceCmdCombo();
 }
 
