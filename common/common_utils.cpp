@@ -362,7 +362,7 @@ struct ProductEntry {
 // clang-format off
 static const ProductEntry kProductTable[] = {
     {"Air2",     "qaiot", true, "Air2",      true},
-    {"V3Pro",    "qfctp", true,  "V3 PRO",   true},
+    {"V3Pro",    "qfctp", true,  "V3 Pro",   true},
     {"V3",       "qfctp", true,  "V3",       true},
     {"M8",       "qroot", true,  "M5 Ultra",   false},
     {"M9",       "qroot", true,  "MobileFlow", true},
@@ -423,11 +423,8 @@ QStringList CommonUtils::dongleBroadcastFilterNames() {
     for (const ProductEntry& entry : kProductTable) {
         if (!hasDonglePattern(entry))
             continue;
-        // 精确匹配类广播名保留原文（如 M5 Ultra）；contains 类用产品名
-        if (entry.containsMatch)
-            names.append(QString::fromUtf8(entry.productName));
-        else
-            names.append(QString::fromUtf8(entry.donglePattern));
+        // 下拉筛选项须与 Dongle 实际上报广播名一致（如 V3 Pro，不能写 V3Pro）
+        names.append(QString::fromUtf8(entry.donglePattern));
     }
     for (const char* extra : kDongleFilterExtras)
         names.append(QString::fromUtf8(extra));
@@ -467,6 +464,24 @@ bool CommonUtils::stationBelongsToProduct(const QString& stationDisplayName, con
     return true;
 }
 
+QString CommonUtils::dongleBroadcastFilterForStation(const QString& stationDisplayName) {
+    const QString station = stationDisplayName.trimmed();
+    if (station.isEmpty())
+        return {};
+
+    for (const ProductEntry& entry : kProductTable) {
+        if (!hasDonglePattern(entry))
+            continue;
+        const QString productName = QString::fromUtf8(entry.productName);
+        if (!stationBelongsToProduct(station, productName))
+            continue;
+        if (entry.containsMatch)
+            return QString::fromUtf8(entry.donglePattern);
+        return QString::fromUtf8(entry.donglePattern);
+    }
+    return {};
+}
+
 bool CommonUtils::resolveDongleDeviceMapping(const QString& dongleName, QString* productOut, QString* protocolOut) {
     if (dongleName.isEmpty())
         return false;
@@ -475,7 +490,8 @@ bool CommonUtils::resolveDongleDeviceMapping(const QString& dongleName, QString*
     for (const ProductEntry& entry : kProductTable) {
         if (!hasDonglePattern(entry))
             continue;
-        const bool hit = entry.containsMatch ? upper.contains(QString::fromLatin1(entry.donglePattern))
+        const QString patternUpper = QString::fromLatin1(entry.donglePattern).trimmed().toUpper();
+        const bool hit = entry.containsMatch ? upper.contains(patternUpper)
                                              : (dongleName == QString::fromLatin1(entry.donglePattern));
         if (!hit)
             continue;

@@ -78,6 +78,21 @@ constexpr const char kHintLightCalibRead[] =
     u8"应答 4 字节 int32 小端；索引非法时固件返回全 0\r\n"
     u8"示例：Param_index=0\r\n"
     u8"卡控：ReportType=ProtocolLightCalibData Field=calibValue";
+constexpr const char kHintPressCollect[] =
+    u8"Qpb：FacSwitch 0=关 1=开\r\n"
+    u8"Qfctp ALGO TLV 0x0000：Param_on/enter/value=1 开启采样，0 关闭\r\n"
+    u8"Hook AIR_PRESSURE_SAMPLE：Param_sampleCount/intervalMs/waitMs；Param_channel=left|right|both\r\n"
+    u8"both 时同一步采左右各 N 点并逐点卡控；卡控上下限在本步「卡控」区配置（单位 kPa）\r\n"
+    u8"开启后设备 NOTIFY 上报 TLV 0x0004+0x0005 气压采样数据";
+constexpr const char kHintPressSampleIntervalSet[] =
+    u8"Qfctp ALGO TLV 0x0001：Param_intervalMs 或 Param_value，单位 ms\r\n"
+    u8"示例：Param_intervalMs=50 / 100 / 200 / 500 / 1000";
+constexpr const char kHintPressSampleOnoffGet[] =
+    u8"Qfctp ALGO TLV 0x0002：应答 1 字节 0=关 1=开\r\n"
+    u8"卡控：ReportType=ProtocolAckData Field=ack";
+constexpr const char kHintPressSampleIntervalGet[] =
+    u8"Qfctp ALGO TLV 0x0003：当前固件可能仅回错误码\r\n"
+    u8"若带 4 字节 uint32 小端，卡控 ReportType=ProtocolTypeData Field=type";
 constexpr const char kHintExceptionThresholdRead[] =
     u8"Qaiot CID=0x0A 读异常阈值：Param_type 可选（缺省读全部）\r\n"
     u8"01低电告警% 02低电关机% 03充电过压mV 04充电超时s 05电池温度(低+高)\r\n"
@@ -263,6 +278,10 @@ const Row kRows[] = {
      "dbm"},
     {DeviceCmd::ChargeCurrentRead, "ChargeCurrentRead", u8"读取充电电流", DeviceCmdParamKind::None,
      u8"FCTP TLV 0x0020，应答电流单位 mA；无电池节点或查询失败时为 0", kGet, "ProtocolChargeCurrentData", "currentMa"},
+    {DeviceCmd::PressSampleOnoffGet, "PressSampleOnoffGet", u8"读取气压采样开关", DeviceCmdParamKind::None,
+     kHintPressSampleOnoffGet, kGet, "ProtocolAckData", "ack"},
+    {DeviceCmd::PressSampleIntervalGet, "PressSampleIntervalGet", u8"读取气压采样间隔", DeviceCmdParamKind::None,
+     kHintPressSampleIntervalGet, kGet, "ProtocolTypeData", "type"},
     {DeviceCmd::ChargeCurrentSet, "ChargeCurrentSet", u8"设置充电电流", DeviceCmdParamKind::JsonMap,
      u8"FCTP TLV 0x0022，单位 mA（uint16 小端）\r\n示例：{\"currentMa\":2000} 或 {\"value\":2000}", kSet},
     {DeviceCmd::TupleRead, "TupleRead", u8"三元组", DeviceCmdParamKind::JsonMap, kHintTupleRead, kGet, "ProtocolTupleData",
@@ -349,7 +368,10 @@ const Row kRows[] = {
     {DeviceCmd::IAmApp, "IAmApp", u8"应用身份声明", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::ConfigNetworkApp, "ConfigNetworkApp", u8"配网应用", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::StartMultiBleOtaApp, "StartMultiBleOtaApp", u8"多设备蓝牙升级", DeviceCmdParamKind::None, nullptr, kSet},
-    {DeviceCmd::PressCollect, "PressCollect", u8"压力采集", DeviceCmdParamKind::None, nullptr, kSet},
+    {DeviceCmd::PressCollect, "PressCollect", u8"压力采集", DeviceCmdParamKind::JsonMap, kHintPressCollect, kSet,
+     "ProtocolAirPressureSampleData", "airPressureLeft"},
+    {DeviceCmd::PressSampleIntervalSet, "PressSampleIntervalSet", u8"气压采样间隔", DeviceCmdParamKind::JsonMap,
+     kHintPressSampleIntervalSet, kSet},
     {DeviceCmd::ImuCollect, "ImuCollect", u8"惯性传感器采集", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::CameraFaultDataPacket, "CameraFaultDataPacket", u8"摄像头故障数据", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::ServoMotorInfo, "ServoMotorInfo", u8"舵机信息", DeviceCmdParamKind::None, nullptr, kSet},
