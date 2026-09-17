@@ -161,6 +161,7 @@ int main(int argc, char* argv[]) {
     installChineseQtTranslations(a);
 
     SETTINGS.migrateFactoryCloudToLocal();
+    SETTINGS.migrateMachinePrefsToLocal();
 
     Qlog::setCrashReportExtraInfo(QStringLiteral("station=%1, cwd=%2, host=%3")
                                       .arg(SETTINGS.value(QStringLiteral("SYSTEM/station")).toString(),

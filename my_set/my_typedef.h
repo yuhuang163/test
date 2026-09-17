@@ -46,6 +46,7 @@ inline QString settingsIniPath(const char* fileName) {
  * 4. WiFi 名称（WIFI/Name、WIFI/Name0…WIFI/Name9 等，各工位/路号）
  * 5. 云平台本机项（FactoryCloud：环境、BaseUrl、登录态等，见 factoryCloudUsesLocalFile）
  * 6. MES 勾选默认（SYSTEM/MesDefaultUnchecked：true 时启动默认不勾选过站/从MES取MAC）
+ * 7. 协议类型与 MES 工厂（SYSTEM/ProtocolType、Mes/FACTORY，各机位/开发环境常改）
  */
 inline bool factoryCloudUsesLocalFile(const QString& fullKey) {
     static const QStringList kFactoryCloudLocalKeys = {
@@ -83,7 +84,9 @@ inline bool settingsUseLocalFile(const QString& fullKey) {
         QStringLiteral("Window/UiZoom"),
         QStringLiteral("SYSTEM/station"),
         QStringLiteral("SYSTEM/MesDefaultUnchecked"),
+        QStringLiteral("SYSTEM/ProtocolType"),
         QStringLiteral("Mes/Product_Name"),
+        QStringLiteral("Mes/FACTORY"),
         QStringLiteral("TestOrderMeta/SelectedStation"),
         QStringLiteral("TestOrderMeta/SelectedStationName"),
     };
@@ -258,6 +261,32 @@ class SettingsManager {
         }
         loc.endGroup();
         base.endGroup();
+        sync();
+    }
+
+    /** 启动时将 ProtocolType、FACTORY 等本机常改项从主 ini 并入 local.ini 并从主 ini 删除 */
+    void migrateMachinePrefsToLocal() {
+        static const struct {
+            const char* group;
+            const char* key;
+        } kItems[] = {
+            {"SYSTEM", "ProtocolType"},
+            {"Mes", "FACTORY"},
+        };
+        QSettings& base = baseIni();
+        QSettings& loc = localIni();
+        for (const auto& item : kItems) {
+            const QString group = QString::fromLatin1(item.group);
+            const QString key = QString::fromLatin1(item.key);
+            base.beginGroup(group);
+            loc.beginGroup(group);
+            if (base.contains(key)) {
+                loc.setValue(key, base.value(key));
+                base.remove(key);
+            }
+            loc.endGroup();
+            base.endGroup();
+        }
         sync();
     }
 
