@@ -35,6 +35,7 @@
 #include <algorithm>
 #include <QVBoxLayout>
 #include <QPen>
+#include <QBrush>
 #include <QTabWidget>
 #include <QThread>
 #include <QtGlobal>
@@ -2050,6 +2051,18 @@ void QFreeWork::initSuctionChart() {
     suctionPlot_->graph(0)->setName(QStringLiteral("CH1"));
     suctionPlot_->graph(1)->setPen(QPen(QColor(220, 80, 50), 2));
     suctionPlot_->graph(1)->setName(QStringLiteral("CH2"));
+    suctionPlot_->addGraph();
+    suctionPlot_->addGraph();
+    suctionPlot_->graph(2)->setPen(QPen(QColor(20, 140, 70), 1));
+    suctionPlot_->graph(2)->setLineStyle(QCPGraph::lsNone);
+    suctionPlot_->graph(2)->setScatterStyle(
+        QCPScatterStyle(QCPScatterStyle::ssCircle, QColor(20, 140, 70), QColor(20, 140, 70), 8));
+    suctionPlot_->graph(2)->setName(QStringLiteral("CH1峰值"));
+    suctionPlot_->graph(3)->setPen(QPen(QColor(180, 40, 40), 1));
+    suctionPlot_->graph(3)->setLineStyle(QCPGraph::lsNone);
+    suctionPlot_->graph(3)->setScatterStyle(
+        QCPScatterStyle(QCPScatterStyle::ssSquare, QColor(180, 40, 40), QColor(180, 40, 40), 8));
+    suctionPlot_->graph(3)->setName(QStringLiteral("CH2峰值"));
     suctionPlot_->xAxis->setLabel(QStringLiteral("时间(s)"));
     suctionPlot_->yAxis->setLabel(QStringLiteral("吸力(kPa)"));
     suctionPlot_->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
@@ -2062,6 +2075,16 @@ void QFreeWork::initSuctionChart() {
     suctionChartHintText_->setPositionAlignment(Qt::AlignCenter);
     suctionChartHintText_->setColor(QColor(120, 120, 120));
     suctionChartHintText_->setVisible(false);
+
+    suctionChartStatsText_ = new QCPItemText(suctionPlot_);
+    suctionChartStatsText_->position->setType(QCPItemPosition::ptAxisRectRatio);
+    suctionChartStatsText_->position->setCoords(0.02, 0.04);
+    suctionChartStatsText_->setPositionAlignment(Qt::AlignTop | Qt::AlignLeft);
+    suctionChartStatsText_->setColor(Qt::black);
+    suctionChartStatsText_->setBrush(QBrush(QColor(255, 255, 255, 220)));
+    suctionChartStatsText_->setPadding(QMargins(6, 4, 6, 4));
+    suctionChartStatsText_->setFont(QFont(QStringLiteral("Microsoft YaHei"), 10));
+    suctionChartStatsText_->setVisible(false);
 
     suctionPlot_->replot();
 }
@@ -2101,6 +2124,14 @@ void QFreeWork::resetSuctionChart() {
         suctionPlot_->yAxis->setRange(-40, 0);
         if (suctionChartHintText_)
             suctionChartHintText_->setVisible(false);
+        if (suctionChartStatsText_) {
+            suctionChartStatsText_->setText(QString());
+            suctionChartStatsText_->setVisible(false);
+        }
+        if (suctionPlot_->graphCount() > 2)
+            suctionPlot_->graph(2)->data()->clear();
+        if (suctionPlot_->graphCount() > 3)
+            suctionPlot_->graph(3)->data()->clear();
         suctionPlot_->replot(QCustomPlot::rpQueuedReplot);
     }
 }
@@ -2217,6 +2248,43 @@ void QFreeWork::finalizeSuctionChartPlot() {
         suctionPlot_->yAxis->setRange(yMin - yPad, yMax + yPad);
     }
     suctionPlot_->replot();
+}
+
+void QFreeWork::applySuctionChartTestPeakOverlay(const QVector<int>& ch1PeakIndexes, const QVector<double>& ch1PeakKpa,
+                                                 const QVector<int>& ch2PeakIndexes, const QVector<double>& ch2PeakKpa,
+                                                 const QString& statsText) {
+    if (!suctionPlot_)
+        return;
+    const QVector<double>& times =
+        dongleSuctionSampleTimeSec_.isEmpty() ? suctionChartTimeSec_ : dongleSuctionSampleTimeSec_;
+    auto mapPeaks = [&times](const QVector<int>& indexes, const QVector<double>& kpa, QVector<double>* outT,
+                             QVector<double>* outY) {
+        const int n = qMin(indexes.size(), kpa.size());
+        for (int i = 0; i < n; ++i) {
+            const int idx = indexes.at(i);
+            if (idx < 0 || idx >= times.size())
+                continue;
+            outT->append(times.at(idx));
+            outY->append(kpa.at(i));
+        }
+    };
+    QVector<double> ch1T, ch1Y, ch2T, ch2Y;
+    mapPeaks(ch1PeakIndexes, ch1PeakKpa, &ch1T, &ch1Y);
+    mapPeaks(ch2PeakIndexes, ch2PeakKpa, &ch2T, &ch2Y);
+    if (suctionPlot_->graphCount() > 2) {
+        suctionPlot_->graph(2)->setData(ch1T, ch1Y);
+        suctionPlot_->graph(2)->setVisible(!ch1T.isEmpty());
+    }
+    if (suctionPlot_->graphCount() > 3) {
+        suctionPlot_->graph(3)->setData(ch2T, ch2Y);
+        suctionPlot_->graph(3)->setVisible(!ch2T.isEmpty());
+    }
+    if (suctionChartStatsText_) {
+        const QString text = statsText.trimmed();
+        suctionChartStatsText_->setText(text);
+        suctionChartStatsText_->setVisible(!text.isEmpty());
+    }
+    suctionPlot_->replot();
     saveSuctionCurveImageForUpload();
 }
 
@@ -2246,6 +2314,7 @@ void QFreeWork::saveSuctionCurveImageForUpload() {
     // 生成高清晰度（1000x450）吸力曲线并存为 JPEG，注册到云端上报清单
     QPixmap pix = suctionPlot_->toPixmap(1000, 450, 1.0);
     if (!pix.isNull() && pix.toImage().save(curvePath, "JPG", 90)) {
+        Qlog::addSuctionCurveImageFiles(getIndex(), {});
         Qlog::addSuctionCurveImageFiles(getIndex(), {curvePath});
         showlog(QStringLiteral("吸力曲线图片已生成并注册到云端上报：%1").arg(QFileInfo(curvePath).fileName()));
     }

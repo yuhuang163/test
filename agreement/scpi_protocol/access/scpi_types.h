@@ -19,8 +19,15 @@ enum class ScpiDeviceRoute {
     None,
     HuilingWfp60h,
     Agilent66319d,
+    GenericVisaPower,
     RsCmw100,
 };
+
+/** 会凌 / 66319D / 通用 VISA 程控电源：同一套 SCPI 文本行 + 步骤 Param 模板。 */
+inline bool isVisaProgrammablePowerRoute(ScpiDeviceRoute route) {
+    return route == ScpiDeviceRoute::HuilingWfp60h || route == ScpiDeviceRoute::Agilent66319d
+        || route == ScpiDeviceRoute::GenericVisaPower;
+}
 
 struct ScpiVisaLinkConfig {
     QString visaAddress;

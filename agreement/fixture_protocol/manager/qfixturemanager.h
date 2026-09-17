@@ -44,6 +44,11 @@ class QFixtureManager : public QObject {
     void resetWaitAbort();
 
     void sendPcbaFrame(const QByteArray& frame);
+    /** 复用顶部唯一治具串口发送原始帧；PLC Hook 禁止另开同一 COM。 */
+    bool sendRawFrame(const QByteArray& frame, QString* errorMessage = nullptr);
+    /** 复用顶部唯一治具串口发送并收集一帧应答。 */
+    bool exchangeRawFrame(const QByteArray& request, QByteArray* response, int timeoutMs,
+                          QString* errorMessage = nullptr);
     void sendimuData(imuFixtureState fixstate);
     void set_camera_action(camreaFixtureState fixstate);
     void sendFixtureData(FixtureState fixstate);

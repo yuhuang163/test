@@ -31,6 +31,10 @@ struct HuilingWfp60hScpiProfile {
     static HuilingWfp60hScpiProfile fromVisaPowerSettings();
     /** 从测试步骤 Send/Param map 加载 profile（voltage/current/scpi* 等）。 */
     static HuilingWfp60hScpiProfile fromParamMap(const QVariantMap& map);
+    /** 通用 VISA 电源：默认短写 VOLT/CURR/OUTP/MEAS:*?，量程与通道选择留空。 */
+    static HuilingWfp60hScpiProfile genericVisaPowerDefaults();
+    static HuilingWfp60hScpiProfile fromGenericVisaPowerParamMap(const QVariantMap& map);
+    void applyParamMap(const QVariantMap& map);
 
     QString buildConfigureMeasureLine() const;
     QString buildReadMeasureCurrentLine() const;

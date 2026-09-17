@@ -61,6 +61,26 @@ const Row kRows[] = {
      u8"复用配置步骤；或填写 visaAddress、voltage/current 及 SCPI 模板", kGet},
     {ScpiDeviceRoute::Agilent66319d, "SendRawLine", u8"发送原始命令", u8"原始文本命令", kSet},
 
+    // GenericVisaPower（SCPI 模板全由步骤 Param 决定；空模板跳过）
+    {ScpiDeviceRoute::GenericVisaPower, "ConfigureProgrammablePower", u8"配置Visa程控电源",
+     u8"单电源：visaAddress；voltage(V)；current(A)\n"
+     u8"一拖多：sharedPair=true；stationsPerDevice；visaAddress0/1\n"
+     u8"SCPI 模板空则跳过：scpiSetVoltageCmd / scpiSetCurrentCmd / scpiOutputOnCmd / Off / Read*\n"
+     u8"量程仅当 currentRange 与 scpiSetCurrentRangeCmd 都填才发；通道仅当 scpiChannelSelectCmd 有值才发（如 INST OUT%1）",
+     kSet},
+    {ScpiDeviceRoute::GenericVisaPower, "ProgrammablePowerOutput", u8"源通道输出开关",
+     u8"int=1开/0关（须先执行配置步骤；输出 ON/OFF 命令复用配置步的 scpiOutputOnCmd/scpiOutputOffCmd）", kSet},
+    {ScpiDeviceRoute::GenericVisaPower, "ReadProgrammableVoltage", u8"读取源电压测量值",
+     u8"复用配置步骤；可选 scpiReadVoltageCmd / visaAddress", kGet, "ProtocolMeasureData", "value"},
+    {ScpiDeviceRoute::GenericVisaPower, "ReadProgrammableCurrent", u8"读取工作电流（程控电源源电流）",
+     u8"复用配置步骤；可选 scpiReadCurrentCmd / visaAddress\n"
+     u8"模板空则不切量程；currentRange 与 scpiSetCurrentRangeCmd 都填才发量程\n"
+     u8"开 Gate 时连续采样：Param_sampleDurationMs(默认 CommandTimeoutMs/3000)、Param_sampleIntervalMs(默认200)；期间任一值合格即通过",
+     kGet, "ProtocolMeasureData", "value"},
+    {ScpiDeviceRoute::GenericVisaPower, "InitializeProgrammablePower", u8"初始化源通道",
+     u8"复用配置步骤；或填写 visaAddress、voltage/current 及 SCPI 模板", kGet},
+    {ScpiDeviceRoute::GenericVisaPower, "SendRawLine", u8"发送原始命令", u8"原始文本命令", kSet},
+
     // RsCmw100
     {ScpiDeviceRoute::RsCmw100, "ClearStatus", u8"清除状态", nullptr, kSet},
     {ScpiDeviceRoute::RsCmw100, "GenOff", u8"关闭射频源", nullptr, kGet},

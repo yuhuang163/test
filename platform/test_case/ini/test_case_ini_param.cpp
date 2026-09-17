@@ -164,7 +164,9 @@ bool hookUsesGenericSendParamMap(const TestCaseDefinition& def) {
     const QString id = def.hook.hookId.trimmed();
     return id == QLatin1String("COUNTDOWN_WAIT") || id == QLatin1String("LIGHT_SENSOR_GOLDEN_CALIB")
         || id == QLatin1String("LIGHT_SENSOR_CALIB_WRITE") || id == QLatin1String("LIGHT_SENSOR_CALIB_READ")
-        || id == QLatin1String("VES_CH1_SET_BRIGHTNESS");
+        || id == QLatin1String("VES_CH1_SET_BRIGHTNESS")
+        || id.startsWith(QLatin1String("PLC_SYNC_WRITE"))
+        || id.startsWith(QLatin1String("PLC_SYNC_READ"));
 }
 
 void writeGenericHookSendParamMap(QSettings& ini, const TestCaseDefinition& def) {

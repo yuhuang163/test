@@ -340,6 +340,11 @@ class test_base : public QWidget {
     virtual void onUsbInstrumentReport(const ProtocolReport& report);
     /** 治具摆幅仪上行分发 */
     virtual void onJigInstrumentReport(const ProtocolReport& report);
+    /**
+     * 弹窗+卡控循环监控：回包未过 Gate 时不结束 sendCommandWithRetry，窗口内继续重发。
+     * 自由工站 PromptEnabled+Gate（按键状态）覆盖为 true。
+     */
+    virtual bool shouldHoldCommandRetryUntilGatePass() const { return false; }
     /** 结束一次 sendCommandWithRetry 等待；success=false 时 sendRetryOver=1 供工站判失败 */
     void finishCommandRetryWait(bool success, const QString& logMessage);
     /** 测试结束：本地入库 + 云端上报；useMes 为真时再触发 MES 过站 */

@@ -69,6 +69,10 @@ class QFreeWork : public test_base {
     void triggerAllStationScanners();
     void triggerScanner(const QString& scannerIp, int scannerPort, int scannerTimeoutMs);
 
+  protected:
+    bool shouldHoldCommandRetryUntilGatePass() const override;
+
+  public:
     Ui::QFreeWork* ui;
 
     // clang-format off
@@ -435,6 +439,10 @@ class QFreeWork : public test_base {
     void appendSuctionChartSample(double leftKpa, double rightKpa);
     /** 采样结束做一次完整 setData + 轴范围 + replot，避免过程中每帧全量重绘 */
     void finalizeSuctionChartPlot();
+    /** 把本步卡控用的周期峰值/最低值标到曲线上（点 + 图内文字） */
+    void applySuctionChartTestPeakOverlay(const QVector<int>& ch1PeakIndexes, const QVector<double>& ch1PeakKpa,
+                                          const QVector<int>& ch2PeakIndexes, const QVector<double>& ch2PeakKpa,
+                                          const QString& statsText);
     void updateSuctionPeakLabels();
     void appendSuctionCurveRowToResultTable(bool pass);
     bool shouldShowSuctionCurveInTable(const TestCaseDefinition& def) const;
@@ -478,6 +486,7 @@ class QFreeWork : public test_base {
     QCustomPlot* suctionPlot_ = nullptr;
     /** 采样中在空图上显示的提示，避免被当成曲线画不出来 */
     QCPItemText* suctionChartHintText_ = nullptr;
+    QCPItemText* suctionChartStatsText_ = nullptr;
     QVector<double> suctionChartTimeSec_;
     QVector<double> suctionChartLeftKpa_;
     QVector<double> suctionChartRightKpa_;

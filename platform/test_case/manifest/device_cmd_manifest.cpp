@@ -197,7 +197,10 @@ constexpr const char kHintBaseInfo[] =
 constexpr const char kHintFacResult[] =
     u8"产测结果：done=1 通过(留空等同1)，done=0 失败\r\n示例：done=1 或 {\"done\":1}";
 constexpr const char kHintBurningMode[] =
-    u8"老化：mode、seconds，可选 switch/enter\r\nQroot 进入老化：Notify 0xAF+0x01\r\n示例：{\"mode\":1,\"seconds\":3600}";
+    u8"老化：mode、seconds，可选 switch/enter\r\n"
+    u8"Qroot：Notify 0xAF+0x01 仅进入\r\n"
+    u8"Qroot2/Air1：Req 0xAF，Param_mode=0自检 1老化（默认1）\r\n"
+    u8"示例：Param_mode=1 或 {\"mode\":1,\"seconds\":3600}";
 constexpr const char kHintSleep[] = u8"休眠：switch=1 进入，0 退出\r\n示例：{\"switch\":1}";
 constexpr const char kHintFacMode[] =
     u8"工厂模式：Param_on/value=1 进入 0 退出；Param_mode 模式类型\r\n"
@@ -289,7 +292,8 @@ const Row kRows[] = {
     // 勿与 SuctionMode（FCTP 进/退吸力模式）混淆：本项为 Qroot 开泵+模式+档位
     {DeviceCmd::RootSuctionTest, "RootSuctionTest", u8"吸力测试(档位)", DeviceCmdParamKind::JsonMap, kHintRootSuctionTest, kSet},
     {DeviceCmd::RootPumpStallCurrentQuery, "RootPumpStallCurrentQuery", u8"泵堵电流", DeviceCmdParamKind::None,
-     u8"Ack 2B 堵转 ADC（大端 last_adc_value）\r\n卡控（可选）：ReportType=ProtocolPumpStallCurrentData，Field=adcValue",
+     u8"Req 0x82 空 body。Qroot：Ack 2B 堵转 ADC 大端；Qroot2/Air1：Ack 2B 泵电流检测电压 mV 大端\r\n"
+     u8"Air1 建议先 0xA4 开泵再读；卡控 ReportType=ProtocolPumpStallCurrentData，Field=adcValue",
      kGet, "ProtocolPumpStallCurrentData", "adcValue"},
     {DeviceCmd::RootAgingHistoryQuery, "RootAgingHistoryQuery", u8"老化历史信息", DeviceCmdParamKind::None,
      kHintRootAgingHistory, kGet, "ProtocolRootAgingHistoryData", "agingCount"},
@@ -301,7 +305,9 @@ const Row kRows[] = {
     {DeviceCmd::Root2PoseCalib, "Root2PoseCalib", u8"姿态校准", DeviceCmdParamKind::None,
      u8"Qroot2/Air1：Req 0xDD body 0x01", kSet},
     {DeviceCmd::Root2BowlCalib, "Root2BowlCalib", u8"空/满碗校准", DeviceCmdParamKind::JsonMap,
-     u8"Qroot2/Air1：Req 0xAE body 0空碗 1满碗\r\n示例：Param_value=0", kSet},
+     u8"Qroot2/Air1：Req 0xAE，仅发 0空碗/1满碗，固件当场读电容写入 Flash，勿下发空满电容数值\r\n"
+     u8"须同一次上电内先空后满；示例：Param_value=0",
+     kSet},
     {DeviceCmd::Root2ModeSet, "Root2ModeSet", u8"设置模式", DeviceCmdParamKind::JsonMap, kHintQroot2ModeSet, kSet},
     {DeviceCmd::Root2LevelSet, "Root2LevelSet", u8"设置档位", DeviceCmdParamKind::JsonMap, kHintQroot2LevelSet, kSet},
     {DeviceCmd::Root2PumpState, "Root2PumpState", u8"控制运行暂停", DeviceCmdParamKind::JsonMap, kHintQroot2PumpState, kSet},

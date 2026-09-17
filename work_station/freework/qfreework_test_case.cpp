@@ -1099,6 +1099,15 @@ bool QFreeWork::isActiveTestCaseStep(const QString& stepLabel) const {
     return testCaseStepActive_ && activeTestCaseStepLabel_ == stepLabel.trimmed();
 }
 
+bool QFreeWork::shouldHoldCommandRetryUntilGatePass() const {
+    // 弹窗+按键卡控：0xA6 等轮询回包未匹配时继续窗口内重发，勿因第一次 ACK 结束等待
+    if (!testCaseStepActive_ || stepRuntime_.done)
+        return false;
+    if (!activeTestCase_.meta.promptEnabled || !activeTestCase_.gate.enabled)
+        return false;
+    return activeTestCase_.gate.reportType == QStringLiteral("ProtocolButtonStateData");
+}
+
 bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVariant& payload) {
     if (!testCaseStepActive_ || !activeTestCase_.gate.enabled)
         return false;
@@ -2297,7 +2306,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
         const QVariant resolvedParam = ctx->resolveTestCaseSendParamTree(def.send.param);
         QString errStr;
 
-        if (devRoute == ScpiDeviceRoute::HuilingWfp60h || devRoute == ScpiDeviceRoute::Agilent66319d) {
+        if (isVisaProgrammablePowerRoute(devRoute)) {
             const HuilingScpiStepParams stepParams =
                 splitHuilingScpiStepParam(resolvedParam, def.send.deviceCmd);
             QVariantMap linkMap = stepParams.linkMap;
@@ -2330,9 +2339,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                 VisaChannel::discardIdleSharedSession(resolvedVisaAddr);
             }
             const bool visaReady =
-                devRoute == ScpiDeviceRoute::Agilent66319d
-                    ? ctx->scpiVisaManager()->loadAgilent66319dVisaFromParamMap(visaLoadMap, visaTimeoutMs)
-                    : ctx->scpiVisaManager()->loadHuilingVisaFromParamMap(visaLoadMap, visaTimeoutMs);
+                ctx->scpiVisaManager()->loadVisaProgrammablePowerFromParamMap(devRoute, visaLoadMap, visaTimeoutMs);
             if (!visaReady) {
                 ctx->showlog(QStringLiteral("%1：请在「配置Visa程控电源」步骤填写 Param_visaAddress，"
                                            "或一拖多共享时填 Param_sharedPair=true 与 Param_visaAddress0/1")

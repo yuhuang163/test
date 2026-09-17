@@ -9,15 +9,10 @@
 #pragma execution_character_set(push, "utf-8")
 #endif
 
-namespace {
-
-constexpr quint8 kSop0 = 0xAA;
-constexpr quint8 kSop1 = 0x55;
-constexpr int kHeaderSize = 5;
-constexpr int kMaxFrameBodyLen = 64;
-constexpr int kAir1SnFieldLen = 35;
-
-} // namespace
+static constexpr quint8 kSop0 = 0xAA;
+static constexpr quint8 kSop1 = 0x55;
+static constexpr int kHeaderSize = 5;
+static constexpr int kMaxFrameBodyLen = 64;
 
 // Air1 读/写 SN 应答：首字节为状态，后续为定长 SN 区；勿用 fromUtf8(body) 否则遇 \\0 截成空串
 static QString decodeAir1SnFieldBody(const QByteArray& body) {
@@ -301,6 +296,21 @@ void Qroot2::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
         hasPending_ = false;
         break;
     }
+    case TestMode: {
+        // Ack：AA 55 01 AF 02 [result] [mode]；0成功 1长度错 2 mode 非 0/1 3 自检已做过
+        const quint8 result = body.isEmpty() ? 0 : static_cast<quint8>(body.at(0));
+        const quint8 mode = body.size() >= 2 ? static_cast<quint8>(body.at(1)) : 0;
+        const bool pass = (result == 0);
+        if (result == 3)
+            qWarning() << "[Qroot2] TestMode 自检已做过，拒绝再进";
+        else if (!pass)
+            qWarning() << "[Qroot2] TestMode fail result=" << result << "mode=" << mode;
+        else
+            qDebug().noquote() << "[Qroot2] TestMode ok mode=" << mode;
+        emit sendGetProductResponse(pass ? 1 : 0);
+        hasPending_ = false;
+        break;
+    }
     case SoftVersion:
         if (body.size() >= 1) {
             ProtocolBaseInfoData info;
@@ -337,6 +347,16 @@ void Qroot2::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
             sn.value = decodeAir1SnFieldBody(body);
             qDebug().noquote() << "[Qroot2] DeviceSN:" << sn.value;
             emitReport(QStringLiteral("ProtocolSnData"), QVariant::fromValue(sn));
+        }
+        emit sendGetProductResponse(1);
+        hasPending_ = false;
+        break;
+    case PumpStallCurrent:
+        if (body.size() >= 2) {
+            ProtocolPumpStallCurrentData stall;
+            stall.adcValue = (static_cast<quint8>(body.at(0)) << 8) | static_cast<quint8>(body.at(1));
+            qDebug().noquote() << "[Qroot2] PumpStallCurrent mV=" << stall.adcValue;
+            emitReport(QStringLiteral("ProtocolPumpStallCurrentData"), QVariant::fromValue(stall));
         }
         emit sendGetProductResponse(1);
         hasPending_ = false;
@@ -462,6 +482,25 @@ void Qroot2::set(DeviceCmd cmd, const QVariant& data) {
     case DeviceCmd::Root2BowlCalib:
         sendPacket(Req, BowlCalib, QByteArray(1, static_cast<char>(parseOnOffParam(data, 0))));
         return;
+    case DeviceCmd::BurningMode: {
+        bool wantExit = false;
+        if (data.canConvert<QVariantMap>()) {
+            const QVariantMap map = data.toMap();
+            const QVariant vEnter = map.value(QStringLiteral("enter"));
+            const QVariant vSwitch = map.value(QStringLiteral("switch"));
+            wantExit =
+                (vEnter.isValid() && vEnter.toInt() == 0) || (vSwitch.isValid() && vSwitch.toInt() == 0);
+        }
+        if (wantExit) {
+            qWarning() << "[Qroot2] BurningMode 无退出指令（0xAF 仅 0自检/1老化）";
+            return;
+        }
+        quint8 mode = parseUInt8Param(data, 1, QStringLiteral("mode"));
+        if (mode > 1)
+            mode = 1;
+        sendPacket(Req, TestMode, QByteArray(1, static_cast<char>(mode)));
+        return;
+    }
     case DeviceCmd::Root2ModeSet:
         sendPacket(Req, ModeSet, QByteArray(1, static_cast<char>(parseUInt8Param(data, 0x02, QStringLiteral("mode")))));
         return;
@@ -520,6 +559,9 @@ void Qroot2::get(DeviceCmd cmd, const QVariant& param) {
     case DeviceCmd::ButtonState:
         // 请求帧（空 body）：AA 55 00 A6 00 5A
         sendPacket(Req, KeyTest, QByteArray());
+        return;
+    case DeviceCmd::RootPumpStallCurrentQuery:
+        sendPacket(Req, PumpStallCurrent, QByteArray());
         return;
     case DeviceCmd::Sn: {
         const auto which = static_cast<FacDevInfoType>(param.toInt());

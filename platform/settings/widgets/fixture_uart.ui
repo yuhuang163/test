@@ -11,7 +11,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>治具串口与自动扫码配置</string>
+   <string>治具串口配置</string>
   </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="0" column="0">
@@ -75,6 +75,29 @@
          </widget>
         </item>
        </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QCheckBox" name="preStartMonitorEnabledCheckBox">
+       <property name="visible">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>启用自动扫码枪与PLC线圈监控</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="preStartMonitorHintLabel">
+       <property name="visible">
+        <bool>false</bool>
+       </property>
+       <property name="wordWrap">
+        <bool>true</bool>
+       </property>
+       <property name="text">
+        <string>未启用时不写入扫码枪/线圈配置；勾选启用后可配置并保存。</string>
+       </property>
       </widget>
      </item>
      <item>
