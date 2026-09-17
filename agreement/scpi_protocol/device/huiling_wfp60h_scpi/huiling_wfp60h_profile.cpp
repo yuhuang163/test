@@ -2,6 +2,8 @@
 
 #include "Abini.h"
 
+#include <QtGlobal>
+
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
 #endif
@@ -45,18 +47,17 @@ HuilingWfp60hScpiProfile HuilingWfp60hScpiProfile::fromVisaPowerSettings() {
     return profile;
 }
 
-HuilingWfp60hScpiProfile HuilingWfp60hScpiProfile::fromParamMap(const QVariantMap& map) {
-    HuilingWfp60hScpiProfile profile = defaults();
+void HuilingWfp60hScpiProfile::applyParamMap(const QVariantMap& map) {
     if (map.contains(QStringLiteral("voltage")))
-        profile.scpiPowerVoltageV = map.value(QStringLiteral("voltage")).toDouble();
+        scpiPowerVoltageV = map.value(QStringLiteral("voltage")).toDouble();
     if (map.contains(QStringLiteral("current")))
-        profile.scpiPowerCurrentA = map.value(QStringLiteral("current")).toDouble();
+        scpiPowerCurrentA = map.value(QStringLiteral("current")).toDouble();
     if (map.contains(QStringLiteral("currentRange")))
-        profile.scpiRange = map.value(QStringLiteral("currentRange")).toString().trimmed();
+        scpiRange = map.value(QStringLiteral("currentRange")).toString().trimmed();
     auto applyCmd = [&](const char* key, QString HuilingWfp60hScpiProfile::* member) {
         const QString text = map.value(QString::fromLatin1(key)).toString().trimmed();
         if (!text.isEmpty())
-            profile.*member = text;
+            this->*member = text;
     };
     applyCmd("scpiSetVoltageCmd", &HuilingWfp60hScpiProfile::scpiSetVoltageCmd);
     applyCmd("scpiSetCurrentCmd", &HuilingWfp60hScpiProfile::scpiSetCurrentCmd);
@@ -67,7 +68,33 @@ HuilingWfp60hScpiProfile HuilingWfp60hScpiProfile::fromParamMap(const QVariantMa
     applyCmd("scpiSetCurrentRangeCmd", &HuilingWfp60hScpiProfile::scpiSetCurrentRangeCmd);
     applyCmd("scpiChannelSelectCmd", &HuilingWfp60hScpiProfile::scpiChannelSelectCmd);
     if (map.contains(QStringLiteral("powerChannel")))
-        profile.powerChannel = qBound(0, map.value(QStringLiteral("powerChannel")).toInt(), 8);
+        powerChannel = qBound(0, map.value(QStringLiteral("powerChannel")).toInt(), 8);
+}
+
+HuilingWfp60hScpiProfile HuilingWfp60hScpiProfile::fromParamMap(const QVariantMap& map) {
+    HuilingWfp60hScpiProfile profile = defaults();
+    profile.applyParamMap(map);
+    return profile;
+}
+
+HuilingWfp60hScpiProfile HuilingWfp60hScpiProfile::genericVisaPowerDefaults() {
+    HuilingWfp60hScpiProfile profile;
+    profile.scpiPowerVoltageV = 5.0;
+    profile.scpiPowerCurrentA = 2.0;
+    profile.scpiSetVoltageCmd = QStringLiteral("VOLT %1");
+    profile.scpiSetCurrentCmd = QStringLiteral("CURR %1");
+    profile.scpiOutputOnCmd = QStringLiteral("OUTP ON");
+    profile.scpiOutputOffCmd = QStringLiteral("OUTP OFF");
+    profile.scpiReadVoltageCmd = QStringLiteral("MEAS:VOLT?");
+    profile.scpiReadCurrentCmd = QStringLiteral("MEAS:CURR?");
+    profile.scpiCurrentType = QStringLiteral("CURR");
+    profile.scpiCurrentMode = QStringLiteral("DC");
+    return profile;
+}
+
+HuilingWfp60hScpiProfile HuilingWfp60hScpiProfile::fromGenericVisaPowerParamMap(const QVariantMap& map) {
+    HuilingWfp60hScpiProfile profile = genericVisaPowerDefaults();
+    profile.applyParamMap(map);
     return profile;
 }
 

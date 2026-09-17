@@ -31,6 +31,7 @@ class Qroot2 : public qProtocol {
     };
 
     enum CommandId : quint8 {
+        PumpStallCurrent = 0x82, // 读泵电流检测电压 mV
         LedControl = 0x90,
         MacRead = 0x91,
         MacWrite = 0x92,
@@ -42,7 +43,8 @@ class Qroot2 : public qProtocol {
         LevelSet = 0xA3,
         PumpState = 0xA4,
         KeyTest = 0xA6,
-        BowlCalib = 0xAE,
+        BowlCalib = 0xAE, // body 0空碗 1满碗，固件当场采样，不下发电容
+        TestMode = 0xAF,  // body 0自检 1老化
         PoseSwitch = 0xDB,
         PoseCalib = 0xDD,
         PowerOff = 0xFC,

@@ -38,8 +38,8 @@ class PlcStationSyncBarrier {
 
     struct SyncSession {
         QString key;
+        QString stepName;
         int requiredCount = 0;
-        int remainingExitCount = 0;
         QList<QFreeWork*> arrived;
         bool finished = false;
         bool success = false;
@@ -50,11 +50,11 @@ class PlcStationSyncBarrier {
     QMutex mutex_;
     QHash<QString, SyncSession*> activeSessions_;
 
-    QList<QFreeWork*> collectActiveTestingStations(QFreeWork* ctx);
+    QList<QFreeWork*> collectConfiguredStations(QFreeWork* ctx);
     QString resolveTargetCoilAddress(const TestCaseDefinition& def, const QString& defaultAddr);
-    QVariantMap resolvePlcExecutionParams(QFreeWork* ctx, const TestCaseDefinition& def, const QString& addr,
-                                          const QVariantMap& extra = QVariantMap());
-    void releaseSessionRef(const QString& sessionKey, SyncSession* session);
+    void scheduleSessionTimeout(const QString& sessionKey, SyncSession* session, int timeoutMs);
+    void completeSession(const QString& sessionKey, SyncSession* session, bool success,
+                         const QString& resultData, const QString& logText);
 };
 
 #endif // PLC_STATION_SYNC_BARRIER_H

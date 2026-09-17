@@ -924,6 +924,9 @@ void test_base::solveGetBrushResponse(int data) {
         return;
     }
     const bool success = (data != 0);
+    // 弹窗+卡控：有回包只交给 Gate 判定；未通过则保持重发窗口，勿在此结束等待
+    if (success && shouldHoldCommandRetryUntilGatePass())
+        return;
     finishCommandRetryWait(
         success,
         success ? QStringLiteral("sendCommandWithRetry完成，收到设备响应")
@@ -940,15 +943,20 @@ void test_base::onCommandRetryTimerTimeout() {
         qDebug() << "retryCount=" << commandRetryCount
                  << QStringLiteral("sendCommandWithRetry 指令超时");
         const int waitedMs = commandRetryTimeoutMs_ > 0 ? commandRetryTimeoutMs_ : 0;
+        const bool holdGate = shouldHoldCommandRetryUntilGatePass();
         finishCommandRetryWait(
-            false, QStringLiteral("指令超时未响应（已等待%1ms，共重发%2次）")
-                       .arg(waitedMs)
-                       .arg(qMax(0, commandRetrySendCount - 1)));
+            false,
+            holdGate ? QStringLiteral("卡控等待超时（弹窗提示期间未匹配期望，已等待%1ms）").arg(waitedMs)
+                     : QStringLiteral("指令超时未响应（已等待%1ms，共重发%2次）")
+                           .arg(waitedMs)
+                           .arg(qMax(0, commandRetrySendCount - 1)));
         return;
     }
 
     if (commandRetryFunc_) {
-        showlog(QStringLiteral("重新发送指令%1").arg(commandRetryCount));
+        const bool holdGate = shouldHoldCommandRetryUntilGatePass();
+        if (!holdGate)
+            showlog(QStringLiteral("重新发送指令%1").arg(commandRetryCount));
         ++commandRetrySendCount;
         ++commandRetryCount;
         commandRetryFunc_();
@@ -975,13 +983,19 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc, int timeo
     // timeoutMs：步骤「指令超时」总时长（不是重试间隔）
     const int totalMs = qMax(100, timeoutMs);
     commandRetryTimeoutMs_ = totalMs;
-    // 窗口内按 totalMs/3 间隔补发（下限 200ms，无上限）
+    // 窗口内按 totalMs/3 间隔补发（下限 200ms，无上限）；弹窗+卡控改为短间隔循环读
     int intervalMs = totalMs;
     if (allowResend) {
-        const int thirdMs = totalMs / 3;
-        intervalMs = qMax(200, thirdMs > 0 ? thirdMs : 200);
-        if (intervalMs >= totalMs)
-            intervalMs = totalMs;
+        if (shouldHoldCommandRetryUntilGatePass()) {
+            intervalMs = 300;
+            if (intervalMs >= totalMs)
+                intervalMs = qMax(100, totalMs / 2);
+        } else {
+            const int thirdMs = totalMs / 3;
+            intervalMs = qMax(200, thirdMs > 0 ? thirdMs : 200);
+            if (intervalMs >= totalMs)
+                intervalMs = totalMs;
+        }
     }
     commandRetryDeadlineMs_ = QDateTime::currentMSecsSinceEpoch() + totalMs;
 
@@ -1100,6 +1114,40 @@ void test_base::updateTestData(QVector<TestItem>& testItems) {
     }
     testResultTableUpdate(testItems);
 }
+/** 表格「数据」列只展示 MES 关键原因（冒号后 / 错误信息），完整原文走 showlog。 */
+static QString briefMesErrorForTable(const QString& msg) {
+    const QString src = msg.trimmed();
+    if (src.isEmpty())
+        return src;
+
+    auto stripOuterParen = [](QString text) {
+        text = text.trimmed();
+        if (text.endsWith(QStringLiteral(")")) || text.endsWith(QStringLiteral("）")))
+            text.chop(1);
+        return text.trimmed();
+    };
+
+    const int labelPos = src.indexOf(QStringLiteral("错误信息"));
+    if (labelPos >= 0) {
+        QString rest = src.mid(labelPos + QStringLiteral("错误信息").size()).trimmed();
+        if (rest.startsWith(QStringLiteral(":")) || rest.startsWith(QStringLiteral("：")))
+            rest = rest.mid(1).trimmed();
+        rest = stripOuterParen(rest);
+        if (!rest.isEmpty())
+            return rest;
+    }
+
+    const int colonAscii = src.lastIndexOf(QStringLiteral(":"));
+    const int colonWide = src.lastIndexOf(QStringLiteral("："));
+    const int colon = qMax(colonAscii, colonWide);
+    if (colon >= 0 && colon + 1 < src.size()) {
+        const QString rest = stripOuterParen(src.mid(colon + 1));
+        if (!rest.isEmpty())
+            return rest;
+    }
+    return src;
+}
+
 void test_base::solveMesSucess(const int mechines) {
     if (getMesStateQlabel() == nullptr) {
         showlog("mes的状态文本为空");
@@ -1130,7 +1178,7 @@ void test_base::solveMesData(const int mechines, QString msg) {
     if (mechines == getIndex()) {
         TestItem test;
         test.testItem = "mes报错";
-        test.testData = msg;
+        test.testData = briefMesErrorForTable(msg);
         test.testResult = "失败";
         test.ask = "通过";
         testItems.append(test);

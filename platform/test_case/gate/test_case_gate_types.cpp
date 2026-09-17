@@ -576,6 +576,9 @@ static void registerPeriphAndScreenGates() {
             .number("ch2PeakKpa", &D::ch2PeakKpa, "CH2最低峰值", "kPa").textFormat('f', 3).alias("rightPeakKpa").valueLabel("最低峰值")
             .number("sideDiffKpa", &D::sideDiffKpa, "CH1-CH2峰差(kPa)", "kPa").textFormat('f', 3).alias("peakSpanKpa")
             .number("peakCount", &D::peakCount, "完整周期峰个数", "")
+            .number("baselineReturnKpa", &D::baselineReturnKpa, "回基线值(kPa)", "kPa")
+            .textFormat('f', 3)
+            .valueLabel("回基线值")
             .commit();
     }
     {
