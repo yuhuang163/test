@@ -2201,6 +2201,11 @@ void readSerialUiFieldsFromGroup(QSettings& ini, TestCaseSerialUiConfig& out) {
         out.fixtureMenuLabel = fixtureMenuLabel;
     if (ini.contains(QStringLiteral("FixtureBaudRate")))
         out.fixtureBaudRate = ini.value(QStringLiteral("FixtureBaudRate"), 9600).toInt();
+    const QString plcFixtureMenuLabel = ini.value(QStringLiteral("PlcFixtureMenuLabel")).toString().trimmed();
+    if (!plcFixtureMenuLabel.isEmpty())
+        out.plcFixtureMenuLabel = plcFixtureMenuLabel;
+    if (ini.contains(QStringLiteral("PlcFixtureBaudRate")))
+        out.plcFixtureBaudRate = ini.value(QStringLiteral("PlcFixtureBaudRate"), 9600).toInt();
 }
 
 } // namespace
@@ -2262,6 +2267,9 @@ bool TestCaseStore::saveStationSerialUiConfig(const QString& stationKey, const T
     profileIni.setValue(QStringLiteral("UsbBaudRate"), config.usbBaudRate > 0 ? config.usbBaudRate : 115200);
     profileIni.setValue(QStringLiteral("FixtureMenuLabel"), config.fixtureMenuLabel);
     profileIni.setValue(QStringLiteral("FixtureBaudRate"), config.fixtureBaudRate > 0 ? config.fixtureBaudRate : 9600);
+    profileIni.setValue(QStringLiteral("PlcFixtureMenuLabel"), config.plcFixtureMenuLabel);
+    profileIni.setValue(QStringLiteral("PlcFixtureBaudRate"),
+                        config.plcFixtureBaudRate > 0 ? config.plcFixtureBaudRate : 9600);
     profileIni.endGroup();
     syncTestCaseIni(profileIni, profileFlow);
     return true;

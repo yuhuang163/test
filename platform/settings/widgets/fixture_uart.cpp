@@ -28,9 +28,10 @@ Fixture_uart::Fixture_uart(QWidget* parent, FixtureUartRole role)
     // 串口解析在 QtConcurrent 线程 emit，跨线程 QueuedConnection 须注册自定义类型
     qRegisterMetaType<FixturePacketData>("FixturePacketData");
     ui->setupUi(this);
-    // 波特率由配置/默认值决定，不在此弹窗暴露修改
-    ui->fixtureBaudLabel->setVisible(false);
-    ui->FixtureBaudRateCombo->setVisible(false);
+    // 普通治具弹窗不暴露波特率；PLC 治具串口弹窗允许现场改波特率
+    const bool showFixtureBaud = role_ == FixtureUartRole::PlcSharedPort;
+    ui->fixtureBaudLabel->setVisible(showFixtureBaud);
+    ui->FixtureBaudRateCombo->setVisible(showFixtureBaud);
     ui->plcBaudRateLabel->setVisible(false);
     ui->plcBaudRateCombo->setVisible(false);
     ui->FixturecomNameCombo->clear();
@@ -43,13 +44,7 @@ Fixture_uart::Fixture_uart(QWidget* parent, FixtureUartRole role)
         int b = text.toInt(&ok);
         if (ok && b > 0 && role_ != FixtureUartRole::PreStartMonitor) {
             fixBaudRate = b;
-            if (plcSharedPort_) {
-                SETTINGS.setValue(QStringLiteral("M8_FIXTURE_PLC/BaudRate"), fixBaudRate);
-            } else {
-                SETTINGS.setValue(QStringLiteral("mechine/0/masterFixtureBaudRate"), fixBaudRate);
-                SETTINGS.setValue(QStringLiteral("Fixture/BaudRate"), fixBaudRate);
-            }
-            SETTINGS.sync();
+            saveFixturePortConfig();
         }
     });
 
@@ -220,12 +215,8 @@ void Fixture_uart::loadStationPageConfig() {
         const QString fixturePortKey =
             plcSharedPort_ ? QStringLiteral("PlcFixtureComPort") : QStringLiteral("FixtureComPort");
         QString fixtureCom = settings.value(fixturePortKey).toString().trimmed();
-        if (fixtureCom.isEmpty()) {
-            fixtureCom =
-                SETTINGS.value(plcSharedPort_ ? QStringLiteral("M8_FIXTURE_PLC/ComPort")
-                                              : QStringLiteral("mechine/0/masterFixturecomName"))
-                    .toString()
-                    .trimmed();
+        if (fixtureCom.isEmpty() && !plcSharedPort_) {
+            fixtureCom = SETTINGS.value(QStringLiteral("mechine/0/masterFixturecomName")).toString().trimmed();
         }
         if (!fixtureCom.isEmpty()) {
             ui->FixturecomNameCombo->setEditText(fixtureCom);
@@ -233,14 +224,18 @@ void Fixture_uart::loadStationPageConfig() {
                 ui->FixturecomNameCombo->setCurrentText(fixtureCom);
         }
 
-        const int savedFixtureBaud =
-            plcSharedPort_
-                ? settings.value(QStringLiteral("PlcFixtureBaudRate"),
-                                 SETTINGS.value(QStringLiteral("M8_FIXTURE_PLC/BaudRate"), 9600))
-                      .toInt()
-                : SETTINGS.value(QStringLiteral("mechine/0/masterFixtureBaudRate"),
-                                 SETTINGS.value(QStringLiteral("Fixture/BaudRate"), 9600))
-                      .toInt();
+        int savedFixtureBaud = 9600;
+        if (plcSharedPort_) {
+            const TestCaseSerialUiConfig serialUi = TestCaseStore::loadStationSerialUiConfig(stationKey);
+            savedFixtureBaud = serialUi.plcFixtureBaudRate > 0
+                                   ? serialUi.plcFixtureBaudRate
+                                   : settings.value(QStringLiteral("PlcFixtureBaudRate"), 9600).toInt();
+        } else {
+            const TestCaseSerialUiConfig serialUi = TestCaseStore::loadStationSerialUiConfig(stationKey);
+            savedFixtureBaud = serialUi.fixtureBaudRate > 0 ? serialUi.fixtureBaudRate
+                                                            : SETTINGS.value(QStringLiteral("mechine/0/masterFixtureBaudRate"), 9600)
+                                                                  .toInt();
+        }
         fixBaudRate = savedFixtureBaud > 0 ? savedFixtureBaud : 9600;
         ui->FixtureBaudRateCombo->setCurrentText(QString::number(fixBaudRate));
         settings.endGroup();
@@ -302,6 +297,9 @@ void Fixture_uart::saveFixturePortConfig() {
         settings.setValue(QStringLiteral("PlcFixtureComPort"), fixturePort);
         settings.setValue(QStringLiteral("PlcFixtureBaudRate"), fixBaudRate);
         settings.endGroup();
+        settings.beginGroup(QStringLiteral("SerialUi"));
+        settings.setValue(QStringLiteral("PlcFixtureBaudRate"), fixBaudRate);
+        settings.endGroup();
         settings.sync();
         SETTINGS.setValue(QStringLiteral("M8_FIXTURE_PLC/ComPort"), fixturePort);
         SETTINGS.setValue(QStringLiteral("M8_FIXTURE_PLC/BaudRate"), fixBaudRate);
@@ -309,26 +307,28 @@ void Fixture_uart::saveFixturePortConfig() {
         return;
     }
 
+    TestCaseStore::ensureProfileDirectory(stationKey, TestCaseStore::flowStationDisplayName(stationKey), QString());
+    const QString flowPath = TestCasePaths::profileFlowPath(stationKey);
+    if (!flowPath.isEmpty()) {
+        QSettings flowSettings(flowPath, QSettings::IniFormat);
+        flowSettings.setIniCodec("UTF-8");
+        flowSettings.beginGroup(QStringLiteral("SerialUi"));
+        flowSettings.setValue(QStringLiteral("FixtureBaudRate"), fixBaudRate);
+        flowSettings.endGroup();
+        QSettings monitorSettings(flowPath, QSettings::IniFormat);
+        monitorSettings.setIniCodec("UTF-8");
+        monitorSettings.beginGroup(QStringLiteral("PreStart_Monitor"));
+        // 工站未启用自动扫码/PLC监控时，不创建、不回写 PreStart_Monitor
+        if (monitorSettings.value(QStringLiteral("Enabled")).toBool())
+            monitorSettings.setValue(QStringLiteral("FixtureComPort"), fixturePort);
+        monitorSettings.endGroup();
+        flowSettings.sync();
+    }
+
     if (!fixturePort.isEmpty())
         SETTINGS.setValue(QStringLiteral("mechine/0/masterFixturecomName"), fixturePort);
     SETTINGS.setValue(QStringLiteral("mechine/0/masterFixtureBaudRate"), fixBaudRate);
-    SETTINGS.setValue(QStringLiteral("Fixture/BaudRate"), fixBaudRate);
     SETTINGS.sync();
-
-    const QString flowPath = TestCasePaths::profileFlowPath(stationKey);
-    if (flowPath.isEmpty() || !QFile::exists(flowPath))
-        return;
-    QSettings settings(flowPath, QSettings::IniFormat);
-    settings.setIniCodec("UTF-8");
-    settings.beginGroup(QStringLiteral("PreStart_Monitor"));
-    // 工站未启用自动扫码/PLC监控时，不创建、不回写 PreStart_Monitor
-    if (!settings.value(QStringLiteral("Enabled")).toBool()) {
-        settings.endGroup();
-        return;
-    }
-    settings.setValue(QStringLiteral("FixtureComPort"), fixturePort);
-    settings.endGroup();
-    settings.sync();
 }
 
 void Fixture_uart::savePreStartMonitorConfig() {
@@ -518,9 +518,6 @@ void Fixture_uart::setFixBaudRate(int baudRate) {
         QSignalBlocker blocker(ui->FixtureBaudRateCombo);
         ui->FixtureBaudRateCombo->setCurrentText(text);
     }
-    SETTINGS.setValue(QStringLiteral("mechine/0/masterFixtureBaudRate"), fixBaudRate);
-    SETTINGS.setValue(QStringLiteral("Fixture/BaudRate"), fixBaudRate);
-    SETTINGS.sync();
 }
 
 bool Fixture_uart::tryOpenSerialPort(const QString& portName, bool autoConnect) {

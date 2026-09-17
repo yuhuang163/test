@@ -15,7 +15,6 @@
 class QAction;
 class SerialChannel;
 class QTimer;
-class QTabWidget;
 
 namespace Ui {
 class QFreeWorkBox;
@@ -62,7 +61,7 @@ class QFreeWorkBox : public box_base {
     void triggerAllStationScanners();
     bool isAnyStationTesting() const;
     void releaseSharedPlcIfIdle();
-    /** 按当前选中工站 flow.ini [SerialUi] 刷新顶部「连接治具串口」菜单文案。 */
+    /** 按当前选中工站 flow.ini [SerialUi] 刷新顶部治具/PLC 治具串口菜单文案与波特率。 */
     void applyFixtureMenuLabel();
 
   public slots:
@@ -75,14 +74,15 @@ class QFreeWorkBox : public box_base {
   private:
     static QString resolvedFixtureComName(int stationIndex);
     static QString resolvedPlcFixtureComName();
-    /** 治具串口 + PLC治具串口合并到同一窗口的两个标签页；show=false 时仅创建不弹窗。 */
-    void ensureFixturePortsWindow(bool show = true, int tabIndex = 0);
+    /** 普通治具串口窗口；show=false 时仅创建不弹窗。 */
+    void ensureFixtureUartWindow(bool show = true);
+    /** PLC 治具串口独立窗口；show=false 时仅创建不弹窗。 */
+    void ensurePlcFixtureUartWindow(bool show = true);
 
-    QWidget* fixturePortsWindow_ = nullptr;
-    QTabWidget* fixturePortsTabs_ = nullptr;
     Fixture_uart* Fixture_uart_ui = nullptr;
-    QAction* fixtureConnectAct_ = nullptr;
     Fixture_uart* plcFixtureUartUi_ = nullptr;
+    QAction* fixtureConnectAct_ = nullptr;
+    QAction* plcFixtureConnectAct_ = nullptr;
     Fixture_uart* preStartMonitorUi_ = nullptr;
     Asd9026aDevice* asd9026aDevice_ = nullptr;
     QHash<int, SerialChannel*> sharedTempLoggerChannels_;

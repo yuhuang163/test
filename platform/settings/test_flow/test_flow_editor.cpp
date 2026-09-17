@@ -1046,6 +1046,12 @@ void TestFlowEditor::promptSerialUiConfig() {
     menuForm->addRow(QStringLiteral("连接菜单名称"), fixtureMenuLabel);
     QComboBox* fixtureBaudCombo = makeSerialBaudCombo(menuGroup, cfg.fixtureBaudRate > 0 ? cfg.fixtureBaudRate : 9600);
     menuForm->addRow(QStringLiteral("治具波特率"), fixtureBaudCombo);
+    auto* plcFixtureMenuLabel = new QLineEdit(cfg.plcFixtureMenuLabel, menuGroup);
+    plcFixtureMenuLabel->setPlaceholderText(QStringLiteral("连接PLC治具串口"));
+    menuForm->addRow(QStringLiteral("PLC连接菜单名称"), plcFixtureMenuLabel);
+    QComboBox* plcFixtureBaudCombo =
+        makeSerialBaudCombo(menuGroup, cfg.plcFixtureBaudRate > 0 ? cfg.plcFixtureBaudRate : 9600);
+    menuForm->addRow(QStringLiteral("PLC治具波特率"), plcFixtureBaudCombo);
     root->addWidget(menuGroup);
 
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
@@ -1075,6 +1081,8 @@ void TestFlowEditor::promptSerialUiConfig() {
     next.usbBaudRate = serialBaudFromCombo(usbBaudCombo, 115200);
     next.fixtureMenuLabel = normalizedLabel(fixtureMenuLabel, QStringLiteral("连接治具串口"));
     next.fixtureBaudRate = serialBaudFromCombo(fixtureBaudCombo, 9600);
+    next.plcFixtureMenuLabel = normalizedLabel(plcFixtureMenuLabel, QStringLiteral("连接PLC治具串口"));
+    next.plcFixtureBaudRate = serialBaudFromCombo(plcFixtureBaudCombo, 9600);
 
     if (!TestCaseStore::saveStationSerialUiConfig(key, next)) {
         QMessageBox::warning(dialogParent_, QStringLiteral("保存失败"), QStringLiteral("无法写入工站 flow.ini"));

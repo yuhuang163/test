@@ -130,6 +130,10 @@ struct TestCaseSerialUiConfig {
     QString fixtureMenuLabel = QStringLiteral("连接治具串口");
     /** 顶部治具串口波特率；≤0 表示沿用默认 9600 */
     int fixtureBaudRate = 9600;
+    /** 自由工站顶部菜单「连接PLC治具串口」文案 */
+    QString plcFixtureMenuLabel = QStringLiteral("连接PLC治具串口");
+    /** PLC 治具串口波特率；≤0 表示沿用默认 9600 */
+    int plcFixtureBaudRate = 9600;
 };
 
 /** 工站 flow.ini [DeviceSide]：三元组/设备数据左右位（与主界面「三元组位置」一致） */
