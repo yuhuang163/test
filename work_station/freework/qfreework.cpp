@@ -1,5 +1,6 @@
 #include "qfreework.h"
 
+#include "application_shutdown.h"
 #include "common_utils.h"
 #include "huiling_wfp60h_scpi_types.h"
 #include "qfreeworkbox.h"
@@ -1000,6 +1001,7 @@ void QFreeWork::beginUiStartTest() {
     ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: "
                                    "10px; padding: 10px; text-align: center; ");
 
+    ApplicationShutdown::resetForNewSession();
     isTestContinue = true;
     teststate = -1;
     updatePreStartMonitorState();
@@ -1203,12 +1205,18 @@ bool QFreeWork::runSingleTestCaseStep(const QString& stationKey, const QString& 
         return false;
     }
 
-    // 单步与开测一致：Dongle 串口未打开时自动打开，避免「扫描连接蓝牙」等 BLE 步骤因串口未开而失败
-    if (!dongleSerialPort->isOpen())
-        on_connectButton_clicked();
     showlog(QStringLiteral("单步运行：%1（工站 %2）").arg(TestCaseRunner::stepLabel(def), key));
+    ApplicationShutdown::resetForNewSession();
     singleStepDebugRun_ = true;
     activeFlowStationKey_ = key;
+    applyStationSerialUiConfig();
+    // 仅 Dongle/Product 步骤才自动开 Dongle；ProductSerial 走工位「产品串口」行
+    const bool needsDongle = def.send.channel == TestCaseSendChannel::Dongle
+        || def.send.channel == TestCaseSendChannel::Product;
+    if (needsDongle && !dongleSerialPort->isOpen())
+        on_connectButton_clicked();
+    else if (def.send.channel == TestCaseSendChannel::ProductSerial)
+        showlog(QStringLiteral("本步通信类型=产品串口：请在工位「产品串口」行选 COM 并点连接（非 Dongle 蓝牙行）"));
     orderedTestCaseNames_ = QStringList{stepId};
     orderedFailCaseNames_.clear();
     runningFailFlow_ = false;
@@ -1322,10 +1330,20 @@ bool QFreeWork::tickOrderedTestStepLoop() {
         if (!caseDef.gate.enabled && canGoNext && !stepRuntime_.done && !sendRetryOver) {
             const bool dongleBleConnect = TestCaseRunner::isDongleBleConnectStep(caseDef);
             const bool productGet = !caseDef.hook.enabled && !dongleBleConnect && caseDef.send.channel == TestCaseSendChannel::Product && caseDef.send.action == TestCaseSendAction::Get;
-            // 治具/产品串口 Get 等异步等待须由回包回调 markActiveTestCaseStepDone，不可在此直接 done
+            ProductSerialCmd productSerialInstrumentCmd;
+            const bool productSerialInstrumentStep =
+                caseDef.send.channel == TestCaseSendChannel::ProductSerial
+                && cmdEnumFromName(ProductSerialCmdCatalog::catalog(), caseDef.send.deviceCmd,
+                                   productSerialInstrumentCmd);
+            // 产品串口 Qroot/Qpb 等产测 Set（如 MacWrite）：sendCommandWithRetry 收到 Ack 后须 done，不能仅靠 canGoNext
+            const bool productSerialProtocolSet =
+                !caseDef.hook.enabled && !dongleBleConnect && !productGet && !productSerialInstrumentStep
+                && caseDef.send.channel == TestCaseSendChannel::ProductSerial
+                && caseDef.send.action == TestCaseSendAction::Set;
+            // 治具/产品串口仪器 Get 等异步等待须由回包回调 markActiveTestCaseStepDone，不可在此直接 done
             const bool fixtureOrSerialAsync =
-                caseDef.send.channel == TestCaseSendChannel::Fixture ||
-                caseDef.send.channel == TestCaseSendChannel::ProductSerial;
+                caseDef.send.channel == TestCaseSendChannel::Fixture
+                || (caseDef.send.channel == TestCaseSendChannel::ProductSerial && !productSerialProtocolSet);
             if (!caseDef.hook.enabled && !dongleBleConnect && !productGet && !fixtureOrSerialAsync) {
                 if (!TestCaseRunner::stepWaitsForPromptAck(caseDef) || testCasePromptAcknowledged_) {
                     stepRuntime_.done = true;
@@ -1353,6 +1371,12 @@ bool QFreeWork::tickOrderedTestStepLoop() {
                     stepRuntime_.testData = QStringLiteral("已连接");
             } else if (productGet && lastCommandRetryCount > 0) {
                 // 无 Gate 的 Product Get：协议层已应答即可过步（有 Gate 时由 evaluateActiveTestCaseGate 收尾）
+                stepRuntime_.done = true;
+                stepRuntime_.pass = true;
+                if (stepRuntime_.testData == QLatin1String("-") || stepRuntime_.testData.trimmed().isEmpty())
+                    stepRuntime_.testData = QStringLiteral("ok");
+            } else if (productSerialProtocolSet && lastCommandRetryCount > 0) {
+                // 无 Gate 的 ProductSerial 产测 Set（如 Qroot 写 MAC）：Ack 后 finishCommandRetryWait 已放行，此处结案
                 stepRuntime_.done = true;
                 stepRuntime_.pass = true;
                 if (stepRuntime_.testData == QLatin1String("-") || stepRuntime_.testData.trimmed().isEmpty())
@@ -2320,6 +2344,7 @@ bool QFreeWork::shouldShowSuctionCurveInTable(const TestCaseDefinition& def) con
 }
 
 void QFreeWork::appendSuctionCurveRowToResultTable(bool pass) {
+    Q_UNUSED(pass);
     QTableWidget* table = testResultTable();
     if (!table || !suctionPlot_)
         return;
@@ -3681,7 +3706,7 @@ bool QFreeWork::ensureProductSerialForInstrumentStep(const QString& stepName) {
             if (product) {
                 product->clearProductSerialRxAccum();
             }
-            showlog(QStringLiteral("产品串口已打开：%1").arg(prodCombo->currentText()));
+            showlog(QStringLiteral("产品串口已打开：%1 @ %2").arg(prodCombo->currentText()).arg(productBaudRate));
         } else {
             stepRuntime_.done = true;
             stepRuntime_.pass = false;

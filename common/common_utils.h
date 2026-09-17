@@ -10,6 +10,8 @@
 #include <QtGlobal>
 
 class QComboBox;
+class QEvent;
+class QMainWindow;
 
 /** 工程公共工具：字节序/十六进制/CRC、时间、文件、字符串 */
 class CommonUtils {
@@ -131,6 +133,15 @@ class CommonUtils {
      * 按毫秒等待并泵 Qt 事件（等同工站 waitWork），避免 Windows 上 QThread::msleep 被量化到 ~15ms。
      */
     static void waitWorkPumpEvents(int ms);
+
+    /**
+     * 处理 Ctrl++ / Ctrl+- / Ctrl+0 以及 Ctrl+滚轮的界面缩放。
+     * 已消费事件时返回 true，供 QApplication::notify 提前返回。
+     */
+    static bool handleUiZoomEvent(QEvent* event);
+
+    /** 从 local.ini 读取 Window/UiZoom 并应用到指定主窗口（Show 时调用一次）。 */
+    static void restoreUiZoom(QMainWindow* mainWindow);
 };
 
 #endif // COMMON_UTILS_H

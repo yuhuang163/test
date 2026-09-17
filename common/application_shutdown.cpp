@@ -8,20 +8,35 @@
 #include <QThreadPool>
 #include <QTimer>
 
+#include <atomic>
+
 #ifdef Q_OS_WIN
 #include <Windows.h>
 #endif
 
+namespace {
+std::atomic<bool> g_exiting{false};
+} // namespace
+
+bool ApplicationShutdown::isExiting() {
+    return g_exiting.load();
+}
+
+void ApplicationShutdown::resetForNewSession() {
+    g_exiting.store(false);
+}
+
 void ApplicationShutdown::prepareForExit() {
     static bool done = false;
+    g_exiting.store(true);
     if (done) {
         return;
     }
     done = true;
 
-    TestCaseSyncService::stopDeviceAgent();
+    TestCaseSyncService::stopDeviceAgent(true);
     Qlog::flushLogBuffers();
-    QThreadPool::globalInstance()->waitForDone(3000);
+    QThreadPool::globalInstance()->waitForDone(800);
 }
 
 void ApplicationShutdown::prepareForOtaReplace() {

@@ -12,9 +12,9 @@
 #include <QHash>
 #include <QMutex>
 
+class QAction;
 class SerialChannel;
 class QTimer;
-class QTabWidget;
 
 namespace Ui {
 class QFreeWorkBox;
@@ -34,6 +34,8 @@ class QFreeWorkBox : public box_base {
     Fixture_uart* fixtureUartWidget() const {
         return Fixture_uart_ui;
     }
+    /** 懒创建顶部治具串口窗口（不自动 open）。 */
+    void ensureFixtureUartWidgetCreated();
     /** 治具 test_case 防呆：按配置自动创建窗口并连接串口；autoConnectedOut 表示本次是否新连上。 */
     Fixture_uart* ensureFixtureUartConnected(int stationIndex, QString* detailOut = nullptr,
                                              bool* autoConnectedOut = nullptr);
@@ -59,23 +61,28 @@ class QFreeWorkBox : public box_base {
     void triggerAllStationScanners();
     bool isAnyStationTesting() const;
     void releaseSharedPlcIfIdle();
+    /** 按当前选中工站 flow.ini [SerialUi] 刷新顶部治具/PLC 治具串口菜单文案与波特率。 */
+    void applyFixtureMenuLabel();
 
   public slots:
     void checkAllover(int fixtureNumber) override;
 
   protected:
     void closeEvent(QCloseEvent* event) override;
+    void abortBlockingWaits() override;
 
   private:
     static QString resolvedFixtureComName(int stationIndex);
     static QString resolvedPlcFixtureComName();
-    /** 治具串口 + PLC治具串口合并到同一窗口的两个标签页；show=false 时仅创建不弹窗。 */
-    void ensureFixturePortsWindow(bool show = true, int tabIndex = 0);
+    /** 普通治具串口窗口；show=false 时仅创建不弹窗。 */
+    void ensureFixtureUartWindow(bool show = true);
+    /** PLC 治具串口独立窗口；show=false 时仅创建不弹窗。 */
+    void ensurePlcFixtureUartWindow(bool show = true);
 
-    QWidget* fixturePortsWindow_ = nullptr;
-    QTabWidget* fixturePortsTabs_ = nullptr;
     Fixture_uart* Fixture_uart_ui = nullptr;
     Fixture_uart* plcFixtureUartUi_ = nullptr;
+    QAction* fixtureConnectAct_ = nullptr;
+    QAction* plcFixtureConnectAct_ = nullptr;
     Fixture_uart* preStartMonitorUi_ = nullptr;
     Asd9026aDevice* asd9026aDevice_ = nullptr;
     QHash<int, SerialChannel*> sharedTempLoggerChannels_;

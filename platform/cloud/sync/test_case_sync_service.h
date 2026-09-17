@@ -36,6 +36,9 @@ class TestCaseSyncService {
     /** 打包指定工站用例上传草稿（网页拉取回传用） */
     static SyncResult uploadStationProfile(const QString& stationKey, const QString& displayName,
                                            const QString& source, const QString& remark = QString());
+    /** 新建/复制工站前向云端申请 StationKey（与网页合入发号规则一致） */
+    static SyncResult allocateStationKeyFromCloud(const QString& displayName,
+                                                  const QString& preferredKey = QString());
     /** 查询云端已发布可下载的工站列表 */
     static ProfileListResult listPublishedProfiles();
     /** 从云端下载指定工站已发布用例（只替换该工站目录） */

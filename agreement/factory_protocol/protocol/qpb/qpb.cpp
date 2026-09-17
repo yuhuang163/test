@@ -615,7 +615,35 @@ void Qpb::feedPbPhyPayload(quint8 channel, const QByteArray& payload) {
     }
 }
 
+void Qpb::feedDirectFacPhyRx(const QByteArray& byte) {
+    directFacRxAccum_.append(byte);
+    int offset = 0;
+    while (directFacRxAccum_.size() - offset >= 2) {
+        const int payloadLen = static_cast<quint8>(directFacRxAccum_.at(offset));
+        if (payloadLen <= 0) {
+            directFacRxAccum_.remove(0, offset + 1);
+            offset = 0;
+            continue;
+        }
+        const int frameLen = 2 + payloadLen;
+        if (directFacRxAccum_.size() - offset < frameLen)
+            break;
+        const quint8 channel = static_cast<quint8>(directFacRxAccum_.at(offset + 1));
+        const QByteArray payload = directFacRxAccum_.mid(offset + 2, payloadLen);
+        feedPbPhyPayload(channel, payload);
+        offset += frameLen;
+    }
+    if (offset > 0)
+        directFacRxAccum_.remove(0, offset);
+}
+
 void Qpb::parseCmd(const QByteArray& byte) {
+    if (byte.isEmpty())
+        return;
+    if (skipDonglePhyWrap()) {
+        feedDirectFacPhyRx(byte);
+        return;
+    }
     QList<QByteArray> innerPackets;
     QList<quint8> channels;
     phyRx_.feed(byte, innerPackets, &channels);
@@ -678,14 +706,16 @@ void Qpb::sendMainPack(const DataPackage& pack) {
         }
 
         std::vector<uint8_t> new_buffer;
-        new_buffer.reserve(8 + 1 + 1 + len + 2);
-        new_buffer.insert(new_buffer.begin(), 8, 0xcc);      //包头
+        new_buffer.reserve((skipDonglePhyWrap() ? 0 : 8) + 1 + 1 + len + 2);
+        if (!skipDonglePhyWrap())
+            new_buffer.insert(new_buffer.begin(), 8, 0xcc);      //包头
         new_buffer.push_back(static_cast<uint8_t>(len + 2)); //长度
         new_buffer.push_back(PHY_CHANNEL_MAIN);              //通道
         new_buffer.insert(new_buffer.end(), tx_buffer.begin(), tx_buffer.begin() + len + 2);
 
         serialPort->write((char*)new_buffer.data(), new_buffer.size());
-        serialPort->write((char*)new_buffer.data(), new_buffer.size());
+        if (!skipDonglePhyWrap())
+            serialPort->write((char*)new_buffer.data(), new_buffer.size());
         qDebug().noquote() << "PB TX:"
                            << QString::fromLatin1(QByteArray(reinterpret_cast<const char*>(new_buffer.data()),
                                                              static_cast<int>(new_buffer.size()))
@@ -762,8 +792,9 @@ void Qpb::sendShortPack(const DataPackage& pack) {
         }
 
         std::vector<uint8_t> new_buffer;
-        new_buffer.reserve(8 + 1 + 1 + len + 2);
-        new_buffer.insert(new_buffer.begin(), 8, 0xcc);      //包头
+        new_buffer.reserve((skipDonglePhyWrap() ? 0 : 8) + 1 + 1 + len + 2);
+        if (!skipDonglePhyWrap())
+            new_buffer.insert(new_buffer.begin(), 8, 0xcc);      //包头
         new_buffer.push_back(static_cast<uint8_t>(len + 2)); //长度
         new_buffer.push_back(PHY_CHANNEL_APP);               //通道
         new_buffer.insert(new_buffer.end(), tx_buffer.begin(), tx_buffer.begin() + len + 2);
@@ -817,8 +848,9 @@ void Qpb::sendShortPack(const FactoryDataPackage& pack) {
         tx_buffer[len + 1] = calCrc16(std::vector<uint8_t>(tx_buffer.begin() + 1, tx_buffer.begin() + len + 1));
 
         std::vector<uint8_t> new_buffer;
-        new_buffer.reserve(8 + 1 + 1 + len + 2);
-        new_buffer.insert(new_buffer.begin(), 8, 0xcc);      //包头
+        new_buffer.reserve((skipDonglePhyWrap() ? 0 : 8) + 1 + 1 + len + 2);
+        if (!skipDonglePhyWrap())
+            new_buffer.insert(new_buffer.begin(), 8, 0xcc);      //包头
         new_buffer.push_back(static_cast<uint8_t>(len + 2)); //长度
         new_buffer.push_back(PHY_CHANNEL_FAC);               //通道
         new_buffer.insert(new_buffer.end(), tx_buffer.begin(), tx_buffer.begin() + len + 2);

@@ -33,6 +33,15 @@ class QFixtureManager : public QObject {
 
     QString portName() const;
     QString errorString() const;
+    int baudRate() const;
+    /** 已打开时原地改波特率，避免 close/reopen 导致步骤误判未连接。 */
+    bool applyBaudRate(int baudRate);
+    /** 等待治具串口下一段去抖后的原始收包（杰理盒子 1拖2 两窗同时等）。 */
+    bool waitForRawFrame(QByteArray* outFrame, int timeoutMs);
+    /** 关窗/停测时打断 waitForRawFrame 内嵌套 QEventLoop，避免拖到整段超时。 */
+    void abortPendingWaits();
+    /** 新一轮等待 RF 前清 abort，避免上次关窗/停测标志残留。 */
+    void resetWaitAbort();
 
     void sendPcbaFrame(const QByteArray& frame);
     /** 复用顶部唯一治具串口发送原始帧；PLC Hook 禁止另开同一 COM。 */
@@ -65,6 +74,8 @@ class QFixtureManager : public QObject {
     void send_data_to_mechine_start();
     void start_fix_action(int state);
     void send_data_to_mechine_press(int state);
+    void rawFrameReceived(const QByteArray& data);
+    void waitAbortRequested();
 
   private slots:
     void readFixtureSerialPortData();
@@ -80,6 +91,7 @@ class QFixtureManager : public QObject {
     QByteArray fixtureSerialPortBuf_;
 
     std::atomic<bool> running_{false};
+    std::atomic<bool> abortWait_{false};
     QFuture<void> future_;
 
     HzPcbaFixtureDevice* hzPcbaDevice_ = nullptr;

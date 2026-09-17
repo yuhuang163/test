@@ -138,6 +138,8 @@ class Qpb : public qProtocol, public IDevice {
     DataPackage getBlePack() const;
     void setBlePack(const DataPackage& newBlePack);
     void feedPbPhyPayload(quint8 channel, const QByteArray& payload);
+    /** 产品串口直连：解析无 8×CC 的 [Len][Channel][Payload] 帧 */
+    void feedDirectFacPhyRx(const QByteArray& byte);
     void dispatchDecodedPbPack();
 
     typedef enum {
@@ -163,6 +165,7 @@ class Qpb : public qProtocol, public IDevice {
 
     QSerialPort* serialPort;
     DonglePhyRxCodec phyRx_{kDonglePhyRxAcceptFacAppMain, "[Qpb]"};
+    QByteArray directFacRxAccum_;
     std::vector<uint8_t> ibuffer, ipack;
     FactoryDataPackage recievePack = FactoryDataPackage_init_default;
     DataPackage blePack = DataPackage_init_default;
