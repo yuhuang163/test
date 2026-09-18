@@ -106,7 +106,9 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("peakDipStartKpa"), QStringLiteral("入峰阈值 (kPa)")},
         {QStringLiteral("offsetKpa"), QStringLiteral("吸力修正值 (kPa)，最终值=原始值+本项（填负数为减）")},
         {QStringLiteral("showCurveInTable"), QStringLiteral("结果表格中嵌入吸力曲线图（true/false，默认true）")},
-        {QStringLiteral("channel"), QStringLiteral("通道号")},
+        {QStringLiteral("channel"), QStringLiteral("通道（气压:left/right/both；吸力:1/2/3）")},
+        {QStringLiteral("sampleCount"), QStringLiteral("气压采样点数")},
+        {QStringLiteral("intervalMs"), QStringLiteral("气压采样间隔 (ms)")},
         {QStringLiteral("channels"), QStringLiteral("通道列表（如 1,2,3 或 1-6）")},
         {QStringLiteral("channelsPerStation"), QStringLiteral("每工位占用通道数")},
         {QStringLiteral("tempPassMode"), QStringLiteral("多路温度卡控：all=同轮全部达标（默认）；any=任一路达标即过")},
@@ -209,7 +211,7 @@ QString sendParamKeyZhLabel(const QString& key) {
 bool hookUsesSendParamUi(const QString& hookId) {
     return hookId == QLatin1String("COUNTDOWN_WAIT") || hookId == QLatin1String("LIGHT_SENSOR_GOLDEN_CALIB")
         || hookId == QLatin1String("LIGHT_SENSOR_CALIB_WRITE") || hookId == QLatin1String("LIGHT_SENSOR_CALIB_READ")
-        || hookId == QLatin1String("VES_CH1_SET_BRIGHTNESS")
+        || hookId == QLatin1String("VES_CH1_SET_BRIGHTNESS") || hookId == QLatin1String("AIR_PRESSURE_SAMPLE")
         || hookId == QLatin1String("GENERATE_WHOLE_MACHINE_SN")
         || hookId.startsWith(QLatin1String("PLC_SYNC_"));
 }
@@ -265,6 +267,14 @@ QVariantMap hookSendParamDefaultMap(const QString& hookId) {
         QVariantMap map;
         map.insert(QStringLiteral("baud"), QStringLiteral("9600"));
         map.insert(QStringLiteral("brightness"), QStringLiteral("22"));
+        return map;
+    }
+    if (hookId == QLatin1String("AIR_PRESSURE_SAMPLE")) {
+        QVariantMap map;
+        map.insert(QStringLiteral("sampleCount"), QStringLiteral("10"));
+        map.insert(QStringLiteral("intervalMs"), QStringLiteral("100"));
+        map.insert(QStringLiteral("waitMs"), QStringLiteral("15000"));
+        map.insert(QStringLiteral("channel"), QStringLiteral("both"));
         return map;
     }
     if (hookId.startsWith(QLatin1String("PLC_SYNC_WRITE"))) {
@@ -678,7 +688,7 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
         }
         return {};
     }
-    if (channel == TestCaseSendChannel::Product) {
+    if (channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial) {
         if (cmdName == QLatin1String("RootSuctionTest")) {
             return QVariantMap{{QStringLiteral("switch"), QStringLiteral("1")},
                                {QStringLiteral("mode"), QStringLiteral("1")},
@@ -1073,13 +1083,6 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
         items.reserve(names.size());
         for (const QString& name : names)
             items.append({TupleCmdCatalog::catalog().cmdUiLabel(name), name});
-    } else if (channel == TestCaseSendChannel::ProductSerial) {
-        const QStringList names = ProductSerialCmdCatalog::catalog().allCmdNames(TestCaseSendAction::Set);
-        items.reserve(names.size());
-        for (const QString& name : names) {
-            if (ProductSerialCmd cmd; cmdEnumFromName(ProductSerialCmdCatalog::catalog(), name, cmd) && ProductSerialCmdCatalog::catalog().isCmdForAction(static_cast<int>(cmd), action))
-                items.append({ProductSerialCmdCatalog::catalog().cmdUiLabel(name), name});
-        }
     } else if (channel == TestCaseSendChannel::Fixture) {
         const TestCaseFixtureProtocol proto = FixturePcbaCmdCatalog::fixtureProtocolFromIni(device);
         if (proto == TestCaseFixtureProtocol::Asd9026a) {
@@ -1136,7 +1139,8 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
     std::sort(items.begin(), items.end(), [](const QPair<QString, QString>& a, const QPair<QString, QString>& b) {
         return a.first.localeAwareCompare(b.first) < 0;
     });
-    if (channel == TestCaseSendChannel::Product && !keepCmdIfMissing.isEmpty()) {
+    if ((channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial)
+        && !keepCmdIfMissing.isEmpty()) {
         bool found = false;
         for (const auto& item : items) {
             if (item.second == keepCmdIfMissing) {
@@ -1242,18 +1246,6 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
                 out.valid = true;
                 out.hint = TupleCmdCatalog::catalog().paramUiHint(name);
                 out.kind = sendParamUiKindFromSchema(schema.kind);
-            }
-        }
-        return out;
-    }
-    if (channel == TestCaseSendChannel::ProductSerial) {
-        ProductSerialCmd serialCmd;
-        if (cmdEnumFromName(ProductSerialCmdCatalog::catalog(), name, serialCmd)) {
-            DeviceCmdParamSchema schema;
-            if (ProductSerialCmdCatalog::catalog().paramSchemaFor(static_cast<int>(serialCmd), schema)) {
-                out.valid = true;
-                out.hint = ProductSerialCmdCatalog::catalog().paramUiHint(name);
-                out.kind = SendCmdParamKind::None;
             }
         }
         return out;
@@ -1494,6 +1486,11 @@ void applyHookSendParamUi(Ui::TestCaseEditDialog* ui, const QString& hookId, con
     } else if (hookId == QLatin1String("VES_CH1_SET_BRIGHTNESS")) {
         uiSchema.hint = QStringLiteral(
             "走工位治具串口，协议固定通道 1；Param_brightness：亮度 0~255（默认 22）");
+    } else if (hookId == QLatin1String("AIR_PRESSURE_SAMPLE")) {
+        uiSchema.hint = QStringLiteral(
+            "sampleCount：采样点数；intervalMs：设备采样间隔(ms)；waitMs：收齐上报超时(ms，可留空用步骤超时)；"
+            "channel：left=仅左气压，right=仅右气压，both=左右各采 N 点并逐点卡控；"
+            "卡控上下限(kPa)在下方「卡控」区勾选启用后配置（勾选左气压并设最小/最大值即可，逐点共用）");
     } else if (hookId.startsWith(QLatin1String("PLC_SYNC_WRITE"))) {
         uiSchema.hint = QStringLiteral(
             "address：PLC线圈地址（如 M10/M11/M20/Y0，支持任意自定义修改）；"
@@ -1831,6 +1828,7 @@ const QHash<QString, QString>& hookDisplayNameMap() {
         {QStringLiteral("LIGHT_SENSOR_GOLDEN_CALIB"), QStringLiteral("光感单点校准（设亮度→采光感→写+回读，旧）")},
         {QStringLiteral("LIGHT_SENSOR_CALIB_WRITE"), QStringLiteral("光感写入校准值（采光感→写）")},
         {QStringLiteral("LIGHT_SENSOR_CALIB_READ"), QStringLiteral("光感读取校准值（回读+五点终判）")},
+        {QStringLiteral("AIR_PRESSURE_SAMPLE"), QStringLiteral("气压采样（多点逐点卡控）")},
         {QStringLiteral("VES_CH1_SET_BRIGHTNESS"), QStringLiteral("VES光源CH1设亮度")},
         {QStringLiteral("MES_GET_ROOT_SKU"), QStringLiteral("MES 获取 ROOTSKU（三元组 SKU）")},
         {QStringLiteral("PLC_MODBUS_CONN"), QStringLiteral("PLC Modbus 连接")},
@@ -2069,8 +2067,15 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
         applySendParamNameCell(nameItem, newKey);
     });
 
+    label_gateTableHint_ = new QLabel(
+        QStringLiteral("卡控阈值（勾选判定项，填最小/最大值；气压单位 kPa，逐点共用同一范围）"), ui->groupBox_gate);
+    label_gateTableHint_->setWordWrap(true);
+    ui->formLayout_gate->addRow(label_gateTableHint_);
+    label_gateTableHint_->setVisible(false);
+
     tableWidget_multiGates_ = new QTableWidget(ui->groupBox_gate);
     initPeriphGateTable(tableWidget_multiGates_);
+    tableWidget_multiGates_->setMinimumHeight(120);
     ui->formLayout_gate->addRow(tableWidget_multiGates_);
     tableWidget_multiGates_->setVisible(false);
 
@@ -2372,6 +2377,8 @@ void TestCaseEditDialog::updateGateFieldsEnabled() {
     ui->label_gateReportType->setVisible(showReportTypeLabel);
     ui->comboBox_gateReportType->setVisible(showReportTypeCombo);
     ui->comboBox_gateReportType->setEnabled(showReportTypeCombo);
+    if (label_gateTableHint_)
+        label_gateTableHint_->setVisible(on && hasBoundType);
     if (tableWidget_multiGates_)
         tableWidget_multiGates_->setVisible(on && hasBoundType);
     // 单字段控件已统一为表格，全部隐藏
@@ -2429,6 +2436,11 @@ void TestCaseEditDialog::updateHookFieldsEnabled() {
             applyHookSendParamUi(ui, hookId, current);
         else
             applyHookSendParamUi(ui, hookId, QVariantMap());
+        // Hook 步骤隐藏 Send 区后仍须绑定卡控回包，否则「卡控」表为空
+        if (hookId == QLatin1String("AIR_PRESSURE_SAMPLE")) {
+            syncGateToSendCommand(QStringLiteral("ProtocolAirPressureSampleData"),
+                                  QStringLiteral("airPressureLeft"));
+        }
         return;
     }
 
@@ -2458,21 +2470,31 @@ void TestCaseEditDialog::syncGateToSendCommand(const QString& preferredReportTyp
     const TestCaseSendChannel channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
     const QString protocolOrDevice = comboData(ui->comboBox_productProtocol);
     const QString cmdName = comboData(ui->comboBox_deviceCmd);
-    const GateSendBinding binding = GateRegistry::bindingForSend(channel, protocolOrDevice, cmdName);
+    GateSendBinding binding = GateRegistry::bindingForSend(channel, protocolOrDevice, cmdName);
+    if (ui->checkBox_hookEnabled->isChecked()) {
+        const GateSendBinding hookBinding = GateRegistry::bindingForHook(comboData(ui->comboBox_hookId));
+        if (!hookBinding.reportTypes.isEmpty())
+            binding = hookBinding;
+    }
 
-    gateReportTypeLocked_ = (binding.reportTypes.size() == 1);
-    if (binding.reportTypes.isEmpty())
+    QStringList allowedTypes = binding.reportTypes;
+    const QString preferredType = preferredReportType.trimmed();
+    if (allowedTypes.isEmpty() && !preferredType.isEmpty())
+        allowedTypes << preferredType;
+
+    gateReportTypeLocked_ = (allowedTypes.size() == 1);
+    if (allowedTypes.isEmpty())
         ui->label_gateReportType->setText(QStringLiteral("当前指令未绑定卡控回包（请先选带回包的 Get 指令）"));
     else
         ui->label_gateReportType->setText(QStringLiteral("本步回包"));
 
     {
         QSignalBlocker blocker(ui->comboBox_gateReportType);
-        fillGateReportTypeCombo(ui->comboBox_gateReportType, binding.reportTypes);
-        QString wantType = preferredReportType.trimmed();
+        fillGateReportTypeCombo(ui->comboBox_gateReportType, allowedTypes);
+        QString wantType = preferredType;
         if (wantType.isEmpty() || comboIndexByData(ui->comboBox_gateReportType, wantType) < 0) {
-            if (!binding.reportTypes.isEmpty())
-                wantType = binding.reportTypes.constFirst();
+            if (!allowedTypes.isEmpty())
+                wantType = allowedTypes.constFirst();
         }
         const int typeIdx = comboIndexByData(ui->comboBox_gateReportType, wantType);
         if (typeIdx >= 0)
@@ -2532,8 +2554,6 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     const int channelIdx = comboIndexByData(ui->comboBox_sendChannel, sendChannelComboData(channel));
     if (channelIdx >= 0)
         ui->comboBox_sendChannel->setCurrentIndex(channelIdx);
-    ui->comboBox_action->setEnabled(channel != TestCaseSendChannel::ProductSerial);
-
     ui->comboBox_productProtocol->blockSignals(true);
     fillProtocolComboForChannel(ui->comboBox_productProtocol, channel);
     QString protoIni;
@@ -2701,8 +2721,9 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
 void TestCaseEditDialog::updateProductProtocolRowVisible() {
     const TestCaseSendChannel channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
     const bool showProtocol =
-        channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::Fixture ||
-        channel == TestCaseSendChannel::Modbus || channel == TestCaseSendChannel::Scpi;
+        channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial
+        || channel == TestCaseSendChannel::Fixture || channel == TestCaseSendChannel::Modbus
+        || channel == TestCaseSendChannel::Scpi;
     ui->label_productProtocol->setVisible(showProtocol);
     ui->comboBox_productProtocol->setVisible(showProtocol);
     if (showProtocol) {
@@ -2719,13 +2740,6 @@ void TestCaseEditDialog::onSendChannelChanged(int) {
     const TestCaseSendChannel channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
     fillProtocolComboForChannel(ui->comboBox_productProtocol, channel);
     updateProductProtocolRowVisible();
-    const bool serial = channel == TestCaseSendChannel::ProductSerial;
-    ui->comboBox_action->setEnabled(!serial);
-    if (serial) {
-        const int setIdx = comboIndexByData(ui->comboBox_action, QStringLiteral("Set"));
-        if (setIdx >= 0)
-            ui->comboBox_action->setCurrentIndex(setIdx);
-    }
     refreshDeviceCmdCombo();
 }
 

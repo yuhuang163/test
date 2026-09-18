@@ -38,6 +38,8 @@ class GateRegistry {
     /** protocolOrDevice：产品协议 / 治具协议 / Modbus·SCPI 设备键。 */
     static GateSendBinding bindingForSend(TestCaseSendChannel channel, const QString& protocolOrDevice,
                                           const QString& deviceCmd);
+    /** Hook 步骤专用卡控回包（Send 区隐藏时仍须能配置 Gate）。 */
+    static GateSendBinding bindingForHook(const QString& hookId);
     static bool descriptorFor(const QString& reportType, GateTypeDescriptor& out);
     static QStringList fieldsFor(const QString& reportType);
     /** Gate/Field 为 *、all 或空时，对同一回包内全部已登记字段套用相同判定条件。 */

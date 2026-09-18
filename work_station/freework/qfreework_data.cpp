@@ -93,7 +93,7 @@ int deviceSideIdFromKind(TuplePositionKind kind) {
 bool caseNeedsDeviceSideParam(const TestCaseDefinition& def) {
     if (def.send.deviceCmd == QStringLiteral("ApplyTupleByMac"))
         return true;
-    if (def.send.channel != TestCaseSendChannel::Product)
+    if (def.send.channel != TestCaseSendChannel::Product && def.send.channel != TestCaseSendChannel::ProductSerial)
         return false;
     if (def.send.productProtocol != TestCaseProductProtocol::Qaiot &&
         def.send.productProtocol != TestCaseProductProtocol::QaiotV2)
@@ -313,11 +313,31 @@ void QFreeWork::applyStationSerialUiConfig() {
             .arg(text.toHtmlEscaped());
     };
 
+    ui->comNameCombo->setVisible(cfg.dongleVisible);
+    ui->connectButton->setVisible(cfg.dongleVisible);
+    ui->disconnectButton->setVisible(cfg.dongleVisible);
+
+    const int dongleBaud = cfg.dongleBaudRate > 0 ? cfg.dongleBaudRate : 921600;
+    if (dongleBaudRate != dongleBaud) {
+        const bool wasOpen = dongleSerialPort && dongleSerialPort->isOpen();
+        dongleBaudRate = dongleBaud;
+        if (wasOpen)
+            closeDongleSerialPort();
+    }
+
     ui->label_8->setText(centeredLabel(cfg.jigLabel));
     ui->label_8->setVisible(cfg.jigVisible);
     ui->jigComNameCombo->setVisible(cfg.jigVisible);
     ui->jigConnectButton->setVisible(cfg.jigVisible);
     ui->jigDisconnectButton->setVisible(cfg.jigVisible);
+
+    const int jigBaud = cfg.jigBaudRate > 0 ? cfg.jigBaudRate : 115200;
+    if (jigBaudRate != jigBaud) {
+        const bool wasOpen = jigSerialPort && jigSerialPort->isOpen();
+        jigBaudRate = jigBaud;
+        if (wasOpen)
+            closeJigSerialPort();
+    }
 
     ui->label_productInst->setText(centeredLabel(cfg.productLabel));
     ui->label_productInst->setVisible(cfg.productVisible);
@@ -325,11 +345,27 @@ void QFreeWork::applyStationSerialUiConfig() {
     ui->productConnectButton->setVisible(cfg.productVisible);
     ui->productDisconnectButton->setVisible(cfg.productVisible);
 
+    const int baud = cfg.productBaudRate > 0 ? cfg.productBaudRate : 115200;
+    if (productBaudRate != baud) {
+        const bool wasOpen = productSerialPort && productSerialPort->isOpen();
+        productBaudRate = baud;
+        if (wasOpen)
+            closeProductSerialPort();
+    }
+
     ui->label_7->setText(centeredLabel(cfg.usbLabel));
     ui->label_7->setVisible(cfg.usbVisible);
     ui->usbcomNameCombo->setVisible(cfg.usbVisible);
     ui->usbconnectButton->setVisible(cfg.usbVisible);
     ui->usbdisconnectButton->setVisible(cfg.usbVisible);
+
+    const int usbBaud = cfg.usbBaudRate > 0 ? cfg.usbBaudRate : 115200;
+    if (usbBaudRate != usbBaud) {
+        const bool wasOpen = usbSerialPort && usbSerialPort->isOpen();
+        usbBaudRate = usbBaud;
+        if (wasOpen)
+            closeUsbSerialPort();
+    }
 }
 
 void QFreeWork::updateTuplePositionHighlight(const QString& position) {
@@ -1827,6 +1863,30 @@ void QFreeWork::refreshPhotosensitiveData(ProtocolPhotosensitiveData data) {
     evaluateActiveTestCaseGate(QStringLiteral("ProtocolPhotosensitiveData"), QVariant::fromValue(data));
 }
 
+void QFreeWork::refreshAirPressureSampleData(ProtocolAirPressureSampleData data) {
+    if (!airPressureCollecting_)
+        return;
+    const bool useRight =
+        !airPressureSampleBothChannels_
+        && airPressureSampleChannel_.compare(QStringLiteral("right"), Qt::CaseInsensitive) == 0;
+    for (const ProtocolAirPressureSamplePoint& point : data.samples) {
+        if (airPressureSampleBothChannels_) {
+            if (airPressureSamples_.size() < airPressureTargetCount_)
+                airPressureSamples_.append(static_cast<double>(point.airPressureLeft));
+            if (airPressureRightSamples_.size() < airPressureTargetCount_)
+                airPressureRightSamples_.append(static_cast<double>(point.airPressureRight));
+            if (airPressureSamples_.size() >= airPressureTargetCount_
+                && airPressureRightSamples_.size() >= airPressureTargetCount_)
+                break;
+            continue;
+        }
+        if (airPressureSamples_.size() >= airPressureTargetCount_)
+            break;
+        airPressureSamples_.append(useRight ? static_cast<double>(point.airPressureRight)
+                                            : static_cast<double>(point.airPressureLeft));
+    }
+}
+
 void QFreeWork::refreshLightCalibData(ProtocolLightCalibData data) {
     lightCalibReadValid_ = true;
     lightCalibReadValue_ = static_cast<int>(static_cast<int32_t>(data.calibValue));
@@ -1921,12 +1981,11 @@ void QFreeWork::refreshTypeStatus(ProtocolTypeData data) {
 }
 
 void QFreeWork::refreshButton(ProtocolButtonStateData data) {
-    // 步骤 Gate 等待 qroot 0x9A 按键上报：按 keyButtonId 与 Gate/Expected 比对（错键继续等，不结束步骤）
+    // CommandTimeoutMs=0：只判本包；>0：未匹配则继续等，到期失败
     if (testCaseStepActive_ && !activeTestCase_.hook.enabled && activeTestCase_.gate.enabled
         && activeTestCase_.gate.reportType == QStringLiteral("ProtocolButtonStateData")) {
-        const QString field = activeTestCase_.gate.field.trimmed();
-        // Qroot 0x9A 空闲上报 keyButtonId=0 可忽略；Qroot2 0xA6 用 pump_state/mode/level，0 也是有效快照
-        if (data.keyButtonId == 0 && field.compare(QStringLiteral("keyButtonId"), Qt::CaseInsensitive) == 0)
+        // 空闲按键上报(ID=0)：所有卡控一律忽略；0xA6 状态快照 isKeyNotify=false，档位0仍有效
+        if (data.isKeyNotify && data.keyButtonId == 0)
             return;
         QVector<TestCaseGate> gates = TestCaseStore::activeGatesForEvaluation(activeTestCase_);
         if (gates.isEmpty())
@@ -1939,17 +1998,20 @@ void QFreeWork::refreshButton(ProtocolButtonStateData data) {
         else
             GateRegistry::evaluate(gates.first(), QStringLiteral("ProtocolButtonStateData"), QVariant::fromValue(data),
                                    pass, detail);
-        if (!pass) {
-            showlog(QStringLiteral("按键上报未匹配期望，继续等待：%1").arg(detail));
+        const bool onceOnly = activeTestCase_.timing.commandTimeoutMs <= 0;
+        if (!pass && !onceOnly) {
+            showlog(QStringLiteral("状态未匹配期望，继续等待：%1").arg(detail));
             return;
         }
         const GateStepDisplay display =
             GateRegistry::formatStepDisplay(gates.first(), gates, QStringLiteral("ProtocolButtonStateData"),
                                             QVariant::fromValue(data), gates.size() > 1);
-        markActiveTestCaseStepDone(true, display.testData.isEmpty() ? detail : display.testData, display.ask);
+        markActiveTestCaseStepDone(pass, display.testData.isEmpty() ? detail : display.testData, display.ask);
         if (commandRetryTimer)
-            finishCommandRetryWait(true, QStringLiteral("按键卡控通过"));
-        showlog(QStringLiteral("按键卡控通过：%1").arg(detail));
+            finishCommandRetryWait(pass, pass ? QStringLiteral("状态卡控通过")
+                                              : QStringLiteral("状态卡控失败：%1").arg(detail));
+        showlog(pass ? QStringLiteral("状态卡控通过：%1").arg(detail)
+                     : QStringLiteral("状态卡控失败：%1").arg(detail));
         return;
     }
 

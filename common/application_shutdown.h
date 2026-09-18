@@ -4,6 +4,10 @@
 /** 上位机关闭/OTA 替换前统一释放资源，避免 exe 或 COM 占用导致升级失败、二次打不开。 */
 class ApplicationShutdown {
   public:
+    /** 关窗/退出流程已开始（等待循环应立刻结束）。 */
+    static bool isExiting();
+    /** 新一轮测试/单步调试前清除退出标志（关窗未完成时避免误伤后续等待）。 */
+    static void resetForNewSession();
     /** 停云端 Agent、结束主循环、关串口/仪器等（可重复调用）。 */
     static void prepareForExit();
     /** OTA 替换前：停 Agent、刷日志，短等待后台任务（避免关窗 waitForDone 3s 拖慢升级）。 */

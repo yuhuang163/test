@@ -137,8 +137,13 @@ class test_base : public QWidget {
     QScpiManager* scpiVisaManager();
     const QScpiManager* scpiVisaManager() const;
     void applyTestCaseProductProtocol(TestCaseProductProtocol protocol);
+    /** 按通信类型只切换对应协议管理器：ProductSerial→产品串口，Product→Dongle */
+    void applyTestCaseProductProtocol(TestCaseProductProtocol protocol, TestCaseSendChannel channel);
     /** 按 SETTINGS SYSTEM/ProtocolType 热切换当前协议（设置页保存后调用） */
     void applySystemProtocolFromSettings();
+    /** 按通信类型选择协议管理器：ProductSerial→产品串口，Product→Dongle */
+    QProtocolManager& productProtocolManager(TestCaseSendChannel channel);
+    const QProtocolManager& productProtocolManager(TestCaseSendChannel channel) const;
 
     /** 当前 Mes/FACTORY 下可选外设用途（中文，如「程控电源」）。 */
     QStringList instrumentPurposeLabels() const;
@@ -168,6 +173,8 @@ class test_base : public QWidget {
     SerialChannel* usbSerialChannel_ = nullptr;
     SerialChannel* jigSerialChannel_ = nullptr;
     SerialChannel* productSerialChannel_ = nullptr;
+    QSerialPort* productSerialPort = nullptr;
+    Qproduct* product = nullptr;
     QSerialPort* dongleSerialPort = nullptr;
     Qpb* pb = nullptr;
     Qfctp* qfctp = nullptr;
@@ -175,6 +182,12 @@ class test_base : public QWidget {
     Qroot* qroot = nullptr;
     Qroot2* qroot2 = nullptr;
     QProtocolManager protocolManager;
+    Qpb* pbDirect = nullptr;
+    Qfctp* qfctpDirect = nullptr;
+    Qaiot* qaiotDirect = nullptr;
+    Qroot* qrootDirect = nullptr;
+    Qroot2* qroot2Direct = nullptr;
+    QProtocolManager productSerialProtocolManager;
     QModbusManager modbusManager;
     QatManager* at = nullptr;
     QSerialPort* usbSerialPort = nullptr;
@@ -182,8 +195,6 @@ class test_base : public QWidget {
     QScpiManager scpiVisaManager_;
     QSerialPort* jigSerialPort = nullptr;
     XwdFixtureDevice* jig = nullptr;
-    QSerialPort* productSerialPort = nullptr;
-    Qproduct* product = nullptr;
 
     // --- sendCommandWithRetry 运行态 ---
     bool getRespone = 0;
@@ -264,6 +275,7 @@ class test_base : public QWidget {
     virtual void refreshCameraControl(ProtocolCameraControlData) {}
     virtual void refreshLedControlState(ProtocolLedControlData) {}
     virtual void refreshPressSensorData(ProtocolPressSampleData) {}
+    virtual void refreshAirPressureSampleData(ProtocolAirPressureSampleData) {}
     virtual void refreshAmplitudeData(QString) {}
     virtual void refreshButton(ProtocolButtonStateData) {}
     virtual void refreshBrushControlState(ProtocolBrushControlData) {}
@@ -339,6 +351,8 @@ class test_base : public QWidget {
     virtual bool shouldHoldCommandRetryUntilGatePass() const { return false; }
     /** 结束一次 sendCommandWithRetry 等待；success=false 时 sendRetryOver=1 供工站判失败 */
     void finishCommandRetryWait(bool success, const QString& logMessage);
+    /** FCTP 气压采样：先走子类 refreshAirPressureSampleData，再兼容旧版 PressSample 曲线。 */
+    void refreshAirPressureSampleDataAndLegacy(const ProtocolAirPressureSampleData& airData);
     /** 测试结束：本地入库 + 云端上报；useMes 为真时再触发 MES 过站 */
     void finishTestRecord(const MesPacketData& pack, bool useMes);
 

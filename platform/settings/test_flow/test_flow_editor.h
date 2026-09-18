@@ -107,6 +107,7 @@ class TestFlowEditor : public QObject {
     void promptRenameCurrentFlowStation();
     void promptCopyCurrentFlowStation();
     void promptRemoveCurrentFlowStation();
+    void promptSerialUiConfig();
     void setupStationComboContextMenu();
     QMenu* createFlowStationMenu(QWidget* parent, int hitComboIndex);
     bool activateStationComboIndex(int index);

@@ -1598,6 +1598,7 @@ void Qaiot::handleFctResponse(const Message& message) {
             const quint8 key = static_cast<quint8>(valueNode.value.at(0));
             ProtocolButtonStateData btn;
             btn.keyButtonId = static_cast<int>(key);
+            btn.isKeyNotify = true;
             // 与 FCTP 对齐：普通键 mode=短按(1)；旋钮用 mode 表示方向 1左/2右
             if (key == 0x0A)
                 btn.modeButtonState = 1;
@@ -2608,10 +2609,18 @@ bool Qaiot::sendAppPdu(const QByteArray& appPdu) {
 }
 
 QByteArray Qaiot::wrapPhyPacket(const QByteArray& innerPacket) const {
+    if (skipDonglePhyWrap())
+        return innerPacket;
     return wrapDonglePhyTxPacket(innerPacket, kDonglePhyChannelFac);
 }
 
 bool Qaiot::tryUnwrapPhyPacket(const QByteArray& packet, QList<QByteArray>& outPackets) {
+    if (skipDonglePhyWrap()) {
+        if (packet.isEmpty())
+            return false;
+        outPackets.append(packet);
+        return true;
+    }
     const int before = outPackets.size();
     phyRx_.feed(packet, outPackets);
     return outPackets.size() > before;

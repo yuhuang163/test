@@ -10,6 +10,8 @@
 #include <QtGlobal>
 
 class QComboBox;
+class QEvent;
+class QMainWindow;
 
 /** 工程公共工具：字节序/十六进制/CRC、时间、文件、字符串 */
 class CommonUtils {
@@ -104,6 +106,8 @@ class CommonUtils {
     static QString protocolForProduct(const QString& productName);
     /** 工站显示名是否属于指定产品：自由/默认工站通用；其余须以完整产品名开头（W1 Lite 不含仅以 W1 开头的工站）。 */
     static bool stationBelongsToProduct(const QString& stationDisplayName, const QString& productName);
+    /** 工站显示名 → BLE 扫描过滤名（如 V3Pro 工站 → V3 Pro）；无映射返回空串。 */
+    static QString dongleBroadcastFilterForStation(const QString& stationDisplayName);
     static bool resolveDongleDeviceMapping(const QString& dongleName, QString* productOut, QString* protocolOut);
 
     /** SN 校验：pattern 为空表示不卡控 */
@@ -129,6 +133,15 @@ class CommonUtils {
      * 按毫秒等待并泵 Qt 事件（等同工站 waitWork），避免 Windows 上 QThread::msleep 被量化到 ~15ms。
      */
     static void waitWorkPumpEvents(int ms);
+
+    /**
+     * 处理 Ctrl++ / Ctrl+- / Ctrl+0 以及 Ctrl+滚轮的界面缩放。
+     * 已消费事件时返回 true，供 QApplication::notify 提前返回。
+     */
+    static bool handleUiZoomEvent(QEvent* event);
+
+    /** 从 local.ini 读取 Window/UiZoom 并应用到指定主窗口（Show 时调用一次）。 */
+    static void restoreUiZoom(QMainWindow* mainWindow);
 };
 
 #endif // COMMON_UTILS_H

@@ -658,6 +658,29 @@ static void registerPeriphAndScreenGates() {
             .number("muraStd", &D::muraStd, "亮度起伏σ（灰阶勿勾）", "σ").textFormat('f', 1)
             .commit();
     }
+    // 气压采样：逐点卡控由 AIR_PRESSURE_SAMPLE Hook 执行；此处登记字段供步骤编辑器表格
+    GateTypeRaw("ProtocolAirPressureSampleData", "气压采样")
+        .numberWithReader("airPressureLeft", "左气压(kPa)", "kPa",
+                          [](const QVariant& payload, double* out) -> bool {
+                              if (!payload.canConvert<ProtocolAirPressureSampleData>() || !out)
+                                  return false;
+                              const ProtocolAirPressureSampleData data = payload.value<ProtocolAirPressureSampleData>();
+                              if (data.samples.isEmpty())
+                                  return false;
+                              *out = static_cast<double>(data.samples.last().airPressureLeft);
+                              return true;
+                          })
+        .numberWithReader("airPressureRight", "右气压(kPa)", "kPa",
+                          [](const QVariant& payload, double* out) -> bool {
+                              if (!payload.canConvert<ProtocolAirPressureSampleData>() || !out)
+                                  return false;
+                              const ProtocolAirPressureSampleData data = payload.value<ProtocolAirPressureSampleData>();
+                              if (data.samples.isEmpty())
+                                  return false;
+                              *out = static_cast<double>(data.samples.last().airPressureRight);
+                              return true;
+                          })
+        .commit();
 }
 
 void registerAllGateAccessorTypes() {

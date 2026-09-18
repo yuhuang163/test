@@ -237,6 +237,10 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         fw->markActiveTestCaseStepDone(true, sfc, QStringLiteral("通过"));
         return;
     }
+    if (hookId == QStringLiteral("AIR_PRESSURE_SAMPLE")) {
+        fw->runAirPressureSampleStep();
+        return;
+    }
     if (hookId == QStringLiteral("LIGHT_SENSOR_GOLDEN_CALIB")) {
         fw->runLightSensorGoldenCalibStep();
         return;
@@ -502,6 +506,7 @@ void QFreeWorkTestCaseHookRegistrar::registerAll() {
     registerDispatchHook(QStringLiteral("PRINT_WHOLE_MACHINE_SN"));
     registerDispatchHook(QStringLiteral("QR_SN_CONSISTENCY_CHECK"));
     registerDispatchHook(QStringLiteral("COUNTDOWN_WAIT"));
+    registerDispatchHook(QStringLiteral("AIR_PRESSURE_SAMPLE"));
     registerDispatchHook(QStringLiteral("LIGHT_SENSOR_GOLDEN_CALIB"));
     registerDispatchHook(QStringLiteral("LIGHT_SENSOR_CALIB_WRITE"));
     registerDispatchHook(QStringLiteral("LIGHT_SENSOR_CALIB_READ"));

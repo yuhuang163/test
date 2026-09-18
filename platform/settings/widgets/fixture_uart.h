@@ -38,6 +38,10 @@ class Fixture_uart : public QWidget {
     bool tryOpenSerialPort(const QString& portName, bool autoConnect = false);
     void closeSerialPort();
     void sendPcbaFrame(const QByteArray& frame);
+    QFixtureManager* fixtureManager() const {
+        return fixtureManager_;
+    }
+    void setFixBaudRate(int baudRate);
     bool sendRawFrame(const QByteArray& frame, QString* errorMessage = nullptr);
     bool exchangeRawFrame(const QByteArray& request, QByteArray* response, int timeoutMs,
                           QString* errorMessage = nullptr);

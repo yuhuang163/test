@@ -48,7 +48,7 @@ bool TestCaseValidator::validateCase(const TestCaseDefinition& def, QStringList&
     if (def.timing.commandTimeoutMs < 0)
         errors.append(QStringLiteral("指令超时不能为负数"));
     if (def.timing.commandTimeoutMs > 0 && def.timing.commandTimeoutMs < 100)
-        errors.append(QStringLiteral("指令超时须为 0（自动）或不少于 100 毫秒"));
+        errors.append(QStringLiteral("指令超时须为 0（只回读一包）或不少于 100 毫秒"));
 
     if (def.meta.promptEnabled && def.meta.promptText.trimmed().isEmpty())
         errors.append(QStringLiteral("已勾选操作提示时须填写提示文字"));

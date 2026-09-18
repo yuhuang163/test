@@ -34,6 +34,9 @@ const QVector<GateTypeDescriptor> kTypes = {
     {QStringLiteral("ProtocolTrimData"), QStringLiteral("Trim微调值"), {{QStringLiteral("trim"), QStringLiteral("微调值")}}},
     {QStringLiteral("ProtocolLightCalibData"), QStringLiteral("光感校准值"), {{QStringLiteral("calibValue"), QStringLiteral("校准值")}}},
     {QStringLiteral("ProtocolPhotosensitiveData"), QStringLiteral("光感上报"), {{QStringLiteral("lightSensor"), QStringLiteral("光感值")}}},
+    {QStringLiteral("ProtocolAirPressureSampleData"), QStringLiteral("气压采样"),
+     {{QStringLiteral("airPressureLeft"), QStringLiteral("左气压(kPa)")},
+      {QStringLiteral("airPressureRight"), QStringLiteral("右气压(kPa)")}}},
     {QStringLiteral("ProtocolAiotImuCaliData"), QStringLiteral("Qaiot IMU校准"),
      {{QStringLiteral("kx"), QStringLiteral("kx")},
       {QStringLiteral("ky"), QStringLiteral("ky")},
@@ -1255,6 +1258,7 @@ GateSendBinding GateRegistry::bindingForSend(TestCaseSendChannel channel, const 
 
     switch (channel) {
     case TestCaseSendChannel::Product:
+    case TestCaseSendChannel::ProductSerial:
         if (const DeviceCmdManifest::Row* row = DeviceCmdManifest::findByEnumName(cmd))
             applyRow(row->gateReportType, row->gateDefaultField);
         break;
@@ -1292,7 +1296,6 @@ GateSendBinding GateRegistry::bindingForSend(TestCaseSendChannel channel, const 
                 ModbusCmdManifest::findByDeviceAndName(ModbusPeriphCmdCatalog::deviceFromIni(protocolOrDevice), cmd))
             applyRow(row->gateReportType, row->gateDefaultField);
         break;
-    case TestCaseSendChannel::ProductSerial:
     case TestCaseSendChannel::Cloud:
         break;
     }

@@ -148,6 +148,8 @@ struct ProtocolButtonStateData {
     int modeButtonState = 0;
     int powerButtonState = 0;
     int keyButtonId = 0;
+    /** true=按键主动上报；false=运行状态快照(0xA6)。空闲按键上报(ID=0)对所有卡控忽略 */
+    bool isKeyNotify = false;
 };
 
 struct ProtocolBrushControlData {
@@ -172,6 +174,17 @@ struct ProtocolPressSampleData {
     int timeStamp = 0;
     QVector<int> adcValues;
     QVector<int> valueValues;
+};
+
+/** FCTP ALGO NOTIFY 0x0005：algo_sampling_data_t，单点 24 字节 */
+struct ProtocolAirPressureSamplePoint {
+    uint32_t timestamp = 0;
+    float airPressureLeft = 0.f;
+    float airPressureRight = 0.f;
+};
+
+struct ProtocolAirPressureSampleData {
+    QVector<ProtocolAirPressureSamplePoint> samples;
 };
 
 struct ProtocolImuSampleData {
@@ -606,7 +619,8 @@ enum class DeviceCmd {
     ConfigNetworkApp,      // 【Qpb】配网：把 WiFi 信息下发给设备上的配网 App（WifiInfo，set_config_network_app）
     WifiDisconnect,        // 【Qpb】通知设备断开当前 WiFi（无参，set_wifi_disconnect）
     StartMultiBleOtaApp,   // 【Qpb】双路 BLE OTA：同时下发两路 RotasFileStatusReq（StartMultiBleOtaPayload 或 QVariantList）
-    PressCollect,          // 【Qpb】压力传感器产测采集开关（FacSwitch，set_press_collect_param）
+    PressCollect,          // 【Qpb】压力传感器产测采集开关；【Qfctp】ALGO TLV 0x0000 气压采样开关
+    PressSampleIntervalSet, // 【Qfctp】ALGO TLV 0x0001 气压采样间隔(ms)
     ImuCollect,            // 【Qpb】IMU 产测采集开关（FacSwitch，set_imu_collect_param）
     CameraFaultDataPacket, // 【预留】当前 Qpb/Qfctp 均未在 switch 中实现
     ServoMotorInfo,        // 【Qpb】舵机信息查询触发/下发（无参 set，set_servo_motor_info）
@@ -703,6 +717,8 @@ enum class DeviceCmd {
     HeatTestWrite,           // 【Qaiot】CID=0x14 自定义加热测试
     VibrationTestWrite,      // 【Qaiot】CID=0x15 自定义振动测试
     CycleReportWrite,        // 【Qaiot】CID=0x18 设置数据采集上报
+    PressSampleOnoffGet,     // 【Qfctp】ALGO TLV 0x0002 读气压采样开关
+    PressSampleIntervalGet,  // 【Qfctp】ALGO TLV 0x0003 读气压采样间隔
 };
 
 class IDevice {
@@ -736,6 +752,8 @@ Q_DECLARE_METATYPE(ProtocolBrushControlData)
 Q_DECLARE_METATYPE(ProtocolLedControlData)
 Q_DECLARE_METATYPE(ProtocolTypeData)
 Q_DECLARE_METATYPE(ProtocolPressSampleData)
+Q_DECLARE_METATYPE(ProtocolAirPressureSamplePoint)
+Q_DECLARE_METATYPE(ProtocolAirPressureSampleData)
 Q_DECLARE_METATYPE(ProtocolImuSampleData)
 Q_DECLARE_METATYPE(ProtocolImuCalibResultData)
 Q_DECLARE_METATYPE(ProtocolAiotImuCaliData)

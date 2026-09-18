@@ -109,14 +109,31 @@ struct TestFlowStationEntry {
     QString displayName;
 };
 
-/** 工站 flow.ini [SerialUi]：工位界面三路串口是否显示及标签文案 */
+/** 工站 flow.ini [SerialUi]：工位界面串口是否显示及标签文案 */
 struct TestCaseSerialUiConfig {
+    bool dongleVisible = true;
     bool jigVisible = true;
     bool productVisible = true;
     bool usbVisible = true;
+    /** Dongle 串口波特率；≤0 表示沿用默认 921600 */
+    int dongleBaudRate = 921600;
     QString jigLabel = QStringLiteral("治具串口");
+    /** 工位治具串口波特率；≤0 表示沿用默认 115200 */
+    int jigBaudRate = 115200;
     QString productLabel = QStringLiteral("产品串口(仪器)");
+    /** 产品串口波特率；≤0 表示沿用默认 115200 */
+    int productBaudRate = 115200;
     QString usbLabel = QStringLiteral("万用表串口");
+    /** 万用表串口波特率；≤0 表示沿用默认 115200 */
+    int usbBaudRate = 115200;
+    /** 自由工站顶部菜单「连接治具串口」等文案 */
+    QString fixtureMenuLabel = QStringLiteral("连接治具串口");
+    /** 顶部治具串口波特率；≤0 表示沿用默认 9600 */
+    int fixtureBaudRate = 9600;
+    /** 自由工站顶部菜单「连接PLC治具串口」文案 */
+    QString plcFixtureMenuLabel = QStringLiteral("连接PLC治具串口");
+    /** PLC 治具串口波特率；≤0 表示沿用默认 9600 */
+    int plcFixtureBaudRate = 9600;
 };
 
 /** 工站 flow.ini [DeviceSide]：三元组/设备数据左右位（与主界面「三元组位置」一致） */

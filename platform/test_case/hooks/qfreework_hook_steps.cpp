@@ -948,6 +948,174 @@ void QFreeWork::runVesCh1SetBrightnessStep() {
     }
     markActiveTestCaseStepDone(true, QString::number(brightness), QStringLiteral("通过"));
 }
+
+void QFreeWork::runAirPressureSampleStep() {
+    QVariantMap map;
+    if (activeTestCase_.send.param.canConvert<QVariantMap>())
+        map = resolveTestCaseSendParamTree(activeTestCase_.send.param).toMap();
+
+    const auto mapInt = [&map](const QString& key, int defVal) {
+        return map.contains(key) ? map.value(key).toInt() : defVal;
+    };
+
+    const int sampleCount = qBound(1, mapInt(QStringLiteral("sampleCount"), 10), 50);
+    const int intervalMs = qMax(20, mapInt(QStringLiteral("intervalMs"), 100));
+    int waitMs = mapInt(QStringLiteral("waitMs"), 0);
+    if (waitMs <= 0 && activeTestCase_.timing.commandTimeoutMs > 0)
+        waitMs = activeTestCase_.timing.commandTimeoutMs;
+    waitMs = qMax(1000, waitMs);
+    const int cmdTimeoutMs =
+        qMax(500, activeTestCase_.timing.commandTimeoutMs > 0 ? activeTestCase_.timing.commandTimeoutMs : 3000);
+
+    airPressureTargetCount_ = sampleCount;
+    const QString channelRaw = map.value(QStringLiteral("channel"), QStringLiteral("left")).toString().trimmed();
+    const QString channelLower = channelRaw.toLower();
+    airPressureSampleBothChannels_ =
+        channelLower == QStringLiteral("both") || channelLower == QStringLiteral("all")
+        || channelLower == QStringLiteral("left,right") || channelLower == QStringLiteral("lr");
+    if (airPressureSampleBothChannels_) {
+        airPressureSampleChannel_ = QStringLiteral("both");
+    } else {
+        airPressureSampleChannel_ = channelRaw.isEmpty() ? QStringLiteral("left") : channelRaw;
+    }
+
+    const auto airPressureSamplesReady = [&]() {
+        if (airPressureSampleBothChannels_)
+            return airPressureSamples_.size() >= sampleCount && airPressureRightSamples_.size() >= sampleCount;
+        return airPressureSamples_.size() >= sampleCount;
+    };
+
+    double gateLo = SETTINGS.value(QStringLiteral("AirPressure/LowKpa"), -50.0).toDouble();
+    double gateHi = SETTINGS.value(QStringLiteral("AirPressure/HighKpa"), 50.0).toDouble();
+    for (const TestCaseGate& g : TestCaseStore::activeGatesForEvaluation(activeTestCase_)) {
+        if (!g.enabled || g.op != TestCaseGateOp::Range)
+            continue;
+        gateLo = g.low;
+        gateHi = g.high;
+        GateRegistry::resolveRangeBounds(g, gateLo, gateHi);
+        break;
+    }
+
+    const auto waitProductCmd = [&]() -> bool {
+        QElapsedTimer t;
+        t.start();
+        while (commandRetryTimer && isTestContinue && t.elapsed() < cmdTimeoutMs + 800)
+            waitWork(20);
+        lastCommandRetryCount = 0;
+        if (stepRuntime_.done && !stepRuntime_.pass)
+            return false;
+        return commandRetryTimer == nullptr && !sendRetryOver && isTestContinue;
+    };
+    const auto sendProductSet = [&](DeviceCmd cmd, const QVariant& param) -> bool {
+        setCommandWaitSource(CommandWaitSource::ProductProtocol);
+        sendCommandWithRetry([this, cmd, param]() { protocolManager.set(cmd, param); }, cmdTimeoutMs);
+        return waitProductCmd();
+    };
+
+    showlog(QStringLiteral("气压采样：采 %1 点，间隔 %2ms，通道 %3，逐点卡控 [%4,%5] kPa（不取平均）")
+                .arg(sampleCount)
+                .arg(intervalMs)
+                .arg(airPressureSampleChannel_)
+                .arg(gateLo, 0, 'f', 3)
+                .arg(gateHi, 0, 'f', 3));
+
+    QVariantMap intervalMap;
+    intervalMap.insert(QStringLiteral("intervalMs"), intervalMs);
+    if (!sendProductSet(DeviceCmd::PressSampleIntervalSet, intervalMap)) {
+        markActiveTestCaseStepDone(false, QStringLiteral("设置采样间隔失败"), QStringLiteral("失败"));
+        return;
+    }
+
+    airPressureSamples_.clear();
+    airPressureRightSamples_.clear();
+    QVariantMap onMap;
+    onMap.insert(QStringLiteral("on"), 1);
+    if (!sendProductSet(DeviceCmd::PressCollect, onMap)) {
+        markActiveTestCaseStepDone(false, QStringLiteral("开启气压采样失败"), QStringLiteral("失败"));
+        return;
+    }
+
+    airPressureCollecting_ = true;
+    QElapsedTimer wt;
+    wt.start();
+    while (isTestContinue && wt.elapsed() < waitMs && !airPressureSamplesReady())
+        waitWork(20);
+    airPressureCollecting_ = false;
+
+    QVariantMap offMap;
+    offMap.insert(QStringLiteral("on"), 0);
+    sendProductSet(DeviceCmd::PressCollect, offMap);
+
+    if (!isTestContinue) {
+        markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
+        return;
+    }
+    if (!airPressureSamplesReady()) {
+        const QString detail =
+            airPressureSampleBothChannels_
+                ? QStringLiteral("气压上报不足 %1 点，左 %2 右 %3")
+                      .arg(sampleCount)
+                      .arg(airPressureSamples_.size())
+                      .arg(airPressureRightSamples_.size())
+                : QStringLiteral("气压上报不足 %1 点，实际 %2")
+                      .arg(sampleCount)
+                      .arg(airPressureSamples_.size());
+        TestResult = failValue;
+        markActiveTestCaseStepDone(false, detail, QStringLiteral("失败"));
+        showlog(QStringLiteral("气压采样失败：%1").arg(detail));
+        return;
+    }
+
+    bool pass = true;
+    QStringList failParts;
+    QStringList valueParts;
+    QVector<TestItem> rows;
+    rows.reserve(airPressureSampleBothChannels_ ? sampleCount * 2 : sampleCount);
+    const QString ask = QStringLiteral("[%1,%2] kPa").arg(gateLo, 0, 'f', 3).arg(gateHi, 0, 'f', 3);
+    const auto appendPressureRow = [&](const QString& label, double v) {
+        const bool subPass = v >= gateLo && v <= gateHi;
+        if (!subPass) {
+            pass = false;
+            failParts << QStringLiteral("%1=%2").arg(label).arg(v, 0, 'f', 3);
+        }
+        TestItem item;
+        item.testItem = label;
+        item.testData = QString::number(v, 'f', 3);
+        item.ask = ask;
+        item.testResult = subPass ? passValue : failValue;
+        rows.append(item);
+    };
+    for (int i = 0; i < sampleCount; ++i) {
+        if (airPressureSampleBothChannels_) {
+            const double left = airPressureSamples_.at(i);
+            const double right = airPressureRightSamples_.at(i);
+            appendPressureRow(QStringLiteral("左气压%1").arg(i + 1), left);
+            appendPressureRow(QStringLiteral("右气压%1").arg(i + 1), right);
+            valueParts << QStringLiteral("L%1=%2,R%1=%3")
+                              .arg(i + 1)
+                              .arg(left, 0, 'f', 3)
+                              .arg(right, 0, 'f', 3);
+        } else {
+            const double v = airPressureSamples_.at(i);
+            valueParts << QString::number(v, 'f', 3);
+            appendPressureRow(QStringLiteral("气压%1").arg(i + 1), v);
+        }
+    }
+    testResultTableUpdate(rows);
+    testCaseMultiGateTableEmitted_ = true;
+
+    const QString testData = valueParts.join(QStringLiteral(","));
+    if (!pass) {
+        TestResult = failValue;
+        const QString detail = QStringLiteral("逐点卡控失败：%1").arg(failParts.join(QStringLiteral("; ")));
+        showlog(QStringLiteral("气压卡控失败：%1，允许 %2").arg(detail, ask));
+        markActiveTestCaseStepDone(false, testData, ask);
+        return;
+    }
+    showlog(QStringLiteral("气压卡控通过：%1").arg(testData));
+    markActiveTestCaseStepDone(true, testData, ask);
+}
+
 void QFreeWork::runPlcSwitchTestDoneResetM() {
     const PlcV3RunResult result = runPlcV3(PlcV3Command::SwitchDoneReset);
     applyPlcStepResult(result, PlcV3Command::SwitchDoneReset);

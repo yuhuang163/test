@@ -2476,8 +2476,8 @@ void MainWindow::updateComboBox() {
         QString deviceRssi = it.value()["Rssi"];
 
         // qDebug() << "设备地址：" << deviceName<<deviceAddress<<deviceRssi;
-        if (deviceName.contains(ui->name_range->currentText()) && deviceRssi.toInt() > ui->rssi_range->value() &&
-            deviceAddress.length() == 17) {
+        if (deviceName.contains(ui->name_range->currentText(), Qt::CaseInsensitive)
+            && deviceRssi.toInt() > ui->rssi_range->value() && deviceAddress.length() == 17) {
             const int index = ui->pick_device->findText(deviceAddress);
             if (index == -1) {
                 ui->pick_device->addItem(deviceAddress);

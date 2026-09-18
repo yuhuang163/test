@@ -61,13 +61,13 @@ bool Qroot2::sendPacket(quint8 ct, quint8 cid, const QByteArray& body) {
         return false;
     }
     const QByteArray frame = buildPacket(ct, cid, body);
-    const QByteArray phyPacket = wrapPhyPacket(frame);
-    if (phyPacket.isEmpty()) {
+    const QByteArray wirePacket = skipDonglePhyWrap() ? frame : wrapPhyPacket(frame);
+    if (wirePacket.isEmpty()) {
         qWarning() << "[Qroot2] dongle 封包失败";
         return false;
     }
-    const qint64 n = serialPort_->write(phyPacket);
-    if (!serialPort_->waitForBytesWritten(3000) || n != phyPacket.size()) {
+    const qint64 n = serialPort_->write(wirePacket);
+    if (!serialPort_->waitForBytesWritten(3000) || n != wirePacket.size()) {
         qWarning() << "[Qroot2] write failed";
         return false;
     }
@@ -192,6 +192,11 @@ QByteArray Qroot2::truncateUtf8Bytes(const QVariant& data, int maxLen, const QSt
 void Qroot2::parseCmd(const QByteArray& byte) {
     if (byte.isEmpty())
         return;
+    if (skipDonglePhyWrap()) {
+        rxBuffer_.append(byte);
+        drainRxBuffer();
+        return;
+    }
     QList<QByteArray> innerPackets;
     feedPhyRx(byte, innerPackets);
     for (const QByteArray& inner : innerPackets)
@@ -367,6 +372,7 @@ void Qroot2::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
             } else if (body.size() >= 2) {
                 btn.keyButtonId = static_cast<quint8>(body.at(1));
             }
+            btn.isKeyNotify = false; // 0xA6 运行状态快照，档位字节可为 0，不是空闲按键上报
             qDebug().noquote() << "[Qroot2] 0xA6 State: pump_state=" << btn.powerButtonState
                                << "mode=" << btn.modeButtonState << "level=" << btn.keyButtonId;
             emitReport(QStringLiteral("ProtocolButtonStateData"), QVariant::fromValue(btn));

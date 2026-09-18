@@ -62,6 +62,8 @@ class Qfctp : public qProtocol {
     void handleRspLightCalibWrite(const uint8_t* mainValue, uint16_t mainLen);
     void handleRspChargeCurrentRead(const uint8_t* mainValue, uint16_t mainLen);
     void handleRspChargeCurrentSet(const uint8_t* mainValue, uint16_t mainLen);
+    void handleRspAirPressureSampleOnoffGet(const uint8_t* mainValue, uint16_t mainLen);
+    void handleRspAirPressureSampleIntervalGet(const uint8_t* mainValue, uint16_t mainLen);
 
     bool setSn(const QVariant& data);
     bool setCaseAgingMode(const QVariantMap& map);
@@ -83,6 +85,8 @@ class Qfctp : public qProtocol {
     bool setCaseLightReportControl(const QVariantMap& map);
     bool setCaseLightCalibWrite(const QVariantMap& map);
     bool setCaseChargeCurrentSet(const QVariantMap& map);
+    bool setCaseAirPressureSampleOnoff(const QVariant& data);
+    bool setCaseAirPressureSampleInterval(const QVariantMap& map);
     bool setCaseCompensationSet(const QVariantMap& map);
     bool setCaseLcdColorTestMode(const QVariantMap& map);
     bool setCaseSetLcdColor(const QVariantMap& map);
@@ -95,6 +99,8 @@ class Qfctp : public qProtocol {
     bool getCaseKeySignalRead(const QVariantMap& map);
     bool getCaseLightCalibRead(const QVariantMap& map);
     bool getCaseChargeCurrentRead();
+    bool getCaseAirPressureSampleOnoff();
+    bool getCaseAirPressureSampleInterval();
     bool getCaseAgingStatusRead(const QVariantMap& map);
     bool getCaseFactoryDoneRead();
     bool getCaseDeviceExceptionRead();
@@ -105,6 +111,7 @@ class Qfctp : public qProtocol {
     bool sendPacket(const QByteArray& innerPacket, QByteArray* outPhyPacket = nullptr) const;
     bool sendServiceTlv(uint16_t serviceId, uint16_t tlvType, QByteArray value, const char* actionName, uint8_t* outSeq = nullptr);
     bool sendTestsServiceTlv(uint16_t tlvType, QByteArray value, const char* actionName);
+    bool sendAlgoServiceTlv(uint16_t tlvType, QByteArray value, const char* actionName);
     void sendFactoryTestMode(bool enter);
 
     QSerialPort* serialPort = nullptr;

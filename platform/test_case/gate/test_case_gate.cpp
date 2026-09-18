@@ -185,6 +185,7 @@ GateSendBinding GateRegistry::bindingForSend(TestCaseSendChannel channel, const 
 
     switch (channel) {
     case TestCaseSendChannel::Product:
+    case TestCaseSendChannel::ProductSerial:
         if (const DeviceCmdManifest::Row* row = DeviceCmdManifest::findByEnumName(cmd))
             applyRow(row->gateReportType, row->gateDefaultField);
         break;
@@ -225,9 +226,18 @@ GateSendBinding GateRegistry::bindingForSend(TestCaseSendChannel channel, const 
                 ModbusCmdManifest::findByDeviceAndName(ModbusDeviceCatalog::deviceRouteFromIni(protocolOrDevice), cmd))
             applyRow(row->gateReportType, row->gateDefaultField);
         break;
-    case TestCaseSendChannel::ProductSerial:
     case TestCaseSendChannel::Cloud:
         break;
+    }
+    return out;
+}
+
+GateSendBinding GateRegistry::bindingForHook(const QString& hookId) {
+    GateSendBinding out;
+    const QString id = hookId.trimmed();
+    if (id == QStringLiteral("AIR_PRESSURE_SAMPLE")) {
+        out.reportTypes << QStringLiteral("ProtocolAirPressureSampleData");
+        out.defaultField = QStringLiteral("airPressureLeft");
     }
     return out;
 }
@@ -461,9 +471,12 @@ GateStepDisplay GateRegistry::formatStepDisplay(const TestCaseGate& primaryGate,
                                                 bool multiFieldMode) {
     GateStepDisplay out;
     const QString unit = unitFor(reportType, primaryGate.field, payload);
-    if (const GateTypeEntry* typeEntry = GateAccessorRegistry::findType(reportType)) {
-        if (typeEntry->summary)
-            out.testData = typeEntry->summary(payload);
+    // summary 仅用于同一步多字段卡控的步骤级展示；分项表格各行应显示当前 field 实测值
+    if (multiFieldMode && allGates.size() > 1) {
+        if (const GateTypeEntry* typeEntry = GateAccessorRegistry::findType(reportType)) {
+            if (typeEntry->summary)
+                out.testData = typeEntry->summary(payload);
+        }
     }
     if (out.testData.isEmpty())
         out.testData = withDisplayUnit(primaryFieldTestData(primaryGate, reportType, payload), unit);

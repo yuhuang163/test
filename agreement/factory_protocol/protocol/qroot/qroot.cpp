@@ -56,22 +56,22 @@ QByteArray Qroot::buildPacket(quint8 ct, quint8 cid, const QByteArray& body) {
 
 bool Qroot::sendPacket(quint8 ct, quint8 cid, const QByteArray& body) {
     if (!serialPort_ || !serialPort_->isOpen()) {
-        qWarning() << "[Qroot] serial not open";
+        const QString portHint =
+            serialPort_ && !serialPort_->portName().isEmpty() ? serialPort_->portName() : QStringLiteral("(未绑定)");
+        qWarning() << "[Qroot] serial not open port=" << portHint;
         return false;
     }
     const QByteArray frame = buildPacket(ct, cid, body);
-    const QByteArray phyPacket = wrapPhyPacket(frame);
-    if (phyPacket.isEmpty()) {
+    const QByteArray wirePacket = skipDonglePhyWrap() ? frame : wrapPhyPacket(frame);
+    if (wirePacket.isEmpty()) {
         qWarning() << "[Qroot] dongle 封包失败";
         return false;
     }
-    const qint64 n = serialPort_->write(phyPacket);
-    if (!serialPort_->waitForBytesWritten(3000) || n != phyPacket.size()) {
+    const qint64 n = serialPort_->write(wirePacket);
+    if (!serialPort_->waitForBytesWritten(3000) || n != wirePacket.size()) {
         qWarning() << "[Qroot] write failed";
         return false;
     }
-    // qDebug().noquote() << "[Qroot] TX:" << phyPacket.toHex(' ').toUpper()
-    //                    << "inner:" << frame.toHex(' ').toUpper();
     qDebug().noquote() << "[Qroot] TX:" << frame.toHex(' ').toUpper();
     if (ct == Req)
         pendingCid_ = cid;
@@ -182,6 +182,7 @@ QString Qroot::formatKeyNotifyLabel(quint8 keyId) {
 void Qroot::emitKeyNotifyReport(quint8 keyId) {
     ProtocolButtonStateData btn;
     btn.keyButtonId = keyId;
+    btn.isKeyNotify = true;
     qDebug().noquote() << "[Qroot] KeyNotify:" << formatKeyNotifyLabel(keyId);
     emitReport(QStringLiteral("ProtocolButtonStateData"), QVariant::fromValue(btn));
 }
@@ -189,6 +190,7 @@ void Qroot::emitKeyNotifyReport(quint8 keyId) {
 void Qroot::emitToggleKeyNotifyReport(quint8 state) {
     ProtocolButtonStateData btn;
     btn.modeButtonState = state;
+    btn.isKeyNotify = true;
     qDebug().noquote() << "[Qroot] ToggleKeyNotify: state=0x"
                        << QString::number(state, 16).rightJustified(2, QLatin1Char('0')).toUpper();
     emitReport(QStringLiteral("ProtocolButtonStateData"), QVariant::fromValue(btn));
@@ -209,12 +211,15 @@ void Qroot::emitBatteryInfoReport(const QByteArray& body) {
 void Qroot::parseCmd(const QByteArray& byte) {
     if (byte.isEmpty())
         return;
+    if (skipDonglePhyWrap()) {
+        rxBuffer_.append(byte);
+        drainRxBuffer();
+        return;
+    }
     QList<QByteArray> innerPackets;
     feedPhyRx(byte, innerPackets);
-    for (const QByteArray& inner : innerPackets) {
-        // qDebug().noquote() << "[Qroot] RX inner:" << inner.toHex(' ').toUpper();
+    for (const QByteArray& inner : innerPackets)
         rxBuffer_.append(inner);
-    }
     drainRxBuffer();
 }
 
@@ -398,6 +403,7 @@ void Qroot::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
     case LedTest:
     case Vibration:
     case MacWrite:
+    case MacWritePcba:
     case PumpTestEnter:
     case PumpTestExit:
     case AgingEnter:
@@ -644,7 +650,9 @@ void Qroot::sendMacWrite(const QByteArray& mac6) {
         qWarning() << "[Qroot] invalid MAC length";
         return;
     }
-    sendPacket(Req, MacWrite, mac6);
+    // 产品串口直连用 PCBA 0x95；经 Dongle 蓝牙仍用 0xA3
+    const quint8 cid = skipDonglePhyWrap() ? static_cast<quint8>(MacWritePcba) : static_cast<quint8>(MacWrite);
+    sendPacket(Req, cid, mac6);
 }
 
 void Qroot::sendQuery(CommandId cid) {
