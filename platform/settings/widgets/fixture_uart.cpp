@@ -288,41 +288,47 @@ void Fixture_uart::saveFixturePortConfig() {
 
     const QString fixturePort = ui->FixturecomNameCombo->currentText().trimmed();
 
-    if (plcSharedPort_) {
-        TestCaseStore::ensureProfileDirectory(stationKey, TestCaseStore::flowStationDisplayName(stationKey), QString());
-        const QString flowPath = TestCasePaths::profileFlowPath(stationKey);
-        QSettings settings(flowPath, QSettings::IniFormat);
-        settings.setIniCodec("UTF-8");
-        settings.beginGroup(QStringLiteral("PreStart_Monitor"));
-        settings.setValue(QStringLiteral("PlcFixtureComPort"), fixturePort);
-        settings.setValue(QStringLiteral("PlcFixtureBaudRate"), fixBaudRate);
-        settings.endGroup();
-        settings.beginGroup(QStringLiteral("SerialUi"));
-        settings.setValue(QStringLiteral("PlcFixtureBaudRate"), fixBaudRate);
-        settings.endGroup();
-        settings.sync();
-        SETTINGS.setValue(QStringLiteral("M8_FIXTURE_PLC/ComPort"), fixturePort);
-        SETTINGS.setValue(QStringLiteral("M8_FIXTURE_PLC/BaudRate"), fixBaudRate);
-        SETTINGS.sync();
-        return;
-    }
-
     TestCaseStore::ensureProfileDirectory(stationKey, TestCaseStore::flowStationDisplayName(stationKey), QString());
     const QString flowPath = TestCasePaths::profileFlowPath(stationKey);
     if (!flowPath.isEmpty()) {
-        QSettings flowSettings(flowPath, QSettings::IniFormat);
-        flowSettings.setIniCodec("UTF-8");
-        flowSettings.beginGroup(QStringLiteral("SerialUi"));
-        flowSettings.setValue(QStringLiteral("FixtureBaudRate"), fixBaudRate);
-        flowSettings.endGroup();
-        QSettings monitorSettings(flowPath, QSettings::IniFormat);
-        monitorSettings.setIniCodec("UTF-8");
-        monitorSettings.beginGroup(QStringLiteral("PreStart_Monitor"));
-        // 工站未启用自动扫码/PLC监控时，不创建、不回写 PreStart_Monitor
-        if (monitorSettings.value(QStringLiteral("Enabled")).toBool())
-            monitorSettings.setValue(QStringLiteral("FixtureComPort"), fixturePort);
-        monitorSettings.endGroup();
-        flowSettings.sync();
+        // 同一份 flow.ini 只能开一个 QSettings：两个对象会共享缓存，后一个在 setIniCodec 前就会把中文当 Latin-1 写乱
+        QSettings settings(flowPath, QSettings::IniFormat);
+        settings.setIniCodec("UTF-8");
+        if (plcSharedPort_) {
+            settings.beginGroup(QStringLiteral("PreStart_Monitor"));
+            settings.setValue(QStringLiteral("PlcFixtureComPort"), fixturePort);
+            settings.setValue(QStringLiteral("PlcFixtureBaudRate"), fixBaudRate);
+            settings.endGroup();
+            settings.beginGroup(QStringLiteral("SerialUi"));
+            settings.setValue(QStringLiteral("PlcFixtureBaudRate"), fixBaudRate);
+            settings.endGroup();
+        } else {
+            settings.beginGroup(QStringLiteral("SerialUi"));
+            settings.setValue(QStringLiteral("FixtureBaudRate"), fixBaudRate);
+            settings.endGroup();
+            settings.beginGroup(QStringLiteral("PreStart_Monitor"));
+            // 工站未启用自动扫码/PLC监控时，不创建、不回写 PreStart_Monitor
+            if (settings.value(QStringLiteral("Enabled")).toBool())
+                settings.setValue(QStringLiteral("FixtureComPort"), fixturePort);
+            settings.endGroup();
+        }
+        settings.beginGroup(QStringLiteral("SerialUi"));
+        const QString jigLabel = settings.value(QStringLiteral("JigLabel")).toString();
+        const QString productLabel = settings.value(QStringLiteral("ProductLabel")).toString();
+        const QString usbLabel = settings.value(QStringLiteral("UsbLabel")).toString();
+        const auto labelBroken = [](const QString& text) {
+            return text.contains(QChar(0x00C3)) || text.contains(QChar(0x00E6));
+        };
+        if (labelBroken(jigLabel))
+            settings.setValue(QStringLiteral("JigLabel"), QStringLiteral("治具串口"));
+        if (labelBroken(productLabel))
+            settings.setValue(QStringLiteral("ProductLabel"), QStringLiteral("产品串口(仪器)"));
+        if (labelBroken(usbLabel))
+            settings.setValue(QStringLiteral("UsbLabel"), QStringLiteral("万用表串口"));
+        settings.endGroup();
+        settings.sync();
+        if (plcSharedPort_)
+            return;
     }
 
     if (!fixturePort.isEmpty())

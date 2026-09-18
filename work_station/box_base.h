@@ -100,7 +100,7 @@ class box_base : public QMainWindow {
   protected:
     void closeEvent(QCloseEvent* event) override;
     /** 关窗时打断治具/串口等阻塞等待；子类按需 override。 */
-    virtual void abortBlockingWaits();
+    virtual void abortBlockingWaits(){};
 
   signals:
     void go_screen_next(int);

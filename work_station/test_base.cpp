@@ -1425,14 +1425,8 @@ void test_base::getMac(QString sn_to_search) {
 }
 void test_base::closeEvent(QCloseEvent*) {
     qDebug() << getIndex() << "test_base关闭";
-    isTestContinue = 0;
     if (at)
         at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");
-    // 关窗时 isTestContinue 已清，不能走 waitWork（会立刻返回）
-    QElapsedTimer t;
-    t.start();
-    while (t.elapsed() < 50)
-        QCoreApplication::processEvents();
 }
 
 void test_base::ensureSnInputLatinIme() {

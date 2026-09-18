@@ -335,6 +335,10 @@ SOURCES += \
     platform/cloud/auth/login_dialog.cpp \
     platform/cloud/sync/test_case_sync_service.cpp \
     platform/cloud/ota/host_ota_service.cpp \
+    platform/cloud/ota/host_ota_vbs.cpp \
+    platform/cloud/ota/host_ota_apply.cpp \
+    platform/cloud/ota/host_ota_rollback.cpp \
+    platform/cloud/ota/host_ota_ui.cpp \
     platform/cloud/test_data/test_data_upload_service.cpp \
     agreement/shell_protocol/manager/qshellmanager.cpp \
     business/tuple/qtupleservice.cpp \
@@ -516,6 +520,11 @@ HEADERS += \
     platform/cloud/auth/login_dialog.h \
     platform/cloud/sync/test_case_sync_service.h \
     platform/cloud/ota/host_ota_service.h \
+    platform/cloud/ota/host_ota_vbs.h \
+    platform/cloud/ota/host_ota_types.h \
+    platform/cloud/ota/host_ota_apply.h \
+    platform/cloud/ota/host_ota_rollback.h \
+    platform/cloud/ota/host_ota_ui.h \
     platform/cloud/test_data/test_data_upload_service.h \
     platform/test_case/types/test_case_types.h \
     platform/instrument/instrument_device_catalog.h \
@@ -573,6 +582,7 @@ HEADERS += \
 
 FORMS += \
     platform/cloud/auth/login_dialog.ui \
+    platform/cloud/ota/host_ota_ui.ui \
     platform/settings/widgets/fixture_uart.ui \
     platform/settings/qsetting.ui \
     platform/settings/widgets/test_case_edit_dialog.ui \

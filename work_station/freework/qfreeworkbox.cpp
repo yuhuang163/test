@@ -115,7 +115,8 @@ void QFreeWorkBox::applyFixtureMenuLabel() {
 }
 
 QFreeWorkBox::~QFreeWorkBox() {
-    if (plcMonitorTimer_) {
+    qDebug() << "QFreeWorkBox析构";
+    if (plcMonitorTimer_) {//兜底，可以留着。
         plcMonitorTimer_->stop();
     }
     releaseSharedPlcIfIdle();

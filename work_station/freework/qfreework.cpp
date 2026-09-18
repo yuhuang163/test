@@ -680,7 +680,7 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     lowKeyCap_ = SETTINGS.value(QStringLiteral("KeyCap/Low"), 1).toUInt();
     highKeyCap_ = SETTINGS.value(QStringLiteral("KeyCap/High"), 65535).toUInt();
     loadSuctionGateSettings();
-    initSuctionChart();
+    // 吸力曲线按需创建 QCustomPlot，电流工站启动不必先画空图
 
     measure_wait_time = SETTINGS.value("Current/measure_wait_time").toInt();
 
@@ -1404,7 +1404,8 @@ bool QFreeWork::tickOrderedTestStepLoop() {
 
         const qint64 caseElapsedMs = stepRuntime_.caseTimer.isValid() ? stepRuntime_.caseTimer.elapsed() : 0;
         const int caseRetryCount = lastCommandRetryCount;
-        showlog(QStringLiteral("测试内容完成：%1，重试次数=%2，测试时长=%3ms")
+        // lastCommandRetryCount 实为指令发送次数（含首次）；=1 表示一次成功，并非“又重试了一次”
+        showlog(QStringLiteral("测试内容完成：%1，发送次数=%2，测试时长=%3ms")
                     .arg(functionName)
                     .arg(caseRetryCount)
                     .arg(caseElapsedMs));
@@ -1961,6 +1962,8 @@ void QFreeWork::applyFreeWorkExtraTabsVisible(bool visible) {
     if (ui->toggleExtraTabsButton)
         ui->toggleExtraTabsButton->setText(visible ? QStringLiteral("隐藏扩展页") : QStringLiteral("显示扩展页"));
 
+    if (visible)
+        initSuctionChart();
     setupFreeWorkTabBar(ui->tabWidget);
 }
 
@@ -2212,6 +2215,7 @@ void QFreeWork::appendSuctionChartSample(double leftKpa, double rightKpa) {
 }
 
 void QFreeWork::finalizeSuctionChartPlot() {
+    initSuctionChart();
     if (ui->suctionLiveLeftLabel && !suctionChartLeftKpa_.isEmpty())
         ui->suctionLiveLeftLabel->setText(
             QStringLiteral("CH1实时：%1 kPa").arg(suctionChartLeftKpa_.constLast(), 0, 'f', 3));
@@ -2500,6 +2504,7 @@ void QFreeWork::setDongleSuctionReadEnabled(bool enabled) {
     const bool wasEnabled = dongleSuctionReadEnabled_;
     dongleSuctionReadEnabled_ = enabled;
     if (enabled && !wasEnabled) {
+        initSuctionChart();
         resetSuctionChart();
         // 采样期间空图，给提示避免被当成画不出曲线
         if (suctionPlot_ && suctionChartHintText_) {
