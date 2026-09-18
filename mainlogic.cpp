@@ -1786,7 +1786,8 @@ void MainWindow::refreshWifiStateData(ProtocolWifiStateData wifi) {
     showlog(wifi.wifiPassword);
 }
 void MainWindow::updateMainStyle(QString style) {
-    applyWidgetStyleSheet(this, style);
+    Q_UNUSED(style);
+    applyWidgetStyleSheet(this, QStringLiteral("console_shell.qss"));
 }
 
 void MainWindow::convertCsvToXls(const QString& csvFilename, const QString& xlsFilename) {

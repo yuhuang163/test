@@ -2,7 +2,11 @@
     <qresource prefix="/">
         <file>new_production.qml</file>
         <file>stytle/qss/Ubuntu.qss</file>
+        <file>stytle/qss/console_shell.qss</file>
         <file>stytle/qss/test_flow_editor.qss</file>
+        <file>stytle/picture/app-bg-silk.png</file>
+        <file>stytle/picture/sidebar-mom-bg.jpg</file>
+        <file>stytle/picture/product-promo-card.png</file>
         <file>translations/qt_zh_CN.qm</file>
         <file>translations/qt_widgets_zh_CN.qm</file>
     </qresource>

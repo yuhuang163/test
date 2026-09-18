@@ -57,6 +57,7 @@ class QAction;
 
 #include <QPointer>
 
+class QStackedWidget;
 class QCustomPlot;
 class QCPRange;
 class QDialog;
@@ -317,6 +318,10 @@ class MainWindow : public QMainWindow {
     QLabel* sub_pid = nullptr;
     QLabel* sku_id = nullptr;
     QLabel* cloudLoginLabel = nullptr;
+    QButtonGroup* consoleNavGroup_ = nullptr;
+    QStackedWidget* consoleStack_ = nullptr;
+    QLabel* consolePageTitle_ = nullptr;
+    QLabel* consolePageSub_ = nullptr;
     void refreshCloudLoginState();
     void refreshSettingsMenuVisibility();
 
@@ -433,6 +438,9 @@ class MainWindow : public QMainWindow {
     void saveImuTestDataToCsv(const QString& macAddress, const QString& result);
     void initDebugTabChrome();
     void initDebugTabLayout();
+    void initConsoleShell();
+    void rebuildConnectCards();
+    void selectConsoleNav(int id);
     void applyDebugOtaTabVisibility();
     void initBasicInfo();
     void initPeriphState();

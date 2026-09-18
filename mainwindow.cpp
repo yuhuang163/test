@@ -18,7 +18,13 @@
 #include <QSet>
 #include <QTabBar>
 #include <QTableView>
-#include <QTabWidget>
+#include <QStackedWidget>
+#include <QGridLayout>
+#include <QPixmap>
+#include <QButtonGroup>
+#include <QFrame>
+#include <QToolButton>
+#include <QMenu>
 #include <QTableWidget>
 #include <QTableWidgetItem>
 #include <QVBoxLayout>
@@ -166,6 +172,554 @@ void MainWindow::initDebugTabLayout() {
     ui->tabWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
 
     pinDebugTabPageToTop(ui->tabWidget_ota);
+}
+
+static QFrame* makeConsoleCard(const QString& objectName, QVBoxLayout** outLay = nullptr) {
+    auto* card = new QFrame;
+    card->setObjectName(objectName);
+    card->setFrameShape(QFrame::NoFrame);
+    auto* lay = new QVBoxLayout(card);
+    lay->setContentsMargins(12, 10, 12, 12);
+    lay->setSpacing(8);
+    if (outLay)
+        *outLay = lay;
+    return card;
+}
+
+static QWidget* makeCardHead(const QString& step, const QString& title, const QString& status) {
+    auto* head = new QWidget;
+    auto* row = new QHBoxLayout(head);
+    row->setContentsMargins(0, 0, 0, 0);
+    row->setSpacing(8);
+    auto* badge = new QLabel(step);
+    badge->setObjectName(QStringLiteral("consoleStepBadge"));
+    badge->setFixedSize(25, 25);
+    badge->setAlignment(Qt::AlignCenter);
+    auto* name = new QLabel(title);
+    name->setObjectName(QStringLiteral("consoleCardTitle"));
+    row->addWidget(badge);
+    row->addWidget(name);
+    row->addStretch();
+    if (!status.isEmpty()) {
+        auto* st = new QLabel(status);
+        if (status == QStringLiteral("当前步骤"))
+            st->setObjectName(QStringLiteral("consoleStepStatusActive"));
+        else if (status == QStringLiteral("待搜索"))
+            st->setObjectName(QStringLiteral("consoleStepStatusPending"));
+        else
+            st->setObjectName(QStringLiteral("consoleStepStatusOk"));
+        row->addWidget(st);
+    }
+    return head;
+}
+
+static QWidget* labeledRow(const QString& text, QWidget* field) {
+    auto* box = new QWidget;
+    auto* col = new QVBoxLayout(box);
+    col->setContentsMargins(0, 0, 0, 0);
+    col->setSpacing(4);
+    if (!text.isEmpty()) {
+        auto* lab = new QLabel(text);
+        lab->setObjectName(QStringLiteral("consoleFieldLabel"));
+        col->addWidget(lab);
+    }
+    col->addWidget(field);
+    return box;
+}
+
+static QWidget* makeFlowGuide() {
+    auto* box = new QFrame;
+    box->setObjectName(QStringLiteral("consoleFlowGuide"));
+    auto* col = new QVBoxLayout(box);
+    col->setContentsMargins(14, 10, 14, 10);
+    col->setSpacing(8);
+    auto* track = new QWidget;
+    auto* row = new QHBoxLayout(track);
+    row->setContentsMargins(0, 0, 0, 0);
+    row->setSpacing(0);
+    const QStringList names = {
+        QStringLiteral("打开串口"),
+        QStringLiteral("设置条件"),
+        QStringLiteral("搜索设备"),
+        QStringLiteral("选择设备"),
+    };
+    const QStringList nodeNames = {
+        QStringLiteral("consoleFlowNodeDone"),
+        QStringLiteral("consoleFlowNodeActive"),
+        QStringLiteral("consoleFlowNodePending"),
+        QStringLiteral("consoleFlowNodePending"),
+    };
+    for (int i = 0; i < names.size(); ++i) {
+        if (i > 0) {
+            auto* line = new QFrame;
+            line->setObjectName(i == 1 ? QStringLiteral("consoleFlowLineActive") : QStringLiteral("consoleFlowLine"));
+            line->setFixedHeight(2);
+            line->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+            row->addWidget(line, 1);
+        }
+        auto* node = new QWidget;
+        auto* nlay = new QVBoxLayout(node);
+        nlay->setContentsMargins(6, 0, 6, 0);
+        nlay->setSpacing(4);
+        nlay->setAlignment(Qt::AlignHCenter);
+        auto* ic = new QLabel(QString::number(i + 1));
+        ic->setObjectName(nodeNames.at(i));
+        ic->setFixedSize(30, 30);
+        ic->setAlignment(Qt::AlignCenter);
+        auto* lab = new QLabel(names.at(i));
+        lab->setObjectName(QStringLiteral("consoleFlowLabel"));
+        lab->setAlignment(Qt::AlignCenter);
+        nlay->addWidget(ic, 0, Qt::AlignHCenter);
+        nlay->addWidget(lab, 0, Qt::AlignHCenter);
+        row->addWidget(node, 0);
+    }
+    col->addWidget(track);
+    auto* hint = new QLabel(QStringLiteral("当前步骤 · 按需调整名称与信号条件"));
+    hint->setObjectName(QStringLiteral("consoleFlowHint"));
+    hint->setAlignment(Qt::AlignCenter);
+    col->addWidget(hint);
+    return box;
+}
+
+void MainWindow::rebuildConnectCards() {
+    if (!ui->groupBox_5)
+        return;
+    ui->groupBox_5->setTitle(QString());
+    ui->groupBox_5->setFlat(true);
+    if (auto* old = ui->groupBox_5->layout()) {
+        QLayoutItem* it = nullptr;
+        while ((it = old->takeAt(0))) {
+            if (it->layout()) {
+                QLayout* nested = it->layout();
+                QLayoutItem* n = nullptr;
+                while ((n = nested->takeAt(0))) {
+                    if (n->layout()) {
+                        QLayout* deep = n->layout();
+                        QLayoutItem* d = nullptr;
+                        while ((d = deep->takeAt(0)))
+                            delete d;
+                    }
+                    delete n;
+                }
+            }
+            delete it;
+        }
+        delete old;
+    }
+
+    const auto hideLabel = [](QWidget* w) {
+        if (w)
+            w->hide();
+    };
+    hideLabel(ui->label_dongle_serial);
+    hideLabel(ui->label_pick_device);
+    hideLabel(ui->label_name_range);
+    hideLabel(ui->label_rssi_range);
+
+    auto* outer = new QVBoxLayout(ui->groupBox_5);
+    outer->setContentsMargins(0, 0, 0, 0);
+    outer->setSpacing(10);
+    outer->setAlignment(Qt::AlignHCenter | Qt::AlignTop);
+
+    auto* page = new QWidget;
+    page->setObjectName(QStringLiteral("consoleConnectPage"));
+    page->setMaximumWidth(920);
+    auto* pageLay = new QVBoxLayout(page);
+    pageLay->setContentsMargins(0, 0, 0, 0);
+    pageLay->setSpacing(10);
+    pageLay->addWidget(makeFlowGuide());
+
+    auto* steps = new QWidget;
+    auto* grid = new QGridLayout(steps);
+    grid->setContentsMargins(0, 0, 0, 0);
+    grid->setSpacing(10);
+    grid->setColumnStretch(0, 1);
+    grid->setColumnStretch(1, 1);
+
+    QVBoxLayout* step1Lay = nullptr;
+    auto* step1 = makeConsoleCard(QStringLiteral("consoleCardDone"), &step1Lay);
+    step1Lay->addWidget(makeCardHead(QStringLiteral("1"), QStringLiteral("打开串口"), QStringLiteral("串口")));
+    auto* comRow = new QWidget;
+    auto* comLay = new QHBoxLayout(comRow);
+    comLay->setContentsMargins(0, 0, 0, 0);
+    comLay->setSpacing(8);
+    ui->connectButton->setText(QStringLiteral("连接"));
+    ui->disconnectButton->setText(QStringLiteral("断开"));
+    comLay->addWidget(ui->comNameCombo, 1);
+    auto* seg = new QFrame;
+    seg->setObjectName(QStringLiteral("consoleSeg"));
+    auto* segLay = new QHBoxLayout(seg);
+    segLay->setContentsMargins(3, 3, 3, 3);
+    segLay->setSpacing(3);
+    segLay->addWidget(ui->connectButton);
+    segLay->addWidget(ui->disconnectButton);
+    comLay->addWidget(seg);
+    step1Lay->addWidget(labeledRow(QStringLiteral("串口"), comRow));
+    step1Lay->addWidget(labeledRow(QStringLiteral("连接后自动复位"), ui->is_reset_dongle));
+
+    QVBoxLayout* step2Lay = nullptr;
+    auto* step2 = makeConsoleCard(QStringLiteral("consoleCardActive"), &step2Lay);
+    step2Lay->addWidget(makeCardHead(QStringLiteral("2"), QStringLiteral("设置条件"), QStringLiteral("当前步骤")));
+    step2Lay->addWidget(labeledRow(QStringLiteral("名称筛选"), ui->name_range));
+    auto* rssiRow = new QWidget;
+    auto* rssiLay = new QHBoxLayout(rssiRow);
+    rssiLay->setContentsMargins(0, 0, 0, 0);
+    rssiLay->setSpacing(8);
+    rssiLay->addWidget(ui->rssi_range, 1);
+    rssiLay->addWidget(ui->rssi_range_value);
+    step2Lay->addWidget(labeledRow(QStringLiteral("最低信号"), rssiRow));
+
+    QVBoxLayout* step3Lay = nullptr;
+    auto* step3 = makeConsoleCard(QStringLiteral("consoleCardReady"), &step3Lay);
+    step3Lay->addWidget(makeCardHead(QStringLiteral("3"), QStringLiteral("搜索设备"), QStringLiteral("待搜索")));
+    step3Lay->addStretch();
+    ui->start_search->setMinimumHeight(36);
+    step3Lay->addWidget(ui->start_search);
+    auto* searchHint = new QLabel(QStringLiteral("准备好后，点击开始搜索"));
+    searchHint->setObjectName(QStringLiteral("consoleSearchHint"));
+    searchHint->setAlignment(Qt::AlignCenter);
+    step3Lay->addWidget(searchHint);
+    step3Lay->addStretch();
+
+    QVBoxLayout* step4Lay = nullptr;
+    auto* step4 = makeConsoleCard(QStringLiteral("consoleCardReady"), &step4Lay);
+    step4Lay->addWidget(makeCardHead(QStringLiteral("4"), QStringLiteral("选择设备"), QString()));
+    step4Lay->addWidget(labeledRow(QStringLiteral("已发现设备"), ui->pick_device));
+    auto* macRow = new QWidget;
+    auto* macLay = new QHBoxLayout(macRow);
+    macLay->setContentsMargins(0, 0, 0, 0);
+    macLay->setSpacing(8);
+    macLay->addWidget(ui->macInput, 1);
+    macLay->addWidget(ui->connectProductButton);
+    macLay->addWidget(ui->pushButton);
+    ui->pushButton->setText(QStringLiteral("测试"));
+    step4Lay->addWidget(labeledRow(QStringLiteral("设备地址（可选）"), macRow));
+    auto* pickTip = new QLabel(QStringLiteral("选好设备后会自动连接"));
+    pickTip->setObjectName(QStringLiteral("consoleSearchHint"));
+    step4Lay->addWidget(pickTip);
+
+    grid->addWidget(step1, 0, 0);
+    grid->addWidget(step2, 0, 1);
+    grid->addWidget(step3, 1, 0);
+    grid->addWidget(step4, 1, 1);
+    pageLay->addWidget(steps);
+    outer->addWidget(page);
+}
+
+void MainWindow::selectConsoleNav(int id) {
+    if (!consoleStack_ || !ui->tabWidget)
+        return;
+    const bool connectPage = (id == 0);
+    consoleStack_->setCurrentIndex(connectPage ? 0 : 1);
+    if (!connectPage)
+        ui->tabWidget->setCurrentIndex(id - 1);
+    static const char* titles[] = {"设备连接", "产品业务控制", "外设", "Dongle", "OTA/压测", "其它"};
+    static const char* subs[] = {
+        "完成四步后即可进入业务控制",
+        "基础属性与产品业务控制",
+        "外设调试",
+        "吸力曲线、泵阀与 AT",
+        "本地 / 云端 / 蓝牙升级与压测",
+        "专用调试与其它工具"};
+    if (id >= 0 && id < 6) {
+        if (consolePageTitle_)
+            consolePageTitle_->setText(QString::fromUtf8(titles[id]));
+        if (consolePageSub_)
+            consolePageSub_->setText(QString::fromUtf8(subs[id]));
+    }
+}
+
+void MainWindow::initConsoleShell() {
+    QWidget* central = ui->centralwidget;
+    if (!central)
+        return;
+
+    rebuildConnectCards();
+
+    auto* bg = new QLabel(central);
+    bg->setObjectName(QStringLiteral("consoleBg"));
+    bg->setPixmap(QPixmap(QStringLiteral(":/stytle/picture/app-bg-silk.png")));
+    bg->setScaledContents(true);
+    bg->setAttribute(Qt::WA_TransparentForMouseEvents);
+    bg->lower();
+
+    auto* shell = new QWidget(central);
+    shell->setObjectName(QStringLiteral("consoleShell"));
+    auto* shellLay = new QHBoxLayout(shell);
+    shellLay->setContentsMargins(8, 8, 8, 8);
+    shellLay->setSpacing(10);
+
+    auto* sidebar = new QWidget;
+    sidebar->setObjectName(QStringLiteral("consoleSidebar"));
+    sidebar->setFixedWidth(242);
+    auto* sideBg = new QLabel;
+    sideBg->setObjectName(QStringLiteral("consoleSidePhoto"));
+    sideBg->setPixmap(QPixmap(QStringLiteral(":/stytle/picture/sidebar-mom-bg.jpg")));
+    sideBg->setScaledContents(true);
+    sideBg->setAlignment(Qt::AlignBottom | Qt::AlignHCenter);
+    sideBg->setAttribute(Qt::WA_TransparentForMouseEvents);
+    auto* sideFade = new QWidget;
+    sideFade->setObjectName(QStringLiteral("consoleSideFade"));
+    sideFade->setAttribute(Qt::WA_TransparentForMouseEvents);
+    auto* sideBody = new QWidget;
+    sideBody->setObjectName(QStringLiteral("consoleSideBody"));
+    auto* sideLay = new QVBoxLayout(sideBody);
+    sideLay->setContentsMargins(14, 16, 14, 12);
+    sideLay->setSpacing(4);
+    auto* brand = new QLabel(QStringLiteral("momcozy"));
+    brand->setObjectName(QStringLiteral("consoleBrandTitle"));
+    auto* brandSub = new QLabel(QStringLiteral("产品测试工具"));
+    brandSub->setObjectName(QStringLiteral("consoleBrandSub"));
+    sideLay->addWidget(brand);
+    sideLay->addWidget(brandSub);
+    auto* brandLine = new QFrame;
+    brandLine->setObjectName(QStringLiteral("consoleBrandLine"));
+    brandLine->setFixedHeight(1);
+    sideLay->addWidget(brandLine);
+    sideLay->addSpacing(6);
+
+    consoleNavGroup_ = new QButtonGroup(this);
+    consoleNavGroup_->setExclusive(true);
+    const QStringList navNames = {
+        QStringLiteral("连接"),
+        QStringLiteral("业务控制"),
+        QStringLiteral("外设"),
+        QStringLiteral("Dongle"),
+        QStringLiteral("OTA/压测"),
+        QStringLiteral("其它"),
+    };
+    for (int i = 0; i < navNames.size(); ++i) {
+        auto* btn = new QPushButton(navNames.at(i));
+        btn->setObjectName(QStringLiteral("consoleNavBtn"));
+        btn->setCheckable(true);
+        btn->setCursor(Qt::PointingHandCursor);
+        consoleNavGroup_->addButton(btn, i);
+        sideLay->addWidget(btn);
+    }
+    sideLay->addStretch();
+    auto* care = new QLabel(QStringLiteral("Care for Every Mom\nEvery Baby"));
+    care->setObjectName(QStringLiteral("consoleCare"));
+    sideLay->addWidget(care);
+    auto* sideGrid = new QGridLayout(sidebar);
+    sideGrid->setContentsMargins(0, 0, 0, 0);
+    sideGrid->setSpacing(0);
+    sideGrid->addWidget(sideBg, 0, 0);
+    sideGrid->addWidget(sideFade, 0, 0);
+    sideGrid->addWidget(sideBody, 0, 0);
+
+    auto* mid = new QWidget;
+    auto* midLay = new QVBoxLayout(mid);
+    midLay->setContentsMargins(0, 0, 0, 0);
+    midLay->setSpacing(8);
+
+    auto* header = new QWidget;
+    header->setObjectName(QStringLiteral("consoleHeader"));
+    auto* headerLay = new QHBoxLayout(header);
+    headerLay->setContentsMargins(8, 0, 8, 0);
+    headerLay->setSpacing(8);
+    auto addPill = [&](QLabel* lab) {
+        if (!lab)
+            return;
+        lab->setParent(header);
+        headerLay->addWidget(lab);
+    };
+    addPill(uartStatusLabel);
+    addPill(bleStatusLabel);
+    addPill(WifiStatusLabel);
+    addPill(macLabel);
+    addPill(cloudLoginLabel);
+    headerLay->addStretch();
+    auto makeIconBtn = [](const QString& text) {
+        auto* btn = new QToolButton;
+        btn->setObjectName(QStringLiteral("consoleIconBtn"));
+        btn->setText(text);
+        btn->setCursor(Qt::PointingHandCursor);
+        btn->setAutoRaise(true);
+        return btn;
+    };
+    auto* gearBtn = makeIconBtn(QStringLiteral("设置"));
+    connect(gearBtn, &QToolButton::clicked, this, [this]() {
+        if (settingMenuAction)
+            settingMenuAction->trigger();
+    });
+    auto* helpBtn = makeIconBtn(QStringLiteral("帮助"));
+    QMenu* helpMenu = nullptr;
+    if (ui->menubar) {
+        const auto acts = ui->menubar->actions();
+        for (QAction* act : acts) {
+            if (act && act->menu() && act->text().contains(QStringLiteral("帮助"))) {
+                helpMenu = act->menu();
+                break;
+            }
+        }
+    }
+    if (helpMenu) {
+        connect(helpBtn, &QToolButton::clicked, this, [helpBtn, helpMenu]() {
+            helpMenu->popup(helpBtn->mapToGlobal(QPoint(0, helpBtn->height())));
+        });
+    }
+    headerLay->addWidget(gearBtn);
+    headerLay->addWidget(helpBtn);
+    auto* user = new QLabel(QStringLiteral("工程师"));
+    user->setObjectName(QStringLiteral("consoleUserChip"));
+    headerLay->addWidget(user);
+
+    auto* titleBox = new QWidget;
+    auto* titleLay = new QVBoxLayout(titleBox);
+    titleLay->setContentsMargins(8, 0, 8, 0);
+    titleLay->setSpacing(2);
+    consolePageTitle_ = new QLabel(QStringLiteral("设备连接"));
+    consolePageTitle_->setObjectName(QStringLiteral("consolePageTitle"));
+    consolePageSub_ = new QLabel(QStringLiteral("完成四步后即可进入业务控制"));
+    consolePageSub_->setObjectName(QStringLiteral("consolePageSub"));
+    titleLay->addWidget(consolePageTitle_);
+    titleLay->addWidget(consolePageSub_);
+
+    consoleStack_ = new QStackedWidget;
+    if (ui->groupBox_5)
+        consoleStack_->addWidget(ui->groupBox_5);
+    auto* workPage = new QWidget;
+    auto* workLay = new QVBoxLayout(workPage);
+    workLay->setContentsMargins(0, 0, 0, 0);
+    workLay->setSpacing(8);
+    if (ui->tabWidget) {
+        ui->tabWidget->tabBar()->hide();
+        workLay->addWidget(ui->tabWidget, 1);
+    }
+    consoleStack_->addWidget(workPage);
+
+    midLay->addWidget(header);
+    midLay->addWidget(titleBox);
+    midLay->addWidget(consoleStack_, 1);
+
+    auto* rail = new QWidget;
+    rail->setObjectName(QStringLiteral("consoleRail"));
+    rail->setFixedWidth(320);
+    auto* railLay = new QVBoxLayout(rail);
+    railLay->setContentsMargins(10, 8, 10, 8);
+    railLay->setSpacing(10);
+
+    QVBoxLayout* statusLay = nullptr;
+    auto* statusCard = makeConsoleCard(QStringLiteral("consoleStatusCard"), &statusLay);
+    auto* stTitle = new QLabel(QStringLiteral("设备状态"));
+    stTitle->setObjectName(QStringLiteral("consoleCardTitle"));
+    statusLay->addWidget(stTitle);
+    auto addMeta = [&](QLabel* lab) {
+        if (!lab)
+            return;
+        lab->setObjectName(QStringLiteral("consoleMetaLine"));
+        statusLay->addWidget(lab);
+    };
+    addMeta(product_sn);
+    addMeta(board_sn);
+    addMeta(sub_pid);
+    addMeta(sku_id);
+    if (ui->verticalGroupBox) {
+        if (ui->label_5)
+            ui->label_5->hide();
+        if (ui->label_6)
+            ui->label_6->hide();
+        if (auto* oldBind = ui->verticalGroupBox->layout()) {
+            QLayoutItem* it = nullptr;
+            while ((it = oldBind->takeAt(0))) {
+                if (it->layout()) {
+                    QLayout* nested = it->layout();
+                    QLayoutItem* n = nullptr;
+                    while ((n = nested->takeAt(0)))
+                        delete n;
+                }
+                delete it;
+            }
+            delete oldBind;
+        }
+        ui->verticalGroupBox->setTitle(QString());
+        ui->verticalGroupBox->setFlat(true);
+        auto* bindLay = new QVBoxLayout(ui->verticalGroupBox);
+        bindLay->setContentsMargins(0, 4, 0, 0);
+        bindLay->setSpacing(8);
+        if (ui->getMac)
+            bindLay->addWidget(labeledRow(QStringLiteral("SN 取 MAC"), ui->getMac));
+        if (ui->snInput)
+            bindLay->addWidget(labeledRow(QStringLiteral("绑定 SN"), ui->snInput));
+        if (ui->checkbanding)
+            bindLay->addWidget(ui->checkbanding);
+        statusLay->addWidget(ui->verticalGroupBox);
+    }
+
+    QVBoxLayout* logLay = nullptr;
+    auto* logCard = makeConsoleCard(QStringLiteral("consoleLogCard"), &logLay);
+    auto* logHead = new QWidget;
+    auto* logHeadLay = new QHBoxLayout(logHead);
+    logHeadLay->setContentsMargins(0, 0, 0, 0);
+    auto* logTitle = new QLabel(QStringLiteral("实时日志"));
+    logTitle->setObjectName(QStringLiteral("consoleCardTitle"));
+    logHeadLay->addWidget(logTitle);
+    logHeadLay->addStretch();
+    logLay->addWidget(logHead);
+    auto* logTabs = new QTabWidget;
+    logTabs->setDocumentMode(true);
+    if (ui->log)
+        logTabs->addTab(ui->log, QStringLiteral("上位机日志"));
+    if (ui->msgEdit)
+        logTabs->addTab(ui->msgEdit, QStringLiteral("Dongle日志"));
+    logLay->addWidget(logTabs, 1);
+
+    auto* promo = new QLabel;
+    promo->setObjectName(QStringLiteral("consolePromo"));
+    promo->setPixmap(QPixmap(QStringLiteral(":/stytle/picture/product-promo-card.png")));
+    promo->setScaledContents(true);
+    promo->setFixedHeight(120);
+    promo->setAttribute(Qt::WA_TransparentForMouseEvents);
+
+    railLay->addWidget(statusCard);
+    railLay->addWidget(logCard, 1);
+    railLay->addWidget(promo);
+
+    shellLay->addWidget(sidebar);
+    shellLay->addWidget(mid, 1);
+    shellLay->addWidget(rail);
+
+    if (auto* old = central->layout()) {
+        QLayoutItem* it = nullptr;
+        while ((it = old->takeAt(0))) {
+            if (QWidget* w = it->widget())
+                w->setParent(central);
+            delete it;
+        }
+        delete old;
+    }
+    auto* rootLay = new QGridLayout(central);
+    rootLay->setContentsMargins(0, 0, 0, 0);
+    rootLay->addWidget(bg, 0, 0);
+    rootLay->addWidget(shell, 0, 0);
+    bg->stackUnder(shell);
+
+    if (ui->groupBox_7)
+        ui->groupBox_7->hide();
+    if (ui->groupBox_11 && ui->tab_debug_group_production) {
+        if (auto* prodLay = qobject_cast<QVBoxLayout*>(ui->tab_debug_group_production->layout())) {
+            prodLay->insertWidget(0, ui->groupBox_11);
+            ui->groupBox_11->setMaximumHeight(180);
+        }
+    }
+    if (ui->groupBox_2 && ui->tab_debug_group_peripheral) {
+        if (auto* periLay = qobject_cast<QVBoxLayout*>(ui->tab_debug_group_peripheral->layout())) {
+            periLay->insertWidget(0, ui->groupBox_2);
+            ui->groupBox_2->setMaximumHeight(180);
+        }
+    }
+    if (ui->splitter)
+        ui->splitter->hide();
+
+    connect(consoleNavGroup_, &QButtonGroup::idClicked, this, &MainWindow::selectConsoleNav);
+    if (auto* first = consoleNavGroup_->button(0))
+        first->setChecked(true);
+    selectConsoleNav(0);
+    if (ui->statusbar)
+        ui->statusbar->hide();
+    if (ui->menubar)
+        ui->menubar->hide();
+    updateMainStyle(QStringLiteral("console_shell.qss"));
 }
 
 void MainWindow::applyDebugOtaTabVisibility() {
@@ -380,25 +934,16 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     sub_pid = new QLabel("sub_pid:        ");
     sku_id = new QLabel("sku_id:        ");
     cloudLoginLabel = new QLabel("云平台：<font color='gray'>检查中…</font>");
+    uartStatusLabel->setObjectName(QStringLiteral("uartStatusLabel"));
+    bleStatusLabel->setObjectName(QStringLiteral("bleStatusLabel"));
+    macLabel->setObjectName(QStringLiteral("macLabel"));
+    cloudLoginLabel->setObjectName(QStringLiteral("cloudLoginLabel"));
+    WifiStatusLabel->setObjectName(QStringLiteral("WifiStatusLabel"));
     ui->battery_type_combox->addItem(QStringLiteral("两节电池"), FacBatteryType_TWO_BATTERY);
     ui->battery_type_combox->addItem(QStringLiteral("单节电池"), FacBatteryType_ONE_BATTERY);
 
     otaSourceSet(1); // 一开机锁住
     otaFwSet(1);     // 一开机锁住
-
-    // 设置菜单栏样式
-    ui->menubar->setStyleSheet("QMenuBar { "
-                               "    background-color: white; " // 设置菜单栏背景颜色为白色
-                               "    color: black; "            // 设置菜单栏文字颜色为黑色
-                               "}"
-                               "QMenuBar::item { "
-                               "    background-color: white; " // 设置菜单项背景颜色为白色
-                               "    color: black; "            // 设置菜单项文字颜色为黑色
-                               "}"
-                               "QMenuBar::item:selected { "
-                               "    background-color: lightgray; " // 设置选中菜单项的背景颜色
-                               "    color: black; "                // 设置选中菜单项的文字颜色
-                               "}");
 
     ui->statusbar->addPermanentWidget(board_sn);
     ui->statusbar->addPermanentWidget(product_sn);
@@ -610,6 +1155,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     };
     QMenu* helpMenu = AppHelpMenu::install(ui->menubar, this, helpCb);
     AppHelpMenu::ensureRightmost(ui->menubar, helpMenu);
+
+    initConsoleShell();
 
     on_is_audio_mode_stateChanged(0);
 }
