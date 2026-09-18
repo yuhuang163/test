@@ -67,6 +67,7 @@ bool tlvBodyLooksValid(const QByteArray& body) {
 
 bool fillFromBody(const QByteArray& body, JieliBtBoxRfInfo* out) {
     out->mask = readLe32(body, 0);
+    out->isRight = (out->mask & 1u) != 0;
     int pos = 4;
     while (pos + 2 <= body.size()) {
         const int L = static_cast<quint8>(body.at(pos));

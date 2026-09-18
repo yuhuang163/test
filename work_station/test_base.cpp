@@ -30,6 +30,7 @@
 #include <QString>
 #include <QTimer>
 #include <algorithm>
+#include <functional>
 #include "dongle_at_types.h"
 #include "qcoreapplication.h"
 #include "qprocess.h"
@@ -92,12 +93,27 @@ test_base::test_base(QWidget* parent) : QWidget(parent),
                                         jigSerialPort(jigSerialChannel_->port()),
                                         jig(new XwdFixtureDevice(jigSerialPort)),
                                         productSerialPort(productSerialChannel_->port()),
-                                        product(new Qproduct(productSerialPort, this)) {
+                                        product(new Qproduct(productSerialPort, this)),
+                                        pbDirect(new Qpb(productSerialPort)),
+                                        qfctpDirect(new Qfctp(productSerialPort)),
+                                        qaiotDirect(new Qaiot(productSerialPort)),
+                                        qrootDirect(new Qroot(productSerialPort)),
+                                        qroot2Direct(new Qroot2(productSerialPort)) {
     protocolManager.bindQpb(pb);
     protocolManager.bindQfctp(qfctp);
     protocolManager.bindQaiot(qaiot);
     protocolManager.bindQroot(qroot);
     protocolManager.bindQroot2(qroot2);
+    pbDirect->setSkipDonglePhyWrap(true);
+    qfctpDirect->setSkipDonglePhyWrap(true);
+    qaiotDirect->setSkipDonglePhyWrap(true);
+    qrootDirect->setSkipDonglePhyWrap(true);
+    qroot2Direct->setSkipDonglePhyWrap(true);
+    productSerialProtocolManager.bindQpb(pbDirect);
+    productSerialProtocolManager.bindQfctp(qfctpDirect);
+    productSerialProtocolManager.bindQaiot(qaiotDirect);
+    productSerialProtocolManager.bindQroot(qrootDirect);
+    productSerialProtocolManager.bindQroot2(qroot2Direct);
     // 非 test_case 工站仍用 SETTINGS 初值；自由工站 Product 步在 beginStep 按 case ini 的 Protocol= 覆盖
     applySystemProtocolFromSettings();
 
@@ -124,29 +140,63 @@ void test_base::applySystemProtocolFromSettings() {
     showlog(QStringLiteral("切换设备协议：%1")
                 .arg(QString::fromStdString(QProtocolManager::protocolTypeToString(selectedType))));
 }
-void test_base::applyTestCaseProductProtocol(TestCaseProductProtocol protocol) {
-    QProtocolManager::ProtocolType selectedType = QProtocolManager::ProtocolType::Qfctp;
+namespace {
+
+QProtocolManager::ProtocolType productProtocolTypeFromCase(TestCaseProductProtocol protocol) {
     switch (protocol) {
     case TestCaseProductProtocol::Qpb:
-        selectedType = QProtocolManager::ProtocolType::Qpb;
-        break;
+        return QProtocolManager::ProtocolType::Qpb;
     case TestCaseProductProtocol::Qroot:
-        selectedType = QProtocolManager::ProtocolType::Qroot;
-        break;
+        return QProtocolManager::ProtocolType::Qroot;
     case TestCaseProductProtocol::Qroot2:
-        selectedType = QProtocolManager::ProtocolType::Qroot2;
-        break;
+        return QProtocolManager::ProtocolType::Qroot2;
     case TestCaseProductProtocol::Qaiot:
-        selectedType = QProtocolManager::ProtocolType::Qaiot;
-        break;
+        return QProtocolManager::ProtocolType::Qaiot;
     case TestCaseProductProtocol::QaiotV2:
-        selectedType = QProtocolManager::ProtocolType::QaiotV2;
-        break;
+        return QProtocolManager::ProtocolType::QaiotV2;
     case TestCaseProductProtocol::Qfctp:
     default:
-        selectedType = QProtocolManager::ProtocolType::Qfctp;
-        break;
+        return QProtocolManager::ProtocolType::Qfctp;
     }
+}
+
+void applyProductProtocolToManager(QProtocolManager& manager, TestCaseProductProtocol protocol,
+                                   const std::function<void(const QString&)>& logFn) {
+    QProtocolManager::ProtocolType selectedType = productProtocolTypeFromCase(protocol);
+    if (manager.currentProtocolType() == selectedType)
+        return;
+    manager.setCurrentProtocolType(selectedType);
+    if (logFn) {
+        logFn(QStringLiteral("切换设备协议：%1")
+                  .arg(QString::fromStdString(QProtocolManager::protocolTypeToString(selectedType))));
+    }
+}
+
+} // namespace
+
+void test_base::applyTestCaseProductProtocol(TestCaseProductProtocol protocol) {
+    applyTestCaseProductProtocol(protocol, TestCaseSendChannel::Product);
+    applyProductProtocolToManager(productSerialProtocolManager, protocol, {});
+}
+
+void test_base::applyTestCaseProductProtocol(TestCaseProductProtocol protocol, TestCaseSendChannel channel) {
+    QProtocolManager::ProtocolType selectedType = productProtocolTypeFromCase(protocol);
+    const bool productSerialChannel = channel == TestCaseSendChannel::ProductSerial;
+    if (productSerialChannel) {
+        if ((selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctpDirect) ||
+            ((selectedType == QProtocolManager::ProtocolType::Qaiot ||
+              selectedType == QProtocolManager::ProtocolType::QaiotV2) &&
+             !qaiotDirect) ||
+            (selectedType == QProtocolManager::ProtocolType::Qroot && !qrootDirect) ||
+            (selectedType == QProtocolManager::ProtocolType::Qroot2 && !qroot2Direct)) {
+            showlog(QStringLiteral("产品串口 test_case 协议未就绪，已回退到 qpb"));
+            selectedType = QProtocolManager::ProtocolType::Qpb;
+        }
+        applyProductProtocolToManager(productSerialProtocolManager, protocol,
+                                      [this](const QString& msg) { showlog(msg); });
+        return;
+    }
+
     if ((selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctp) ||
         ((selectedType == QProtocolManager::ProtocolType::Qaiot ||
           selectedType == QProtocolManager::ProtocolType::QaiotV2) &&
@@ -156,11 +206,19 @@ void test_base::applyTestCaseProductProtocol(TestCaseProductProtocol protocol) {
         showlog(QStringLiteral("test_case 协议未就绪，已回退到 qpb"));
         selectedType = QProtocolManager::ProtocolType::Qpb;
     }
-    if (protocolManager.currentProtocolType() == selectedType)
-        return;
-    protocolManager.setCurrentProtocolType(selectedType);
-    showlog(QStringLiteral("切换设备协议：%1")
-                .arg(QString::fromStdString(QProtocolManager::protocolTypeToString(selectedType))));
+    if (protocolManager.currentProtocolType() != selectedType) {
+        protocolManager.setCurrentProtocolType(selectedType);
+        showlog(QStringLiteral("切换设备协议：%1")
+                    .arg(QString::fromStdString(QProtocolManager::protocolTypeToString(selectedType))));
+    }
+}
+
+QProtocolManager& test_base::productProtocolManager(TestCaseSendChannel channel) {
+    return channel == TestCaseSendChannel::ProductSerial ? productSerialProtocolManager : protocolManager;
+}
+
+const QProtocolManager& test_base::productProtocolManager(TestCaseSendChannel channel) const {
+    return channel == TestCaseSendChannel::ProductSerial ? productSerialProtocolManager : protocolManager;
 }
 
 void test_base::setupModbusManager() {
@@ -210,6 +268,7 @@ void test_base::initData() {
 }
 void test_base::signalAndslot() {
     connect(&protocolManager, &QProtocolManager::reportReceived, this, &test_base::onProtocolReport);
+    connect(&productSerialProtocolManager, &QProtocolManager::reportReceived, this, &test_base::onProtocolReport);
     connect(at, &QatManager::reportReceived, this, &test_base::onDongleAtReport);
     connect(&scpiUsbManager_, &QScpiManager::measureReadingReceived, this, &test_base::onScpiUsbMeasureReadingReceived);
     connect(&scpiUsbManager_, &QScpiManager::programmablePowerVoltageRead, this, &test_base::onScpiUsbProgrammablePowerVoltageRead);
@@ -222,6 +281,7 @@ void test_base::signalAndslot() {
     connect(jig, &XwdFixtureDevice::reportReceived, this, &test_base::onJigInstrumentReport);
 
     connect(&protocolManager, SIGNAL(sendGetProductResponse(int)), this, SLOT(solveGetBrushResponse(int)));
+    connect(&productSerialProtocolManager, SIGNAL(sendGetProductResponse(int)), this, SLOT(solveGetBrushResponse(int)));
     connect(at, SIGNAL(sendGetProductResponse(int)), this, SLOT(solveGetBrushResponse(int)));
 
     connect(scanSerialPortsTimer, SIGNAL(timeout()), this, SLOT(scanSerialPorts()));
@@ -533,6 +593,7 @@ void test_base::closeJigSerialPort() {
 }
 
 void test_base::onProductSerialFrame(const QByteArray& dataTemp) {
+    productSerialProtocolManager.parseCmd(dataTemp);
     if (product) {
         product->setLogSlot(m_index);
         product->parseCmd(dataTemp);
@@ -940,9 +1001,6 @@ void test_base::solveGetBrushResponse(int data) {
         return;
     }
     const bool success = (data != 0);
-    // 弹窗+卡控：有回包只交给 Gate 判定；未通过则保持重发窗口，勿在此结束等待
-    if (success && shouldHoldCommandRetryUntilGatePass())
-        return;
     finishCommandRetryWait(
         success,
         success ? QStringLiteral("sendCommandWithRetry完成，收到设备响应")
@@ -959,20 +1017,15 @@ void test_base::onCommandRetryTimerTimeout() {
         qDebug() << "retryCount=" << commandRetryCount
                  << QStringLiteral("sendCommandWithRetry 指令超时");
         const int waitedMs = commandRetryTimeoutMs_ > 0 ? commandRetryTimeoutMs_ : 0;
-        const bool holdGate = shouldHoldCommandRetryUntilGatePass();
         finishCommandRetryWait(
-            false,
-            holdGate ? QStringLiteral("卡控等待超时（弹窗提示期间未匹配期望，已等待%1ms）").arg(waitedMs)
-                     : QStringLiteral("指令超时未响应（已等待%1ms，共重发%2次）")
-                           .arg(waitedMs)
-                           .arg(qMax(0, commandRetrySendCount - 1)));
+            false, QStringLiteral("指令超时未响应（已等待%1ms，共重发%2次）")
+                       .arg(waitedMs)
+                       .arg(qMax(0, commandRetrySendCount - 1)));
         return;
     }
 
     if (commandRetryFunc_) {
-        const bool holdGate = shouldHoldCommandRetryUntilGatePass();
-        if (!holdGate)
-            showlog(QStringLiteral("重新发送指令%1").arg(commandRetryCount));
+        showlog(QStringLiteral("重新发送指令%1").arg(commandRetryCount));
         ++commandRetrySendCount;
         ++commandRetryCount;
         commandRetryFunc_();
@@ -999,19 +1052,13 @@ int test_base::sendCommandWithRetry(std::function<void()> commandFunc, int timeo
     // timeoutMs：步骤「指令超时」总时长（不是重试间隔）
     const int totalMs = qMax(100, timeoutMs);
     commandRetryTimeoutMs_ = totalMs;
-    // 窗口内按 totalMs/3 间隔补发（下限 200ms，无上限）；弹窗+卡控改为短间隔循环读
+    // 窗口内按 totalMs/3 间隔补发（下限 200ms，无上限）
     int intervalMs = totalMs;
     if (allowResend) {
-        if (shouldHoldCommandRetryUntilGatePass()) {
-            intervalMs = 300;
-            if (intervalMs >= totalMs)
-                intervalMs = qMax(100, totalMs / 2);
-        } else {
-            const int thirdMs = totalMs / 3;
-            intervalMs = qMax(200, thirdMs > 0 ? thirdMs : 200);
-            if (intervalMs >= totalMs)
-                intervalMs = totalMs;
-        }
+        const int thirdMs = totalMs / 3;
+        intervalMs = qMax(200, thirdMs > 0 ? thirdMs : 200);
+        if (intervalMs >= totalMs)
+            intervalMs = totalMs;
     }
     commandRetryDeadlineMs_ = QDateTime::currentMSecsSinceEpoch() + totalMs;
 
@@ -1130,40 +1177,6 @@ void test_base::updateTestData(QVector<TestItem>& testItems) {
     }
     testResultTableUpdate(testItems);
 }
-/** 表格「数据」列只展示 MES 关键原因（冒号后 / 错误信息），完整原文走 showlog。 */
-static QString briefMesErrorForTable(const QString& msg) {
-    const QString src = msg.trimmed();
-    if (src.isEmpty())
-        return src;
-
-    auto stripOuterParen = [](QString text) {
-        text = text.trimmed();
-        if (text.endsWith(QStringLiteral(")")) || text.endsWith(QStringLiteral("）")))
-            text.chop(1);
-        return text.trimmed();
-    };
-
-    const int labelPos = src.indexOf(QStringLiteral("错误信息"));
-    if (labelPos >= 0) {
-        QString rest = src.mid(labelPos + QStringLiteral("错误信息").size()).trimmed();
-        if (rest.startsWith(QStringLiteral(":")) || rest.startsWith(QStringLiteral("：")))
-            rest = rest.mid(1).trimmed();
-        rest = stripOuterParen(rest);
-        if (!rest.isEmpty())
-            return rest;
-    }
-
-    const int colonAscii = src.lastIndexOf(QStringLiteral(":"));
-    const int colonWide = src.lastIndexOf(QStringLiteral("："));
-    const int colon = qMax(colonAscii, colonWide);
-    if (colon >= 0 && colon + 1 < src.size()) {
-        const QString rest = stripOuterParen(src.mid(colon + 1));
-        if (!rest.isEmpty())
-            return rest;
-    }
-    return src;
-}
-
 void test_base::solveMesSucess(const int mechines) {
     if (getMesStateQlabel() == nullptr) {
         showlog("mes的状态文本为空");
@@ -1194,7 +1207,7 @@ void test_base::solveMesData(const int mechines, QString msg) {
     if (mechines == getIndex()) {
         TestItem test;
         test.testItem = "mes报错";
-        test.testData = briefMesErrorForTable(msg);
+        test.testData = msg;
         test.testResult = "失败";
         test.ask = "通过";
         testItems.append(test);
@@ -1412,14 +1425,8 @@ void test_base::getMac(QString sn_to_search) {
 }
 void test_base::closeEvent(QCloseEvent*) {
     qDebug() << getIndex() << "test_base关闭";
-    isTestContinue = 0;
     if (at)
         at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");
-    // 关窗时 isTestContinue 已清，不能走 waitWork（会立刻返回）
-    QElapsedTimer t;
-    t.start();
-    while (t.elapsed() < 50)
-        QCoreApplication::processEvents();
 }
 
 void test_base::ensureSnInputLatinIme() {

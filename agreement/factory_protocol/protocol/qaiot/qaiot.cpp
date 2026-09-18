@@ -2608,10 +2608,18 @@ bool Qaiot::sendAppPdu(const QByteArray& appPdu) {
 }
 
 QByteArray Qaiot::wrapPhyPacket(const QByteArray& innerPacket) const {
+    if (skipDonglePhyWrap())
+        return innerPacket;
     return wrapDonglePhyTxPacket(innerPacket, kDonglePhyChannelFac);
 }
 
 bool Qaiot::tryUnwrapPhyPacket(const QByteArray& packet, QList<QByteArray>& outPackets) {
+    if (skipDonglePhyWrap()) {
+        if (packet.isEmpty())
+            return false;
+        outPackets.append(packet);
+        return true;
+    }
     const int before = outPackets.size();
     phyRx_.feed(packet, outPackets);
     return outPackets.size() > before;

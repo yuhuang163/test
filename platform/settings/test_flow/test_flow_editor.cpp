@@ -9,8 +9,10 @@
 
 #include <QAbstractItemView>
 #include <QApplication>
+#include <QCheckBox>
 #include <QComboBox>
 #include <QContextMenuEvent>
+#include <QGroupBox>
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QFormLayout>
@@ -68,6 +70,34 @@ void applyFlowContextMenuStyle(QMenu* menu) {
         menu->setStyleSheet(testFlowEditorStyleSheet());
 }
 
+/** 新建/复制工站：优先向云端申请 StationKey；失败时可选择本机发号或取消。返回 false 表示用户取消。 */
+bool promptFlowStationKeyFromCloud(QWidget* parent, const QString& displayName, QString* preferredKeyOut,
+                                   bool* usedCloudOut = nullptr) {
+    if (preferredKeyOut)
+        preferredKeyOut->clear();
+    if (usedCloudOut)
+        *usedCloudOut = false;
+    const TestCaseSyncService::SyncResult alloc = TestCaseSyncService::allocateStationKeyFromCloud(displayName);
+    if (alloc.ok && !alloc.stationKey.isEmpty()) {
+        if (preferredKeyOut)
+            *preferredKeyOut = alloc.stationKey;
+        if (usedCloudOut)
+            *usedCloudOut = true;
+        return true;
+    }
+    const QString hint =
+        alloc.message.isEmpty() ? QStringLiteral("无法从云端获取工站编号") : alloc.message;
+    if (!parent)
+        return false;
+    if (QMessageBox::question(parent, QStringLiteral("云端发号失败"),
+                              hint + QStringLiteral("\n\n是否改用本机自动发号继续？"),
+                              QMessageBox::Yes | QMessageBox::No, QMessageBox::No)
+        != QMessageBox::Yes) {
+        return false;
+    }
+    return true;
+}
+
 /** 弹出列表按最长工站名加宽，避免「Wellness Warm…」截断；闭合框仍用原宽度，悬停看 ToolTip */
 void adjustComboPopupToContents(QComboBox* combo) {
     if (!combo || !combo->view())
@@ -83,6 +113,25 @@ void adjustComboPopupToContents(QComboBox* combo) {
     combo->view()->setMinimumWidth(popupW);
     if (auto* view = qobject_cast<QListView*>(combo->view()))
         view->setTextElideMode(Qt::ElideNone);
+}
+
+QComboBox* makeSerialBaudCombo(QWidget* parent, int baudRate) {
+    auto* combo = new QComboBox(parent);
+    combo->addItems({QStringLiteral("9600"), QStringLiteral("19200"), QStringLiteral("115200"),
+                     QStringLiteral("38400"), QStringLiteral("57600"), QStringLiteral("460800"),
+                     QStringLiteral("921600"), QStringLiteral("1000000")});
+    const int baud = baudRate > 0 ? baudRate : 115200;
+    const int index = combo->findText(QString::number(baud));
+    combo->setCurrentIndex(index >= 0 ? index : combo->findText(QStringLiteral("115200")));
+    return combo;
+}
+
+int serialBaudFromCombo(QComboBox* combo, int fallback) {
+    if (!combo)
+        return fallback;
+    bool ok = false;
+    const int baud = combo->currentText().toInt(&ok);
+    return ok && baud > 0 ? baud : fallback;
 }
 
 // 专用 MIME，避免与 qsetting 自由工站 setText(索引) 拖放冲突
@@ -384,6 +433,10 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
         if (auto* btnUploadSteps =
                 dialogParent_->findChild<QPushButton*>(QStringLiteral("pushButton_testFlowUploadSteps"))) {
             connect(btnUploadSteps, &QPushButton::clicked, this, &TestFlowEditor::startUploadStepsLibrary);
+        }
+        if (auto* btnSerialUi =
+                dialogParent_->findChild<QPushButton*>(QStringLiteral("pushButton_testFlowSerialUi"))) {
+            connect(btnSerialUi, &QPushButton::clicked, this, &TestFlowEditor::promptSerialUiConfig);
         }
     }
     connect(btnSave, &QPushButton::clicked, this, [this]() { saveCurrentFlow(); });
@@ -896,14 +949,148 @@ void TestFlowEditor::promptAddFlowStation() {
         return;
 
     const QString displayName = editName->text().trimmed();
+    bool usedCloud = false;
+    QString preferredKey;
+    if (!promptFlowStationKeyFromCloud(dialogParent_, displayName, &preferredKey, &usedCloud))
+        return;
     QString err;
-    if (!TestCaseStore::addFlowStation(displayName, &err)) {
+    if (!TestCaseStore::addFlowStation(displayName, &err, preferredKey)) {
         QMessageBox::warning(dialogParent_, QStringLiteral("无法新建"), err);
         return;
     }
-    refreshStationCombo(TestCaseStore::resolveFlowStationKey(displayName));
+    const QString newKey = TestCaseStore::resolveFlowStationKey(displayName);
+    refreshStationCombo(newKey);
     persistSelectedStation(currentStationKey());
     reloadCurrentStation();
+    if (usedCloud) {
+        QMessageBox::information(dialogParent_, QStringLiteral("已新建"),
+                                 QStringLiteral("工站「%1」已创建，云端编号 %2")
+                                     .arg(displayName, newKey));
+    }
+}
+
+void TestFlowEditor::promptSerialUiConfig() {
+    if (!dialogParent_)
+        return;
+    const QString key = currentStationKey();
+    if (key.isEmpty()) {
+        QMessageBox::warning(dialogParent_, QStringLiteral("无法配置"), QStringLiteral("请先选择工站"));
+        return;
+    }
+
+    TestCaseSerialUiConfig cfg = TestCaseStore::loadStationSerialUiConfig(key);
+
+    QDialog dlg(dialogParent_);
+    dlg.setWindowTitle(QStringLiteral("工位串口显示配置"));
+    auto* root = new QVBoxLayout(&dlg);
+
+    auto* stationHint = new QLabel(
+        QStringLiteral("当前工站：%1").arg(TestCaseStore::flowStationDisplayName(key)), &dlg);
+    root->addWidget(stationHint);
+
+    auto* workUiGroup = new QGroupBox(QStringLiteral("工位界面串口"), &dlg);
+    auto* workUiForm = new QFormLayout(workUiGroup);
+
+    auto* dongleVisible = new QCheckBox(QStringLiteral("显示"), workUiGroup);
+    dongleVisible->setChecked(cfg.dongleVisible);
+    QComboBox* dongleBaudCombo =
+        makeSerialBaudCombo(workUiGroup, cfg.dongleBaudRate > 0 ? cfg.dongleBaudRate : 921600);
+    auto* dongleRow = new QHBoxLayout;
+    dongleRow->addWidget(dongleVisible);
+    dongleRow->addStretch(1);
+    dongleRow->addWidget(new QLabel(QStringLiteral("波特率"), workUiGroup));
+    dongleRow->addWidget(dongleBaudCombo);
+    workUiForm->addRow(QStringLiteral("Dongle串口"), dongleRow);
+
+    auto* jigVisible = new QCheckBox(QStringLiteral("显示"), workUiGroup);
+    jigVisible->setChecked(cfg.jigVisible);
+    auto* jigLabel = new QLineEdit(cfg.jigLabel, workUiGroup);
+    jigLabel->setPlaceholderText(QStringLiteral("治具串口"));
+    QComboBox* jigBaudCombo = makeSerialBaudCombo(workUiGroup, cfg.jigBaudRate);
+    auto* jigRow = new QHBoxLayout;
+    jigRow->addWidget(jigVisible);
+    jigRow->addWidget(jigLabel, 1);
+    jigRow->addWidget(new QLabel(QStringLiteral("波特率"), workUiGroup));
+    jigRow->addWidget(jigBaudCombo);
+    workUiForm->addRow(QStringLiteral("治具串口"), jigRow);
+
+    auto* productVisible = new QCheckBox(QStringLiteral("显示"), workUiGroup);
+    productVisible->setChecked(cfg.productVisible);
+    auto* productLabel = new QLineEdit(cfg.productLabel, workUiGroup);
+    productLabel->setPlaceholderText(QStringLiteral("产品串口(仪器)"));
+    QComboBox* productBaudCombo = makeSerialBaudCombo(workUiGroup, cfg.productBaudRate);
+    auto* productRow = new QHBoxLayout;
+    productRow->addWidget(productVisible);
+    productRow->addWidget(productLabel, 1);
+    productRow->addWidget(new QLabel(QStringLiteral("波特率"), workUiGroup));
+    productRow->addWidget(productBaudCombo);
+    workUiForm->addRow(QStringLiteral("产品串口"), productRow);
+
+    auto* usbVisible = new QCheckBox(QStringLiteral("显示"), workUiGroup);
+    usbVisible->setChecked(cfg.usbVisible);
+    auto* usbLabel = new QLineEdit(cfg.usbLabel, workUiGroup);
+    usbLabel->setPlaceholderText(QStringLiteral("万用表串口"));
+    QComboBox* usbBaudCombo = makeSerialBaudCombo(workUiGroup, cfg.usbBaudRate);
+    auto* usbRow = new QHBoxLayout;
+    usbRow->addWidget(usbVisible);
+    usbRow->addWidget(usbLabel, 1);
+    usbRow->addWidget(new QLabel(QStringLiteral("波特率"), workUiGroup));
+    usbRow->addWidget(usbBaudCombo);
+    workUiForm->addRow(QStringLiteral("万用表串口"), usbRow);
+    root->addWidget(workUiGroup);
+
+    auto* menuGroup = new QGroupBox(QStringLiteral("顶部菜单"), &dlg);
+    auto* menuForm = new QFormLayout(menuGroup);
+    auto* fixtureMenuLabel = new QLineEdit(cfg.fixtureMenuLabel, menuGroup);
+    fixtureMenuLabel->setPlaceholderText(QStringLiteral("连接治具串口"));
+    menuForm->addRow(QStringLiteral("连接菜单名称"), fixtureMenuLabel);
+    QComboBox* fixtureBaudCombo = makeSerialBaudCombo(menuGroup, cfg.fixtureBaudRate > 0 ? cfg.fixtureBaudRate : 9600);
+    menuForm->addRow(QStringLiteral("治具波特率"), fixtureBaudCombo);
+    auto* plcFixtureMenuLabel = new QLineEdit(cfg.plcFixtureMenuLabel, menuGroup);
+    plcFixtureMenuLabel->setPlaceholderText(QStringLiteral("连接PLC治具串口"));
+    menuForm->addRow(QStringLiteral("PLC连接菜单名称"), plcFixtureMenuLabel);
+    QComboBox* plcFixtureBaudCombo =
+        makeSerialBaudCombo(menuGroup, cfg.plcFixtureBaudRate > 0 ? cfg.plcFixtureBaudRate : 9600);
+    menuForm->addRow(QStringLiteral("PLC治具波特率"), plcFixtureBaudCombo);
+    root->addWidget(menuGroup);
+
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
+    root->addWidget(buttons);
+    connect(buttons, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+
+    if (dlg.exec() != QDialog::Accepted)
+        return;
+
+    const auto normalizedLabel = [](QLineEdit* edit, const QString& fallback) -> QString {
+        const QString text = edit->text().trimmed();
+        return text.isEmpty() ? fallback : text;
+    };
+
+    TestCaseSerialUiConfig next;
+    next.dongleVisible = dongleVisible->isChecked();
+    next.dongleBaudRate = serialBaudFromCombo(dongleBaudCombo, 921600);
+    next.jigVisible = jigVisible->isChecked();
+    next.jigBaudRate = serialBaudFromCombo(jigBaudCombo, 115200);
+    next.productVisible = productVisible->isChecked();
+    next.usbVisible = usbVisible->isChecked();
+    next.jigLabel = normalizedLabel(jigLabel, QStringLiteral("治具串口"));
+    next.productLabel = normalizedLabel(productLabel, QStringLiteral("产品串口(仪器)"));
+    next.productBaudRate = serialBaudFromCombo(productBaudCombo, 115200);
+    next.usbLabel = normalizedLabel(usbLabel, QStringLiteral("万用表串口"));
+    next.usbBaudRate = serialBaudFromCombo(usbBaudCombo, 115200);
+    next.fixtureMenuLabel = normalizedLabel(fixtureMenuLabel, QStringLiteral("连接治具串口"));
+    next.fixtureBaudRate = serialBaudFromCombo(fixtureBaudCombo, 9600);
+    next.plcFixtureMenuLabel = normalizedLabel(plcFixtureMenuLabel, QStringLiteral("连接PLC治具串口"));
+    next.plcFixtureBaudRate = serialBaudFromCombo(plcFixtureBaudCombo, 9600);
+
+    if (!TestCaseStore::saveStationSerialUiConfig(key, next)) {
+        QMessageBox::warning(dialogParent_, QStringLiteral("保存失败"), QStringLiteral("无法写入工站 flow.ini"));
+        return;
+    }
+    persistSelectedStation(key);
+    QMessageBox::information(dialogParent_, QStringLiteral("已保存"),
+                             QStringLiteral("串口显示配置已写入当前工站 flow.ini，已打开的自由工站会立即生效。"));
 }
 
 void TestFlowEditor::promptRenameCurrentFlowStation() {
@@ -994,9 +1181,14 @@ void TestFlowEditor::promptCopyCurrentFlowStation() {
     const bool stopFlow =
         stopFlowOnTestFailCheck_ ? stopFlowOnTestFailCheck_->isChecked() : true;
 
+    bool usedCloud = false;
+    QString preferredKey;
+    if (!promptFlowStationKeyFromCloud(dialogParent_, newName, &preferredKey, &usedCloud))
+        return;
+
     QString newKey;
     QString err;
-    if (!TestCaseStore::copyFlowStation(sourceKey, newName, entries, stopFlow, &newKey, &err)) {
+    if (!TestCaseStore::copyFlowStation(sourceKey, newName, entries, stopFlow, &newKey, &err, preferredKey)) {
         QMessageBox::warning(dialogParent_, QStringLiteral("无法复制"), err);
         return;
     }
@@ -1007,9 +1199,10 @@ void TestFlowEditor::promptCopyCurrentFlowStation() {
     refreshStationCombo(newKey);
     persistSelectedStation(newKey);
     reloadCurrentStation();
+    const QString keyHint = usedCloud ? QStringLiteral("，云端编号 %1").arg(newKey) : QString();
     QMessageBox::information(dialogParent_, QStringLiteral("已复制"),
-                             QStringLiteral("已创建工站「%1」，流程已写入 总的测试流程.ini")
-                                 .arg(TestCaseStore::flowStationDisplayName(newKey)));
+                             QStringLiteral("已创建工站「%1」%2，流程已写入 总的测试流程.ini")
+                                 .arg(TestCaseStore::flowStationDisplayName(newKey), keyHint));
 }
 
 void TestFlowEditor::promptRemoveCurrentFlowStation() {
@@ -1385,6 +1578,12 @@ void TestFlowEditor::startUploadCurrentStationCase() {
     connect(watcher, &QFutureWatcher<TestCaseSyncService::SyncResult>::finished, this, [this, watcher]() {
         const TestCaseSyncService::SyncResult result = watcher->result();
         if (result.ok) {
+            const QString resolvedKey = TestCaseStore::resolveFlowStationKey(result.stationKey.trimmed());
+            if (!resolvedKey.isEmpty()) {
+                refreshStationCombo(resolvedKey);
+                persistSelectedStation(resolvedKey);
+                reloadCurrentStation();
+            }
             QMessageBox::information(dialogParent_, QStringLiteral("上传本工站用例"), result.message);
         } else {
             QMessageBox::warning(dialogParent_, QStringLiteral("上传本工站用例"), result.message);

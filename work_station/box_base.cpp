@@ -270,17 +270,24 @@ box_base::~box_base() {
     // Cleanup if necessary
     qDebug() << "box_base析构";
 }
+
 void box_base::closeEvent(QCloseEvent*) {
     qDebug() << "box_base关闭";
-    isTestContinue = 0;
-    // 立刻停云端心跳/命令轮询，避免关窗后 QtConcurrent HTTP（最长 120s）拖住进程退出
-    ApplicationShutdown::prepareForExit();
-    // 先保存串口，再关子窗口（避免关窗过程中下拉被清空后写空值）
-    saveCustom();
     for (auto* x : testList) {
         if (x)
             x->isTestContinue = false;
     }
+    for (auto* x : testList) {
+        if (x)
+            x->close();
+    }
+    isTestContinue = false;//关闭box自己的循环
+
+    abortBlockingWaits();
+    // 只停心跳/轮询，不等线程池（waitForDone 会让窗口假死最多 800ms）
+    ApplicationShutdown::prepareForExit();
+    // 先保存串口，再关子窗口（避免关窗过程中下拉被清空后写空值）
+    saveCustom();
     // 自由工站测试中有 dlg.exec() / 人工确认框时，叉掉主窗口不会结束嵌套循环，进程会留在后台
     for (int i = 0; i < 8; ++i) {
         QWidget* modal = QApplication::activeModalWidget();
@@ -291,10 +298,7 @@ void box_base::closeEvent(QCloseEvent*) {
         else
             modal->close();
     }
-    for (auto* x : testList) {
-        if (x)
-            x->close();
-    }
+
     if (qsetting_ui != NULL)
         qsetting_ui->close();
 }
@@ -344,6 +348,7 @@ void box_base::TotallyTask() {
 
     Qlog::saveResidentLog(QStringLiteral("TotallyTask"), QStringLiteral("退出主任务环"));
     ApplicationShutdown::prepareForExit();
+    ApplicationShutdown::waitBackgroundTasks();
 }
 // void box_base::TotallyTask() {
 //     QList<QThread*> threads;
@@ -461,11 +466,6 @@ void box_base::ShowData(QMainWindow* parent) {
             parent->statusBar()->addPermanentWidget(new QLabel("华庄MES"));
         else
             parent->statusBar()->addPermanentWidget(new QLabel("未知工厂")); // 处理默认情况
-
-        if (cloudLoginLabel) {
-            parent->statusBar()->addPermanentWidget(cloudLoginLabel);
-            refreshCloudLoginState();
-        }
     } else {
         qWarning() << "ShowData的parent指针为空";
     }
@@ -591,6 +591,7 @@ void box_base::refreshFlowUiOnAllFreeWork() {
         if (!box)
             continue;
         if (auto* freeBox = qobject_cast<QFreeWorkBox*>(box)) {
+            freeBox->applyFixtureMenuLabel();
             if (auto* fixtureUart = freeBox->fixtureUartWidget()) {
                 fixtureUart->reloadStationConfig();
             }

@@ -589,6 +589,31 @@ bool ensureCloudReady(QString* message) {
     return true;
 }
 
+/** 上传/下载前：向云端申请正式编号，若与本地不同则自动修正 catalog 与 profile.ini。 */
+static QString alignLocalStationKeyWithCloud(const QString& displayName, const QString& localKey,
+                                             QString* detailOut);
+
+static void applyCloudCanonicalStationKey(const QString& displayName, const QString& canonicalKey,
+                                          QString& keyInOut, QString* detailOut) {
+    const QString canonical = canonicalKey.trimmed();
+    if (canonical.isEmpty() || canonical.compare(keyInOut, Qt::CaseInsensitive) == 0)
+        return;
+    const QString oldKey = keyInOut;
+    QString alignErr;
+    if (!TestCaseStore::alignFlowStationKey(displayName, canonical, &alignErr))
+        return;
+    keyInOut = canonical;
+    if (detailOut) {
+        const QString extra = alignErr.isEmpty()
+                                  ? QStringLiteral("本地编号已由 %1 对齐为 %2").arg(oldKey, canonical)
+                                  : alignErr;
+        if (detailOut->isEmpty())
+            *detailOut = extra;
+        else
+            *detailOut += QStringLiteral("；") + extra;
+    }
+}
+
 } // namespace
 
 QString TestCaseSyncService::testCaseRoot() {
@@ -628,6 +653,9 @@ TestCaseSyncService::SyncResult TestCaseSyncService::uploadStationProfile(const 
         name = key;
     }
 
+    QString alignDetail;
+    QString uploadKey = alignLocalStationKeyWithCloud(name, key, &alignDetail);
+
     const QString trimmedRemark = remark.trimmed();
     const bool isPull = source.compare(QStringLiteral("pull"), Qt::CaseInsensitive) == 0;
     if (!isPull && trimmedRemark.isEmpty()) {
@@ -639,20 +667,20 @@ TestCaseSyncService::SyncResult TestCaseSyncService::uploadStationProfile(const 
         return result;
     }
 
-    const QString profileDir = TestCasePaths::profileDir(key);
+    const QString profileDir = TestCasePaths::profileDir(uploadKey);
     if (!QDir(profileDir).exists()) {
         result.message = QStringLiteral("工站 Profile 目录不存在：") + profileDir;
         return result;
     }
 
-    const QString profileIni = TestCasePaths::profileMetaPath(key);
+    const QString profileIni = TestCasePaths::profileMetaPath(uploadKey);
     // 主动上传时本地草稿号 +1（仅作草稿痕迹）；正式号在网页合入时由服务器重写
     const int profileVersion =
         isPull ? readProfileVersion(profileIni) : bumpProfileVersion(profileIni);
 
     QString zipError;
     const QString zipPath =
-        compressDirectoryContents(profileDir, QStringLiteral("profile_%1").arg(key), &zipError);
+        compressDirectoryContents(profileDir, QStringLiteral("profile_%1").arg(uploadKey), &zipError);
     if (zipPath.isEmpty()) {
         result.message = zipError.isEmpty() ? QStringLiteral("打包工站 Profile 失败") : zipError;
         return result;
@@ -667,8 +695,8 @@ TestCaseSyncService::SyncResult TestCaseSyncService::uploadStationProfile(const 
     fields.append({QStringLiteral("remark"),
                    trimmedRemark.isEmpty() ? QStringLiteral("网页拉取回传") : trimmedRemark});
 
-    const QString path =
-        QStringLiteral("/test-cases/profiles/%1/upload").arg(QString::fromUtf8(QUrl::toPercentEncoding(key)));
+    const QString path = QStringLiteral("/test-cases/profiles/%1/upload")
+                             .arg(QString::fromUtf8(QUrl::toPercentEncoding(uploadKey)));
     const FactoryCloudClient::ApiResult api = FactoryCloudClient::uploadMultipart(path, zipPath, fields);
     QFile::remove(zipPath);
 
@@ -677,11 +705,14 @@ TestCaseSyncService::SyncResult TestCaseSyncService::uploadStationProfile(const 
         return result;
     }
 
+    applyCloudCanonicalStationKey(name, api.data.value(QStringLiteral("canonicalStationKey")).toString(),
+                                  uploadKey, &alignDetail);
+
     const QString remoteProfileVersion = api.data.value(QStringLiteral("profileVersion")).toString().trimmed();
     const int fileCount = api.data.value(QStringLiteral("fileCount")).toInt(0);
 
     result.ok = true;
-    result.stationKey = key;
+    result.stationKey = uploadKey;
     result.profileVersion = remoteProfileVersion.isEmpty() ? QString::number(profileVersion) : remoteProfileVersion;
     result.fileCount = fileCount;
     result.message = QStringLiteral("工站「%1」已上传为云端草稿").arg(name);
@@ -691,6 +722,9 @@ TestCaseSyncService::SyncResult TestCaseSyncService::uploadStationProfile(const 
     const QString remoteRemark = api.data.value(QStringLiteral("remark")).toString().trimmed();
     if (!remoteRemark.isEmpty()) {
         result.message += QStringLiteral("；说明：%1").arg(remoteRemark);
+    }
+    if (!alignDetail.isEmpty()) {
+        result.message += QStringLiteral("；%1").arg(alignDetail);
     }
     result.message +=
         QStringLiteral("（本地草稿号 %1；网页合入后会由服务器分配正式 ProfileVersion）").arg(result.profileVersion);
@@ -742,6 +776,49 @@ static void ensureLocalFlowStationCatalog(const QString& stationKey, const QStri
     }
 }
 
+TestCaseSyncService::SyncResult TestCaseSyncService::allocateStationKeyFromCloud(const QString& displayName,
+                                                                                  const QString& preferredKey) {
+    SyncResult result;
+    QString readyError;
+    if (!ensureCloudReady(&readyError)) {
+        result.message = readyError;
+        return result;
+    }
+
+    const QString name = displayName.trimmed();
+    if (name.isEmpty()) {
+        result.message = QStringLiteral("工站名称不能为空");
+        return result;
+    }
+
+    QJsonObject body;
+    body.insert(QStringLiteral("displayName"), name);
+    const QString preferred = preferredKey.trimmed();
+    if (!preferred.isEmpty())
+        body.insert(QStringLiteral("preferredKey"), preferred);
+
+    const FactoryCloudClient::ApiResult api =
+        FactoryCloudClient::post(QStringLiteral("/test-cases/profiles/allocate-station-key"), body);
+    if (!api.ok) {
+        result.message = api.message.isEmpty() ? QStringLiteral("向云端申请工站编号失败") : api.message;
+        return result;
+    }
+
+    const QString key = api.data.value(QStringLiteral("stationKey")).toString().trimmed();
+    if (key.isEmpty()) {
+        result.message = QStringLiteral("云端未返回 stationKey");
+        return result;
+    }
+
+    result.ok = true;
+    result.stationKey = key;
+    const QString remoteName = api.data.value(QStringLiteral("displayName")).toString().trimmed();
+    result.message = QStringLiteral("云端已分配工站编号 %1").arg(key);
+    if (!remoteName.isEmpty() && remoteName != name)
+        result.message += QStringLiteral("（显示名=%1）").arg(remoteName);
+    return result;
+}
+
 TestCaseSyncService::ProfileListResult TestCaseSyncService::listPublishedProfiles() {
     ProfileListResult result;
     QString readyError;
@@ -781,6 +858,90 @@ TestCaseSyncService::ProfileListResult TestCaseSyncService::listPublishedProfile
     }
     return result;
 }
+
+namespace {
+
+static bool tryAlignLocalKey(const QString& displayName, const QString& targetKey, const QString& oldKey,
+                             QString* uploadKeyInOut, QString* detailOut, const QString& okMessage) {
+    const QString target = targetKey.trimmed();
+    if (target.isEmpty() || !uploadKeyInOut)
+        return false;
+    if (target.compare(uploadKeyInOut->trimmed(), Qt::CaseInsensitive) == 0)
+        return false;
+    QString alignErr;
+    if (!TestCaseStore::alignFlowStationKey(displayName, target, &alignErr))
+        return false;
+    if (detailOut && !okMessage.isEmpty())
+        *detailOut = okMessage.arg(oldKey, target);
+    *uploadKeyInOut = target;
+    return true;
+}
+
+QString alignLocalStationKeyWithCloud(const QString& displayName, const QString& localKey, QString* detailOut) {
+    if (detailOut)
+        detailOut->clear();
+    QString uploadKey = localKey.trimmed();
+    const QString oldKey = uploadKey;
+    QStringList notes;
+
+    const TestCaseSyncService::SyncResult alloc =
+        TestCaseSyncService::allocateStationKeyFromCloud(displayName, localKey);
+    if (alloc.ok && !alloc.stationKey.isEmpty()) {
+        QString msg;
+        if (tryAlignLocalKey(displayName, alloc.stationKey, oldKey, &uploadKey, &msg,
+                             QStringLiteral("本地编号已由 %1 对齐为 %2"))) {
+            notes.append(msg);
+        } else if (alloc.stationKey.compare(uploadKey, Qt::CaseInsensitive) == 0) {
+            notes.append(QStringLiteral("云端确认编号 %1").arg(uploadKey));
+        }
+    } else if (!alloc.message.isEmpty()) {
+        notes.append(alloc.message);
+    }
+
+    const TestCaseSyncService::ProfileListResult published = TestCaseSyncService::listPublishedProfiles();
+    if (published.ok) {
+        for (const TestCaseSyncService::PublishedProfile& item : published.items) {
+            if (item.displayName == displayName && !item.stationKey.isEmpty()
+                && item.stationKey.compare(uploadKey, Qt::CaseInsensitive) != 0) {
+                QString msg;
+                if (tryAlignLocalKey(displayName, item.stationKey, oldKey, &uploadKey, &msg,
+                                     QStringLiteral("本地编号已由 %1 对齐为云端已发布编号 %2"))) {
+                    notes.append(msg);
+                }
+                break;
+            }
+        }
+        for (const TestCaseSyncService::PublishedProfile& item : published.items) {
+            if (item.stationKey.compare(uploadKey, Qt::CaseInsensitive) != 0)
+                continue;
+            if (item.displayName == displayName)
+                continue;
+            const TestCaseSyncService::SyncResult reAlloc =
+                TestCaseSyncService::allocateStationKeyFromCloud(displayName, QString());
+            if (reAlloc.ok && !reAlloc.stationKey.isEmpty()
+                && reAlloc.stationKey.compare(uploadKey, Qt::CaseInsensitive) != 0) {
+                QString alignErr;
+                if (TestCaseStore::alignFlowStationKey(displayName, reAlloc.stationKey, &alignErr)) {
+                    notes.append(QStringLiteral("编号 %1 与云端工站「%2」冲突，已对齐为 %3")
+                                     .arg(oldKey, item.displayName, reAlloc.stationKey));
+                    uploadKey = reAlloc.stationKey;
+                } else if (!alignErr.isEmpty()) {
+                    notes.append(alignErr);
+                }
+            } else {
+                notes.append(QStringLiteral("编号 %1 与云端工站「%2」冲突，请部署 allocate-station-key 或网页合入后下载")
+                                 .arg(uploadKey, item.displayName));
+            }
+            break;
+        }
+    }
+
+    if (detailOut && !notes.isEmpty())
+        *detailOut = notes.join(QStringLiteral("；"));
+    return uploadKey;
+}
+
+} // namespace
 
 TestCaseSyncService::SyncResult TestCaseSyncService::syncStationFromCloud(const QString& stationKey,
                                                                            const QString& displayName) {
@@ -834,6 +995,8 @@ TestCaseSyncService::SyncResult TestCaseSyncService::syncStationFromCloud(const 
     if (!remoteStationKey.isEmpty()) {
         key = remoteStationKey;
     }
+    QString alignDetail;
+    applyCloudCanonicalStationKey(name, key, key, &alignDetail);
     ensureLocalFlowStationCatalog(key, name);
 
     // 是否最新：比文件 sha256，不比各电脑可能撞车的 ProfileVersion 数字
@@ -846,6 +1009,8 @@ TestCaseSyncService::SyncResult TestCaseSyncService::syncStationFromCloud(const 
         result.message =
             QStringLiteral("工站「%1」用例已是最新（profile=%2）")
                 .arg(name, remoteProfileVersion.isEmpty() ? QStringLiteral("content") : remoteProfileVersion);
+        if (!alignDetail.isEmpty())
+            result.message += QStringLiteral("；%1").arg(alignDetail);
         return result;
     }
 
@@ -923,6 +1088,9 @@ TestCaseSyncService::SyncResult TestCaseSyncService::syncStationFromCloud(const 
     result.message = QStringLiteral("已下载工站「%1」正式用例").arg(name);
     if (!remoteProfileVersion.isEmpty()) {
         result.message += QStringLiteral("（profile=%1）").arg(remoteProfileVersion);
+    }
+    if (!alignDetail.isEmpty()) {
+        result.message += QStringLiteral("；%1").arg(alignDetail);
     }
     return result;
 }

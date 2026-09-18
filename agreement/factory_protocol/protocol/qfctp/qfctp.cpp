@@ -906,10 +906,18 @@ bool Qfctp::handleRequestResult(uint8_t seq, const PendingRequest& req, int main
 }
 
 QByteArray Qfctp::wrapPhyPacket(const QByteArray& innerPacket) const {
+    if (skipDonglePhyWrap())
+        return innerPacket;
     return wrapDonglePhyTxPacket(innerPacket, kDonglePhyChannelFac);
 }
 
 bool Qfctp::tryUnwrapPhyPacket(const QByteArray& packet, QList<QByteArray>& outPackets) {
+    if (skipDonglePhyWrap()) {
+        if (packet.isEmpty())
+            return false;
+        outPackets.append(packet);
+        return true;
+    }
     const int before = outPackets.size();
     phyRx_.feed(packet, outPackets);
     return outPackets.size() > before;

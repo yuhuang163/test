@@ -32,12 +32,16 @@ class box_base : public QMainWindow {
         formColumn = SETTINGS.value("User/formColumn", "1").toInt();
         formRow = SETTINGS.value("User/formRow", "1").toInt();
 
-        QVBoxLayout* vlayout = new QVBoxLayout(parent->centralWidget());
+        QWidget* const central = parent->centralWidget();
+        if (QLayout* oldCentralLayout = central->layout())
+            delete oldCentralLayout;
+        QVBoxLayout* vlayout = new QVBoxLayout(central);
         for (int i = 0; i < formRow; i++) {
-            QHBoxLayout* hlayout = new QHBoxLayout(parent);
+            // 勿把 QHBoxLayout 直接挂到 QMainWindow，否则与 centralWidget 布局冲突并可能闪退
+            QHBoxLayout* hlayout = new QHBoxLayout();
             for (int j = 0; j < formColumn; j++) {
                 const int index = i * formColumn + j;
-                WidgetType* currentWidget = new WidgetType(index + 1, parent);
+                WidgetType* currentWidget = new WidgetType(index + 1, central);
                 hlayout->addWidget(currentWidget);
                 testList.append(currentWidget);
             }
@@ -95,6 +99,8 @@ class box_base : public QMainWindow {
 
   protected:
     void closeEvent(QCloseEvent* event) override;
+    /** 关窗时打断治具/串口等阻塞等待；子类按需 override。 */
+    virtual void abortBlockingWaits(){};
 
   signals:
     void go_screen_next(int);

@@ -5,6 +5,7 @@
 #include <stdio.h>
 
 #include <QApplication>
+#include <QMainWindow>
 #include <QDir>
 #include <QFileInfo>
 #include <QLibraryInfo>
@@ -95,6 +96,14 @@ class MyApplication : public QApplication {
     using QApplication::QApplication;
 
     bool notify(QObject* receiver, QEvent* event) override {
+        if (CommonUtils::handleUiZoomEvent(event))
+            return true;
+        if (event->type() == QEvent::Show) {
+            if (auto* mw = qobject_cast<QMainWindow*>(receiver)) {
+                if (mw->isWindow())
+                    CommonUtils::restoreUiZoom(mw);
+            }
+        }
         __try {
             return QApplication::notify(receiver, event);
         } __except (QlogApplicationCrashHandler(GetExceptionInformation())) {
@@ -152,6 +161,7 @@ int main(int argc, char* argv[]) {
     installChineseQtTranslations(a);
 
     SETTINGS.migrateFactoryCloudToLocal();
+    SETTINGS.migrateMachinePrefsToLocal();
 
     Qlog::setCrashReportExtraInfo(QStringLiteral("station=%1, cwd=%2, host=%3")
                                       .arg(SETTINGS.value(QStringLiteral("SYSTEM/station")).toString(),

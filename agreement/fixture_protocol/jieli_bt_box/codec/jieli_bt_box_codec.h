@@ -14,6 +14,7 @@ struct JieliBtBoxRfInfo {
     qint32 freqOffset = 0;   // T=7，小端 int32，单位 kHz；例 1B 00 00 00 → 27
     qint32 rssi = 0;         // T=8，小端 int32；例 CD FF FF FF → -51
     quint32 mask = 0;
+    bool isRight = false; // MASK BIT0：0 左耳，1 右耳（1拖2 分窗）
     bool hasMac = false;
     bool hasFreqOffset = false;
     bool hasRssi = false;

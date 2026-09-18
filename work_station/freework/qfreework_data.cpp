@@ -93,7 +93,7 @@ int deviceSideIdFromKind(TuplePositionKind kind) {
 bool caseNeedsDeviceSideParam(const TestCaseDefinition& def) {
     if (def.send.deviceCmd == QStringLiteral("ApplyTupleByMac"))
         return true;
-    if (def.send.channel != TestCaseSendChannel::Product)
+    if (def.send.channel != TestCaseSendChannel::Product && def.send.channel != TestCaseSendChannel::ProductSerial)
         return false;
     if (def.send.productProtocol != TestCaseProductProtocol::Qaiot &&
         def.send.productProtocol != TestCaseProductProtocol::QaiotV2)
@@ -313,11 +313,31 @@ void QFreeWork::applyStationSerialUiConfig() {
             .arg(text.toHtmlEscaped());
     };
 
+    ui->comNameCombo->setVisible(cfg.dongleVisible);
+    ui->connectButton->setVisible(cfg.dongleVisible);
+    ui->disconnectButton->setVisible(cfg.dongleVisible);
+
+    const int dongleBaud = cfg.dongleBaudRate > 0 ? cfg.dongleBaudRate : 921600;
+    if (dongleBaudRate != dongleBaud) {
+        const bool wasOpen = dongleSerialPort && dongleSerialPort->isOpen();
+        dongleBaudRate = dongleBaud;
+        if (wasOpen)
+            closeDongleSerialPort();
+    }
+
     ui->label_8->setText(centeredLabel(cfg.jigLabel));
     ui->label_8->setVisible(cfg.jigVisible);
     ui->jigComNameCombo->setVisible(cfg.jigVisible);
     ui->jigConnectButton->setVisible(cfg.jigVisible);
     ui->jigDisconnectButton->setVisible(cfg.jigVisible);
+
+    const int jigBaud = cfg.jigBaudRate > 0 ? cfg.jigBaudRate : 115200;
+    if (jigBaudRate != jigBaud) {
+        const bool wasOpen = jigSerialPort && jigSerialPort->isOpen();
+        jigBaudRate = jigBaud;
+        if (wasOpen)
+            closeJigSerialPort();
+    }
 
     ui->label_productInst->setText(centeredLabel(cfg.productLabel));
     ui->label_productInst->setVisible(cfg.productVisible);
@@ -325,11 +345,27 @@ void QFreeWork::applyStationSerialUiConfig() {
     ui->productConnectButton->setVisible(cfg.productVisible);
     ui->productDisconnectButton->setVisible(cfg.productVisible);
 
+    const int baud = cfg.productBaudRate > 0 ? cfg.productBaudRate : 115200;
+    if (productBaudRate != baud) {
+        const bool wasOpen = productSerialPort && productSerialPort->isOpen();
+        productBaudRate = baud;
+        if (wasOpen)
+            closeProductSerialPort();
+    }
+
     ui->label_7->setText(centeredLabel(cfg.usbLabel));
     ui->label_7->setVisible(cfg.usbVisible);
     ui->usbcomNameCombo->setVisible(cfg.usbVisible);
     ui->usbconnectButton->setVisible(cfg.usbVisible);
     ui->usbdisconnectButton->setVisible(cfg.usbVisible);
+
+    const int usbBaud = cfg.usbBaudRate > 0 ? cfg.usbBaudRate : 115200;
+    if (usbBaudRate != usbBaud) {
+        const bool wasOpen = usbSerialPort && usbSerialPort->isOpen();
+        usbBaudRate = usbBaud;
+        if (wasOpen)
+            closeUsbSerialPort();
+    }
 }
 
 void QFreeWork::updateTuplePositionHighlight(const QString& position) {

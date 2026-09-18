@@ -14,6 +14,7 @@
 #include "xwd_raw_fixture_device.h"
 #include "xwd_raw_uart_codec.h"
 #include "jieli_bt_box_device.h"
+#include "qfixturemanager.h"
 #include "qprotocol_types.h"
 #include "shared_instrument.h"
 #include "serial_channel.h"
@@ -271,43 +272,121 @@ static int resolveJieliBtBoxBaudRate(const QFreeWork* ctx, const QVariant& sendP
     return kDefaultBaud;
 }
 
-bool ensureJieliBtBoxProductUartOpen(QFreeWork* ctx, int baudRate, QString* errorMessage) {
+bool ensureJieliBtBoxFixtureUartOpen(QFreeWork* ctx, int baudRate, Fixture_uart** outUart, QString* errorMessage) {
+    if (outUart)
+        *outUart = nullptr;
     if (!ctx) {
         if (errorMessage)
             *errorMessage = QStringLiteral("工站上下文无效");
         return false;
     }
-    QComboBox* productCombo = ctx->getProductcomNameCombo();
-    if (!productCombo) {
+    auto* box = qobject_cast<QFreeWorkBox*>(ctx->window());
+    if (!box) {
         if (errorMessage)
-            *errorMessage = QStringLiteral("当前工站未配置产品串口(仪器)");
+            *errorMessage = QStringLiteral("请先用顶部菜单「连接治具串口」连接杰理盒子");
         return false;
     }
-    const QString port = productCombo->currentText().trimmed();
-    if (port.isEmpty()) {
-        if (errorMessage)
-            *errorMessage = QStringLiteral("请在工位界面「产品串口(仪器)」下拉框选择 COM 口");
-        return false;
-    }
-
     if (baudRate <= 0) {
         if (errorMessage)
             *errorMessage = QStringLiteral("步骤 Param_baudRate 无效");
         return false;
     }
-    if (ctx->productBaudRate != baudRate) {
-        ctx->productBaudRate = baudRate;
-        if (ctx->productSerialPort && ctx->productSerialPort->isOpen())
-            ctx->closeProductSerialPort();
-    }
-    if (!ctx->productSerialPort || !ctx->productSerialPort->isOpen())
-        ctx->openProductSerialPort();
-    if (!ctx->productSerialPort || !ctx->productSerialPort->isOpen()) {
+    // 先设 460800 再 open，避免自动连接默认 9600 打开后再 close/reopen 失败
+    box->ensureFixtureUartWidgetCreated();
+    box->fixtureUartWidget()->setFixBaudRate(baudRate);
+
+    QString detail;
+    bool autoConnected = false;
+    Fixture_uart* uart = box->ensureFixtureUartConnected(ctx->getIndex(), &detail, &autoConnected);
+    if (!uart) {
         if (errorMessage)
-            *errorMessage = QStringLiteral("产品串口(仪器)打开失败：%1").arg(port);
+            *errorMessage = detail.isEmpty()
+                                ? QStringLiteral("顶部「连接治具串口」未连接：请在菜单选 COM 并点连接")
+                                : detail;
         return false;
     }
+    uart->setFixBaudRate(baudRate);
+    QFixtureManager* mgr = uart->fixtureManager();
+    const QString port = uart->ui->FixturecomNameCombo->currentText().trimmed();
+    if (uart->isFixtureSerialOpen() && mgr && mgr->baudRate() != baudRate) {
+        if (!mgr->applyBaudRate(baudRate)) {
+            uart->closeSerialPort();
+            if (!uart->tryOpenSerialPort(port, true)) {
+                if (errorMessage)
+                    *errorMessage = QStringLiteral("顶部治具串口按 %1 重开失败：%2").arg(baudRate).arg(port);
+                return false;
+            }
+        }
+    }
+    if (!uart->isFixtureSerialOpen()) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("顶部「连接治具串口」未连接：请在菜单选 COM 并点连接");
+        return false;
+    }
+    if (autoConnected)
+        ctx->showlog(QStringLiteral("已自动连接治具串口：%1 @ %2").arg(port).arg(baudRate));
+    if (outUart)
+        *outUart = uart;
     return true;
+}
+
+static QByteArray jieliExpectedMacBytes(QFreeWork* ctx) {
+    if (!ctx)
+        return {};
+    QString hex = ctx->currentMacAddress().trimmed();
+    hex.remove(':');
+    hex.remove('-');
+    hex.remove(' ');
+    if (hex.size() != 12)
+        return {};
+    const QByteArray out = QByteArray::fromHex(hex.toLatin1());
+    return out.size() == 6 ? out : QByteArray();
+}
+
+static bool jieliOneToTwoEnabled(const QFreeWork* ctx, const QVariant& sendParam) {
+    if (!ctx || !sendParam.canConvert<QVariantMap>())
+        return false;
+    const QVariantMap map = ctx->resolveTestCaseSendParamTree(sendParam).toMap();
+    static const char* kKeys[] = {"oneToTwo", "dualProduct", "dualFixture"};
+    for (const char* key : kKeys) {
+        const QString qkey = QString::fromLatin1(key);
+        if (!map.contains(qkey))
+            continue;
+        return map.value(qkey).toBool();
+    }
+    return false;
+}
+
+static int jieliExpectedSide(QFreeWork* ctx) {
+    if (!ctx)
+        return -1;
+    const int formColumn = qMax(1, SETTINGS.value(QStringLiteral("User/formColumn"), 1).toInt());
+    if (formColumn < 2)
+        return -1;
+    auto* box = qobject_cast<QFreeWorkBox*>(ctx->window());
+    if (!box)
+        return -1;
+    // 1拖2：两窗同时测且本窗无 MAC 时按左右耳分窗；单窗在测时不分左右
+    int minTestingIndex = -1;
+    int maxTestingIndex = -1;
+    int testingCount = 0;
+    for (test_base* station : box->testList) {
+        if (!station || !station->isTestContinue)
+            continue;
+        ++testingCount;
+        const int idx = station->getIndex();
+        if (minTestingIndex < 0 || idx < minTestingIndex)
+            minTestingIndex = idx;
+        if (maxTestingIndex < 0 || idx > maxTestingIndex)
+            maxTestingIndex = idx;
+    }
+    if (testingCount < 2)
+        return -1;
+    if (ctx->getIndex() == minTestingIndex)
+        return 0;
+    if (ctx->getIndex() == maxTestingIndex)
+        return 1;
+    return -1;
 }
 
 bool isRuntimeMacPlaceholder(const QString& text) {
@@ -1848,7 +1927,8 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
         return;
     }
 
-    if (def.send.channel == TestCaseSendChannel::Product && !ctx->at->getConnected() && !TestCaseRunner::stepRequiresProductBle(def)) {
+    if (def.send.channel == TestCaseSendChannel::Product && !ctx->at->getConnected()
+        && !TestCaseRunner::stepRequiresProductBle(def)) {
         ctx->showlog(QStringLiteral("本步不要求蓝牙连接，已跳过产品协议"));
         // 无卡控提示步此时已点过「是」才进入 beginStep；有卡控则弹窗与发送同时，跳过协议后直接过步
         ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
@@ -1888,11 +1968,6 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             return;
         }
         ctx->executeCloudTupleCase(def);
-        return;
-    }
-
-    if (def.send.channel == TestCaseSendChannel::ProductSerial) {
-        ctx->executeProductSerialCase(def);
         return;
     }
 
@@ -2569,11 +2644,10 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                 return;
             }
             sendFn();
-            ctx->canGoNext = true;
-            ctx->sendRetryOver = false;
             ctx->lastCommandRetryCount = 1;
             ctx->lastCommandFailReason.clear();
             ctx->showlog(QStringLiteral("已发送（不等待回包）"));
+            ctx->markActiveTestCaseStepDone(true, QStringLiteral("已发送（不等待回包）"), QStringLiteral("通过"));
             return;
         }
         int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
@@ -2584,7 +2658,20 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
         return;
     }
 
-    ctx->applyTestCaseProductProtocol(def.send.productProtocol);
+    if (def.send.channel == TestCaseSendChannel::ProductSerial) {
+        ProductSerialCmd legacyInstrumentCmd;
+        if (cmdEnumFromName(ProductSerialCmdCatalog::catalog(), def.send.deviceCmd, legacyInstrumentCmd)) {
+            ctx->executeProductSerialCase(def);
+            return;
+        }
+        const QString stepName = def.meta.name.trimmed();
+        if (!ctx->ensureProductSerialForInstrumentStep(stepName)) {
+            ctx->markActiveTestCaseStepDone(false, ctx->activeTestCaseStepTestData(), QStringLiteral("失败"));
+            return;
+        }
+    }
+
+    ctx->applyTestCaseProductProtocol(def.send.productProtocol, def.send.channel);
 
     DeviceCmd cmd = DeviceCmd::FacMode;
     if (!cmdEnumFromName(DeviceCmdCatalog::catalog(), def.send.deviceCmd, cmd)) {
@@ -2606,20 +2693,26 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
     }
 
     const auto sendFn = [ctx, def, cmd, wireParam]() {
+        if (def.send.channel == TestCaseSendChannel::ProductSerial
+            && (!ctx->productSerialPort || !ctx->productSerialPort->isOpen())) {
+            ctx->showlog(QStringLiteral("Qroot 发送失败：产品串口未打开（请在工位「产品串口」行连接，不是 Dongle 行）"));
+            return;
+        }
+        QProtocolManager& protocolMgr = ctx->productProtocolManager(def.send.channel);
         if (def.send.action == TestCaseSendAction::Get)
-            ctx->protocolManager.get(cmd, wireParam);
+            protocolMgr.get(cmd, wireParam);
         else
-            ctx->protocolManager.set(cmd, wireParam);
+            protocolMgr.set(cmd, wireParam);
     };
 
     // 进蓝牙非信令等会关机：Timing/WaitReply=false 时只发不收，发完即过步
+    // ProductSerial 通道 needAsyncDone 恒为 true，须 markDone 否则主循环永远等 stepRuntime_.done
     if (!def.timing.waitReply) {
         sendFn();
-        ctx->canGoNext = true;
-        ctx->sendRetryOver = false;
         ctx->lastCommandRetryCount = 1;
         ctx->lastCommandFailReason.clear();
         ctx->showlog(QStringLiteral("已发送（不等待回包）"));
+        ctx->markActiveTestCaseStepDone(true, QStringLiteral("已发送（不等待回包）"), QStringLiteral("通过"));
         return;
     }
 
@@ -3167,14 +3260,16 @@ void QFreeWork::executeFixtureJieliBtBoxCase(const TestCaseDefinition& def) {
 
     const int baudRate = resolveJieliBtBoxBaudRate(this, def.send.param);
     QString errStr;
-    if (!ensureJieliBtBoxProductUartOpen(this, baudRate, &errStr)) {
+    Fixture_uart* uart = nullptr;
+    if (!ensureJieliBtBoxFixtureUartOpen(this, baudRate, &uart, &errStr)) {
         showlog(errStr);
-        markActiveTestCaseStepDone(false, QStringLiteral("串口未连接"), QStringLiteral("失败"));
+        markActiveTestCaseStepDone(false, QStringLiteral("治具未连接"), QStringLiteral("失败"));
         return;
     }
-    if (!productSerialChannel_) {
-        showlog(QStringLiteral("产品串口(仪器)通道未初始化"));
-        markActiveTestCaseStepDone(false, QStringLiteral("串口未连接"), QStringLiteral("失败"));
+    QFixtureManager* fixtureMgr = uart ? uart->fixtureManager() : nullptr;
+    if (!fixtureMgr || !fixtureMgr->isOpen()) {
+        showlog(QStringLiteral("顶部「连接治具串口」未连接（与工位界面治具串口不是同一路）"));
+        markActiveTestCaseStepDone(false, QStringLiteral("治具未连接"), QStringLiteral("失败"));
         return;
     }
 
@@ -3184,13 +3279,27 @@ void QFreeWork::executeFixtureJieliBtBoxCase(const TestCaseDefinition& def) {
     else if (timeoutMs < 3000)
         timeoutMs = 3000;
 
-    const QString portName = getProductcomNameCombo() ? getProductcomNameCombo()->currentText().trimmed() : QString();
-    showlog(QStringLiteral("等待杰理蓝牙盒子频偏/RSSI（产品串口 %1 @ %2，超时 %3ms）")
+    const QByteArray expectedMac = jieliExpectedMacBytes(this);
+    const bool oneToTwo = jieliOneToTwoEnabled(this, def.send.param);
+    const int expectedSide =
+        (expectedMac.size() == 6 || !oneToTwo) ? -1 : jieliExpectedSide(this);
+    const QString portName = fixtureMgr->portName();
+    QString filterHint;
+    if (expectedMac.size() == 6)
+        filterHint = QStringLiteral("，按MAC %1").arg(QString::fromLatin1(expectedMac.toHex('-')).toUpper());
+    else if (oneToTwo && (expectedSide == 0 || expectedSide == 1))
+        filterHint = expectedSide == 1 ? QStringLiteral("，右耳") : QStringLiteral("，左耳");
+    else if (!oneToTwo)
+        filterHint = QStringLiteral("，单路");
+    showlog(QStringLiteral("等待杰理蓝牙盒子频偏/RSSI（治具串口 %1 @ %2，超时 %3ms%4）")
                 .arg(portName.isEmpty() ? QStringLiteral("-") : portName)
                 .arg(baudRate)
-                .arg(timeoutMs));
+                .arg(timeoutMs)
+                .arg(filterHint));
+    fixtureMgr->resetWaitAbort();
     JieliBtBoxRfInfo info;
-    if (!JieliBtBoxDevice::waitForRfInfo(productSerialChannel_, timeoutMs, &info, &errStr)) {
+    if (!JieliBtBoxDevice::waitForRfInfo(fixtureMgr, timeoutMs, &info, &errStr, expectedSide, expectedMac,
+                                         [this]() { return isTestContinue; })) {
         showlog(QStringLiteral("杰理蓝牙盒子读取失败：%1").arg(errStr));
         markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
         return;
