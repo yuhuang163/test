@@ -106,6 +106,14 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         }, snTimeoutMs);
         return;
     }
+    if (hookId == QStringLiteral("GENERATE_WHOLE_MACHINE_SN")) {
+        fw->runGenerateWholeMachineSnStep();
+        return;
+    }
+    if (hookId == QStringLiteral("BOWL_CAP_DIFF_CHECK")) {
+        fw->runBowlCapDiffCheckStep();
+        return;
+    }
     if (hookId == QStringLiteral("PRINT_WHOLE_MACHINE_SN")) {
         QString sn = fw->resolvedWholeMachineSnText();
         if (sn.isEmpty())
@@ -489,6 +497,8 @@ void QFreeWorkTestCaseHookRegistrar::registerAll() {
     registerDispatchHook(QStringLiteral("DONGLE_SUCTION_SAMPLE"));
     registerDispatchHook(QStringLiteral("DONGLE_SUCTION_SAMPLE_SINGLE"));
     registerDispatchHook(QStringLiteral("SN_WRITE_TAIL"));
+    registerDispatchHook(QStringLiteral("GENERATE_WHOLE_MACHINE_SN"));
+    registerDispatchHook(QStringLiteral("BOWL_CAP_DIFF_CHECK"));
     registerDispatchHook(QStringLiteral("PRINT_WHOLE_MACHINE_SN"));
     registerDispatchHook(QStringLiteral("QR_SN_CONSISTENCY_CHECK"));
     registerDispatchHook(QStringLiteral("COUNTDOWN_WAIT"));

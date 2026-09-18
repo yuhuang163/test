@@ -1,9 +1,12 @@
 #include "qfreework.h"
 #include "hikvision_scanner_tcp.h"
 
+#include "common_utils.h"
+
 #include <algorithm>
 
 #include <QElapsedTimer>
+#include <QRegularExpression>
 #include <QSettings>
 #include <QTimer>
 #include <QVariantMap>
@@ -1227,4 +1230,146 @@ void QFreeWork::runHikvisionScannerReadStep() {
         showlog(QStringLiteral("扫码失败: %1").arg(error));
         markActiveTestCaseStepDone(false, error, QStringLiteral("失败"));
     }
+}
+
+void QFreeWork::runGenerateWholeMachineSnStep() {
+    // 图1 智能机整机 SN（Air1/G100=35）：产品4+备用4+SKU3+MAC12+工厂2+日期3+预留1+版本1+产线1+流水4
+    // 图2 智能机 PCBA SN（28）：产品4+MAC12+工厂2+类型2+日期3+流水5；本步只吃主板（类型建议 MB）
+    const TestCaseDefinition& def = activeTestCase();
+    QVariantMap map;
+    if (def.send.param.canConvert<QVariantMap>())
+        map = resolveTestCaseSendParamTree(def.send.param).toMap();
+
+    const auto takeParam = [&map](const QString& key) -> QString {
+        if (!map.contains(key))
+            return {};
+        return map.value(key).toString().trimmed();
+    };
+
+    QString pcbaRaw = takeParam(QStringLiteral("pcbaSn"));
+    if (pcbaRaw.isEmpty())
+        pcbaRaw = resolvedPcbaSnText();
+    QString pcba = CommonUtils::extractSnFromUrlOrText(pcbaRaw);
+    pcba.remove(QRegularExpression(QStringLiteral("\\s+")));
+    pcba = pcba.toUpper();
+
+    if (pcba.size() != 28) {
+        const QString tip = QStringLiteral("PCBA SN须为智能机28位（当前%1位：%2）").arg(pcba.size()).arg(pcba);
+        showlog(QStringLiteral("生成整机SN失败：%1；非智能机/URL前缀机型暂未适配").arg(tip));
+        markActiveTestCaseStepDone(false, tip, QStringLiteral("失败"));
+        return;
+    }
+
+    const QString product = pcba.mid(0, 4);
+    const QString mac = pcba.mid(4, 12);
+    const QString factory = pcba.mid(16, 2);
+    const QString pcbaType = pcba.mid(18, 2);
+    const QString pcbaDate = pcba.mid(20, 3);
+    if (!QRegularExpression(QStringLiteral("^[0-9A-F]{12}$")).match(mac).hasMatch()) {
+        showlog(QStringLiteral("生成整机SN失败：PCBA SN 中 MAC 段非法：%1").arg(mac));
+        markActiveTestCaseStepDone(false, QStringLiteral("MAC非法:%1").arg(mac), QStringLiteral("失败"));
+        return;
+    }
+
+    const QString expectType = takeParam(QStringLiteral("pcbaType"));
+    if (!expectType.isEmpty() && pcbaType.compare(expectType, Qt::CaseInsensitive) != 0) {
+        const QString tip = QStringLiteral("PCBA类型=%1，期望=%2").arg(pcbaType, expectType.toUpper());
+        showlog(QStringLiteral("生成整机SN失败：%1（主板一般为 MB）").arg(tip));
+        markActiveTestCaseStepDone(false, tip, QStringLiteral("失败"));
+        return;
+    }
+
+    QString spare = takeParam(QStringLiteral("spare"));
+    if (spare.isEmpty())
+        spare = QStringLiteral("0000"); // 图1 备用位暂无追溯意义
+    QString sku = takeParam(QStringLiteral("sku"));
+    if (sku.isEmpty())
+        sku = pack.sku.trimmed();
+    QString date = takeParam(QStringLiteral("date"));
+    if (date.isEmpty())
+        date = pcbaDate; // 无附表一编码规则时默认沿用 PCBA 生产日；组装日请填 Param_date
+    QString reserved = takeParam(QStringLiteral("reserved")); // 图1 F：如 Air1 左右单撑
+    QString version = takeParam(QStringLiteral("version"));   // 图1 N：附表三
+    QString line = takeParam(QStringLiteral("line"));         // 图1 P：附表二
+    QString serial = takeParam(QStringLiteral("serial"));     // 图1 整机日流水 4 位（≠PCBA 5 位流水）
+    QString factoryOut = takeParam(QStringLiteral("factory"));
+    if (factoryOut.isEmpty())
+        factoryOut = factory;
+
+    QStringList missing;
+    if (sku.size() != 3)
+        missing << QStringLiteral("sku(3位，MES ROOTSKU/Param_sku，附表二)");
+    if (spare.size() != 4)
+        missing << QStringLiteral("spare(4位备用，默认0000)");
+    if (date.size() != 3)
+        missing << QStringLiteral("date(3位YMD，附表一；或沿用PCBA)");
+    if (reserved.size() != 1)
+        missing << QStringLiteral("reserved(1位F，如Air1:1左2右3单撑)");
+    if (version.size() != 1)
+        missing << QStringLiteral("version(1位N，附表三生产版本)");
+    if (line.size() != 1)
+        missing << QStringLiteral("line(1位P，附表二产线)");
+    if (serial.size() != 4 || !QRegularExpression(QStringLiteral("^\\d{4}$")).match(serial).hasMatch())
+        missing << QStringLiteral("serial(4位日流水，需号段/MES计数，不能用PCBA5位流水)");
+    if (factoryOut.size() != 2)
+        missing << QStringLiteral("factory(2位工厂代码)");
+
+    if (!missing.isEmpty()) {
+        const QString tip = QStringLiteral("缺少：%1").arg(missing.join(QStringLiteral("；")));
+        showlog(QStringLiteral("生成整机SN失败：%1；PCBA解析 product=%2 mac=%3 factory=%4 type=%5 date=%6")
+                    .arg(tip, product, mac, factory, pcbaType, pcbaDate));
+        markActiveTestCaseStepDone(false, tip, QStringLiteral("失败"));
+        return;
+    }
+
+    const QString whole =
+        product + spare.toUpper() + sku.toUpper() + mac + factoryOut.toUpper() + date.toUpper() + reserved.toUpper()
+        + version.toUpper() + line.toUpper() + serial;
+    if (whole.size() != 35) {
+        showlog(QStringLiteral("生成整机SN失败：拼出长度=%1（期望35） sn=%2").arg(whole.size()).arg(whole));
+        markActiveTestCaseStepDone(false, QStringLiteral("长度异常:%1").arg(whole.size()), QStringLiteral("失败"));
+        return;
+    }
+
+    setWholeMachineSn(whole);
+    stepRuntime_.testData = whole;
+    showlog(QStringLiteral("已生成整机SN并回填界面SN栏：%1（来源PCBA=%2 type=%3 sku=%4 reserved=%5 version=%6 line=%7 serial=%8）")
+                .arg(whole, pcba, pcbaType, sku, reserved, version, line, serial));
+    markActiveTestCaseStepDone(true, whole, QStringLiteral("通过"));
+}
+
+void QFreeWork::runBowlCapDiffCheckStep() {
+    if (!hasBowlEmptyCapCache_ || !hasBowlFullCapCache_) {
+        QStringList miss;
+        if (!hasBowlEmptyCapCache_)
+            miss << QStringLiteral("空碗读值(请先执行读取空碗电容)");
+        if (!hasBowlFullCapCache_)
+            miss << QStringLiteral("满碗读值(请先执行读取满碗电容)");
+        const QString tip = miss.join(QStringLiteral("；"));
+        showlog(QStringLiteral("空满碗电容差值失败：缺少%1").arg(tip));
+        markActiveTestCaseStepDone(false, tip, QStringLiteral("失败"));
+        return;
+    }
+
+    ProtocolRoot2BowlCapDiffData diff;
+    diff.topDiff = static_cast<double>(bowlFullCapCh0_ - bowlEmptyCapCh0_); // F0 顶
+    diff.midDiff = static_cast<double>(bowlFullCapCh2_ - bowlEmptyCapCh2_); // F2 中
+    diff.botDiff = static_cast<double>(bowlFullCapCh1_ - bowlEmptyCapCh1_); // F1 底
+
+    const QString testData = QStringLiteral("TOP=%1(%2-%3) MID=%4(%5-%6) BOT=%7(%8-%9)")
+                                 .arg(diff.topDiff, 0, 'f', 2)
+                                 .arg(bowlFullCapCh0_)
+                                 .arg(bowlEmptyCapCh0_)
+                                 .arg(diff.midDiff, 0, 'f', 2)
+                                 .arg(bowlFullCapCh2_)
+                                 .arg(bowlEmptyCapCh2_)
+                                 .arg(diff.botDiff, 0, 'f', 2)
+                                 .arg(bowlFullCapCh1_)
+                                 .arg(bowlEmptyCapCh1_);
+    showlog(QStringLiteral("空满碗电容差值（取前序步骤缓存）：%1").arg(testData));
+
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolRoot2BowlCapDiffData"), QVariant::fromValue(diff)))
+        return;
+
+    markActiveTestCaseStepDone(true, testData, QStringLiteral("通过"));
 }

@@ -59,6 +59,24 @@ constexpr const char kHintQroot2KeyTest[] =
 constexpr const char kHintQroot2StateRead[] =
     u8"Qroot2/Air1：Req 0xA6，读回泵状态、模式与档位\r\n"
     u8"Ack：byte1泵状态(0/1) byte2模式(1~5) byte3档位(1~15)\r\n卡控：ProtocolButtonStateData(level/mode/pump_state)";
+constexpr const char kHintQroot2PoseSwitch[] =
+    u8"Qroot2：写角度检测开关 Req 0xDB body 0关1开（会因姿势停泵）\r\n"
+    u8"勿与 App 姿态开关 0xCB / 设备信息 0xF0 混淆；确认停泵相关请用 Root2PoseSwitchRead(0xDC)\r\n"
+    u8"示例：Param_on=1";
+constexpr const char kHintQroot2PoseSwitchRead[] =
+    u8"Qroot2：读角度检测开关 Req 0xDC 空 body（AA 55 00 DC 00 24）\r\n"
+    u8"Ack：AA 55 01 DC 01 [状态]；00关 01开；用于确认会否因姿势停泵\r\n"
+    u8"勿用 0xF0（App posture_switch）；卡控：ReportType=ProtocolTypeData，Field=type，Expected=0|1";
+constexpr const char kHintQroot2BowlEmptyCapRead[] =
+    u8"Qroot2：Req 0xAD 空 body 读已存空/满校准电容（AA 55 00 AD 00 53）\r\n"
+    u8"Ack 13B：result + empty_ch0/1/2 + full_ch0/1/2（uint16 大端）；本命令卡控空碗三通道\r\n"
+    u8"卡控：ReportType=ProtocolRoot2BowlEmptyCapData，Field=emptyCh0|emptyCh1|emptyCh2 或 *";
+constexpr const char kHintQroot2BowlFullCapRead[] =
+    u8"Qroot2：Req 0xAD 空 body 读已存空/满校准电容（与空碗读同一帧）\r\n"
+    u8"本命令卡控满碗三通道；卡控：ReportType=ProtocolRoot2BowlFullCapData，Field=fullCh0|fullCh1|fullCh2 或 *";
+constexpr const char kHintQroot2BowlCapDiffRead[] =
+    u8"空满碗电容差值卡控（不发 0xAD）：须配 Hook=BOWL_CAP_DIFF_CHECK，取前序「读取空/满碗电容」缓存算 TOP/MID/BOT\r\n"
+    u8"卡控：ReportType=ProtocolRoot2BowlCapDiffData，Field=topDiff|midDiff|botDiff 或 multi；阈值 BowlCap/*";
 constexpr const char kHintPeriphState[] =
     u8"Qaiot 读传感器 CID=0x08：Param_type=0x00~0x0D\r\n"
     u8"00 IMU(回 36B=9×float LE: kx..bz) / 04 电容fsensor(回 1B 0/1)\r\n"
@@ -130,9 +148,15 @@ constexpr const char kHintAgingStatusRead[] =
     u8"Field=status/finishedFlag/batteryMaxTempC/flangeMaxTempC/stallCount/stallThreshold/stallCurrent0~4";
 constexpr const char kHintGetBattery[] =
     u8"Qroot：Notify 0xE0+0x01 查询；回包 percent(1B)+voltage 大端 0.01V\r\n"
+    u8"Qroot2/Air1：Req 0xB0 空 body（AA 55 00 B0 00 50）；Ack byte0=电量% byte1=工作/充电状态(充电中02)\r\n"
     u8"Qaiot CID=0x0E：Param_field=percent|voltage|current|temperature（默认四项）\r\n"
     u8"字段 Type：01 percent%  02 voltage mV  03 current mA  04 temperature °C\r\n"
-    u8"卡控：ReportType=ProtocolBatteryData，Field=percent/voltageMv/currentMa/temperatureC";
+    u8"卡控：ReportType=ProtocolBatteryData，Field=percent/chargeState/voltageMv/currentMa/temperatureC";
+constexpr const char kHintQroot2PoseAngleRead[] =
+    u8"Qroot2：Req 0xDA 空 body 读姿态角（AA 55 00 DA 00 26）；产测「获取角度信息」\r\n"
+    u8"Ack 4B：pitch/roll 各 int16 大端，单位 0.1°（÷10 为度）；无 yaw；固件不判 ±10°\r\n"
+    u8"注意：读的是上次缓存（角度异常时才更新）；水平时常为 0,0，可靠测需固件改当场采 IMU\r\n"
+    u8"卡控：ReportType=ProtocolRoot2PoseAngleData，Field=pitch01deg|roll01deg，Low=-100 High=100（即 ±10°）";
 constexpr const char kHintRootBatteryTemp[] =
     u8"Qroot：Notify 0x80+0x01 查询电池温度\r\n"
     u8"卡控：ReportType=ProtocolBatteryTempData，Field=type";
@@ -146,6 +170,7 @@ constexpr const char kHintFactoryReset[] =
     u8"卡控：ReportType=ProtocolResultData，Field=result，Expected=1";
 constexpr const char kHintShipMode[] =
     u8"Qfctp：关机 TLV；Qroot：Req 0xFC+0x01 关机\r\n"
+    u8"Qroot2：Req 0xAB+0x00（BLE_CMD_SET_PWROFF）；Ack 回显 body\r\n"
     u8"Qaiot CID=0x0C：side + type=0x02(power_off) + data\r\n"
     u8"可选 Param_side=0/1/2；Param_data=附加数据 hex\r\n"
     u8"卡控（可选）：ReportType=ProtocolResultData，Field=result，Expected=1";
@@ -300,14 +325,25 @@ const Row kRows[] = {
     {DeviceCmd::RootHeatLevelControl, "RootHeatLevelControl", u8"加热档位", DeviceCmdParamKind::JsonMap,
      kHintRootHeatLevelControl, kSet, "ProtocolResultData", "result"},
     {DeviceCmd::RootPumpControl, "RootPumpControl", u8"吸奶器控制", DeviceCmdParamKind::JsonMap, kHintRootPumpControl, kSet},
-    {DeviceCmd::Root2PoseSwitch, "Root2PoseSwitch", u8"姿态开关", DeviceCmdParamKind::JsonMap,
-     u8"Qroot2/Air1：Req 0xDB body 0关1开\r\n示例：Param_on=1", kSet},
+    {DeviceCmd::Root2PoseAngleRead, "Root2PoseAngleRead", u8"读姿态角", DeviceCmdParamKind::None,
+     kHintQroot2PoseAngleRead, kGet, "ProtocolRoot2PoseAngleData", "pitch01deg"},
+    {DeviceCmd::Root2PoseSwitch, "Root2PoseSwitch", u8"角度检测开关(写)", DeviceCmdParamKind::JsonMap,
+     kHintQroot2PoseSwitch, kSet},
+    {DeviceCmd::Root2PoseSwitchRead, "Root2PoseSwitchRead", u8"读角度检测开关", DeviceCmdParamKind::None,
+     kHintQroot2PoseSwitchRead, kGet, "ProtocolTypeData", "type"},
     {DeviceCmd::Root2PoseCalib, "Root2PoseCalib", u8"姿态校准", DeviceCmdParamKind::None,
-     u8"Qroot2/Air1：Req 0xDD body 0x01", kSet},
+     u8"Qroot2/Air1：Req 0xDD body 0x01（写入零点，会当场读 IMU，非只读）", kSet},
     {DeviceCmd::Root2BowlCalib, "Root2BowlCalib", u8"空/满碗校准", DeviceCmdParamKind::JsonMap,
      u8"Qroot2/Air1：Req 0xAE，仅发 0空碗/1满碗，固件当场读电容写入 Flash，勿下发空满电容数值\r\n"
      u8"须同一次上电内先空后满；示例：Param_value=0",
      kSet},
+    {DeviceCmd::Root2BowlEmptyCapRead, "Root2BowlEmptyCapRead", u8"读取空碗电容", DeviceCmdParamKind::None,
+     kHintQroot2BowlEmptyCapRead, kGet, "ProtocolRoot2BowlEmptyCapData", "emptyCh0"},
+    {DeviceCmd::Root2BowlFullCapRead, "Root2BowlFullCapRead", u8"读取满碗电容", DeviceCmdParamKind::None,
+     kHintQroot2BowlFullCapRead, kGet, "ProtocolRoot2BowlFullCapData", "fullCh0"},
+    // 仅作 Gate 回包绑定；实际判定走 Hook BOWL_CAP_DIFF_CHECK，协议层不发令
+    {DeviceCmd::Root2BowlCapDiffRead, "Root2BowlCapDiffRead", u8"空满碗电容差值", DeviceCmdParamKind::None,
+     kHintQroot2BowlCapDiffRead, kGet, "ProtocolRoot2BowlCapDiffData", "topDiff"},
     {DeviceCmd::Root2ModeSet, "Root2ModeSet", u8"设置模式", DeviceCmdParamKind::JsonMap, kHintQroot2ModeSet, kSet},
     {DeviceCmd::Root2LevelSet, "Root2LevelSet", u8"设置档位", DeviceCmdParamKind::JsonMap, kHintQroot2LevelSet, kSet},
     {DeviceCmd::Root2PumpState, "Root2PumpState", u8"控制运行暂停", DeviceCmdParamKind::JsonMap, kHintQroot2PumpState, kSet},

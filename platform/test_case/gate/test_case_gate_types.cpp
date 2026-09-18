@@ -466,6 +466,54 @@ static void registerRootGates() {
             .commit();
     }
     {
+        using S = ProtocolRoot2BowlCalibCapData;
+        GateType<S>("ProtocolRoot2BowlEmptyCapData", "空碗校准电容")
+            .number("emptyCh0", &S::emptyCh0, "空碗顶电极F0", "")
+            .alias("ch0")
+            .number("emptyCh1", &S::emptyCh1, "空碗底电极F1", "")
+            .alias("ch1")
+            .number("emptyCh2", &S::emptyCh2, "空碗中电极F2", "")
+            .alias("ch2")
+            .commit();
+        GateType<S>("ProtocolRoot2BowlFullCapData", "满碗校准电容")
+            .number("fullCh0", &S::fullCh0, "满碗顶电极F0", "")
+            .alias("ch0")
+            .number("fullCh1", &S::fullCh1, "满碗底电极F1", "")
+            .alias("ch1")
+            .number("fullCh2", &S::fullCh2, "满碗中电极F2", "")
+            .alias("ch2")
+            .commit();
+    }
+    {
+        using D = ProtocolRoot2BowlCapDiffData;
+        GateType<D>("ProtocolRoot2BowlCapDiffData", "空满碗电容差值")
+            .number("topDiff", &D::topDiff, "TOP差值(F0满-空)", "")
+            .alias("top")
+            .number("midDiff", &D::midDiff, "MID差值(F2满-空)", "")
+            .alias("mid")
+            .number("botDiff", &D::botDiff, "BOT差值(F1满-空)", "")
+            .alias("bot")
+            .commit();
+    }
+    {
+        using D = ProtocolRoot2PoseAngleData;
+        // 内部仍存 0.1° 整数（卡控 Low/High 亦按 0.1°，如 ±100=±10°）；展示统一换成度
+        const auto fmtDeg = [](double v01) { return QString::number(v01 / 10.0, 'f', 1); };
+        GateType<D>("ProtocolRoot2PoseAngleData", "姿态角")
+            .number("pitch01deg", &D::pitch01deg, "俯仰角", "°")
+            .alias("pitch")
+            .formatValue(fmtDeg)
+            .number("roll01deg", &D::roll01deg, "翻滚角", "°")
+            .alias("roll")
+            .formatValue(fmtDeg)
+            .summary([](const D& d) {
+                return QStringLiteral("俯仰=%1° 翻滚=%2°")
+                    .arg(d.pitch01deg / 10.0, 0, 'f', 1)
+                    .arg(d.roll01deg / 10.0, 0, 'f', 1);
+            })
+            .commit();
+    }
+    {
         using S = ProtocolRootAgingHistoryData;
         GateType<S>("ProtocolRootAgingHistoryData", "老化历史/老化模式")
             .number("status", &S::status, "老化使能", "")

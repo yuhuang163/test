@@ -1146,6 +1146,9 @@ QString QFreeWork::resolvedExpectedTailSnText() const {
 }
 
 QByteArray QFreeWork::resolvedTailSnToWrite() const {
+    // 优先已生成/缓存的整机 SN；否则退回界面框（多为扫码/三元组回填）
+    if (!wholeMachineSn_.trimmed().isEmpty())
+        return wholeMachineSn_.trimmed().toUtf8();
     return resolvedPcbaSnText().toUtf8();
 }
 
@@ -3061,6 +3064,10 @@ void QFreeWork::initData(bool deferDongleAtForVisa) {
     transitionCode_.clear();
     newSfc_.clear();
     mesProcessCode_.clear();
+    hasBowlEmptyCapCache_ = false;
+    hasBowlFullCapCache_ = false;
+    bowlEmptyCapCh0_ = bowlEmptyCapCh1_ = bowlEmptyCapCh2_ = 0;
+    bowlFullCapCh0_ = bowlFullCapCh1_ = bowlFullCapCh2_ = 0;
     pack.sku.clear();
     tupleData_ = TupleApplyResult{};
     QTupleService::clearSharedSession();

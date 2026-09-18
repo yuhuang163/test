@@ -515,6 +515,9 @@ class MainWindow : public QMainWindow {
     void refreshRootHeatTemp(quint8 temp);
     void refreshFlangeStatus(ProtocolTypeData data);
     void refreshPumpStallCurrent(ProtocolPumpStallCurrentData data);
+    void refreshRoot2BowlCalibCap(const QString& reportType, ProtocolRoot2BowlCalibCapData data);
+    void refreshRoot2BowlCapDiff(ProtocolRoot2BowlCapDiffData data);
+    void refreshRoot2PoseAngle(ProtocolRoot2PoseAngleData data);
     void refreshTupleData(ProtocolTupleData data);
     void refreshDongleDeviceName(const QString& name);
     /** 专用测试页 Qaiot/Air2 控件：填充下拉 itemData；通信走设置页当前协议 */

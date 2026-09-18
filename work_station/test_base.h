@@ -310,6 +310,9 @@ class test_base : public QWidget {
     virtual void refreshLightCalibData(ProtocolLightCalibData) {}
     virtual void refreshFlangeStatus(ProtocolTypeData) {}
     virtual void refreshPumpStallCurrent(ProtocolPumpStallCurrentData) {}
+    virtual void refreshRoot2BowlCalibCap(const QString& reportType, ProtocolRoot2BowlCalibCapData) {}
+    virtual void refreshRoot2BowlCapDiff(ProtocolRoot2BowlCapDiffData) {}
+    virtual void refreshRoot2PoseAngle(ProtocolRoot2PoseAngleData) {}
     virtual void refreshRootAgingHistory(ProtocolRootAgingHistoryData) {}
     virtual void refreshTypeStatus(ProtocolTypeData) {}
     virtual void refreshAmmeterData(QString) {}

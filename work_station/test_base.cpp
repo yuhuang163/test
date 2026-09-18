@@ -839,6 +839,16 @@ void test_base::onProtocolReport(const ProtocolReport& report) {
     } else if (reportType == QLatin1String("ProtocolPumpStallCurrentData")
                && payload.canConvert<ProtocolPumpStallCurrentData>()) {
         refreshPumpStallCurrent(payload.value<ProtocolPumpStallCurrentData>());
+    } else if ((reportType == QLatin1String("ProtocolRoot2BowlEmptyCapData")
+                || reportType == QLatin1String("ProtocolRoot2BowlFullCapData"))
+               && payload.canConvert<ProtocolRoot2BowlCalibCapData>()) {
+        refreshRoot2BowlCalibCap(reportType, payload.value<ProtocolRoot2BowlCalibCapData>());
+    } else if (reportType == QLatin1String("ProtocolRoot2BowlCapDiffData")
+               && payload.canConvert<ProtocolRoot2BowlCapDiffData>()) {
+        refreshRoot2BowlCapDiff(payload.value<ProtocolRoot2BowlCapDiffData>());
+    } else if (reportType == QLatin1String("ProtocolRoot2PoseAngleData")
+               && payload.canConvert<ProtocolRoot2PoseAngleData>()) {
+        refreshRoot2PoseAngle(payload.value<ProtocolRoot2PoseAngleData>());
     } else if (reportType == QLatin1String("ProtocolRootAgingHistoryData")
                && payload.canConvert<ProtocolRootAgingHistoryData>()) {
         refreshRootAgingHistory(payload.value<ProtocolRootAgingHistoryData>());

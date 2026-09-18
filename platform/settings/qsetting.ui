@@ -1126,6 +1126,99 @@
          </layout>
         </widget>
        </item>
+       <item row="2" column="0">
+        <widget class="QGroupBox" name="groupBox_bowlCapDiff">
+         <property name="title">
+          <string>空满碗电容差值卡控（Air1奶量）</string>
+         </property>
+         <layout class="QGridLayout" name="gridLayout_bowlCapDiff">
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_BowlCapLowTop">
+            <property name="text">
+             <string>TOP差值下限(F0)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="lineEdit_BowlCapLowTop">
+            <property name="text">
+             <string>12</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="2">
+           <widget class="QLabel" name="label_BowlCapHighTop">
+            <property name="text">
+             <string>TOP差值上限</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="3">
+           <widget class="QLineEdit" name="lineEdit_BowlCapHighTop">
+            <property name="text">
+             <string>30</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_BowlCapLowMid">
+            <property name="text">
+             <string>MID差值下限(F2)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLineEdit" name="lineEdit_BowlCapLowMid">
+            <property name="text">
+             <string>38</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="2">
+           <widget class="QLabel" name="label_BowlCapHighMid">
+            <property name="text">
+             <string>MID差值上限</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="3">
+           <widget class="QLineEdit" name="lineEdit_BowlCapHighMid">
+            <property name="text">
+             <string>63</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_BowlCapLowBot">
+            <property name="text">
+             <string>BOT差值下限(F1)</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QLineEdit" name="lineEdit_BowlCapLowBot">
+            <property name="text">
+             <string>10</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="2">
+           <widget class="QLabel" name="label_BowlCapHighBot">
+            <property name="text">
+             <string>BOT差值上限</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="3">
+           <widget class="QLineEdit" name="lineEdit_BowlCapHighBot">
+            <property name="text">
+             <string>18</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
        <item row="0" column="1">
         <widget class="QGroupBox" name="groupBox_brushInstrument">
          <property name="title">

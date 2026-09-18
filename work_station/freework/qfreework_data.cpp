@@ -589,6 +589,78 @@ void QFreeWork::refreshSn(ProtocolSnData data) {
     }
 }
 
+void QFreeWork::refreshRoot2BowlCalibCap(const QString& reportType, ProtocolRoot2BowlCalibCapData data) {
+    // 先缓存本步对应通道：空碗步只记 empty*，满碗步只记 full*（供后续差值卡控，勿用同一次回包）
+    if (testCaseStepActive_) {
+        const QString cmd = activeTestCase_.send.deviceCmd;
+        if (cmd == QStringLiteral("Root2BowlEmptyCapRead")
+            || reportType == QLatin1String("ProtocolRoot2BowlEmptyCapData")) {
+            bowlEmptyCapCh0_ = data.emptyCh0;
+            bowlEmptyCapCh1_ = data.emptyCh1;
+            bowlEmptyCapCh2_ = data.emptyCh2;
+            hasBowlEmptyCapCache_ = true;
+        }
+        if (cmd == QStringLiteral("Root2BowlFullCapRead")
+            || reportType == QLatin1String("ProtocolRoot2BowlFullCapData")) {
+            bowlFullCapCh0_ = data.fullCh0;
+            bowlFullCapCh1_ = data.fullCh1;
+            bowlFullCapCh2_ = data.fullCh2;
+            hasBowlFullCapCache_ = true;
+        }
+    }
+
+    if (evaluateActiveTestCaseGate(reportType, QVariant::fromValue(data)))
+        return;
+
+    if (!testCaseStepActive_)
+        return;
+    const QString cmd = activeTestCase_.send.deviceCmd;
+    const bool emptyStep = cmd == QStringLiteral("Root2BowlEmptyCapRead");
+    const bool fullStep = cmd == QStringLiteral("Root2BowlFullCapRead");
+    if (!emptyStep && !fullStep)
+        return;
+
+    QString testData;
+    if (emptyStep) {
+        testData = QStringLiteral("F0=%1 F1=%2 F2=%3").arg(data.emptyCh0).arg(data.emptyCh1).arg(data.emptyCh2);
+        showlog(QStringLiteral("空碗校准电容：%1").arg(testData));
+    } else {
+        testData = QStringLiteral("F0=%1 F1=%2 F2=%3").arg(data.fullCh0).arg(data.fullCh1).arg(data.fullCh2);
+        showlog(QStringLiteral("满碗校准电容：%1").arg(testData));
+    }
+    markActiveTestCaseStepDone(true, testData, QStringLiteral("通过"));
+}
+
+void QFreeWork::refreshRoot2BowlCapDiff(ProtocolRoot2BowlCapDiffData data) {
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolRoot2BowlCapDiffData"), QVariant::fromValue(data)))
+        return;
+
+    if (!testCaseStepActive_)
+        return;
+
+    const QString testData = QStringLiteral("TOP=%1 MID=%2 BOT=%3")
+                                 .arg(data.topDiff, 0, 'f', 2)
+                                 .arg(data.midDiff, 0, 'f', 2)
+                                 .arg(data.botDiff, 0, 'f', 2);
+    showlog(QStringLiteral("空满碗电容差值：%1").arg(testData));
+    markActiveTestCaseStepDone(true, testData, QStringLiteral("通过"));
+}
+
+void QFreeWork::refreshRoot2PoseAngle(ProtocolRoot2PoseAngleData data) {
+    const QString summary = QStringLiteral("俯仰=%1° 翻滚=%2°")
+                                .arg(data.pitch01deg / 10.0, 0, 'f', 1)
+                                .arg(data.roll01deg / 10.0, 0, 'f', 1);
+    showlog(QStringLiteral("姿态角：%1").arg(summary));
+
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolRoot2PoseAngleData"), QVariant::fromValue(data)))
+        return;
+
+    if (!testCaseStepActive_ || activeTestCase_.send.deviceCmd != QStringLiteral("Root2PoseAngleRead"))
+        return;
+
+    markActiveTestCaseStepDone(true, summary, QString());
+}
+
 void QFreeWork::refreshMacData(ProtocolMacData data) {
     const QString mac = data.mac.trimmed();
     if (mac.isEmpty())

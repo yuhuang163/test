@@ -43,14 +43,19 @@ class Qroot2 : public qProtocol {
         LevelSet = 0xA3,
         PumpState = 0xA4,
         KeyTest = 0xA6,
+        GetState = 0xB0, // BLE_CMD_GET_STATE；空 body；Ack：电量% + 工作/充电状态
+        BowlCalibRead = 0xAD, // 读已存空/满校准电容，空 body；Ack 13B
         BowlCalib = 0xAE, // body 0空碗 1满碗，固件当场采样，不下发电容
         TestMode = 0xAF,  // body 0自检 1老化
-        PoseSwitch = 0xDB,
+        PoseAngle = 0xDA,      // 获取角度信息（产测）；Ack 4B：pitch/roll 0.1° 有符号大端
+        PoseSwitch = 0xDB,     // 写角度检测开关（会停泵）；勿与 App 0xCB 混淆
+        PoseSwitchRead = 0xDC, // 读角度检测开关；勿用 0xF0 看停泵相关
         PoseCalib = 0xDD,
-        PowerOff = 0xFC,
+        PowerOff = 0xAB, // BLE_CMD_SET_PWROFF；Req body 1B 固件不判，原样回 ACK
     };
 
-    static constexpr quint8 kAir1PowerOffParam = 0x04;
+    /** 0xAD 读校准电容：空碗/满碗步骤共用回包，按请求命令分发不同 ReportType */
+    enum class BowlCalibCapView : quint8 { None = 0, Empty = 1, Full = 2 };
 
     static quint8 checksum8(const QByteArray& data);
     static QByteArray buildPacket(quint8 ct, quint8 cid, const QByteArray& body);
@@ -79,6 +84,7 @@ class Qroot2 : public qProtocol {
     bool hasPending_ = false;
     ProtocolSnType pendingSnType_ = ProtocolSnType::TailSn;
     QByteArray pendingWriteSn_;
+    BowlCalibCapView pendingBowlCalibCapView_ = BowlCalibCapView::None;
 
     DonglePhyRxCodec phyRx_{kDonglePhyRxAcceptFacOnly, "[Qroot2]"};
 };

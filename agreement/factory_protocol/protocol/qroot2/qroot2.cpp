@@ -245,6 +245,7 @@ void Qroot2::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
     if (ct == Nack) {
         emit sendGetProductResponse(0);
         hasPending_ = false;
+        pendingBowlCalibCapView_ = BowlCalibCapView::None;
         ProtocolResultData result;
         result.result = 0;
         emitReport(QStringLiteral("ProtocolResultData"), QVariant::fromValue(result));
@@ -376,6 +377,80 @@ void Qroot2::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
         emit sendGetProductResponse(1);
         hasPending_ = false;
         break;
+    case GetState: {
+        // Ack payload：byte0 电量%（0~100），byte1 工作/充电状态（充电中为 02）；勿再用 0xA8 当电量
+        ProtocolBatteryData battery;
+        if (!body.isEmpty())
+            battery.percent = static_cast<quint8>(body.at(0));
+        if (body.size() >= 2)
+            battery.chargeState = static_cast<quint8>(body.at(1));
+        qDebug().noquote() << "[Qroot2] GetState(0xB0) percent=" << battery.percent
+                           << "chargeState=" << battery.chargeState;
+        emitReport(QStringLiteral("ProtocolBatteryData"), QVariant::fromValue(battery));
+        emit sendGetProductResponse(1);
+        hasPending_ = false;
+        break;
+    }
+    case PoseAngle: {
+        // Ack 4B：pitch、roll 各 int16 大端，单位 0.1°；固件不判 ±10°，由上位机卡控
+        ProtocolRoot2PoseAngleData angle;
+        if (body.size() >= 4) {
+            const auto be16s = [&body](int off) -> qint16 {
+                const quint16 u =
+                    (static_cast<quint16>(static_cast<quint8>(body.at(off))) << 8)
+                    | static_cast<quint8>(body.at(off + 1));
+                return static_cast<qint16>(u);
+            };
+            angle.pitch01deg = be16s(0);
+            angle.roll01deg = be16s(2);
+        }
+        qDebug().noquote() << "[Qroot2] PoseAngle(0xDA) pitch=" << (angle.pitch01deg / 10.0)
+                           << "deg roll=" << (angle.roll01deg / 10.0) << "deg"
+                           << "(raw 0.1°=" << angle.pitch01deg << "," << angle.roll01deg << ")";
+        emitReport(QStringLiteral("ProtocolRoot2PoseAngleData"), QVariant::fromValue(angle));
+        emit sendGetProductResponse(1);
+        hasPending_ = false;
+        break;
+    }
+    case PoseSwitchRead: {
+        // Ack：AA 55 01 DC 01 [状态] [校验]；00关 01开（角度检测，决定是否因姿势停泵）
+        ProtocolTypeData status;
+        status.type = body.isEmpty() ? 0 : static_cast<quint8>(body.at(0));
+        qDebug().noquote() << "[Qroot2] PoseSwitchRead(0xDC)=" << status.type
+                           << (status.type ? QStringLiteral("开") : QStringLiteral("关"));
+        emitReport(QStringLiteral("ProtocolTypeData"), QVariant::fromValue(status));
+        emit sendGetProductResponse(1);
+        hasPending_ = false;
+        break;
+    }
+    case BowlCalibRead: {
+        // Ack：AA 55 01 AD 0D [result][empty×3 BE][full×3 BE][cs]
+        ProtocolRoot2BowlCalibCapData cap;
+        const auto be16 = [&body](int off) -> int {
+            if (body.size() < off + 2)
+                return 0;
+            return (static_cast<quint8>(body.at(off)) << 8) | static_cast<quint8>(body.at(off + 1));
+        };
+        if (!body.isEmpty())
+            cap.result = static_cast<quint8>(body.at(0));
+        cap.emptyCh0 = be16(1);
+        cap.emptyCh1 = be16(3);
+        cap.emptyCh2 = be16(5);
+        cap.fullCh0 = be16(7);
+        cap.fullCh1 = be16(9);
+        cap.fullCh2 = be16(11);
+        const QString reportType = (pendingBowlCalibCapView_ == BowlCalibCapView::Full)
+            ? QStringLiteral("ProtocolRoot2BowlFullCapData")
+            : QStringLiteral("ProtocolRoot2BowlEmptyCapData");
+        qDebug().noquote() << "[Qroot2] BowlCalibRead(0xAD)" << reportType
+                           << "empty=" << cap.emptyCh0 << cap.emptyCh1 << cap.emptyCh2
+                           << "full=" << cap.fullCh0 << cap.fullCh1 << cap.fullCh2;
+        emitReport(reportType, QVariant::fromValue(cap));
+        pendingBowlCalibCapView_ = BowlCalibCapView::None;
+        emit sendGetProductResponse(1);
+        hasPending_ = false;
+        break;
+    }
     default:
         emit sendGetProductResponse(1);
         hasPending_ = false;
@@ -532,7 +607,8 @@ void Qroot2::set(DeviceCmd cmd, const QVariant& data) {
         return;
     }
     case DeviceCmd::ShipMode:
-        sendPacket(Req, PowerOff, QByteArray(1, static_cast<char>(kAir1PowerOffParam)));
+        // AA 55 00 AB 01 00 54；Ack：AA 55 01 AB 01 00 [cs]
+        sendPacket(Req, PowerOff, QByteArray(1, '\x00'));
         return;
     default:
         qWarning() << "[Qroot2] unsupported set cmd" << static_cast<int>(cmd);
@@ -555,8 +631,29 @@ void Qroot2::get(DeviceCmd cmd, const QVariant& param) {
         // 请求帧（空 body）：AA 55 00 A6 00 5A
         sendPacket(Req, KeyTest, QByteArray());
         return;
+    case DeviceCmd::GetBattery:
+        // AA 55 00 B0 00 50；Ack 第 1 字节电量 bat_val（0~100%）
+        sendPacket(Req, GetState, QByteArray());
+        return;
     case DeviceCmd::RootPumpStallCurrentQuery:
         sendPacket(Req, PumpStallCurrent, QByteArray());
+        return;
+    case DeviceCmd::Root2PoseAngleRead:
+        // AA 55 00 DA 00 26；Ack 4B pitch/roll（0.1° 有符号大端）
+        sendPacket(Req, PoseAngle, QByteArray());
+        return;
+    case DeviceCmd::Root2PoseSwitchRead:
+        // AA 55 00 DC 00 24
+        sendPacket(Req, PoseSwitchRead, QByteArray());
+        return;
+    case DeviceCmd::Root2BowlEmptyCapRead:
+        // AA 55 00 AD 00 53；回包按空碗 ReportType 分发
+        pendingBowlCalibCapView_ = BowlCalibCapView::Empty;
+        sendPacket(Req, BowlCalibRead, QByteArray());
+        return;
+    case DeviceCmd::Root2BowlFullCapRead:
+        pendingBowlCalibCapView_ = BowlCalibCapView::Full;
+        sendPacket(Req, BowlCalibRead, QByteArray());
         return;
     case DeviceCmd::Sn: {
         const auto which = static_cast<FacDevInfoType>(param.toInt());

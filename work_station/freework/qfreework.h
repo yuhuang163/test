@@ -157,6 +157,16 @@ class QFreeWork : public test_base {
     QString mesProcessCode_;
     QString macAddress = "没有mac地址";
 
+    /** 空碗/满碗读电容步骤缓存（差值卡控用，非同一次 0xAD 回包） */
+    bool hasBowlEmptyCapCache_ = false;
+    bool hasBowlFullCapCache_ = false;
+    int bowlEmptyCapCh0_ = 0;
+    int bowlEmptyCapCh1_ = 0;
+    int bowlEmptyCapCh2_ = 0;
+    int bowlFullCapCh0_ = 0;
+    int bowlFullCapCh1_ = 0;
+    int bowlFullCapCh2_ = 0;
+
     // --- RSSI / WiFi / 电量 / 电流 ---
     QString BT_RSSI = "";
     QString WIFI_RSSI = "";
@@ -400,6 +410,10 @@ class QFreeWork : public test_base {
     bool evaluateLightSensorFivePointRule(QString* detailOut);
     /** VES 四通道光源：固定通道 1，亮度由步骤 Param_brightness 配置（0~255）。 */
     void runVesCh1SetBrightnessStep();
+    /** 由扫码 PCBA 主板 SN 拼 35 位整机 SN，回填界面 SN 栏（不发协议；写入另配「写入SN码」）。 */
+    void runGenerateWholeMachineSnStep();
+    /** 用前面空碗读 / 满碗读缓存算 TOP/MID/BOT 差值并卡控（不发 0xAD）。 */
+    void runBowlCapDiffCheckStep();
     /** 自由工站屏幕检测：GigE/USB 拍照后坏点 / 显示对比 / 位置校准。 */
     void runScreenInspectStep();
     /**
@@ -534,6 +548,9 @@ class QFreeWork : public test_base {
     void refreshBaseData(ProtocolBaseInfoData data) override;
     void refreshBattaryData(ProtocolBatteryData data) override;
     void refreshSn(ProtocolSnData data) override;
+    void refreshRoot2BowlCalibCap(const QString& reportType, ProtocolRoot2BowlCalibCapData data) override;
+    void refreshRoot2BowlCapDiff(ProtocolRoot2BowlCapDiffData data) override;
+    void refreshRoot2PoseAngle(ProtocolRoot2PoseAngleData data) override;
     void refreshMacData(ProtocolMacData data) override;
     void refreshPeriphData(ProtocolPeriphStateData data) override;
     void refreshRssiRead(ProtocolRssiData data) override;

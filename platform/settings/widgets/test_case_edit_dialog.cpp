@@ -113,6 +113,15 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("seconds"), QStringLiteral("倒计时等待秒数（COUNTDOWN_WAIT）")},
         {QStringLiteral("waitSeconds"), QStringLiteral("倒计时等待秒数（同 seconds）")},
         {QStringLiteral("prompt"), QStringLiteral("倒计时弹窗提示文字（可选）")},
+        {QStringLiteral("spare"), QStringLiteral("整机SN备用4位（默认0000）")},
+        {QStringLiteral("sku"), QStringLiteral("整机SN SKU 3位（附表二/MES）")},
+        {QStringLiteral("reserved"), QStringLiteral("整机SN预留F：Air1 1左/2右/3单撑")},
+        {QStringLiteral("version"), QStringLiteral("整机SN生产版本N（附表三）")},
+        {QStringLiteral("serial"), QStringLiteral("整机SN当日流水4位")},
+        {QStringLiteral("pcbaType"), QStringLiteral("期望PCBA类型（主板MB）")},
+        {QStringLiteral("date"), QStringLiteral("整机SN日期3位（空则用PCBA日期）")},
+        {QStringLiteral("factory"), QStringLiteral("工厂代码2位（空则用PCBA工厂）")},
+        {QStringLiteral("pcbaSn"), QStringLiteral("PCBA主板SN（空则用界面SN栏）")},
         {QStringLiteral("brightness"), QStringLiteral("亮度（0~255）")},
         {QStringLiteral("index"), QStringLiteral("光感校准写入下标（0~19）")},
         {QStringLiteral("golden"), QStringLiteral("本点金样光感值")},
@@ -143,7 +152,7 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("sharedComName"), QStringLiteral("共享串口名（运行时解析）")},
         {QStringLiteral("txHex"), QStringLiteral("发送十六进制报文")},
         {QStringLiteral("string"), QStringLiteral("原文/字符串参数")},
-        {QStringLiteral("line"), QStringLiteral("SCPI 原始行")},
+        {QStringLiteral("line"), QStringLiteral("整机SN产线P（附表二；SCPI步骤则为原始行）")},
         {QStringLiteral("mLeft"), QStringLiteral("PLC 左工位线圈")},
         {QStringLiteral("mRight"), QStringLiteral("PLC 右工位线圈")},
         {QStringLiteral("address"), QStringLiteral("地址（如 M20、D100、X0）")},
@@ -201,6 +210,7 @@ bool hookUsesSendParamUi(const QString& hookId) {
     return hookId == QLatin1String("COUNTDOWN_WAIT") || hookId == QLatin1String("LIGHT_SENSOR_GOLDEN_CALIB")
         || hookId == QLatin1String("LIGHT_SENSOR_CALIB_WRITE") || hookId == QLatin1String("LIGHT_SENSOR_CALIB_READ")
         || hookId == QLatin1String("VES_CH1_SET_BRIGHTNESS")
+        || hookId == QLatin1String("GENERATE_WHOLE_MACHINE_SN")
         || hookId.startsWith(QLatin1String("PLC_SYNC_"));
 }
 
@@ -209,6 +219,17 @@ QVariantMap hookSendParamDefaultMap(const QString& hookId) {
         QVariantMap map;
         map.insert(QStringLiteral("seconds"), QStringLiteral("5"));
         map.insert(QStringLiteral("prompt"), QStringLiteral("请等待"));
+        return map;
+    }
+    if (hookId == QLatin1String("GENERATE_WHOLE_MACHINE_SN")) {
+        QVariantMap map;
+        map.insert(QStringLiteral("spare"), QStringLiteral("0000"));
+        map.insert(QStringLiteral("sku"), QString());
+        map.insert(QStringLiteral("reserved"), QString());
+        map.insert(QStringLiteral("version"), QString());
+        map.insert(QStringLiteral("line"), QString());
+        map.insert(QStringLiteral("serial"), QString());
+        map.insert(QStringLiteral("pcbaType"), QStringLiteral("MB"));
         return map;
     }
     if (hookId == QLatin1String("LIGHT_SENSOR_GOLDEN_CALIB")) {
@@ -1802,6 +1823,8 @@ const QHash<QString, QString>& hookDisplayNameMap() {
         {QStringLiteral("DONGLE_SUCTION_SAMPLE_SINGLE"), QStringLiteral("采集单通道吸力(旧Hook，请改用Dongle指令)")},
         {QStringLiteral("SN_WRITE_TAIL"), QStringLiteral("写入 SN 码")},
         {QStringLiteral("MAC_WRITE_ROOT"), QStringLiteral("写入 MAC 地址（Qroot）")},
+        {QStringLiteral("GENERATE_WHOLE_MACHINE_SN"), QStringLiteral("由PCBA主板SN生成整机SN并回填界面")},
+        {QStringLiteral("BOWL_CAP_DIFF_CHECK"), QStringLiteral("空满碗电容差值卡控（取前序空/满读值）")},
         {QStringLiteral("PRINT_WHOLE_MACHINE_SN"), QStringLiteral("打印整机 SN 二维码")},
         {QStringLiteral("QR_SN_CONSISTENCY_CHECK"), QStringLiteral("二维码一致性校验（与开局SN比对）")},
         {QStringLiteral("COUNTDOWN_WAIT"), QStringLiteral("倒计时等待弹窗（到点自动下一步）")},
