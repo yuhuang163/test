@@ -683,10 +683,46 @@ void QFreeWork::refreshRoot2BowlCapDiff(ProtocolRoot2BowlCapDiffData data) {
 }
 
 void QFreeWork::refreshRoot2PoseAngle(ProtocolRoot2PoseAngleData data) {
-    const QString summary = QStringLiteral("俯仰=%1° 翻滚=%2°")
+    const QString summary = QStringLiteral("俯仰=%1° 翻滚=%2°%3")
                                 .arg(data.pitch01deg / 10.0, 0, 'f', 1)
-                                .arg(data.roll01deg / 10.0, 0, 'f', 1);
-    showlog(QStringLiteral("姿态角：%1").arg(summary));
+                                .arg(data.roll01deg / 10.0, 0, 'f', 1)
+                                .arg(data.fromAbnormalNotify ? QStringLiteral("（异常停机上报）") : QString());
+    showlog(data.fromAbnormalNotify ? QStringLiteral("角度异常停机：%1").arg(summary)
+                                    : QStringLiteral("姿态角：%1").arg(summary));
+
+    // 等 0xD3：未匹配则继续等（与按键卡控相同），勿走 evaluate 一判失败就结案
+    if (testCaseStepActive_ && activeTestCase_.gate.enabled
+        && activeTestCase_.gate.reportType == QStringLiteral("ProtocolRoot2PoseAngleData")
+        && activeTestCase_.send.deviceCmd == QStringLiteral("Root2PoseAbnormalWait")) {
+        if (!data.fromAbnormalNotify)
+            return;
+        QVector<TestCaseGate> gates = TestCaseStore::activeGatesForEvaluation(activeTestCase_);
+        if (gates.isEmpty())
+            return;
+        bool pass = false;
+        QString detail;
+        if (gates.size() > 1)
+            GateRegistry::evaluateAll(gates, QStringLiteral("ProtocolRoot2PoseAngleData"), QVariant::fromValue(data),
+                                     pass, detail);
+        else
+            GateRegistry::evaluate(gates.first(), QStringLiteral("ProtocolRoot2PoseAngleData"),
+                                   QVariant::fromValue(data), pass, detail);
+        const bool onceOnly = activeTestCase_.timing.commandTimeoutMs <= 0;
+        if (!pass && !onceOnly) {
+            showlog(QStringLiteral("角度异常上报未匹配期望，继续等待：%1").arg(detail));
+            return;
+        }
+        const GateStepDisplay display =
+            GateRegistry::formatStepDisplay(gates.first(), gates, QStringLiteral("ProtocolRoot2PoseAngleData"),
+                                            QVariant::fromValue(data), gates.size() > 1);
+        markActiveTestCaseStepDone(pass, display.testData.isEmpty() ? detail : display.testData, display.ask);
+        if (commandRetryTimer)
+            finishCommandRetryWait(pass, pass ? QStringLiteral("角度异常停机卡控通过")
+                                              : QStringLiteral("角度异常停机卡控失败：%1").arg(detail));
+        showlog(pass ? QStringLiteral("角度异常停机卡控通过：%1").arg(detail)
+                     : QStringLiteral("角度异常停机卡控失败：%1").arg(detail));
+        return;
+    }
 
     if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolRoot2PoseAngleData"), QVariant::fromValue(data)))
         return;

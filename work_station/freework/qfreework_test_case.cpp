@@ -254,6 +254,46 @@ bool sendAndCollectXwdReadOnceReply(SerialChannel* channel, QSerialPort* port, c
     return true;
 }
 
+
+// 等一行文本应答（如 OK/NO），用于 DOWN?/UP
+bool sendAndCollectXwdLineReply(SerialChannel* channel, QSerialPort* port, const QByteArray& request,
+                                int timeoutMs, QString* line, QString* errorMessage) {
+    if (!channel || !port || !port->isOpen() || !line)
+        return false;
+
+    line->clear();
+    channel->clearReceiveBuffer();
+    QByteArray buf;
+
+    QEventLoop loop;
+    QTimer timeout;
+    timeout.setSingleShot(true);
+    const QMetaObject::Connection frameConnection =
+        QObject::connect(channel, &SerialChannel::frameReceived, &loop, [&](const QByteArray& frame) {
+            buf.append(frame);
+            const int nl = buf.indexOf('\n');
+            if (nl < 0)
+                return;
+            *line = QString::fromUtf8(buf.left(nl)).trimmed();
+            if (!line->isEmpty())
+                loop.quit();
+        });
+    QObject::connect(&timeout, &QTimer::timeout, &loop, &QEventLoop::quit);
+
+    if (channel->write(request) != request.size()) {
+        QObject::disconnect(frameConnection);
+        if (errorMessage)
+            *errorMessage = QStringLiteral("XWD治具串口写入失败");
+        return false;
+    }
+    qDebug().noquote() << "XWD FIXTURE TX:" << QString::fromLatin1(request.toHex(' ').toUpper());
+    Qlog().save_jig_uart_log(1, request);
+    timeout.start(qMax(1, timeoutMs));
+    loop.exec();
+    QObject::disconnect(frameConnection);
+    return true;
+}
+
 static int resolveJieliBtBoxBaudRate(const QFreeWork* ctx, const QVariant& sendParam) {
     constexpr int kDefaultBaud = 460800;
     if (!ctx || !sendParam.canConvert<QVariantMap>())
@@ -3112,7 +3152,13 @@ void QFreeWork::executeFixtureXwdCase(const TestCaseDefinition& def) {
         return;
     }
 
-    const QString rawText = sendParamAsRawText(resolveTestCaseSendParamTree(def.send.param));
+    QString rawText;
+    if (cmd == XwdRawFixtureCmd::QueryDown)
+        rawText = QStringLiteral("DOWN?\\r\\n");
+    else if (cmd == XwdRawFixtureCmd::MoveUp)
+        rawText = QStringLiteral("UP\\r\\n");
+    else
+        rawText = sendParamAsRawText(resolveTestCaseSendParamTree(def.send.param));
     if (rawText.isEmpty()) {
         showlog(QStringLiteral("XWD治具发送内容为空，请配置 Send/Param/string"));
         markActiveTestCaseStepDone(false, QStringLiteral("参数为空"), QStringLiteral("失败"));
@@ -3141,15 +3187,95 @@ void QFreeWork::executeFixtureXwdCase(const TestCaseDefinition& def) {
         return;
     }
 
+    int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+    if (timeoutMs < 2000)
+        timeoutMs = 2000;
+    if (!jigSerialChannel_) {
+        showlog(QStringLiteral("XWD治具串口通道未初始化"));
+        markActiveTestCaseStepDone(false, QStringLiteral("串口未连接"), QStringLiteral("失败"));
+        return;
+    }
+
+    // DOWN?/UP 或 Gate=valueText：等文本行应答（OK/NO），不走电流采样
+    const bool textLineReply = (cmd == XwdRawFixtureCmd::QueryDown || cmd == XwdRawFixtureCmd::MoveUp
+                                || (def.gate.enabled
+                                    && def.gate.field.compare(QLatin1String("valueText"), Qt::CaseInsensitive) == 0));
+    if (textLineReply) {
+        showlog(QStringLiteral("XWD治具文本指令：%1，超时 %2ms").arg(rawText, QString::number(timeoutMs)));
+        const QString expected =
+            def.gate.enabled ? def.gate.expected.trimmed() : QStringLiteral("OK");
+        const QString expectToken = expected.isEmpty() ? QStringLiteral("OK") : expected;
+        const bool pollUntilMatch = (cmd == XwdRawFixtureCmd::QueryDown);
+        QElapsedTimer waitTimer;
+        waitTimer.start();
+        QString lastLine;
+        while (true) {
+            if (!isTestContinue) {
+                markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
+                return;
+            }
+            const int remain = timeoutMs - static_cast<int>(waitTimer.elapsed());
+            if (remain <= 0)
+                break;
+            QString line;
+            QString receiveError;
+            const int onceMs = pollUntilMatch ? qMin(800, remain) : remain;
+            if (!sendAndCollectXwdLineReply(jigSerialChannel_, jigSerialPort, request, onceMs, &line,
+                                            &receiveError)) {
+                showlog(receiveError);
+                markActiveTestCaseStepDone(false, QStringLiteral("写入失败"), QStringLiteral("失败"));
+                return;
+            }
+            if (line.isEmpty()) {
+                if (!pollUntilMatch)
+                    break;
+                waitWork(qMin(200, remain));
+                continue;
+            }
+            lastLine = line;
+            showlog(QStringLiteral("XWD治具文本回包：%1").arg(line));
+            const bool matched = (line.compare(expectToken, Qt::CaseInsensitive) == 0);
+            if (!matched) {
+                if (pollUntilMatch) {
+                    waitWork(qMin(200, timeoutMs - static_cast<int>(waitTimer.elapsed())));
+                    continue;
+                }
+                ProtocolMeasureData measureData;
+                measureData.deviceName = QStringLiteral("XWD");
+                measureData.type = QStringLiteral("Reply");
+                measureData.valueText = line;
+                measureData.isOk = false;
+                if (def.gate.enabled
+                    && evaluateActiveTestCaseGate(QStringLiteral("ProtocolMeasureData"),
+                                                  QVariant::fromValue(measureData)))
+                    return;
+                markActiveTestCaseStepDone(false, line, QStringLiteral("失败"));
+                return;
+            }
+            ProtocolMeasureData measureData;
+            measureData.deviceName = QStringLiteral("XWD");
+            measureData.type = QStringLiteral("Reply");
+            measureData.valueText = line;
+            measureData.isOk = true;
+            if (def.gate.enabled
+                && evaluateActiveTestCaseGate(QStringLiteral("ProtocolMeasureData"),
+                                              QVariant::fromValue(measureData)))
+                return;
+            markActiveTestCaseStepDone(true, line, QStringLiteral("通过"));
+            return;
+        }
+        showlog(QStringLiteral("XWD治具文本应答超时（期望 %1，末次 %2）")
+                    .arg(expectToken, lastLine.isEmpty() ? QStringLiteral("-") : lastLine));
+        markActiveTestCaseStepDone(false, lastLine.isEmpty() ? QStringLiteral("接收超时") : lastLine,
+                                   QStringLiteral("失败"));
+        return;
+    }
+
     if (parsedAsHex)
         showlog(QStringLiteral("XWD治具读取下发（十六进制）：%1").arg(rawText));
     else
         showlog(QStringLiteral("XWD治具读取下发（原文）：%1").arg(rawText));
 
-    int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
-    // 该治具实测回包常 >300ms；过短超时会“设备已回、上位机已放弃”
-    if (timeoutMs < 2000)
-        timeoutMs = 2000;
     // 可由步骤指定读取通道；未指定时，一拖二按工位号取通道，一拖一取 CH1。
     const int stationSlots = qMax(1, SETTINGS.value(QStringLiteral("User/formColumn"), 1).toInt()
                                          * SETTINGS.value(QStringLiteral("User/formRow"), 1).toInt());
@@ -3166,11 +3292,6 @@ void QFreeWork::executeFixtureXwdCase(const TestCaseDefinition& def) {
                 .arg(configuredReadChannel == readChannel
                          ? QStringLiteral("步骤配置")
                          : (dualFixture ? QStringLiteral("一拖二") : QStringLiteral("一拖一"))));
-    if (!jigSerialChannel_) {
-        showlog(QStringLiteral("XWD治具串口通道未初始化"));
-        markActiveTestCaseStepDone(false, QStringLiteral("串口未连接"), QStringLiteral("失败"));
-        return;
-    }
 
     if (def.gate.enabled) {
         runXwdFixtureCurrentSampleAnyMatch(def, request, readChannel, dualFixture, timeoutMs);

@@ -48,6 +48,7 @@ class Qroot2 : public qProtocol {
         BowlCalib = 0xAE, // body 0空碗 1满碗，固件当场采样，不下发电容
         TestMode = 0xAF,  // body 0自检 1老化
         PoseAngle = 0xDA,      // 获取角度信息（产测）；Ack 4B：pitch/roll 0.1° 有符号大端
+        PoseAbnormal = 0xD3,   // 角度异常停机 Notify；body 4B 同 0xDA（|pitch|>50° 或 |roll|>40°）
         PoseSwitch = 0xDB,     // 写角度检测开关（会停泵）；勿与 App 0xCB 混淆
         PoseSwitchRead = 0xDC, // 读角度检测开关；勿用 0xF0 看停泵相关
         PoseCalib = 0xDD,

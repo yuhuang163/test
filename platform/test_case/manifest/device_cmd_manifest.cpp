@@ -172,7 +172,13 @@ constexpr const char kHintQroot2PoseAngleRead[] =
     u8"Qroot2：Req 0xDA 空 body 读姿态角（AA 55 00 DA 00 26）；产测「获取角度信息」\r\n"
     u8"Ack 4B：pitch/roll 各 int16 大端，单位 0.1°（÷10 为度）；无 yaw；固件不判 ±10°\r\n"
     u8"注意：读的是上次缓存（角度异常时才更新）；水平时常为 0,0，可靠测需固件改当场采 IMU\r\n"
-    u8"卡控：ReportType=ProtocolRoot2PoseAngleData，Field=pitch01deg|roll01deg，Low=-100 High=100（即 ±10°）";
+    u8"卡控：ReportType=ProtocolRoot2PoseAngleData，Field=pitch01deg|roll01deg，Low=-10 High=10（单位：度）";
+constexpr const char kHintQroot2PoseAbnormalWait[] =
+    u8"Qroot2：等待 Notify 0xD3 角度异常停机上报（本命令不发令）\r\n"
+    u8"前置：0xDB 开角度检测、泵在转、连着 BLE；歪过门限并保持约1s\r\n"
+    u8"门限：|pitch|>50° 或 |roll|>40°；payload 同 0xDA（pitch/roll 0.1° 大端）\r\n"
+    u8"卡控示例：Field=absRoll01deg Low=40（|roll|≥40° 左右倾）；absPitch01deg Low=50（|pitch|≥50° 前后）；单位均为度\r\n"
+    u8"CommandTimeoutMs 建议 ≥15000；Prompt 提示操作员按方向倾斜";
 constexpr const char kHintRootBatteryTemp[] =
     u8"Qroot：Notify 0x80+0x01 查询电池温度\r\n"
     u8"卡控：ReportType=ProtocolBatteryTempData，Field=type";
@@ -347,6 +353,8 @@ const Row kRows[] = {
     {DeviceCmd::RootPumpControl, "RootPumpControl", u8"吸奶器控制", DeviceCmdParamKind::JsonMap, kHintRootPumpControl, kSet},
     {DeviceCmd::Root2PoseAngleRead, "Root2PoseAngleRead", u8"读姿态角", DeviceCmdParamKind::None,
      kHintQroot2PoseAngleRead, kGet, "ProtocolRoot2PoseAngleData", "pitch01deg"},
+    {DeviceCmd::Root2PoseAbnormalWait, "Root2PoseAbnormalWait", u8"等待角度异常停机上报", DeviceCmdParamKind::None,
+     kHintQroot2PoseAbnormalWait, kGet, "ProtocolRoot2PoseAngleData", "absRoll01deg"},
     {DeviceCmd::Root2PoseSwitch, "Root2PoseSwitch", u8"角度检测开关(写)", DeviceCmdParamKind::JsonMap,
      kHintQroot2PoseSwitch, kSet},
     {DeviceCmd::Root2PoseSwitchRead, "Root2PoseSwitchRead", u8"读角度检测开关", DeviceCmdParamKind::None,

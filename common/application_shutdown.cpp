@@ -14,9 +14,7 @@
 #include <Windows.h>
 #endif
 
-namespace {
-std::atomic<bool> g_exiting{false};
-} // namespace
+static std::atomic<bool> g_exiting{false};
 
 bool ApplicationShutdown::isExiting() {
     return g_exiting.load();
@@ -36,7 +34,12 @@ void ApplicationShutdown::prepareForExit() {
 
     TestCaseSyncService::stopDeviceAgent(true);
     Qlog::flushLogBuffers();
-    QThreadPool::globalInstance()->waitForDone(800);
+}
+
+void ApplicationShutdown::waitBackgroundTasks(int timeoutMs) {
+    if (timeoutMs <= 0)
+        return;
+    QThreadPool::globalInstance()->waitForDone(timeoutMs);
 }
 
 void ApplicationShutdown::prepareForOtaReplace() {

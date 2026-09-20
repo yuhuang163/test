@@ -15,6 +15,7 @@
 #include <algorithm>
 #include <QSettings>
 #include <QTextCodec>
+#include <QTimer>
 #include <qdebug.h>
 
 #include "Abini.h"
@@ -1659,16 +1660,17 @@ void registerFlowStationsFromProfileDirs() {
         TestCaseStore::saveFlowStationCatalog(catalog);
 }
 
-void ensureFilesystemLayoutOnce() {
-    static bool profileSynced = false;
-
-    TestCasePaths::ensureRootDir();
-    migrateLegacyFlatInisToStepLibrary();
-
-    if (profileSynced)
+void migrateOneStationProfile(const QString& stationKey, const QString& displayName) {
+    const QString key = stationKey.trimmed();
+    if (key.isEmpty())
         return;
-    profileSynced = true;
+    migrateProfileDirToDisplayName(key);
+    ensureProfileDirectory(key, displayName, QString());
+    syncProfileFlowFromLegacyIni(key);
+    migrateProfileStepOverridesForStation(key);
+}
 
+void migrateAllStationProfiles() {
     registerFlowStationsFromProfileDirs();
 
     QSet<QString> stationKeys;
@@ -1680,9 +1682,10 @@ void ensureFilesystemLayoutOnce() {
     }
     for (const QString& key : stationKeys) {
         migrateProfileDirToDisplayName(key);
-        ensureProfileDirectory(key, TestCaseStore::flowStationDisplayName(key), QString());
-        syncProfileFlowFromLegacyIni(key);
-        migrateProfileStepOverridesForStation(key);
+        // 已有 flow.ini 不再 QSettings 扫一遍，避免 Qt 文件缓存挤掉当前工站、保存设置时把中文写成乱码
+        if (QFile::exists(TestCasePaths::profileFlowPath(key)))
+            continue;
+        migrateOneStationProfile(key, TestCaseStore::flowStationDisplayName(key));
     }
 
     // 复制进来的 profiles 目录：补登记后再次纳入迁移
@@ -1693,6 +1696,38 @@ void ensureFilesystemLayoutOnce() {
         migrateProfileDirToDisplayName(key);
         ensureProfileDirectory(key, entry.displayName, QString());
     }
+}
+
+static bool g_selectedProfileReady = false;
+static bool g_profileLayoutSynced = false;
+
+void ensureFilesystemLayoutOnce() {
+    TestCasePaths::ensureRootDir();
+    migrateLegacyFlatInisToStepLibrary();
+
+    if (!g_selectedProfileReady) {
+        g_selectedProfileReady = true;
+        registerFlowStationsFromProfileDirs();
+        const QString selectedKey = TestCaseStore::loadSelectedFlowStationKey().trimmed();
+        if (!selectedKey.isEmpty())
+            migrateOneStationProfile(selectedKey, TestCaseStore::flowStationDisplayName(selectedKey));
+        if (!g_profileLayoutSynced && QCoreApplication::instance()) {
+            QTimer::singleShot(0, QCoreApplication::instance(), []() {
+                if (g_profileLayoutSynced)
+                    return;
+                g_profileLayoutSynced = true;
+                migrateAllStationProfiles();
+            });
+        }
+    }
+
+    if (g_profileLayoutSynced)
+        return;
+    // 启动阶段当前工站已可用，其余工站等事件循环空闲再迁；无 QApp 时（单测）立刻做完
+    if (QCoreApplication::instance())
+        return;
+    g_profileLayoutSynced = true;
+    migrateAllStationProfiles();
 }
 
 bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool profileOverlayOnly) {

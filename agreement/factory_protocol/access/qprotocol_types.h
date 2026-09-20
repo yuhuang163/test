@@ -411,10 +411,12 @@ struct ProtocolRoot2BowlCapDiffData {
     double botDiff = 0; // fullCh1 - emptyCh1
 };
 
-/** Qroot2 0xDA 读姿态角（产测）；pitch/roll 单位 0.1°、有符号大端；无 yaw。读缓存非当场采 IMU。 */
+/** Qroot2 姿态角：0xDA 读应答 / 0xD3 角度异常停机 Notify；pitch/roll 单位 0.1°、有符号大端。 */
 struct ProtocolRoot2PoseAngleData {
-    int pitch01deg = 0; // 俯仰，÷10 为度；水平卡控建议 |pitch|≤100
-    int roll01deg = 0;  // 翻滚，÷10 为度；水平卡控建议 |roll|≤100
+    int pitch01deg = 0; // 俯仰，÷10 为度
+    int roll01deg = 0;  // 翻滚，÷10 为度
+    /** true=Notify 0xD3 异常停机上报；false=Req 0xDA 产测读取 */
+    bool fromAbnormalNotify = false;
 };
 
 /**
@@ -667,6 +669,7 @@ enum class DeviceCmd {
 
     // 【Qroot2/Air1】AA55 帧结构同 Qroot，CID 表独立
     Root2PoseAngleRead,  // Req 0xDA 空 body，读姿态角 pitch/roll（0.1° 有符号大端）；上位机自判 ±10°
+    Root2PoseAbnormalWait, // 等 Notify 0xD3 角度异常停机上报（不发令）；Gate 卡 pitch/roll 或 abs*
     Root2PoseSwitch,     // Req 0xDB body 0关1开（角度检测写，会停泵；勿与 App 0xCB 混淆）
     Root2PoseSwitchRead, // Req 0xDC 空 body，读角度检测开关；Ack 1B 00关/01开
     Root2PoseCalib,      // Req 0xDD body 0x01

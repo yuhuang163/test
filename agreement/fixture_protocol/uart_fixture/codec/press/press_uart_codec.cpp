@@ -50,7 +50,7 @@ void FixturePressUartProtocol::initCommands() {
         press_commands_[COMMAND_ID_KEY_PRESS_230][i] = strdup(command5.toStdString().c_str());
         press_commands_[COMMAND_ID_KEY_PRESS_UP][i] = strdup(command6.toStdString().c_str());
 
-        qDebug() << "commmmmmmm:" << press_commands_[COMMAND_ID_BTH_PRESS_50][i];
+        // qDebug() << "commmmmmmm:" << press_commands_[COMMAND_ID_BTH_PRESS_50][i];
     }
 
     press_commands_[COMMAND_ID_FAMA_100_O][0] = {"FAMA1_100G_O\r\n"};

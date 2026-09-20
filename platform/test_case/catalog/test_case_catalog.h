@@ -61,6 +61,8 @@ class Asd9026aCmdCatalog {
 /** 欣旺达 XWD raw 治具（与气缸 XwdFixtureCmd 区分；Protocol=XWD，兼容 XWD_BLE/XWD_SUCTION）。 */
 enum class XwdRawFixtureCmd {
     SendRaw,
+    QueryDown, // 检测下到位：发 DOWN?，回 OK/NO
+    MoveUp,    // 测试完成上升：发 UP，回 OK
 };
 
 class XwdRawFixtureCmdCatalog {

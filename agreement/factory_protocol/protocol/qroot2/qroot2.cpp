@@ -257,6 +257,27 @@ void Qroot2::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
         return;
     }
 
+    // 角度异常停机：Notify 0xD3，payload 与 0xDA 同为 pitch/roll（0.1° 大端）
+    if (ct == Notify && cid == PoseAbnormal) {
+        ProtocolRoot2PoseAngleData angle;
+        angle.fromAbnormalNotify = true;
+        if (body.size() >= 4) {
+            const auto be16s = [&body](int off) -> qint16 {
+                const quint16 u =
+                    (static_cast<quint16>(static_cast<quint8>(body.at(off))) << 8)
+                    | static_cast<quint8>(body.at(off + 1));
+                return static_cast<qint16>(u);
+            };
+            angle.pitch01deg = be16s(0);
+            angle.roll01deg = be16s(2);
+        }
+        qDebug().noquote() << "[Qroot2] PoseAbnormal(0xD3) pitch=" << (angle.pitch01deg / 10.0)
+                           << "deg roll=" << (angle.roll01deg / 10.0) << "deg"
+                           << "(raw 0.1°=" << angle.pitch01deg << "," << angle.roll01deg << ")";
+        emitReport(QStringLiteral("ProtocolRoot2PoseAngleData"), QVariant::fromValue(angle));
+        return;
+    }
+
     if (ct != Ack)
         return;
     if (hasPending_ && cid != pendingCid_)
@@ -400,6 +421,7 @@ void Qroot2::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
     case PoseAngle: {
         // Ack 4B：pitch、roll 各 int16 大端，单位 0.1°；固件不判 ±10°，由上位机卡控
         ProtocolRoot2PoseAngleData angle;
+        angle.fromAbnormalNotify = false;
         if (body.size() >= 4) {
             const auto be16s = [&body](int off) -> qint16 {
                 const quint16 u =
@@ -647,6 +669,10 @@ void Qroot2::get(DeviceCmd cmd, const QVariant& param) {
     case DeviceCmd::Root2PoseAngleRead:
         // AA 55 00 DA 00 26；Ack 4B pitch/roll（0.1° 有符号大端）
         sendPacket(Req, PoseAngle, QByteArray());
+        return;
+    case DeviceCmd::Root2PoseAbnormalWait:
+        // 不发令：等固件 Notify 0xD3（角度检测开+泵转+超门限约1s）
+        qDebug().noquote() << "[Qroot2] waiting PoseAbnormal Notify 0xD3";
         return;
     case DeviceCmd::Root2PoseSwitchRead:
         // AA 55 00 DC 00 24

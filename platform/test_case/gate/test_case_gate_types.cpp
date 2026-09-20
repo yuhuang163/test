@@ -497,19 +497,48 @@ static void registerRootGates() {
     }
     {
         using D = ProtocolRoot2PoseAngleData;
-        // 内部仍存 0.1° 整数（卡控 Low/High 亦按 0.1°，如 ±100=±10°）；展示统一换成度
-        const auto fmtDeg = [](double v01) { return QString::number(v01 / 10.0, 'f', 1); };
+        // 协议内部 pitch01deg/roll01deg 为 0.1°；卡控读写统一换成度（Low=40 即 40°）
+        const auto fmtDeg = [](double deg) { return QString::number(deg, 'f', 1); };
         GateType<D>("ProtocolRoot2PoseAngleData", "姿态角")
-            .number("pitch01deg", &D::pitch01deg, "俯仰角", "°")
+            .numberWithReader("pitch01deg", "俯仰角", "°",
+                              [](const D& d, double* out) {
+                                  if (!out)
+                                      return false;
+                                  *out = d.pitch01deg / 10.0;
+                                  return true;
+                              })
             .alias("pitch")
             .formatValue(fmtDeg)
-            .number("roll01deg", &D::roll01deg, "翻滚角", "°")
+            .numberWithReader("roll01deg", "翻滚角", "°",
+                              [](const D& d, double* out) {
+                                  if (!out)
+                                      return false;
+                                  *out = d.roll01deg / 10.0;
+                                  return true;
+                              })
             .alias("roll")
             .formatValue(fmtDeg)
+            .numberWithReader("absPitch01deg", "俯仰角绝对值", "°",
+                              [](const D& d, double* out) {
+                                  if (!out)
+                                      return false;
+                                  *out = qAbs(d.pitch01deg) / 10.0;
+                                  return true;
+                              })
+            .formatValue(fmtDeg)
+            .numberWithReader("absRoll01deg", "翻滚角绝对值", "°",
+                              [](const D& d, double* out) {
+                                  if (!out)
+                                      return false;
+                                  *out = qAbs(d.roll01deg) / 10.0;
+                                  return true;
+                              })
+            .formatValue(fmtDeg)
             .summary([](const D& d) {
-                return QStringLiteral("俯仰=%1° 翻滚=%2°")
+                return QStringLiteral("俯仰=%1° 翻滚=%2°%3")
                     .arg(d.pitch01deg / 10.0, 0, 'f', 1)
-                    .arg(d.roll01deg / 10.0, 0, 'f', 1);
+                    .arg(d.roll01deg / 10.0, 0, 'f', 1)
+                    .arg(d.fromAbnormalNotify ? QStringLiteral("（异常停机上报）") : QString());
             })
             .commit();
     }
