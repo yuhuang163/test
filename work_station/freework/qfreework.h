@@ -42,6 +42,10 @@ struct QFreeWorkMesSegment {
     QString costTime;
 };
 
+void appendOneMesStep(QVector<QFreeWorkMesSegment>* out, const QString& name, const QString& value,
+                      const QString& maxValue, const QString& minValue, const QString& standardValue,
+                      const QString& unit, const QString& result, const QString& costTime);
+
 #include "pre_start_monitor_config.h"
 
 class QFreeWork : public test_base {

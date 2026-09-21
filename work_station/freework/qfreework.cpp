@@ -243,10 +243,11 @@ QString sanitizeMesValuePipes(QString v) {
     return v;
 }
 
-static void appendOneMesStep(QVector<QFreeWorkMesSegment>* out, const QString& name,
-                              const QString& value, const QString& maxValue, const QString& minValue,
-                              const QString& standardValue, const QString& unit, const QString& result,
-                              const QString& costTime) {
+} // namespace
+
+void appendOneMesStep(QVector<QFreeWorkMesSegment>* out, const QString& name, const QString& value,
+                      const QString& maxValue, const QString& minValue, const QString& standardValue,
+                      const QString& unit, const QString& result, const QString& costTime) {
     const QString n = name.trimmed();
     if (n.isEmpty())
         return;
@@ -255,6 +256,8 @@ static void appendOneMesStep(QVector<QFreeWorkMesSegment>* out, const QString& n
                  TestRecordStore::escapeMesSegmentField(standardValue), TestRecordStore::escapeMesSegmentField(unit),
                  TestRecordStore::escapeMesSegmentField(result), TestRecordStore::escapeMesSegmentField(costTime)});
 }
+
+namespace {
 
 /** 每段格式 NAME:VALUE:MAX:MIN:STANDARD:UNIT:RESULT:COSTTIME，多段用 | 连接。 */
 QString joinFreeWorkMesItemvalue(const QVector<QFreeWorkMesSegment>& segments, const QString& overallResult,
