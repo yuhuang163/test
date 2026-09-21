@@ -580,12 +580,30 @@ bool Qroot2::sendCustomMessage(const QVariantMap& map) {
     const QVariant cidVar = map.value(QStringLiteral("cid"));
     if (!cidVar.isValid())
         return false;
-    const quint8 ct = map.contains(QStringLiteral("ct")) ? static_cast<quint8>(map.value(QStringLiteral("ct")).toUInt()) : Req;
+    const quint8 ct = map.contains(QStringLiteral("ct"))
+                          ? static_cast<quint8>(map.value(QStringLiteral("ct")).toUInt())
+                          : Req;
     const quint8 cid = static_cast<quint8>(cidVar.toUInt());
     QByteArray body;
-    if (map.contains(QStringLiteral("body")))
-        body = map.value(QStringLiteral("body")).toByteArray();
-    else if (map.contains(QStringLiteral("value")))
-        body = QByteArray(1, static_cast<char>(map.value(QStringLiteral("value")).toUInt()));
+    const QVariant raw = map.contains(QStringLiteral("body")) ? map.value(QStringLiteral("body"))
+                                                             : map.value(QStringLiteral("value"));
+    if (raw.isValid() && !raw.isNull()) {
+        if (raw.type() == QVariant::ByteArray) {
+            body = raw.toByteArray();
+        } else {
+            const QString s = raw.toString().trimmed();
+            if (!s.isEmpty()) {
+                bool okHex = false;
+                body = CommonUtils::fromHexString(s, &okHex);
+                if (!okHex) {
+                    bool okInt = false;
+                    const uint n = raw.toUInt(&okInt);
+                    if (!okInt || n > 0xFFu)
+                        return false;
+                    body = QByteArray(1, static_cast<char>(n));
+                }
+            }
+        }
+    }
     return sendPacket(ct, cid, body);
 }

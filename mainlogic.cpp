@@ -11,6 +11,7 @@
 #include <QHeaderView>
 #include <QTimer>
 #include "dcrf32.h"
+#include <QMouseEvent>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -611,12 +612,16 @@ void MainWindow::refreshDongleUartState(int state) {
     if (state) {
         showlog("dongle串口连接成功");
         uartStatusLabel->setText("串口连接：<font color='green'>成功</font>");
+        syncConsoleConnectSeg();
+        updateConsoleConnectFlow();
 
     } else {
-        uartStatusLabel->setText("串口连接：<font color='red'>失败</font>");
+        uartStatusLabel->setText("串口连接：<font color='#d97706'>未连接</font>");
         ui->comNameCombo->setEnabled(true);
         ui->connectButton->setEnabled(true);
         showlog("dongle串口连接断开");
+        syncConsoleConnectSeg();
+        updateConsoleConnectFlow();
     }
 }
 void MainWindow::refreshImuCaliMsg(QString msg) {
@@ -1561,9 +1566,18 @@ void MainWindow::refreshBleState(int state) {
         protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
 
         showlog("已发送禁止休眠");
+        protocolManager.get(DeviceCmd::GetBattery);
+        protocolManager.get(DeviceCmd::RootBatteryTempQuery);
+        showlog(QStringLiteral("已请求电量与电池温度"));
+        updateConsoleConnectFlow();
     } else {
         bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
         qDebug() << "蓝牙连接断开";
+        if (ui && ui->consoleMetricBatteryValue)
+            ui->consoleMetricBatteryValue->setText(QStringLiteral("未读取"));
+        if (ui && ui->consoleMetricTempValue)
+            ui->consoleMetricTempValue->setText(QStringLiteral("未读取"));
+        updateConsoleConnectFlow();
     }
 }
 
@@ -1634,6 +1648,10 @@ void MainWindow::refreshBattaryData(ProtocolBatteryData adc) {
     }
 
     saveBattaryDataToCsv(voltage, chargestate, charageresult, voltageresult);
+    if (ui && ui->consoleMetricBatteryValue)
+        ui->consoleMetricBatteryValue->setText(QString::number(adc.percent) + QStringLiteral("%"));
+    if (ui && ui->consoleMetricTempValue && adc.temperatureC > 0)
+        ui->consoleMetricTempValue->setText(QString::number(adc.temperatureC) + QStringLiteral(" ℃"));
 }
 
 void MainWindow::saveBattaryDataToCsv(double vol, QString charge_state, QString chares, QString volres) {
@@ -1698,30 +1716,26 @@ void MainWindow::refreshMusicState(ProtocolMusicStateData data) {
     showlog("当前曲目为：" + QString::number(data.musicState));
 }
 void MainWindow::refreshSn(ProtocolSnData data) {
-    auto fill = [this](const QString& name, const QString& value) {
-        if (auto* e = findChild<QLineEdit*>(name))
-            e->setText(value);
+    auto fill = [this](QLineEdit* edit, const QString& value) {
+        if (edit)
+            edit->setText(value);
     };
     switch (data.type) {
     case ProtocolSnType::BoardSn:
         qDebug() << "原始的board_sn：" << data.value;
-        board_sn->setText("板子sn:" + data.value);
-        fill(QStringLiteral("sn_board"), data.value);
+        fill(ui->sn_board, data.value);
         break;
     case ProtocolSnType::SubPid:
         qDebug() << "原始的sub_pid：" << data.value;
-        sub_pid->setText("sub_pid:" + data.value);
-        fill(QStringLiteral("meta_subpid"), data.value);
+        fill(ui->meta_subpid, data.value);
         break;
     case ProtocolSnType::TailSn:
         qDebug() << "原始的tail_sn：" << data.value;
-        product_sn->setText("整机sn:" + data.value);
-        fill(QStringLiteral("sn_whole"), data.value);
+        fill(ui->sn_whole, data.value);
         break;
     case ProtocolSnType::SkuId:
         qDebug() << "原始的skuid：" << data.value;
-        sku_id->setText("sku:" + data.value);
-        fill(QStringLiteral("meta_skuid"), data.value);
+        fill(ui->meta_skuid, data.value);
         break;
     default:
         break;
@@ -2498,6 +2512,7 @@ void MainWindow::updateComboBox() {
             }
         }
     }
+    updateConsoleConnectFlow();
 }
 
 void MainWindow::scanIpPorts() {
@@ -2880,7 +2895,7 @@ bool renameFile(const QString& oldFilePath, const QString& newFilePath) {
     return false;
 }
 bool MainWindow::eventFilter(QObject* watched, QEvent* event) {
-    if (ui && ui->consoleShell && watched == ui->consoleShell && event->type() == QEvent::Resize) {
+    if (ui && consoleShell_ && watched == consoleShell_ && event->type() == QEvent::Resize) {
         updateConsoleNarrowLayout();
         return false;
     }
@@ -2891,6 +2906,81 @@ bool MainWindow::eventFilter(QObject* watched, QEvent* event) {
     if (ui && ui->consoleLogCard && watched == ui->consoleLogCard && event->type() == QEvent::Resize) {
         updateConsoleLogPromoFit();
         return false;
+    }
+    if (event->type() == QEvent::MouseButtonRelease) {
+        auto* me = static_cast<QMouseEvent*>(event);
+        if (me->button() == Qt::LeftButton) {
+            QWidget* hit = qobject_cast<QWidget*>(watched);
+            auto belongs = [&](QWidget* row) -> bool {
+                return row && hit && (hit == row || row->isAncestorOf(hit));
+            };
+            QWidget* row = nullptr;
+            int kind = 0;
+            if (belongs(consoleStatusMotor_)) {
+                row = consoleStatusMotor_;
+                kind = 1;
+            } else if (belongs(consoleStatusPump_)) {
+                row = consoleStatusPump_;
+                kind = 2;
+            } else if (belongs(consoleStatusValve_)) {
+                row = consoleStatusValve_;
+                kind = 3;
+            }
+            if (row) {
+                if (!at || !at->getConnected()) {
+                    showlog(QStringLiteral("请等待连接设备后再试"));
+                    return true;
+                }
+                const bool on = !row->property("consoleSwitchOn").toBool();
+                row->setProperty("consoleSwitchOn", on);
+                QLabel* lab = nullptr;
+                if (kind == 1)
+                    lab = ui->consoleStatusMotorState;
+                else if (kind == 2)
+                    lab = ui->consoleStatusPumpState;
+                else
+                    lab = ui->consoleStatusValveState;
+                if (lab) {
+                    if (kind == 1)
+                        lab->setText(on ? QStringLiteral("运行") : QStringLiteral("空闲"));
+                    else if (kind == 2)
+                        lab->setText(on ? QStringLiteral("运行") : QStringLiteral("停止"));
+                    else
+                        lab->setText(on ? QStringLiteral("打开") : QStringLiteral("关闭"));
+                    lab->setProperty("kind", on ? QStringLiteral("on") : QStringLiteral("off"));
+                    lab->style()->unpolish(lab);
+                    lab->style()->polish(lab);
+                }
+                if (kind == 1) {
+                    protocolManager.set(DeviceCmd::MotorState, on ? 1 : 0);
+                    showlog(on ? QStringLiteral("电机开") : QStringLiteral("电机关"));
+                } else if (kind == 2) {
+                    protocolManager.set(DeviceCmd::Root2PumpState, on ? 1 : 0);
+                    QVariantMap m;
+                    m.insert(QStringLiteral("circleNum"),
+                             on && ui->qaiot_pump_circle ? ui->qaiot_pump_circle->value() : 0);
+                    m.insert(QStringLiteral("durationTime"),
+                             on && ui->qaiot_pump_dur ? ui->qaiot_pump_dur->value() : 0);
+                    m.insert(QStringLiteral("intervalTime"),
+                             on && ui->qaiot_pump_int ? ui->qaiot_pump_int->value() : 0);
+                    m.insert(QStringLiteral("pumpPwm"),
+                             on && ui->qaiot_pump_pwm ? ui->qaiot_pump_pwm->value() : 0);
+                    protocolManager.set(DeviceCmd::PumpParamWrite, m);
+                    showlog(on ? QStringLiteral("泵开") : QStringLiteral("泵关"));
+                } else {
+                    QVariantMap m;
+                    m.insert(QStringLiteral("valveEnableTime"),
+                             on && ui->qaiot_valve_en ? ui->qaiot_valve_en->value() : 0);
+                    m.insert(QStringLiteral("valveDisableTime"),
+                             on && ui->qaiot_valve_dis ? ui->qaiot_valve_dis->value() : 0);
+                    m.insert(QStringLiteral("valvePwm"),
+                             on && ui->qaiot_valve_pwm ? ui->qaiot_valve_pwm->value() : 0);
+                    protocolManager.set(DeviceCmd::ValveParamWrite, m);
+                    showlog(on ? QStringLiteral("阀开") : QStringLiteral("阀关"));
+                }
+                return true;
+            }
+        }
     }
     if (watched == ui->high_speed_tp || watched == ui->active_picture) {
         if (event->type() == QEvent::DragEnter) {

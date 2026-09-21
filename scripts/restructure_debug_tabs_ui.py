@@ -18,7 +18,7 @@ GROUPS = [
         "产测",
         "verticalLayout_debug_production",
         "tabWidget_debug_production",
-        ["tab_4", "tab", "tab_3"],
+        ["tab_4", "tab", "tab_3", "tab_2"],
     ),
     (
         "tab_debug_group_peripheral",
@@ -39,7 +39,7 @@ GROUPS = [
         "OTA/压测",
         "verticalLayout_debug_ota",
         "tabWidget_ota",
-        ["tab_7", "tab_8", "tab_16", "tab_2", "tab_9"],
+        ["tab_7", "tab_8", "tab_16", "tab_9"],
     ),
     (
         "tab_debug_group_misc",

@@ -98,8 +98,8 @@ class CommonUtils {
     static QString normalizeMac(QString mac);
 
     /**
-     * 产品目录（common_utils.cpp 内 kProductTable 唯一维护）。
-     * mesProductNames：设置页；resolveDongleDeviceMapping：Dongle 广播名→产品/协议。
+     * 产品目录 kProductTable + Dongle 广播 kDongleBroadcastTable（common_utils.cpp 唯一维护）。
+     * mesProductNames：设置页；resolveDongleDeviceMapping / dongleBroadcastFilterNames：广播表。
      */
     static QStringList mesProductNames();
     static QStringList dongleBroadcastFilterNames();

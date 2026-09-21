@@ -4,7 +4,9 @@
 
 ## 环境注意事项（Claude Code 专用）
 
-- **`python` 是 Windows Store 占位符**（`python -c ...` 退出码 49、无输出），跑不了 `scripts/convert_to_crlf.py`；需要转 CRLF 时改用 `perl -pi -e 's/\r?\n/\r\n/g' <文件>`。
+- **转 CRLF / 编码**：优先 `py -3 scripts/convert_to_crlf.py <路径>`（或本机 `Python3x\python.exe` 全路径）。PATH 里的 `python` 可能是 Windows Store 占位符（退出码 49），不要因此改用危险的 PowerShell 整文件重写。
+- **仅改换行、脚本不可用时**：可用 `perl -pi -e 's/\r?\n/\r\n/g' <文件>`（不动字符编码）。
+- **禁止** `[IO.File]::ReadAllText` / 无 `-Encoding utf8` 的 `Get-Content` 再 `WriteAllText(..., UTF8)`——中文 Windows 会按 GBK 误读 UTF-8，写回即乱码。
 
 ## 技术栈
 
@@ -14,9 +16,10 @@
 
 - **Qt 5.15**，**MSVC**，**C++17**，工程入口：`new_production.pro`（`CONFIG += c++17`，编译选项含 `/utf-8`）。
 - **文本编码**：除第三方或未改动的存量文件外，本项目新建或修改的 **`.cpp` / `.h` / `.hpp` / `.ui` / `.pro` / `.qrc` / `.md` / `.ini` 配置片段等** 一律使用 **UTF-8（无 BOM）** 保存；工程已配置 `/utf-8` 编译选项，无需 BOM。已有文件若非任务要求不要随意改编码。
-- **换行**：`.gitattributes` 为 `* -text`，**仓库内文本默认 CRLF 原样入库**；**仅根目录 `new_production.pro` 固定 LF**（qmake 入口）；`*.sh` 保持 LF。`python scripts/convert_to_crlf.py` **无参数时只检查 `new_production.pro`**，不批量改其它文件；Agent 改动其它文本后对该文件执行 `python scripts/convert_to_crlf.py <路径>` 转 CRLF。
-- **Agent 写文件后必做**：改动 **`.cpp` / `.h` / `.ui` / `.ini` 等** 后对**本次改动的文件**执行 `python scripts/convert_to_crlf.py <路径>`（CRLF + UTF-8 无 BOM，并**自动折叠 C/C++ 中连续空行 >1**）。改动 **`new_production.pro`** 时执行 `python scripts/convert_to_crlf.py new_production.pro`（LF + UTF-8 无 BOM）。**禁止**批量改编码/换行导致中文乱码。
-- **空行**：`.cpp` / `.h` 等与邻文件一致——**禁止「每行代码后多空一行」**；块与块之间最多 **1** 行空行。检查：`python scripts/convert_to_crlf.py --check-blank-lines <路径>`（exit 1 表示仍有多余空行）；`convert_to_crlf.py <路径>` 写入时会自动修正。
+- **换行**：`.gitattributes` 为 `* -text`，**仓库内文本默认 CRLF 原样入库**；**仅根目录 `new_production.pro` 固定 LF**（qmake 入口）；`*.sh` 保持 LF。`py -3 scripts/convert_to_crlf.py` **无参数时只检查 `new_production.pro`**，不批量改其它文件；Agent 改动其它文本后对该文件执行 `py -3 scripts/convert_to_crlf.py <路径>` 转 CRLF。
+- **Agent 写文件后必做**：改动 **`.cpp` / `.h` / `.ui` / `.ini` 等** 后对**本次改动的文件**执行 `py -3 scripts/convert_to_crlf.py <路径>`（CRLF + UTF-8 无 BOM，并**自动折叠 C/C++ 中连续空行 >1**）。改动 **`new_production.pro`** 时执行 `py -3 scripts/convert_to_crlf.py new_production.pro`（LF + UTF-8 无 BOM）。**禁止**批量改编码/换行导致中文乱码。
+- **禁止用 PowerShell「默认编码」整文件重写（中文乱码主因）**：中文 Windows 上 `[IO.File]::ReadAllText($path)` / `Get-Content`（未指定 `-Encoding utf8`）会按系统 ANSI（GBK）读 UTF-8 源文件，再 `WriteAllText(..., UTF8Encoding)` 写回就会永久乱码。**严禁**用此类方式「转 CRLF / 去 BOM / 修换行」。允许的替代见上文「环境注意事项」。
+- **空行**：`.cpp` / `.h` 等与邻文件一致——**禁止「每行代码后多空一行」**；块与块之间最多 **1** 行空行。检查：`py -3 scripts/convert_to_crlf.py --check-blank-lines <路径>`（exit 1 表示仍有多余空行）；`convert_to_crlf.py <路径>` 写入时会自动修正。
 - 配置多用 **`SETTINGS`（Ini）**；协议与界面分层：`agreement/`、`work_station/` 等，改动前先对照同目录现有写法。
 
 ## 代码风格（与仓库一致）

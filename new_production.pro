@@ -760,4 +760,5 @@ DISTFILES += \
     new_production.qml
 
 RESOURCES += \
-    new_production.qrc
+    new_production.qrc \
+    console_assets.qrc
