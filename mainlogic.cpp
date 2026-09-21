@@ -8,6 +8,7 @@
 #include "ui_mainwindow.h"
 #include <QBuffer>
 #include <QElapsedTimer>
+#include <QHeaderView>
 #include <QTimer>
 #include "dcrf32.h"
 
@@ -548,16 +549,17 @@ void MainWindow::enqueueDongleUiLog(const QString& line) {
 
 void MainWindow::flushDongleUiLog() {
     dongleUiLogFlushScheduled_ = false;
-    if (!ui || !ui->log)
+    if (!ui || !ui->msgEdit)
         return;
-    if (ui->log->maximumBlockCount() <= 0)
-        ui->log->setMaximumBlockCount(2000);
+    if (ui->msgEdit->maximumBlockCount() <= 0)
+        ui->msgEdit->setMaximumBlockCount(2000);
     if (dongleUiLogPending_.isEmpty())
         return;
     const QString batch = dongleUiLogPending_.join(QChar('\n'));
     dongleUiLogPending_.clear();
-    ui->log->appendPlainText(batch);
+    ui->msgEdit->appendPlainText(batch);
 }
+
 void MainWindow::solveNosiyData(QByteArray dataTemp) {
     // 假设你已经正确配置了串口并连接了 readyRead 信号到这个槽函数
     QByteArray receivedData = dataTemp; // 读取串口所有可用的数据
@@ -1696,22 +1698,30 @@ void MainWindow::refreshMusicState(ProtocolMusicStateData data) {
     showlog("当前曲目为：" + QString::number(data.musicState));
 }
 void MainWindow::refreshSn(ProtocolSnData data) {
+    auto fill = [this](const QString& name, const QString& value) {
+        if (auto* e = findChild<QLineEdit*>(name))
+            e->setText(value);
+    };
     switch (data.type) {
     case ProtocolSnType::BoardSn:
         qDebug() << "原始的board_sn：" << data.value;
         board_sn->setText("板子sn:" + data.value);
+        fill(QStringLiteral("sn_board"), data.value);
         break;
     case ProtocolSnType::SubPid:
         qDebug() << "原始的sub_pid：" << data.value;
         sub_pid->setText("sub_pid:" + data.value);
+        fill(QStringLiteral("meta_subpid"), data.value);
         break;
     case ProtocolSnType::TailSn:
         qDebug() << "原始的tail_sn：" << data.value;
         product_sn->setText("整机sn:" + data.value);
+        fill(QStringLiteral("sn_whole"), data.value);
         break;
     case ProtocolSnType::SkuId:
         qDebug() << "原始的skuid：" << data.value;
         sku_id->setText("sku:" + data.value);
+        fill(QStringLiteral("meta_skuid"), data.value);
         break;
     default:
         break;
@@ -1726,6 +1736,8 @@ void MainWindow::refreshMacData(ProtocolMacData data) {
     macAddress = mac;
     if (macLabel)
         macLabel->setText(QStringLiteral("蓝牙mac: ") + mac);
+    if (auto* e = findChild<QLineEdit*>(QStringLiteral("meta_mac")))
+        e->setText(mac);
 }
 
 void MainWindow::refreshBleRssi(QString data) {
@@ -2458,15 +2470,16 @@ void MainWindow::refreshPbData(QString data) {
     showlog(data);
 }
 void MainWindow::refreshLogData(QString data) {
-    ui->log->appendPlainText(data);
+    if (ui && ui->msgEdit)
+        ui->msgEdit->appendPlainText(data);
 }
 
 void MainWindow::showlog(QString msg) {
-    if (!ui || !ui->msgEdit) {
-        qDebug() << "showlog: ui 或 msgEdit 未初始化";
+    if (!ui || !ui->log) {
+        qDebug() << "showlog: ui 或 log 未初始化";
         return;
     }
-    Qlog::showlog(msg, 0, ui->msgEdit);
+    Qlog::showlog(msg, 0, ui->log);
 }
 
 void MainWindow::updateComboBox() {
@@ -2684,7 +2697,11 @@ void MainWindow::initBasicInfo() {
 
     ui->baseView->setModel(basicInfoModel);
     ui->baseView->setColumnHidden(1, true);
+    // 调试台只看项名与实测值，不展示「测试结果」列
+    ui->baseView->setColumnHidden(3, true);
     ui->baseView->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    if (ui->baseView->horizontalHeader())
+        ui->baseView->horizontalHeader()->setStretchLastSection(true);
     ui->baseView->scrollToBottom();
 
     basicInfoModel->resetAllTestResult();
@@ -2790,7 +2807,11 @@ void MainWindow::initPeriphState() {
     ui->peripheralView->scrollToBottom();
     ui->peripheralView->setModel(peripheralModel);
     ui->peripheralView->setColumnHidden(1, true);
+    // 调试台只看项名与实测值，不展示「测试结果」列
+    ui->peripheralView->setColumnHidden(3, true);
     ui->peripheralView->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    if (ui->peripheralView->horizontalHeader())
+        ui->peripheralView->horizontalHeader()->setStretchLastSection(true);
     peripheralModel->resetAllTestResult();
     QObject::connect(&protocolManager, &QProtocolManager::reportReceived, this,
                      [=](const ProtocolReport& report) {
@@ -2859,6 +2880,18 @@ bool renameFile(const QString& oldFilePath, const QString& newFilePath) {
     return false;
 }
 bool MainWindow::eventFilter(QObject* watched, QEvent* event) {
+    if (ui && ui->consoleShell && watched == ui->consoleShell && event->type() == QEvent::Resize) {
+        updateConsoleNarrowLayout();
+        return false;
+    }
+    if (ui && ui->consoleSidePhoto && watched == ui->consoleSidePhoto && event->type() == QEvent::Resize) {
+        updateConsoleSidePhotoFit();
+        return false;
+    }
+    if (ui && ui->consoleLogCard && watched == ui->consoleLogCard && event->type() == QEvent::Resize) {
+        updateConsoleLogPromoFit();
+        return false;
+    }
     if (watched == ui->high_speed_tp || watched == ui->active_picture) {
         if (event->type() == QEvent::DragEnter) {
             // [[2]]: 当拖放时鼠标进入label时, label接受拖放的动作

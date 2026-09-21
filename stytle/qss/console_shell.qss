@@ -10,7 +10,8 @@ QWidget#centralwidget,
 QWidget#consoleShell,
 QWidget#consoleConnectPage,
 QWidget#consoleSideBody,
-QWidget#consoleHeader {
+QWidget#consoleHeader,
+QWidget#consoleFlowHost {
 	background: transparent;
 }
 
@@ -49,9 +50,14 @@ QLabel#consoleBrandSub {
 	padding-bottom: 4px;
 }
 
-QPushButton#consoleNavBtn {
+QPushButton#consoleNavConnect,
+QPushButton#consoleNavBiz,
+QPushButton#consoleNavPeriph,
+QPushButton#consoleNavDongle,
+QPushButton#consoleNavOta,
+QPushButton#consoleNavMisc {
 	text-align: left;
-	padding: 0 13px;
+	padding: 0 12px 0 10px;
 	min-height: 44px;
 	max-height: 44px;
 	border: 0;
@@ -62,13 +68,43 @@ QPushButton#consoleNavBtn {
 	font-weight: 600;
 }
 
-QPushButton#consoleNavBtn:hover {
+QPushButton#consoleNavConnect:hover,
+QPushButton#consoleNavBiz:hover,
+QPushButton#consoleNavPeriph:hover,
+QPushButton#consoleNavDongle:hover,
+QPushButton#consoleNavOta:hover,
+QPushButton#consoleNavMisc:hover {
 	background: rgba(255, 255, 255, 210);
 	color: #2563eb;
 }
 
-QPushButton#consoleNavBtn:checked {
+QPushButton#consoleNavConnect:pressed,
+QPushButton#consoleNavBiz:pressed,
+QPushButton#consoleNavPeriph:pressed,
+QPushButton#consoleNavDongle:pressed,
+QPushButton#consoleNavOta:pressed,
+QPushButton#consoleNavMisc:pressed {
+	background: #d7e6fb;
+	color: #1d4ed8;
+}
+
+QPushButton#consoleNavConnect:checked,
+QPushButton#consoleNavBiz:checked,
+QPushButton#consoleNavPeriph:checked,
+QPushButton#consoleNavDongle:checked,
+QPushButton#consoleNavOta:checked,
+QPushButton#consoleNavMisc:checked {
 	background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #62a3fb, stop:1 #3b82f6);
+	color: #ffffff;
+}
+
+QPushButton#consoleNavConnect:checked:pressed,
+QPushButton#consoleNavBiz:checked:pressed,
+QPushButton#consoleNavPeriph:checked:pressed,
+QPushButton#consoleNavDongle:checked:pressed,
+QPushButton#consoleNavOta:checked:pressed,
+QPushButton#consoleNavMisc:checked:pressed {
+	background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #3b82f6, stop:1 #1d4ed8);
 	color: #ffffff;
 }
 
@@ -83,7 +119,9 @@ QLabel#uartStatusLabel,
 QLabel#bleStatusLabel,
 QLabel#macLabel,
 QLabel#cloudLoginLabel,
-QLabel#WifiStatusLabel {
+QLabel#WifiStatusLabel,
+QLabel#consoleFactoryLabel,
+QLabel#consoleBuildLabel {
 	min-height: 25px;
 	padding: 0 12px;
 	border-radius: 12px;
@@ -102,7 +140,9 @@ QLabel#consoleUserChip {
 	font-weight: 600;
 }
 
-QToolButton#consoleIconBtn {
+QToolButton#consoleIconBtn,
+QToolButton#consoleSettingsBtn,
+QToolButton#consoleHelpBtn {
 	min-height: 28px;
 	min-width: 44px;
 	padding: 0 10px;
@@ -113,9 +153,19 @@ QToolButton#consoleIconBtn {
 	font-weight: 600;
 }
 
-QToolButton#consoleIconBtn:hover {
+QToolButton#consoleIconBtn:hover,
+QToolButton#consoleSettingsBtn:hover,
+QToolButton#consoleHelpBtn:hover {
 	color: #2563eb;
 	background: #ffffff;
+}
+
+QToolButton#consoleIconBtn:pressed,
+QToolButton#consoleSettingsBtn:pressed,
+QToolButton#consoleHelpBtn:pressed {
+	color: #1d4ed8;
+	background: #d7e6fb;
+	padding-top: 1px;
 }
 
 QWidget#consoleRail {
@@ -127,39 +177,72 @@ QFrame#consoleCard,
 QFrame#consoleCardDone,
 QFrame#consoleCardActive,
 QFrame#consoleCardReady,
-QFrame#consoleStatusCard,
-QFrame#consoleLogCard {
+QFrame#consoleCardStep1,
+QFrame#consoleCardStep2,
+QFrame#consoleCardStep3,
+QFrame#consoleCardStep4,
+QFrame#consoleStatusCard {
 	background: #ffffff;
 	border: 1px solid #dce8f6;
 	border-radius: 16px;
 }
 
-QFrame#consoleCardDone {
+QFrame#consoleLogCard {
+	background: rgba(255, 255, 255, 210);
+	border: 1px solid #dce8f6;
+	border-radius: 16px;
+}
+
+QFrame#consoleCardDone,
+QFrame#consoleCardStep1 {
 	border: 1px solid rgba(16, 185, 129, 56);
 }
 
-QFrame#consoleCardActive {
+QFrame#consoleCardActive,
+QFrame#consoleCardStep2 {
 	border: 1px solid rgba(59, 130, 246, 72);
 }
 
-QLabel#consoleCardTitle {
+QLabel#consoleCardTitle,
+QLabel#consoleStep1Title,
+QLabel#consoleStep2Title,
+QLabel#consoleStep3Title,
+QLabel#consoleStep4Title,
+QLabel#consoleStatusTitle,
+QLabel#consoleLogTitle {
 	font-size: 14px;
 	font-weight: 700;
 	color: #243654;
 }
 
-QLabel#consoleFieldLabel {
+QLabel#consoleFieldLabel,
+QLabel#consoleFieldComLabel,
+QLabel#consoleFieldResetLabel,
+QLabel#consoleFieldNameLabel,
+QLabel#consoleFieldRssiLabel,
+QLabel#consoleFieldPickLabel,
+QLabel#consoleFieldMacLabel,
+QLabel#consoleFieldGetMacLabel,
+QLabel#consoleFieldSnLabel {
 	color: #71839d;
 	font-size: 12px;
 	font-weight: 600;
 }
 
-QLabel#consoleMetaLine {
+QLabel#consoleMetaLine,
+QLabel#product_sn,
+QLabel#board_sn,
+QLabel#sub_pid,
+QLabel#sku_id {
 	color: #4f6480;
 	font-size: 12px;
 }
 
-QLabel#consoleStepBadge {
+QLabel#consoleStepBadge,
+QLabel#consoleStep1Badge,
+QLabel#consoleStep2Badge,
+QLabel#consoleStep3Badge,
+QLabel#consoleStep4Badge {
 	min-width: 22px;
 	min-height: 22px;
 	border-radius: 11px;
@@ -219,7 +302,9 @@ QLabel#consoleFlowNodeActive {
 	border: 2px solid #3b82f6;
 }
 
-QLabel#consoleFlowNodePending {
+QLabel#consoleFlowNodePending,
+QLabel#consoleFlowNodePending3,
+QLabel#consoleFlowNodePending4 {
 	border-radius: 15px;
 	background: #eef3f9;
 	color: #71839d;
@@ -227,13 +312,19 @@ QLabel#consoleFlowNodePending {
 	border: 2px solid #dce8f6;
 }
 
-QLabel#consoleFlowLabel {
+QLabel#consoleFlowLabel,
+QLabel#consoleFlowLabel1,
+QLabel#consoleFlowLabel2,
+QLabel#consoleFlowLabel3,
+QLabel#consoleFlowLabel4 {
 	font-size: 11px;
 	font-weight: 600;
 	color: #71839d;
 }
 
-QFrame#consoleFlowLine {
+QFrame#consoleFlowLine,
+QFrame#consoleFlowLine2,
+QFrame#consoleFlowLine3 {
 	background: #dce8f6;
 	border: 0;
 }
@@ -250,7 +341,8 @@ QLabel#consoleFlowHint {
 	border-top: 1px solid rgba(59, 130, 246, 30);
 }
 
-QLabel#consoleSearchHint {
+QLabel#consoleSearchHint,
+QLabel#consolePickHint {
 	color: #9aabc0;
 	font-size: 12px;
 }
@@ -265,7 +357,9 @@ QGroupBox#verticalGroupBox {
 
 QLabel#consolePromo {
 	background: transparent;
-	border-radius: 12px;
+	border: 0;
+	border-bottom-left-radius: 16px;
+	border-bottom-right-radius: 16px;
 }
 
 QGroupBox {
@@ -286,16 +380,71 @@ QGroupBox::title {
 	font-weight: 700;
 }
 
-QFrame#consoleSeg {
+QFrame#consoleSeg,
+QFrame#consoleSegReset {
 	background: #eef3f9;
-	border: 0;
+	border: 1px solid #dce8f6;
 	border-radius: 12px;
 }
 
-QFrame#consoleSeg QPushButton {
-	min-height: 32px;
-	min-width: 64px;
+QFrame#consoleSeg QPushButton,
+QFrame#consoleSegReset QPushButton {
+	min-height: 0;
+	max-height: 30px;
+	min-width: 48px;
 	padding: 0 14px;
+	border: 0;
+	border-radius: 9px;
+	background: transparent;
+	color: #71839d;
+}
+
+QFrame#consoleSeg QPushButton:hover,
+QFrame#consoleSegReset QPushButton:hover {
+	color: #243654;
+	background: rgba(255, 255, 255, 0.45);
+}
+
+QFrame#consoleSeg QPushButton:pressed,
+QFrame#consoleSegReset QPushButton:pressed {
+	color: #1d4ed8;
+	background: #d7e6fb;
+}
+
+QFrame#consoleSeg QPushButton[segActive="true"],
+QFrame#consoleSegReset QPushButton[segActive="true"] {
+	background: #6366f1;
+	color: #ffffff;
+}
+
+QFrame#consoleSeg QPushButton[segActive="true"]:hover,
+QFrame#consoleSegReset QPushButton[segActive="true"]:hover {
+	background: #4f46e5;
+	color: #ffffff;
+}
+
+QFrame#consoleSeg QPushButton[segActive="true"]:pressed,
+QFrame#consoleSegReset QPushButton[segActive="true"]:pressed {
+	background: #4338ca;
+	color: #ffffff;
+}
+
+QFrame#consoleSeg QPushButton[segDanger="true"],
+QFrame#consoleSegReset QPushButton[segDanger="true"] {
+	background: #ef5b5b;
+	color: #ffffff;
+}
+
+QFrame#consoleSeg QPushButton[segDanger="true"]:hover,
+QFrame#consoleSegReset QPushButton[segDanger="true"]:hover {
+	background: #e14a4a;
+	color: #ffffff;
+}
+
+QFrame#consoleSeg QPushButton[segDanger="true"]:pressed,
+QFrame#consoleSegReset QPushButton[segDanger="true"]:pressed {
+	background: #c93434;
+	color: #ffffff;
 }
 
 QPushButton {
@@ -312,13 +461,74 @@ QPushButton:hover {
 	background: #e4ebf4;
 }
 
-QPushButton:pressed {
-	padding-top: 1px;
+QPushButton:pressed,
+QPushButton:pressed:hover {
+	background: #c5d3e6;
+	padding-top: 2px;
+	padding-bottom: 0px;
 }
 
 QPushButton:disabled {
 	color: #9aabc0;
 	background: #f3f6fb;
+}
+
+/* 对齐 HTML btnClass：primary / success / danger / secondary */
+QPushButton[btnRole="primary"] {
+	background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #5ba0fb, stop:1 #3b82f6);
+	color: #ffffff;
+}
+QPushButton[btnRole="primary"]:hover {
+	background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #4e8df8, stop:1 #2563eb);
+}
+QPushButton[btnRole="primary"]:pressed,
+QPushButton[btnRole="primary"]:pressed:hover {
+	background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #2f6fe0, stop:1 #1d4ed8);
+	padding-top: 2px;
+	padding-bottom: 0px;
+}
+QPushButton[btnRole="success"] {
+	background: #e5f8f3;
+	color: #178269;
+	border: 1px solid rgba(16, 185, 129, 80);
+}
+QPushButton[btnRole="success"]:hover {
+	background: #d5f3eb;
+}
+QPushButton[btnRole="success"]:pressed,
+QPushButton[btnRole="success"]:pressed:hover {
+	background: #9ee0cd;
+	color: #0f5c4a;
+	padding-top: 2px;
+	padding-bottom: 0px;
+}
+QPushButton[btnRole="danger"] {
+	background: #fff0f0;
+	color: #e54848;
+	border: 1px solid rgba(239, 91, 91, 70);
+}
+QPushButton[btnRole="danger"]:hover {
+	background: #ffe4e4;
+}
+QPushButton[btnRole="danger"]:pressed,
+QPushButton[btnRole="danger"]:pressed:hover {
+	background: #ffc9c9;
+	color: #b42323;
+	padding-top: 2px;
+	padding-bottom: 0px;
+}
+QPushButton[btnRole="secondary"] {
+	background: #eef3f9;
+	color: #243654;
+}
+QPushButton[btnRole="secondary"]:hover {
+	background: #e4ebf4;
+}
+QPushButton[btnRole="secondary"]:pressed,
+QPushButton[btnRole="secondary"]:pressed:hover {
+	background: #c5d3e6;
+	padding-top: 2px;
+	padding-bottom: 0px;
 }
 
 QPushButton#connectButton,
@@ -332,17 +542,42 @@ QPushButton#getperipheralButton {
 
 QPushButton#connectButton:hover,
 QPushButton#start_search:hover,
-QPushButton#connectProductButton:hover {
+QPushButton#connectProductButton:hover,
+QPushButton#getBasicInfoButton:hover,
+QPushButton#getperipheralButton:hover {
 	background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #4e8df8, stop:1 #2563eb);
 }
 
-QPushButton#disconnectButton {
-	background: #ef5b5b;
+QPushButton#connectButton:pressed,
+QPushButton#start_search:pressed,
+QPushButton#connectProductButton:pressed,
+QPushButton#getBasicInfoButton:pressed,
+QPushButton#getperipheralButton:pressed,
+QPushButton#connectButton:pressed:hover,
+QPushButton#start_search:pressed:hover,
+QPushButton#connectProductButton:pressed:hover,
+QPushButton#getBasicInfoButton:pressed:hover,
+QPushButton#getperipheralButton:pressed:hover {
+	background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #2f6fe0, stop:1 #1d4ed8);
+	padding-top: 2px;
+	padding-bottom: 0px;
+}
+
+/* 分段框内的连接/断开改走 segActive，不再整块常亮 */
+QFrame#consoleSeg QPushButton#connectButton,
+QFrame#consoleSeg QPushButton#disconnectButton {
+	background: transparent;
+	color: #71839d;
+}
+
+QFrame#consoleSeg QPushButton#connectButton[segActive="true"] {
+	background: #6366f1;
 	color: #ffffff;
 }
 
-QPushButton#disconnectButton:hover {
-	background: #e14a4a;
+QFrame#consoleSeg QPushButton#disconnectButton[segDanger="true"] {
+	background: #ef5b5b;
+	color: #ffffff;
 }
 
 QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QPlainTextEdit, QTextEdit {
@@ -356,9 +591,22 @@ QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QPlainTextEdit, QTextEdit {
 	selection-color: #ffffff;
 }
 
+QComboBox {
+	padding-right: 32px;
+}
+
 QComboBox::drop-down {
+	subcontrol-origin: padding;
+	subcontrol-position: center right;
+	width: 32px;
 	border: 0;
-	width: 22px;
+	background: transparent;
+}
+
+QComboBox::down-arrow {
+	image: url(:/stytle/picture/combo-down-arrow.png);
+	width: 18px;
+	height: 18px;
 }
 
 QComboBox QAbstractItemView {
@@ -366,6 +614,184 @@ QComboBox QAbstractItemView {
 	border: 1px solid #dce8f6;
 	selection-background-color: #eaf3ff;
 	selection-color: #2563eb;
+}
+
+QSpinBox, QDoubleSpinBox {
+	padding-right: 18px;
+}
+
+QSpinBox::up-button,
+QDoubleSpinBox::up-button {
+	subcontrol-origin: border;
+	subcontrol-position: top right;
+	width: 16px;
+	height: 14px;
+	border: 0;
+	background: transparent;
+}
+
+QSpinBox::down-button,
+QDoubleSpinBox::down-button {
+	subcontrol-origin: border;
+	subcontrol-position: bottom right;
+	width: 16px;
+	height: 14px;
+	border: 0;
+	background: transparent;
+}
+
+QSpinBox::up-arrow,
+QDoubleSpinBox::up-arrow {
+	image: url(:/stytle/picture/combo-up-arrow.png);
+	width: 8px;
+	height: 5px;
+}
+
+QSpinBox::down-arrow,
+QDoubleSpinBox::down-arrow {
+	image: url(:/stytle/picture/combo-down-arrow.png);
+	width: 8px;
+	height: 5px;
+}
+
+QWidget#consoleWorkPage,
+QScrollArea#debugTabScrollArea,
+QScrollArea#consoleConnectScroll {
+	background: transparent;
+	border: 0;
+}
+
+QWidget#consoleWorkPage QGroupBox {
+	margin-top: 8px;
+	padding: 10px 8px 8px 8px;
+	background: #ffffff;
+	border: 1px solid #dce8f6;
+	border-radius: 14px;
+}
+
+QWidget#consoleBusinessGridHost QGroupBox,
+QTabWidget#tabWidget_debug_production QGroupBox {
+	background: #ffffff;
+	border: 1px solid #dce8f6;
+	border-radius: 14px;
+	min-height: 120px;
+}
+
+QWidget#consoleWorkPage QWidget#groupBox_business_meta QLabel {
+	color: #5b6f88;
+	font-size: 12px;
+	min-width: 52px;
+}
+
+QWidget#consoleWorkPage QWidget#groupBox_business_meta QPushButton {
+	min-width: 52px;
+	padding: 0 10px;
+	font-size: 12px;
+}
+
+QWidget#consoleWorkPage QWidget#groupBox_business_meta QPushButton:pressed,
+QWidget#consoleWorkPage QWidget#groupBox_business_meta QPushButton:pressed:hover {
+	padding-top: 2px;
+	padding-bottom: 0px;
+}
+
+QWidget#consoleWorkPage QWidget#groupBox_business_meta QLineEdit {
+	min-width: 0;
+}
+
+QWidget#consoleDongleAtGrid QGroupBox {
+	background: #ffffff;
+	border: 1px solid #dce8f6;
+	border-radius: 14px;
+	min-height: 120px;
+}
+
+QFrame#consoleCardStep1,
+QFrame#consoleCardStep2,
+QFrame#consoleCardStep4 {
+	min-height: 168px;
+}
+
+/* 实物感加减 / 模式 / 加热 */
+QPushButton[physPad="true"] {
+	min-width: 52px;
+	max-width: 72px;
+	min-height: 40px;
+	max-height: 40px;
+	padding: 0 10px;
+	border-radius: 20px;
+	font-size: 14px;
+	font-weight: 700;
+	background: #ffffff;
+	border: 1px solid #d0deef;
+	color: #243654;
+}
+QPushButton[physPad="true"]:hover {
+	background: #eaf3ff;
+	border-color: #93c5fd;
+	color: #2563eb;
+}
+QPushButton[physPad="true"]:pressed,
+QPushButton[physPad="true"]:pressed:hover {
+	background: #bfdbfe;
+	border-color: #3b82f6;
+	color: #1d4ed8;
+	padding-top: 2px;
+	padding-bottom: 0px;
+}
+QPushButton#physHeatSend[physPad="true"],
+QPushButton#physSuctionMode[physPad="true"] {
+	min-width: 64px;
+	max-width: 88px;
+}
+QLabel#physHeatLevelLab,
+QLabel#physSuctionLevelLab {
+	min-width: 40px;
+	color: #243654;
+	font-weight: 700;
+	font-size: 14px;
+}
+
+QWidget#consoleWorkPage QGroupBox QGroupBox {
+	margin-top: 6px;
+	background: #f7fafe;
+	border: 1px solid #e7eef7;
+}
+
+QWidget#consoleWorkPage QPushButton {
+	min-height: 32px;
+	max-height: 32px;
+	min-width: 84px;
+	padding: 0 10px;
+	font-size: 12px;
+}
+
+QWidget#consoleWorkPage QPushButton:pressed,
+QWidget#consoleWorkPage QPushButton:pressed:hover {
+	padding-top: 2px;
+	padding-bottom: 0px;
+}
+
+QTabWidget#tabWidget_debugInner {
+	min-height: 240px;
+}
+
+QWidget#consoleWorkPage QComboBox,
+QWidget#consoleWorkPage QLineEdit,
+QWidget#consoleWorkPage QSpinBox,
+QWidget#consoleWorkPage QDoubleSpinBox {
+	min-height: 32px;
+	max-height: 32px;
+}
+
+QWidget#consoleWorkPage QSpinBox,
+QWidget#consoleWorkPage QDoubleSpinBox {
+	min-width: 64px;
+}
+
+QWidget#consoleWorkPage QLabel {
+	color: #5b6f88;
+	font-size: 12px;
 }
 
 QCheckBox {
@@ -406,6 +832,11 @@ QTabWidget::pane {
 	top: 0;
 }
 
+QTabWidget#consoleLogTabs {
+	background: transparent;
+	border: 0;
+}
+
 QTabBar::tab {
 	min-height: 28px;
 	padding: 4px 14px;
@@ -427,6 +858,16 @@ QTabBar::tab:hover:!selected {
 	background: #eaf3ff;
 }
 
+QTabBar::tab:pressed {
+	background: #d7e6fb;
+	color: #1d4ed8;
+}
+
+QTabBar::tab:selected:pressed {
+	background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #3b82f6, stop:1 #1d4ed8);
+	color: #ffffff;
+}
+
 QTableView, QTableWidget, QTreeView, QListView {
 	background: #ffffff;
 	border: 1px solid #dce8f6;
@@ -445,12 +886,19 @@ QHeaderView::section {
 	font-weight: 600;
 }
 
+QWidget#consoleLogHostPage,
+QWidget#consoleLogDonglePage {
+	background: transparent;
+}
+
 QPlainTextEdit#log,
 QPlainTextEdit#msgEdit {
-	background: #f7fafe;
-	border: 0;
+	background: rgba(255, 255, 255, 184);
+	border: 1px solid #dce8f6;
+	border-radius: 10px;
+	padding: 8px 12px;
 	font-family: Consolas, "Cascadia Mono", monospace;
-	font-size: 12px;
+	font-size: 11px;
 	color: #334155;
 }
 
@@ -509,4 +957,84 @@ QLabel#consolePageTitle {
 QLabel#consolePageSub {
 	font-size: 12px;
 	color: #71839d;
+}
+
+QPushButton#consoleLogClearBtn {
+	min-height: 28px;
+	padding: 0 12px;
+	background: #eef3f9;
+	color: #4f6480;
+}
+
+QPushButton#consoleLogClearBtn:hover {
+	background: #e4ebf4;
+	color: #243654;
+}
+
+QPushButton#consoleLogClearBtn:pressed,
+QPushButton#consoleLogClearBtn:pressed:hover {
+	background: #c5d3e6;
+	color: #1d4ed8;
+	padding-top: 2px;
+	padding-bottom: 0px;
+}
+
+QLabel#consoleStatusDeviceLabel,
+QLabel#consoleStatusMotorLabel,
+QLabel#consoleStatusPumpLabel,
+QLabel#consoleStatusValveLabel,
+QLabel#consoleMetricBatteryLabel,
+QLabel#consoleMetricTempLabel,
+QLabel#consoleMetricCurrentLabel {
+	font-size: 12px;
+	color: #435873;
+}
+
+QLabel#consoleStatusDeviceState {
+	color: #178269;
+	font-size: 11px;
+	font-weight: 600;
+}
+
+QLabel#consoleStatusMotorState,
+QLabel#consoleStatusPumpState,
+QLabel#consoleStatusValveState {
+	color: #667b95;
+	font-size: 11px;
+}
+
+QLabel#consoleMetricBatteryValue,
+QLabel#consoleMetricTempValue,
+QLabel#consoleMetricCurrentValue {
+	color: #243654;
+	font-size: 12px;
+	font-weight: 700;
+}
+
+QSplitter#consoleShellSplit::handle {
+	width: 12px;
+	background: rgba(59, 130, 246, 18);
+}
+
+QSplitter#consoleShellSplit::handle:hover,
+QSplitter#consoleShellSplit::handle:pressed {
+	background: rgba(59, 130, 246, 42);
+}
+
+QScrollArea#consoleStatusScroll,
+QScrollArea#consoleStatusScroll > QWidget {
+	background: transparent;
+	border: none;
+}
+
+QSplitter#consoleRailSplit::handle {
+	height: 10px;
+	background: rgba(59, 130, 246, 22);
+	border-radius: 7px;
+	margin: 0px 8px;
+}
+
+QSplitter#consoleRailSplit::handle:hover,
+QSplitter#consoleRailSplit::handle:pressed {
+	background: rgba(59, 130, 246, 46);
 }

@@ -238,9 +238,24 @@ void Qpb::set(DeviceCmd cmd, const QVariant& data) {
     case DeviceCmd::BrushControl:
         set_brush_control(data.toInt());
         break;
-    case DeviceCmd::FacMode:
-        set_fac_mode(data.toInt());
+    case DeviceCmd::FacMode: {
+        int on = 1;
+        if (data.type() == QVariant::Map) {
+            const QVariantMap map = data.toMap();
+            if (map.contains(QStringLiteral("on")))
+                on = map.value(QStringLiteral("on")).toInt();
+            else if (map.contains(QStringLiteral("value")))
+                on = map.value(QStringLiteral("value")).toInt();
+            else if (map.contains(QStringLiteral("switch")))
+                on = map.value(QStringLiteral("switch")).toInt();
+            else if (map.contains(QStringLiteral("enter")))
+                on = map.value(QStringLiteral("enter")).toInt();
+        } else if (data.canConvert<int>()) {
+            on = data.toInt();
+        }
+        set_fac_mode(on);
         break;
+    }
     case DeviceCmd::CameraPictureState:
         set_camera_picture_state(data.toInt());
         break;

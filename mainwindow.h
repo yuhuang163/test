@@ -24,6 +24,7 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QPixmap>
+#include <QSize>
 class QAction;
 #include <QQmlApplicationEngine>
 // #include <QTextToSpeech>
@@ -322,6 +323,15 @@ class MainWindow : public QMainWindow {
     QStackedWidget* consoleStack_ = nullptr;
     QLabel* consolePageTitle_ = nullptr;
     QLabel* consolePageSub_ = nullptr;
+    bool consoleEnterPlayed_ = false;
+    bool consoleShellNarrow_ = false;
+    QList<int> consoleShellSplitSizes_;
+    QPixmap consoleSidePhotoSrc_;
+    QSize consoleSidePhotoFitSize_;
+    void playConsoleEnterAnimations();
+    void updateConsoleSidePhotoFit();
+    void updateConsoleLogPromoFit();
+    void updateConsoleNarrowLayout();
     void refreshCloudLoginState();
     void refreshSettingsMenuVisibility();
 
@@ -396,6 +406,7 @@ class MainWindow : public QMainWindow {
 
   protected:
     void closeEvent(QCloseEvent*) override;
+    void showEvent(QShowEvent* event) override;
 
   private slots:
     void onProtocolReport(const ProtocolReport& report);
@@ -438,9 +449,13 @@ class MainWindow : public QMainWindow {
     void saveImuTestDataToCsv(const QString& macAddress, const QString& result);
     void initDebugTabChrome();
     void initDebugTabLayout();
+    void bindConsoleShellWidgets();
     void initConsoleShell();
-    void rebuildConnectCards();
+    void installConsoleSegmentedSwitches();
+    void installPhysicalDevicePads();
+    void syncConsoleConnectSeg();
     void selectConsoleNav(int id);
+    void playConsolePageEnter(QWidget* page);
     void applyDebugOtaTabVisibility();
     void initBasicInfo();
     void initPeriphState();
@@ -525,8 +540,9 @@ class MainWindow : public QMainWindow {
     void refreshPumpStallCurrent(ProtocolPumpStallCurrentData data);
     void refreshTupleData(ProtocolTupleData data);
     void refreshDongleDeviceName(const QString& name);
-    /** 专用测试页 Qaiot/Air2 控件：填充下拉 itemData；通信走设置页当前协议 */
+    /** 模式/工厂下拉：填充 itemData；通信走设置页当前协议 */
     void initQaiotFeatureButtons();
+    void sendUnifiedFacMode(bool enter);
     void logExtraProtocolReport(const QString& reportType, const QVariant& payload);
 
   private slots:

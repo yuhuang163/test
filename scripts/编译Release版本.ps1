@@ -37,7 +37,11 @@ function Find-QtDir {
         "E:\Qt\5.15.2\msvc2019_64"
     )
     foreach ($c in $candidates) {
-        if (Test-Path (Join-Path $c "bin\qmake.exe")) { return $c }
+        try {
+            if (Test-Path -ErrorAction SilentlyContinue (Join-Path $c "bin\qmake.exe")) { return $c }
+        } catch {
+            continue
+        }
     }
     return "D:\Qt\5.15.2\msvc2019_64"
 }
@@ -53,7 +57,11 @@ function Find-Jom {
         "E:\Qt\Tools\QtCreator\bin\jom\jom.exe"
     )
     foreach ($c in $candidates) {
-        if (Test-Path $c) { return $c }
+        try {
+            if (Test-Path -ErrorAction SilentlyContinue $c) { return $c }
+        } catch {
+            continue
+        }
     }
     return "D:\Qt\Tools\QtCreator\bin\jom\jom.exe"
 }

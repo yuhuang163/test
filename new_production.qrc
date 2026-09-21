@@ -1,13 +1,78 @@
 <RCC>
+
     <qresource prefix="/">
+
         <file>new_production.qml</file>
+
         <file>stytle/qss/Ubuntu.qss</file>
+
         <file>stytle/qss/console_shell.qss</file>
+
         <file>stytle/qss/test_flow_editor.qss</file>
+
         <file>stytle/picture/app-bg-silk.png</file>
+
         <file>stytle/picture/sidebar-mom-bg.jpg</file>
+
         <file>stytle/picture/product-promo-card.png</file>
+
+        <file>stytle/picture/combo-down-arrow.png</file>
+
+        <file>stytle/picture/combo-up-arrow.png</file>
+
+        <file>stytle/picture/nav/nav-connect.png</file>
+
+        <file>stytle/picture/nav/nav-connect-on.png</file>
+
+        <file>stytle/picture/nav/nav-business.png</file>
+
+        <file>stytle/picture/nav/nav-business-on.png</file>
+
+        <file>stytle/picture/nav/nav-peripheral.png</file>
+
+        <file>stytle/picture/nav/nav-peripheral-on.png</file>
+
+        <file>stytle/picture/nav/nav-dongle.png</file>
+
+        <file>stytle/picture/nav/nav-dongle-on.png</file>
+
+        <file>stytle/picture/nav/nav-ota.png</file>
+
+        <file>stytle/picture/nav/nav-ota-on.png</file>
+
+        <file>stytle/picture/nav/nav-misc.png</file>
+
+        <file>stytle/picture/nav/nav-misc-on.png</file>
+
+        <file>stytle/picture/status/status-device.png</file>
+
+        <file>stytle/picture/status/status-motor.png</file>
+
+        <file>stytle/picture/status/status-pump.png</file>
+
+        <file>stytle/picture/status/status-valve.png</file>
+
+        <file>stytle/picture/status/status-battery.png</file>
+
+        <file>stytle/picture/status/status-temp.png</file>
+
+        <file>stytle/picture/status/status-current.png</file>
+
+        <file>stytle/picture/status/icon-link.png</file>
+
+        <file>stytle/picture/status/icon-gear.png</file>
+
+        <file>stytle/picture/status/icon-refresh.png</file>
+
+        <file>stytle/picture/status/icon-filter.png</file>
+
+        <file>stytle/picture/status/icon-flask.png</file>
+
         <file>translations/qt_zh_CN.qm</file>
+
         <file>translations/qt_widgets_zh_CN.qm</file>
+
     </qresource>
+
 </RCC>
+
