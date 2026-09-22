@@ -45,7 +45,7 @@
        </sizepolicy>
       </property>
       <property name="pixmap">
-       <pixmap resource="console_assets.qrc">:/stytle/picture/app-bg-silk.png</pixmap>
+       <pixmap resource="new_production.qrc">:/stytle/picture/app-bg-silk.png</pixmap>
       </property>
       <property name="scaledContents">
        <bool>true</bool>
@@ -101,7 +101,7 @@
            </size>
           </property>
           <property name="pixmap">
-           <pixmap resource="console_assets.qrc">:/stytle/picture/sidebar-mom-bg.jpg</pixmap>
+           <pixmap resource="new_production.qrc">:/stytle/picture/sidebar-mom-bg.jpg</pixmap>
           </property>
           <property name="scaledContents">
            <bool>false</bool>
@@ -275,7 +275,7 @@
              <string>连接</string>
             </property>
             <property name="icon">
-             <iconset resource="console_assets.qrc">
+             <iconset resource="new_production.qrc">
               <normaloff>:/stytle/picture/nav/nav-connect.png</normaloff>
               <normalon>:/stytle/picture/nav/nav-connect.png</normalon>
               <activeon>:/stytle/picture/nav/nav-connect.png</activeon>
@@ -310,7 +310,7 @@
              <string>业务控制</string>
             </property>
             <property name="icon">
-             <iconset resource="console_assets.qrc">
+             <iconset resource="new_production.qrc">
               <normaloff>:/stytle/picture/nav/nav-business.png</normaloff>
               <normalon>:/stytle/picture/nav/nav-business.png</normalon>
               <activeon>:/stytle/picture/nav/nav-business.png</activeon>
@@ -345,7 +345,7 @@
              <string>外设</string>
             </property>
             <property name="icon">
-             <iconset resource="console_assets.qrc">
+             <iconset resource="new_production.qrc">
               <normaloff>:/stytle/picture/nav/nav-peripheral.png</normaloff>
               <normalon>:/stytle/picture/nav/nav-peripheral.png</normalon>
               <activeon>:/stytle/picture/nav/nav-peripheral.png</activeon>
@@ -380,7 +380,7 @@
              <string>Dongle</string>
             </property>
             <property name="icon">
-             <iconset resource="console_assets.qrc">
+             <iconset resource="new_production.qrc">
               <normaloff>:/stytle/picture/nav/nav-dongle.png</normaloff>
               <normalon>:/stytle/picture/nav/nav-dongle.png</normalon>
               <activeon>:/stytle/picture/nav/nav-dongle.png</activeon>
@@ -415,7 +415,7 @@
              <string>OTA/压测</string>
             </property>
             <property name="icon">
-             <iconset resource="console_assets.qrc">
+             <iconset resource="new_production.qrc">
               <normaloff>:/stytle/picture/nav/nav-ota.png</normaloff>
               <normalon>:/stytle/picture/nav/nav-ota.png</normalon>
               <activeon>:/stytle/picture/nav/nav-ota.png</activeon>
@@ -450,7 +450,7 @@
              <string>其它</string>
             </property>
             <property name="icon">
-             <iconset resource="console_assets.qrc">
+             <iconset resource="new_production.qrc">
               <normaloff>:/stytle/picture/nav/nav-misc.png</normaloff>
               <normalon>:/stytle/picture/nav/nav-misc.png</normalon>
               <activeon>:/stytle/picture/nav/nav-misc.png</activeon>
@@ -12504,7 +12504,7 @@ Every Baby</string>
             </size>
            </property>
            <property name="pixmap">
-            <pixmap resource="console_assets.qrc">:/stytle/picture/product-promo-card.png</pixmap>
+            <pixmap resource="new_production.qrc">:/stytle/picture/product-promo-card.png</pixmap>
            </property>
            <property name="scaledContents">
             <bool>false</bool>
@@ -12542,7 +12542,7 @@ Every Baby</string>
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="console_assets.qrc"/>
+  <include location="new_production.qrc"/>
  </resources>
  <connections/>
  <buttongroups>

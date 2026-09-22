@@ -106,13 +106,9 @@ class ScreenInspectWidget : public QWidget {
     QRect labelPosToImage(const QPoint& pos) const;
     void saveManualRoi(const QRect& r);
 
-    void connectDevice();
-    void disconnectDevice();
     void enterLcdMode(std::function<void()> onDone = nullptr);
     void exitLcdMode();
     void sendLcdColor(int colorId, const QString& colorName, int expectedColorVal);
-    void checkConnectionStatus();
-    void updateConnectionUi(bool connected);
     void updateLcdModeUi();
     void updateReferenceCircle();
     void calibrateReferenceCircle();
@@ -139,7 +135,6 @@ class ScreenInspectWidget : public QWidget {
     ScreenInspectAnalyzer::ScreenCircle refCircle_;
     ScreenInspectAnalyzer::ScreenCircle lastDetectedCircle_;
     bool isLcdMode_ = false;
-    QTimer* connStatusTimer_ = nullptr;
 };
 
 #endif // SCREEN_INSPECT_WIDGET_H

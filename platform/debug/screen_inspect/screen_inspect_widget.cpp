@@ -65,9 +65,6 @@ struct ScreenInspectUi {
     QPushButton* btnInspect = nullptr;
     QPushButton* btnOpenPreview = nullptr;
     QPushButton* btnClosePreview = nullptr;
-    QPushButton* btnConnectDevice = nullptr;
-    QPushButton* btnDisconnectDevice = nullptr;
-    QLabel* label_deviceConnStatus = nullptr;
     QPushButton* btnEnterLcdMode = nullptr;
     QPushButton* btnExitLcdMode = nullptr;
     QLabel* label_lcdModeStatus = nullptr;
@@ -124,9 +121,6 @@ void ScreenInspectWidget::bindDesignerUi() {
     ui->btnInspect = screenInspectFind<QPushButton>(this, "btnInspect");
     ui->btnOpenPreview = screenInspectFind<QPushButton>(this, "btnOpenPreview");
     ui->btnClosePreview = screenInspectFind<QPushButton>(this, "btnClosePreview");
-    ui->btnConnectDevice = screenInspectFind<QPushButton>(this, "btnConnectDevice");
-    ui->btnDisconnectDevice = screenInspectFind<QPushButton>(this, "btnDisconnectDevice");
-    ui->label_deviceConnStatus = screenInspectFind<QLabel>(this, "label_deviceConnStatus");
     ui->btnEnterLcdMode = screenInspectFind<QPushButton>(this, "btnEnterLcdMode");
     ui->btnExitLcdMode = screenInspectFind<QPushButton>(this, "btnExitLcdMode");
     ui->label_lcdModeStatus = screenInspectFind<QLabel>(this, "label_lcdModeStatus");
@@ -232,12 +226,6 @@ void ScreenInspectWidget::bindDesignerUi() {
     if (ui->checkBox_reuseCircle)
         connect(ui->checkBox_reuseCircle, &QCheckBox::toggled, this, &ScreenInspectWidget::on_checkBox_reuseCircle_toggled);
 
-    if (!connStatusTimer_) {
-        connStatusTimer_ = new QTimer(this);
-        connect(connStatusTimer_, &QTimer::timeout, this, &ScreenInspectWidget::checkConnectionStatus);
-        connStatusTimer_->start(500);
-    }
-    checkConnectionStatus();
     updateLcdModeUi();
     updateCircleStatusUi();
 
@@ -245,11 +233,6 @@ void ScreenInspectWidget::bindDesignerUi() {
 }
 
 ScreenInspectWidget::~ScreenInspectWidget() {
-    if (connStatusTimer_) {
-        connStatusTimer_->stop();
-        delete connStatusTimer_;
-        connStatusTimer_ = nullptr;
-    }
     if (ui && ui->label_currImage)
         ui->label_currImage->releaseMouse();
     stopPreview();
@@ -671,32 +654,6 @@ void ScreenInspectWidget::appendLog(const QString& text) {
     }
 }
 
-void ScreenInspectWidget::connectDevice() {
-    // 「去连接」：跳转全局连接页，避免本页再维护一套 BLE 连接入口
-    MainWindow* mw = qobject_cast<MainWindow*>(window());
-    if (!mw) {
-        appendLog(QStringLiteral("主窗口未就绪，无法跳转连接页"));
-        return;
-    }
-    mw->selectConsoleNav(0);
-    appendLog(QStringLiteral("已跳转到「连接」页，请在那里连接 Dongle/串口与产品蓝牙"));
-}
-
-void ScreenInspectWidget::disconnectDevice() {
-    // 保留实现供内部清理；界面不再暴露断开按钮
-    MainWindow* mw = qobject_cast<MainWindow*>(window());
-    if (!mw || !mw->at) {
-        appendLog(QStringLiteral("Dongle 未就绪"));
-        return;
-    }
-    mw->at->set(DongleCmd::BleDisconnect);
-    mw->at->resetConnected();
-    isLcdMode_ = false;
-    updateLcdModeUi();
-    updateConnectionUi(false);
-    appendLog(QStringLiteral("已断开产品蓝牙连接"));
-}
-
 void ScreenInspectWidget::enterLcdMode(std::function<void()> onDone) {
     MainWindow* mw = qobject_cast<MainWindow*>(window());
     if (!mw) {
@@ -758,30 +715,6 @@ void ScreenInspectWidget::sendLcdColor(int colorId, const QString& colorName, in
         enterLcdMode(doSend);
     } else {
         doSend();
-    }
-}
-
-void ScreenInspectWidget::checkConnectionStatus() {
-    MainWindow* mw = qobject_cast<MainWindow*>(window());
-    if (!mw || !mw->at) {
-        updateConnectionUi(false);
-        return;
-    }
-    updateConnectionUi(mw->at->getConnected());
-}
-
-void ScreenInspectWidget::updateConnectionUi(bool connected) {
-    if (!ui || !ui->label_deviceConnStatus) return;
-    if (connected) {
-        ui->label_deviceConnStatus->setText(QStringLiteral("● 产品已连接"));
-        ui->label_deviceConnStatus->setStyleSheet(QStringLiteral("color: #2563eb; font-weight: 600;"));
-        if (ui->btnConnectDevice)
-            ui->btnConnectDevice->setVisible(false);
-    } else {
-        ui->label_deviceConnStatus->setText(QStringLiteral("○ 产品未连接"));
-        ui->label_deviceConnStatus->setStyleSheet(QStringLiteral("color: #5b6f88; font-weight: normal;"));
-        if (ui->btnConnectDevice)
-            ui->btnConnectDevice->setVisible(true);
     }
 }
 
