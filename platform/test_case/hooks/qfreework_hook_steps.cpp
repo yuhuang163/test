@@ -1098,6 +1098,24 @@ void QFreeWork::runAirPressureSampleStep() {
             appendPressureRow(QStringLiteral("气压%1").arg(i + 1), v);
         }
     }
+    // MES 必须在 testResultTableUpdate 之前写：该函数会 clear 传入的 rows
+    const QString baseTag = activeTestCase_.meta.displayName.trimmed().isEmpty()
+                                ? (activeTestCase_.meta.name.trimmed().isEmpty()
+                                       ? activeTestCase_.meta.mesTag.trimmed()
+                                       : activeTestCase_.meta.name.trimmed())
+                                : activeTestCase_.meta.displayName.trimmed();
+    const QString costTime =
+        QString::number(stepRuntime_.caseTimer.isValid() ? stepRuntime_.caseTimer.elapsed() : 0);
+    const QString maxVal = QString::number(gateHi, 'f', 3);
+    const QString minVal = QString::number(gateLo, 'f', 3);
+    for (const TestItem& item : rows) {
+        const QString itemName =
+            baseTag.isEmpty() ? item.testItem : QStringLiteral("%1_%2").arg(baseTag, item.testItem);
+        appendOneMesStep(&freeWorkMesSegments_, itemName, item.testData, maxVal, minVal, QString(),
+                         QStringLiteral("kPa"),
+                         item.testResult == passValue ? QStringLiteral("PASS") : QStringLiteral("FAIL"),
+                         costTime);
+    }
     testResultTableUpdate(rows);
     testCaseMultiGateTableEmitted_ = true;
 
