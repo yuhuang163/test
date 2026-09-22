@@ -864,33 +864,35 @@ QWidget#consoleFlowHost {
 	min-height: 0;
 }
 
-QWidget#consoleWorkPage QWidget#groupBox_business_meta QLabel {
+QGroupBox#groupBox_business_meta QLabel {
 	color: #5b6f88;
 	font-size: 12px;
-	min-width: 52px;
+	min-width: 48px;
+	max-width: 64px;
 }
 
-QWidget#consoleWorkPage QWidget#groupBox_business_meta QPushButton {
+QGroupBox#groupBox_business_meta QPushButton {
 	min-width: 52px;
-	padding: 0 10px;
+	max-width: 68px;
+	padding: 0 8px;
 	font-size: 12px;
 	border: 1px solid #d0deef;
 }
 
-QWidget#consoleWorkPage QWidget#groupBox_business_meta QPushButton:hover {
+QGroupBox#groupBox_business_meta QPushButton:hover {
 	background: #d7e4f4;
 	border: 1px solid #7eb3f5;
 	color: #1d4ed8;
 }
 
-QWidget#consoleWorkPage QWidget#groupBox_business_meta QPushButton:pressed,
-QWidget#consoleWorkPage QWidget#groupBox_business_meta QPushButton:pressed:hover {
+QGroupBox#groupBox_business_meta QPushButton:pressed,
+QGroupBox#groupBox_business_meta QPushButton:pressed:hover {
 	background: #8eacd0;
 	border: 1px solid #1d4ed8;
 	color: #0f2d6b;
 }
 
-QWidget#consoleWorkPage QWidget#groupBox_business_meta QLineEdit {
+QGroupBox#groupBox_business_meta QLineEdit {
 	min-width: 0;
 }
 

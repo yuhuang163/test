@@ -125,11 +125,15 @@ static void wrapDebugTabPageInScrollArea(QTabWidget* tabWidget) {
         scroll->setWidget(page);
         tabWidget->insertTab(i, scroll, title);
         page->setProperty("debugScrollWrapped", true);
-        // 按内容最小高度撑开，视口不够时出滚动条（对齐 HTML 整页滚动）
+        // 高度随内容；宽度跟视口走，避免最小宽度把中栏撑进右侧栏
         page->setMinimumWidth(0);
         page->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
         if (auto* lay = page->layout())
             lay->setSizeConstraint(QLayout::SetMinimumSize);
+        for (QLineEdit* e : page->findChildren<QLineEdit*>()) {
+            if (e)
+                e->setMinimumWidth(0);
+        }
     }
 }
 
@@ -721,16 +725,16 @@ private:
             int spaceX = hSpace_;
             int spaceY = vSpace_;
             QSize hint = item->sizeHint();
-            int nextX = x + hint.width() + spaceX;
-            if (lineH > 0 && nextX - spaceX > effective.right() + 1 && hint.width() <= effective.width()) {
+            const int itemW = qBound(1, hint.width(), qMax(1, effective.width()));
+            // 超出右缘就换行；过宽单项钳到行宽，避免画出中栏叠到右侧状态栏
+            if (lineH > 0 && x + itemW > effective.right() + 1) {
                 x = effective.x();
                 y = y + lineH + spaceY;
-                nextX = x + hint.width() + spaceX;
                 lineH = 0;
             }
             if (!testOnly)
-                item->setGeometry(QRect(QPoint(x, y), hint));
-            x = nextX;
+                item->setGeometry(QRect(QPoint(x, y), QSize(itemW, hint.height())));
+            x += itemW + spaceX;
             lineH = qMax(lineH, hint.height());
         }
         return y + lineH - rect.y() + bottom;
@@ -889,6 +893,111 @@ static void flattenNestedHBoxRowsToFlow(QGroupBox* box) {
     box->setMaximumHeight(QWIDGETSIZE_MAX);
 }
 
+/** 序列号/三元组：IO 行可压缩；底栏三列过窄时改单列，避免「写入」叠进右侧栏 */
+static void polishConsoleMetaIoRow(QHBoxLayout* h) {
+    if (!h)
+        return;
+    for (int i = 0; i < h->count(); ++i) {
+        QWidget* w = h->itemAt(i)->widget();
+        if (!w)
+            continue;
+        if (auto* le = qobject_cast<QLineEdit*>(w)) {
+            le->setMinimumWidth(0);
+            le->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+            h->setStretch(i, 1);
+        } else if (auto* btn = qobject_cast<QPushButton*>(w)) {
+            btn->setMinimumWidth(52);
+            btn->setMaximumWidth(68);
+            btn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+            h->setStretch(i, 0);
+        } else if (auto* lab = qobject_cast<QLabel*>(w)) {
+            lab->setMinimumWidth(48);
+            lab->setMaximumWidth(64);
+            lab->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+            h->setStretch(i, 0);
+        }
+    }
+}
+
+static void polishConsoleMetaIoLayout(QLayout* lay) {
+    if (!lay)
+        return;
+    if (auto* h = qobject_cast<QHBoxLayout*>(lay)) {
+        polishConsoleMetaIoRow(h);
+        return;
+    }
+    for (int i = 0; i < lay->count(); ++i) {
+        QLayoutItem* it = lay->itemAt(i);
+        if (!it)
+            continue;
+        if (QLayout* nested = it->layout())
+            polishConsoleMetaIoLayout(nested);
+    }
+}
+
+static void applyConsoleMetaGridColumns(QGroupBox* box, int midW) {
+    if (!box)
+        return;
+    auto* grid = qobject_cast<QGridLayout*>(box->layout());
+    if (!grid)
+        return;
+    polishConsoleMetaIoLayout(grid);
+    box->setMinimumWidth(0);
+    box->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+    // 对齐 HTML meta-pairs：窄中栏时底栏密钥/产品/设备改单列
+    const bool oneCol = midW > 0 && midW < 720;
+    if (box->property("metaOneCol").isValid() && box->property("metaOneCol").toBool() == oneCol)
+        return;
+    box->setProperty("metaOneCol", oneCol);
+    QLayoutItem* snItem = nullptr;
+    QLayoutItem* keyItem = nullptr;
+    QLayoutItem* skuItem = nullptr;
+    QLayoutItem* subItem = nullptr;
+    QList<QLayoutItem*> leftovers;
+    while (grid->count() > 0) {
+        QLayoutItem* it = grid->takeAt(0);
+        if (!it)
+            continue;
+        QLayout* lay = it->layout();
+        const QString n = lay ? lay->objectName() : QString();
+        if (n == QStringLiteral("consoleMetaCol2") && !snItem)
+            snItem = it;
+        else if (n == QStringLiteral("consoleMetaIoLay_tuple") && !keyItem)
+            keyItem = it;
+        else if (n == QStringLiteral("consoleMetaCol0") && !skuItem)
+            skuItem = it;
+        else if (n == QStringLiteral("consoleMetaCol1") && !subItem)
+            subItem = it;
+        else
+            leftovers.append(it);
+    }
+    grid->setColumnStretch(0, 1);
+    grid->setColumnStretch(1, oneCol ? 0 : 1);
+    grid->setColumnStretch(2, oneCol ? 0 : 1);
+    int row = 0;
+    if (snItem)
+        grid->addItem(snItem, row++, 0, 1, oneCol ? 1 : 3);
+    if (oneCol) {
+        if (keyItem)
+            grid->addItem(keyItem, row++, 0);
+        if (skuItem)
+            grid->addItem(skuItem, row++, 0);
+        if (subItem)
+            grid->addItem(subItem, row++, 0);
+    } else {
+        if (keyItem)
+            grid->addItem(keyItem, row, 0);
+        if (skuItem)
+            grid->addItem(skuItem, row, 1);
+        if (subItem)
+            grid->addItem(subItem, row, 2);
+        if (keyItem || skuItem || subItem)
+            ++row;
+    }
+    for (QLayoutItem* it : leftovers)
+        grid->addItem(it, row++, 0, 1, oneCol ? 1 : 3);
+}
+
 /** 业务/外设页：把过长横排表单改成可折行，窗口变窄时不再钻进右侧栏 */
 static void makeConsoleFormsWrap(QWidget* root) {
     if (!root || root->property("consoleFormsWrapped").toBool())
@@ -898,6 +1007,11 @@ static void makeConsoleFormsWrap(QWidget* root) {
     for (QGroupBox* box : boxes) {
         if (!box || box->property("consoleFlowWrapped").toBool())
             continue;
+        if (box->objectName() == QStringLiteral("groupBox_business_meta")) {
+            applyConsoleMetaGridColumns(box, 0);
+            box->setProperty("consoleFlowWrapped", true);
+            continue;
+        }
         if (qobject_cast<QHBoxLayout*>(box->layout())) {
             flattenHBoxToFlow(box);
             box->setProperty("consoleFlowWrapped", true);
@@ -1005,13 +1119,13 @@ static void bumpConsoleFlowHostHeights(QWidget* root) {
 static void applyConsoleBusinessGridColumns(Ui::MainWindow* ui, QWidget* consoleMid, QWidget* consoleShell) {
     if (!ui || !consoleMid)
         return;
+    const int midW = consoleMid->width();
     auto* host = ui->tab_debug_group_production
         ? ui->tab_debug_group_production->findChild<QWidget*>(QStringLiteral("consoleBusinessGridHost"))
         : nullptr;
     if (host) {
         auto* grid = qobject_cast<QGridLayout*>(host->layout());
         if (grid) {
-            const int midW = consoleMid->width();
             if (midW >= 8) {
                 const bool oneCol = midW < 880;
                 const bool sameCol = host->property("oneCol").isValid() && host->property("oneCol").toBool() == oneCol;
@@ -1022,6 +1136,8 @@ static void applyConsoleBusinessGridColumns(Ui::MainWindow* ui, QWidget* console
             }
         }
     }
+    if (auto* meta = consoleMid->findChild<QGroupBox*>(QStringLiteral("groupBox_business_meta")))
+        applyConsoleMetaGridColumns(meta, midW);
     // 折行高度随中栏宽度刷新，避免窄窗时控件叠进右侧栏
     bumpConsoleFlowHostHeights(consoleMid);
     if (consoleShell && consoleShell != consoleMid)
@@ -1593,7 +1709,8 @@ void MainWindow::initConsoleShell() {
             consoleSidebar_->setMaximumWidth(380);
             consoleRail_->setMinimumWidth(260);
             consoleRail_->setMaximumWidth(520);
-            consoleMid_->setMinimumWidth(280);
+            // 中栏最小宽不宜过大：子控件 min 叠加时 QSplitter 会溢出叠到右栏
+            consoleMid_->setMinimumWidth(200);
             consoleMid_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
             split->addWidget(consoleSidebar_);
             split->addWidget(consoleMid_);
