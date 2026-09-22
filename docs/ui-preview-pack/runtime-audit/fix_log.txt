@@ -1,0 +1,24 @@
+nav 外设
+tab 屏幕
+saved fix_screen.png (1680, 960) pw=1
+tab 电池
+saved fix_battery.png (1680, 960) pw=1
+nav Dongle
+tab 吸力专项测试
+saved fix_dongle_suction.png (1680, 960) pw=1
+tab AT 测试
+saved fix_dongle_at.png (1680, 960) pw=1
+nav OTA/压测
+ota tabs: 上位机日志, Dongle日志, 本地OTA, 云端OTA, 蓝牙ota, 压力测试
+tab 蓝牙ota
+saved fix_ota_蓝牙ota.png (1680, 960) pw=1
+tab 本地OTA
+saved fix_ota_本地OTA.png (1680, 960) pw=1
+tab 云端OTA
+saved fix_ota_云端OTA.png (1680, 960) pw=1
+tab 本地OTA
+saved fix_ota_本地OTA.png (1680, 960) pw=1
+nav 其它
+misc tabs: 上位机日志, Dongle日志, ui预览, NFC, 测试页面
+tab ui预览
+saved fix_misc_ui预览.png (1680, 960) pw=1

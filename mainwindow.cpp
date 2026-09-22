@@ -13,6 +13,7 @@
 #include <QMenu>
 #include <QPushButton>
 #include <QList>
+#include <QVector>
 #include <QRandomGenerator>
 #include <QSlider>
 #include <QSplitter>
@@ -84,7 +85,7 @@ extern "C" // 由于是C版的dll文件，在C++中引入其头文件要加exter
 QByteArray allPackets;
 
 static const QSet<QString>& debugTabPagesWithoutScroll() {
-    // 全部进滚动区：避免某页（吸力曲线/摄像头图）的最小高度把整窗锁死
+    // 暂无例外：吸力/曲线页也进滚动区，靠 DefaultConstraint 把两列压进视口
     static const QSet<QString> pages;
     return pages;
 }
@@ -127,9 +128,27 @@ static void wrapDebugTabPageInScrollArea(QTabWidget* tabWidget) {
         page->setProperty("debugScrollWrapped", true);
         // 高度随内容；宽度跟视口走，避免最小宽度把中栏撑进右侧栏
         page->setMinimumWidth(0);
-        page->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
-        if (auto* lay = page->layout())
-            lay->setSizeConstraint(QLayout::SetMinimumSize);
+        if (auto* lay = page->layout()) {
+            // Dongle 吸力/AT 两列必须能压进中栏，否则右列画到设备状态下面
+            const QString pageName = page->objectName();
+            const bool dongleFit = pageName.startsWith(QStringLiteral("tab_dongle"));
+            // ui预览 / 蓝牙OTA：允许随视口伸缩，拖拽区与日志区才能吃满剩余高度
+            const bool elasticFill = (pageName == QStringLiteral("tab_12") || pageName == QStringLiteral("tab_16"));
+            lay->setSizeConstraint((dongleFit || elasticFill) ? QLayout::SetDefaultConstraint : QLayout::SetMinimumSize);
+            if (dongleFit) {
+                // Ignored：允许窄于 sizeHint，否则 H 滚动停在左侧，泵阀列永远看不见
+                page->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Minimum);
+                scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+            } else if (elasticFill) {
+                // 横向可压进中栏；纵向 Expanding 才能让拖拽区/日志吃满视口高度
+                page->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Expanding);
+                scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+            } else {
+                page->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+            }
+        } else {
+            page->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+        }
         for (QLineEdit* e : page->findChildren<QLineEdit*>()) {
             if (e)
                 e->setMinimumWidth(0);
@@ -715,29 +734,51 @@ private:
         int left, top, right, bottom;
         getContentsMargins(&left, &top, &right, &bottom);
         QRect effective = rect.adjusted(+left, +top, -right, -bottom);
+        struct LineItem {
+            QLayoutItem* item = nullptr;
+            int x = 0;
+            int w = 0;
+            int h = 0;
+        };
+        QVector<QVector<LineItem>> lines;
+        QVector<LineItem> cur;
         int x = effective.x();
-        int y = effective.y();
-        int lineH = 0;
         for (QLayoutItem* item : items_) {
             QWidget* wid = item->widget();
             if (wid && wid->isHidden())
                 continue;
-            int spaceX = hSpace_;
-            int spaceY = vSpace_;
             QSize hint = item->sizeHint();
             const int itemW = qBound(1, hint.width(), qMax(1, effective.width()));
+            const int itemH = qMax(1, hint.height());
             // 超出右缘就换行；过宽单项钳到行宽，避免画出中栏叠到右侧状态栏
-            if (lineH > 0 && x + itemW > effective.right() + 1) {
+            if (!cur.isEmpty() && x + itemW > effective.right() + 1) {
+                lines.append(cur);
+                cur.clear();
                 x = effective.x();
-                y = y + lineH + spaceY;
-                lineH = 0;
             }
-            if (!testOnly)
-                item->setGeometry(QRect(QPoint(x, y), QSize(itemW, hint.height())));
-            x += itemW + spaceX;
-            lineH = qMax(lineH, hint.height());
+            cur.append(LineItem{item, x, itemW, itemH});
+            x += itemW + hSpace_;
         }
-        return y + lineH - rect.y() + bottom;
+        if (!cur.isEmpty())
+            lines.append(cur);
+
+        int y = effective.y();
+        for (const QVector<LineItem>& line : lines) {
+            int rowH = 0;
+            for (const LineItem& li : line)
+                rowH = qMax(rowH, li.h);
+            if (!testOnly) {
+                for (const LineItem& li : line) {
+                    // 同行控件垂直居中，避免标签顶齐、下拉偏下
+                    const int iy = y + (rowH - li.h) / 2;
+                    li.item->setGeometry(QRect(QPoint(li.x, iy), QSize(li.w, li.h)));
+                }
+            }
+            y += rowH + vSpace_;
+        }
+        if (!lines.isEmpty())
+            y -= vSpace_;
+        return y - rect.y() + bottom;
     }
     QList<QLayoutItem*> items_;
     int hSpace_;
@@ -748,6 +789,8 @@ static void consolePrepareFlowChild(QWidget* w) {
     if (!w)
         return;
     w->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    w->setMinimumHeight(32);
+    w->setMaximumHeight(32);
     if (auto* le = qobject_cast<QLineEdit*>(w)) {
         le->setMinimumWidth(72);
         le->setMaximumWidth(QWIDGETSIZE_MAX);
@@ -759,6 +802,9 @@ static void consolePrepareFlowChild(QWidget* w) {
         w->setMinimumWidth(64);
     } else if (auto* btn = qobject_cast<QPushButton*>(w)) {
         btn->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    } else if (auto* lab = qobject_cast<QLabel*>(w)) {
+        lab->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        lab->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
     }
 }
 
@@ -903,16 +949,23 @@ static void polishConsoleMetaIoRow(QHBoxLayout* h) {
             continue;
         if (auto* le = qobject_cast<QLineEdit*>(w)) {
             le->setMinimumWidth(0);
+            le->setMinimumHeight(32);
+            le->setMaximumHeight(32);
             le->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
             h->setStretch(i, 1);
         } else if (auto* btn = qobject_cast<QPushButton*>(w)) {
             btn->setMinimumWidth(52);
             btn->setMaximumWidth(68);
+            btn->setMinimumHeight(32);
+            btn->setMaximumHeight(32);
             btn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
             h->setStretch(i, 0);
         } else if (auto* lab = qobject_cast<QLabel*>(w)) {
             lab->setMinimumWidth(48);
             lab->setMaximumWidth(64);
+            lab->setMinimumHeight(32);
+            lab->setMaximumHeight(32);
+            lab->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
             lab->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
             h->setStretch(i, 0);
         }
@@ -999,30 +1052,30 @@ static void applyConsoleMetaGridColumns(QGroupBox* box, int midW) {
 }
 
 /** 业务/外设页：把过长横排表单改成可折行，窗口变窄时不再钻进右侧栏 */
-static void makeConsoleFormsWrap(QWidget* root) {
-    if (!root || root->property("consoleFormsWrapped").toBool())
-        return;
-    root->setProperty("consoleFormsWrapped", true);
-    const QList<QGroupBox*> boxes = root->findChildren<QGroupBox*>();
-    for (QGroupBox* box : boxes) {
-        if (!box || box->property("consoleFlowWrapped").toBool())
-            continue;
-        if (box->objectName() == QStringLiteral("groupBox_business_meta")) {
-            applyConsoleMetaGridColumns(box, 0);
-            box->setProperty("consoleFlowWrapped", true);
-            continue;
-        }
-        if (qobject_cast<QHBoxLayout*>(box->layout())) {
-            flattenHBoxToFlow(box);
-            box->setProperty("consoleFlowWrapped", true);
-            continue;
-        }
-        if (qobject_cast<QVBoxLayout*>(box->layout())) {
-            flattenNestedHBoxRowsToFlow(box);
-            flattenButtonRowsToFlow(box);
-            box->setProperty("consoleFlowWrapped", true);
-        }
+static bool shouldKeepDesignerHBox(const QGroupBox* box) {
+    if (!box)
+        return true;
+    // 自定义指令三行保持 .ui 里的 QHBoxLayout，避免被改成流式后和 Designer 不一致
+    static const char* kKeep[] = {
+        "groupBox",
+        "groupBox_custom_aiot",
+        "groupBox_custom_root",
+        "groupBox_qaiot_feature",
+        "groupBox_dongle_at_pump",
+        "groupBox_dongle_suction_peak_params",
+        "groupBox_dongle_suction_live",
+    };
+    const QByteArray n = box->objectName().toUtf8();
+    for (const char* id : kKeep) {
+        if (n == id)
+            return true;
     }
+    return false;
+}
+
+static void makeConsoleFormsWrap(QWidget* root) {
+    // 布局以 .ui 为准，不再把 Designer 的 HBox 改成运行时流式折行
+    Q_UNUSED(root);
 }
 
 static QString consoleMetaFieldText(QWidget* root, const QString& name, QLineEdit* fallback) {
@@ -1171,11 +1224,8 @@ static void initBusinessCardGrid(QWidget* root, Ui::MainWindow* ui) {
     if (ui->consoleWorkPage)
         makeConsoleFormsWrap(ui->consoleWorkPage);
 
-    if (ui->groupBox_qaiot_feature) {
+    if (ui->groupBox_qaiot_feature)
         ui->groupBox_qaiot_feature->setTitle(QStringLiteral("循环上报与阈值"));
-        if (ui->gridLayout_4)
-            periphTakeWidget(ui->gridLayout_4, ui->groupBox_qaiot_feature);
-    }
 
     QTabWidget* tabs = ui->tabWidget_debug_production;
     auto dropTab = [tabs](QWidget* page) {
@@ -1198,46 +1248,8 @@ static void initBusinessCardGrid(QWidget* root, Ui::MainWindow* ui) {
 }
 
 static void packDongleAtCards(Ui::MainWindow* ui) {
-    if (!ui || !ui->tab_dongle_at)
-        return;
-    if (ui->tab_dongle_at->findChild<QWidget*>(QStringLiteral("consoleDongleAtGrid")))
-        return;
-    auto* pageLay = qobject_cast<QBoxLayout*>(ui->tab_dongle_at->layout());
-    if (!pageLay)
-        return;
-    auto* host = new QWidget(ui->tab_dongle_at);
-    host->setObjectName(QStringLiteral("consoleDongleAtGrid"));
-    auto* grid = new QGridLayout(host);
-    grid->setContentsMargins(4, 4, 4, 4);
-    grid->setHorizontalSpacing(10);
-    grid->setVerticalSpacing(10);
-    grid->setColumnStretch(0, 1);
-    grid->setColumnStretch(1, 1);
-    const QStringList names = {
-        QStringLiteral("groupBox_dongle_at_connect"),
-        QStringLiteral("groupBox_dongle_at_passthrough"),
-        QStringLiteral("groupBox_dongle_at_log"),
-        QStringLiteral("groupBox_dongle_at_adc"),
-        QStringLiteral("groupBox_dongle_at_bomb"),
-        QStringLiteral("groupBox_dongle_at_query"),
-    };
-    int i = 0;
-    for (const QString& n : names) {
-        QGroupBox* gb = ui->tab_dongle_at->findChild<QGroupBox*>(n);
-        if (!gb)
-            continue;
-        if (QWidget* p = gb->parentWidget()) {
-            if (QLayout* owner = periphFindOwningLayout(p->layout(), gb))
-                owner->removeWidget(gb);
-        }
-        grid->addWidget(gb, i / 2, i % 2);
-        ++i;
-    }
-    if (i == 0) {
-        host->deleteLater();
-        return;
-    }
-    pageLay->insertWidget(0, host, 1);
+    // AT 页两列网格已在 mainwindow.ui（gridLayout_dongle_at），不再运行时拆装
+    Q_UNUSED(ui);
 }
 
 void MainWindow::initDebugTabChrome() {
@@ -1302,14 +1314,8 @@ void MainWindow::initDebugTabLayout() {
         QVBoxLayout* battLay = nullptr;
         QWidget* battPage = periphMakePage(periph, periph->findChild<QWidget*>(QStringLiteral("tab_periph_battery")),
                                            QStringLiteral("tab_periph_battery"), &battLay);
-        // 电池测试已在 .ui 挂到外设-电池页；这里只补模拟电池，避免 Designer 与运行时位置不一致
-        if (ui->verticalGroupBox_4 && battLay->indexOf(ui->verticalGroupBox_4) < 0)
-            periphTakeWidget(battLay, ui->verticalGroupBox_4);
-        if (!battPage->property("periphBattFilled").toBool()) {
-            battPage->setProperty("periphBattFilled", true);
-            battLay->addWidget(periphWrapHBox(ui->horizontalLayout_qaiot_batt, QStringLiteral("模拟电池")));
-            battLay->addStretch();
-        }
+        // 电池测试 + 模拟电池已在 .ui（verticalGroupBox_4 / groupBox_periph_batt_sim），勿再 wrap 一层
+        Q_UNUSED(battPage);
 
         QVBoxLayout* keyLay = nullptr;
         QWidget* keyPage = periphMakePage(periph, periph->findChild<QWidget*>(QStringLiteral("tab_periph_key")),
@@ -1356,10 +1362,8 @@ void MainWindow::initDebugTabLayout() {
                 delete waitRow;
             if (ui->start_wifible_test)
                 periphTakeWidget(bleLay, ui->start_wifible_test);
-            if (ui->groupBox_signal_debug) {
+            if (ui->groupBox_signal_debug)
                 periphTakeWidget(bleLay, ui->groupBox_signal_debug);
-                flattenHBoxToFlow(ui->groupBox_signal_debug);
-            }
             periphTakeWidget(bleLay, ui->groupBox_3);
             bleLay->addStretch();
         }
@@ -1999,7 +2003,6 @@ void MainWindow::initConsoleShell() {
         const QList<QWidget*> pills = {
             ui->uartStatusLabel, ui->bleStatusLabel, ui->WifiStatusLabel,
             ui->macLabel, ui->cloudLoginLabel, ui->consoleFactoryLabel,
-            uiFind<QLabel>(this, "consoleVersionLabel"),
             ui->consoleBuildLabel,
         };
         for (QWidget* w : pills) {
@@ -2419,7 +2422,7 @@ void MainWindow::playConsoleEnterAnimations() {
     };
     for (int i = 0; i < navs.size(); ++i)
         consoleSlideFade(navs.at(i), QPoint(-10, 0), 320, 40 + i * 40, spring);
-    consoleSlideFade(ui->consoleUserChip, QPoint(-8, 0), 320, 20, spring);
+    consoleSlideFade(ui->consoleBrandTitle, QPoint(-8, 0), 320, 20, spring);
     const QList<QWidget*> pills = {
         ui->uartStatusLabel,
         ui->bleStatusLabel,
@@ -2427,7 +2430,6 @@ void MainWindow::playConsoleEnterAnimations() {
         ui->macLabel,
         ui->cloudLoginLabel,
         ui->consoleFactoryLabel,
-        uiFind<QLabel>(this, "consoleVersionLabel"),
         ui->consoleBuildLabel,
         ui->consoleSettingsBtn,
         ui->consoleHelpBtn,
@@ -2601,7 +2603,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     ui->local_ota_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  "
                                         "border-radius: 10px; padding: 10px; text-align: center; ");
     ui->bleotaresult->setText("WAIT");
-    ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  "
+    ui->bleotaresult->setStyleSheet("font-size: 14px; background-color: #808080; color: white;  "
                                     "border-radius: 10px; padding: 10px; text-align: center; ");
 
     scanSerialPorts();                 // 要搜索一下一开始
@@ -2673,6 +2675,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     const int vPos = debugVer.lastIndexOf(QLatin1Char('V'));
     if (vPos >= 0)
         version = debugVer.mid(vPos).trimmed();
+    if (version.startsWith(QLatin1Char('V')))
+        version[0] = QLatin1Char('v');
     if (QLabel* lab = uiFind<QLabel>(this, "consoleVersionLabel")) {
         lab->setText(version);
         lab->setToolTip(QStringLiteral("软件版本"));
@@ -3080,8 +3084,8 @@ void MainWindow::refreshOtaResult(int result) {
                                 QString("，wifiota耗时:%1 s").arg(totalwifiOtaTime.elapsed() / 1000));
         ui->wifiota_suc_times->setText(QString("成功升级次数:%1").arg(wifiotaSuctimes));
         ui->bleotaresult->setText("PASS");
-        ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #00FF00; color: "
-                                        "black; border: 2px solid #00FF00; border-radius: "
+        ui->bleotaresult->setStyleSheet("font-size: 14px; background-color: #10b981; color: "
+                                        "white; border: 1px solid #0d9668; border-radius: "
                                         "10px; padding: 10px; text-align: center;");
         on_disconnectButton_clicked();
         if (ui->is_bleota_press->checkState()) {
@@ -3099,7 +3103,7 @@ void MainWindow::refreshOtaResult(int result) {
         on_stopBleOta_clicked();
         on_disconnectButton_clicked();
         ui->bleotaresult->setText("FAIL");
-        ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #FF0000; color: "
+        ui->bleotaresult->setStyleSheet("font-size: 14px; background-color: #FF0000; color: "
                                         "black; border: 2px solid #FF0000; border-radius: "
                                         "10px; padding: 10px; text-align: center; ");
         if (ui->is_bleota_press->checkState()) {
@@ -3307,18 +3311,6 @@ void MainWindow::on_qaiot_exit_fac_mode_clicked() {
 void MainWindow::on_qaiot_travel_lock_clicked() {
     protocolManager.set(DeviceCmd::TravelLock);
     showlog(QStringLiteral("已发送旅行锁"));
-}
-
-void MainWindow::on_qaiot_read_soft_ver_clicked() {
-    QVariantMap m;
-    m.insert(QStringLiteral("field"), QStringLiteral("soft_version"));
-    protocolManager.get(DeviceCmd::SoftVersionRead, m);
-    showlog(QStringLiteral("读取固件版本"));
-}
-
-void MainWindow::on_qaiot_read_device_name_clicked() {
-    protocolManager.get(DeviceCmd::DeviceInfo);
-    showlog(QStringLiteral("读取设备名称"));
 }
 
 void MainWindow::on_qaiot_send_sim_key_clicked() {
@@ -6073,7 +6065,7 @@ void MainWindow::on_bleotamacInput_returnPressed() {
         clearDisplay();
     }
     ui->bleotaresult->setText("WAIT");
-    ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  "
+    ui->bleotaresult->setStyleSheet("font-size: 14px; background-color: #808080; color: white;  "
                                     "border-radius: 10px; padding: 10px; text-align: center; ");
 
     if (!dongleSerialPort->isOpen()) {
@@ -6287,15 +6279,15 @@ void MainWindow::startRootBleOta() {
 
     if (ok) {
         ui->bleotaresult->setText(QStringLiteral("PASS"));
-        ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #00FF00; color: "
-                                        "black; border-radius: 10px; padding: 10px; text-align: center; ");
+        ui->bleotaresult->setStyleSheet("font-size: 14px; background-color: #10b981; color: "
+                                        "white; border-radius: 10px; padding: 10px; text-align: center; ");
         showlog(QStringLiteral("路特 BLE OTA 成功，耗时 %1")
                     .arg(CommonUtils::formatElapsedMs(bleOtaTestTime.elapsed())));
         ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() +
                                        QStringLiteral(" OTA 成功"));
     } else {
         ui->bleotaresult->setText(QStringLiteral("FAIL"));
-        ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #FF0000; color: "
+        ui->bleotaresult->setStyleSheet("font-size: 14px; background-color: #FF0000; color: "
                                         "white; border-radius: 10px; padding: 10px; text-align: center; ");
         const QString msg = errorText.isEmpty() ? QStringLiteral("未知错误") : errorText;
         showlog(QStringLiteral("路特 BLE OTA 失败：") + msg);
@@ -6401,13 +6393,13 @@ void MainWindow::startRootBleOta2(const QByteArray& imageData, uint32_t imageId,
 
     if (ok) {
         ui->bleotaresult->setText(QStringLiteral("PASS"));
-        ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #00FF00; color: "
-                                        "black; border-radius: 10px; padding: 10px; text-align: center; ");
+        ui->bleotaresult->setStyleSheet("font-size: 14px; background-color: #10b981; color: "
+                                        "white; border-radius: 10px; padding: 10px; text-align: center; ");
         showlog(QStringLiteral("图片资源 OTA v2 成功，耗时 %1").arg(CommonUtils::formatElapsedMs(bleOtaTestTime.elapsed())));
         ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() + QStringLiteral(" OTA 成功"));
     } else {
         ui->bleotaresult->setText(QStringLiteral("FAIL"));
-        ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #FF0000; color: "
+        ui->bleotaresult->setStyleSheet("font-size: 14px; background-color: #FF0000; color: "
                                         "white; border-radius: 10px; padding: 10px; text-align: center; ");
         const QString msg = errorText.isEmpty() ? QStringLiteral("未知错误") : errorText;
         showlog(QStringLiteral("图片资源 OTA v2 失败：") + msg);
@@ -6470,7 +6462,7 @@ void MainWindow::startUsmileBleOtaLegacy() {
         clearDisplay();
     }
     ui->bleotaresult->setText("WAIT");
-    ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  "
+    ui->bleotaresult->setStyleSheet("font-size: 14px; background-color: #808080; color: white;  "
                                     "border-radius: 10px; padding: 10px; text-align: center; ");
 
     if (!dongleSerialPort->isOpen()) {
@@ -8211,17 +8203,13 @@ void MainWindow::initDongleSuctionChart() {
     });
 
     if (ui->dongleSuctionPlotHost) {
-        ui->dongleSuctionPlotHost->setMinimumHeight(360);
+        ui->dongleSuctionPlotHost->setMinimumHeight(280);
         QSizePolicy sp = ui->dongleSuctionPlotHost->sizePolicy();
-        sp.setVerticalStretch(10);
+        sp.setVerticalPolicy(QSizePolicy::Expanding);
+        sp.setVerticalStretch(1);
         ui->dongleSuctionPlotHost->setSizePolicy(sp);
     }
-    if (ui->gridLayout_12 && ui->dongleSuctionPlotHost) {
-        // 曲线图占满剩余垂直空间（位于网格第 2 行）
-        ui->gridLayout_12->setRowStretch(0, 0);
-        ui->gridLayout_12->setRowStretch(1, 0);
-        ui->gridLayout_12->setRowStretch(2, 1);
-    }
+    // 列/行拉伸已在 mainwindow.ui 的 gridLayout_12 写死，此处不再改布局
 
     // 轴窗口/刻度分辨率改动立即作用于主图/弹窗
     auto bindAxisValue = [this](QDoubleSpinBox* spin) {
@@ -8259,30 +8247,6 @@ void MainWindow::initDongleSuctionChart() {
             if (dongleSuctionPlotPopup_)
                 dongleSuctionPlotPopup_->replot(QCustomPlot::rpQueuedReplot);
         });
-    }
-
-    if (ui->tab_dongle_suction) {
-        const int spinWidth = 84;
-        for (QDoubleSpinBox* spin : ui->tab_dongle_suction->findChildren<QDoubleSpinBox*>()) {
-            spin->setMinimumWidth(spinWidth);
-            spin->setMaximumWidth(spinWidth);
-            spin->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        }
-    }
-    if (ui->gridLayout_dongle_suction_peak_params) {
-        QGridLayout* grid = ui->gridLayout_dongle_suction_peak_params;
-        for (int c = 0; c < 4; ++c)
-            grid->setColumnStretch(c, 0);
-    }
-    if (ui->gridLayout_dongle_suction_live) {
-        QGridLayout* grid = ui->gridLayout_dongle_suction_live;
-        for (int c = 0; c < 3; ++c)
-            grid->setColumnStretch(c, 0);
-    }
-    if (ui->gridLayout_12) {
-        ui->gridLayout_12->setRowStretch(0, 0);
-        ui->gridLayout_12->setRowStretch(1, 0);
-        ui->gridLayout_12->setRowStretch(2, 1);
     }
 
     dongleSuctionPlot_->replot();

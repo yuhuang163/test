@@ -1579,6 +1579,13 @@ void MainWindow::refreshBleState(int state) {
             ui->consoleMetricTempValue->setText(QStringLiteral("未读取"));
         updateConsoleConnectFlow();
     }
+    // 右侧「设备连接」与顶栏蓝牙态同源，避免写死 Online 误导
+    if (ui && ui->consoleStatusDeviceState) {
+        ui->consoleStatusDeviceState->setText(state ? QStringLiteral("已连接") : QStringLiteral("未连接"));
+        ui->consoleStatusDeviceState->setProperty("kind", state ? QStringLiteral("on") : QStringLiteral("off"));
+        ui->consoleStatusDeviceState->style()->unpolish(ui->consoleStatusDeviceState);
+        ui->consoleStatusDeviceState->style()->polish(ui->consoleStatusDeviceState);
+    }
 }
 
 void MainWindow::refreshBattaryData(ProtocolBatteryData adc) {

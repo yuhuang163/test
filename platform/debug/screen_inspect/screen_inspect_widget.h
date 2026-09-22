@@ -46,8 +46,6 @@ class ScreenInspectWidget : public QWidget {
     void on_btnColorBlack_clicked();
     void on_btnLcdColorGray_clicked();
     void on_btnLcdColorGrayBar_clicked();
-    void on_btnConnectDevice_clicked();
-    void on_btnDisconnectDevice_clicked();
     void on_btnEnterLcdMode_clicked();
     void on_btnExitLcdMode_clicked();
     void on_btnCalibrateCircle_clicked();

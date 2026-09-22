@@ -39,15 +39,29 @@ QFrame#consoleBrandLine {
 }
 
 QLabel#consoleBrandTitle {
-	font-size: 16px;
+	font-family: "Segoe UI", "Microsoft YaHei UI";
+	font-size: 18px;
 	font-weight: 700;
-	color: #243654;
+	color: #01205c;
+	padding: 0;
 }
 
 QLabel#consoleBrandSub {
 	font-size: 13px;
-	color: #71839d;
-	padding-bottom: 2px;
+	color: #4a6088;
+	padding: 0;
+}
+
+QLabel#consoleVersionLabel {
+	min-height: 18px;
+	max-height: 18px;
+	padding: 0 8px;
+	border-radius: 9px;
+	font-size: 11px;
+	font-weight: 600;
+	color: #346df5;
+	background: #d0e2fd;
+	border: 0;
 }
 
 QPushButton#consoleNavConnect,
@@ -125,7 +139,6 @@ QLabel#macLabel,
 QLabel#cloudLoginLabel,
 QLabel#WifiStatusLabel,
 QLabel#consoleFactoryLabel,
-QLabel#consoleVersionLabel,
 QLabel#consoleBuildLabel {
 	min-height: 25px;
 	padding: 0 12px;
@@ -850,6 +863,25 @@ QWidget#consoleWorkPage QGroupBox {
 	border-radius: 14px;
 }
 
+/* 工作区表单行：标签/输入/按钮同一行高，垂直居中 */
+QWidget#consoleWorkPage QGroupBox QLabel {
+	min-height: 32px;
+	max-height: 32px;
+	padding: 0;
+	color: #4f6480;
+	font-size: 13px;
+}
+QWidget#consoleWorkPage QGroupBox QComboBox,
+QWidget#consoleWorkPage QGroupBox QSpinBox,
+QWidget#consoleWorkPage QGroupBox QDoubleSpinBox,
+QWidget#consoleWorkPage QGroupBox QLineEdit,
+QWidget#consoleWorkPage QGroupBox QPushButton {
+	min-height: 32px;
+	max-height: 32px;
+	padding-top: 0;
+	padding-bottom: 0;
+}
+
 QWidget#consoleBusinessGridHost QGroupBox,
 QTabWidget#tabWidget_debug_production QGroupBox {
 	background: #ffffff;
@@ -963,6 +995,56 @@ QWidget#consoleWorkPage QGroupBox QGroupBox {
 	margin-top: 6px;
 	background: #f7fafe;
 	border: 1px solid #e7eef7;
+}
+
+/* 自定义指令：外层一张卡，内层三行贴近 Designer，不再拆成三张大卡 */
+QGroupBox#groupBox_6 {
+	padding: 8px 8px 6px 8px;
+}
+QGroupBox#groupBox_6 QGroupBox {
+	margin-top: 2px;
+	padding: 4px 6px 4px 6px;
+	background: transparent;
+	border: 1px solid #e7eef7;
+	border-radius: 10px;
+}
+QGroupBox#groupBox_6 QGroupBox::title {
+	subcontrol-origin: margin;
+	left: 8px;
+	padding: 0 4px;
+	color: #5b6f88;
+	font-size: 12px;
+	font-weight: 600;
+}
+QGroupBox#groupBox_6 QLineEdit {
+	min-width: 64px;
+}
+QGroupBox#groupBox_6 QPushButton {
+	min-width: 110px;
+}
+
+/* 吸力专项：左峰检/状态/曲线，右泵阀/表格，避免被通用 32px 规则撑乱 */
+QWidget#tab_dongle_suction QGroupBox#groupBox_dongle_suction_peak_params QLabel,
+QWidget#tab_dongle_suction QGroupBox#groupBox_dongle_suction_live QLabel {
+	min-height: 22px;
+	max-height: 22px;
+	font-size: 12px;
+}
+QWidget#tab_dongle_suction QGroupBox#groupBox_dongle_at_pump QLabel {
+	min-height: 24px;
+	max-height: 24px;
+	min-width: 0;
+}
+QWidget#tab_dongle_suction QGroupBox#groupBox_dongle_at_pump QPushButton {
+	min-width: 64px;
+}
+QWidget#tab_dongle_suction QLabel#dongleSuctionCh1PeakStatLabel,
+QWidget#tab_dongle_suction QLabel#dongleSuctionCh2PeakStatLabel,
+QWidget#tab_dongle_suction QLabel#dongleSuctionCh3PeakStatLabel,
+QWidget#tab_dongle_suction QLabel#dongleSuctionPacketIntervalLabel {
+	color: #243654;
+	font-family: "Consolas", "Microsoft YaHei UI";
+	font-size: 12px;
 }
 
 QWidget#consoleWorkPage QPushButton {
@@ -1260,9 +1342,13 @@ QLabel#consoleMetricTempLabel {
 }
 
 QLabel#consoleStatusDeviceState {
-	color: #178269;
+	color: #667b95;
 	font-size: 11px;
 	font-weight: 600;
+}
+
+QLabel#consoleStatusDeviceState[kind="on"] {
+	color: #2563eb;
 }
 
 QLabel#consoleStatusMotorState,
@@ -1403,3 +1489,48 @@ QPushButton[physPad="true"][btnPressed="true"] {
 	border: 2px solid #1d4ed8;
 	color: #ffffff;
 }
+
+/* 进度条：主题蓝，避免系统默认刺眼绿 */
+QProgressBar {
+	min-height: 16px;
+	max-height: 18px;
+	border: 1px solid #dce8f6;
+	border-radius: 9px;
+	background: #eef3f9;
+	text-align: center;
+	color: #243654;
+	font-size: 11px;
+}
+
+QProgressBar::chunk {
+	border-radius: 8px;
+	background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+		stop:0 #62a3fb, stop:1 #3b82f6);
+}
+
+/* ui预览页拖放区：吃满剩余高度 */
+QLabel#high_speed_tp,
+QLabel#active_picture {
+	border: 2px solid #f59e0b;
+	border-radius: 10px;
+	background: #fffbeb;
+	color: #92400e;
+	padding: 12px;
+	min-height: 160px;
+}
+
+/* 蓝牙 OTA 结果胶囊 */
+QLabel#bleotaresult {
+	border-radius: 6px;
+	font-weight: 700;
+	padding: 2px 8px;
+	min-height: 22px;
+	max-height: 28px;
+}
+
+/* 泵/阀驱动下拉：箭头区占宽，正文要留足 */
+QComboBox#comboDongleDriveType {
+	min-width: 148px;
+	padding-right: 36px;
+}
+

@@ -730,8 +730,6 @@ class MainWindow : public QMainWindow {
     void on_qaiot_enter_fac_mode_clicked();
     void on_qaiot_exit_fac_mode_clicked();
     void on_qaiot_travel_lock_clicked();
-    void on_qaiot_read_soft_ver_clicked();
-    void on_qaiot_read_device_name_clicked();
     void on_qaiot_send_sim_key_clicked();
     void on_qaiot_read_aging_status_clicked();
     void on_qaiot_send_batt_percent_clicked();

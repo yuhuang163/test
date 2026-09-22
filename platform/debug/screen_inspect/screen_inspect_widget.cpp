@@ -209,10 +209,6 @@ void ScreenInspectWidget::bindDesignerUi() {
         SETTINGS.value(QStringLiteral("ScreenInspect/Roi")).toString());
 
     QMetaObject::connectSlotsByName(this);
-    if (ui->btnConnectDevice)
-        connect(ui->btnConnectDevice, &QPushButton::clicked, this, &ScreenInspectWidget::on_btnConnectDevice_clicked);
-    if (ui->btnDisconnectDevice)
-        connect(ui->btnDisconnectDevice, &QPushButton::clicked, this, &ScreenInspectWidget::on_btnDisconnectDevice_clicked);
     if (ui->btnEnterLcdMode)
         connect(ui->btnEnterLcdMode, &QPushButton::clicked, this, &ScreenInspectWidget::on_btnEnterLcdMode_clicked);
     if (ui->btnExitLcdMode)
@@ -676,22 +672,18 @@ void ScreenInspectWidget::appendLog(const QString& text) {
 }
 
 void ScreenInspectWidget::connectDevice() {
+    // 「去连接」：跳转全局连接页，避免本页再维护一套 BLE 连接入口
     MainWindow* mw = qobject_cast<MainWindow*>(window());
-    if (!mw || !mw->at) {
-        appendLog(QStringLiteral("Dongle 未就绪或不在主窗口运行"));
+    if (!mw) {
+        appendLog(QStringLiteral("主窗口未就绪，无法跳转连接页"));
         return;
     }
-    const QString mac = mw->currentUiMacAddress();
-    mw->at->resetConnected();
-    mw->at->set(DongleCmd::BleScanConnect, mac);
-    if (!mac.isEmpty()) {
-        appendLog(QStringLiteral("已下发连接指令（BleScanConnect, AT+MAC=%1），正在等待连接...").arg(mac));
-    } else {
-        appendLog(QStringLiteral("已下发自动扫描连接指令（BleScanConnect, AT+MAC=），正在等待连接..."));
-    }
+    mw->selectConsoleNav(0);
+    appendLog(QStringLiteral("已跳转到「连接」页，请在那里连接 Dongle/串口与产品蓝牙"));
 }
 
 void ScreenInspectWidget::disconnectDevice() {
+    // 保留实现供内部清理；界面不再暴露断开按钮
     MainWindow* mw = qobject_cast<MainWindow*>(window());
     if (!mw || !mw->at) {
         appendLog(QStringLiteral("Dongle 未就绪"));
@@ -702,7 +694,7 @@ void ScreenInspectWidget::disconnectDevice() {
     isLcdMode_ = false;
     updateLcdModeUi();
     updateConnectionUi(false);
-    appendLog(QStringLiteral("已下发断开蓝牙连接指令（AT+MAC=00:00:00:00:00:00）"));
+    appendLog(QStringLiteral("已断开产品蓝牙连接"));
 }
 
 void ScreenInspectWidget::enterLcdMode(std::function<void()> onDone) {
@@ -714,12 +706,12 @@ void ScreenInspectWidget::enterLcdMode(std::function<void()> onDone) {
     }
     mw->protocolManager.setCurrentProtocolType(QProtocolManager::ProtocolType::Qfctp);
     mw->protocolManager.set(DeviceCmd::FacMode, 1);
-    appendLog(QStringLiteral("切换协议为 Qfctp，下发【进入工厂模式】(FacMode=1)"));
+    appendLog(QStringLiteral("正在进入测色模式…"));
     QTimer::singleShot(150, this, [this, mw, onDone]() {
         mw->protocolManager.set(DeviceCmd::LcdColorTestMode, QVariantMap{{QStringLiteral("enter"), 1}});
         isLcdMode_ = true;
         updateLcdModeUi();
-        appendLog(QStringLiteral("下发【进入LCD颜色测试模式】(LcdColorTestMode enter=1)"));
+        appendLog(QStringLiteral("测色模式已开启，可下发纯色"));
         if (onDone) {
             QTimer::singleShot(100, this, onDone);
         }
@@ -734,12 +726,12 @@ void ScreenInspectWidget::exitLcdMode() {
     }
     mw->protocolManager.setCurrentProtocolType(QProtocolManager::ProtocolType::Qfctp);
     mw->protocolManager.set(DeviceCmd::LcdColorTestMode, QVariantMap{{QStringLiteral("enter"), 0}});
-    appendLog(QStringLiteral("下发【退出LCD颜色测试模式】(LcdColorTestMode enter=0)"));
+    appendLog(QStringLiteral("正在退出测色模式…"));
     QTimer::singleShot(150, this, [this, mw]() {
         mw->protocolManager.set(DeviceCmd::FacMode, 0);
         isLcdMode_ = false;
         updateLcdModeUi();
-        appendLog(QStringLiteral("下发【退出工厂模式】(FacMode=0)"));
+        appendLog(QStringLiteral("测色模式已退出"));
     });
 }
 
@@ -762,7 +754,7 @@ void ScreenInspectWidget::sendLcdColor(int colorId, const QString& colorName, in
     };
 
     if (!isLcdMode_) {
-        appendLog(QStringLiteral("当前未在 LCD 模式，自动先进入 LCD 模式..."));
+        appendLog(QStringLiteral("当前未进测色模式，先自动进入…"));
         enterLcdMode(doSend);
     } else {
         doSend();
@@ -781,22 +773,26 @@ void ScreenInspectWidget::checkConnectionStatus() {
 void ScreenInspectWidget::updateConnectionUi(bool connected) {
     if (!ui || !ui->label_deviceConnStatus) return;
     if (connected) {
-        ui->label_deviceConnStatus->setText(QStringLiteral("● 设备已连接"));
-        ui->label_deviceConnStatus->setStyleSheet(QStringLiteral("color: #2e7d32; font-weight: bold;"));
+        ui->label_deviceConnStatus->setText(QStringLiteral("● 产品已连接"));
+        ui->label_deviceConnStatus->setStyleSheet(QStringLiteral("color: #2563eb; font-weight: 600;"));
+        if (ui->btnConnectDevice)
+            ui->btnConnectDevice->setVisible(false);
     } else {
-        ui->label_deviceConnStatus->setText(QStringLiteral("○ 设备未连接"));
-        ui->label_deviceConnStatus->setStyleSheet(QStringLiteral("color: #757575; font-weight: normal;"));
+        ui->label_deviceConnStatus->setText(QStringLiteral("○ 产品未连接"));
+        ui->label_deviceConnStatus->setStyleSheet(QStringLiteral("color: #5b6f88; font-weight: normal;"));
+        if (ui->btnConnectDevice)
+            ui->btnConnectDevice->setVisible(true);
     }
 }
 
 void ScreenInspectWidget::updateLcdModeUi() {
     if (!ui || !ui->label_lcdModeStatus) return;
     if (isLcdMode_) {
-        ui->label_lcdModeStatus->setText(QStringLiteral("● LCD模式已开启"));
-        ui->label_lcdModeStatus->setStyleSheet(QStringLiteral("color: #1976d2; font-weight: bold;"));
+        ui->label_lcdModeStatus->setText(QStringLiteral("● 测色模式已开"));
+        ui->label_lcdModeStatus->setStyleSheet(QStringLiteral("color: #2563eb; font-weight: 600;"));
     } else {
-        ui->label_lcdModeStatus->setText(QStringLiteral("○ 未进入LCD模式"));
-        ui->label_lcdModeStatus->setStyleSheet(QStringLiteral("color: #757575; font-weight: normal;"));
+        ui->label_lcdModeStatus->setText(QStringLiteral("○ 未进测色"));
+        ui->label_lcdModeStatus->setStyleSheet(QStringLiteral("color: #5b6f88; font-weight: normal;"));
     }
 }
 
@@ -857,14 +853,6 @@ void ScreenInspectWidget::on_btnCalibrateCircle_clicked() {
 
 void ScreenInspectWidget::on_checkBox_reuseCircle_toggled(bool) {
     saveThresholdsToSettings();
-}
-
-void ScreenInspectWidget::on_btnConnectDevice_clicked() {
-    connectDevice();
-}
-
-void ScreenInspectWidget::on_btnDisconnectDevice_clicked() {
-    disconnectDevice();
 }
 
 void ScreenInspectWidget::on_btnEnterLcdMode_clicked() {
