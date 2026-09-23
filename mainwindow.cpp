@@ -187,16 +187,6 @@ static QLayout* periphFindOwningLayout(QLayout* lay, QWidget* w) {
     return nullptr;
 }
 
-static void periphTakeWidget(QLayout* dest, QWidget* w) {
-    if (!dest || !w)
-        return;
-    if (QWidget* p = w->parentWidget()) {
-        if (QLayout* owner = periphFindOwningLayout(p->layout(), w))
-            owner->removeWidget(w);
-    }
-    dest->addWidget(w);
-}
-
 // Designer 保存会拆掉「只包一层布局」的空壳 QWidget；运行时按布局名补回，避免 ui->consoleShell 这类成员丢失
 static QWidget* wrapNamedLayout(QLayout* owner, QLayout* inner, const QString& name) {
     if (!inner)
@@ -457,58 +447,6 @@ static void installConsoleSegmentedInLayout(QLayout* lay) {
     }
     for (const auto& p : pairs)
         bindConsoleSegPair(p.first, p.second, true);
-}
-
-static QGroupBox* periphWrapHBox(QHBoxLayout* src, const QString& title) {
-    auto* box = new QGroupBox(title);
-    auto* lay = new QHBoxLayout(box);
-    lay->setContentsMargins(8, 8, 8, 8);
-    lay->setSpacing(8);
-    if (!src)
-        return box;
-    // 从原父布局摘下整行；takeAt 不会改 parent，必须 addWidget 才能挂到新 GroupBox
-    if (QWidget* host = src->parentWidget()) {
-        if (QLayout* parentLay = host->layout())
-            parentLay->removeItem(src);
-    }
-    while (src->count() > 0) {
-        QLayoutItem* it = src->takeAt(0);
-        if (!it)
-            continue;
-        if (QWidget* w = it->widget()) {
-            lay->addWidget(w);
-            delete it;
-        } else if (QLayout* childLay = it->layout()) {
-            lay->addLayout(childLay);
-            delete it;
-        } else if (it->spacerItem()) {
-            lay->addItem(it);
-        } else {
-            delete it;
-        }
-    }
-    delete src;
-    return box;
-}
-
-// 优先复用 .ui 里已建好的外设子页（Designer ≈ 运行时）
-static QWidget* periphMakePage(QTabWidget* parent, QWidget* existing, const QString& objectName, QVBoxLayout** layOut) {
-    QWidget* page = existing;
-    if (!page && parent)
-        page = parent->findChild<QWidget*>(objectName, Qt::FindDirectChildrenOnly);
-    if (!page) {
-        page = new QWidget(parent);
-        page->setObjectName(objectName);
-    }
-    auto* lay = qobject_cast<QVBoxLayout*>(page->layout());
-    if (!lay) {
-        lay = new QVBoxLayout(page);
-        lay->setContentsMargins(8, 8, 8, 8);
-        lay->setSpacing(8);
-    }
-    if (layOut)
-        *layOut = lay;
-    return page;
 }
 
 static QString consoleInferBtnRole(const QString& text) {
@@ -1197,7 +1135,7 @@ static void applyConsoleBusinessGridColumns(Ui::MainWindow* ui, QWidget* console
         bumpConsoleFlowHostHeights(consoleShell);
 }
 
-// 业务页布局以 .ui 为准（Designer 可调）；这里只隐藏重复项、折行、收掉旧页
+// 业务页布局以 .ui 为准；这里只做自定义指令等长横排的流式折行
 static void initBusinessCardGrid(QWidget* root, Ui::MainWindow* ui) {
     if (!root || !ui || !ui->tab_debug_group_production || !ui->tabWidget_debug_production)
         return;
@@ -1205,59 +1143,18 @@ static void initBusinessCardGrid(QWidget* root, Ui::MainWindow* ui) {
         return;
     ui->tab_debug_group_production->setProperty("consoleBizTabsReady", true);
 
-    auto hideDup = [](QWidget* w) {
-        if (w)
-            w->hide();
-    };
-    static const char* kHideDupNames[] = {
-        "fac_mode",
-        "exit_fac_mode",
-        "label_109",
-    };
-    for (const char* name : kHideDupNames)
-        hideDup(uiFind<QWidget>(root, name));
-
-    // 自定义指令 / 阈值等长横排改成流式折行
     makeConsoleFormsWrap(ui->tab_debug_group_production);
     if (ui->tab_debug_group_peripheral)
         makeConsoleFormsWrap(ui->tab_debug_group_peripheral);
     if (ui->consoleWorkPage)
         makeConsoleFormsWrap(ui->consoleWorkPage);
-
-    if (ui->groupBox_qaiot_feature)
-        ui->groupBox_qaiot_feature->setTitle(QStringLiteral("循环上报与阈值"));
-
-    QTabWidget* tabs = ui->tabWidget_debug_production;
-    auto dropTab = [tabs](QWidget* page) {
-        if (!page || !tabs)
-            return;
-        const int i = tabs->indexOf(page);
-        if (i >= 0)
-            tabs->removeTab(i);
-        page->hide();
-    };
-    dropTab(uiFind<QWidget>(root, "tab"));
-    dropTab(uiFind<QWidget>(root, "tab_3"));
-    tabs->show();
-    tabs->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    if (auto* outer = qobject_cast<QBoxLayout*>(ui->tab_debug_group_production->layout())) {
-        const int idx = outer->indexOf(tabs);
-        if (idx >= 0)
-            outer->setStretch(idx, 1);
-    }
-}
-
-static void packDongleAtCards(Ui::MainWindow* ui) {
-    // AT 页两列网格已在 mainwindow.ui（gridLayout_dongle_at），不再运行时拆装
-    Q_UNUSED(ui);
 }
 
 void MainWindow::initDebugTabChrome() {
     if (!ui->tabWidget)
         return;
+    // objectName 给 QSS 用；与 ui-> 成员名刻意区分，勿改 .ui 的 name
     ui->tabWidget->setObjectName(QStringLiteral("tabWidget_debugOuter"));
-    ui->tabWidget->setUsesScrollButtons(true);
-    ui->tabWidget->setDocumentMode(true);
     QTabBar* outerBar = ui->tabWidget->tabBar();
     outerBar->setElideMode(Qt::ElideRight);
     outerBar->setDrawBase(false);
@@ -1267,8 +1164,6 @@ void MainWindow::initDebugTabChrome() {
         if (inner == ui->tabWidget)
             continue;
         inner->setObjectName(QStringLiteral("tabWidget_debugInner"));
-        inner->setDocumentMode(true);
-        inner->setUsesScrollButtons(true);
         QTabBar* bar = inner->tabBar();
         bar->setElideMode(Qt::ElideNone);
         bar->setDrawBase(false);
@@ -1279,187 +1174,8 @@ void MainWindow::initDebugTabChrome() {
 void MainWindow::initDebugTabLayout() {
     if (!ui->tabWidget)
         return;
-    // 对齐 HTML：外设按器件拆三级页签；优先复用 .ui 已建页面
-    if (ui->tabWidget_debug_peripheral && ui->tab_debug_group_peripheral) {
-        QTabWidget* periph = ui->tabWidget_debug_peripheral;
-        auto* statePage = ui->tab_debug_group_peripheral->findChild<QWidget*>(QStringLiteral("tab_periph_state"));
-        QVBoxLayout* stateLay = nullptr;
-        statePage = periphMakePage(periph, statePage, QStringLiteral("tab_periph_state"), &stateLay);
-        if (ui->groupBox_2) {
-            if (auto* outerLay = qobject_cast<QBoxLayout*>(ui->tab_debug_group_peripheral->layout()))
-                outerLay->removeWidget(ui->groupBox_2);
-            ui->groupBox_2->setMaximumHeight(QWIDGETSIZE_MAX);
-            ui->groupBox_2->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-            if (stateLay->indexOf(ui->groupBox_2) < 0)
-                stateLay->addWidget(ui->groupBox_2);
-        }
-
-        QVBoxLayout* vibLay = nullptr;
-        QWidget* vibPage = periphMakePage(periph, periph->findChild<QWidget*>(QStringLiteral("tab_periph_vibrator")),
-                                          QStringLiteral("tab_periph_vibrator"), &vibLay);
-        if (vibLay->count() == 0) {
-            vibLay->addWidget(periphWrapHBox(ui->horizontalLayout_qaiot_vib, QStringLiteral("振子参数")));
-            vibLay->addStretch();
-        }
-
-        QVBoxLayout* heatLay = nullptr;
-        QWidget* heatPage = periphMakePage(periph, periph->findChild<QWidget*>(QStringLiteral("tab_periph_heat")),
-                                           QStringLiteral("tab_periph_heat"), &heatLay);
-        if (heatLay->count() == 0) {
-            heatLay->addWidget(periphWrapHBox(ui->horizontalLayout_qaiot_heat_vib, QStringLiteral("加热参数")));
-            periphTakeWidget(heatLay, ui->groupBox_root_heat_level);
-            heatLay->addStretch();
-        }
-
-        QVBoxLayout* battLay = nullptr;
-        QWidget* battPage = periphMakePage(periph, periph->findChild<QWidget*>(QStringLiteral("tab_periph_battery")),
-                                           QStringLiteral("tab_periph_battery"), &battLay);
-        // 电池测试 + 模拟电池已在 .ui（verticalGroupBox_4 / groupBox_periph_batt_sim），勿再 wrap 一层
-        Q_UNUSED(battPage);
-
-        QVBoxLayout* keyLay = nullptr;
-        QWidget* keyPage = periphMakePage(periph, periph->findChild<QWidget*>(QStringLiteral("tab_periph_key")),
-                                          QStringLiteral("tab_periph_key"), &keyLay);
-        if (keyLay->count() == 0) {
-            auto* simBox = new QGroupBox(QStringLiteral("模拟按键"));
-            auto* simRow = new QHBoxLayout(simBox);
-            simRow->setContentsMargins(8, 8, 8, 8);
-            simRow->setSpacing(8);
-            periphTakeWidget(simRow, ui->label_qaiot_sim_key);
-            periphTakeWidget(simRow, ui->qaiot_sim_key);
-            periphTakeWidget(simRow, ui->qaiot_send_sim_key);
-            simRow->addStretch();
-            keyLay->addWidget(simBox);
-            periphTakeWidget(keyLay, ui->get_keysignal);
-            keyLay->addStretch();
-        }
-
-        QVBoxLayout* imuLay = nullptr;
-        QWidget* imuPage = periphMakePage(periph, periph->findChild<QWidget*>(QStringLiteral("tab_periph_imu")),
-                                          QStringLiteral("tab_periph_imu"), &imuLay);
-        if (imuLay->count() == 0) {
-            periphTakeWidget(imuLay, ui->groupBox_100);
-            imuLay->addStretch();
-        }
-
-        QVBoxLayout* bleLay = nullptr;
-        QWidget* blePage = periphMakePage(periph, periph->findChild<QWidget*>(QStringLiteral("tab_periph_ble")),
-                                          QStringLiteral("tab_periph_ble"), &bleLay);
-        if (bleLay->count() == 0) {
-            auto* waitRow = new QHBoxLayout();
-            waitRow->setSpacing(8);
-            if (ui->ble_test_result) {
-                ui->ble_test_result->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-                periphTakeWidget(waitRow, ui->ble_test_result);
-            }
-            if (ui->wifi_test_result) {
-                ui->wifi_test_result->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-                periphTakeWidget(waitRow, ui->wifi_test_result);
-            }
-            if (waitRow->count() > 0)
-                bleLay->addLayout(waitRow);
-            else
-                delete waitRow;
-            if (ui->start_wifible_test)
-                periphTakeWidget(bleLay, ui->start_wifible_test);
-            if (ui->groupBox_signal_debug)
-                periphTakeWidget(bleLay, ui->groupBox_signal_debug);
-            periphTakeWidget(bleLay, ui->groupBox_3);
-            bleLay->addStretch();
-        }
-
-        QVBoxLayout* pumpLay = nullptr;
-        QWidget* pumpPage = periphMakePage(periph, periph->findChild<QWidget*>(QStringLiteral("tab_periph_pump")),
-                                           QStringLiteral("tab_periph_pump"), &pumpLay);
-        if (pumpLay->count() == 0) {
-            periphTakeWidget(pumpLay, ui->widget_pump_stall);
-            periphTakeWidget(pumpLay, ui->widget_flange);
-            pumpLay->addWidget(periphWrapHBox(ui->horizontalLayout_qaiot_pump, QStringLiteral("泵参数")));
-            pumpLay->addStretch();
-        }
-
-        QVBoxLayout* valveLay = nullptr;
-        QWidget* valvePage = periphMakePage(periph, periph->findChild<QWidget*>(QStringLiteral("tab_periph_valve")),
-                                            QStringLiteral("tab_periph_valve"), &valveLay);
-        if (valveLay->count() == 0) {
-            valveLay->addWidget(periphWrapHBox(ui->horizontalLayout_qaiot_valve, QStringLiteral("阀参数")));
-            valveLay->addStretch();
-        }
-
-        QVBoxLayout* lightLay = nullptr;
-        QWidget* lightPage = periphMakePage(periph, periph->findChild<QWidget*>(QStringLiteral("tab_periph_light")),
-                                            QStringLiteral("tab_periph_light"), &lightLay);
-        if (lightLay->count() == 0) {
-            auto* lightBox = new QGroupBox(QStringLiteral("光感测试"));
-            auto* lightRow = new QHBoxLayout(lightBox);
-            periphTakeWidget(lightRow, ui->light_repo_start);
-            periphTakeWidget(lightRow, ui->light_repo_stop);
-            periphTakeWidget(lightRow, ui->set_light_sensor);
-            periphTakeWidget(lightRow, ui->read_light_sensor);
-            lightLay->addWidget(lightBox);
-            lightLay->addStretch();
-        }
-
-        QVBoxLayout* pressLay = nullptr;
-        QWidget* pressPage = periphMakePage(periph, periph->findChild<QWidget*>(QStringLiteral("tab_periph_pressure")),
-                                            QStringLiteral("tab_periph_pressure"), &pressLay);
-        if (pressLay->count() == 0) {
-            periphTakeWidget(pressLay, ui->verticalGroupBox_1);
-            pressLay->addStretch();
-        }
-
-        QVBoxLayout* ampLay = nullptr;
-        QWidget* ampPage = periphMakePage(periph, periph->findChild<QWidget*>(QStringLiteral("tab_periph_amp")),
-                                          QStringLiteral("tab_periph_amp"), &ampLay);
-        if (ampLay->count() == 0) {
-            periphTakeWidget(ampLay, ui->verticalGroupBox_3);
-            ampLay->addStretch();
-        }
-
-        struct PeriphTabItem {
-            QWidget* page;
-            QString title;
-        };
-        const QList<PeriphTabItem> order = {
-            {statePage, QStringLiteral("外设状态")},
-            {ui->screenInspectPage, QStringLiteral("屏幕")},
-            {vibPage, QStringLiteral("振子")},
-            {heatPage, QStringLiteral("加热")},
-            {battPage, QStringLiteral("电池")},
-            {keyPage, QStringLiteral("按键")},
-            {ui->tab_5, QStringLiteral("电机")},
-            {imuPage, QStringLiteral("陀螺仪")},
-            {ui->tab_11, QStringLiteral("摄像头")},
-            {ui->tab_13, QStringLiteral("LED灯")},
-            {ampPage, QStringLiteral("功放IC")},
-            {blePage, QStringLiteral("蓝牙wifi")},
-            {pumpPage, QStringLiteral("泵")},
-            {valvePage, QStringLiteral("阀")},
-            {lightPage, QStringLiteral("光感")},
-            {pressPage, QStringLiteral("压感")},
-        };
-        while (periph->count() > 0)
-            periph->removeTab(0);
-        for (const PeriphTabItem& item : order) {
-            if (item.page)
-                periph->addTab(item.page, item.title);
-        }
-        // 隐藏遗留传感器页（控件已拆到分类页）
-        if (QWidget* legacy = uiFind<QWidget>(this, "tab_6"))
-            legacy->setVisible(false);
-        periph->setCurrentIndex(0);
-        if (auto* outerLay = qobject_cast<QBoxLayout*>(ui->tab_debug_group_peripheral->layout())) {
-            // 外设状态已进子页，去掉外层空 item
-            const int idx = outerLay->indexOf(periph);
-            if (idx >= 0)
-                outerLay->setStretch(idx, 1);
-        }
-    }
-
-    // 业务控制：按模块拆内层页签（对齐外设）
+    // 外设/业务子页结构已在 mainwindow.ui，不再运行时拆装
     initBusinessCardGrid(this, ui);
-
-    packDongleAtCards(ui);
 
     wrapDebugTabPageInScrollArea(ui->tabWidget);
     pinDebugTabPageToTop(ui->tabWidget);
@@ -4473,7 +4189,7 @@ void MainWindow::on_otaTestPushButton_clicked() {
             if (at->getConnected() == false && timeout.elapsed() > 10000) {
                 otaStressFinish_ = true;
             }
-            ui->lcdNumber->display(otaStressTotalTime_.elapsed() / 1000);
+            ui->lcdNumber->setText(QString::number(otaStressTotalTime_.elapsed() / 1000));
         }
 
         appendAndSaveWifiOtaLog(QString("升级次数:%1").arg(otaTesttimes++));
@@ -4569,7 +4285,7 @@ void MainWindow::on_otaTestPushButton_2_clicked() {
             break;
         }
 
-        ui->lcdNumber->display(totalwifiOtaTime.elapsed() / 1000);
+        ui->lcdNumber->setText(QString::number(totalwifiOtaTime.elapsed() / 1000));
         waitWork(200);
     }
 }
@@ -6254,7 +5970,7 @@ void MainWindow::startRootBleOta() {
         imageData, imageId, version, intervalMs, blockBusyWaitMs, fragmentSize,
         [this]() { return stopBleOta != 0; }, &errorText,
         [this, progressToSourceBar](int percent) {
-            ui->bleotalcdtime->display(bleOtaTestTime.elapsed() / 1000);
+            ui->bleotalcdtime->setText(QString::number(bleOtaTestTime.elapsed() / 1000));
             if (progressToSourceBar)
                 emit sendBelSourceOtaSpeed(percent);
             else
@@ -6368,7 +6084,7 @@ void MainWindow::startRootBleOta2(const QByteArray& imageData, uint32_t imageId,
     const bool ok = rootBleOta2Client_.runTransfer(
         imageData, imageId, version, intervalMs, uartChunkSize, [this]() { return stopBleOta != 0; }, &errorText,
         [this, progressToSourceBar](int percent) {
-            ui->bleotalcdtime->display(bleOtaTestTime.elapsed() / 1000);
+            ui->bleotalcdtime->setText(QString::number(bleOtaTestTime.elapsed() / 1000));
             if (progressToSourceBar)
                 emit sendBelSourceOtaSpeed(percent);
             else
@@ -6752,7 +6468,7 @@ void MainWindow::startUsmileBleOtaTransferLegacy() {
     connect(bleotatimer, &QTimer::timeout, this, [this, fileData, chunkSize, totalOtaSize, numChunks]() mutable {
         // QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");
         // showlog("开始发送:" + timestamp);
-        ui->bleotalcdtime->display(bleOtaTestTime.elapsed() / 1000);
+        ui->bleotalcdtime->setText(QString::number(bleOtaTestTime.elapsed() / 1000));
         int offset = currentChunk * chunkSize;
         int size = qMin(chunkSize, totalOtaSize - offset);
 

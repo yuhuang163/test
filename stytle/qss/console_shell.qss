@@ -1145,6 +1145,20 @@ QWidget#consoleWorkPage QLabel {
 	font-size: 12px;
 }
 
+/* OTA 耗时：原 QLCDNumber 七段风不融入，改成与输入框一致的数值标签 */
+QLabel#lcdNumber,
+QLabel#bleotalcdtime {
+	color: #243654;
+	font-size: 13px;
+	font-weight: 700;
+	min-height: 32px;
+	max-height: 32px;
+	padding: 0 10px;
+	border: 1px solid #c9d6e8;
+	border-radius: 8px;
+	background: #ffffff;
+}
+
 QCheckBox {
 	color: #243654;
 	spacing: 8px;

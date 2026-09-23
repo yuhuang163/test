@@ -1963,11 +1963,17 @@ Every Baby</string>
               <property name="tabBarAutoHide">
                <bool>false</bool>
               </property>
+              <property name="documentMode">
+               <bool>true</bool>
+              </property>
+              <property name="usesScrollButtons">
+               <bool>true</bool>
+              </property>
               <widget class="QWidget" name="tab_debug_group_production">
                <attribute name="title">
                 <string>业务控制</string>
                </attribute>
-               <layout class="QVBoxLayout" name="verticalLayout_debug_production" stretch="0">
+               <layout class="QVBoxLayout" name="verticalLayout_debug_production" stretch="1">
                 <property name="spacing">
                  <number>8</number>
                 </property>
@@ -1986,10 +1992,19 @@ Every Baby</string>
                 <item>
                  <widget class="QTabWidget" name="tabWidget_debug_production">
                   <property name="currentIndex">
-                   <number>4</number>
+                   <number>0</number>
+                  </property>
+                  <property name="documentMode">
+                   <bool>true</bool>
                   </property>
                   <property name="usesScrollButtons">
                    <bool>true</bool>
+                  </property>
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
                   </property>
                   <widget class="QWidget" name="tab_biz_basic">
                    <attribute name="title">
@@ -3331,7 +3346,7 @@ Every Baby</string>
                     <item row="1" column="0">
                      <widget class="QGroupBox" name="groupBox_qaiot_feature">
                       <property name="title">
-                       <string>阈值设置</string>
+                       <string>循环上报与频率</string>
                       </property>
                       <layout class="QVBoxLayout" name="verticalLayout_qaiot_feature">
                        <property name="spacing">
@@ -3598,7 +3613,7 @@ Every Baby</string>
                <attribute name="title">
                 <string>外设</string>
                </attribute>
-               <layout class="QVBoxLayout" name="verticalLayout_debug_peripheral">
+               <layout class="QVBoxLayout" name="verticalLayout_debug_peripheral" stretch="1">
                 <property name="spacing">
                  <number>0</number>
                 </property>
@@ -3617,10 +3632,19 @@ Every Baby</string>
                 <item>
                  <widget class="QTabWidget" name="tabWidget_debug_peripheral">
                   <property name="currentIndex">
-                   <number>14</number>
+                   <number>0</number>
+                  </property>
+                  <property name="documentMode">
+                   <bool>true</bool>
                   </property>
                   <property name="usesScrollButtons">
                    <bool>true</bool>
+                  </property>
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
                   </property>
                   <widget class="QWidget" name="tab_periph_state">
                    <attribute name="title">
@@ -3645,7 +3669,7 @@ Every Baby</string>
                     <item>
                      <widget class="QGroupBox" name="groupBox_2">
                       <property name="sizePolicy">
-                       <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                       <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                         <horstretch>0</horstretch>
                         <verstretch>0</verstretch>
                        </sizepolicy>
@@ -6911,6 +6935,12 @@ Every Baby</string>
                      <layout class="QHBoxLayout" name="horizontalLayout_periph_ble_wait">
                       <item>
                        <widget class="QLabel" name="ble_test_result">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
                         <property name="text">
                          <string>WAIT</string>
                         </property>
@@ -6921,6 +6951,12 @@ Every Baby</string>
                       </item>
                       <item>
                        <widget class="QLabel" name="wifi_test_result">
+                        <property name="sizePolicy">
+                         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
+                          <horstretch>0</horstretch>
+                          <verstretch>0</verstretch>
+                         </sizepolicy>
+                        </property>
                         <property name="text">
                          <string>WAIT</string>
                         </property>
@@ -7902,6 +7938,9 @@ Every Baby</string>
                  <widget class="QTabWidget" name="tabWidget_debug_dongle">
                   <property name="currentIndex">
                    <number>0</number>
+                  </property>
+                  <property name="documentMode">
+                   <bool>true</bool>
                   </property>
                   <property name="usesScrollButtons">
                    <bool>true</bool>
@@ -9482,6 +9521,9 @@ Every Baby</string>
                   <property name="currentIndex">
                    <number>0</number>
                   </property>
+                  <property name="documentMode">
+                   <bool>true</bool>
+                  </property>
                   <property name="usesScrollButtons">
                    <bool>true</bool>
                   </property>
@@ -9893,7 +9935,7 @@ Every Baby</string>
                      </layout>
                     </item>
                     <item row="6" column="0">
-                     <layout class="QHBoxLayout" name="horizontalLayout_43" stretch="1,10">
+                     <layout class="QHBoxLayout" name="horizontalLayout_43" stretch="0,0">
                       <item>
                        <widget class="QLabel" name="label_27">
                         <property name="text">
@@ -9902,18 +9944,18 @@ Every Baby</string>
                        </widget>
                       </item>
                       <item>
-                       <widget class="QLCDNumber" name="lcdNumber">
+                       <widget class="QLabel" name="lcdNumber">
                         <property name="minimumSize">
                          <size>
-                          <width>0</width>
-                          <height>50</height>
+                          <width>48</width>
+                          <height>28</height>
                          </size>
                         </property>
-                        <property name="digitCount">
-                         <number>5</number>
+                        <property name="text">
+                         <string>0</string>
                         </property>
-                        <property name="segmentStyle">
-                         <enum>QLCDNumber::Filled</enum>
+                        <property name="alignment">
+                         <set>Qt::AlignLeading|Qt::AlignVCenter</set>
                         </property>
                        </widget>
                       </item>
@@ -10513,12 +10555,24 @@ Every Baby</string>
                        </widget>
                       </item>
                       <item>
-                       <widget class="QLCDNumber" name="bleotalcdtime">
+                       <widget class="QLabel" name="bleotalcdtime">
+                        <property name="minimumSize">
+                         <size>
+                          <width>48</width>
+                          <height>28</height>
+                         </size>
+                        </property>
                         <property name="maximumSize">
                          <size>
                           <width>96</width>
                           <height>28</height>
                          </size>
+                        </property>
+                        <property name="text">
+                         <string>0</string>
+                        </property>
+                        <property name="alignment">
+                         <set>Qt::AlignLeading|Qt::AlignVCenter</set>
                         </property>
                        </widget>
                       </item>
