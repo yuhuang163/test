@@ -9,6 +9,7 @@
 #include <QBuffer>
 #include <QElapsedTimer>
 #include <QHeaderView>
+#include <QScrollArea>
 #include <QTimer>
 #include "dcrf32.h"
 #include <QMouseEvent>
@@ -2607,6 +2608,33 @@ void MainWindow::saveCustom() {
 
     SETTINGS.setValue("WIFI/otaWifiName", ui->wifiUserName_2->text());
     SETTINGS.setValue("WIFI/otaWifiPassword", ui->wifiPassword_2->text());
+
+    // 关闭时再落盘导航/内层 Tab（本机 local.ini），避免未切页时丢状态
+    if (consoleNavGroup_) {
+        const int navId = consoleNavGroup_->checkedId();
+        if (navId >= 0)
+            SETTINGS.setValue(QStringLiteral("Window/ConsoleNavId"), navId);
+    }
+    auto tabName = [](QTabWidget* tw) -> QString {
+        if (!tw)
+            return {};
+        QWidget* w = tw->currentWidget();
+        if (auto* scroll = qobject_cast<QScrollArea*>(w))
+            w = scroll->widget();
+        return w ? w->objectName() : QString();
+    };
+    auto saveTab = [&](QTabWidget* tw, const QString& key) {
+        const QString name = tabName(tw);
+        if (!name.isEmpty())
+            SETTINGS.setValue(key, name);
+    };
+    saveTab(ui->tabWidget_debug_production, QStringLiteral("Window/ConsoleTabProduction"));
+    saveTab(ui->tabWidget_debug_peripheral, QStringLiteral("Window/ConsoleTabPeripheral"));
+    saveTab(ui->tabWidget_debug_dongle, QStringLiteral("Window/ConsoleTabDongle"));
+    saveTab(ui->tabWidget_ota, QStringLiteral("Window/ConsoleTabOta"));
+    saveTab(ui->tabWidget_debug_misc, QStringLiteral("Window/ConsoleTabMisc"));
+    saveTab(ui->consoleLogTabs, QStringLiteral("Window/ConsoleLogTab"));
+    SETTINGS.sync();
 
     qDebug() << "保存内容" << ui->comNameCombo->currentText();
 }

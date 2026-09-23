@@ -41,7 +41,8 @@ inline QString settingsIniPath(const char* fileName) {
 /**
  * 仅下列项使用 上位机设置.local.ini，其余一律 上位机设置.ini：
  * 1. 串口与扫码框默认内容（[mechine]、键名含 comName；getMacDefault 仅手动写入 local.ini）
- * 2. 窗口大小与界面缩放（Window/SettingSize、Window/Size、Window/UiZoom）
+ * 2. 窗口大小与界面缩放、上次打开的调试页（Window/SettingSize、Window/Size、Window/UiZoom、
+ *    Window/ConsoleNavId、Window/ConsoleTab*、Window/ConsoleLogTab）
  * 3. 当前测试流程工站（TestOrderMeta/SelectedStation*，仅存 local.ini）
  * 4. WiFi 名称（WIFI/Name、WIFI/Name0…WIFI/Name9 等，各工位/路号）
  * 5. 云平台本机项（FactoryCloud：环境、BaseUrl、登录态等，见 factoryCloudUsesLocalFile）
@@ -82,6 +83,13 @@ inline bool settingsUseLocalFile(const QString& fullKey) {
         QStringLiteral("Window/SettingSize"),
         QStringLiteral("Window/Size"),
         QStringLiteral("Window/UiZoom"),
+        QStringLiteral("Window/ConsoleNavId"),
+        QStringLiteral("Window/ConsoleTabProduction"),
+        QStringLiteral("Window/ConsoleTabPeripheral"),
+        QStringLiteral("Window/ConsoleTabDongle"),
+        QStringLiteral("Window/ConsoleTabOta"),
+        QStringLiteral("Window/ConsoleTabMisc"),
+        QStringLiteral("Window/ConsoleLogTab"),
         QStringLiteral("SYSTEM/station"),
         QStringLiteral("SYSTEM/MesDefaultUnchecked"),
         QStringLiteral("SYSTEM/ProtocolType"),

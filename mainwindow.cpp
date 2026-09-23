@@ -1388,6 +1388,33 @@ void MainWindow::bindConsoleShellWidgets() {
     consoleShell_ = wrapNamedLayout(uiFind<QLayout>(this, "gridLayout_3"), uiFind<QLayout>(this, "consoleShellLay"), QStringLiteral("consoleShell"));
 }
 
+// 滚动区包裹后 Tab 页是 QScrollArea，逻辑页名在内层 widget 上
+static QString consoleTabLogicalName(QTabWidget* tw) {
+    if (!tw)
+        return {};
+    QWidget* w = tw->currentWidget();
+    if (auto* scroll = qobject_cast<QScrollArea*>(w))
+        w = scroll->widget();
+    return w ? w->objectName() : QString();
+}
+
+static void consoleRestoreTabByName(QTabWidget* tw, const QString& name) {
+    if (!tw || name.isEmpty())
+        return;
+    for (int i = 0; i < tw->count(); ++i) {
+        QWidget* w = tw->widget(i);
+        QWidget* inner = w;
+        if (auto* scroll = qobject_cast<QScrollArea*>(w))
+            inner = scroll->widget();
+        if (inner && inner->objectName() == name) {
+            tw->setCurrentIndex(i);
+            return;
+        }
+    }
+}
+
+static bool consoleUiRestoring = false;
+
 void MainWindow::selectConsoleNav(int id) {
     if (!consoleStack_ || !ui->tabWidget)
         return;
@@ -1411,6 +1438,9 @@ void MainWindow::selectConsoleNav(int id) {
     }
     if (consoleEnterPlayed_)
         playConsolePageEnter(connectPage ? static_cast<QWidget*>(ui->groupBox_5) : ui->consoleWorkPage);
+    // 本机记忆：下次启动回到当前导航页（写入 上位机设置.local.ini）
+    if (!consoleUiRestoring && id >= 0 && id < 6)
+        SETTINGS.setValue(QStringLiteral("Window/ConsoleNavId"), id);
 }
 
 void MainWindow::initConsoleShell() {
@@ -1765,7 +1795,45 @@ void MainWindow::initConsoleShell() {
         ui->consoleConnectGrid->addWidget(ui->consoleCardStep4, 1, 0, 1, 2);
     if (ui->consoleNavConnect)
         ui->consoleNavConnect->setChecked(true);
-    selectConsoleNav(0);
+    // 恢复本机上次打开的导航 + 内层 Tab（默认连接页）
+    consoleUiRestoring = true;
+    const int navId = qBound(0, SETTINGS.value(QStringLiteral("Window/ConsoleNavId"), 0).toInt(), 5);
+    if (consoleNavGroup_) {
+        if (QAbstractButton* btn = consoleNavGroup_->button(navId))
+            btn->setChecked(true);
+    }
+    selectConsoleNav(navId);
+    consoleRestoreTabByName(ui->tabWidget_debug_production,
+                            SETTINGS.value(QStringLiteral("Window/ConsoleTabProduction")).toString());
+    consoleRestoreTabByName(ui->tabWidget_debug_peripheral,
+                            SETTINGS.value(QStringLiteral("Window/ConsoleTabPeripheral")).toString());
+    consoleRestoreTabByName(ui->tabWidget_debug_dongle,
+                            SETTINGS.value(QStringLiteral("Window/ConsoleTabDongle")).toString());
+    consoleRestoreTabByName(ui->tabWidget_ota, SETTINGS.value(QStringLiteral("Window/ConsoleTabOta")).toString());
+    consoleRestoreTabByName(ui->tabWidget_debug_misc,
+                            SETTINGS.value(QStringLiteral("Window/ConsoleTabMisc")).toString());
+    consoleRestoreTabByName(ui->consoleLogTabs, SETTINGS.value(QStringLiteral("Window/ConsoleLogTab")).toString());
+    consoleUiRestoring = false;
+
+    auto bindPersistTab = [this](QTabWidget* tw, const QString& key) {
+        if (!tw || tw->property("consoleTabPersistBound").toBool())
+            return;
+        tw->setProperty("consoleTabPersistBound", true);
+        connect(tw, &QTabWidget::currentChanged, this, [this, tw, key](int) {
+            if (consoleUiRestoring)
+                return;
+            const QString name = consoleTabLogicalName(tw);
+            if (!name.isEmpty())
+                SETTINGS.setValue(key, name);
+        });
+    };
+    bindPersistTab(ui->tabWidget_debug_production, QStringLiteral("Window/ConsoleTabProduction"));
+    bindPersistTab(ui->tabWidget_debug_peripheral, QStringLiteral("Window/ConsoleTabPeripheral"));
+    bindPersistTab(ui->tabWidget_debug_dongle, QStringLiteral("Window/ConsoleTabDongle"));
+    bindPersistTab(ui->tabWidget_ota, QStringLiteral("Window/ConsoleTabOta"));
+    bindPersistTab(ui->tabWidget_debug_misc, QStringLiteral("Window/ConsoleTabMisc"));
+    bindPersistTab(ui->consoleLogTabs, QStringLiteral("Window/ConsoleLogTab"));
+
     updateMainStyle(QStringLiteral("console_shell.qss"));
     applyConsoleStatusIcon(ui->consoleStatusDeviceIcon, ConsoleIconDevice);
     applyConsoleStatusIcon(ui->consoleStatusMotorIcon, ConsoleIconMotor);
