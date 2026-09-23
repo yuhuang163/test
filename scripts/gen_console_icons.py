@@ -120,6 +120,13 @@ def save(path, svg_text):
         else:
             out.append((r, g, b, a))
     im.putdata(out)
+    # 按非透明像素包围盒居中，避免路径/描边导致图标在画布内偏一侧
+    bbox = im.getbbox()
+    if bbox:
+        crop = im.crop(bbox)
+        canvas = Image.new("RGBA", (SIZE, SIZE), (0, 0, 0, 0))
+        canvas.paste(crop, ((SIZE - crop.width) // 2, (SIZE - crop.height) // 2), crop)
+        im = canvas
     im.save(path, "PNG")
     print("wrote", path)
 
@@ -148,6 +155,12 @@ def main():
         save(off, wrap_svg(inner, "#4f6480"))
         make_on_from_off(off, os.path.join(OUT_NAV, name + "-on.png"))
     for name, inner in STATUS.items():
+        if name == "icon-gear":
+            # 顶栏齿轮/帮助成对生成（同色同线宽），见 _gen_gear_icon.py
+            import runpy
+
+            runpy.run_path(os.path.join(os.path.dirname(__file__), "_gen_gear_icon.py"))
+            continue
         save(os.path.join(OUT_STATUS, name + ".png"), wrap_svg(inner, "#476383", stroke_width=1.6))
     print("done")
 

@@ -170,12 +170,22 @@ QToolButton#consoleHelpBtn {
 	max-height: 32px;
 	min-width: 32px;
 	max-width: 32px;
-	padding: 0;
+	padding: 0px;
+	margin: 0px;
 	border: 1px solid rgba(219, 230, 244, 200);
 	border-radius: 10px;
 	background: rgba(255, 255, 255, 180);
 	color: #4f6480;
 	font-weight: 600;
+}
+
+/* 去掉菜单箭头占位，避免 IconOnly 时图标被挤偏 */
+QToolButton#consoleSettingsBtn::menu-indicator,
+QToolButton#consoleHelpBtn::menu-indicator,
+QToolButton#consoleIconBtn::menu-indicator {
+	image: none;
+	width: 0px;
+	height: 0px;
 }
 
 QToolButton#consoleIconBtn:hover,

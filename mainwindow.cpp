@@ -84,92 +84,50 @@ extern "C" // 由于是C版的dll文件，在C++中引入其头文件要加exter
 }
 QByteArray allPackets;
 
-static const QSet<QString>& debugTabPagesWithoutScroll() {
-    // 暂无例外：吸力/曲线页也进滚动区，靠 DefaultConstraint 把两列压进视口
-    static const QSet<QString> pages;
-    return pages;
-}
-
-static void wrapDebugTabPageInScrollArea(QTabWidget* tabWidget) {
-    if (!tabWidget)
+/** .ui 已包好 QScrollArea；这里只刷画布属性与 Dongle/弹性页 sizePolicy。 */
+static void polishDebugTabScrollPage(QScrollArea* scroll, QWidget* page) {
+    if (!scroll || !page)
         return;
-    for (int i = 0; i < tabWidget->count(); ++i) {
-        QWidget* page = tabWidget->widget(i);
-        // 已是滚动区则跳过：属性打在内页上，二次调用时 widget(i) 是 QScrollArea，
-        // 若只查属性会把滚动区再包一层，内容被压成左上角一小块。
-        if (!page || qobject_cast<QScrollArea*>(page))
-            continue;
-        if (page->property("debugScrollWrapped").toBool())
-            continue;
-        if (debugTabPagesWithoutScroll().contains(page->objectName()))
-            continue;
-
-        const QString title = tabWidget->tabText(i);
-        tabWidget->removeTab(i);
-
-        auto* scroll = new QScrollArea(tabWidget);
-        scroll->setObjectName(QStringLiteral("debugTabScrollArea"));
-        scroll->setWidgetResizable(true);
-        scroll->setFrameShape(QFrame::NoFrame);
-        scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-        scroll->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-        // 普通 QWidget/viewport 默认不画 QSS background，需开 StyledBackground，否则露系统灰底
-        scroll->setAttribute(Qt::WA_StyledBackground, true);
-        if (QWidget* vp = scroll->viewport()) {
-            vp->setAttribute(Qt::WA_StyledBackground, true);
-            vp->setAutoFillBackground(true);
-            vp->setProperty("consoleCanvas", true);
-        }
-        page->setAttribute(Qt::WA_StyledBackground, true);
-        page->setAutoFillBackground(true);
-        page->setProperty("consoleCanvas", true);
-        scroll->setWidget(page);
-        tabWidget->insertTab(i, scroll, title);
-        page->setProperty("debugScrollWrapped", true);
-        // 高度随内容；宽度跟视口走，避免最小宽度把中栏撑进右侧栏
-        page->setMinimumWidth(0);
-        if (auto* lay = page->layout()) {
-            // Dongle 吸力/AT 两列必须能压进中栏，否则右列画到设备状态下面
-            const QString pageName = page->objectName();
-            const bool dongleFit = pageName.startsWith(QStringLiteral("tab_dongle"));
-            // ui预览 / 蓝牙OTA：允许随视口伸缩，拖拽区与日志区才能吃满剩余高度
-            const bool elasticFill = (pageName == QStringLiteral("tab_12") || pageName == QStringLiteral("tab_16"));
-            lay->setSizeConstraint((dongleFit || elasticFill) ? QLayout::SetDefaultConstraint : QLayout::SetMinimumSize);
-            if (dongleFit) {
-                // Ignored：允许窄于 sizeHint，否则 H 滚动停在左侧，泵阀列永远看不见
-                page->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Minimum);
-                scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-            } else if (elasticFill) {
-                // 横向可压进中栏；纵向 Expanding 才能让拖拽区/日志吃满视口高度
-                page->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Expanding);
-                scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-            } else {
-                page->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
-            }
-        } else {
-            page->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
-        }
-        for (QLineEdit* e : page->findChildren<QLineEdit*>()) {
-            if (e)
-                e->setMinimumWidth(0);
-        }
+    scroll->setWidgetResizable(true);
+    scroll->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+    scroll->setAttribute(Qt::WA_StyledBackground, true);
+    if (QWidget* vp = scroll->viewport()) {
+        vp->setAttribute(Qt::WA_StyledBackground, true);
+        vp->setAutoFillBackground(true);
+        vp->setProperty("consoleCanvas", true);
+    }
+    page->setAttribute(Qt::WA_StyledBackground, true);
+    page->setAutoFillBackground(true);
+    page->setProperty("consoleCanvas", true);
+    page->setMinimumWidth(0);
+    const QString pageName = page->objectName();
+    const bool dongleFit = pageName.startsWith(QStringLiteral("tab_dongle"));
+    const bool elasticFill = (pageName == QStringLiteral("tab_12") || pageName == QStringLiteral("tab_16"));
+    if (auto* lay = page->layout())
+        lay->setSizeConstraint((dongleFit || elasticFill) ? QLayout::SetDefaultConstraint : QLayout::SetMinimumSize);
+    if (dongleFit) {
+        page->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Minimum);
+        scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    } else if (elasticFill) {
+        page->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Expanding);
+        scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    } else {
+        page->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+    }
+    for (QLineEdit* e : page->findChildren<QLineEdit*>()) {
+        if (e)
+            e->setMinimumWidth(0);
     }
 }
 
-/** 顶对齐已包进滚动区的内页。 */
-static void pinDebugTabPageToTop(QTabWidget* tabWidget) {
+static void polishDebugTabScrollAreas(QTabWidget* tabWidget) {
     if (!tabWidget)
         return;
     for (int i = 0; i < tabWidget->count(); ++i) {
         auto* scroll = qobject_cast<QScrollArea*>(tabWidget->widget(i));
         if (!scroll)
             continue;
-        QWidget* inner = scroll->widget();
-        if (inner && debugTabPagesWithoutScroll().contains(inner->objectName()))
-            continue;
-        // 铺满视口宽度，避免左侧按 sizeHint 缩成一列、右侧大块空白
-        scroll->setWidgetResizable(true);
-        scroll->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+        polishDebugTabScrollPage(scroll, scroll->widget());
     }
 }
 static QLayout* periphFindOwningLayout(QLayout* lay, QWidget* w) {
@@ -183,57 +141,6 @@ static QLayout* periphFindOwningLayout(QLayout* lay, QWidget* w) {
             return lay;
         if (QLayout* found = periphFindOwningLayout(it->layout(), w))
             return found;
-    }
-    return nullptr;
-}
-
-// Designer 保存会拆掉「只包一层布局」的空壳 QWidget；运行时按布局名补回，避免 ui->consoleShell 这类成员丢失
-static QWidget* wrapNamedLayout(QLayout* owner, QLayout* inner, const QString& name) {
-    if (!inner)
-        return nullptr;
-    if (QWidget* pw = inner->parentWidget()) {
-        if (pw->objectName() == name)
-            return pw;
-        if (QWidget* found = pw->findChild<QWidget*>(name))
-            return found;
-    }
-    if (!owner)
-        return nullptr;
-    auto attach = [&](QWidget* host) {
-        inner->setParent(nullptr);
-        host->setObjectName(name);
-        host->setLayout(inner);
-        return host;
-    };
-    if (auto* grid = qobject_cast<QGridLayout*>(owner)) {
-        for (int i = 0; i < grid->count(); ++i) {
-            QLayoutItem* it = grid->itemAt(i);
-            if (!it || it->layout() != inner)
-                continue;
-            int row = 0, col = 0, rowSpan = 1, colSpan = 1;
-            grid->getItemPosition(i, &row, &col, &rowSpan, &colSpan);
-            grid->takeAt(i);
-            auto* host = new QWidget;
-            attach(host);
-            grid->addWidget(host, row, col, rowSpan, colSpan);
-            return host;
-        }
-        return nullptr;
-    }
-    auto* box = qobject_cast<QBoxLayout*>(owner);
-    if (!box)
-        return nullptr;
-    for (int i = 0; i < box->count(); ++i) {
-        QLayoutItem* it = box->itemAt(i);
-        if (!it || it->layout() != inner)
-            continue;
-        const int stretch = box->stretch(i);
-        box->takeAt(i);
-        auto* host = new QWidget;
-        attach(host);
-        box->insertWidget(i, host);
-        box->setStretch(i, stretch);
-        return host;
     }
     return nullptr;
 }
@@ -723,299 +630,6 @@ private:
     int vSpace_;
 };
 
-static void consolePrepareFlowChild(QWidget* w) {
-    if (!w)
-        return;
-    w->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
-    w->setMinimumHeight(32);
-    w->setMaximumHeight(32);
-    if (auto* le = qobject_cast<QLineEdit*>(w)) {
-        le->setMinimumWidth(72);
-        le->setMaximumWidth(QWIDGETSIZE_MAX);
-        le->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
-    } else if (auto* cb = qobject_cast<QComboBox*>(w)) {
-        cb->setMinimumWidth(88);
-        cb->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
-    } else if (qobject_cast<QSpinBox*>(w) || qobject_cast<QDoubleSpinBox*>(w)) {
-        w->setMinimumWidth(64);
-    } else if (auto* btn = qobject_cast<QPushButton*>(w)) {
-        btn->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
-    } else if (auto* lab = qobject_cast<QLabel*>(w)) {
-        lab->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-        lab->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
-    }
-}
-
-static void flattenButtonRowsToFlow(QGroupBox* box) {
-    if (!box)
-        return;
-    auto* v = qobject_cast<QVBoxLayout*>(box->layout());
-    if (!v)
-        return;
-    QList<QWidget*> buttons;
-    QList<QLayout*> oldRows;
-    int firstRow = -1;
-    for (int i = 0; i < v->count(); ++i) {
-        auto* h = qobject_cast<QHBoxLayout*>(v->itemAt(i)->layout());
-        if (!h)
-            continue;
-        QList<QWidget*> row;
-        bool onlyBtns = true;
-        for (int j = 0; j < h->count(); ++j) {
-            QWidget* w = h->itemAt(j)->widget();
-            if (!w)
-                continue;
-            if (!qobject_cast<QPushButton*>(w)) {
-                onlyBtns = false;
-                break;
-            }
-            row.append(w);
-        }
-        if (!onlyBtns)
-            continue;
-        if (firstRow < 0)
-            firstRow = i;
-        if (!row.isEmpty())
-            buttons.append(row);
-        oldRows.append(h);
-    }
-    if (firstRow < 0)
-        return;
-    for (QLayout* h : oldRows) {
-        while (h->count() > 0) {
-            QLayoutItem* it = h->takeAt(0);
-            delete it;
-        }
-        v->removeItem(h);
-        delete h;
-    }
-    if (buttons.isEmpty())
-        return;
-    auto* host = new QWidget(box);
-    host->setObjectName(QStringLiteral("consoleFlowHost"));
-    auto* flow = new ConsoleFlowLayout(host, 0, 8, 8);
-    for (QWidget* b : buttons) {
-        consolePrepareFlowChild(b);
-        flow->addWidget(b);
-    }
-    host->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
-    v->insertWidget(firstRow, host);
-    box->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
-    box->setMaximumHeight(QWIDGETSIZE_MAX);
-}
-
-static void flattenHBoxToFlow(QGroupBox* box) {
-    if (!box)
-        return;
-    auto* h = qobject_cast<QHBoxLayout*>(box->layout());
-    if (!h || h->count() < 3)
-        return;
-    QList<QWidget*> widgets;
-    for (int i = 0; i < h->count(); ++i) {
-        if (QWidget* w = h->itemAt(i)->widget())
-            widgets.append(w);
-    }
-    if (widgets.size() < 3)
-        return;
-    auto* host = new QWidget(box);
-    host->setObjectName(QStringLiteral("consoleFlowHost"));
-    auto* flow = new ConsoleFlowLayout(host, 0, 8, 8);
-    for (QWidget* w : widgets) {
-        h->removeWidget(w);
-        consolePrepareFlowChild(w);
-        flow->addWidget(w);
-    }
-    while (h->count() > 0) {
-        QLayoutItem* it = h->takeAt(0);
-        delete it;
-    }
-    host->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
-    h->addWidget(host);
-    box->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
-    box->setMaximumHeight(QWIDGETSIZE_MAX);
-}
-
-/** VBox 里过长的 HBox 行改成流式折行，避免窄窗时被右侧栏挡住 */
-static void flattenNestedHBoxRowsToFlow(QGroupBox* box) {
-    if (!box)
-        return;
-    auto* v = qobject_cast<QVBoxLayout*>(box->layout());
-    if (!v)
-        return;
-    for (int i = 0; i < v->count(); ++i) {
-        QLayoutItem* item = v->itemAt(i);
-        if (!item)
-            continue;
-        auto* h = qobject_cast<QHBoxLayout*>(item->layout());
-        if (!h)
-            continue;
-        QList<QWidget*> widgets;
-        for (int j = 0; j < h->count(); ++j) {
-            if (QWidget* w = h->itemAt(j)->widget())
-                widgets.append(w);
-        }
-        if (widgets.size() < 3)
-            continue;
-        auto* host = new QWidget(box);
-        host->setObjectName(QStringLiteral("consoleFlowHost"));
-        auto* flow = new ConsoleFlowLayout(host, 0, 8, 8);
-        for (QWidget* w : widgets) {
-            h->removeWidget(w);
-            consolePrepareFlowChild(w);
-            flow->addWidget(w);
-        }
-        while (h->count() > 0) {
-            QLayoutItem* it = h->takeAt(0);
-            delete it;
-        }
-        v->removeItem(h);
-        delete h;
-        host->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
-        v->insertWidget(i, host);
-    }
-    box->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
-    box->setMaximumHeight(QWIDGETSIZE_MAX);
-}
-
-/** 序列号/三元组：IO 行可压缩；底栏三列过窄时改单列，避免「写入」叠进右侧栏 */
-static void polishConsoleMetaIoRow(QHBoxLayout* h) {
-    if (!h)
-        return;
-    for (int i = 0; i < h->count(); ++i) {
-        QWidget* w = h->itemAt(i)->widget();
-        if (!w)
-            continue;
-        if (auto* le = qobject_cast<QLineEdit*>(w)) {
-            le->setMinimumWidth(0);
-            le->setMinimumHeight(32);
-            le->setMaximumHeight(32);
-            le->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-            h->setStretch(i, 1);
-        } else if (auto* btn = qobject_cast<QPushButton*>(w)) {
-            btn->setMinimumWidth(52);
-            btn->setMaximumWidth(68);
-            btn->setMinimumHeight(32);
-            btn->setMaximumHeight(32);
-            btn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-            h->setStretch(i, 0);
-        } else if (auto* lab = qobject_cast<QLabel*>(w)) {
-            lab->setMinimumWidth(48);
-            lab->setMaximumWidth(64);
-            lab->setMinimumHeight(32);
-            lab->setMaximumHeight(32);
-            lab->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-            lab->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-            h->setStretch(i, 0);
-        }
-    }
-}
-
-static void polishConsoleMetaIoLayout(QLayout* lay) {
-    if (!lay)
-        return;
-    if (auto* h = qobject_cast<QHBoxLayout*>(lay)) {
-        polishConsoleMetaIoRow(h);
-        return;
-    }
-    for (int i = 0; i < lay->count(); ++i) {
-        QLayoutItem* it = lay->itemAt(i);
-        if (!it)
-            continue;
-        if (QLayout* nested = it->layout())
-            polishConsoleMetaIoLayout(nested);
-    }
-}
-
-static void applyConsoleMetaGridColumns(QGroupBox* box, int midW) {
-    if (!box)
-        return;
-    auto* grid = qobject_cast<QGridLayout*>(box->layout());
-    if (!grid)
-        return;
-    polishConsoleMetaIoLayout(grid);
-    box->setMinimumWidth(0);
-    box->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
-    // 对齐 HTML meta-pairs：窄中栏时底栏密钥/产品/设备改单列
-    const bool oneCol = midW > 0 && midW < 720;
-    if (box->property("metaOneCol").isValid() && box->property("metaOneCol").toBool() == oneCol)
-        return;
-    box->setProperty("metaOneCol", oneCol);
-    QLayoutItem* snItem = nullptr;
-    QLayoutItem* keyItem = nullptr;
-    QLayoutItem* skuItem = nullptr;
-    QLayoutItem* subItem = nullptr;
-    QList<QLayoutItem*> leftovers;
-    while (grid->count() > 0) {
-        QLayoutItem* it = grid->takeAt(0);
-        if (!it)
-            continue;
-        QLayout* lay = it->layout();
-        const QString n = lay ? lay->objectName() : QString();
-        if (n == QStringLiteral("consoleMetaCol2") && !snItem)
-            snItem = it;
-        else if (n == QStringLiteral("consoleMetaIoLay_tuple") && !keyItem)
-            keyItem = it;
-        else if (n == QStringLiteral("consoleMetaCol0") && !skuItem)
-            skuItem = it;
-        else if (n == QStringLiteral("consoleMetaCol1") && !subItem)
-            subItem = it;
-        else
-            leftovers.append(it);
-    }
-    grid->setColumnStretch(0, 1);
-    grid->setColumnStretch(1, oneCol ? 0 : 1);
-    grid->setColumnStretch(2, oneCol ? 0 : 1);
-    int row = 0;
-    if (snItem)
-        grid->addItem(snItem, row++, 0, 1, oneCol ? 1 : 3);
-    if (oneCol) {
-        if (keyItem)
-            grid->addItem(keyItem, row++, 0);
-        if (skuItem)
-            grid->addItem(skuItem, row++, 0);
-        if (subItem)
-            grid->addItem(subItem, row++, 0);
-    } else {
-        if (keyItem)
-            grid->addItem(keyItem, row, 0);
-        if (skuItem)
-            grid->addItem(skuItem, row, 1);
-        if (subItem)
-            grid->addItem(subItem, row, 2);
-        if (keyItem || skuItem || subItem)
-            ++row;
-    }
-    for (QLayoutItem* it : leftovers)
-        grid->addItem(it, row++, 0, 1, oneCol ? 1 : 3);
-}
-
-/** 业务/外设页：把过长横排表单改成可折行，窗口变窄时不再钻进右侧栏 */
-static bool shouldKeepDesignerHBox(const QGroupBox* box) {
-    if (!box)
-        return true;
-    // 自定义指令三行保持 .ui 里的 QHBoxLayout，避免被改成流式后和 Designer 不一致
-    static const char* kKeep[] = {
-        "groupBox",
-        "groupBox_custom_aiot",
-        "groupBox_custom_root",
-        "groupBox_qaiot_feature",
-        "groupBox_dongle_at_pump",
-        "groupBox_dongle_suction_peak_params",
-        "groupBox_dongle_suction_live",
-    };
-    const QByteArray n = box->objectName().toUtf8();
-    for (const char* id : kKeep) {
-        if (n == id)
-            return true;
-    }
-    return false;
-}
-
-static void makeConsoleFormsWrap(QWidget* root) {
-    // 布局以 .ui 为准，不再把 Designer 的 HBox 改成运行时流式折行
-    Q_UNUSED(root);
-}
-
 static QString consoleMetaFieldText(QWidget* root, const QString& name, QLineEdit* fallback) {
     if (root) {
         if (auto* e = root->findChild<QLineEdit*>(name)) {
@@ -1107,6 +721,118 @@ static void bumpConsoleFlowHostHeights(QWidget* root) {
     }
 }
 
+static void polishConsoleMetaIoRow(QHBoxLayout* h) {
+    if (!h)
+        return;
+    for (int i = 0; i < h->count(); ++i) {
+        QWidget* w = h->itemAt(i)->widget();
+        if (!w)
+            continue;
+        if (auto* le = qobject_cast<QLineEdit*>(w)) {
+            le->setMinimumWidth(0);
+            le->setMinimumHeight(32);
+            le->setMaximumHeight(32);
+            le->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+            h->setStretch(i, 1);
+        } else if (auto* btn = qobject_cast<QPushButton*>(w)) {
+            btn->setMinimumWidth(52);
+            btn->setMaximumWidth(68);
+            btn->setMinimumHeight(32);
+            btn->setMaximumHeight(32);
+            btn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+            h->setStretch(i, 0);
+        } else if (auto* lab = qobject_cast<QLabel*>(w)) {
+            lab->setMinimumWidth(48);
+            lab->setMaximumWidth(64);
+            lab->setMinimumHeight(32);
+            lab->setMaximumHeight(32);
+            lab->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            lab->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+            h->setStretch(i, 0);
+        }
+    }
+}
+
+static void polishConsoleMetaIoLayout(QLayout* lay) {
+    if (!lay)
+        return;
+    if (auto* h = qobject_cast<QHBoxLayout*>(lay)) {
+        polishConsoleMetaIoRow(h);
+        return;
+    }
+    for (int i = 0; i < lay->count(); ++i) {
+        QLayoutItem* it = lay->itemAt(i);
+        if (!it)
+            continue;
+        if (QLayout* nested = it->layout())
+            polishConsoleMetaIoLayout(nested);
+    }
+}
+
+static void applyConsoleMetaGridColumns(QGroupBox* box, int midW) {
+    if (!box)
+        return;
+    auto* grid = qobject_cast<QGridLayout*>(box->layout());
+    if (!grid)
+        return;
+    polishConsoleMetaIoLayout(grid);
+    box->setMinimumWidth(0);
+    box->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+    // ??? HTML meta-pairs?????????????????/????????
+    const bool oneCol = midW > 0 && midW < 720;
+    if (box->property("metaOneCol").isValid() && box->property("metaOneCol").toBool() == oneCol)
+        return;
+    box->setProperty("metaOneCol", oneCol);
+    QLayoutItem* snItem = nullptr;
+    QLayoutItem* keyItem = nullptr;
+    QLayoutItem* skuItem = nullptr;
+    QLayoutItem* subItem = nullptr;
+    QList<QLayoutItem*> leftovers;
+    while (grid->count() > 0) {
+        QLayoutItem* it = grid->takeAt(0);
+        if (!it)
+            continue;
+        QLayout* lay = it->layout();
+        const QString n = lay ? lay->objectName() : QString();
+        if (n == QStringLiteral("consoleMetaCol2") && !snItem)
+            snItem = it;
+        else if (n == QStringLiteral("consoleMetaIoLay_tuple") && !keyItem)
+            keyItem = it;
+        else if (n == QStringLiteral("consoleMetaCol0") && !skuItem)
+            skuItem = it;
+        else if (n == QStringLiteral("consoleMetaCol1") && !subItem)
+            subItem = it;
+        else
+            leftovers.append(it);
+    }
+    grid->setColumnStretch(0, 1);
+    grid->setColumnStretch(1, oneCol ? 0 : 1);
+    grid->setColumnStretch(2, oneCol ? 0 : 1);
+    int row = 0;
+    if (snItem)
+        grid->addItem(snItem, row++, 0, 1, oneCol ? 1 : 3);
+    if (oneCol) {
+        if (keyItem)
+            grid->addItem(keyItem, row++, 0);
+        if (skuItem)
+            grid->addItem(skuItem, row++, 0);
+        if (subItem)
+            grid->addItem(subItem, row++, 0);
+    } else {
+        if (keyItem)
+            grid->addItem(keyItem, row, 0);
+        if (skuItem)
+            grid->addItem(skuItem, row, 1);
+        if (subItem)
+            grid->addItem(subItem, row, 2);
+        if (keyItem || skuItem || subItem)
+            ++row;
+    }
+    for (QLayoutItem* it : leftovers)
+        grid->addItem(it, row++, 0, 1, oneCol ? 1 : 3);
+}
+
+/** ???/????????????????????????????????????????????*/
 static void applyConsoleBusinessGridColumns(Ui::MainWindow* ui, QWidget* consoleMid, QWidget* consoleShell) {
     if (!ui || !consoleMid)
         return;
@@ -1135,19 +861,12 @@ static void applyConsoleBusinessGridColumns(Ui::MainWindow* ui, QWidget* console
         bumpConsoleFlowHostHeights(consoleShell);
 }
 
-// 业务页布局以 .ui 为准；这里只做自定义指令等长横排的流式折行
+// 业务页布局以 .ui 为准
 static void initBusinessCardGrid(QWidget* root, Ui::MainWindow* ui) {
-    if (!root || !ui || !ui->tab_debug_group_production || !ui->tabWidget_debug_production)
-        return;
-    if (ui->tab_debug_group_production->property("consoleBizTabsReady").toBool())
+    Q_UNUSED(root);
+    if (!ui || !ui->tab_debug_group_production)
         return;
     ui->tab_debug_group_production->setProperty("consoleBizTabsReady", true);
-
-    makeConsoleFormsWrap(ui->tab_debug_group_production);
-    if (ui->tab_debug_group_peripheral)
-        makeConsoleFormsWrap(ui->tab_debug_group_peripheral);
-    if (ui->consoleWorkPage)
-        makeConsoleFormsWrap(ui->consoleWorkPage);
 }
 
 void MainWindow::initDebugTabChrome() {
@@ -1177,18 +896,16 @@ void MainWindow::initDebugTabLayout() {
     // 外设/业务子页结构已在 mainwindow.ui，不再运行时拆装
     initBusinessCardGrid(this, ui);
 
-    wrapDebugTabPageInScrollArea(ui->tabWidget);
-    pinDebugTabPageToTop(ui->tabWidget);
+    // ScrollArea 已在 .ui；只刷画布 / Dongle·弹性页策略
+    polishDebugTabScrollAreas(ui->tabWidget);
     for (QTabWidget* inner : ui->tabWidget->findChildren<QTabWidget*>()) {
         if (inner == ui->tabWidget)
             continue;
-        wrapDebugTabPageInScrollArea(inner);
-        pinDebugTabPageToTop(inner);
+        polishDebugTabScrollAreas(inner);
         inner->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     }
     ui->tabWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-
-    pinDebugTabPageToTop(ui->tabWidget_ota);
+    polishDebugTabScrollAreas(ui->tabWidget_ota);
 }
 
 enum ConsoleStatusIconKind {
@@ -1272,22 +989,21 @@ void MainWindow::bindConsoleShellWidgets() {
     consolePageTitle_ = uiFind<QLabel>(this, "consolePageTitle");
     consolePageSub_ = uiFind<QLabel>(this, "consolePageSub");
     consoleStack_ = uiFind<QStackedWidget>(this, "consoleStack");
-    // 壳子 / Splitter / ScrollArea 已在 mainwindow.ui；状态行等仍可能被 Designer 收成 Layout
+    // 壳子 / Splitter / ScrollArea / 状态行空壳已在 mainwindow.ui
     consoleShell_ = ui->consoleShell;
     consoleSidebar_ = ui->consoleSidebar;
     consoleMid_ = ui->consoleMid;
     consoleRail_ = ui->consoleRail;
     consoleConnectPage_ = ui->consoleConnectPage;
-    consoleStatusDevice_ = wrapNamedLayout(uiFind<QLayout>(this, "consoleStatusCardLay"), uiFind<QLayout>(this, "consoleStatusDeviceLay"), QStringLiteral("consoleStatusDevice"));
-    consoleStatusMotor_ = wrapNamedLayout(uiFind<QLayout>(this, "consoleStatusCardLay"), uiFind<QLayout>(this, "consoleStatusMotorLay"), QStringLiteral("consoleStatusMotor"));
-    consoleStatusPump_ = wrapNamedLayout(uiFind<QLayout>(this, "consoleStatusCardLay"), uiFind<QLayout>(this, "consoleStatusPumpLay"), QStringLiteral("consoleStatusPump"));
-    consoleStatusValve_ = wrapNamedLayout(uiFind<QLayout>(this, "consoleStatusCardLay"), uiFind<QLayout>(this, "consoleStatusValveLay"), QStringLiteral("consoleStatusValve"));
-    consoleMetricBattery_ = wrapNamedLayout(uiFind<QLayout>(this, "consoleStatusCardLay"), uiFind<QLayout>(this, "consoleMetricBatteryLay"), QStringLiteral("consoleMetricBattery"));
-    consoleMetricTemp_ = wrapNamedLayout(uiFind<QLayout>(this, "consoleStatusCardLay"), uiFind<QLayout>(this, "consoleMetricTempLay"), QStringLiteral("consoleMetricTemp"));
-    consoleFieldReset_ = wrapNamedLayout(uiFind<QLayout>(this, "consoleCardStep1Lay"), uiFind<QLayout>(this, "consoleFieldResetLay"), QStringLiteral("consoleFieldReset"));
-    consoleHeader_ = wrapNamedLayout(uiFind<QLayout>(this, "consoleMidLay"), uiFind<QLayout>(this, "consoleHeaderLay"), QStringLiteral("consoleHeader"));
-    consoleTitleBox_ = wrapNamedLayout(uiFind<QLayout>(this, "consoleMidLay"), uiFind<QLayout>(this, "consoleTitleLay"), QStringLiteral("consoleTitleBox"));
-    wrapNamedLayout(uiFind<QLayout>(this, "consoleSideGrid"), uiFind<QLayout>(this, "consoleSideBodyLay"), QStringLiteral("consoleSideBody"));
+    consoleStatusDevice_ = uiFind<QWidget>(this, "consoleStatusDevice");
+    consoleStatusMotor_ = uiFind<QWidget>(this, "consoleStatusMotor");
+    consoleStatusPump_ = uiFind<QWidget>(this, "consoleStatusPump");
+    consoleStatusValve_ = uiFind<QWidget>(this, "consoleStatusValve");
+    consoleMetricBattery_ = uiFind<QWidget>(this, "consoleMetricBattery");
+    consoleMetricTemp_ = uiFind<QWidget>(this, "consoleMetricTemp");
+    consoleFieldReset_ = uiFind<QWidget>(this, "consoleFieldReset");
+    consoleHeader_ = uiFind<QWidget>(this, "consoleHeader");
+    consoleTitleBox_ = uiFind<QWidget>(this, "consoleTitleBox");
 }
 
 // 滚动区包裹后 Tab 页是 QScrollArea，逻辑页名在内层 widget 上
@@ -3420,8 +3136,9 @@ void MainWindow::on_lcdTestButton_clicked() {
     if (state == 5)
         state = 0;
 
+    // Tab 页外包了 ScrollArea，不能对内页 setCurrentWidget
     if (ui->tabWidget && ui->tab_debug_group_peripheral)
-        ui->tabWidget->setCurrentWidget(ui->tab_debug_group_peripheral);
+        consoleRestoreTabByName(ui->tabWidget, QStringLiteral("tab_debug_group_peripheral"));
     if (ui->tabWidget_debug_peripheral && screenInspectPage_) {
         QTabWidget* tabs = ui->tabWidget_debug_peripheral;
         for (int i = 0; i < tabs->count(); ++i) {
