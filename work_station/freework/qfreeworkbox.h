@@ -56,11 +56,14 @@ class QFreeWorkBox : public box_base {
     QMutex* sharedTempLoggerMutex(int deviceIndex0Based);
     void releaseSharedTempLoggerIfIdle();
 
-    /** 共享 PLC 按键监控与一拖多扫码枪联动 */
+    /** 共享 PLC 按键 / XWD 到位监控与一拖多扫码枪联动 */
     void updatePlcMonitorState();
     void triggerAllStationScanners();
+    void triggerAllStationSerialScanners();
     bool isAnyStationTesting() const;
     void releaseSharedPlcIfIdle();
+    /** PLC 治具串口一拖多互斥（XWD DOWN/UP 与到位扫码共用）。 */
+    QMutex* sharedPlcFixtureMutex();
     /** 按当前选中工站 flow.ini [SerialUi] 刷新顶部治具/PLC 治具串口菜单文案与波特率。 */
     void applyFixtureMenuLabel();
 
@@ -89,15 +92,18 @@ class QFreeWorkBox : public box_base {
     QHash<int, QMutex*> sharedTempLoggerMutexes_;
     QHash<int, SerialChannel::OpenParams> sharedTempLoggerOpenParams_;
 
-    // 全局共享 PLC 按键监控
+    // 全局共享 PLC 按键 / XWD 到位监控
     QModbusManager sharedPlcModbusManager_;
     QTimer* plcMonitorTimer_ = nullptr;
     bool plcMonitorRunning_ = false;
     PreStartMonitorConfig sharedPlcConfig_;
+    QMutex sharedPlcFixtureMutex_;
 
   private slots:
     void startTest();
     void onPlcMonitorTimeout();
+    /** 轮询 XWD DOWN?，OK 则触发串口扫码；返回 true 表示已触发。 */
+    bool pollXwdDownAndTriggerScan();
 };
 
 #endif // QFREEWORKBOX_H

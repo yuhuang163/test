@@ -13,6 +13,7 @@ enum class ModbusDeviceRoute {
     GcSeriesTcp,        // device/gc_series_tcp → GcPlcCmd（GC 系列，GC_PLC/*，M 偏移默认 4096）
     HqAmmeterRtu,       // device/hq_ammeter_rtu → HqAmmeterRtuCmd
     LxAmmeterRtu,       // device/lx_ammeter_rtu → LxAmmeterRtuCmd
+    Aa55AmmeterRtu,     // device/aa55_ammeter_rtu → Aa55AmmeterRtuCmd
     MultiTempLoggerRtu, // device/multi_temp_logger_rtu → MultiTempLoggerRtuCmd
     XinjiePlcRtu,       // device/xinjie_plc_rtu → XinjePlcCmd（信捷 PLC RTU，XINJE_PLC/*）
 };

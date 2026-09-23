@@ -1,0 +1,117 @@
+    const int warmupMs = qBound(0, mapInt(QStringLiteral("warmupMs"), 450), 8000);
+    const int ledCount = LedInspectAnalyzer::clampLedCount(mapInt(
+        QStringLiteral("ledCount"), SETTINGS.value(QStringLiteral("LedInspect/LedCount"), 4).toInt()));
+    const double minLuma = mapDouble(
+        QStringLiteral("minLuma"), SETTINGS.value(QStringLiteral("LedInspect/MinLuma"), 80.0).toDouble());
+    const QString judgeModeText = map.value(QStringLiteral("mode")).toString().trimmed().isEmpty()
+                                      ? SETTINGS.value(QStringLiteral("LedInspect/Mode"), QStringLiteral("on")).toString()
+                                      : map.value(QStringLiteral("mode")).toString();
+    const bool blinkMode = LedInspectAnalyzer::isBlinkMode(judgeModeText);
+    const int sampleDurationMs =
+        qBound(200, mapInt(QStringLiteral("sampleDurationMs"), blinkMode ? 1500 : 0), 10000);
+    const int sampleIntervalMs = qBound(30, mapInt(QStringLiteral("sampleIntervalMs"), 80), 2000);
+
+    if (useUsb) {
+        showlog(QStringLiteral("本步调用 USB 摄像头做 LED %1：灯数=%2 index=%3%4 预热%5ms 阈值=%6%7")
+                    .arg(blinkMode ? QStringLiteral("闪烁检测") : QStringLiteral("亮灭检测"))
+                    .arg(ledCount)
+                    .arg(cameraIndex)
+                    .arg(cameraName.isEmpty() ? QString() : QStringLiteral(" name=%1").arg(cameraName))
+                    .arg(warmupMs)
+                    .arg(minLuma, 0, 'f', 1)
+                    .arg(blinkMode ? QStringLiteral(" 窗口%1ms/间隔%2ms").arg(sampleDurationMs).arg(sampleIntervalMs)
+                                   : QString()));
+    } else {
+        showlog(QStringLiteral("本步调用 GigE 相机做 LED %1：灯数=%2 IP=%3%4 预热%5ms 阈值=%6%7")
+                    .arg(blinkMode ? QStringLiteral("闪烁检测") : QStringLiteral("亮灭检测"))
+                    .arg(ledCount)
+                    .arg(cameraIp.isEmpty() ? QStringLiteral("(自动第一台)") : cameraIp)
+                    .arg(cameraSerial.isEmpty() ? QString() : QStringLiteral(" SN=%1").arg(cameraSerial))
+                    .arg(warmupMs)
+                    .arg(minLuma, 0, 'f', 1)
+                    .arg(blinkMode ? QStringLiteral(" 窗口%1ms/间隔%2ms").arg(sampleDurationMs).arg(sampleIntervalMs)
+                                   : QString()));
+    }
+
+    LedInspectAnalyzer::Params ap;
+    ap.ledCount = ledCount;
+    ap.minLuma = minLuma;
+    ap.mode = blinkMode ? QStringLiteral("blink") : QStringLiteral("on");
+    ap.rois.resize(ledCount);
+    QStringList missing;
+    // 灯框只认调试页 LedInspect/Roi1~N，步骤不配 roi；四灯同一步，不必拆四个步骤
+    for (int i = 0; i < ledCount; ++i) {
+        ap.rois[i] = LedInspectAnalyzer::parseRoi(
+            SETTINGS.value(LedInspectAnalyzer::settingsRoiKey(i + 1)).toString());
+        if (ap.rois[i].width() < 4 || ap.rois[i].height() < 4)
+            missing << QString::number(i + 1);
+    }
+    if (!missing.isEmpty()) {
+        TestResult = failValue;
+        const QString msg = QStringLiteral("未划灯框：灯%1").arg(missing.join(QLatin1Char(',')));
+        showlog(QStringLiteral("LED检测：请先在调试页勾「划灯框」并划齐前%1个灯框（缺灯%2）")
+                    .arg(ledCount)
+                    .arg(missing.join(QLatin1Char(','))));
+        markActiveTestCaseStepDone(false, msg, QStringLiteral("失败"));
+        return;
+    }
+
+    QImage curr;
+    QString captureErr;
+    QElapsedTimer phaseT;
+    phaseT.start();
+    LedInspectAnalyzer::Report report;
+    qint64 msGrab = 0;
+    qint64 msAnalyze = 0;
+
+    auto grabOne = [&](int warmMs) -> bool {
+        return useUsb ? ScreenInspectCapture::grabStill(cameraIndex, cameraName, warmMs, &curr, &captureErr)
+                      : ScreenInspectGigECapture::grabStill(cameraIp, cameraSerial, warmMs, &curr, &captureErr,
+                                                            nullptr, true);
+    };
+
+    if (blinkMode) {
+        QVector<LedInspectAnalyzer::LedResult> tracks;
+        tracks.resize(ledCount);
+        int frameWarmup = warmupMs;
+        int frames = 0;
+        QElapsedTimer windowT;
+        windowT.start();
+        phaseT.restart();
+        do {
+            if (!grabOne(frameWarmup)) {
+                TestResult = failValue;
+                showlog(QStringLiteral("LED闪烁拍照失败(第%1帧)：%2").arg(frames + 1).arg(captureErr));
+                markActiveTestCaseStepDone(false, captureErr, QStringLiteral("失败"));
+                return;
+            }
+            frameWarmup = 0; // 后续帧不再长预热
+            const LedInspectAnalyzer::Report frame = LedInspectAnalyzer::analyze(curr, ap);
+            LedInspectAnalyzer::accumulateBlinkFrame(tracks, frame);
+            ++frames;
+            if (windowT.elapsed() >= sampleDurationMs)
+                break;
+            if (sampleIntervalMs > 0) {
+                QElapsedTimer waitT;
+                waitT.start();
+                while (waitT.elapsed() < sampleIntervalMs)
+                    QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
+            }
+        } while (windowT.elapsed() < sampleDurationMs);
+        msGrab = phaseT.elapsed();
+        phaseT.restart();
+        report = LedInspectAnalyzer::finalizeBlink(tracks, ap, curr);
+        msAnalyze = phaseT.elapsed();
+        showlog(QStringLiteral("LED闪烁采样：共%1帧 窗口%2ms").arg(frames).arg(windowT.elapsed()));
+    } else {
+        if (!grabOne(warmupMs)) {
+            TestResult = failValue;
+            showlog(QStringLiteral("LED拍照失败：%1").arg(captureErr));
+            markActiveTestCaseStepDone(false, captureErr, QStringLiteral("失败"));
+            return;
+        }
+        msGrab = phaseT.elapsed();
+        phaseT.restart();
+        report = LedInspectAnalyzer::analyze(curr, ap);
+        msAnalyze = phaseT.elapsed();
+    }

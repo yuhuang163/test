@@ -405,11 +405,13 @@ QString resolvedMesUiProductModel(const MesPacketData& pack) {
     return product;
 }
 
-/** W1 Lite / Wellness Warm 等需走 SerializableStartCollectComplete 的界面产品型号 */
+/** W1 / W1 Lite / Wellness Warm 等需走 SerializableStartCollectComplete 的界面产品型号 */
 bool isSerializableCompleteUiProductModel(const QString& product) {
     const QString p = product.trimmed();
     if (p.isEmpty())
         return false;
+    if (p.compare(QStringLiteral("W1"), Qt::CaseInsensitive) == 0)
+        return true;
     if (p.contains(QStringLiteral("W1 Lite"), Qt::CaseInsensitive)
         || p.compare(QStringLiteral("W1Lite"), Qt::CaseInsensitive) == 0)
         return true;
@@ -417,15 +419,17 @@ bool isSerializableCompleteUiProductModel(const QString& product) {
     return p.contains(QStringLiteral("Wellness Warm"), Qt::CaseInsensitive);
 }
 
-/** 组装蓝牙测试工站（W1 Lite / Wellness Warm 工站键或显示名） */
+/** 组装蓝牙测试工站（W1 / W1 Lite / Wellness Warm 工站键或显示名） */
 bool isSerializableCompleteBluetoothTestStation() {
     const QString stationKey =
         SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString().trimmed();
-    if (stationKey == QStringLiteral("FLOW_ST_0019") || stationKey == QStringLiteral("FLOW_ST_0032"))
+    if (stationKey == QStringLiteral("FLOW_ST_0019") || stationKey == QStringLiteral("FLOW_ST_0032")
+        || stationKey == QStringLiteral("FLOW_ST_0036"))
         return true;
     const QString stationName =
         SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStationName")).toString().trimmed();
-    return stationName.contains(QStringLiteral("W1 Lite组装蓝牙测试"))
+    return stationName.contains(QStringLiteral("W1组装蓝牙测试"))
+           || stationName.contains(QStringLiteral("W1 Lite组装蓝牙测试"))
            || stationName.contains(QStringLiteral("Wellness Warm组装蓝牙测试"));
 }
 

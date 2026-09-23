@@ -1,0 +1,190 @@
+void QFreeWork::runLedInspectStep() {
+    if (activeTestCase_.send.deviceCmd != QStringLiteral("LedOnOffCheck")) {
+        TestResult = failValue;
+        markActiveTestCaseStepDone(false, QStringLiteral("未知LED检测指令"), QStringLiteral("失败"));
+        return;
+    }
+
+    QVariantMap map;
+    if (activeTestCase_.send.param.canConvert<QVariantMap>())
+        map = resolveTestCaseSendParamTree(activeTestCase_.send.param).toMap();
+
+    auto mapInt = [&](const QString& key, int defVal) {
+        if (!map.contains(key) || map.value(key).toString().trimmed().isEmpty())
+            return defVal;
+        bool ok = false;
+        const int v = map.value(key).toInt(&ok);
+        return ok ? v : defVal;
+    };
+    auto mapDouble = [&](const QString& key, double defVal) {
+        if (!map.contains(key) || map.value(key).toString().trimmed().isEmpty())
+            return defVal;
+        bool ok = false;
+        const double v = map.value(key).toDouble(&ok);
+        return ok ? v : defVal;
+    };
+
+    const int cameraIndex = mapInt(QStringLiteral("cameraIndex"), 0);
+    const QString cameraName = map.value(QStringLiteral("cameraName")).toString().trimmed();
+    const QString cameraSource = map.value(QStringLiteral("cameraSource")).toString().trimmed().toLower();
+    const bool useUsb = (cameraSource == QLatin1String("usb"));
+    QString cameraIp = map.value(QStringLiteral("cameraIp")).toString().trimmed();
+    if (cameraIp.isEmpty())
+        cameraIp = map.value(QStringLiteral("gigeIp")).toString().trimmed();
+    if (cameraIp.isEmpty())
+        cameraIp = SETTINGS.value(QStringLiteral("ScreenInspect/GigEIp"), QStringLiteral("169.254.64.10")).toString();
+    const QString cameraSerial = map.value(QStringLiteral("cameraSerial")).toString().trimmed();
+    const int warmupMs = qBound(0, mapInt(QStringLiteral("warmupMs"), 450), 8000);
+    const int saveCapture = mapInt(QStringLiteral("saveCapture"), 1);
+    const int ledCount = LedInspectAnalyzer::clampLedCount(mapInt(
+        QStringLiteral("ledCount"), SETTINGS.value(QStringLiteral("LedInspect/LedCount"), 4).toInt()));
+    const double minLuma = mapDouble(
+        QStringLiteral("minLuma"), SETTINGS.value(QStringLiteral("LedInspect/MinLuma"), 80.0).toDouble());
+
+    if (useUsb) {
+        showlog(QStringLiteral("本步调用 USB 摄像头做 LED 亮灭检测：灯数=%1 index=%2%3 预热%4ms 阈值=%5")
+                    .arg(ledCount)
+                    .arg(cameraIndex)
+                    .arg(cameraName.isEmpty() ? QString() : QStringLiteral(" name=%1").arg(cameraName))
+                    .arg(warmupMs)
+                    .arg(minLuma, 0, 'f', 1));
+    } else {
+        showlog(QStringLiteral("本步调用 GigE 相机做 LED 亮灭检测：灯数=%1 IP=%2%3 预热%4ms 阈值=%5")
+                    .arg(ledCount)
+                    .arg(cameraIp.isEmpty() ? QStringLiteral("(自动第一台)") : cameraIp)
+                    .arg(cameraSerial.isEmpty() ? QString() : QStringLiteral(" SN=%1").arg(cameraSerial))
+                    .arg(warmupMs)
+                    .arg(minLuma, 0, 'f', 1));
+    }
+
+    LedInspectAnalyzer::Params ap;
+    ap.ledCount = ledCount;
+    ap.minLuma = minLuma;
+    ap.rois.resize(ledCount);
+    QStringList missing;
+    // 灯框只认调试页 LedInspect/Roi1~N，步骤不配 roi
+    for (int i = 0; i < ledCount; ++i) {
+        ap.rois[i] = LedInspectAnalyzer::parseRoi(
+            SETTINGS.value(LedInspectAnalyzer::settingsRoiKey(i + 1)).toString());
+        if (ap.rois[i].width() < 4 || ap.rois[i].height() < 4)
+            missing << QString::number(i + 1);
+    }
+    if (!missing.isEmpty()) {
+        TestResult = failValue;
+        const QString msg = QStringLiteral("未划灯框：灯%1").arg(missing.join(QLatin1Char(',')));
+        showlog(QStringLiteral("LED亮灭：请先在调试页勾「划灯框」并划齐前%1个灯框（缺灯%2）")
+                    .arg(ledCount)
+                    .arg(missing.join(QLatin1Char(','))));
+        markActiveTestCaseStepDone(false, msg, QStringLiteral("失败"));
+        return;
+    }
+
+    QImage curr;
+    QString captureErr;
+    QElapsedTimer phaseT;
+    phaseT.start();
+    const bool grabbed =
+        useUsb ? ScreenInspectCapture::grabStill(cameraIndex, cameraName, warmupMs, &curr, &captureErr)
+               : ScreenInspectGigECapture::grabStill(cameraIp, cameraSerial, warmupMs, &curr, &captureErr,
+                                                    nullptr, true);
+    const qint64 msGrab = phaseT.elapsed();
+    if (!grabbed) {
+        TestResult = failValue;
+        showlog(QStringLiteral("LED拍照失败：%1").arg(captureErr));
+        markActiveTestCaseStepDone(false, captureErr, QStringLiteral("失败"));
+        return;
+    }
+
+    phaseT.restart();
+    const LedInspectAnalyzer::Report report = LedInspectAnalyzer::analyze(curr, ap);
+    const qint64 msAnalyze = phaseT.elapsed();
+
+    const QString dir = LedInspectAnalyzer::storageRootDir();
+    CommonUtils::ensureDirectory(dir);
+    QStringList uploadImagePaths;
+    auto forSave = [](const QImage& src) -> QImage {
+        constexpr int kSaveMaxSide = 1600;
+        if (src.isNull() || qMax(src.width(), src.height()) <= kSaveMaxSide)
+            return src;
+        return src.scaled(kSaveMaxSide, kSaveMaxSide, Qt::KeepAspectRatio, Qt::FastTransformation);
+    };
+    phaseT.restart();
+    if (saveCapture) {
+        const QString stamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss"));
+        const QImage capSave = forSave(curr);
+        const QString capPath = dir + QLatin1Char('/') + stamp + QStringLiteral("_capture.jpg");
+        if (capSave.save(capPath, "JPG", 85))
+            uploadImagePaths << capPath;
+        if (!report.annotated.isNull()) {
+            const QImage markSave = forSave(report.annotated);
+            const QString markPath = dir + QLatin1Char('/') + stamp + QStringLiteral("_mark.jpg");
+            if (markSave.save(markPath, "JPG", 85))
+                uploadImagePaths << markPath;
+        }
+    }
+    forSave(curr).save(dir + QStringLiteral("/last_capture.jpg"), "JPG", 85);
+    if (!report.annotated.isNull())
+        forSave(report.annotated).save(dir + QStringLiteral("/last_mark.jpg"), "JPG", 85);
+    const qint64 msSave = phaseT.elapsed();
+    if (!uploadImagePaths.isEmpty())
+        Qlog::addScreenInspectImageFiles(getIndex(), uploadImagePaths);
+    rememberScreenInspectImages(curr, report.annotated, QImage(), dir, false);
+    if (ui->tabWidget && ui->tab_screenInspect)
+        ui->tabWidget->setCurrentWidget(ui->tab_screenInspect);
+
+    ProtocolLedInspectData data;
+    data.ledCount = report.ledCount;
+    data.onCount = report.onCount;
+    data.configuredCount = report.configuredCount;
+    data.allOn = report.allConfiguredOn ? 1 : 0;
+    auto fillLed = [&](int i, int* onOut, double* lumaOut) {
+        if (!onOut || !lumaOut)
+            return;
+        if (i < report.leds.size() && report.leds.at(i).valid) {
+            *onOut = report.leds.at(i).on ? 1 : 0;
+            *lumaOut = report.leds.at(i).luma;
+        } else {
+            *onOut = 0;
+            *lumaOut = 0;
+        }
+    };
+    fillLed(0, &data.led1On, &data.luma1);
+    fillLed(1, &data.led2On, &data.luma2);
+    fillLed(2, &data.led3On, &data.luma3);
+    fillLed(3, &data.led4On, &data.luma4);
+
+    QStringList ledParts;
+    for (int i = 0; i < report.leds.size(); ++i) {
+        const LedInspectAnalyzer::LedResult& L = report.leds.at(i);
+        if (!L.valid)
+            continue;
+        ledParts << QStringLiteral("L%1=%2(%3)")
+                        .arg(i + 1)
+                        .arg(L.on ? QStringLiteral("亮") : QStringLiteral("灭"))
+                        .arg(L.luma, 0, 'f', 1);
+    }
+    showlog(QStringLiteral("LED亮灭耗时：拍照%1ms 分析%2ms 存图%3ms；灯数=%4 亮=%5/%6 allOn=%7；%8")
+                .arg(msGrab)
+                .arg(msAnalyze)
+                .arg(msSave)
+                .arg(report.ledCount)
+                .arg(report.onCount)
+                .arg(report.configuredCount)
+                .arg(data.allOn)
+                .arg(ledParts.join(QLatin1Char(' '))));
+
+    const QVariant payload = QVariant::fromValue(data);
+    if (activeTestCase_.gate.enabled) {
+        evaluateActiveTestCaseGate(QStringLiteral("ProtocolLedInspectData"), payload);
+        return;
+    }
+
+    if (data.allOn == 1) {
+        markActiveTestCaseStepDone(true, QStringLiteral("全亮"), QStringLiteral("通过"));
+    } else {
+        TestResult = failValue;
+        markActiveTestCaseStepDone(false, QStringLiteral("未全亮"), QStringLiteral("失败"));
+    }
+}
+
+void QFreeWork::runScreenInspectStep() {

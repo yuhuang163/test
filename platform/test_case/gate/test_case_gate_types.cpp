@@ -1,6 +1,7 @@
 #include "test_case_gate_accessors.h"
 
 #include "fixture_uart_types.h"
+#include "led_inspect_analyzer.h"
 #include "qprotocol_types.h"
 #include "screen_inspect_analyzer.h"
 
@@ -328,6 +329,16 @@ static void registerDeviceInfoGates() {
         using D = ProtocolSnData;
         GateType<D>("ProtocolSnData", "序列号")
             .text("value", &D::value, "序列号文本")
+            .textWithReader(
+                "prefix4", "SN前四位（产品型号）", GateCompareMode::Default,
+                [](const D& d, QString* out) -> bool {
+                    const QString v = d.value.trimmed();
+                    if (v.size() < 4 || !out)
+                        return false;
+                    *out = v.left(4);
+                    return true;
+                })
+            .alias("snPrefix4")
             .commit();
     }
     {
@@ -685,6 +696,78 @@ static void registerPeriphAndScreenGates() {
             })
             .number("ssim", &D::ssim, "与参考图相似度（0~1）", "0~1").textFormat('f', 3).alias("similarity")
             .number("muraStd", &D::muraStd, "亮度起伏σ（灰阶勿勾）", "σ").textFormat('f', 1)
+            .commit();
+    }
+    {
+        using D = ProtocolLedInspectData;
+        auto ledPassFmt = [](double v) {
+            return qAbs(v - 1.0) < 0.0001 ? QStringLiteral("通过") : QStringLiteral("失败");
+        };
+        auto ledText = [](int judgeMode, int ledOn, int onFr, int offFr) {
+            if (judgeMode == 1) {
+                return QStringLiteral("%1(亮%2灭%3)")
+                    .arg(ledOn ? QStringLiteral("闪烁") : QStringLiteral("未闪烁"))
+                    .arg(onFr)
+                    .arg(offFr);
+            }
+            return QStringLiteral("%1(亮%2灭%3)")
+                .arg(ledOn ? QStringLiteral("常亮") : QStringLiteral("非常亮"))
+                .arg(onFr)
+                .arg(offFr);
+        };
+        GateType<D>("ProtocolLedInspectData", "LED亮灭")
+            .number("led1On", &D::led1On, "灯1", "")
+            .screenColor()
+            .formatValue(ledPassFmt)
+            .overrideText([ledText](const D& d, QString* out) {
+                if (!out)
+                    return false;
+                *out = ledText(d.judgeMode1, d.led1On, d.onFrames1, d.offFrames1);
+                return true;
+            })
+            .number("led2On", &D::led2On, "灯2", "")
+            .screenColor()
+            .formatValue(ledPassFmt)
+            .overrideText([ledText](const D& d, QString* out) {
+                if (!out)
+                    return false;
+                *out = ledText(d.judgeMode2, d.led2On, d.onFrames2, d.offFrames2);
+                return true;
+            })
+            .number("led3On", &D::led3On, "灯3", "")
+            .screenColor()
+            .formatValue(ledPassFmt)
+            .overrideText([ledText](const D& d, QString* out) {
+                if (!out)
+                    return false;
+                *out = ledText(d.judgeMode3, d.led3On, d.onFrames3, d.offFrames3);
+                return true;
+            })
+            .number("led4On", &D::led4On, "灯4", "")
+            .screenColor()
+            .formatValue(ledPassFmt)
+            .overrideText([ledText](const D& d, QString* out) {
+                if (!out)
+                    return false;
+                *out = ledText(d.judgeMode4, d.led4On, d.onFrames4, d.offFrames4);
+                return true;
+            })
+            .number("allOn", &D::allOn, "全部通过", "")
+            .screenColor()
+            .formatValue(ledPassFmt)
+            .overrideText([](const D& d, QString* out) {
+                if (!out)
+                    return false;
+                *out = d.allOn == 1 ? QStringLiteral("全部通过") : QStringLiteral("未全部通过");
+                return true;
+            })
+            .number("luma1", &D::luma1, "灯1亮度", "").textFormat('f', 1)
+            .number("luma2", &D::luma2, "灯2亮度", "").textFormat('f', 1)
+            .number("luma3", &D::luma3, "灯3亮度", "").textFormat('f', 1)
+            .number("luma4", &D::luma4, "灯4亮度", "").textFormat('f', 1)
+            .number("onCount", &D::onCount, "通过灯数", "")
+            .number("configuredCount", &D::configuredCount, "已划灯框数", "")
+            .number("ledCount", &D::ledCount, "配置检测灯数", "")
             .commit();
     }
     // 气压采样：逐点卡控由 AIR_PRESSURE_SAMPLE Hook 执行；此处登记字段供步骤编辑器表格

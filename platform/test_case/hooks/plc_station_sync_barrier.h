@@ -31,6 +31,13 @@ class PlcStationSyncBarrier {
     /** 一拖多同步监控读取线圈（如 M0/M1 按键信号卡控） */
     void executeSyncReadCoil(QFreeWork* ctx, const TestCaseDefinition& def, const QString& defaultAddr = QString());
 
+    /**
+     * XWD 治具 DOWN?/UP：走主页「连接PLC治具串口」共享口。
+     * 多工位到齐后由 Leader 统一下发一次；单工位直接执行。
+     * isQueryDown=true 发 DOWN? 并轮询至 OK；false 发 UP 等一行应答。
+     */
+    void executeSyncXwdDownUp(QFreeWork* ctx, const TestCaseDefinition& def, bool isQueryDown);
+
   private:
     PlcStationSyncBarrier() = default;
     ~PlcStationSyncBarrier() = default;

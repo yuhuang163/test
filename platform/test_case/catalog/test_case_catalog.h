@@ -63,6 +63,10 @@ enum class XwdRawFixtureCmd {
     SendRaw,
     QueryDown, // 检测下到位：发 DOWN?，回 OK/NO
     MoveUp,    // 测试完成上升：发 UP，回 OK
+    /** Air1 输入灯显：发 88 AE 00 11，回 FA FB + 大端 float(A) 电流 */
+    ReadFloatCurrentA,
+    /** Air1 输出灯显：Modbus FC03 读保持寄存器，raw/100=V；Param_registerAddress / Param_slaveAddr */
+    ReadModbusVoltageCentivolt,
 };
 
 class XwdRawFixtureCmdCatalog {

@@ -70,6 +70,8 @@ struct DeviceSnPayload {
     QByteArray sn;
     /** Qaiot device_side_id：-1 未指定；0 Left / 1 Right / 2 Independent */
     int sideId = -1;
+    /** Qroot2 写 0xA1 目标长度：35=原样（M5）；39=不足则末尾补 '0'（Air1） */
+    int snLength = 35;
 };
 
 enum class ProtocolSnType {
@@ -683,6 +685,14 @@ enum class DeviceCmd {
     Root2KeyTest,      // Req 0xA6 按键测试读
     Root2StateRead,    // Req 0xA6 读回泵状态/模式/档位
     Root2LedControl,   // Req 0x90 body 02+color+state
+    // 【Qroot2/M5 Smart】步骤里显式选用，不按产品名自动切换
+    Root2M5DeviceInfo,    // Get 0xF0 获取设备信息（含软硬件版本）
+    Root2M5SnRead,        // Get 0xF1 获取设备 SN
+    Root2M5PumpStatus,    // Get 0xB0 获取吸奶器状态（CAL=0x2D）
+    Root2M5Shutdown,      // Set 0xFC+0x01 关机
+    Root2M5Reboot,        // Set 0xFC+0x02 重启
+    Root2M5EnterOta,      // Set 0xFC+0x03 OTA
+    Root2M5FactoryReset,  // Set 0xFC+0x04 复位（抹除用户设置）
 
     // get commands
     NowMusicInfo,       // 【Qpb】当前播放音乐信息（无参/可空 param，get_now_music_info）

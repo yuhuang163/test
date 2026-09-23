@@ -1,0 +1,83 @@
+    ProtocolLedInspectData data;
+    data.ledCount = report.ledCount;
+    data.onCount = report.onCount;
+    data.configuredCount = report.configuredCount;
+    data.allOn = report.allConfiguredOn ? 1 : 0;
+    data.judgeMode = blinkMode ? 1 : 0;
+    auto fillLed = [&](int i, int* onOut, double* lumaOut, int* onFr, int* offFr) {
+        if (!onOut || !lumaOut)
+            return;
+        if (i < report.leds.size() && report.leds.at(i).valid) {
+            *onOut = report.leds.at(i).on ? 1 : 0;
+            *lumaOut = report.leds.at(i).luma;
+            if (onFr)
+                *onFr = report.leds.at(i).onFrames;
+            if (offFr)
+                *offFr = report.leds.at(i).offFrames;
+        } else {
+            *onOut = 0;
+            *lumaOut = 0;
+            if (onFr)
+                *onFr = 0;
+            if (offFr)
+                *offFr = 0;
+        }
+    };
+    fillLed(0, &data.led1On, &data.luma1, &data.onFrames1, &data.offFrames1);
+    fillLed(1, &data.led2On, &data.luma2, &data.onFrames2, &data.offFrames2);
+    fillLed(2, &data.led3On, &data.luma3, &data.onFrames3, &data.offFrames3);
+    fillLed(3, &data.led4On, &data.luma4, &data.onFrames4, &data.offFrames4);
+
+    QStringList ledParts;
+    for (int i = 0; i < report.leds.size(); ++i) {
+        const LedInspectAnalyzer::LedResult& L = report.leds.at(i);
+        if (!L.valid)
+            continue;
+        if (blinkMode) {
+            ledParts << QStringLiteral("L%1=%2(亮%3灭%4)")
+                            .arg(i + 1)
+                            .arg(L.on ? QStringLiteral("闪烁") : QStringLiteral("未闪烁"))
+                            .arg(L.onFrames)
+                            .arg(L.offFrames);
+        } else {
+            ledParts << QStringLiteral("L%1=%2(%3)")
+                            .arg(i + 1)
+                            .arg(L.on ? QStringLiteral("亮") : QStringLiteral("灭"))
+                            .arg(L.luma, 0, 'f', 1);
+        }
+    }
+    showlog(QStringLiteral("LED%1耗时：拍照%2ms 分析%3ms 存图%4ms；灯数=%5 通过=%6/%7 all=%8；%9")
+                .arg(blinkMode ? QStringLiteral("闪烁") : QStringLiteral("亮灭"))
+                .arg(msGrab)
+                .arg(msAnalyze)
+                .arg(msSave)
+                .arg(report.ledCount)
+                .arg(report.onCount)
+                .arg(report.configuredCount)
+                .arg(data.allOn)
+                .arg(ledParts.join(QLatin1Char(' '))));
+
+    const QVariant payload = QVariant::fromValue(data);
+    // 按实际灯数展开分项：结果表一行一灯（灯1/灯2…），四灯同一步不必拆步骤
+    {
+        static const char* const kLedOnFields[] = {"led1On", "led2On", "led3On", "led4On"};
+        QVector<TestCaseGate> perLed;
+        perLed.reserve(ledCount);
+        for (int i = 0; i < ledCount; ++i) {
+            TestCaseGate g;
+            g.enabled = true;
+            g.reportType = QStringLiteral("ProtocolLedInspectData");
+            g.field = QString::fromLatin1(kLedOnFields[i]);
+            g.op = TestCaseGateOp::Eq;
+            g.expected = QStringLiteral("1");
+            g.low = 1;
+            g.high = 1;
+            perLed.append(g);
+        }
+        activeTestCase_.gates = perLed;
+        activeTestCase_.gate.field = QStringLiteral("multi");
+        activeTestCase_.gate.reportType = QStringLiteral("ProtocolLedInspectData");
+        activeTestCase_.gate.enabled = true;
+    }
+    evaluateActiveTestCaseGate(QStringLiteral("ProtocolLedInspectData"), payload);
+}

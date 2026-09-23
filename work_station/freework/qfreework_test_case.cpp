@@ -254,7 +254,6 @@ bool sendAndCollectXwdReadOnceReply(SerialChannel* channel, QSerialPort* port, c
     return true;
 }
 
-
 // 等一行文本应答（如 OK/NO），用于 DOWN?/UP
 bool sendAndCollectXwdLineReply(SerialChannel* channel, QSerialPort* port, const QByteArray& request,
                                 int timeoutMs, QString* line, QString* errorMessage) {
@@ -573,6 +572,12 @@ LxAmmeterRtuCmd lxAmmeterRtuCmdFromName(const QString& name) {
     if (name == QLatin1String("ReadMeasurement"))
         return LxAmmeterRtuCmd::ReadMeasurement;
     return LxAmmeterRtuCmd::ReadMeasurement;
+}
+
+Aa55AmmeterRtuCmd aa55AmmeterRtuCmdFromName(const QString& name) {
+    if (name == QLatin1String("ReadMeasurement"))
+        return Aa55AmmeterRtuCmd::ReadMeasurement;
+    return Aa55AmmeterRtuCmd::ReadMeasurement;
 }
 
 MultiTempLoggerRtuCmd multiTempLoggerRtuCmdFromName(const QString& name) {
@@ -1502,6 +1507,8 @@ void QFreeWork::runModbusAmmeterCurrentSampleAnyMatch(const TestCaseDefinition& 
             ok = modbusManager.exec(hqAmmeterRtuCmdFromName(def.send.deviceCmd), &errStr);
         else if (route == ModbusDeviceRoute::LxAmmeterRtu)
             ok = modbusManager.exec(lxAmmeterRtuCmdFromName(def.send.deviceCmd), &errStr);
+        else if (route == ModbusDeviceRoute::Aa55AmmeterRtu)
+            ok = modbusManager.exec(aa55AmmeterRtuCmdFromName(def.send.deviceCmd), &errStr);
         else if (route == ModbusDeviceRoute::MultiTempLoggerRtu) {
             QVariantMap tempParam = map;
             SharedInstrument::applyTempLoggerParamsForStation(getIndex(), &tempParam);
@@ -2230,6 +2237,28 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                     ctx->markActiveTestCaseStepDone(false, QStringLiteral("超时"), QStringLiteral("失败"));
                 });
                 ctx->showlog(QStringLiteral("等待 LX 电流表回包：%1（超时 %2ms）").arg(def.send.deviceCmd).arg(timeoutMs));
+            } else {
+                ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
+            }
+        } else if (devRoute == ModbusDeviceRoute::Aa55AmmeterRtu) {
+            if (def.send.action == TestCaseSendAction::Get && def.gate.enabled) {
+                ctx->runModbusAmmeterCurrentSampleAnyMatch(def, devRoute);
+                return;
+            }
+            Aa55AmmeterRtuCmd cmd = aa55AmmeterRtuCmdFromName(def.send.deviceCmd);
+            bool ok = ctx->modbusManager.exec(cmd, &errStr);
+            if (!ok) {
+                ctx->showlog(QStringLiteral("AA55 电流表指令 [%1] 下发失败: %2").arg(def.send.deviceCmd, errStr));
+                ctx->markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
+            } else if (def.send.action == TestCaseSendAction::Get) {
+                const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+                QTimer::singleShot(timeoutMs, ctx, [ctx, def]() {
+                    if (!ctx->isActiveTestCaseStep(def.meta.name) || ctx->isActiveTestCaseStepDone())
+                        return;
+                    ctx->showlog(QStringLiteral("AA55 电流表等待超时：%1").arg(def.send.deviceCmd));
+                    ctx->markActiveTestCaseStepDone(false, QStringLiteral("超时"), QStringLiteral("失败"));
+                });
+                ctx->showlog(QStringLiteral("等待 AA55 电流表回包：%1（超时 %2ms）").arg(def.send.deviceCmd).arg(timeoutMs));
             } else {
                 ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
             }

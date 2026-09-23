@@ -598,28 +598,40 @@ void QFreeWork::refreshWifiState(int state) {
 
 void QFreeWork::refreshSn(ProtocolSnData data) {
     deviceTailSnFromDevice = data.value.trimmed();
-    const QString expectedWholeMachineSn = resolvedPcbaSnText();
+    const QString expectedWholeMachineSn = resolvedExpectedTailSnText();
     qDebug() << getIndex() << "dev_info" << data.value;
     qDebug() << getIndex() << "deviceTailSnFromDevice" << deviceTailSnFromDevice;
     ui->product_sn->setText("芯片存储的整机sn:" + deviceTailSnFromDevice);
 
-    // “获取整机SN码”步骤采用异步判定：设备返回 SN 必须与 UI 输入一致才通过。
+    // Gate 启用时走通用卡控（Expected 空则用界面/整机 SN 期望）
     if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolSnData"), QVariant::fromValue(data)))
         return;
 
+    // 无 Gate 时：「获取整机SN码」仍须设备回读与期望比对（与 Air1 等工站一致）
     if (!isCurrentStep("获取整机SN码")) {
         return;
     }
     QVector<TestItem> snItems;
     snItems.reserve(1);
-    bool snPass = !expectedWholeMachineSn.isEmpty();
-    appendPeriphItem(snItems, snPass, "整机SN码", deviceTailSnFromDevice, expectedWholeMachineSn, true);
+    bool snPass = true;
+    if (expectedWholeMachineSn.isEmpty()) {
+        snPass = false;
+        showlog(QStringLiteral("整机SN校验失败：期望SN为空（请先扫码/获取三元组）"));
+    } else if (deviceTailSnFromDevice.isEmpty()) {
+        snPass = false;
+        showlog(QStringLiteral("整机SN校验失败：设备回读SN为空"));
+    } else {
+        appendPeriphItem(snItems, snPass, "整机SN码", deviceTailSnFromDevice, expectedWholeMachineSn, true);
+    }
+    if (!snItems.isEmpty())
+        testResultTableUpdate(snItems);
     stepRuntime_.done = true;
     stepRuntime_.pass = snPass;
     stepRuntime_.testData = deviceTailSnFromDevice;
     if (!snPass) {
         TestResult = failValue;
-        showlog("整机SN校验失败，设备SN=" + deviceTailSnFromDevice + "，期望整机SN=" + expectedWholeMachineSn);
+        if (!expectedWholeMachineSn.isEmpty() && !deviceTailSnFromDevice.isEmpty())
+            showlog("整机SN校验失败，设备SN=" + deviceTailSnFromDevice + "，期望整机SN=" + expectedWholeMachineSn);
     } else {
         showlog("整机SN校验通过");
     }
@@ -1775,9 +1787,18 @@ void QFreeWork::refreshAmmeterData(QString data) {
             return;
         }
         ++currentSampleCount_;
+        currentSampleSum_ += measure_ammeter;
+        currentSampleLastUnit_ = QStringLiteral("ma");
         currentSampleLastValueText_ = formattedValue + QStringLiteral("ma");
         const QString ask =
             QStringLiteral("[%1,%2]ma").arg(QString::number(LowCurrent), QString::number(HighCurrent));
+        if (currentSampleJudgeByAverage_) {
+            showlog(QStringLiteral("治具电流采样#%1：%2（累计均值=%3ma）")
+                        .arg(currentSampleCount_)
+                        .arg(currentSampleLastValueText_)
+                        .arg(currentSampleSum_ / static_cast<double>(currentSampleCount_), 0, 'f', 4));
+            return;
+        }
         const bool pass = (measure_ammeter >= LowCurrent && measure_ammeter <= HighCurrent);
         showlog(QStringLiteral("治具电流采样#%1：%2 → %3")
                     .arg(currentSampleCount_)
@@ -2149,7 +2170,7 @@ void QFreeWork::onUsbInstrumentReport(const ProtocolReport& report) {
                             .arg(data.unit.isEmpty() ? QStringLiteral("V") : data.unit));
             }
 
-            // 连续采样读电流：不合格不立刻结束，仅合格时收尾
+            // 连续采样读电流：平均模式只累计；任一模式不合格不立刻结束，合格时收尾
             if (currentSampleAnyMatchActive_ && data.type == QLatin1String("Current") && testCaseStepActive_
                 && activeTestCase_.gate.enabled
                 && activeTestCase_.gate.reportType == QLatin1String("ProtocolMeasureData")) {
@@ -2160,9 +2181,22 @@ void QFreeWork::onUsbInstrumentReport(const ProtocolReport& report) {
                     return;
                 }
                 ++currentSampleCount_;
+                currentSampleSum_ += data.value;
+                currentSampleLastUnit_ = data.unit.isEmpty() ? QStringLiteral("mA") : data.unit;
                 currentSampleLastValueText_ = QStringLiteral("%1 %2")
                                                   .arg(data.value, 0, 'f', 4)
-                                                  .arg(data.unit.isEmpty() ? QStringLiteral("mA") : data.unit);
+                                                  .arg(currentSampleLastUnit_);
+
+                if (currentSampleJudgeByAverage_) {
+                    showlog(QStringLiteral("读电流采样#%1：%2（累计均值=%3 %4）")
+                                .arg(currentSampleCount_)
+                                .arg(currentSampleLastValueText_)
+                                .arg(currentSampleSum_ / static_cast<double>(currentSampleCount_), 0, 'f', 4)
+                                .arg(currentSampleLastUnit_));
+                    test_base::onUsbInstrumentReport(
+                        ProtocolReport(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(data)));
+                    return;
+                }
 
                 QVector<TestCaseGate> gatesForEval = TestCaseStore::activeGatesForEvaluation(activeTestCase_);
                 if (gatesForEval.isEmpty()) {

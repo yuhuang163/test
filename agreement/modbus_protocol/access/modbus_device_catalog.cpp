@@ -11,6 +11,7 @@ constexpr ModbusDeviceBinding kBindings[] = {
     {ModbusDeviceRoute::GcSeriesTcp, ModbusLinkKind::Tcp, "gc_series_tcp", "GcPlcCmd", u8"GC系列 PLC"},
     {ModbusDeviceRoute::HqAmmeterRtu, ModbusLinkKind::Rtu, "hq_ammeter_rtu", "HqAmmeterRtuCmd", u8"华勤 RTU 电流表"},
     {ModbusDeviceRoute::LxAmmeterRtu, ModbusLinkKind::Rtu, "lx_ammeter_rtu", "LxAmmeterRtuCmd", u8"立讯 RTU 电流表"},
+    {ModbusDeviceRoute::Aa55AmmeterRtu, ModbusLinkKind::Rtu, "aa55_ammeter_rtu", "Aa55AmmeterRtuCmd", u8"AA55 串口电流表"},
     {ModbusDeviceRoute::MultiTempLoggerRtu, ModbusLinkKind::Rtu, "multi_temp_logger_rtu", "MultiTempLoggerRtuCmd",
      u8"多路温度记录仪 RTU"},
     {ModbusDeviceRoute::XinjiePlcRtu, ModbusLinkKind::Rtu, "xinjie_plc_rtu", "XinjePlcCmd", u8"信捷 PLC RTU"},
@@ -45,6 +46,9 @@ ModbusDeviceRoute deviceRouteFromProtocolType(const QString& protocolType) {
     if (value == QStringLiteral("hq") || value == QStringLiteral("hqmodbus")) {
         return ModbusDeviceRoute::HqAmmeterRtu;
     }
+    if (value == QStringLiteral("aa55")) {
+        return ModbusDeviceRoute::Aa55AmmeterRtu;
+    }
     return ModbusDeviceRoute::None;
 }
 
@@ -58,6 +62,8 @@ QString deviceRouteToIni(ModbusDeviceRoute route) {
         return QStringLiteral("HqAmmeterRtu");
     case ModbusDeviceRoute::LxAmmeterRtu:
         return QStringLiteral("LxAmmeterRtu");
+    case ModbusDeviceRoute::Aa55AmmeterRtu:
+        return QStringLiteral("Aa55AmmeterRtu");
     case ModbusDeviceRoute::MultiTempLoggerRtu:
         return QStringLiteral("MultiTempLoggerRtu");
     case ModbusDeviceRoute::XinjiePlcRtu:
@@ -80,6 +86,9 @@ ModbusDeviceRoute deviceRouteFromIni(const QString& text) {
     }
     if (t.compare(QStringLiteral("LxAmmeterRtu"), Qt::CaseInsensitive) == 0) {
         return ModbusDeviceRoute::LxAmmeterRtu;
+    }
+    if (t.compare(QStringLiteral("Aa55AmmeterRtu"), Qt::CaseInsensitive) == 0) {
+        return ModbusDeviceRoute::Aa55AmmeterRtu;
     }
     if (t.compare(QStringLiteral("MultiTempLoggerRtu"), Qt::CaseInsensitive) == 0) {
         return ModbusDeviceRoute::MultiTempLoggerRtu;

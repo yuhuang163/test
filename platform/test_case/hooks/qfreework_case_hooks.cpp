@@ -2,6 +2,7 @@
 
 #include "qfreework.h"
 #include "bydmes.h"
+#include "common_utils.h"
 
 #include "test_case.h"
 
@@ -96,13 +97,31 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
             fw->showlog(QStringLiteral("写入整机SN失败：界面SN为空，请先获取三元组或扫入整机SN"));
             return;
         }
+        // Param_length：35=M5 原样；39=Air1 末尾补 0（默认 35）
+        int snLength = 35;
+        const TestCaseDefinition& snDef = fw->activeTestCase();
+        QVariantMap snMap;
+        if (snDef.send.param.canConvert<DeviceSnPayload>()) {
+            snLength = snDef.send.param.value<DeviceSnPayload>().snLength;
+        } else if (snDef.send.param.canConvert<QVariantMap>()) {
+            snMap = fw->resolveTestCaseSendParamTree(snDef.send.param).toMap();
+            if (snMap.contains(QStringLiteral("length")))
+                snLength = snMap.value(QStringLiteral("length")).toInt();
+            else if (snMap.contains(QStringLiteral("snLength")))
+                snLength = snMap.value(QStringLiteral("snLength")).toInt();
+        }
+        if (snLength != 39)
+            snLength = 35;
         fw->stepRuntime_.testData = QString::fromUtf8(tailSn);
         fw->setCommandWaitSource(CommandWaitSource::ProductProtocol);
         // Hook 单独发指令，须带上本步 Timing/CommandTimeoutMs，不能走 sendCommandWithRetry 默认 300ms
         const int snTimeoutMs = TestCaseRunner::commandTimeoutMs(fw->activeTestCase());
-        fw->sendCommandWithRetry([fw, tailSn]() {
-            fw->protocolManager.set(DeviceCmd::Sn,
-                                    QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, tailSn}));
+        fw->sendCommandWithRetry([fw, tailSn, snLength]() {
+            DeviceSnPayload payload;
+            payload.which_sn = FacDevInfoType_TAIL_SN;
+            payload.sn = tailSn;
+            payload.snLength = snLength;
+            fw->protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(payload));
         }, snTimeoutMs);
         return;
     }
@@ -165,6 +184,58 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         fw->markActiveTestCaseStepDone(pass, scanned, expectedSn);
         fw->showlog(pass ? QStringLiteral("二维码一致性校验通过：扫描=%1，开局SN=%2").arg(scanned, expectedSn)
                          : QStringLiteral("二维码一致性校验失败：扫描=%1，开局SN=%2").arg(scanned, expectedSn));
+        return;
+    }
+    if (hookId == QStringLiteral("SN_PREFIX4_CHECK")) {
+        // 读界面 SN；再抽 URL 的 sn=，避免 http 前缀误卡（无独立 pcbaSn_ 成员）
+        const QString rawSn = fw->resolvedPcbaSnText().trimmed();
+        QString sn = CommonUtils::extractSnFromUrlOrText(rawSn).trimmed();
+        if (sn.isEmpty())
+            sn = rawSn;
+        if (fw->isBydFactory() && rawSn.isEmpty()) {
+            // BYD：界面可能是过程码；若是 URL/28/35 位整机或 PCBA，仍可用于前四位
+            const QString fromUi = CommonUtils::extractSnFromUrlOrText(
+                                       (fw->ui && fw->ui->getMac) ? fw->ui->getMac->text() : QString())
+                                       .trimmed();
+            const QString mac = fw->parseMacFromSn(fromUi);
+            const bool macOk = (mac.length() == 17 && mac.count(QLatin1Char(':')) == 5);
+            if (macOk || fromUi.length() == 28 || fromUi.length() == 35) {
+                sn = fromUi;
+            } else {
+                fw->markActiveTestCaseStepDone(false, QStringLiteral("(无PCBA SN)"), QStringLiteral("失败"));
+                fw->showlog(QStringLiteral("产品型号卡控失败：BYD 尚未拿到产品 SN（过程码不可用；URL 请含 sn=）"));
+                return;
+            }
+        } else if (fw->isBydFactory()) {
+            sn = CommonUtils::extractSnFromUrlOrText(rawSn).trimmed();
+        }
+        QString expected;
+        if (fw->activeTestCase().send.param.canConvert<QVariantMap>()) {
+            const QVariantMap map = fw->resolveTestCaseSendParamTree(fw->activeTestCase().send.param).toMap();
+            expected = map.value(QStringLiteral("expected")).toString().trimmed();
+        }
+        if (expected.isEmpty())
+            expected = fw->activeTestCase().gate.expected.trimmed();
+        if (expected.isEmpty() && !fw->activeTestCase().gate.expectedSettingsKey.isEmpty())
+            expected = SETTINGS.value(fw->activeTestCase().gate.expectedSettingsKey).toString().trimmed();
+        if (expected.isEmpty()) {
+            fw->markActiveTestCaseStepDone(false, QStringLiteral("期望前缀未配置"), QStringLiteral("失败"));
+            fw->showlog(QStringLiteral("产品型号卡控失败：请在 Hook 参数「期望SN前四位」填写"));
+            return;
+        }
+        if (sn.isEmpty()) {
+            fw->productModelMismatch_ = true;
+            fw->markActiveTestCaseStepDone(false, QStringLiteral("(空)"), expected);
+            fw->showlog(QStringLiteral("产品型号不对：当前SN=(空)，期望=%1").arg(expected));
+            return;
+        }
+        const QString prefix4 = sn.left(4);
+        const bool pass = fw->compareVersions(expected, prefix4);
+        if (!pass)
+            fw->productModelMismatch_ = true;
+        fw->markActiveTestCaseStepDone(pass, prefix4, expected);
+        fw->showlog(pass ? QStringLiteral("产品型号卡控通过：SN前四位=%1，期望=%2（SN=%3）").arg(prefix4, expected, sn)
+                         : QStringLiteral("产品型号不对：当前SN前四位=%1，期望=%2（SN=%3）").arg(prefix4, expected, sn));
         return;
     }
     if (hookId == QStringLiteral("MES_GET_ROOT_SKU")) {
@@ -505,6 +576,7 @@ void QFreeWorkTestCaseHookRegistrar::registerAll() {
     registerDispatchHook(QStringLiteral("BOWL_CAP_DIFF_CHECK"));
     registerDispatchHook(QStringLiteral("PRINT_WHOLE_MACHINE_SN"));
     registerDispatchHook(QStringLiteral("QR_SN_CONSISTENCY_CHECK"));
+    registerDispatchHook(QStringLiteral("SN_PREFIX4_CHECK"));
     registerDispatchHook(QStringLiteral("COUNTDOWN_WAIT"));
     registerDispatchHook(QStringLiteral("AIR_PRESSURE_SAMPLE"));
     registerDispatchHook(QStringLiteral("LIGHT_SENSOR_GOLDEN_CALIB"));

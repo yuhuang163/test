@@ -68,6 +68,8 @@ class QFreeWork : public test_base {
     bool isPrimaryMonitorStation() const;
     void triggerAllStationScanners();
     void triggerScanner(const QString& scannerIp, int scannerPort, int scannerTimeoutMs);
+    /** 串口扫码枪：发十六进制触发报文，读条码回填 SN 并开测。 */
+    void triggerSerialScanner(const QString& comPort, int baudRate, const QString& hexCmd, int timeoutMs);
 
   protected:
     bool shouldHoldCommandRetryUntilGatePass() const override;
@@ -159,6 +161,8 @@ class QFreeWork : public test_base {
     /** BYD 开局扫码过程码：MES Start/Complete/AddSfcKey 的 SFC；勿被 MES 主板 SN / 三元组整机 SN 冲掉 */
     QString mesProcessCode_;
     QString macAddress = "没有mac地址";
+    /** SN 前四位/型号卡控失败标记（Hook SN_PREFIX4_CHECK 与 Gate prefix4 共用） */
+    bool productModelMismatch_ = false;
 
     /** 空碗/满碗读电容步骤缓存（差值卡控用，非同一次 0xAD 回包） */
     bool hasBowlEmptyCapCache_ = false;
@@ -421,6 +425,8 @@ class QFreeWork : public test_base {
     void runBowlCapDiffCheckStep();
     /** 自由工站屏幕检测：GigE/USB 拍照后坏点 / 显示对比 / 位置校准。 */
     void runScreenInspectStep();
+    /** 离散 LED 亮灭：灯数 Param_ledCount（1~4），框来自调试页 LedInspect/Roi1~N。 */
+    void runLedInspectStep();
     /**
      * 屏幕图像识别自动未通过时弹窗：确认是否显示对应颜色。
      * 点「是」=是该颜色→返回 true（通过）；点「否」=不是→返回 false（不通过）。
@@ -442,6 +448,11 @@ class QFreeWork : public test_base {
     /** XWD 治具读电流：连续下发/收包采样，Gate 任一合格即通过。 */
     void runXwdFixtureCurrentSampleAnyMatch(const TestCaseDefinition& def, const QByteArray& request, int readChannel,
                                             bool dualFixture, int perReadTimeoutMs);
+    /** Air1 治具浮点电流：连续采样，Gate 任一合格即通过。 */
+    void runAir1FloatCurrentSampleAnyMatch(const TestCaseDefinition& def, int perReadTimeoutMs);
+    /** Air1 Modbus 电压：连续采样，Gate 任一合格即通过。 */
+    void runAir1ModbusVoltageSampleAnyMatch(const TestCaseDefinition& def, quint8 slaveAddr, quint16 registerAddress,
+                                            int perReadTimeoutMs);
     /** HQ/LX Modbus 电流表：连续读数，Gate 任一合格即通过。 */
     void runModbusAmmeterCurrentSampleAnyMatch(const TestCaseDefinition& def, ModbusDeviceRoute route);
     /**
@@ -487,8 +498,12 @@ class QFreeWork : public test_base {
     bool dongleSuctionSampleActive_ = false;
     /** 读电流连续采样：窗口内任一卡控合格即通过，不合格不立刻结束步骤。 */
     bool currentSampleAnyMatchActive_ = false;
+    /** true=采完用均值卡控；false=任一值合格即过（Param_sampleJudgeMode=average|any） */
+    bool currentSampleJudgeByAverage_ = false;
     int currentSampleCount_ = 0;
+    double currentSampleSum_ = 0.0;
     QString currentSampleLastValueText_;
+    QString currentSampleLastUnit_;
     QVector<double> dongleSuctionCh1Samples_;
     QVector<double> dongleSuctionCh2Samples_;
     QVector<double> dongleSuctionCh3Samples_;

@@ -119,6 +119,7 @@ void QModbusManager::loadDeviceRouteFromSettings() {
 
 bool QModbusManager::isRtuAmmeterRoute() const {
     return deviceRoute_ == ModbusDeviceRoute::HqAmmeterRtu || deviceRoute_ == ModbusDeviceRoute::LxAmmeterRtu
+           || deviceRoute_ == ModbusDeviceRoute::Aa55AmmeterRtu
            || deviceRoute_ == ModbusDeviceRoute::MultiTempLoggerRtu;
 }
 
@@ -128,6 +129,8 @@ IModbusRtuDevice* QModbusManager::activeRtuDevice() {
         return &hqAmmeterRtu_;
     case ModbusDeviceRoute::LxAmmeterRtu:
         return &lxAmmeterRtu_;
+    case ModbusDeviceRoute::Aa55AmmeterRtu:
+        return &aa55AmmeterRtu_;
     case ModbusDeviceRoute::MultiTempLoggerRtu:
         return &multiTempLoggerRtu_;
     default:
@@ -159,6 +162,16 @@ bool QModbusManager::exec(LxAmmeterRtuCmd cmd, QString* errorMessage) {
         return false;
     }
     return exec<LxAmmeterRtuCmd>(cmd, {}, errorMessage);
+}
+
+bool QModbusManager::exec(Aa55AmmeterRtuCmd cmd, QString* errorMessage) {
+    if (deviceRoute_ != ModbusDeviceRoute::Aa55AmmeterRtu) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("当前路由非 AA55 串口电流表");
+        }
+        return false;
+    }
+    return exec<Aa55AmmeterRtuCmd>(cmd, {}, errorMessage);
 }
 
 bool QModbusManager::exec(MultiTempLoggerRtuCmd cmd, const QVariant& param, QString* errorMessage) {

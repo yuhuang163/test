@@ -10,6 +10,7 @@
 #include "box_base.h"
 #include "qdebug.h"
 #include "qfreework.h"
+#include "qfreeworkbox.h"
 #include "qlog.h"
 #include "serial_channel.h"
 #include "test_case_paths.h"
@@ -39,6 +40,16 @@ Fixture_uart::Fixture_uart(QWidget* parent, FixtureUartRole role)
     ui->FixtureBaudRateCombo->clear();
     ui->FixtureBaudRateCombo->addItems({QStringLiteral("9600"), QStringLiteral("115200"), QStringLiteral("19200"),
                                        QStringLiteral("38400"), QStringLiteral("57600"), QStringLiteral("460800")});
+    if (ui->xwdPlcFixtureBaudCombo) {
+        ui->xwdPlcFixtureBaudCombo->clear();
+        ui->xwdPlcFixtureBaudCombo->addItems({QStringLiteral("115200"), QStringLiteral("9600"), QStringLiteral("19200"),
+                                             QStringLiteral("38400"), QStringLiteral("57600")});
+    }
+    if (ui->serialScannerBaudCombo) {
+        ui->serialScannerBaudCombo->clear();
+        ui->serialScannerBaudCombo->addItems({QStringLiteral("9600"), QStringLiteral("115200"), QStringLiteral("19200"),
+                                             QStringLiteral("38400"), QStringLiteral("57600")});
+    }
     connect(ui->FixtureBaudRateCombo, &QComboBox::currentTextChanged, this, [this](const QString& text) {
         bool ok = false;
         int b = text.toInt(&ok);
@@ -129,7 +140,7 @@ void Fixture_uart::updateWindowTitleWithStation() {
     if (role_ == FixtureUartRole::PlcSharedPort)
         setWindowTitle(QStringLiteral("PLC一拖多治具串口配置 - %1").arg(stationLabel));
     else if (role_ == FixtureUartRole::PreStartMonitor)
-        setWindowTitle(QStringLiteral("自动扫码与PLC线圈监控 - %1").arg(stationLabel));
+        setWindowTitle(QStringLiteral("自动扫码配置 - %1").arg(stationLabel));
     else
         setWindowTitle(QStringLiteral("治具串口配置 - %1").arg(stationLabel));
 }
@@ -137,15 +148,18 @@ void Fixture_uart::updateWindowTitleWithStation() {
 void Fixture_uart::applyRolePageVisibility() {
     const bool monitorRole = (role_ == FixtureUartRole::PreStartMonitor);
     ui->fixtureUartGroup->setVisible(!monitorRole);
-    if (ui->preStartMonitorEnabledCheckBox)
-        ui->preStartMonitorEnabledCheckBox->setVisible(monitorRole);
-    if (ui->preStartMonitorHintLabel)
-        ui->preStartMonitorHintLabel->setVisible(monitorRole);
-    const bool enabled = monitorRole && ui->preStartMonitorEnabledCheckBox
-                         && ui->preStartMonitorEnabledCheckBox->isChecked();
-    ui->preStartMonitorGroup->setVisible(enabled);
+    if (ui->autoScanTabWidget)
+        ui->autoScanTabWidget->setVisible(monitorRole);
     if (!monitorRole && plcSharedPort_)
         ui->fixtureUartGroup->setTitle(QStringLiteral("PLC 一拖多治具串口"));
+    if (monitorRole) {
+        const bool plcEnabled = ui->preStartMonitorEnabledCheckBox
+                                && ui->preStartMonitorEnabledCheckBox->isChecked();
+        const bool xwdEnabled = ui->xwdDownScanEnabledCheckBox
+                                && ui->xwdDownScanEnabledCheckBox->isChecked();
+        applyPreStartMonitorFormEnabled(plcEnabled);
+        applyXwdDownScanFormEnabled(xwdEnabled);
+    }
     adjustSize();
 }
 
@@ -158,7 +172,18 @@ void Fixture_uart::applyPreStartMonitorFormEnabled(bool enabled) {
             enabled ? QStringLiteral("已启用：修改后自动保存到当前工站 flow.ini。")
                     : QStringLiteral("未启用时不写入扫码枪/线圈明细；勾选启用后可配置并保存。"));
     }
-    adjustSize();
+}
+
+void Fixture_uart::applyXwdDownScanFormEnabled(bool enabled) {
+    if (role_ != FixtureUartRole::PreStartMonitor)
+        return;
+    if (ui->serialScannerGroup)
+        ui->serialScannerGroup->setVisible(enabled);
+    if (ui->xwdDownScanHintLabel) {
+        ui->xwdDownScanHintLabel->setText(
+            enabled ? QStringLiteral("已启用：轮询 DOWN?，OK 后发十六进制触发扫码并回填 SN。")
+                    : QStringLiteral("轮询治具 DOWN?，回读 OK 后向扫码枪发十六进制报文，条码回填 SN 并开测。"));
+    }
 }
 
 void Fixture_uart::updateDeviceFieldsVisibility() {
@@ -184,6 +209,8 @@ void Fixture_uart::loadStationPageConfig() {
     ui->FixturecomNameCombo->blockSignals(true);
     if (ui->preStartMonitorEnabledCheckBox)
         ui->preStartMonitorEnabledCheckBox->blockSignals(true);
+    if (ui->xwdDownScanEnabledCheckBox)
+        ui->xwdDownScanEnabledCheckBox->blockSignals(true);
     ui->plcDeviceCombo->blockSignals(true);
     ui->plcComPortCombo->blockSignals(true);
     ui->plcBaudRateCombo->blockSignals(true);
@@ -192,6 +219,18 @@ void Fixture_uart::loadStationPageConfig() {
     ui->plcWaitAddressLineEdit->blockSignals(true);
     ui->scannerIpLineEdit->blockSignals(true);
     ui->scannerPortSpinBox->blockSignals(true);
+    if (ui->xwdPlcFixtureComCombo)
+        ui->xwdPlcFixtureComCombo->blockSignals(true);
+    if (ui->xwdPlcFixtureBaudCombo)
+        ui->xwdPlcFixtureBaudCombo->blockSignals(true);
+    if (ui->serialScannerComCombo)
+        ui->serialScannerComCombo->blockSignals(true);
+    if (ui->serialScannerBaudCombo)
+        ui->serialScannerBaudCombo->blockSignals(true);
+    if (ui->serialScannerHexEdit)
+        ui->serialScannerHexEdit->blockSignals(true);
+    if (ui->serialScannerTimeoutSpin)
+        ui->serialScannerTimeoutSpin->blockSignals(true);
 
     QSettings settings(flowPath, QSettings::IniFormat);
     settings.setIniCodec("UTF-8");
@@ -201,6 +240,8 @@ void Fixture_uart::loadStationPageConfig() {
         ui->FixturecomNameCombo->blockSignals(false);
         if (ui->preStartMonitorEnabledCheckBox)
             ui->preStartMonitorEnabledCheckBox->blockSignals(false);
+        if (ui->xwdDownScanEnabledCheckBox)
+            ui->xwdDownScanEnabledCheckBox->blockSignals(false);
         ui->plcDeviceCombo->blockSignals(false);
         ui->plcComPortCombo->blockSignals(false);
         ui->plcBaudRateCombo->blockSignals(false);
@@ -209,6 +250,18 @@ void Fixture_uart::loadStationPageConfig() {
         ui->plcWaitAddressLineEdit->blockSignals(false);
         ui->scannerIpLineEdit->blockSignals(false);
         ui->scannerPortSpinBox->blockSignals(false);
+        if (ui->xwdPlcFixtureComCombo)
+            ui->xwdPlcFixtureComCombo->blockSignals(false);
+        if (ui->xwdPlcFixtureBaudCombo)
+            ui->xwdPlcFixtureBaudCombo->blockSignals(false);
+        if (ui->serialScannerComCombo)
+            ui->serialScannerComCombo->blockSignals(false);
+        if (ui->serialScannerBaudCombo)
+            ui->serialScannerBaudCombo->blockSignals(false);
+        if (ui->serialScannerHexEdit)
+            ui->serialScannerHexEdit->blockSignals(false);
+        if (ui->serialScannerTimeoutSpin)
+            ui->serialScannerTimeoutSpin->blockSignals(false);
     };
 
     if (role_ != FixtureUartRole::PreStartMonitor) {
@@ -270,10 +323,47 @@ void Fixture_uart::loadStationPageConfig() {
                                             .toString());
     ui->scannerIpLineEdit->setText(settings.value(QStringLiteral("ScannerIp")).toString().trimmed());
     ui->scannerPortSpinBox->setValue(settings.value(QStringLiteral("ScannerPort"), 2001).toInt());
+
+    // 本工站 XWD 到位扫码 + 一拖多治具串口
+    const bool xwdEnabled = settings.value(QStringLiteral("XwdDownScanEnabled")).toBool();
+    if (ui->xwdDownScanEnabledCheckBox)
+        ui->xwdDownScanEnabledCheckBox->setChecked(xwdEnabled);
+
+    const TestCaseSerialUiConfig serialUi = TestCaseStore::loadStationSerialUiConfig(stationKey);
+    QString plcFixtureCom = settings.value(QStringLiteral("PlcFixtureComPort")).toString().trimmed();
+    int plcFixtureBaud = serialUi.plcFixtureBaudRate > 0
+                             ? serialUi.plcFixtureBaudRate
+                             : settings.value(QStringLiteral("PlcFixtureBaudRate"), 115200).toInt();
+    if (plcFixtureBaud <= 0)
+        plcFixtureBaud = 115200;
+    if (ui->xwdPlcFixtureComCombo) {
+        ui->xwdPlcFixtureComCombo->setEditText(plcFixtureCom);
+        if (ui->xwdPlcFixtureComCombo->findText(plcFixtureCom) >= 0)
+            ui->xwdPlcFixtureComCombo->setCurrentText(plcFixtureCom);
+    }
+    if (ui->xwdPlcFixtureBaudCombo)
+        ui->xwdPlcFixtureBaudCombo->setCurrentText(QString::number(plcFixtureBaud));
+
+    const QString scannerCom = settings.value(QStringLiteral("ScannerComPort")).toString().trimmed();
+    if (ui->serialScannerComCombo) {
+        ui->serialScannerComCombo->setEditText(scannerCom);
+        if (ui->serialScannerComCombo->findText(scannerCom) >= 0)
+            ui->serialScannerComCombo->setCurrentText(scannerCom);
+    }
+    const int scannerBaud = settings.value(QStringLiteral("ScannerBaudRate"), 9600).toInt();
+    if (ui->serialScannerBaudCombo)
+        ui->serialScannerBaudCombo->setCurrentText(QString::number(scannerBaud > 0 ? scannerBaud : 9600));
+    if (ui->serialScannerHexEdit)
+        ui->serialScannerHexEdit->setText(settings.value(QStringLiteral("ScannerHexCmd")).toString().trimmed());
+    if (ui->serialScannerTimeoutSpin)
+        ui->serialScannerTimeoutSpin->setValue(
+            settings.value(QStringLiteral("ScannerTimeoutMs"), 3000).toInt());
+
     settings.endGroup();
     unblockAll();
     applyRolePageVisibility();
     applyPreStartMonitorFormEnabled(enabled);
+    applyXwdDownScanFormEnabled(xwdEnabled);
     updateDeviceFieldsVisibility();
     isConfigLoading_ = false;
 }
@@ -346,25 +436,61 @@ void Fixture_uart::savePreStartMonitorConfig() {
         return;
 
     const bool enabled = ui->preStartMonitorEnabledCheckBox && ui->preStartMonitorEnabledCheckBox->isChecked();
+    const bool xwdEnabled = ui->xwdDownScanEnabledCheckBox && ui->xwdDownScanEnabledCheckBox->isChecked();
     const QString flowPath = TestCasePaths::profileFlowPath(stationKey);
 
-    // 未启用且工站从未写过监控配置：不落盘，避免无关工站出现空 PreStart_Monitor
-    if (!enabled) {
-        if (flowPath.isEmpty() || !QFile::exists(flowPath))
+    // 一拖多治具串口配置始终可落盘（本页签承载），与是否启用自动扫码无关
+    const QString plcFixtureCom =
+        ui->xwdPlcFixtureComCombo ? ui->xwdPlcFixtureComCombo->currentText().trimmed() : QString();
+    int plcFixtureBaud = 115200;
+    if (ui->xwdPlcFixtureBaudCombo) {
+        bool ok = false;
+        const int b = ui->xwdPlcFixtureBaudCombo->currentText().toInt(&ok);
+        if (ok && b > 0)
+            plcFixtureBaud = b;
+    }
+
+    auto writePlcFixtureKeys = [&](QSettings& settings) {
+        settings.beginGroup(QStringLiteral("PreStart_Monitor"));
+        settings.setValue(QStringLiteral("PlcFixtureComPort"), plcFixtureCom);
+        settings.setValue(QStringLiteral("PlcFixtureBaudRate"), plcFixtureBaud);
+        settings.endGroup();
+        settings.beginGroup(QStringLiteral("SerialUi"));
+        settings.setValue(QStringLiteral("PlcFixtureBaudRate"), plcFixtureBaud);
+        settings.endGroup();
+    };
+
+    // 未启用任一路且工站从未写过监控配置：仅在填了治具口时落盘治具项，避免无关空组
+    if (!enabled && !xwdEnabled) {
+        if (flowPath.isEmpty() || !QFile::exists(flowPath)) {
+            if (!plcFixtureCom.isEmpty()) {
+                TestCaseStore::ensureProfileDirectory(stationKey, TestCaseStore::flowStationDisplayName(stationKey),
+                                                      QString());
+                QSettings settings(TestCasePaths::profileFlowPath(stationKey), QSettings::IniFormat);
+                settings.setIniCodec("UTF-8");
+                writePlcFixtureKeys(settings);
+                settings.sync();
+            }
             return;
+        }
         QSettings probe(flowPath, QSettings::IniFormat);
         probe.setIniCodec("UTF-8");
         probe.beginGroup(QStringLiteral("PreStart_Monitor"));
         const bool hadConfig = probe.contains(QStringLiteral("Enabled")) || probe.contains(QStringLiteral("ScannerIp"))
                                || probe.contains(QStringLiteral("PlcWaitAddress"))
                                || probe.contains(QStringLiteral("PlcDevice"))
-                               || probe.contains(QStringLiteral("PlcComPort"));
-        if (!hadConfig) {
+                               || probe.contains(QStringLiteral("PlcComPort"))
+                               || probe.contains(QStringLiteral("XwdDownScanEnabled"))
+                               || probe.contains(QStringLiteral("ScannerComPort"))
+                               || probe.contains(QStringLiteral("PlcFixtureComPort"));
+        if (!hadConfig && plcFixtureCom.isEmpty()) {
             probe.endGroup();
             return;
         }
         probe.setValue(QStringLiteral("Enabled"), false);
+        probe.setValue(QStringLiteral("XwdDownScanEnabled"), false);
         probe.endGroup();
+        writePlcFixtureKeys(probe);
         probe.sync();
     } else {
         TestCaseStore::ensureProfileDirectory(stationKey, TestCaseStore::flowStationDisplayName(stationKey), QString());
@@ -373,28 +499,55 @@ void Fixture_uart::savePreStartMonitorConfig() {
         QSettings settings(flowPath, QSettings::IniFormat);
         settings.setIniCodec("UTF-8");
         settings.beginGroup(QStringLiteral("PreStart_Monitor"));
-        settings.setValue(QStringLiteral("Enabled"), true);
-        settings.setValue(QStringLiteral("PlcDevice"), ui->plcDeviceCombo->currentData().toString());
-        settings.setValue(QStringLiteral("PlcComPort"), ui->plcComPortCombo->currentText().trimmed());
-        settings.setValue(QStringLiteral("PlcBaudRate"), ui->plcBaudRateCombo->currentText().toInt());
-        settings.setValue(QStringLiteral("PlcIp"), ui->plcIpLineEdit->text().trimmed());
-        settings.setValue(QStringLiteral("PlcPort"), ui->plcPortSpinBox->value());
-        const QString waitAddr = ui->plcWaitAddressLineEdit->text().trimmed();
-        settings.setValue(QStringLiteral("PlcWaitAddress"), waitAddr);
-        bool okNum = false;
-        const int addrNum = waitAddr.startsWith(QLatin1Char('M'), Qt::CaseInsensitive) ? waitAddr.mid(1).toInt(&okNum)
-                                                                                      : waitAddr.toInt(&okNum);
-        if (okNum)
-            settings.setValue(QStringLiteral("PlcWaitAddressM"), addrNum);
-        settings.setValue(QStringLiteral("ScannerIp"), ui->scannerIpLineEdit->text().trimmed());
-        settings.setValue(QStringLiteral("ScannerPort"), ui->scannerPortSpinBox->value());
+        settings.setValue(QStringLiteral("Enabled"), enabled);
+        settings.setValue(QStringLiteral("XwdDownScanEnabled"), xwdEnabled);
+        if (enabled) {
+            settings.setValue(QStringLiteral("PlcDevice"), ui->plcDeviceCombo->currentData().toString());
+            settings.setValue(QStringLiteral("PlcComPort"), ui->plcComPortCombo->currentText().trimmed());
+            settings.setValue(QStringLiteral("PlcBaudRate"), ui->plcBaudRateCombo->currentText().toInt());
+            settings.setValue(QStringLiteral("PlcIp"), ui->plcIpLineEdit->text().trimmed());
+            settings.setValue(QStringLiteral("PlcPort"), ui->plcPortSpinBox->value());
+            const QString waitAddr = ui->plcWaitAddressLineEdit->text().trimmed();
+            settings.setValue(QStringLiteral("PlcWaitAddress"), waitAddr);
+            bool okNum = false;
+            const int addrNum = waitAddr.startsWith(QLatin1Char('M'), Qt::CaseInsensitive) ? waitAddr.mid(1).toInt(&okNum)
+                                                                                          : waitAddr.toInt(&okNum);
+            if (okNum)
+                settings.setValue(QStringLiteral("PlcWaitAddressM"), addrNum);
+            settings.setValue(QStringLiteral("ScannerIp"), ui->scannerIpLineEdit->text().trimmed());
+            settings.setValue(QStringLiteral("ScannerPort"), ui->scannerPortSpinBox->value());
+        }
+        if (xwdEnabled) {
+            settings.setValue(QStringLiteral("ScannerComPort"),
+                              ui->serialScannerComCombo ? ui->serialScannerComCombo->currentText().trimmed()
+                                                       : QString());
+            int scannerBaud = 9600;
+            if (ui->serialScannerBaudCombo) {
+                bool ok = false;
+                const int b = ui->serialScannerBaudCombo->currentText().toInt(&ok);
+                if (ok && b > 0)
+                    scannerBaud = b;
+            }
+            settings.setValue(QStringLiteral("ScannerBaudRate"), scannerBaud);
+            settings.setValue(QStringLiteral("ScannerHexCmd"),
+                              ui->serialScannerHexEdit ? ui->serialScannerHexEdit->text().trimmed() : QString());
+            settings.setValue(QStringLiteral("ScannerTimeoutMs"),
+                              ui->serialScannerTimeoutSpin ? ui->serialScannerTimeoutSpin->value() : 3000);
+        }
         settings.endGroup();
+        writePlcFixtureKeys(settings);
         settings.sync();
     }
 
     for (QWidget* w : QApplication::topLevelWidgets()) {
-        if (auto* box = qobject_cast<box_base*>(w)) {
+        if (auto* box = qobject_cast<QFreeWorkBox*>(w)) {
+            box->applyFixtureMenuLabel();
             for (test_base* t : box->testList) {
+                if (auto* fw = qobject_cast<QFreeWork*>(t))
+                    fw->updatePreStartMonitorState();
+            }
+        } else if (auto* base = qobject_cast<box_base*>(w)) {
+            for (test_base* t : base->testList) {
                 if (auto* fw = qobject_cast<QFreeWork*>(t))
                     fw->updatePreStartMonitorState();
             }
@@ -442,6 +595,39 @@ void Fixture_uart::on_preStartMonitorEnabledCheckBox_toggled(bool checked) {
     savePreStartMonitorConfig();
 }
 
+void Fixture_uart::on_xwdDownScanEnabledCheckBox_toggled(bool checked) {
+    applyXwdDownScanFormEnabled(checked);
+    savePreStartMonitorConfig();
+}
+
+void Fixture_uart::on_xwdPlcFixtureComCombo_currentTextChanged(const QString&) {
+    savePreStartMonitorConfig();
+}
+
+void Fixture_uart::on_xwdPlcFixtureBaudCombo_currentTextChanged(const QString&) {
+    savePreStartMonitorConfig();
+}
+
+void Fixture_uart::on_serialScannerComCombo_currentTextChanged(const QString&) {
+    savePreStartMonitorConfig();
+}
+
+void Fixture_uart::on_serialScannerBaudCombo_currentTextChanged(const QString&) {
+    savePreStartMonitorConfig();
+}
+
+void Fixture_uart::on_serialScannerHexEdit_textChanged(const QString&) {
+    savePreStartMonitorConfig();
+}
+
+void Fixture_uart::on_serialScannerHexEdit_editingFinished() {
+    savePreStartMonitorConfig();
+}
+
+void Fixture_uart::on_serialScannerTimeoutSpin_valueChanged(int) {
+    savePreStartMonitorConfig();
+}
+
 void Fixture_uart::on_plcComPortCombo_currentTextChanged(const QString&) {
     savePreStartMonitorConfig();
 }
@@ -481,6 +667,14 @@ void Fixture_uart::scanSerialPorts() {
     {
         QSignalBlocker blocker(ui->plcComPortCombo);
         SerialChannel::updateComboBoxPorts(ui->plcComPortCombo);
+    }
+    if (ui->xwdPlcFixtureComCombo) {
+        QSignalBlocker blocker(ui->xwdPlcFixtureComCombo);
+        SerialChannel::updateComboBoxPorts(ui->xwdPlcFixtureComCombo);
+    }
+    if (ui->serialScannerComCombo) {
+        QSignalBlocker blocker(ui->serialScannerComCombo);
+        SerialChannel::updateComboBoxPorts(ui->serialScannerComCombo);
     }
     Qlog::saveResidentLog(QStringLiteral("scanPorts"),
                           QStringLiteral("fixture cost=%1ms").arg(timer.elapsed()));

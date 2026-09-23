@@ -2,11 +2,17 @@
 #include "work_station/freework/qfreework.h"
 #include "work_station/freework/qfreeworkbox.h"
 #include "platform/test_case/types/test_case_types.h"
+#include "platform/test_case/runner/test_case_runner.h"
 #include "agreement/modbus_protocol/codec/qmodbus_pdu.h"
+#include "agreement/fixture_protocol/xwd_fixture/codec/xwd_raw_uart_codec.h"
+#include "platform/settings/widgets/fixture_uart.h"
+#include "qfixturemanager.h"
+#include "qprotocol_types.h"
 
 #include <QCoreApplication>
 #include <QDebug>
 #include <QElapsedTimer>
+#include <QMutexLocker>
 #include <QThread>
 #include <QTimer>
 
@@ -473,4 +479,218 @@ void PlcStationSyncBarrier::executeSyncReadCoil(QFreeWork* ctx, const TestCaseDe
         return;
     }
     // 非 Leader 仅登记后返回，最后到达的工位负责统一监听并回填全部工位结果。
+}
+
+static QString firstLineFromReply(const QByteArray& reply) {
+    QByteArray trimmed = reply;
+    const int cr = trimmed.indexOf('\r');
+    const int lf = trimmed.indexOf('\n');
+    int cut = -1;
+    if (cr >= 0 && lf >= 0)
+        cut = qMin(cr, lf);
+    else if (cr >= 0)
+        cut = cr;
+    else if (lf >= 0)
+        cut = lf;
+    if (cut >= 0)
+        trimmed = trimmed.left(cut);
+    return QString::fromUtf8(trimmed).trimmed();
+}
+
+/** 经 PLC 治具共享串口发 XWD 文本指令并取一行应答；QueryDown 在超时内轮询至期望值。 */
+static bool runXwdDownUpOnSharedPlcPort(QFreeWork* ctx, Fixture_uart* uart, const QByteArray& request,
+                                        bool pollUntilMatch, const QString& expectToken, int timeoutMs,
+                                        QString* lastLineOut, QString* errorMessage) {
+    if (!ctx || !uart || !uart->fixtureManager() || !uart->fixtureManager()->isOpen()) {
+        if (errorMessage)
+            *errorMessage = QStringLiteral("PLC治具串口未打开");
+        return false;
+    }
+    QFreeWorkBox* box = freeWorkBoxForPlc(ctx);
+    QMutex* mutex = box ? box->sharedPlcFixtureMutex() : nullptr;
+    QMutexLocker locker(mutex);
+
+    QElapsedTimer timer;
+    timer.start();
+    QString lastLine;
+    while (true) {
+        if (!ctx->isTestContinue) {
+            if (errorMessage)
+                *errorMessage = QStringLiteral("测试中止");
+            return false;
+        }
+        const int remain = timeoutMs - static_cast<int>(timer.elapsed());
+        if (remain <= 0)
+            break;
+        const int onceMs = pollUntilMatch ? qMin(800, remain) : remain;
+        QByteArray response;
+        QString err;
+        if (!uart->exchangeRawFrame(request, &response, onceMs, &err)) {
+            if (!pollUntilMatch) {
+                if (errorMessage)
+                    *errorMessage = err;
+                return false;
+            }
+            QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
+            QThread::msleep(50);
+            continue;
+        }
+        lastLine = firstLineFromReply(response);
+        if (lastLineOut)
+            *lastLineOut = lastLine;
+        if (lastLine.isEmpty()) {
+            if (!pollUntilMatch)
+                break;
+            continue;
+        }
+        ctx->showlog(QStringLiteral("XWD治具(PLC共享口)文本回包：%1").arg(lastLine));
+        if (lastLine.compare(expectToken, Qt::CaseInsensitive) == 0)
+            return true;
+        if (!pollUntilMatch) {
+            if (errorMessage)
+                *errorMessage = QStringLiteral("应答不匹配：%1").arg(lastLine);
+            return false;
+        }
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
+        QThread::msleep(50);
+    }
+    if (lastLineOut)
+        *lastLineOut = lastLine;
+    if (errorMessage)
+        *errorMessage = lastLine.isEmpty() ? QStringLiteral("接收超时") : QStringLiteral("未等到%1").arg(expectToken);
+    return false;
+}
+
+void PlcStationSyncBarrier::executeSyncXwdDownUp(QFreeWork* ctx, const TestCaseDefinition& def, bool isQueryDown) {
+    if (!ctx)
+        return;
+
+    const QString rawText = isQueryDown ? QStringLiteral("DOWN?\\r\\n") : QStringLiteral("UP\\r\\n");
+    bool parsedAsHex = false;
+    const QByteArray request = XwdRawUartCodec::encodeRawText(rawText, &parsedAsHex);
+    Q_UNUSED(parsedAsHex);
+    if (request.isEmpty()) {
+        ctx->showlog(QStringLiteral("XWD DOWN/UP 编码失败"));
+        ctx->markActiveTestCaseStepDone(false, QStringLiteral("参数为空"), QStringLiteral("失败"));
+        return;
+    }
+
+    const QString expected =
+        def.gate.enabled ? def.gate.expected.trimmed() : QStringLiteral("OK");
+    const QString expectToken = expected.isEmpty() ? QStringLiteral("OK") : expected;
+    int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+    if (timeoutMs < 2000)
+        timeoutMs = 2000;
+    int syncWaitMs = 120000;
+    if (def.send.param.canConvert<QVariantMap>()) {
+        const QVariantMap map = def.send.param.toMap();
+        if (map.contains(QStringLiteral("syncWaitMs")))
+            syncWaitMs = qMax(1000, map.value(QStringLiteral("syncWaitMs")).toInt());
+    }
+
+    const QList<QFreeWork*> configuredStations = collectConfiguredStations(ctx);
+    const int totalActive = configuredStations.size();
+    const QString cmdLabel = isQueryDown ? QStringLiteral("DOWN?") : QStringLiteral("UP");
+
+    auto runOnce = [&](QFreeWork* logCtx) -> bool {
+        QString errStr;
+        Fixture_uart* uart = sharedFixtureUartForPlc(logCtx, &errStr);
+        if (!uart) {
+            logCtx->showlog(QStringLiteral("[XWD %1] PLC治具串口不可用：%2（请先用主页「连接PLC治具串口」选好端口）")
+                                .arg(cmdLabel, errStr));
+            logCtx->markActiveTestCaseStepDone(false, errStr.isEmpty() ? QStringLiteral("PLC治具串口未连接") : errStr,
+                                               QStringLiteral("失败"));
+            return false;
+        }
+        logCtx->showlog(QStringLiteral("[XWD %1] 使用 PLC治具共享串口，超时 %2ms，期望 %3")
+                            .arg(cmdLabel)
+                            .arg(timeoutMs)
+                            .arg(expectToken));
+        QString lastLine;
+        const bool ok = runXwdDownUpOnSharedPlcPort(logCtx, uart, request, isQueryDown, expectToken, timeoutMs,
+                                                    &lastLine, &errStr);
+        if (ok) {
+            ProtocolMeasureData measureData;
+            measureData.deviceName = QStringLiteral("XWD");
+            measureData.type = QStringLiteral("Reply");
+            measureData.valueText = lastLine;
+            measureData.isOk = true;
+            logCtx->onUsbInstrumentReport(
+                ProtocolReport(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(measureData)));
+            if (!def.gate.enabled)
+                logCtx->markActiveTestCaseStepDone(true, lastLine, QStringLiteral("通过"));
+            return true;
+        }
+        logCtx->showlog(QStringLiteral("[XWD %1] 失败：%2").arg(cmdLabel, errStr));
+        logCtx->markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
+        return false;
+    };
+
+    // 单工位：直接走共享 PLC 口
+    if (totalActive <= 1) {
+        runOnce(ctx);
+        return;
+    }
+
+    const QString stepName = def.meta.name.trimmed().isEmpty()
+                                 ? (isQueryDown ? QStringLiteral("QueryDown") : QStringLiteral("MoveUp"))
+                                 : def.meta.name.trimmed();
+    const QString sessionKey = QStringLiteral("XWD_%1_%2").arg(cmdLabel, stepName);
+
+    SyncSession* session = nullptr;
+    bool isLeader = false;
+    bool createdSession = false;
+    int arrivedIndex = 0;
+    int requiredCount = totalActive;
+
+    {
+        QMutexLocker locker(&mutex_);
+        session = activeSessions_.value(sessionKey, nullptr);
+        if (!session) {
+            session = new SyncSession();
+            session->key = sessionKey;
+            session->stepName = stepName;
+            session->requiredCount = totalActive;
+            activeSessions_.insert(sessionKey, session);
+            createdSession = true;
+        }
+        if (!session->arrived.contains(ctx))
+            session->arrived.append(ctx);
+        arrivedIndex = session->arrived.size();
+        requiredCount = session->requiredCount;
+        isLeader = (arrivedIndex >= requiredCount);
+    }
+
+    ctx->showlog(QStringLiteral("[一拖多XWD %1] 工位%2已就绪，等待其他工站到齐... (当前 %3/%4)")
+                     .arg(cmdLabel)
+                     .arg(ctx->getIndex())
+                     .arg(arrivedIndex)
+                     .arg(requiredCount));
+    if (createdSession)
+        scheduleSessionTimeout(sessionKey, session, syncWaitMs);
+
+    if (!isLeader)
+        return;
+
+    // Leader：统一经 PLC 治具串口下发一次
+    QString errStr;
+    Fixture_uart* uart = sharedFixtureUartForPlc(ctx, &errStr);
+    ctx->showlog(QStringLiteral("[一拖多XWD %1] 所有工站已到齐(%2/%2)！由工位%3统一下发一次")
+                     .arg(cmdLabel)
+                     .arg(requiredCount)
+                     .arg(ctx->getIndex()));
+    if (!uart) {
+        completeSession(sessionKey, session, false,
+                        errStr.isEmpty() ? QStringLiteral("PLC治具串口未连接") : errStr,
+                        QStringLiteral("[一拖多XWD %1] PLC治具串口不可用：%2").arg(cmdLabel, errStr));
+        return;
+    }
+
+    QString lastLine;
+    const bool ok = runXwdDownUpOnSharedPlcPort(ctx, uart, request, isQueryDown, expectToken, timeoutMs, &lastLine,
+                                                &errStr);
+    const QString resultData = ok ? lastLine : (errStr.isEmpty() ? QStringLiteral("失败") : errStr);
+    completeSession(sessionKey, session, ok, resultData,
+                    ok ? QStringLiteral("[一拖多XWD %1] 统一下发成功(%2)，同步放行").arg(cmdLabel, lastLine)
+                       : QStringLiteral("[一拖多XWD %1] 统一下发失败：%2").arg(cmdLabel, resultData));
 }

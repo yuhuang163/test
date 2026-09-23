@@ -95,7 +95,9 @@ const QVector<GateTypeDescriptor> kTypes = {
       {QStringLiteral("currentMa"), QStringLiteral("电流mA")},
       {QStringLiteral("hallState"), QStringLiteral("霍尔状态")},
       {QStringLiteral("pulseCount"), QStringLiteral("编码器脉冲")}}},
-    {QStringLiteral("ProtocolSnData"), QStringLiteral("序列号"), {{QStringLiteral("value"), QStringLiteral("序列号文本")}}},
+    {QStringLiteral("ProtocolSnData"), QStringLiteral("序列号"),
+     {{QStringLiteral("value"), QStringLiteral("序列号文本")},
+      {QStringLiteral("prefix4"), QStringLiteral("SN前四位（产品型号）"}}}},
     {QStringLiteral("ProtocolBaseInfoData"), QStringLiteral("基本信息"), {{QStringLiteral("soft_version"), QStringLiteral("软件版本")}, {QStringLiteral("res_version"), QStringLiteral("资源版本")}, {QStringLiteral("product_name"), QStringLiteral("产品名称")}, {QStringLiteral("hw_version"), QStringLiteral("硬件版本")}, {QStringLiteral("algo_version"), QStringLiteral("算法版本")}, {QStringLiteral("ageing_state"), QStringLiteral("老化状态")}}},
     {QStringLiteral("ProtocolPeriphStateData"), QStringLiteral("外设状态"), {{QStringLiteral("press0_state"), QStringLiteral("压感0状态")}, {QStringLiteral("press1_state"), QStringLiteral("压感1状态")}, {QStringLiteral("battery_ic_state"), QStringLiteral("电池IC状态")}, {QStringLiteral("touch_ic_state"), QStringLiteral("触摸IC状态")}, {QStringLiteral("led_ic_state"), QStringLiteral("LED IC状态")}, {QStringLiteral("pd_ic_state"), QStringLiteral("PD IC状态")}}},
     {QStringLiteral("ProtocolTupleData"), QStringLiteral("设备三元组"), {{QStringLiteral("productId"), QStringLiteral("产品密钥")}, {QStringLiteral("deviceId"), QStringLiteral("设备名")}, {QStringLiteral("key"), QStringLiteral("设备密钥")}, {QStringLiteral("envId"), QStringLiteral("环境id")}}},
@@ -953,6 +955,14 @@ QString fieldStringFromVariant(const QString& reportType, const QString& field, 
         if (field == QLatin1String("value")) {
             ok = true;
             return d.value.trimmed();
+        }
+        // 产品型号卡控：设备 SN 前四位 vs Gate/Expected（或 ExpectedSettingsKey）
+        if (field == QLatin1String("prefix4") || field == QLatin1String("snPrefix4")) {
+            const QString v = d.value.trimmed();
+            if (v.size() < 4)
+                return {};
+            ok = true;
+            return v.left(4);
         }
     } else if (reportType == QLatin1String("ProtocolBaseInfoData")) {
         const auto d = payload.value<ProtocolBaseInfoData>();

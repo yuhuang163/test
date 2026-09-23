@@ -33,6 +33,7 @@ const Row kRows[] = {
     {ModbusDeviceRoute::HqAmmeterRtu, "SetBaud115200", u8"初始化波特率 115200", nullptr, kSet},
     {ModbusDeviceRoute::LxAmmeterRtu, "ReadMeasurement", u8"读电流", u8"机台号见 Current/LuxshareMachineId", kGet,
      "ProtocolMeasureData", "value"},
+    {ModbusDeviceRoute::Aa55AmmeterRtu, "ReadMeasurement", u8"读电流", nullptr, kGet, "ProtocolMeasureData", "value"},
     {ModbusDeviceRoute::MultiTempLoggerRtu, "ReadChannelTemp", u8"读通道温度",
      u8"Param：channel=1~64，slaveAddr=1~247；或 channels=1,2,3 / 1-6\r\n"
      u8"法兰加热多点：channelsPerStation=6；stationsPerDevice=2 → 工位奇偶映射 CH1-6 / CH7-12\r\n"

@@ -1,8 +1,12 @@
 #include "xwd_raw_uart_codec.h"
 
 #include "fixture_uart_codec.h"
+#include "qmodbus_pdu.h"
 
 #include <QRegularExpression>
+#include <QtEndian>
+#include <cmath>
+#include <cstring>
 
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
@@ -54,6 +58,78 @@ bool parseReadOnceReply(const QString& text, double* ch1Ma, double* ch2Ma, bool*
         any = true;
     }
     return any;
+}
+
+QByteArray buildAir1FloatCurrentReadRequest() {
+    static const char kReq[] = {'\x88', '\xAE', '\x00', '\x11'};
+    return QByteArray(kReq, int(sizeof(kReq)));
+}
+
+bool parseAir1FloatCurrentReply(const QByteArray& buf, double* amperesOut, int* frameOffset) {
+    if (amperesOut)
+        *amperesOut = 0;
+    if (frameOffset)
+        *frameOffset = -1;
+    // FA FB | status | float_be(4) | trailer  → 8 字节
+    constexpr int kFrameLen = 8;
+    for (int i = 0; i + kFrameLen <= buf.size(); ++i) {
+        if (static_cast<quint8>(buf.at(i)) != 0xFA || static_cast<quint8>(buf.at(i + 1)) != 0xFB)
+            continue;
+        const quint32 hostBits =
+            qFromBigEndian<quint32>(reinterpret_cast<const uchar*>(buf.constData() + i + 3));
+        float ampsF = 0.f;
+        static_assert(sizeof(float) == 4, "IEEE754 float");
+        std::memcpy(&ampsF, &hostBits, sizeof(ampsF));
+        if (!std::isfinite(ampsF))
+            continue;
+        if (amperesOut)
+            *amperesOut = static_cast<double>(ampsF);
+        if (frameOffset)
+            *frameOffset = i;
+        return true;
+    }
+    return false;
+}
+
+QByteArray buildAir1ModbusVoltageReadRequest(quint8 slaveAddr, quint16 registerAddress) {
+    QByteArray body;
+    body.append(char(slaveAddr));
+    body.append(char(0x03));
+    QModbusPdu::appendUint16Be(body, registerAddress);
+    QModbusPdu::appendUint16Be(body, 1);
+    const quint16 crcBe = QModbusPdu::crc16ModbusRtuBigEndian(body);
+    body.append(char(quint8(crcBe >> 8)));
+    body.append(char(quint8(crcBe & 0xFF)));
+    return body;
+}
+
+bool parseAir1ModbusVoltageReply(const QByteArray& buf, quint8 slaveAddr, double* voltsOut,
+                                 int* frameOffset) {
+    if (voltsOut)
+        *voltsOut = 0;
+    if (frameOffset)
+        *frameOffset = -1;
+    // 从站 + FC03 + byteCount=2 + data(2) + CRC(2) = 7 字节
+    constexpr int kFrameLen = 7;
+    for (int i = 0; i + kFrameLen <= buf.size(); ++i) {
+        const QByteArray cand = buf.mid(i, kFrameLen);
+        quint8 byteCount = 0;
+        if (!QModbusPdu::validateRtuFrame(cand, &byteCount))
+            continue;
+        if (byteCount != 2)
+            continue;
+        if (static_cast<quint8>(cand.at(0)) != slaveAddr)
+            continue;
+        if (static_cast<quint8>(cand.at(1)) != 0x03)
+            continue;
+        const quint16 raw = QModbusPdu::readUint16Be(cand.constData() + 3);
+        if (voltsOut)
+            *voltsOut = static_cast<double>(raw) / 100.0;
+        if (frameOffset)
+            *frameOffset = i;
+        return true;
+    }
+    return false;
 }
 
 } // namespace XwdRawUartCodec

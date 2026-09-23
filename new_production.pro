@@ -135,6 +135,7 @@ INCLUDEPATH += platform/cloud/ota
 INCLUDEPATH += platform/cloud/test_data
 INCLUDEPATH += platform/instrument
 INCLUDEPATH += platform/debug/screen_inspect
+INCLUDEPATH += platform/debug/led_inspect
 INCLUDEPATH += $$PWD/third_party/mvs/include
 LIBS += -L$$PWD/third_party/mvs/lib/win64 -lMvCameraControl
 INCLUDEPATH += agreement/factory_protocol/protocol/qpb/ble_protocol
@@ -171,6 +172,7 @@ INCLUDEPATH += agreement/modbus_protocol/device/hikvision_scanner
 INCLUDEPATH += agreement/modbus_protocol/device/gc_series_tcp
 INCLUDEPATH += agreement/modbus_protocol/device/hq_ammeter_rtu
 INCLUDEPATH += agreement/modbus_protocol/device/lx_ammeter_rtu
+INCLUDEPATH += agreement/modbus_protocol/device/aa55_ammeter_rtu
 INCLUDEPATH += agreement/modbus_protocol/device/multi_temp_logger_rtu
 INCLUDEPATH += agreement/modbus_protocol/device/xinjie_plc_rtu
 INCLUDEPATH += agreement/scpi_protocol/codec
@@ -216,6 +218,7 @@ SOURCES += \
     platform/debug/screen_inspect/screen_inspect_analyzer.cpp \
     platform/debug/screen_inspect/screen_inspect_capture.cpp \
     platform/debug/screen_inspect/screen_inspect_gige_capture.cpp \
+    platform/debug/led_inspect/led_inspect_analyzer.cpp \
     platform/driver/serial/serial_channel.cpp \
     advance/demo/usmile_ring_buffer.cpp \
     advance/imagewindow/draggablecheckbox.cpp \
@@ -230,6 +233,7 @@ SOURCES += \
     agreement/modbus_protocol/codec/qmodbus_rtu_rx_buffer.cpp \
     agreement/modbus_protocol/device/hq_ammeter_rtu/hq_ammeter_rtu.cpp \
     agreement/modbus_protocol/device/lx_ammeter_rtu/lx_ammeter_rtu.cpp \
+    agreement/modbus_protocol/device/aa55_ammeter_rtu/aa55_ammeter_rtu.cpp \
     agreement/modbus_protocol/device/multi_temp_logger_rtu/multi_temp_logger_rtu.cpp \
     agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp_device.cpp \
     agreement/modbus_protocol/device/gc_series_tcp/gc_series_tcp_device.cpp \
@@ -390,6 +394,7 @@ HEADERS += \
     platform/debug/screen_inspect/screen_inspect_analyzer.h \
     platform/debug/screen_inspect/screen_inspect_capture.h \
     platform/debug/screen_inspect/screen_inspect_gige_capture.h \
+    platform/debug/led_inspect/led_inspect_analyzer.h \
     platform/driver/serial/serial_channel.h \
     advance/demo/usmile_ring_buffer.h \
     advance/imagewindow/draggablecheckbox.h \
@@ -405,6 +410,8 @@ HEADERS += \
     agreement/modbus_protocol/device/hq_ammeter_rtu/hq_ammeter_rtu_types.h \
     agreement/modbus_protocol/device/lx_ammeter_rtu/lx_ammeter_rtu.h \
     agreement/modbus_protocol/device/lx_ammeter_rtu/lx_ammeter_rtu_types.h \
+    agreement/modbus_protocol/device/aa55_ammeter_rtu/aa55_ammeter_rtu.h \
+    agreement/modbus_protocol/device/aa55_ammeter_rtu/aa55_ammeter_rtu_types.h \
     agreement/modbus_protocol/device/multi_temp_logger_rtu/multi_temp_logger_rtu.h \
     agreement/modbus_protocol/device/multi_temp_logger_rtu/multi_temp_logger_rtu_types.h \
     agreement/modbus_protocol/device/xinjie_plc_rtu/xinjie_plc_address.h \

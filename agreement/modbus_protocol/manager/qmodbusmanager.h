@@ -17,6 +17,8 @@
 #include "gc_series_tcp_types.h"
 #include "lx_ammeter_rtu.h"
 #include "lx_ammeter_rtu_types.h"
+#include "aa55_ammeter_rtu.h"
+#include "aa55_ammeter_rtu_types.h"
 #include "multi_temp_logger_rtu.h"
 #include "multi_temp_logger_rtu_types.h"
 #include "xinjie_plc_rtu_device.h"
@@ -114,6 +116,7 @@ class QModbusManager : public QObject {
 
     bool exec(HqAmmeterRtuCmd cmd, QString* errorMessage = nullptr);
     bool exec(LxAmmeterRtuCmd cmd, QString* errorMessage = nullptr);
+    bool exec(Aa55AmmeterRtuCmd cmd, QString* errorMessage = nullptr);
     bool exec(MultiTempLoggerRtuCmd cmd, const QVariant& param = {}, QString* errorMessage = nullptr);
 
     bool feedRtuRx(const QByteArray& chunk);
@@ -133,6 +136,7 @@ class QModbusManager : public QObject {
     GcSeriesTcpDevice gcDevice_;
     HqAmmeterModbusRtu hqAmmeterRtu_;
     LxAmmeterModbusRtu lxAmmeterRtu_;
+    Aa55AmmeterRtu aa55AmmeterRtu_;
     MultiTempLoggerModbusRtu multiTempLoggerRtu_;
     XinjePlcRtuDevice xinjiePlcDevice_;
     LogFn log_;

@@ -2,6 +2,7 @@
 
 #include "Abini.h"
 #include "common_utils.h"
+#include "led_inspect_analyzer.h"
 #include "screen_inspect_analyzer.h"
 #include "screen_inspect_gige_capture.h"
 #include "mainwindow.h"
@@ -15,13 +16,13 @@
 #include <QCoreApplication>
 #include <QDateTime>
 #include <QDebug>
-#include <QDebug>
 #include <QDir>
 #include <QDoubleSpinBox>
 #include <QElapsedTimer>
 #include <QEvent>
 #include <QFileDialog>
 #include <QFileInfo>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMouseEvent>
@@ -208,6 +209,56 @@ void ScreenInspectWidget::bindDesignerUi() {
     manualRoi_ = ScreenInspectAnalyzer::parseManualRoi(
         SETTINGS.value(QStringLiteral("ScreenInspect/Roi")).toString());
 
+    // LED 亮灭调试行：划灯框 / 灯数 / 灯序号 / 阈值 / 清除 / 试检（不改 .ui）
+    if (QVBoxLayout* actionLay = screenInspectFind<QVBoxLayout>(this, "verticalLayout_action")) {
+        auto* ledRow = new QHBoxLayout;
+        checkBox_drawLedRoi_ = new QCheckBox(QStringLiteral("划灯框"), this);
+        checkBox_drawLedRoi_->setObjectName(QStringLiteral("checkBox_drawLedRoi"));
+        spinBox_ledCount_ = new QSpinBox(this);
+        spinBox_ledCount_->setObjectName(QStringLiteral("spinBox_ledCount"));
+        spinBox_ledCount_->setRange(1, LedInspectAnalyzer::kMaxLedCount);
+        spinBox_ledCount_->setPrefix(QStringLiteral("灯数 "));
+        comboBox_ledIndex_ = new QComboBox(this);
+        comboBox_ledIndex_->setObjectName(QStringLiteral("comboBox_ledIndex"));
+        spinBox_ledMinLuma_ = new QSpinBox(this);
+        spinBox_ledMinLuma_->setObjectName(QStringLiteral("spinBox_ledMinLuma"));
+        spinBox_ledMinLuma_->setRange(0, 255);
+        spinBox_ledMinLuma_->setPrefix(QStringLiteral("阈值 "));
+        btnClearLedRois_ = new QPushButton(QStringLiteral("清除灯框"), this);
+        btnClearLedRois_->setObjectName(QStringLiteral("btnClearLedRois"));
+        btnLedOnOffInspect_ = new QPushButton(QStringLiteral("LED亮灭试检"), this);
+        btnLedOnOffInspect_->setObjectName(QStringLiteral("btnLedOnOffInspect"));
+        ledRow->addWidget(checkBox_drawLedRoi_);
+        ledRow->addWidget(spinBox_ledCount_);
+        ledRow->addWidget(comboBox_ledIndex_);
+        ledRow->addWidget(spinBox_ledMinLuma_);
+        ledRow->addWidget(btnClearLedRois_);
+        ledRow->addWidget(btnLedOnOffInspect_);
+        ledRow->addStretch(1);
+        actionLay->addLayout(ledRow);
+
+        const int ledCount = LedInspectAnalyzer::clampLedCount(
+            SETTINGS.value(QStringLiteral("LedInspect/LedCount"), 4).toInt());
+        spinBox_ledCount_->setValue(ledCount);
+        spinBox_ledMinLuma_->setValue(
+            SETTINGS.value(QStringLiteral("LedInspect/MinLuma"), 80).toInt());
+        rebuildLedIndexCombo();
+        loadLedRoisFromSettings();
+        connect(spinBox_ledCount_, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int v) {
+            SETTINGS.setValue(QStringLiteral("LedInspect/LedCount"), LedInspectAnalyzer::clampLedCount(v));
+            rebuildLedIndexCombo();
+            refreshImageLabels();
+        });
+        connect(spinBox_ledMinLuma_, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int v) {
+            SETTINGS.setValue(QStringLiteral("LedInspect/MinLuma"), v);
+        });
+        connect(checkBox_drawLedRoi_, &QCheckBox::toggled, this, [this](bool) { refreshImageLabels(); });
+        connect(btnClearLedRois_, &QPushButton::clicked, this, &ScreenInspectWidget::on_btnClearLedRois_clicked);
+        connect(btnLedOnOffInspect_, &QPushButton::clicked, this,
+                &ScreenInspectWidget::on_btnLedOnOffInspect_clicked);
+        LedInspectAnalyzer::cleanupStoredImages(LedInspectAnalyzer::storageRootDir());
+    }
+
     QMetaObject::connectSlotsByName(this);
     if (ui->btnConnectDevice)
         connect(ui->btnConnectDevice, &QPushButton::clicked, this, &ScreenInspectWidget::on_btnConnectDevice_clicked);
@@ -266,6 +317,14 @@ void ScreenInspectWidget::showEvent(QShowEvent* event) {
         return;
     loadThresholdsFromSettings();
     updateCameraSourceUi();
+    if (spinBox_ledCount_) {
+        spinBox_ledCount_->setValue(LedInspectAnalyzer::clampLedCount(
+            SETTINGS.value(QStringLiteral("LedInspect/LedCount"), 4).toInt()));
+    }
+    if (spinBox_ledMinLuma_)
+        spinBox_ledMinLuma_->setValue(SETTINGS.value(QStringLiteral("LedInspect/MinLuma"), 80).toInt());
+    loadLedRoisFromSettings();
+    rebuildLedIndexCombo();
 }
 
 void ScreenInspectWidget::resizeEvent(QResizeEvent* event) {
@@ -668,6 +727,121 @@ void ScreenInspectWidget::on_btnClearRoi_clicked() {
     ui->plainTextEdit_screenInspectLog->setPlainText(QStringLiteral("已清除划定范围，检测改回自动找屏。"));
 }
 
+void ScreenInspectWidget::on_btnClearLedRois_clicked() {
+    const int n = currentLedCount();
+    for (int i = 0; i < LedInspectAnalyzer::kMaxLedCount; ++i) {
+        ledRois_[i] = QRect();
+        if (i < n)
+            SETTINGS.setValue(LedInspectAnalyzer::settingsRoiKey(i + 1), QString());
+    }
+    SETTINGS.sync();
+    refreshImageLabels();
+    if (ui && ui->plainTextEdit_screenInspectLog)
+        ui->plainTextEdit_screenInspectLog->setPlainText(
+            QStringLiteral("已清除前%1个灯框（LedInspect/Roi1~%1）").arg(n));
+}
+
+void ScreenInspectWidget::on_btnLedOnOffInspect_clicked() {
+    if (currImage_.isNull()) {
+        if (ui && ui->plainTextEdit_screenInspectLog)
+            ui->plainTextEdit_screenInspectLog->setPlainText(QStringLiteral("请先采集当前图再做 LED 试检。"));
+        return;
+    }
+    LedInspectAnalyzer::Params ap;
+    ap.ledCount = currentLedCount();
+    ap.minLuma = spinBox_ledMinLuma_ ? spinBox_ledMinLuma_->value()
+                                     : SETTINGS.value(QStringLiteral("LedInspect/MinLuma"), 80).toDouble();
+    ap.rois.resize(ap.ledCount);
+    QStringList missing;
+    for (int i = 0; i < ap.ledCount; ++i) {
+        ap.rois[i] = ledRois_[i];
+        if (ap.rois[i].width() < 4 || ap.rois[i].height() < 4)
+            missing << QString::number(i + 1);
+    }
+    if (!missing.isEmpty()) {
+        if (ui && ui->plainTextEdit_screenInspectLog)
+            ui->plainTextEdit_screenInspectLog->setPlainText(
+                QStringLiteral("LED试检失败：未划齐灯框（缺灯%1）").arg(missing.join(QLatin1Char(','))));
+        return;
+    }
+    const LedInspectAnalyzer::Report report = LedInspectAnalyzer::analyze(currImage_, ap);
+    annotatedImage_ = report.annotated;
+    refreshImageLabels();
+    QStringList parts;
+    for (int i = 0; i < report.leds.size(); ++i) {
+        const LedInspectAnalyzer::LedResult& L = report.leds.at(i);
+        if (!L.valid)
+            continue;
+        parts << QStringLiteral("L%1=%2 luma=%3")
+                     .arg(i + 1)
+                     .arg(L.on ? QStringLiteral("亮") : QStringLiteral("灭"))
+                     .arg(L.luma, 0, 'f', 1);
+    }
+    if (ui && ui->plainTextEdit_screenInspectLog) {
+        ui->plainTextEdit_screenInspectLog->setPlainText(
+            QStringLiteral("LED试检：灯数=%1 亮=%2/%3 allOn=%4；%5")
+                .arg(report.ledCount)
+                .arg(report.onCount)
+                .arg(report.configuredCount)
+                .arg(report.allConfiguredOn ? 1 : 0)
+                .arg(parts.join(QLatin1Char(' '))));
+    }
+}
+
+int ScreenInspectWidget::currentLedCount() const {
+    if (spinBox_ledCount_)
+        return LedInspectAnalyzer::clampLedCount(spinBox_ledCount_->value());
+    return LedInspectAnalyzer::clampLedCount(
+        SETTINGS.value(QStringLiteral("LedInspect/LedCount"), 4).toInt());
+}
+
+bool ScreenInspectWidget::ledRoiModeActive() const {
+    return checkBox_drawLedRoi_ && checkBox_drawLedRoi_->isChecked();
+}
+
+void ScreenInspectWidget::rebuildLedIndexCombo() {
+    if (!comboBox_ledIndex_)
+        return;
+    const int n = currentLedCount();
+    const int prev = comboBox_ledIndex_->currentData().toInt();
+    comboBox_ledIndex_->clear();
+    for (int i = 0; i < n; ++i)
+        comboBox_ledIndex_->addItem(QStringLiteral("灯%1").arg(i + 1), i);
+    int idx = comboBox_ledIndex_->findData(prev);
+    if (idx < 0)
+        idx = 0;
+    comboBox_ledIndex_->setCurrentIndex(idx);
+}
+
+void ScreenInspectWidget::loadLedRoisFromSettings() {
+    for (int i = 0; i < LedInspectAnalyzer::kMaxLedCount; ++i) {
+        ledRois_[i] = LedInspectAnalyzer::parseRoi(
+            SETTINGS.value(LedInspectAnalyzer::settingsRoiKey(i + 1)).toString());
+    }
+}
+
+void ScreenInspectWidget::saveLedRoi(int index0, const QRect& r) {
+    if (index0 < 0 || index0 >= LedInspectAnalyzer::kMaxLedCount)
+        return;
+    const QRect clipped = r.normalized().intersected(currImage_.rect());
+    if (clipped.width() < 4 || clipped.height() < 4) {
+        if (ui && ui->plainTextEdit_screenInspectLog)
+            ui->plainTextEdit_screenInspectLog->setPlainText(QStringLiteral("灯框太小，请拖出更大范围。"));
+        return;
+    }
+    ledRois_[index0] = clipped;
+    SETTINGS.setValue(LedInspectAnalyzer::settingsRoiKey(index0 + 1), LedInspectAnalyzer::formatRoi(clipped));
+    SETTINGS.sync();
+    refreshImageLabels();
+    if (ui && ui->plainTextEdit_screenInspectLog) {
+        ui->plainTextEdit_screenInspectLog->setPlainText(
+            QStringLiteral("已划灯%1框：%2（写入 %3）")
+                .arg(index0 + 1)
+                .arg(LedInspectAnalyzer::formatRoi(clipped))
+                .arg(LedInspectAnalyzer::settingsRoiKey(index0 + 1)));
+    }
+}
+
 void ScreenInspectWidget::appendLog(const QString& text) {
     if (ui && ui->plainTextEdit_screenInspectLog) {
         ui->plainTextEdit_screenInspectLog->appendPlainText(
@@ -972,13 +1146,40 @@ QImage paintRoiOverlay(const QImage& src, const QSize& labelSize, const QRect& r
     return display;
 }
 
-void ScreenInspectWidget::refreshImageLabels() {
-    QRect overlay;
-    if (roiDragging_)
-        overlay = QRect(roiDragStart_, roiDragCur_).normalized();
-    else
-        overlay = manualRoi_;
+QImage paintLedRoisOverlay(const QImage& src, const QSize& labelSize, const QRect* rois, int count,
+                           const QRect& dragRoi) {
+    if (src.isNull() || labelSize.width() < 8 || labelSize.height() < 8 || !rois || count <= 0)
+        return src;
+    const Qt::TransformationMode mode =
+        (src.width() * src.height() > 1920 * 1080) ? Qt::FastTransformation : Qt::SmoothTransformation;
+    QImage display = src.scaled(labelSize, Qt::KeepAspectRatio, mode);
+    if (display.isNull() || src.width() <= 0 || src.height() <= 0)
+        return display;
+    display = display.convertToFormat(QImage::Format_RGB32);
+    QPainter p(&display);
+    p.setRenderHint(QPainter::Antialiasing, true);
+    auto drawOne = [&](const QRect& r, const QColor& pen, const QString& label) {
+        const QRect overlay = r.intersected(src.rect());
+        if (overlay.width() < 4 || overlay.height() < 4)
+            return;
+        const QRect od(overlay.x() * display.width() / src.width(),
+                       overlay.y() * display.height() / src.height(),
+                       qMax(1, overlay.width() * display.width() / src.width()),
+                       qMax(1, overlay.height() * display.height() / src.height()));
+        p.setPen(QPen(pen, 3));
+        p.drawRect(od.adjusted(0, 0, -1, -1));
+        p.setPen(QPen(Qt::white, 1));
+        p.drawText(od.topLeft() + QPoint(4, 14), label);
+    };
+    for (int i = 0; i < count; ++i)
+        drawOne(rois[i], QColor(255, 180, 0), QStringLiteral("L%1").arg(i + 1));
+    if (dragRoi.width() >= 4 && dragRoi.height() >= 4)
+        drawOne(dragRoi, QColor(0, 220, 255), QStringLiteral("拖"));
+    p.end();
+    return display;
+}
 
+void ScreenInspectWidget::refreshImageLabels() {
     // 参考图显示：若已识别到基准圆，则叠加绿色基准圆轮廓供直观核对
     if (!refImage_.isNull() && ui->label_refImage) {
         if (refCircle_.r > 0) {
@@ -994,6 +1195,21 @@ void ScreenInspectWidget::refreshImageLabels() {
     const QSize sz = ui->label_currImage->size();
     if (sz.width() < 8 || sz.height() < 8)
         return;
+
+    if (ledRoiModeActive()) {
+        QRect drag;
+        if (roiDragging_)
+            drag = QRect(roiDragStart_, roiDragCur_).normalized();
+        ui->label_currImage->setPixmap(
+            QPixmap::fromImage(paintLedRoisOverlay(src, sz, ledRois_, currentLedCount(), drag)));
+        return;
+    }
+
+    QRect overlay;
+    if (roiDragging_)
+        overlay = QRect(roiDragStart_, roiDragCur_).normalized();
+    else
+        overlay = manualRoi_;
     // 拍摄图：分析结果（绿框/圆/红圈）+ 青色划定框
     ui->label_currImage->setPixmap(QPixmap::fromImage(paintRoiOverlay(src, sz, overlay)));
 }
@@ -1061,7 +1277,13 @@ bool ScreenInspectWidget::eventFilter(QObject* watched, QEvent* event) {
                     roiDragCur_ = hit.topLeft();
                 roiDragging_ = false;
                 ui->label_currImage->releaseMouse();
-                saveManualRoi(QRect(roiDragStart_, roiDragCur_));
+                const QRect dragRect(roiDragStart_, roiDragCur_);
+                if (ledRoiModeActive()) {
+                    const int idx = comboBox_ledIndex_ ? comboBox_ledIndex_->currentData().toInt() : 0;
+                    saveLedRoi(idx, dragRect);
+                } else {
+                    saveManualRoi(dragRect);
+                }
                 refreshImageLabels();
                 return true;
             }
