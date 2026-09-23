@@ -493,6 +493,9 @@ Every Baby</string>
           </item>
           <item>
            <widget class="QLabel" name="WifiStatusLabel">
+            <property name="visible">
+             <bool>false</bool>
+            </property>
             <property name="text">
              <string>wifi连接：&lt;font color='red'&gt;失败&lt;/font&gt;</string>
             </property>
@@ -500,6 +503,9 @@ Every Baby</string>
           </item>
           <item>
            <widget class="QLabel" name="macLabel">
+            <property name="visible">
+             <bool>false</bool>
+            </property>
             <property name="text">
              <string>蓝牙mac:</string>
             </property>
@@ -2522,33 +2528,241 @@ Every Baby</string>
                          </property>
                         </widget>
                        </item>
-                       <item>
-                        <spacer name="horizontalSpacer_root_suction">
-                         <property name="orientation">
-                          <enum>Qt::Horizontal</enum>
-                         </property>
-                         <property name="sizeHint" stdset="0">
-                          <size>
-                           <width>40</width>
-                           <height>20</height>
-                          </size>
-                         </property>
-                        </spacer>
-                       </item>
-                      </layout>
-                     </widget>
-                    </item>
-                    <item>
-                     <widget class="QGroupBox" name="groupBox_business_mode">
-                      <property name="sizePolicy">
-                       <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
-                        <horstretch>0</horstretch>
-                        <verstretch>0</verstretch>
-                       </sizepolicy>
-                      </property>
-                      <property name="title">
-                       <string>其它模式</string>
-                      </property>
+                           <item>
+                            <spacer name="horizontalSpacer_root_suction">
+                             <property name="orientation">
+                              <enum>Qt::Horizontal</enum>
+                             </property>
+                             <property name="sizeHint" stdset="0">
+                              <size>
+                               <width>40</width>
+                               <height>20</height>
+                              </size>
+                             </property>
+                            </spacer>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                        <item>
+                         <widget class="QGroupBox" name="groupBox_root2_min">
+                          <property name="title">
+                           <string>Qroot2 / Air1（模式/档位/泵 + 姿态/空满碗）</string>
+                          </property>
+                          <layout class="QVBoxLayout" name="verticalLayout_root2_min">
+                           <property name="spacing">
+                            <number>6</number>
+                           </property>
+                           <item>
+                            <layout class="QHBoxLayout" name="horizontalLayout_root2_mode_level">
+                             <item alignment="Qt::AlignVCenter">
+                              <widget class="QLabel" name="label_root2_mode">
+                               <property name="text">
+                                <string>模式</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item alignment="Qt::AlignVCenter">
+                              <widget class="QComboBox" name="root2_mode">
+                               <property name="toolTip">
+                                <string>0xA2：1刺激 / 2吸乳 / 3混合</string>
+                               </property>
+                               <property name="currentIndex">
+                                <number>1</number>
+                               </property>
+                               <item>
+                                <property name="text">
+                                 <string>刺激</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>吸乳</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>混合</string>
+                                </property>
+                               </item>
+                              </widget>
+                             </item>
+                             <item alignment="Qt::AlignVCenter">
+                              <widget class="QPushButton" name="send_root2_mode">
+                               <property name="toolTip">
+                                <string>下发 Qroot2 模式 Req 0xA2</string>
+                               </property>
+                               <property name="text">
+                                <string>下发模式</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item alignment="Qt::AlignVCenter">
+                              <widget class="QLabel" name="label_root2_level">
+                               <property name="text">
+                                <string>档位</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item alignment="Qt::AlignVCenter">
+                              <widget class="QSpinBox" name="root2_level">
+                               <property name="toolTip">
+                                <string>0xA3：档位 1~15</string>
+                               </property>
+                               <property name="minimum">
+                                <number>1</number>
+                               </property>
+                               <property name="maximum">
+                                <number>15</number>
+                               </property>
+                               <property name="value">
+                                <number>5</number>
+                               </property>
+                              </widget>
+                             </item>
+                             <item alignment="Qt::AlignVCenter">
+                              <widget class="QPushButton" name="send_root2_level">
+                               <property name="toolTip">
+                                <string>下发 Qroot2 档位 Req 0xA3</string>
+                               </property>
+                               <property name="text">
+                                <string>下发档位</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item alignment="Qt::AlignVCenter">
+                              <widget class="QPushButton" name="root2_pump_run">
+                               <property name="toolTip">
+                                <string>泵运行（0xA4=1）</string>
+                               </property>
+                               <property name="text">
+                                <string>泵运行</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item alignment="Qt::AlignVCenter">
+                              <widget class="QPushButton" name="root2_pump_pause">
+                               <property name="toolTip">
+                                <string>泵暂停（0xA4=0）</string>
+                               </property>
+                               <property name="text">
+                                <string>泵暂停</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item>
+                              <spacer name="horizontalSpacer_root2_mode_level">
+                               <property name="orientation">
+                                <enum>Qt::Horizontal</enum>
+                               </property>
+                               <property name="sizeHint" stdset="0">
+                                <size>
+                                 <width>20</width>
+                                 <height>20</height>
+                                </size>
+                               </property>
+                              </spacer>
+                             </item>
+                            </layout>
+                           </item>
+                           <item>
+                            <layout class="QHBoxLayout" name="horizontalLayout_root2_pose_bowl">
+                             <item alignment="Qt::AlignVCenter">
+                              <widget class="QLabel" name="label_root2_pose">
+                               <property name="text">
+                                <string>姿态</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item alignment="Qt::AlignVCenter">
+                              <widget class="QComboBox" name="root2_pose_switch">
+                               <property name="toolTip">
+                                <string>0xDB：0关 / 1开</string>
+                               </property>
+                               <property name="currentIndex">
+                                <number>1</number>
+                               </property>
+                               <item>
+                                <property name="text">
+                                 <string>关</string>
+                                </property>
+                               </item>
+                               <item>
+                                <property name="text">
+                                 <string>开</string>
+                                </property>
+                               </item>
+                              </widget>
+                             </item>
+                             <item alignment="Qt::AlignVCenter">
+                              <widget class="QPushButton" name="send_root2_pose_switch">
+                               <property name="toolTip">
+                                <string>下发姿态开关 Req 0xDB</string>
+                               </property>
+                               <property name="text">
+                                <string>下发姿态开关</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item alignment="Qt::AlignVCenter">
+                              <widget class="QPushButton" name="send_root2_pose_calib">
+                               <property name="toolTip">
+                                <string>姿态校准 Req 0xDD</string>
+                               </property>
+                               <property name="text">
+                                <string>姿态校准</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item alignment="Qt::AlignVCenter">
+                              <widget class="QPushButton" name="send_root2_bowl_empty">
+                               <property name="toolTip">
+                                <string>空碗校准 Req 0xAE value=0（须同次上电先空后满）</string>
+                               </property>
+                               <property name="text">
+                                <string>空碗校准</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item alignment="Qt::AlignVCenter">
+                              <widget class="QPushButton" name="send_root2_bowl_full">
+                               <property name="toolTip">
+                                <string>满碗校准 Req 0xAE value=1</string>
+                               </property>
+                               <property name="text">
+                                <string>满碗校准</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item>
+                              <spacer name="horizontalSpacer_root2_pose_bowl">
+                               <property name="orientation">
+                                <enum>Qt::Horizontal</enum>
+                               </property>
+                               <property name="sizeHint" stdset="0">
+                                <size>
+                                 <width>20</width>
+                                 <height>20</height>
+                                </size>
+                               </property>
+                              </spacer>
+                             </item>
+                            </layout>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                        <item>
+                         <widget class="QGroupBox" name="groupBox_business_mode">
+                          <property name="sizePolicy">
+                           <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+                            <horstretch>0</horstretch>
+                            <verstretch>0</verstretch>
+                           </sizepolicy>
+                          </property>
+                          <property name="title">
+                           <string>其它模式</string>
+                          </property>
                       <layout class="QGridLayout" name="gridLayout_business_mode">
                        <property name="spacing">
                         <number>8</number>
@@ -3545,6 +3759,35 @@ Every Baby</string>
                       </layout>
                      </widget>
                     </item>
+                    <item row="1" column="0">
+                     <widget class="QGroupBox" name="groupBox_root_aging_history">
+                      <property name="title">
+                       <string>Qroot 老化历史(0x9C)</string>
+                      </property>
+                      <layout class="QHBoxLayout" name="horizontalLayout_root_aging_history">
+                       <item alignment="Qt::AlignVCenter">
+                        <widget class="QLabel" name="root_aging_history_value">
+                         <property name="text">
+                          <string>老化历史：未读取</string>
+                         </property>
+                         <property name="wordWrap">
+                          <bool>true</bool>
+                         </property>
+                        </widget>
+                       </item>
+                       <item alignment="Qt::AlignVCenter">
+                        <widget class="QPushButton" name="get_root_aging_history">
+                         <property name="toolTip">
+                          <string>读取老化历史信息（qroot 0x9C）</string>
+                         </property>
+                         <property name="text">
+                          <string>查询老化历史</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
                    </layout>
                   </widget></widget>
                  </widget>
@@ -4466,6 +4709,65 @@ Every Baby</string>
                      </widget>
                     </item>
                     <item>
+                     <widget class="QGroupBox" name="groupBox_root_vib">
+                      <property name="title">
+                       <string>Qroot / Qroot2 振子(0x94 / 0x93)</string>
+                      </property>
+                      <layout class="QHBoxLayout" name="horizontalLayout_root_vib">
+                       <item alignment="Qt::AlignVCenter">
+                        <widget class="QPushButton" name="root_vib_on">
+                         <property name="toolTip">
+                          <string>振子开（qroot 0x94 / qroot2 0x93）</string>
+                         </property>
+                         <property name="text">
+                          <string>振子开</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item alignment="Qt::AlignVCenter">
+                        <widget class="QPushButton" name="root_vib_off">
+                         <property name="toolTip">
+                          <string>振子停（qroot 0x94 / qroot2 0x93）</string>
+                         </property>
+                         <property name="text">
+                          <string>振子停</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item alignment="Qt::AlignVCenter">
+                        <widget class="QLabel" name="root_vib_status_value">
+                         <property name="text">
+                          <string>振子状态：未读取</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <spacer name="horizontalSpacer_root_vib">
+                         <property name="orientation">
+                          <enum>Qt::Horizontal</enum>
+                         </property>
+                         <property name="sizeHint" stdset="0">
+                          <size>
+                           <width>20</width>
+                           <height>20</height>
+                          </size>
+                         </property>
+                        </spacer>
+                       </item>
+                       <item alignment="Qt::AlignVCenter">
+                        <widget class="QPushButton" name="get_root_vib_status">
+                         <property name="toolTip">
+                          <string>查询振子状态（qroot 0x99）</string>
+                         </property>
+                         <property name="text">
+                          <string>查询振子状态</string>
+                         </property>
+                        </widget>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
                      <spacer name="verticalSpacer_periph_vib">
                       <property name="orientation">
                        <enum>Qt::Vertical</enum>
@@ -4682,6 +4984,45 @@ Every Baby</string>
                           </widget>
                          </item>
                         </layout>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_root_ntc">
+                      <property name="title">
+                       <string>Qroot 加热 NTC(0x97)</string>
+                      </property>
+                      <layout class="QHBoxLayout" name="horizontalLayout_root_ntc">
+                       <item alignment="Qt::AlignVCenter">
+                        <widget class="QLabel" name="root_ntc_value">
+                         <property name="text">
+                          <string>加热 NTC：未读取</string>
+                         </property>
+                        </widget>
+                       </item>
+                       <item>
+                        <spacer name="horizontalSpacer_root_ntc">
+                         <property name="orientation">
+                          <enum>Qt::Horizontal</enum>
+                         </property>
+                         <property name="sizeHint" stdset="0">
+                          <size>
+                           <width>20</width>
+                           <height>20</height>
+                          </size>
+                         </property>
+                        </spacer>
+                       </item>
+                       <item alignment="Qt::AlignVCenter">
+                        <widget class="QPushButton" name="get_root_ntc">
+                         <property name="toolTip">
+                          <string>查询加热 NTC（qroot 0x97）</string>
+                         </property>
+                         <property name="text">
+                          <string>查询加热NTC</string>
+                         </property>
+                        </widget>
                        </item>
                       </layout>
                      </widget>
@@ -7282,6 +7623,219 @@ Every Baby</string>
                           <string>法兰在位检测</string>
                          </property>
                         </widget>
+                       </item>
+                      </layout>
+                     </widget>
+                    </item>
+                    <item>
+                     <widget class="QGroupBox" name="groupBox_root_pump_control">
+                      <property name="title">
+                       <string>Qroot 泵控制(0xC0/0x9D/0x9E)</string>
+                      </property>
+                      <layout class="QVBoxLayout" name="verticalLayout_root_pump_control">
+                       <property name="spacing">
+                        <number>6</number>
+                       </property>
+                       <item>
+                        <layout class="QHBoxLayout" name="horizontalLayout_root_pump_ctrl">
+                         <item alignment="Qt::AlignVCenter">
+                          <widget class="QLabel" name="label_root_pump_status">
+                           <property name="text">
+                            <string>状态</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item alignment="Qt::AlignVCenter">
+                          <widget class="QComboBox" name="root_pump_status">
+                           <property name="toolTip">
+                            <string>0xC0 status：0停止 / 1运行</string>
+                           </property>
+                           <property name="currentIndex">
+                            <number>1</number>
+                           </property>
+                           <item>
+                            <property name="text">
+                             <string>停止</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>运行</string>
+                            </property>
+                           </item>
+                          </widget>
+                         </item>
+                         <item alignment="Qt::AlignVCenter">
+                          <widget class="QLabel" name="label_root_pump_mode">
+                           <property name="text">
+                            <string>模式</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item alignment="Qt::AlignVCenter">
+                          <widget class="QSpinBox" name="root_pump_mode">
+                           <property name="toolTip">
+                            <string>0xC0 mode：吸奶模式 1~7</string>
+                           </property>
+                           <property name="minimum">
+                            <number>1</number>
+                           </property>
+                           <property name="maximum">
+                            <number>7</number>
+                           </property>
+                           <property name="value">
+                            <number>1</number>
+                           </property>
+                          </widget>
+                         </item>
+                         <item alignment="Qt::AlignVCenter">
+                          <widget class="QLabel" name="label_root_pump_level">
+                           <property name="text">
+                            <string>档位</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item alignment="Qt::AlignVCenter">
+                          <widget class="QSpinBox" name="root_pump_level">
+                           <property name="toolTip">
+                            <string>0xC0 level：档位 1~15</string>
+                           </property>
+                           <property name="minimum">
+                            <number>1</number>
+                           </property>
+                           <property name="maximum">
+                            <number>15</number>
+                           </property>
+                           <property name="value">
+                            <number>8</number>
+                           </property>
+                          </widget>
+                         </item>
+                         <item alignment="Qt::AlignVCenter">
+                          <widget class="QLabel" name="label_root_pump_side">
+                           <property name="text">
+                            <string>侧</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item alignment="Qt::AlignVCenter">
+                          <widget class="QComboBox" name="root_pump_control_type">
+                           <property name="toolTip">
+                            <string>0xC0 controlType：0左 / 1右 / 2双边</string>
+                           </property>
+                           <property name="currentIndex">
+                            <number>2</number>
+                           </property>
+                           <item>
+                            <property name="text">
+                             <string>左</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>右</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>双边</string>
+                            </property>
+                           </item>
+                          </widget>
+                         </item>
+                         <item alignment="Qt::AlignVCenter">
+                          <widget class="QLabel" name="label_root_pump_freq">
+                           <property name="text">
+                            <string>频率</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item alignment="Qt::AlignVCenter">
+                          <widget class="QComboBox" name="root_pump_freq">
+                           <property name="toolTip">
+                            <string>0xC0 pumpFreq：0低 / 1中 / 2高</string>
+                           </property>
+                           <property name="currentIndex">
+                            <number>1</number>
+                           </property>
+                           <item>
+                            <property name="text">
+                             <string>低</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>中</string>
+                            </property>
+                           </item>
+                           <item>
+                            <property name="text">
+                             <string>高</string>
+                            </property>
+                           </item>
+                          </widget>
+                         </item>
+                         <item alignment="Qt::AlignVCenter">
+                          <widget class="QPushButton" name="send_root_pump_control">
+                           <property name="toolTip">
+                            <string>下发 qroot 吸奶器控制 Req 0xC0</string>
+                           </property>
+                           <property name="text">
+                            <string>下发泵控制</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <spacer name="horizontalSpacer_root_pump_ctrl">
+                           <property name="orientation">
+                            <enum>Qt::Horizontal</enum>
+                           </property>
+                           <property name="sizeHint" stdset="0">
+                            <size>
+                             <width>20</width>
+                             <height>20</height>
+                            </size>
+                           </property>
+                          </spacer>
+                         </item>
+                        </layout>
+                       </item>
+                       <item>
+                        <layout class="QHBoxLayout" name="horizontalLayout_root_pump_test">
+                         <item alignment="Qt::AlignVCenter">
+                          <widget class="QPushButton" name="root_pump_test_enter">
+                           <property name="toolTip">
+                            <string>主机泵测试进入（qroot 0x9D）</string>
+                           </property>
+                           <property name="text">
+                            <string>泵测试进入</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item alignment="Qt::AlignVCenter">
+                          <widget class="QPushButton" name="root_pump_test_exit">
+                           <property name="toolTip">
+                            <string>主机泵测试退出（qroot 0x9E）</string>
+                           </property>
+                           <property name="text">
+                            <string>泵测试退出</string>
+                           </property>
+                          </widget>
+                         </item>
+                         <item>
+                          <spacer name="horizontalSpacer_root_pump_test">
+                           <property name="orientation">
+                            <enum>Qt::Horizontal</enum>
+                           </property>
+                           <property name="sizeHint" stdset="0">
+                            <size>
+                             <width>40</width>
+                             <height>20</height>
+                            </size>
+                           </property>
+                          </spacer>
+                         </item>
+                        </layout>
                        </item>
                       </layout>
                      </widget>

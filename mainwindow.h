@@ -276,6 +276,8 @@ class MainWindow : public QMainWindow {
     QFile dongleSuctionCsvFile_;
     QTextStream dongleSuctionCsvStream_;
     QString dongleSuctionCsvPath_;
+    // 0无 1加热NTC 2振子状态：区分通用 ProtocolTypeData 回包
+    int rootTypeQueryPending_ = 0;
     DongleSuctionChannelPeakMonitor dongleSuctionPeakMonitors_[kDongleSuctionChannelCount];
     double dongleSuctionPeakTargetKpa_ = -36.0;
     double dongleSuctionPeakToleranceKpa_ = 2.6;
@@ -749,6 +751,22 @@ class MainWindow : public QMainWindow {
     void on_qaiot_vib_on_clicked();
     void on_qaiot_vib_off_clicked();
     void on_send_root_heat_level_clicked();
+    void on_send_root_pump_control_clicked();
+    void on_root_pump_test_enter_clicked();
+    void on_root_pump_test_exit_clicked();
+    void on_root_vib_on_clicked();
+    void on_root_vib_off_clicked();
+    void on_get_root_vib_status_clicked();
+    void on_get_root_ntc_clicked();
+    void on_get_root_aging_history_clicked();
+    void on_send_root2_mode_clicked();
+    void on_send_root2_level_clicked();
+    void on_root2_pump_run_clicked();
+    void on_root2_pump_pause_clicked();
+    void on_send_root2_pose_switch_clicked();
+    void on_send_root2_pose_calib_clicked();
+    void on_send_root2_bowl_empty_clicked();
+    void on_send_root2_bowl_full_clicked();
     void on_readBurningModestatus_clicked();
     void on_kTlvKeyWrite_clicked();
     void on_kTlvKeyread_clicked();

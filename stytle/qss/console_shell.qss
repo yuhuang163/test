@@ -41,7 +41,7 @@ QFrame#consoleBrandLine {
 QLabel#consoleBrandTitle {
 	font-family: "Segoe UI", "Microsoft YaHei UI";
 	font-size: 18px;
-	font-weight: 700;
+	font-weight: 1500;
 	color: #01205c;
 	padding: 0;
 }
@@ -1356,6 +1356,16 @@ QPushButton#consoleLogClearBtn:pressed:hover {
 }
 
 /* 图标 QLabel 必须透明：被 QSS 命中后 Qt 不再画 pixmap */
+QWidget#consoleStatusDevice,
+QWidget#consoleStatusMotor,
+QWidget#consoleStatusPump,
+QWidget#consoleStatusValve,
+QWidget#consoleMetricBattery,
+QWidget#consoleMetricTemp {
+	background: transparent;
+	border: none;
+}
+
 QLabel#consoleStatusDeviceIcon,
 QLabel#consoleStatusMotorIcon,
 QLabel#consoleStatusPumpIcon,

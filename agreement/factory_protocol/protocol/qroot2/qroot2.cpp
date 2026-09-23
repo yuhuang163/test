@@ -14,6 +14,132 @@ static constexpr quint8 kSop1 = 0x55;
 static constexpr int kHeaderSize = 5;
 static constexpr int kMaxFrameBodyLen = 64;
 
+static QString qroot2CommandTypeName(quint8 ct) {
+    switch (ct) {
+    case 0x00:
+        return QStringLiteral("请求");
+    case 0x01:
+        return QStringLiteral("应答");
+    case 0x02:
+        return QStringLiteral("否定应答");
+    case 0x03:
+        return QStringLiteral("通知");
+    default:
+        return QStringLiteral("类型0x%1").arg(ct, 2, 16, QLatin1Char('0'));
+    }
+}
+
+static QString qroot2CommandIdName(quint8 cid) {
+    switch (cid) {
+    case 0x82:
+        return QStringLiteral("读泵电流");
+    case 0x90:
+        return QStringLiteral("控制灯光");
+    case 0x91:
+        return QStringLiteral("读MAC");
+    case 0x92:
+        return QStringLiteral("写MAC");
+    case 0x93:
+        return QStringLiteral("振子控制");
+    case 0xA0:
+        return QStringLiteral("读设备SN");
+    case 0xA1:
+        return QStringLiteral("写设备SN");
+    case 0xA2:
+        return QStringLiteral("设置模式");
+    case 0xA3:
+        return QStringLiteral("设置档位");
+    case 0xA4:
+        return QStringLiteral("泵运行/暂停");
+    case 0xA5:
+        return QStringLiteral("读版本");
+    case 0xA6:
+        return QStringLiteral("读运行状态");
+    case 0xAE:
+        return QStringLiteral("空/满碗校准");
+    case 0xAF:
+        return QStringLiteral("自检/老化");
+    case 0xDB:
+        return QStringLiteral("姿态开关");
+    case 0xDD:
+        return QStringLiteral("姿态校准");
+    case 0xFC:
+        return QStringLiteral("关机");
+    default:
+        return QStringLiteral("命令0x%1").arg(cid, 2, 16, QLatin1Char('0'));
+    }
+}
+
+static QString qroot2ModeText(quint8 mode) {
+    switch (mode) {
+    case 1:
+        return QStringLiteral("刺激");
+    case 2:
+        return QStringLiteral("吸乳");
+    case 3:
+        return QStringLiteral("混合");
+    default:
+        return QStringLiteral("未知");
+    }
+}
+
+static QString qroot2DescribeBody(quint8 cid, const QByteArray& body) {
+    if (body.isEmpty())
+        return QString();
+    const auto u8 = [&body](int i) -> quint8 {
+        return static_cast<quint8>(body.at(i));
+    };
+    switch (cid) {
+    case 0xA2: // ModeSet
+        if (body.size() >= 1)
+            return QStringLiteral("模式=%1(%2)").arg(u8(0)).arg(qroot2ModeText(u8(0)));
+        break;
+    case 0xA3: // LevelSet
+        if (body.size() >= 1)
+            return QStringLiteral("档位=%1").arg(u8(0));
+        break;
+    case 0xA4: // PumpState
+        if (body.size() >= 1)
+            return QStringLiteral("状态=%1").arg(u8(0) ? QStringLiteral("运行") : QStringLiteral("暂停"));
+        break;
+    case 0xAE: // BowlCalib
+        if (body.size() >= 1)
+            return QStringLiteral("类型=%1").arg(u8(0) ? QStringLiteral("满碗") : QStringLiteral("空碗"));
+        break;
+    case 0xDB: // PoseSwitch
+        if (body.size() >= 1)
+            return QStringLiteral("开关=%1").arg(u8(0) ? QStringLiteral("开") : QStringLiteral("关"));
+        break;
+    case 0xAF: // TestMode
+        if (body.size() >= 1)
+            return QStringLiteral("mode=%1(%2)")
+                .arg(u8(0))
+                .arg(u8(0) == 0 ? QStringLiteral("自检") : QStringLiteral("老化"));
+        break;
+    case 0x93: // Vibration
+        if (body.size() >= 1)
+            return QStringLiteral("振子=%1").arg(u8(0) ? QStringLiteral("开") : QStringLiteral("停"));
+        break;
+    case 0xA6: // KeyTest / StateRead
+        if (body.size() >= 4)
+            return QStringLiteral("泵=%1 模式=%2 档位=%3").arg(u8(1)).arg(u8(2)).arg(u8(3));
+        break;
+    default:
+        break;
+    }
+    return QString();
+}
+
+static QString qroot2FrameSummary(quint8 ct, quint8 cid, const QByteArray& body) {
+    QString s = QStringLiteral("%1 %2(0x%3)")
+                    .arg(qroot2CommandTypeName(ct), qroot2CommandIdName(cid))
+                    .arg(cid, 2, 16, QLatin1Char('0'));
+    const QString detail = qroot2DescribeBody(cid, body);
+    if (!detail.isEmpty())
+        s += QStringLiteral(" %1").arg(detail);
+    return s;
+}
+
 // Air1 读/写 SN 应答：首字节为状态，后续为定长 SN 区；勿用 fromUtf8(body) 否则遇 \\0 截成空串
 static QString decodeAir1SnFieldBody(const QByteArray& body) {
     if (body.isEmpty())
@@ -71,7 +197,8 @@ bool Qroot2::sendPacket(quint8 ct, quint8 cid, const QByteArray& body) {
         qWarning() << "[Qroot2] write failed";
         return false;
     }
-    qDebug().noquote() << "[Qroot2] TX:" << frame.toHex(' ').toUpper();
+    qDebug().noquote() << "[Qroot2] TX" << qroot2FrameSummary(ct, cid, body) << "|"
+                       << frame.toHex(' ').toUpper();
     if (ct == Req)
         pendingCid_ = cid;
     hasPending_ = (ct == Req);
@@ -241,7 +368,8 @@ void Qroot2::drainRxBuffer() {
         const quint8 ct = static_cast<quint8>(frame.at(2));
         const quint8 cid = static_cast<quint8>(frame.at(3));
         const QByteArray body = frame.mid(kHeaderSize, cal);
-        qDebug().noquote() << "[Qroot2] RX:" << frame.toHex(' ').toUpper();
+        qDebug().noquote() << "[Qroot2] RX" << qroot2FrameSummary(ct, cid, body) << "|"
+                           << frame.toHex(' ').toUpper();
         handleFrame(ct, cid, body);
     }
 }
@@ -271,7 +399,27 @@ void Qroot2::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
     case BowlCalib:
     case PoseSwitch:
     case PoseCalib:
-    case PowerOff:
+    case PowerOff: {
+        bool pass = false;
+        if (body.isEmpty()) {
+            pass = true;
+        } else if (body.size() == 1) {
+            const quint8 code = static_cast<quint8>(body.at(0));
+            pass = (code == 0xFF || code == 0x00);
+            qDebug().noquote() << "[Qroot2]" << qroot2CommandIdName(cid) << "应答 code=" << Qt::hex << code
+                               << (pass ? QStringLiteral(" 成功") : QStringLiteral(" 失败"));
+        } else {
+            const quint8 head = static_cast<quint8>(body.at(0));
+            pass = (head == 0x00);
+            const QString detail = qroot2DescribeBody(cid, body.size() >= 2 ? body.mid(1) : QByteArray());
+            qDebug().noquote() << "[Qroot2]" << qroot2CommandIdName(cid) << "应答 head=" << Qt::hex << head
+                               << (detail.isEmpty() ? QString() : QStringLiteral(" ") + detail)
+                               << (pass ? QStringLiteral(" 成功") : QStringLiteral(" 失败"));
+        }
+        emit sendGetProductResponse(pass ? 1 : 0);
+        hasPending_ = false;
+        break;
+    }
     case DeviceSnWrite: {
         bool pass = false;
         if (body.isEmpty()) {
@@ -279,11 +427,11 @@ void Qroot2::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
         } else if (body.size() == 1) {
             const quint8 code = static_cast<quint8>(body.at(0));
             pass = (code == 0xFF || code == 0x00);
-            qDebug().noquote() << "[Qroot2] DeviceSN write ack code=" << Qt::hex << code;
+            qDebug().noquote() << "[Qroot2] 写设备SN 应答 code=" << Qt::hex << code;
         } else if (body.size() >= 2) {
             const quint8 head = static_cast<quint8>(body.at(0));
             const QString echo = decodeAir1SnFieldBody(body);
-            qDebug().noquote() << "[Qroot2] DeviceSN write ack, head=" << Qt::hex << head << "echo=" << echo;
+            qDebug().noquote() << "[Qroot2] 写设备SN 应答 head=" << Qt::hex << head << "echo=" << echo;
             pass = (head == 0x00);
             if (pass && !pendingWriteSn_.isEmpty() && !echo.isEmpty()) {
                 const QString expected = QString::fromLatin1(pendingWriteSn_).trimmed();
@@ -371,7 +519,7 @@ void Qroot2::handleFrame(quint8 ct, quint8 cid, const QByteArray& body) {
             } else if (body.size() >= 2) {
                 btn.keyButtonId = static_cast<quint8>(body.at(1));
             }
-            qDebug().noquote() << "[Qroot2] 0xA6 State: pump_state=" << btn.powerButtonState
+            qDebug().noquote() << "[Qroot2] 读运行状态: pump_state=" << btn.powerButtonState
                                << "mode=" << btn.modeButtonState << "level=" << btn.keyButtonId;
             emitReport(QStringLiteral("ProtocolButtonStateData"), QVariant::fromValue(btn));
             ProtocolResultData result;
