@@ -1198,104 +1198,9 @@ enum ConsoleStatusIconKind {
     ConsoleIconValve,
     ConsoleIconBattery,
     ConsoleIconTemp,
-    ConsoleIconCurrent
 };
 
-// 圆底 + 描线画进同一张图：QLabel 一旦被 QSS 命中就不会再画 pixmap
-static QPixmap makeConsoleStatusIcon(ConsoleStatusIconKind kind, qreal dpr) {
-    const int logical = 28;
-    const qreal ratio = qMax(1.0, dpr);
-    QPixmap pm(qMax(1, qRound(logical * ratio)), qMax(1, qRound(logical * ratio)));
-    pm.setDevicePixelRatio(ratio);
-    pm.fill(Qt::transparent);
-    QPainter p(&pm);
-    p.setRenderHint(QPainter::Antialiasing, true);
-    p.scale(ratio, ratio);
-    p.setPen(Qt::NoPen);
-    p.setBrush(QColor(0xed, 0xf3, 0xfb));
-    p.drawEllipse(QRectF(0.5, 0.5, 27.0, 27.0));
-    p.translate(7.0, 7.0);
-    p.scale(14.0 / 24.0, 14.0 / 24.0);
-    QPen pen(QColor(0x47, 0x63, 0x83), 1.8 * 24.0 / 14.0);
-    pen.setCapStyle(Qt::RoundCap);
-    pen.setJoinStyle(Qt::RoundJoin);
-    p.setPen(pen);
-    p.setBrush(Qt::NoBrush);
-    switch (kind) {
-    case ConsoleIconDevice: {
-        QPainterPath shield;
-        shield.moveTo(12.0, 3.5);
-        shield.lineTo(5.5, 6.5);
-        shield.lineTo(5.5, 12.1);
-        shield.cubicTo(5.5, 16.0, 8.2, 19.6, 12.0, 20.5);
-        shield.cubicTo(15.8, 19.6, 18.5, 16.0, 18.5, 12.1);
-        shield.lineTo(18.5, 6.5);
-        shield.closeSubpath();
-        p.drawPath(shield);
-        QPainterPath check;
-        check.moveTo(9.2, 12.0);
-        check.lineTo(11.2, 14.0);
-        check.lineTo(14.8, 10.0);
-        p.drawPath(check);
-        break;
-    }
-    case ConsoleIconMotor:
-        p.drawEllipse(QPointF(12.0, 12.0), 7.0, 7.0);
-        p.drawEllipse(QPointF(12.0, 12.0), 1.5, 1.5);
-        p.drawLine(QPointF(12.0, 5.5), QPointF(14.8, 9.5));
-        p.drawLine(QPointF(14.8, 9.5), QPointF(12.0, 12.0));
-        p.drawLine(QPointF(16.5, 15.8), QPointF(11.8, 17.0));
-        p.drawLine(QPointF(11.8, 17.0), QPointF(12.0, 12.0));
-        p.drawLine(QPointF(7.5, 15.8), QPointF(9.2, 9.5));
-        p.drawLine(QPointF(9.2, 9.5), QPointF(12.0, 12.0));
-        break;
-    case ConsoleIconPump: {
-        QPainterPath cup;
-        cup.moveTo(8.0, 8.0);
-        cup.lineTo(16.0, 8.0);
-        cup.lineTo(17.5, 17.5);
-        cup.lineTo(6.5, 17.5);
-        cup.closeSubpath();
-        p.drawPath(cup);
-        p.drawLine(QPointF(10.5, 8.0), QPointF(10.5, 5.5));
-        p.drawLine(QPointF(10.5, 5.5), QPointF(13.5, 5.5));
-        p.drawLine(QPointF(13.5, 5.5), QPointF(13.5, 8.0));
-        QPainterPath drop;
-        drop.moveTo(10.0, 15.8);
-        drop.cubicTo(10.0, 14.9, 10.7, 14.2, 12.0, 14.2);
-        drop.cubicTo(13.3, 14.2, 14.0, 14.9, 14.0, 15.8);
-        drop.cubicTo(14.0, 16.5, 13.3, 17.1, 12.0, 17.1);
-        drop.cubicTo(10.7, 17.1, 10.0, 16.5, 10.0, 15.8);
-        drop.closeSubpath();
-        p.drawPath(drop);
-        break;
-    }
-    case ConsoleIconValve:
-        p.drawPolyline(QPolygonF() << QPointF(4.0, 7.0) << QPointF(12.0, 12.0) << QPointF(4.0, 17.0) << QPointF(4.0, 7.0));
-        p.drawPolyline(QPolygonF() << QPointF(20.0, 7.0) << QPointF(12.0, 12.0) << QPointF(20.0, 17.0) << QPointF(20.0, 7.0));
-        p.drawLine(QPointF(12.0, 4.5), QPointF(12.0, 19.5));
-        break;
-    case ConsoleIconBattery:
-        p.drawRoundedRect(QRectF(7.0, 5.0, 10.0, 16.0), 1.5, 1.5);
-        p.drawRect(QRectF(10.0, 3.0, 4.0, 2.0));
-        p.drawLine(QPointF(9.0, 15.0), QPointF(15.0, 15.0));
-        break;
-    case ConsoleIconTemp:
-        p.drawRoundedRect(QRectF(10.5, 5.2, 3.0, 11.5), 1.5, 1.5);
-        p.drawEllipse(QPointF(12.0, 17.4), 3.5, 3.5);
-        p.drawLine(QPointF(12.0, 8.5), QPointF(12.0, 14.5));
-        break;
-    case ConsoleIconCurrent: {
-        QPolygonF wave;
-        wave << QPointF(2.0, 12.0) << QPointF(5.5, 12.0) << QPointF(7.5, 7.5)
-             << QPointF(11.0, 16.5) << QPointF(13.5, 10.5) << QPointF(22.0, 10.5);
-        p.drawPolyline(wave);
-        break;
-    }
-    }
-    return pm;
-}
-
+// 线稿 PNG 进资源，圆底按 DPR 现场合成：QLabel 被 QSS 命中后就不画 pixmap，故圆底不能只靠 .ui 静态图
 static void applyConsoleStatusIcon(QLabel* lab, ConsoleStatusIconKind kind) {
     if (!lab)
         return;
@@ -1306,33 +1211,30 @@ static void applyConsoleStatusIcon(QLabel* lab, ConsoleStatusIconKind kind) {
     lab->setAlignment(Qt::AlignCenter);
     lab->setStyleSheet(QStringLiteral("background:transparent;border:none;padding:0px;"));
     static const char* kRes[] = {
-        "status-device", "status-motor", "status-pump", "status-valve",
-        "status-battery", "status-temp", "status-current",
+        "status-device", "status-motor", "status-pump", "status-valve", "status-battery", "status-temp",
     };
     const int idx = static_cast<int>(kind);
     QPixmap icon;
-    if (idx >= 0 && idx < 7)
+    if (idx >= 0 && idx < 6)
         icon = QPixmap(QStringLiteral(":/stytle/picture/status/%1.png").arg(QLatin1String(kRes[idx])));
-    if (!icon.isNull()) {
-        const qreal dpr = qMax<qreal>(1.0, lab->devicePixelRatioF());
-        const int logical = 28;
-        QPixmap pm(qMax(1, qRound(logical * dpr)), qMax(1, qRound(logical * dpr)));
-        pm.setDevicePixelRatio(dpr);
-        pm.fill(Qt::transparent);
-        QPainter p(&pm);
-        p.setRenderHint(QPainter::Antialiasing, true);
-        p.setRenderHint(QPainter::SmoothPixmapTransform, true);
-        p.setPen(Qt::NoPen);
-        p.setBrush(QColor(0xed, 0xf3, 0xfb));
-        p.drawEllipse(QRectF(0.5, 0.5, 27.0, 27.0));
-        const QPixmap scaled = icon.scaled(QSize(qRound(16 * dpr), qRound(16 * dpr)), Qt::KeepAspectRatio, Qt::SmoothTransformation);
-        const qreal x = (logical * dpr - scaled.width()) / 2.0;
-        const qreal y = (logical * dpr - scaled.height()) / 2.0;
-        p.drawPixmap(QPointF(x, y), scaled);
-        lab->setPixmap(pm);
+    if (icon.isNull())
         return;
-    }
-    lab->setPixmap(makeConsoleStatusIcon(kind, lab->devicePixelRatioF()));
+    const qreal dpr = qMax<qreal>(1.0, lab->devicePixelRatioF());
+    const int logical = 28;
+    QPixmap pm(qMax(1, qRound(logical * dpr)), qMax(1, qRound(logical * dpr)));
+    pm.setDevicePixelRatio(dpr);
+    pm.fill(Qt::transparent);
+    QPainter p(&pm);
+    p.setRenderHint(QPainter::Antialiasing, true);
+    p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+    p.setPen(Qt::NoPen);
+    p.setBrush(QColor(0xed, 0xf3, 0xfb));
+    p.drawEllipse(QRectF(0.5, 0.5, 27.0, 27.0));
+    const QPixmap scaled = icon.scaled(QSize(qRound(16 * dpr), qRound(16 * dpr)), Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    const qreal x = (logical * dpr - scaled.width()) / 2.0;
+    const qreal y = (logical * dpr - scaled.height()) / 2.0;
+    p.drawPixmap(QPointF(x, y), scaled);
+    lab->setPixmap(pm);
 }
 
 // 预览页 CSS 进场（nav-enter / pill-enter / card-enter），QSS 无法表达，用位移动画还原
@@ -1370,7 +1272,12 @@ void MainWindow::bindConsoleShellWidgets() {
     consolePageTitle_ = uiFind<QLabel>(this, "consolePageTitle");
     consolePageSub_ = uiFind<QLabel>(this, "consolePageSub");
     consoleStack_ = uiFind<QStackedWidget>(this, "consoleStack");
-    // Designer 常把空壳 QWidget 收成 Layout；按 objectName 取布局再包回控件，.ui 删掉也不至于编不过
+    // 壳子 / Splitter / ScrollArea 已在 mainwindow.ui；状态行等仍可能被 Designer 收成 Layout
+    consoleShell_ = ui->consoleShell;
+    consoleSidebar_ = ui->consoleSidebar;
+    consoleMid_ = ui->consoleMid;
+    consoleRail_ = ui->consoleRail;
+    consoleConnectPage_ = ui->consoleConnectPage;
     consoleStatusDevice_ = wrapNamedLayout(uiFind<QLayout>(this, "consoleStatusCardLay"), uiFind<QLayout>(this, "consoleStatusDeviceLay"), QStringLiteral("consoleStatusDevice"));
     consoleStatusMotor_ = wrapNamedLayout(uiFind<QLayout>(this, "consoleStatusCardLay"), uiFind<QLayout>(this, "consoleStatusMotorLay"), QStringLiteral("consoleStatusMotor"));
     consoleStatusPump_ = wrapNamedLayout(uiFind<QLayout>(this, "consoleStatusCardLay"), uiFind<QLayout>(this, "consoleStatusPumpLay"), QStringLiteral("consoleStatusPump"));
@@ -1380,12 +1287,7 @@ void MainWindow::bindConsoleShellWidgets() {
     consoleFieldReset_ = wrapNamedLayout(uiFind<QLayout>(this, "consoleCardStep1Lay"), uiFind<QLayout>(this, "consoleFieldResetLay"), QStringLiteral("consoleFieldReset"));
     consoleHeader_ = wrapNamedLayout(uiFind<QLayout>(this, "consoleMidLay"), uiFind<QLayout>(this, "consoleHeaderLay"), QStringLiteral("consoleHeader"));
     consoleTitleBox_ = wrapNamedLayout(uiFind<QLayout>(this, "consoleMidLay"), uiFind<QLayout>(this, "consoleTitleLay"), QStringLiteral("consoleTitleBox"));
-    consoleConnectPage_ = wrapNamedLayout(uiFind<QLayout>(this, "verticalLayout_8"), uiFind<QLayout>(this, "consoleConnectPageLay"), QStringLiteral("consoleConnectPage"));
     wrapNamedLayout(uiFind<QLayout>(this, "consoleSideGrid"), uiFind<QLayout>(this, "consoleSideBodyLay"), QStringLiteral("consoleSideBody"));
-    consoleSidebar_ = wrapNamedLayout(uiFind<QLayout>(this, "consoleShellLay"), uiFind<QLayout>(this, "consoleSideGrid"), QStringLiteral("consoleSidebar"));
-    consoleMid_ = wrapNamedLayout(uiFind<QLayout>(this, "consoleShellLay"), uiFind<QLayout>(this, "consoleMidLay"), QStringLiteral("consoleMid"));
-    consoleRail_ = wrapNamedLayout(uiFind<QLayout>(this, "consoleShellLay"), uiFind<QLayout>(this, "consoleRailLay"), QStringLiteral("consoleRail"));
-    consoleShell_ = wrapNamedLayout(uiFind<QLayout>(this, "gridLayout_3"), uiFind<QLayout>(this, "consoleShellLay"), QStringLiteral("consoleShell"));
 }
 
 // 滚动区包裹后 Tab 页是 QScrollArea，逻辑页名在内层 widget 上
@@ -1444,148 +1346,79 @@ void MainWindow::selectConsoleNav(int id) {
 }
 
 void MainWindow::initConsoleShell() {
-    // 对齐 HTML：左右栏可拖、右侧状态/日志可拖，中间区吃剩余空间
-    if (auto* shellLay = qobject_cast<QHBoxLayout*>(consoleShell_ ? consoleShell_->layout() : nullptr)) {
-        if (consoleSidebar_ && consoleMid_ && consoleRail_) {
-            shellLay->removeWidget(consoleSidebar_);
-            shellLay->removeWidget(consoleMid_);
-            shellLay->removeWidget(consoleRail_);
-            shellLay->setSpacing(0);
-            auto* split = new QSplitter(Qt::Horizontal, consoleShell_);
-            split->setObjectName(QStringLiteral("consoleShellSplit"));
-            split->setChildrenCollapsible(false);
-            split->setOpaqueResize(true);
-            consoleSidebar_->setMinimumWidth(200);
-            consoleSidebar_->setMaximumWidth(380);
-            consoleRail_->setMinimumWidth(260);
-            consoleRail_->setMaximumWidth(520);
-            // 中栏最小宽不宜过大：子控件 min 叠加时 QSplitter 会溢出叠到右栏
-            consoleMid_->setMinimumWidth(200);
-            consoleMid_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-            split->addWidget(consoleSidebar_);
-            split->addWidget(consoleMid_);
-            split->addWidget(consoleRail_);
-            split->setStretchFactor(0, 0);
-            split->setStretchFactor(1, 1);
-            split->setStretchFactor(2, 0);
-            split->setSizes({242, 1200, 320});
-            shellLay->addWidget(split, 1);
-            connect(split, &QSplitter::splitterMoved, this, [this]() {
-                consoleSidePhotoFitSize_ = QSize();
-                updateConsoleSidePhotoFit();
-                updateConsoleLogPromoFit();
-                applyConsoleBusinessGridColumns(ui, consoleMid_, consoleShell_);
-            });
-            consoleShell_->installEventFilter(this);
-        }
+    // Splitter / ScrollArea / 复位分段 / 卡片尺寸已在 .ui；这里只接信号、做运行时行为
+    // 状态图标：.ui 只占位，圆底+线稿按 DPR 合成（静态 badge 在高分屏发糊）
+    applyConsoleStatusIcon(ui->consoleStatusDeviceIcon, ConsoleIconDevice);
+    applyConsoleStatusIcon(ui->consoleStatusMotorIcon, ConsoleIconMotor);
+    applyConsoleStatusIcon(ui->consoleStatusPumpIcon, ConsoleIconPump);
+    applyConsoleStatusIcon(ui->consoleStatusValveIcon, ConsoleIconValve);
+    applyConsoleStatusIcon(ui->consoleMetricBatteryIcon, ConsoleIconBattery);
+    applyConsoleStatusIcon(ui->consoleMetricTempIcon, ConsoleIconTemp);
+    if (auto* split = ui->consoleShellSplit) {
+        split->setStretchFactor(0, 0);
+        split->setStretchFactor(1, 1);
+        split->setStretchFactor(2, 0);
+        split->setSizes({242, 1200, 320});
+        connect(split, &QSplitter::splitterMoved, this, [this]() {
+            consoleSidePhotoFitSize_ = QSize();
+            updateConsoleSidePhotoFit();
+            updateConsoleLogPromoFit();
+            applyConsoleBusinessGridColumns(ui, consoleMid_, consoleShell_);
+        });
     }
-    if (ui->consoleStack)
-        ui->consoleStack->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    if (ui->groupBox_5)
-        ui->groupBox_5->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    if (ui->consoleWorkPage)
-        ui->consoleWorkPage->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    // 连接页内容有固定卡片高度：包进滚动区，窗口变矮时出滚动条而不是锁死最小高度
-    if (consoleConnectPage_ && ui->verticalLayout_8 && ui->groupBox_5
-        && !ui->groupBox_5->findChild<QScrollArea*>(QStringLiteral("consoleConnectScroll"))) {
-        QWidget* page = consoleConnectPage_;
-        ui->verticalLayout_8->removeWidget(page);
-        ui->verticalLayout_8->setAlignment(Qt::Alignment());
-        auto* scroll = new QScrollArea(ui->groupBox_5);
-        scroll->setObjectName(QStringLiteral("consoleConnectScroll"));
-        scroll->setWidgetResizable(true);
-        scroll->setFrameShape(QFrame::NoFrame);
-        scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-        scroll->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-        scroll->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        page->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
-        if (auto* lay = page->layout())
+    if (consoleShell_)
+        consoleShell_->installEventFilter(this);
+
+    if (auto* railSplit = ui->consoleRailSplit) {
+        railSplit->setStretchFactor(0, 0);
+        railSplit->setStretchFactor(1, 1);
+        if (QWidget* vp = ui->consoleStatusScroll ? ui->consoleStatusScroll->viewport() : nullptr)
+            vp->setAutoFillBackground(false);
+        const QList<QWidget*> statusRows = {
+            consoleStatusDevice_,
+            consoleStatusMotor_,
+            consoleStatusPump_,
+            consoleStatusValve_,
+            consoleMetricBattery_,
+            consoleMetricTemp_,
+        };
+        for (QWidget* row : statusRows) {
+            if (!row)
+                continue;
+            row->setMinimumHeight(28);
+            row->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        }
+        if (ui->verticalGroupBox) {
+            ui->verticalGroupBox->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+            ui->verticalGroupBox->setMinimumHeight(0);
+        }
+        QTimer::singleShot(0, this, [this, railSplit]() {
+            if (!ui->consoleStatusCard || !railSplit || !consoleRail_)
+                return;
+            const int railH = consoleRail_->height();
+            const int handle = qMax(railSplit->handleWidth(), 10);
+            const int minStatus = 88;
+            const int minLog = 120;
+            const int contentH = qMax(minStatus, ui->consoleStatusCard->sizeHint().height());
+            int statusH = qBound(minStatus, contentH, qMax(minStatus, railH - minLog - handle));
+            railSplit->setSizes({statusH, qMax(minLog, railH - statusH - handle)});
+            updateConsoleLogPromoFit();
+        });
+        connect(railSplit, &QSplitter::splitterMoved, this, [this]() { updateConsoleLogPromoFit(); });
+    }
+    if (consoleConnectPage_) {
+        if (auto* lay = consoleConnectPage_->layout())
             lay->setSizeConstraint(QLayout::SetMinimumSize);
-        scroll->setWidget(page);
-        ui->verticalLayout_8->addWidget(scroll, 1);
     }
-    if (auto* railLay = qobject_cast<QVBoxLayout*>(consoleRail_ ? consoleRail_->layout() : nullptr)) {
-        if (ui->consoleStatusCard && ui->consoleLogCard) {
-            railLay->removeWidget(ui->consoleStatusCard);
-            railLay->removeWidget(ui->consoleLogCard);
-            railLay->setSpacing(0);
-            auto* railSplit = new QSplitter(Qt::Vertical, consoleRail_);
-            railSplit->setObjectName(QStringLiteral("consoleRailSplit"));
-            railSplit->setChildrenCollapsible(false);
-            railSplit->setOpaqueResize(true);
-            // 状态区放进滚动区：分割条最小高度只绑滚动区，不绑内容全高，才能上下拖
-            if (auto* statusLay = ui->consoleStatusCard->layout())
-                statusLay->setSizeConstraint(QLayout::SetDefaultConstraint);
-            ui->consoleStatusCard->setMinimumHeight(0);
-            ui->consoleStatusCard->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
-            if (ui->verticalGroupBox) {
-                ui->verticalGroupBox->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
-                ui->verticalGroupBox->setMinimumHeight(0);
-            }
-            if (auto* logLay = ui->consoleLogCard->layout())
-                logLay->setSizeConstraint(QLayout::SetNoConstraint);
-            ui->consoleLogCard->setMinimumHeight(120);
-            ui->consoleLogCard->setMaximumHeight(QWIDGETSIZE_MAX);
-            ui->consoleLogCard->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Ignored);
-            const QList<QWidget*> statusRows = {
-                consoleStatusDevice_,
-                consoleStatusMotor_,
-                consoleStatusPump_,
-                consoleStatusValve_,
-                consoleMetricBattery_,
-                consoleMetricTemp_,
-            };
-            for (QWidget* row : statusRows) {
-                if (!row)
-                    continue;
-                row->setMinimumHeight(28);
-                row->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
-            }
-            auto* statusScroll = new QScrollArea(railSplit);
-            statusScroll->setObjectName(QStringLiteral("consoleStatusScroll"));
-            statusScroll->setFrameShape(QFrame::NoFrame);
-            statusScroll->setWidgetResizable(true);
-            statusScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-            statusScroll->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-            statusScroll->setMinimumHeight(88);
-            statusScroll->setMaximumHeight(QWIDGETSIZE_MAX);
-            // Ignored：分割条按最小高度算，不被内容 sizeHint 锁死
-            statusScroll->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Ignored);
-            statusScroll->setWidget(ui->consoleStatusCard);
-            if (QWidget* vp = statusScroll->viewport())
-                vp->setAutoFillBackground(false);
-            railSplit->setHandleWidth(10);
-            railSplit->addWidget(statusScroll);
-            railSplit->addWidget(ui->consoleLogCard);
-            railSplit->setStretchFactor(0, 0);
-            railSplit->setStretchFactor(1, 1);
-            railLay->addWidget(railSplit, 1);
-            QTimer::singleShot(0, this, [this, railSplit, statusScroll]() {
-                if (!ui->consoleStatusCard || !railSplit || !statusScroll)
-                    return;
-                const int railH = consoleRail_->height();
-                const int handle = qMax(railSplit->handleWidth(), 10);
-                const int minStatus = 88;
-                const int minLog = 120;
-                const int contentH = qMax(minStatus, ui->consoleStatusCard->sizeHint().height());
-                // 默认约显示内容高度，但不超过「给日志留出 minLog」；之后可自由拖小（出滚动条）
-                int statusH = qBound(minStatus, contentH, qMax(minStatus, railH - minLog - handle));
-                railSplit->setSizes({statusH, qMax(minLog, railH - statusH - handle)});
-                updateConsoleLogPromoFit();
-            });
-            connect(railSplit, &QSplitter::splitterMoved, this, [this]() { updateConsoleLogPromoFit(); });
-        }
-    }
+
     if (ui->consoleBg) {
         ui->consoleBg->setAttribute(Qt::WA_TransparentForMouseEvents);
-        // Ignored：背景图 sizeHint 不参与窗口最小高度
         ui->consoleBg->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
         ui->consoleBg->setMinimumSize(0, 0);
     }
     if (ui->consoleSidePhoto) {
         ui->consoleSidePhoto->setAttribute(Qt::WA_TransparentForMouseEvents);
         ui->consoleSidePhoto->setScaledContents(false);
-        // QLabel 带图时 minimumSizeHint=图高；裁切后再 setPixmap 会把当前高度锁成最小值
         ui->consoleSidePhoto->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
         ui->consoleSidePhoto->setMinimumSize(0, 0);
         ui->consoleSidePhoto->installEventFilter(this);
@@ -1625,39 +1458,12 @@ void MainWindow::initConsoleShell() {
     consoleNavGroup_->addButton(ui->consoleNavOta, 4);
     consoleNavGroup_->addButton(ui->consoleNavMisc, 5);
     connect(consoleNavGroup_, &QButtonGroup::idClicked, this, &MainWindow::selectConsoleNav);
+    // .ui 已带 icon；此处再处理白底透明，选中态用 *-on.png
     applyConsoleNavIcons(
         {ui->consoleNavConnect, ui->consoleNavBiz, ui->consoleNavPeriph, ui->consoleNavDongle, ui->consoleNavOta,
          ui->consoleNavMisc},
         {QStringLiteral("nav-connect"), QStringLiteral("nav-business"), QStringLiteral("nav-peripheral"),
          QStringLiteral("nav-dongle"), QStringLiteral("nav-ota"), QStringLiteral("nav-misc")});
-    if (ui->consoleSettingsBtn) {
-        ui->consoleSettingsBtn->setIcon(QIcon(QStringLiteral(":/stytle/picture/status/icon-gear.png")));
-        ui->consoleSettingsBtn->setIconSize(QSize(16, 16));
-        ui->consoleSettingsBtn->setToolButtonStyle(Qt::ToolButtonIconOnly);
-        ui->consoleSettingsBtn->setFixedSize(32, 32);
-    }
-    if (ui->consoleHelpBtn) {
-        QPixmap pm(32, 32);
-        pm.fill(Qt::transparent);
-        QPainter p(&pm);
-        p.setRenderHint(QPainter::Antialiasing, true);
-        QPen pen(QColor(QStringLiteral("#3d5a80")), 2.4);
-        pen.setCapStyle(Qt::RoundCap);
-        p.setPen(pen);
-        p.setBrush(Qt::NoBrush);
-        p.drawEllipse(QRectF(4, 4, 24, 24));
-        QFont f = ui->consoleHelpBtn->font();
-        f.setPixelSize(17);
-        f.setBold(true);
-        p.setFont(f);
-        p.drawText(QRect(0, -1, 32, 32), Qt::AlignCenter, QStringLiteral("?"));
-        p.end();
-        ui->consoleHelpBtn->setIcon(QIcon(pm));
-        ui->consoleHelpBtn->setIconSize(QSize(16, 16));
-        ui->consoleHelpBtn->setToolButtonStyle(Qt::ToolButtonIconOnly);
-        ui->consoleHelpBtn->setFixedSize(32, 32);
-        ui->consoleHelpBtn->setToolTip(QStringLiteral("帮助"));
-    }
     if (ui->consoleLogClearBtn)
         ui->consoleLogClearBtn->setIcon(QIcon(QStringLiteral(":/stytle/picture/status/icon-refresh.png")));
 
@@ -1687,32 +1493,11 @@ void MainWindow::initConsoleShell() {
             ui->msgEdit->clear();
     });
 
-    // 对齐 HTML segmented：开=启用复位，关=禁用；选中侧直接上色（不用独立滑块，避免拉宽后错位）
-    if (ui->is_reset_dongle && ui->consoleFieldResetLay) {
-        ui->is_reset_dongle->hide();
-        auto* seg = new QFrame(consoleFieldReset_);
-        seg->setObjectName(QStringLiteral("consoleSegReset"));
-        seg->setFixedHeight(36);
-        auto* segLay = new QHBoxLayout(seg);
-        segLay->setContentsMargins(3, 3, 3, 3);
-        segLay->setSpacing(2);
-        auto* onBtn = new QPushButton(QStringLiteral("开"), seg);
-        onBtn->setObjectName(QStringLiteral("resetOnBtn"));
-        onBtn->setCursor(Qt::PointingHandCursor);
-        onBtn->setFlat(true);
-        auto* offBtn = new QPushButton(QStringLiteral("关"), seg);
-        offBtn->setObjectName(QStringLiteral("resetOffBtn"));
-        offBtn->setCursor(Qt::PointingHandCursor);
-        offBtn->setFlat(true);
-        onBtn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        offBtn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-        segLay->addWidget(onBtn);
-        segLay->addWidget(offBtn);
-        ui->consoleFieldResetLay->addWidget(seg);
-
+    // 复位分段：控件在 .ui（consoleSegReset），这里只绑逻辑
+    if (ui->is_reset_dongle && ui->resetOnBtn && ui->resetOffBtn) {
+        auto* onBtn = ui->resetOnBtn;
+        auto* offBtn = ui->resetOffBtn;
         auto syncResetSeg = [this, onBtn, offBtn]() {
-            if (!onBtn || !offBtn)
-                return;
             const bool on = ui->is_reset_dongle && ui->is_reset_dongle->isChecked();
             onBtn->setProperty("segActive", on);
             offBtn->setProperty("segActive", !on);
@@ -1768,7 +1553,6 @@ void MainWindow::initConsoleShell() {
         ui->statusbar->hide();
     if (ui->menubar)
         ui->menubar->hide();
-    // 搜索已并入选择设备卡；旧文案标签和重复第 4 步不占布局
     if (ui->consoleConnectGrid && ui->consoleCardStep3) {
         ui->consoleConnectGrid->removeWidget(ui->consoleCardStep3);
         ui->consoleCardStep3->hide();
@@ -1795,7 +1579,6 @@ void MainWindow::initConsoleShell() {
         ui->consoleConnectGrid->addWidget(ui->consoleCardStep4, 1, 0, 1, 2);
     if (ui->consoleNavConnect)
         ui->consoleNavConnect->setChecked(true);
-    // 恢复本机上次打开的导航 + 内层 Tab（默认连接页）
     consoleUiRestoring = true;
     const int navId = qBound(0, SETTINGS.value(QStringLiteral("Window/ConsoleNavId"), 0).toInt(), 5);
     if (consoleNavGroup_) {
@@ -1835,19 +1618,12 @@ void MainWindow::initConsoleShell() {
     bindPersistTab(ui->consoleLogTabs, QStringLiteral("Window/ConsoleLogTab"));
 
     updateMainStyle(QStringLiteral("console_shell.qss"));
-    applyConsoleStatusIcon(ui->consoleStatusDeviceIcon, ConsoleIconDevice);
-    applyConsoleStatusIcon(ui->consoleStatusMotorIcon, ConsoleIconMotor);
-    applyConsoleStatusIcon(ui->consoleStatusPumpIcon, ConsoleIconPump);
-    applyConsoleStatusIcon(ui->consoleStatusValveIcon, ConsoleIconValve);
-    applyConsoleStatusIcon(ui->consoleMetricBatteryIcon, ConsoleIconBattery);
-    applyConsoleStatusIcon(ui->consoleMetricTempIcon, ConsoleIconTemp);
     if (ui->consoleLogTabs) {
         ui->consoleLogTabs->setDocumentMode(true);
         if (QTabBar* bar = ui->consoleLogTabs->tabBar())
             bar->setDrawBase(false);
     }
     QTimer::singleShot(0, this, [this]() { updateConsoleNarrowLayout(); });
-    // 去掉原生凹边；viewport 不要 autoFill，否则半透明会叠在黑底上画出黑线
     const QList<QPlainTextEdit*> logEdits = {ui->log, ui->msgEdit};
     for (QPlainTextEdit* edit : logEdits) {
         if (!edit)
@@ -1922,18 +1698,10 @@ void MainWindow::installPhysicalDevicePads() {
     if (!ui)
         return;
 
-    // 连接页卡片均分
-    if (ui->consoleConnectGrid) {
-        ui->consoleConnectGrid->setColumnStretch(0, 1);
-        ui->consoleConnectGrid->setColumnStretch(1, 1);
-        ui->consoleConnectGrid->setRowStretch(0, 1);
-        ui->consoleConnectGrid->setRowStretch(1, 1);
-    }
+    // 连接页卡片尺寸 / 网格 stretch 已在 .ui；这里只补 stretch 占位，避免内容贴底
     for (QFrame* card : {ui->consoleCardStep1, ui->consoleCardStep2, ui->consoleCardStep4}) {
         if (!card)
             continue;
-        card->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
-        card->setMinimumHeight(168);
         if (auto* lay = qobject_cast<QVBoxLayout*>(card->layout())) {
             if (!card->property("consoleCardSpaced").toBool()) {
                 lay->addStretch(1);
@@ -1947,10 +1715,11 @@ void MainWindow::installPhysicalDevicePads() {
             updateConsoleConnectFlow();
             return;
         }
-        const QString current = ui->pick_device->currentText();
+        // 列表项文案含设备名，用 itemData 里的 MAC 保持选中
+        const QString currentMac = ui->pick_device->currentData().toString();
         ui->pick_device->clear();
         updateComboBox();
-        const int idx = ui->pick_device->findText(current);
+        const int idx = currentMac.isEmpty() ? -1 : ui->pick_device->findData(currentMac);
         if (idx >= 0)
             ui->pick_device->setCurrentIndex(idx);
     };
@@ -2067,13 +1836,15 @@ void MainWindow::updateConsoleConnectFlow() {
     }
     if (QFrame* card2 = uiFind<QFrame>(this, "consoleCardStep2"))
         card2->setEnabled(serialOpen);
-    // 步骤3保持可点：「开始搜索」未连串口时会自动连接；其它按钮在未开串口时单独禁用
+    // 选设备步：串口未开也可点「开始搜索」（会先自动连串口）；连接 MAC 需已开串口
     if (QFrame* card4 = uiFind<QFrame>(this, "consoleCardStep4"))
         card4->setEnabled(true);
     if (ui->start_search)
         ui->start_search->setEnabled(true);
+    if (ui->pick_device)
+        ui->pick_device->setEnabled(serialOpen && consoleStep2Touched_);
     if (ui->connectPickMacButton)
-        ui->connectPickMacButton->setEnabled(serialOpen);
+        ui->connectPickMacButton->setEnabled(serialOpen && consoleStep2Touched_);
     if (ui->connectProductButton)
         ui->connectProductButton->setEnabled(serialOpen);
     if (QWidget* page = uiFind<QWidget>(this, "groupBox_5"))
@@ -2109,7 +1880,7 @@ void MainWindow::updateConsoleNarrowLayout() {
     if (w < 8)
         return;
     applyConsoleBusinessGridColumns(ui, consoleMid_, consoleShell_);
-    auto* split = consoleShell_->findChild<QSplitter*>(QStringLiteral("consoleShellSplit"));
+    auto* split = ui->consoleShellSplit;
     if (!split)
         return;
     // 对齐 HTML @media (max-width: 1100px)：横向过窄时收起左右分栏
@@ -2433,7 +2204,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
         connect(btn, &QPushButton::clicked, this, [this]() {
             if (!ui || !ui->pick_device)
                 return;
-            const QString mac = ui->pick_device->currentText().trimmed();
+            // itemData 存纯 MAC；展示文案为「名称  MAC」
+            QString mac = ui->pick_device->currentData().toString().trimmed();
+            if (mac.isEmpty())
+                mac = ui->pick_device->currentText().trimmed();
             if (ui->macInput && !mac.isEmpty())
                 ui->macInput->setText(mac);
             on_pick_device_textActivated(mac);
@@ -3573,11 +3347,9 @@ void MainWindow::on_connectButton_clicked() {
     ui->connectButton->setEnabled(false);
     openDongleSerialPort();
     waitWork(500); //给时间让dongle开机
-    // 串口连上后自动搜索；「开始搜索设备」仍保留，用来清空列表再搜
+    // 不自动搜：先停在「设置条件」，再手动点「开始搜索」
     if (dongleSerialPort && dongleSerialPort->isOpen()) {
-        showlog(QStringLiteral("串口已连接，自动搜索附近设备…"));
-        consoleStep2Touched_ = true;
-        on_start_search_clicked();
+        showlog(QStringLiteral("串口已连接，请先设置名称与信号条件，再点「开始搜索」"));
     }
     syncConsoleConnectSeg();
     updateConsoleConnectFlow();
@@ -4716,10 +4488,11 @@ void MainWindow::on_light_test_clicked() {
 void MainWindow::on_start_search_clicked() {
     qDebug() << "on_start_search_clicked";
     if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
-        // 点「开始搜索」时若未连串口，先自动连接；连接成功后再由连接槽回调本函数搜索
-        showlog(QStringLiteral("串口未连接，正在自动连接并搜索设备…"));
+        // 未开串口时先连上；连接槽不再自动搜，此处继续往下搜
+        showlog(QStringLiteral("串口未连接，正在自动连接…"));
         on_connectButton_clicked();
-        return;
+        if (!dongleSerialPort || !dongleSerialPort->isOpen())
+            return;
     }
 
     ui->pick_device->clear();
@@ -4736,18 +4509,35 @@ void MainWindow::on_pick_device_textActivated(const QString& arg1) {
     if (!dongleSerialPort->isOpen()) {
         on_connectButton_clicked();
     }
-    // 检查是否是mac格式
-    QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
-    // 使用正则表达式匹配
-    if (!macRegex.match(arg1).hasMatch()) {
+    // 列表展示「名称  MAC」，优先 itemData，否则从文案里抽 MAC
+    QString mac = arg1.trimmed();
+    if (ui->pick_device) {
+        const int idx = ui->pick_device->findText(arg1);
+        if (idx >= 0) {
+            const QString dataMac = ui->pick_device->itemData(idx).toString().trimmed();
+            if (!dataMac.isEmpty())
+                mac = dataMac;
+        } else if (ui->pick_device->currentText() == arg1) {
+            const QString dataMac = ui->pick_device->currentData().toString().trimmed();
+            if (!dataMac.isEmpty())
+                mac = dataMac;
+        }
+    }
+    static const QRegularExpression kMacExact(QStringLiteral("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$"));
+    static const QRegularExpression kMacInText(QStringLiteral("([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}"));
+    if (!kMacExact.match(mac).hasMatch()) {
+        const QRegularExpressionMatch m = kMacInText.match(mac);
+        if (m.hasMatch())
+            mac = m.captured(0);
+    }
+    if (!kMacExact.match(mac).hasMatch()) {
         QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
         return;
-    } else {
-        protocolManager.setNeedAes(false);
-        macAddress = arg1;
-        at->set(DongleCmd::BleScanConnect, macAddress); // 发送mac地址
-        updateConsoleConnectFlow();
     }
+    protocolManager.setNeedAes(false);
+    macAddress = mac;
+    at->set(DongleCmd::BleScanConnect, macAddress);
+    updateConsoleConnectFlow();
 }
 
 void MainWindow::on_open_motor_cali_clicked() {

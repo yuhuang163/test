@@ -28,8 +28,16 @@
         <file>stytle/picture/status/status-battery.png</file>
         <file>stytle/picture/status/status-temp.png</file>
         <file>stytle/picture/status/status-current.png</file>
+        <file>stytle/picture/status/status-device-badge.png</file>
+        <file>stytle/picture/status/status-motor-badge.png</file>
+        <file>stytle/picture/status/status-pump-badge.png</file>
+        <file>stytle/picture/status/status-valve-badge.png</file>
+        <file>stytle/picture/status/status-battery-badge.png</file>
+        <file>stytle/picture/status/status-temp-badge.png</file>
+        <file>stytle/picture/status/status-current-badge.png</file>
         <file>stytle/picture/status/icon-link.png</file>
         <file>stytle/picture/status/icon-gear.png</file>
+        <file>stytle/picture/status/icon-help.png</file>
         <file>stytle/picture/status/icon-refresh.png</file>
         <file>stytle/picture/status/icon-filter.png</file>
         <file>stytle/picture/status/icon-flask.png</file>

@@ -1562,6 +1562,9 @@ void MainWindow::refreshWifiState(int state) {
 }
 void MainWindow::refreshBleState(int state) {
     if (state) {
+        // 兜底与 Dongle 置位顺序对齐，保证流程第 3 步立刻变「已连接」
+        if (at)
+            at->setConnected();
         bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
         showlog("蓝牙连接成功");
         protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
@@ -1572,6 +1575,8 @@ void MainWindow::refreshBleState(int state) {
         showlog(QStringLiteral("已请求电量与电池温度"));
         updateConsoleConnectFlow();
     } else {
+        if (at)
+            at->resetConnected();
         bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
         qDebug() << "蓝牙连接断开";
         if (ui && ui->consoleMetricBatteryValue)
@@ -2514,9 +2519,15 @@ void MainWindow::updateComboBox() {
         // qDebug() << "设备地址：" << deviceName<<deviceAddress<<deviceRssi;
         if (deviceName.contains(ui->name_range->currentText(), Qt::CaseInsensitive)
             && deviceRssi.toInt() > ui->rssi_range->value() && deviceAddress.length() == 17) {
-            const int index = ui->pick_device->findText(deviceAddress);
+            // 展示「名称  MAC」，itemData 仍为纯 MAC 供连接使用
+            const QString label = deviceName.trimmed().isEmpty()
+                                     ? deviceAddress
+                                     : QStringLiteral("%1  %2").arg(deviceName.trimmed(), deviceAddress);
+            const int index = ui->pick_device->findData(deviceAddress);
             if (index == -1) {
-                ui->pick_device->addItem(deviceAddress);
+                ui->pick_device->addItem(label, deviceAddress);
+            } else if (ui->pick_device->itemText(index) != label) {
+                ui->pick_device->setItemText(index, label);
             }
         }
     }

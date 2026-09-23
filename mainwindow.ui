@@ -53,24 +53,7 @@
      </widget>
     </item>
     <item row="0" column="0">
-     <layout class="QHBoxLayout" name="consoleShellLay" stretch="0,1,0">
-      <property name="spacing">
-       <number>10</number>
-      </property>
-      <property name="leftMargin">
-       <number>8</number>
-      </property>
-      <property name="topMargin">
-       <number>8</number>
-      </property>
-      <property name="rightMargin">
-       <number>8</number>
-      </property>
-      <property name="bottomMargin">
-       <number>8</number>
-      </property>
-      <item>
-       <layout class="QGridLayout" name="consoleSideGrid">
+     <widget class="QWidget" name="consoleShell"><layout class="QHBoxLayout" name="consoleShellLay"><property name="spacing"><number>0</number></property><property name="leftMargin"><number>0</number></property><property name="topMargin"><number>0</number></property><property name="rightMargin"><number>0</number></property><property name="bottomMargin"><number>0</number></property><item><widget class="QSplitter" name="consoleShellSplit"><property name="orientation"><enum>Qt::Horizontal</enum></property><property name="childrenCollapsible"><bool>false</bool></property><property name="opaqueResize"><bool>true</bool></property><widget class="QWidget" name="consoleSidebar"><property name="minimumSize"><size><width>200</width><height>0</height></size></property><property name="maximumSize"><size><width>380</width><height>16777215</height></size></property><property name="sizePolicy"><sizepolicy hsizetype="Preferred" vsizetype="Expanding"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property><layout class="QGridLayout" name="consoleSideGrid">
         <property name="leftMargin">
          <number>0</number>
         </property>
@@ -112,7 +95,7 @@
          </widget>
         </item>
         <item row="0" column="0">
-         <widget class="QWidget" name="consoleSideFade" native="true"/>
+         <widget class="QWidget" name="consoleSideFade" native="true" />
         </item>
         <item row="0" column="0">
          <layout class="QVBoxLayout" name="consoleSideBodyLay">
@@ -274,13 +257,6 @@
             <property name="text">
              <string>连接</string>
             </property>
-            <property name="icon">
-             <iconset resource="new_production.qrc">
-              <normaloff>:/stytle/picture/nav/nav-connect.png</normaloff>
-              <normalon>:/stytle/picture/nav/nav-connect.png</normalon>
-              <activeon>:/stytle/picture/nav/nav-connect.png</activeon>
-              <selectedon>:/stytle/picture/nav/nav-connect.png</selectedon>:/stytle/picture/nav/nav-connect.png</iconset>
-            </property>
             <property name="iconSize">
              <size>
               <width>18</width>
@@ -299,7 +275,7 @@
             <attribute name="buttonGroup">
              <string notr="true">consoleNavGroup</string>
             </attribute>
-           </widget>
+           <property name="icon"><iconset resource="new_production.qrc"><normaloff>:/stytle/picture/nav/nav-connect.png</normaloff><normalon>:/stytle/picture/nav/nav-connect-on.png</normalon><activeon>:/stytle/picture/nav/nav-connect-on.png</activeon><selectedon>:/stytle/picture/nav/nav-connect-on.png</selectedon>:/stytle/picture/nav/nav-connect-on.png</iconset></property></widget>
           </item>
           <item>
            <widget class="QPushButton" name="consoleNavBiz">
@@ -309,13 +285,6 @@
             <property name="text">
              <string>业务控制</string>
             </property>
-            <property name="icon">
-             <iconset resource="new_production.qrc">
-              <normaloff>:/stytle/picture/nav/nav-business.png</normaloff>
-              <normalon>:/stytle/picture/nav/nav-business.png</normalon>
-              <activeon>:/stytle/picture/nav/nav-business.png</activeon>
-              <selectedon>:/stytle/picture/nav/nav-business.png</selectedon>:/stytle/picture/nav/nav-business.png</iconset>
-            </property>
             <property name="iconSize">
              <size>
               <width>18</width>
@@ -334,7 +303,7 @@
             <attribute name="buttonGroup">
              <string notr="true">consoleNavGroup</string>
             </attribute>
-           </widget>
+           <property name="icon"><iconset resource="new_production.qrc"><normaloff>:/stytle/picture/nav/nav-business.png</normaloff><normalon>:/stytle/picture/nav/nav-business-on.png</normalon><activeon>:/stytle/picture/nav/nav-business-on.png</activeon><selectedon>:/stytle/picture/nav/nav-business-on.png</selectedon>:/stytle/picture/nav/nav-business-on.png</iconset></property></widget>
           </item>
           <item>
            <widget class="QPushButton" name="consoleNavPeriph">
@@ -344,13 +313,6 @@
             <property name="text">
              <string>外设</string>
             </property>
-            <property name="icon">
-             <iconset resource="new_production.qrc">
-              <normaloff>:/stytle/picture/nav/nav-peripheral.png</normaloff>
-              <normalon>:/stytle/picture/nav/nav-peripheral.png</normalon>
-              <activeon>:/stytle/picture/nav/nav-peripheral.png</activeon>
-              <selectedon>:/stytle/picture/nav/nav-peripheral.png</selectedon>:/stytle/picture/nav/nav-peripheral.png</iconset>
-            </property>
             <property name="iconSize">
              <size>
               <width>18</width>
@@ -369,7 +331,7 @@
             <attribute name="buttonGroup">
              <string notr="true">consoleNavGroup</string>
             </attribute>
-           </widget>
+           <property name="icon"><iconset resource="new_production.qrc"><normaloff>:/stytle/picture/nav/nav-peripheral.png</normaloff><normalon>:/stytle/picture/nav/nav-peripheral-on.png</normalon><activeon>:/stytle/picture/nav/nav-peripheral-on.png</activeon><selectedon>:/stytle/picture/nav/nav-peripheral-on.png</selectedon>:/stytle/picture/nav/nav-peripheral-on.png</iconset></property></widget>
           </item>
           <item>
            <widget class="QPushButton" name="consoleNavDongle">
@@ -379,13 +341,6 @@
             <property name="text">
              <string>Dongle</string>
             </property>
-            <property name="icon">
-             <iconset resource="new_production.qrc">
-              <normaloff>:/stytle/picture/nav/nav-dongle.png</normaloff>
-              <normalon>:/stytle/picture/nav/nav-dongle.png</normalon>
-              <activeon>:/stytle/picture/nav/nav-dongle.png</activeon>
-              <selectedon>:/stytle/picture/nav/nav-dongle.png</selectedon>:/stytle/picture/nav/nav-dongle.png</iconset>
-            </property>
             <property name="iconSize">
              <size>
               <width>18</width>
@@ -404,7 +359,7 @@
             <attribute name="buttonGroup">
              <string notr="true">consoleNavGroup</string>
             </attribute>
-           </widget>
+           <property name="icon"><iconset resource="new_production.qrc"><normaloff>:/stytle/picture/nav/nav-dongle.png</normaloff><normalon>:/stytle/picture/nav/nav-dongle-on.png</normalon><activeon>:/stytle/picture/nav/nav-dongle-on.png</activeon><selectedon>:/stytle/picture/nav/nav-dongle-on.png</selectedon>:/stytle/picture/nav/nav-dongle-on.png</iconset></property></widget>
           </item>
           <item>
            <widget class="QPushButton" name="consoleNavOta">
@@ -414,13 +369,6 @@
             <property name="text">
              <string>OTA/压测</string>
             </property>
-            <property name="icon">
-             <iconset resource="new_production.qrc">
-              <normaloff>:/stytle/picture/nav/nav-ota.png</normaloff>
-              <normalon>:/stytle/picture/nav/nav-ota.png</normalon>
-              <activeon>:/stytle/picture/nav/nav-ota.png</activeon>
-              <selectedon>:/stytle/picture/nav/nav-ota.png</selectedon>:/stytle/picture/nav/nav-ota.png</iconset>
-            </property>
             <property name="iconSize">
              <size>
               <width>18</width>
@@ -439,7 +387,7 @@
             <attribute name="buttonGroup">
              <string notr="true">consoleNavGroup</string>
             </attribute>
-           </widget>
+           <property name="icon"><iconset resource="new_production.qrc"><normaloff>:/stytle/picture/nav/nav-ota.png</normaloff><normalon>:/stytle/picture/nav/nav-ota-on.png</normalon><activeon>:/stytle/picture/nav/nav-ota-on.png</activeon><selectedon>:/stytle/picture/nav/nav-ota-on.png</selectedon>:/stytle/picture/nav/nav-ota-on.png</iconset></property></widget>
           </item>
           <item>
            <widget class="QPushButton" name="consoleNavMisc">
@@ -449,13 +397,6 @@
             <property name="text">
              <string>其它</string>
             </property>
-            <property name="icon">
-             <iconset resource="new_production.qrc">
-              <normaloff>:/stytle/picture/nav/nav-misc.png</normaloff>
-              <normalon>:/stytle/picture/nav/nav-misc.png</normalon>
-              <activeon>:/stytle/picture/nav/nav-misc.png</activeon>
-              <selectedon>:/stytle/picture/nav/nav-misc.png</selectedon>:/stytle/picture/nav/nav-misc.png</iconset>
-            </property>
             <property name="iconSize">
              <size>
               <width>18</width>
@@ -474,7 +415,7 @@
             <attribute name="buttonGroup">
              <string notr="true">consoleNavGroup</string>
             </attribute>
-           </widget>
+           <property name="icon"><iconset resource="new_production.qrc"><normaloff>:/stytle/picture/nav/nav-misc.png</normaloff><normalon>:/stytle/picture/nav/nav-misc-on.png</normalon><activeon>:/stytle/picture/nav/nav-misc-on.png</activeon><selectedon>:/stytle/picture/nav/nav-misc-on.png</selectedon>:/stytle/picture/nav/nav-misc-on.png</iconset></property></widget>
           </item>
           <item>
            <spacer name="consoleNavStretch">
@@ -503,9 +444,7 @@ Every Baby</string>
          </layout>
         </item>
        </layout>
-      </item>
-      <item>
-       <layout class="QVBoxLayout" name="consoleMidLay" stretch="0,0,1">
+      </widget><widget class="QWidget" name="consoleMid"><property name="minimumSize"><size><width>200</width><height>0</height></size></property><property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Expanding"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property><layout class="QVBoxLayout" name="consoleMidLay" stretch="0,0,1">
         <property name="spacing">
          <number>8</number>
         </property>
@@ -576,14 +515,14 @@ Every Baby</string>
           <item>
            <widget class="QLabel" name="consoleFactoryLabel">
             <property name="text">
-             <string/>
+             <string />
             </property>
            </widget>
           </item>
           <item>
            <widget class="QLabel" name="consoleBuildLabel">
             <property name="text">
-             <string/>
+             <string />
             </property>
            </widget>
           </item>
@@ -632,7 +571,7 @@ Every Baby</string>
             <property name="autoRaise">
              <bool>true</bool>
             </property>
-           </widget>
+           <property name="icon"><iconset resource="new_production.qrc"><normaloff>:/stytle/picture/status/icon-gear.png</normaloff><normalon>:/stytle/picture/status/icon-gear.png</normalon><activeon>:/stytle/picture/status/icon-gear.png</activeon><selectedon>:/stytle/picture/status/icon-gear.png</selectedon>:/stytle/picture/status/icon-gear.png</iconset></property></widget>
           </item>
           <item>
            <widget class="QToolButton" name="consoleHelpBtn">
@@ -669,7 +608,7 @@ Every Baby</string>
             <property name="autoRaise">
              <bool>true</bool>
             </property>
-           </widget>
+           <property name="icon"><iconset resource="new_production.qrc"><normaloff>:/stytle/picture/status/icon-help.png</normaloff><normalon>:/stytle/picture/status/icon-help.png</normalon><activeon>:/stytle/picture/status/icon-help.png</activeon><selectedon>:/stytle/picture/status/icon-help.png</selectedon>:/stytle/picture/status/icon-help.png</iconset></property></widget>
           </item>
          </layout>
         </item>
@@ -719,7 +658,7 @@ Every Baby</string>
             </sizepolicy>
            </property>
            <property name="title">
-            <string/>
+            <string />
            </property>
            <property name="flat">
             <bool>true</bool>
@@ -741,7 +680,7 @@ Every Baby</string>
              <number>0</number>
             </property>
             <item>
-             <layout class="QVBoxLayout" name="consoleConnectPageLay">
+             <widget class="QScrollArea" name="consoleConnectScroll"><property name="widgetResizable"><bool>true</bool></property><property name="frameShape"><enum>QFrame::NoFrame</enum></property><property name="horizontalScrollBarPolicy"><enum>Qt::ScrollBarAlwaysOff</enum></property><property name="verticalScrollBarPolicy"><enum>Qt::ScrollBarAsNeeded</enum></property><property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Expanding"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property><widget class="QWidget" name="consoleConnectPage"><property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Minimum"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property><layout class="QVBoxLayout" name="consoleConnectPageLay">
               <property name="spacing">
                <number>10</number>
               </property>
@@ -960,7 +899,7 @@ Every Baby</string>
                </widget>
               </item>
               <item>
-               <layout class="QGridLayout" name="consoleConnectGrid">
+               <layout class="QGridLayout" name="consoleConnectGrid" columnstretch="1,1" rowstretch="1,1">
                 <property name="leftMargin">
                  <number>0</number>
                 </property>
@@ -1229,12 +1168,12 @@ Every Baby</string>
                        <property name="checked">
                         <bool>true</bool>
                        </property>
-                      </widget>
+                      <property name="visible"><bool>false</bool></property></widget>
                      </item>
-                    </layout>
+                    <item><widget class="QFrame" name="consoleSegReset"><property name="minimumSize"><size><width>0</width><height>36</height></size></property><property name="maximumSize"><size><width>16777215</width><height>36</height></size></property><layout class="QHBoxLayout" name="consoleSegResetLay"><property name="spacing"><number>2</number></property><property name="leftMargin"><number>3</number></property><property name="topMargin"><number>3</number></property><property name="rightMargin"><number>3</number></property><property name="bottomMargin"><number>3</number></property><item><widget class="QPushButton" name="resetOnBtn"><property name="text"><string>开</string></property><property name="cursor"><cursorShape>PointingHandCursor</cursorShape></property><property name="flat"><bool>true</bool></property><property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Expanding"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property></widget></item><item><widget class="QPushButton" name="resetOffBtn"><property name="text"><string>关</string></property><property name="cursor"><cursorShape>PointingHandCursor</cursorShape></property><property name="flat"><bool>true</bool></property><property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Expanding"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property></widget></item></layout></widget></item></layout>
                    </item>
                   </layout>
-                 </widget>
+                 <property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Preferred"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property><property name="minimumSize"><size><width>0</width><height>168</height></size></property></widget>
                 </item>
                 <item row="0" column="1">
                  <widget class="QFrame" name="consoleCardStep2">
@@ -1481,7 +1420,7 @@ Every Baby</string>
                     </layout>
                    </item>
                   </layout>
-                 </widget>
+                 <property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Preferred"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property><property name="minimumSize"><size><width>0</width><height>168</height></size></property></widget>
                 </item>
                 <item row="1" column="0">
                  <widget class="QFrame" name="consoleCardStep3">
@@ -1819,7 +1758,7 @@ Every Baby</string>
                           </sizepolicy>
                          </property>
                          <property name="inputMask">
-                          <string/>
+                          <string />
                          </property>
                          <property name="text">
                           <string>b8:08:07:0c:2d:21</string>
@@ -1858,7 +1797,7 @@ Every Baby</string>
                     </widget>
                    </item>
                   </layout>
-                 </widget>
+                 <property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Preferred"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property><property name="minimumSize"><size><width>0</width><height>168</height></size></property></widget>
                 </item>
                </layout>
               </item>
@@ -1932,7 +1871,7 @@ Every Baby</string>
                </layout>
               </item>
              </layout>
-            </item>
+            </widget></widget></item>
            </layout>
           </widget>
           <widget class="QWidget" name="consoleWorkPage">
@@ -3374,7 +3313,7 @@ Every Baby</string>
                           </widget>
                          </item>
                          <item alignment="Qt::AlignVCenter">
-                          <widget class="QComboBox" name="qaiot_ex_type"/>
+                          <widget class="QComboBox" name="qaiot_ex_type" />
                          </item>
                          <item alignment="Qt::AlignVCenter">
                           <widget class="QLabel" name="label_qaiot_ex_value">
@@ -4030,7 +3969,7 @@ Every Baby</string>
                         </widget>
                        </item>
                        <item alignment="Qt::AlignVCenter">
-                        <widget class="QComboBox" name="comboBox_expectedColor"/>
+                        <widget class="QComboBox" name="comboBox_expectedColor" />
                        </item>
                        <item>
                         <spacer name="horizontalSpacer_color">
@@ -5106,7 +5045,7 @@ Every Baby</string>
                         </widget>
                        </item>
                        <item alignment="Qt::AlignVCenter">
-                        <widget class="QComboBox" name="qaiot_sim_key"/>
+                        <widget class="QComboBox" name="qaiot_sim_key" />
                        </item>
                        <item alignment="Qt::AlignVCenter">
                         <widget class="QPushButton" name="qaiot_send_sim_key">
@@ -5186,7 +5125,7 @@ Every Baby</string>
                           </widget>
                          </item>
                          <item alignment="Qt::AlignVCenter">
-                          <widget class="QLineEdit" name="motor_cali_param"/>
+                          <widget class="QLineEdit" name="motor_cali_param" />
                          </item>
                          <item alignment="Qt::AlignVCenter">
                           <widget class="QPushButton" name="get_motor_log">
@@ -5527,7 +5466,7 @@ Every Baby</string>
                           </widget>
                          </item>
                          <item alignment="Qt::AlignVCenter">
-                          <widget class="QComboBox" name="qaiot_cycle_type"/>
+                          <widget class="QComboBox" name="qaiot_cycle_type" />
                          </item>
                          <item alignment="Qt::AlignVCenter">
                           <widget class="QLabel" name="label_qaiot_cycle_interval">
@@ -5707,7 +5646,7 @@ Every Baby</string>
                           </widget>
                          </item>
                          <item alignment="Qt::AlignVCenter">
-                          <widget class="QLineEdit" name="kx"/>
+                          <widget class="QLineEdit" name="kx" />
                          </item>
                          <item alignment="Qt::AlignVCenter">
                           <widget class="QLabel" name="label_72">
@@ -5717,7 +5656,7 @@ Every Baby</string>
                           </widget>
                          </item>
                          <item alignment="Qt::AlignVCenter">
-                          <widget class="QLineEdit" name="ky"/>
+                          <widget class="QLineEdit" name="ky" />
                          </item>
                          <item alignment="Qt::AlignVCenter">
                           <widget class="QLabel" name="label_73">
@@ -5727,7 +5666,7 @@ Every Baby</string>
                           </widget>
                          </item>
                          <item alignment="Qt::AlignVCenter">
-                          <widget class="QLineEdit" name="kz"/>
+                          <widget class="QLineEdit" name="kz" />
                          </item>
                         </layout>
                        </item>
@@ -5741,7 +5680,7 @@ Every Baby</string>
                           </widget>
                          </item>
                          <item alignment="Qt::AlignVCenter">
-                          <widget class="QLineEdit" name="bx"/>
+                          <widget class="QLineEdit" name="bx" />
                          </item>
                          <item alignment="Qt::AlignVCenter">
                           <widget class="QLabel" name="label_78">
@@ -5751,7 +5690,7 @@ Every Baby</string>
                           </widget>
                          </item>
                          <item alignment="Qt::AlignVCenter">
-                          <widget class="QLineEdit" name="by"/>
+                          <widget class="QLineEdit" name="by" />
                          </item>
                          <item alignment="Qt::AlignVCenter">
                           <widget class="QLabel" name="label_79">
@@ -5761,7 +5700,7 @@ Every Baby</string>
                           </widget>
                          </item>
                          <item alignment="Qt::AlignVCenter">
-                          <widget class="QLineEdit" name="bz"/>
+                          <widget class="QLineEdit" name="bz" />
                          </item>
                         </layout>
                        </item>
@@ -5778,7 +5717,7 @@ Every Baby</string>
                           </widget>
                          </item>
                          <item alignment="Qt::AlignVCenter">
-                          <widget class="QLineEdit" name="szx"/>
+                          <widget class="QLineEdit" name="szx" />
                          </item>
                          <item alignment="Qt::AlignVCenter">
                           <widget class="QLabel" name="label_76">
@@ -5788,7 +5727,7 @@ Every Baby</string>
                           </widget>
                          </item>
                          <item alignment="Qt::AlignVCenter">
-                          <widget class="QLineEdit" name="szy"/>
+                          <widget class="QLineEdit" name="szy" />
                          </item>
                          <item alignment="Qt::AlignVCenter">
                           <widget class="QLabel" name="label_74">
@@ -5798,7 +5737,7 @@ Every Baby</string>
                           </widget>
                          </item>
                          <item alignment="Qt::AlignVCenter">
-                          <widget class="QLineEdit" name="syx"/>
+                          <widget class="QLineEdit" name="syx" />
                          </item>
                         </layout>
                        </item>
@@ -5815,7 +5754,7 @@ Every Baby</string>
                           </widget>
                          </item>
                          <item alignment="Qt::AlignVCenter">
-                          <widget class="QLineEdit" name="gyro_x_2"/>
+                          <widget class="QLineEdit" name="gyro_x_2" />
                          </item>
                          <item alignment="Qt::AlignVCenter">
                           <widget class="QLabel" name="label_81">
@@ -5825,7 +5764,7 @@ Every Baby</string>
                           </widget>
                          </item>
                          <item alignment="Qt::AlignVCenter">
-                          <widget class="QLineEdit" name="gyro_y_2"/>
+                          <widget class="QLineEdit" name="gyro_y_2" />
                          </item>
                          <item alignment="Qt::AlignVCenter">
                           <widget class="QLabel" name="label_82">
@@ -5835,7 +5774,7 @@ Every Baby</string>
                           </widget>
                          </item>
                          <item alignment="Qt::AlignVCenter">
-                          <widget class="QLineEdit" name="gyro_z_2"/>
+                          <widget class="QLineEdit" name="gyro_z_2" />
                          </item>
                         </layout>
                        </item>
@@ -6891,7 +6830,7 @@ Every Baby</string>
                         </layout>
                        </item>
                        <item>
-                        <widget class="QComboBox" name="music_combo"/>
+                        <widget class="QComboBox" name="music_combo" />
                        </item>
                       </layout>
                      </widget>
@@ -9544,7 +9483,7 @@ Every Baby</string>
                          </widget>
                         </item>
                         <item alignment="Qt::AlignVCenter">
-                         <widget class="QComboBox" name="version_type_1"/>
+                         <widget class="QComboBox" name="version_type_1" />
                         </item>
                        </layout>
                       </item>
@@ -9695,7 +9634,7 @@ Every Baby</string>
                          </widget>
                         </item>
                         <item alignment="Qt::AlignVCenter">
-                         <widget class="QComboBox" name="version_type_2"/>
+                         <widget class="QComboBox" name="version_type_2" />
                         </item>
                        </layout>
                       </item>
@@ -9819,7 +9758,7 @@ Every Baby</string>
                       <item alignment="Qt::AlignVCenter">
                        <widget class="QLabel" name="label_102">
                         <property name="text">
-                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;ota测试路径&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align="center"&gt;ota测试路径&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                         </property>
                        </widget>
                       </item>
@@ -9840,7 +9779,7 @@ Every Baby</string>
                       <item alignment="Qt::AlignVCenter">
                        <widget class="QLabel" name="label_104">
                         <property name="text">
-                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;北美测试路径&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align="center"&gt;北美测试路径&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                         </property>
                        </widget>
                       </item>
@@ -9905,7 +9844,7 @@ Every Baby</string>
                          </sizepolicy>
                         </property>
                         <property name="inputMask">
-                         <string/>
+                         <string />
                         </property>
                         <property name="text">
                          <string>b4:3a:45:c7:5f:4e</string>
@@ -9966,7 +9905,7 @@ Every Baby</string>
                       <item alignment="Qt::AlignVCenter">
                        <widget class="QLabel" name="label_103">
                         <property name="text">
-                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;ota生产路径&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align="center"&gt;ota生产路径&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                         </property>
                        </widget>
                       </item>
@@ -9987,7 +9926,7 @@ Every Baby</string>
                       <item alignment="Qt::AlignVCenter">
                        <widget class="QLabel" name="label_105">
                         <property name="text">
-                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align=&quot;center&quot;&gt;北美生产路径&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p align="center"&gt;北美生产路径&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                         </property>
                        </widget>
                       </item>
@@ -11504,7 +11443,7 @@ Every Baby</string>
                        <number>0</number>
                       </property>
                       <item>
-                       <widget class="QComboBox" name="NfcComboBox"/>
+                       <widget class="QComboBox" name="NfcComboBox" />
                       </item>
                       <item>
                        <widget class="QPushButton" name="nfcComFresh">
@@ -11531,10 +11470,10 @@ Every Baby</string>
                      </rect>
                     </property>
                     <property name="inputMask">
-                     <string/>
+                     <string />
                     </property>
                     <property name="text">
-                     <string/>
+                     <string />
                     </property>
                     <property name="placeholderText">
                      <string>将六轴数据生成校准结果敲回车接口</string>
@@ -11597,7 +11536,7 @@ Every Baby</string>
                       </widget>
                      </item>
                      <item>
-                      <widget class="QLineEdit" name="hw_ver"/>
+                      <widget class="QLineEdit" name="hw_ver" />
                      </item>
                     </layout>
                    </widget>
@@ -11621,7 +11560,7 @@ Every Baby</string>
                      <item alignment="Qt::AlignVCenter">
                       <widget class="QLineEdit" name="AITestLine">
                        <property name="text">
-                        <string/>
+                        <string />
                        </property>
                        <property name="placeholderText">
                         <string>输入AI处理需求，也可长按语音输入</string>
@@ -11740,13 +11679,11 @@ Every Baby</string>
              </widget>
             </item>
            </layout>
-          </widget>
-         </widget>
+          <property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Expanding"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property></widget>
+         <property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Expanding"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property></widget>
         </item>
        </layout>
-      </item>
-      <item>
-       <layout class="QVBoxLayout" name="consoleRailLay" stretch="0,1">
+      </widget><widget class="QWidget" name="consoleRail"><property name="minimumSize"><size><width>260</width><height>0</height></size></property><property name="maximumSize"><size><width>520</width><height>16777215</height></size></property><property name="sizePolicy"><sizepolicy hsizetype="Preferred" vsizetype="Expanding"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property><layout class="QVBoxLayout" name="consoleRailLay" stretch="0,1">
         <property name="spacing">
          <number>10</number>
         </property>
@@ -11762,8 +11699,7 @@ Every Baby</string>
         <property name="bottomMargin">
          <number>8</number>
         </property>
-        <item>
-         <widget class="QFrame" name="consoleStatusCard">
+        <property name="spacing"><number>0</number></property><item><widget class="QSplitter" name="consoleRailSplit"><property name="orientation"><enum>Qt::Vertical</enum></property><property name="childrenCollapsible"><bool>false</bool></property><property name="opaqueResize"><bool>true</bool></property><property name="handleWidth"><number>10</number></property><widget class="QScrollArea" name="consoleStatusScroll"><property name="widgetResizable"><bool>true</bool></property><property name="frameShape"><enum>QFrame::NoFrame</enum></property><property name="horizontalScrollBarPolicy"><enum>Qt::ScrollBarAlwaysOff</enum></property><property name="verticalScrollBarPolicy"><enum>Qt::ScrollBarAsNeeded</enum></property><property name="minimumSize"><size><width>0</width><height>88</height></size></property><property name="sizePolicy"><sizepolicy hsizetype="Preferred" vsizetype="Ignored"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property><widget class="QFrame" name="consoleStatusCard">
           <property name="minimumSize">
            <size>
             <width>0</width>
@@ -11828,9 +11764,9 @@ Every Baby</string>
                 </size>
                </property>
                <property name="text">
-                <string/>
+                <string />
                </property>
-              </widget>
+              <property name="alignment"><set>Qt::AlignCenter</set></property></widget>
              </item>
              <item>
               <widget class="QLabel" name="consoleStatusDeviceLabel">
@@ -11893,9 +11829,9 @@ Every Baby</string>
                 </size>
                </property>
                <property name="text">
-                <string/>
+                <string />
                </property>
-              </widget>
+              <property name="alignment"><set>Qt::AlignCenter</set></property></widget>
              </item>
              <item>
               <widget class="QLabel" name="consoleStatusMotorLabel">
@@ -11958,9 +11894,9 @@ Every Baby</string>
                 </size>
                </property>
                <property name="text">
-                <string/>
+                <string />
                </property>
-              </widget>
+              <property name="alignment"><set>Qt::AlignCenter</set></property></widget>
              </item>
              <item>
               <widget class="QLabel" name="consoleStatusPumpLabel">
@@ -12023,9 +11959,9 @@ Every Baby</string>
                 </size>
                </property>
                <property name="text">
-                <string/>
+                <string />
                </property>
-              </widget>
+              <property name="alignment"><set>Qt::AlignCenter</set></property></widget>
              </item>
              <item>
               <widget class="QLabel" name="consoleStatusValveLabel">
@@ -12088,9 +12024,9 @@ Every Baby</string>
                 </size>
                </property>
                <property name="text">
-                <string/>
+                <string />
                </property>
-              </widget>
+              <property name="alignment"><set>Qt::AlignCenter</set></property></widget>
              </item>
              <item>
               <widget class="QLabel" name="consoleMetricBatteryLabel">
@@ -12153,9 +12089,9 @@ Every Baby</string>
                 </size>
                </property>
                <property name="text">
-                <string/>
+                <string />
                </property>
-              </widget>
+              <property name="alignment"><set>Qt::AlignCenter</set></property></widget>
              </item>
              <item>
               <widget class="QLabel" name="consoleMetricTempLabel">
@@ -12232,7 +12168,7 @@ Every Baby</string>
               <bool>false</bool>
              </property>
              <property name="title">
-              <string/>
+              <string />
              </property>
              <property name="flat">
               <bool>true</bool>
@@ -12371,10 +12307,8 @@ Every Baby</string>
             </widget>
            </item>
           </layout>
-         </widget>
-        </item>
-        <item>
-         <widget class="QFrame" name="consoleLogCard">
+         <property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Minimum"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property><property name="minimumSize"><size><width>0</width><height>0</height></size></property></widget>
+        </widget><widget class="QFrame" name="consoleLogCard">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
             <horstretch>0</horstretch>
@@ -12567,12 +12501,9 @@ Every Baby</string>
             <set>Qt::AlignBottom|Qt::AlignHCenter</set>
            </property>
           </widget>
-         </widget>
-        </item>
-       </layout>
-      </item>
-     </layout>
-    </item>
+         <property name="sizePolicy"><sizepolicy hsizetype="Expanding" vsizetype="Ignored"><horstretch>0</horstretch><verstretch>0</verstretch></sizepolicy></property><property name="minimumSize"><size><width>0</width><height>120</height></size></property></widget>
+        </widget></item></layout>
+      </widget></widget></item></layout></widget></item>
    </layout>
   </widget>
   <widget class="QMenuBar" name="menubar">
@@ -12585,7 +12516,7 @@ Every Baby</string>
     </rect>
    </property>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QStatusBar" name="statusbar" />
  </widget>
  <customwidgets>
   <customwidget>
@@ -12596,10 +12527,10 @@ Every Baby</string>
   </customwidget>
  </customwidgets>
  <resources>
-  <include location="new_production.qrc"/>
+  <include location="new_production.qrc" />
  </resources>
- <connections/>
+ <connections />
  <buttongroups>
-  <buttongroup name="consoleNavGroup"/>
+  <buttongroup name="consoleNavGroup" />
  </buttongroups>
 </ui>

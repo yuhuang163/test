@@ -1345,6 +1345,19 @@ QPushButton#consoleLogClearBtn:pressed:hover {
 	color: #0f2d6b;
 }
 
+/* 图标 QLabel 必须透明：被 QSS 命中后 Qt 不再画 pixmap */
+QLabel#consoleStatusDeviceIcon,
+QLabel#consoleStatusMotorIcon,
+QLabel#consoleStatusPumpIcon,
+QLabel#consoleStatusValveIcon,
+QLabel#consoleMetricBatteryIcon,
+QLabel#consoleMetricTempIcon {
+	background: transparent;
+	border: none;
+	padding: 0px;
+	margin: 0px;
+}
+
 QLabel#consoleStatusDeviceLabel,
 QLabel#consoleStatusMotorLabel,
 QLabel#consoleStatusPumpLabel,
