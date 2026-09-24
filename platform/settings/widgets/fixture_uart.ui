@@ -38,6 +38,9 @@
         </item>
         <item row="1" column="1">
          <widget class="QComboBox" name="FixturecomNameCombo">
+          <property name="editable">
+           <bool>true</bool>
+          </property>
           <property name="sizePolicy">
            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
             <horstretch>0</horstretch>
@@ -245,13 +248,13 @@
          <item>
           <widget class="QGroupBox" name="xwdPlcFixtureGroup">
            <property name="title">
-            <string>PLC 一拖多治具串口（XWD DOWN/UP）</string>
+            <string>自动扫码监控串口（XWD DOWN?）</string>
            </property>
            <layout class="QGridLayout" name="xwdPlcFixtureLayout">
             <item row="0" column="0">
              <widget class="QLabel" name="xwdPlcFixtureComLabel">
               <property name="text">
-               <string>治具串口</string>
+               <string>监控串口</string>
               </property>
              </widget>
             </item>
@@ -288,7 +291,7 @@
                <bool>true</bool>
               </property>
               <property name="text">
-               <string>与菜单「连接PLC治具串口」共用配置；测试步骤 DOWN?/UP 走此口。</string>
+               <string>与流程 SET_ALL_UP 为同一台 XWD。可与「连接PLC治具串口」任填一处；两处都配请填同一 COM，运行时共用一路串口。</string>
               </property>
              </widget>
             </item>
@@ -308,7 +311,7 @@
             <bool>true</bool>
            </property>
            <property name="text">
-            <string>轮询治具 DOWN?，回读 OK 后向扫码枪发十六进制报文，条码回填 SN 并开测。</string>
+            <string>轮询治具 DOWN?；仅当回读含 ALL_DOWN_OK 后触发扫码。一拖多时 1 号用下方串口，2 号及以后 COM 自动 +1。</string>
            </property>
           </widget>
          </item>

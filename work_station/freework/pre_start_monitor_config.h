@@ -19,10 +19,10 @@ struct PreStartMonitorConfig {
     int scannerTimeoutMs = 1000;
     bool autoIncrementIpByStation = true;
 
-    /** XWD 治具 DOWN?→OK 后串口扫码枪自动开测 */
+    /** XWD 治具 DOWN?→OK 后串口扫码枪自动开测（监控口与流程 PlcFixture 口独立） */
     bool xwdDownScanEnabled = false;
-    QString plcFixtureComPort;
-    int plcFixtureBaudRate = 115200;
+    QString xwdMonitorComPort;
+    int xwdMonitorBaudRate = 115200;
     QString scannerComPort;
     int scannerBaudRate = 9600;
     QString scannerHexCmd;

@@ -582,6 +582,7 @@ QStringList ModbusPeriphCmdCatalog::allDeviceKeys() {
             ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::HqAmmeterRtu),
             ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::LxAmmeterRtu),
             ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::Aa55AmmeterRtu),
+            ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::FaFbFloatAmmeterRtu),
             ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::MultiTempLoggerRtu),
             ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::XinjiePlcRtu)};
 }

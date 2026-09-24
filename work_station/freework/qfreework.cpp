@@ -1646,6 +1646,8 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     }
 
     logCurrentUiMesConfig(QStringLiteral("收尾"));
+    // 一拖多：收尾前再写工位号，避免过程中被其它路径改成 1
+    pack.mechines = getIndex();
     finishTestRecord(pack, ui->isusemes->checkState());
 
     qDebug() << "测试结束";
@@ -1684,7 +1686,12 @@ void QFreeWork::closeEvent(QCloseEvent* event) {
 }
 
 void QFreeWork::startTask() {
+    if (inStartTask_)
+        return;
+    inStartTask_ = true;
+
     if (!isTestContinue) {
+        inStartTask_ = false;
         return;
     }
 
@@ -1721,6 +1728,7 @@ void QFreeWork::startTask() {
         }
     }
     finalizeTestFlowIfComplete();
+    inStartTask_ = false;
 }
 
 QFreeWork::~QFreeWork() {

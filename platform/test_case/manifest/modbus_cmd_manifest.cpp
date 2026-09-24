@@ -34,6 +34,16 @@ const Row kRows[] = {
     {ModbusDeviceRoute::LxAmmeterRtu, "ReadMeasurement", u8"读电流", u8"机台号见 Current/LuxshareMachineId", kGet,
      "ProtocolMeasureData", "value"},
     {ModbusDeviceRoute::Aa55AmmeterRtu, "ReadMeasurement", u8"读电流", nullptr, kGet, "ProtocolMeasureData", "value"},
+    {ModbusDeviceRoute::FaFbFloatAmmeterRtu, "ReadMeasurement", u8"读电流",
+     u8"发 88 AE 00 11；回 FA FB + 大端 IEEE754 电流(A)，上报 mA。\r\n"
+     u8"走工位「万用表串口」，与 XWD 治具口无关；开 Gate 时连续采样任一合格即通过。",
+     kGet, "ProtocolMeasureData", "value"},
+    {ModbusDeviceRoute::FaFbFloatAmmeterRtu, "ReadVoltageCentivolt", u8"读电压",
+     u8"同设备 Modbus RTU FC03 读 1 保持寄存器：raw/100=V。\r\n"
+     u8"Param_registerAddress：常用 1 与 4；Param_slaveAddr 默认 1。\r\n"
+     u8"例：01 03 00 01 00 01 → 回 01 03 02 01 EE → 4.94V。\r\n"
+     u8"开 Gate 时连续采样；卡控单位 V（Field=value）",
+     kGet, "ProtocolMeasureData", "value"},
     {ModbusDeviceRoute::MultiTempLoggerRtu, "ReadChannelTemp", u8"读通道温度",
      u8"Param：channel=1~64，slaveAddr=1~247；或 channels=1,2,3 / 1-6\r\n"
      u8"法兰加热多点：channelsPerStation=6；stationsPerDevice=2 → 工位奇偶映射 CH1-6 / CH7-12\r\n"

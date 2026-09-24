@@ -120,6 +120,7 @@ void QModbusManager::loadDeviceRouteFromSettings() {
 bool QModbusManager::isRtuAmmeterRoute() const {
     return deviceRoute_ == ModbusDeviceRoute::HqAmmeterRtu || deviceRoute_ == ModbusDeviceRoute::LxAmmeterRtu
            || deviceRoute_ == ModbusDeviceRoute::Aa55AmmeterRtu
+           || deviceRoute_ == ModbusDeviceRoute::FaFbFloatAmmeterRtu
            || deviceRoute_ == ModbusDeviceRoute::MultiTempLoggerRtu;
 }
 
@@ -131,6 +132,8 @@ IModbusRtuDevice* QModbusManager::activeRtuDevice() {
         return &lxAmmeterRtu_;
     case ModbusDeviceRoute::Aa55AmmeterRtu:
         return &aa55AmmeterRtu_;
+    case ModbusDeviceRoute::FaFbFloatAmmeterRtu:
+        return &faFbFloatAmmeterRtu_;
     case ModbusDeviceRoute::MultiTempLoggerRtu:
         return &multiTempLoggerRtu_;
     default:
@@ -151,6 +154,7 @@ bool QModbusManager::exec(HqAmmeterRtuCmd cmd, QString* errorMessage) {
         }
         return false;
     }
+    lastRtuReadingIsVoltage_ = false;
     return exec<HqAmmeterRtuCmd>(cmd, {}, errorMessage);
 }
 
@@ -161,6 +165,7 @@ bool QModbusManager::exec(LxAmmeterRtuCmd cmd, QString* errorMessage) {
         }
         return false;
     }
+    lastRtuReadingIsVoltage_ = false;
     return exec<LxAmmeterRtuCmd>(cmd, {}, errorMessage);
 }
 
@@ -171,7 +176,19 @@ bool QModbusManager::exec(Aa55AmmeterRtuCmd cmd, QString* errorMessage) {
         }
         return false;
     }
+    lastRtuReadingIsVoltage_ = false;
     return exec<Aa55AmmeterRtuCmd>(cmd, {}, errorMessage);
+}
+
+bool QModbusManager::exec(FaFbFloatAmmeterRtuCmd cmd, const QVariant& param, QString* errorMessage) {
+    if (deviceRoute_ != ModbusDeviceRoute::FaFbFloatAmmeterRtu) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("当前路由非 FAFB 串口万用表");
+        }
+        return false;
+    }
+    lastRtuReadingIsVoltage_ = (cmd == FaFbFloatAmmeterRtuCmd::ReadVoltageCentivolt);
+    return exec<FaFbFloatAmmeterRtuCmd>(cmd, param, errorMessage);
 }
 
 bool QModbusManager::exec(MultiTempLoggerRtuCmd cmd, const QVariant& param, QString* errorMessage) {

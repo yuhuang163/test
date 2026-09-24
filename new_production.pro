@@ -173,6 +173,7 @@ INCLUDEPATH += agreement/modbus_protocol/device/gc_series_tcp
 INCLUDEPATH += agreement/modbus_protocol/device/hq_ammeter_rtu
 INCLUDEPATH += agreement/modbus_protocol/device/lx_ammeter_rtu
 INCLUDEPATH += agreement/modbus_protocol/device/aa55_ammeter_rtu
+INCLUDEPATH += agreement/modbus_protocol/device/fafb_float_ammeter_rtu
 INCLUDEPATH += agreement/modbus_protocol/device/multi_temp_logger_rtu
 INCLUDEPATH += agreement/modbus_protocol/device/xinjie_plc_rtu
 INCLUDEPATH += agreement/scpi_protocol/codec
@@ -234,6 +235,7 @@ SOURCES += \
     agreement/modbus_protocol/device/hq_ammeter_rtu/hq_ammeter_rtu.cpp \
     agreement/modbus_protocol/device/lx_ammeter_rtu/lx_ammeter_rtu.cpp \
     agreement/modbus_protocol/device/aa55_ammeter_rtu/aa55_ammeter_rtu.cpp \
+    agreement/modbus_protocol/device/fafb_float_ammeter_rtu/fafb_float_ammeter_rtu.cpp \
     agreement/modbus_protocol/device/multi_temp_logger_rtu/multi_temp_logger_rtu.cpp \
     agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp_device.cpp \
     agreement/modbus_protocol/device/gc_series_tcp/gc_series_tcp_device.cpp \
@@ -412,6 +414,8 @@ HEADERS += \
     agreement/modbus_protocol/device/lx_ammeter_rtu/lx_ammeter_rtu_types.h \
     agreement/modbus_protocol/device/aa55_ammeter_rtu/aa55_ammeter_rtu.h \
     agreement/modbus_protocol/device/aa55_ammeter_rtu/aa55_ammeter_rtu_types.h \
+    agreement/modbus_protocol/device/fafb_float_ammeter_rtu/fafb_float_ammeter_rtu.h \
+    agreement/modbus_protocol/device/fafb_float_ammeter_rtu/fafb_float_ammeter_rtu_types.h \
     agreement/modbus_protocol/device/multi_temp_logger_rtu/multi_temp_logger_rtu.h \
     agreement/modbus_protocol/device/multi_temp_logger_rtu/multi_temp_logger_rtu_types.h \
     agreement/modbus_protocol/device/xinjie_plc_rtu/xinjie_plc_address.h \

@@ -5,6 +5,7 @@
 #include <QFile>
 #include <QMessageBox>
 #include <QSettings>
+#include <QTabBar>
 #include <QTimer>
 
 #include "box_base.h"
@@ -138,7 +139,7 @@ void Fixture_uart::updateWindowTitleWithStation() {
     const QString name = TestCaseStore::flowStationDisplayName(key);
     const QString stationLabel = name.isEmpty() ? key : name;
     if (role_ == FixtureUartRole::PlcSharedPort)
-        setWindowTitle(QStringLiteral("PLC一拖多治具串口配置 - %1").arg(stationLabel));
+        setWindowTitle(QStringLiteral("PLC治具串口配置 - %1").arg(stationLabel));
     else if (role_ == FixtureUartRole::PreStartMonitor)
         setWindowTitle(QStringLiteral("自动扫码配置 - %1").arg(stationLabel));
     else
@@ -151,8 +152,20 @@ void Fixture_uart::applyRolePageVisibility() {
     if (ui->autoScanTabWidget)
         ui->autoScanTabWidget->setVisible(monitorRole);
     if (!monitorRole && plcSharedPort_)
-        ui->fixtureUartGroup->setTitle(QStringLiteral("PLC 一拖多治具串口"));
+        ui->fixtureUartGroup->setTitle(QStringLiteral("PLC 治具串口（流程 UP/DOWN）"));
     if (monitorRole) {
+        // 双页签都显示：PLC按键扫码 + 本工站 XWD 到位扫码（含监控治具口）
+        if (ui->xwdPlcFixtureGroup)
+            ui->xwdPlcFixtureGroup->setVisible(true);
+        if (ui->autoScanTabWidget) {
+            const int plcIdx = ui->autoScanTabWidget->indexOf(ui->plcScanTab);
+            const int xwdIdx = ui->autoScanTabWidget->indexOf(ui->xwdScanTab);
+            if (plcIdx >= 0)
+                ui->autoScanTabWidget->setTabVisible(plcIdx, true);
+            if (xwdIdx >= 0)
+                ui->autoScanTabWidget->setTabVisible(xwdIdx, true);
+            ui->autoScanTabWidget->tabBar()->setVisible(true);
+        }
         const bool plcEnabled = ui->preStartMonitorEnabledCheckBox
                                 && ui->preStartMonitorEnabledCheckBox->isChecked();
         const bool xwdEnabled = ui->xwdDownScanEnabledCheckBox
@@ -166,11 +179,13 @@ void Fixture_uart::applyRolePageVisibility() {
 void Fixture_uart::applyPreStartMonitorFormEnabled(bool enabled) {
     if (role_ != FixtureUartRole::PreStartMonitor)
         return;
-    ui->preStartMonitorGroup->setVisible(enabled);
+    // 表单常显，便于先填再勾选；Enabled 只控制是否开监控
+    if (ui->preStartMonitorGroup)
+        ui->preStartMonitorGroup->setVisible(true);
     if (ui->preStartMonitorHintLabel) {
         ui->preStartMonitorHintLabel->setText(
-            enabled ? QStringLiteral("已启用：修改后自动保存到当前工站 flow.ini。")
-                    : QStringLiteral("未启用时不写入扫码枪/线圈明细；勾选启用后可配置并保存。"));
+            enabled ? QStringLiteral("已启用：修改后自动保存到当前工站 flow.ini（PreStart_Monitor）。")
+                    : QStringLiteral("未启用监控；下方参数仍会写入本工站 flow.ini，勾选后生效。"));
     }
 }
 
@@ -178,11 +193,11 @@ void Fixture_uart::applyXwdDownScanFormEnabled(bool enabled) {
     if (role_ != FixtureUartRole::PreStartMonitor)
         return;
     if (ui->serialScannerGroup)
-        ui->serialScannerGroup->setVisible(enabled);
+        ui->serialScannerGroup->setVisible(true);
     if (ui->xwdDownScanHintLabel) {
         ui->xwdDownScanHintLabel->setText(
-            enabled ? QStringLiteral("已启用：轮询 DOWN?，OK 后发十六进制触发扫码并回填 SN。")
-                    : QStringLiteral("轮询治具 DOWN?，回读 OK 后向扫码枪发十六进制报文，条码回填 SN 并开测。"));
+            enabled ? QStringLiteral("已启用：轮询 XWD 共享口 DOWN?（与 SET_ALL_UP 同设备同通道）。")
+                    : QStringLiteral("未启用。监控口可留空则用「连接PLC治具串口」；同一台设备时勿配成两个不同 COM。"));
     }
 }
 
@@ -268,13 +283,18 @@ void Fixture_uart::loadStationPageConfig() {
         const QString fixturePortKey =
             plcSharedPort_ ? QStringLiteral("PlcFixtureComPort") : QStringLiteral("FixtureComPort");
         QString fixtureCom = settings.value(fixturePortKey).toString().trimmed();
+        if (fixtureCom.isEmpty() && plcSharedPort_) {
+            // 同一台 XWD：流程口空时回退监控口
+            fixtureCom = settings.value(QStringLiteral("XwdMonitorComPort")).toString().trimmed();
+        }
         if (fixtureCom.isEmpty() && !plcSharedPort_) {
             fixtureCom = SETTINGS.value(QStringLiteral("mechine/0/masterFixturecomName")).toString().trimmed();
         }
         if (!fixtureCom.isEmpty()) {
-            ui->FixturecomNameCombo->setEditText(fixtureCom);
-            if (ui->FixturecomNameCombo->findText(fixtureCom) >= 0)
-                ui->FixturecomNameCombo->setCurrentText(fixtureCom);
+            // 口此刻未枚举到也要写入下拉并选中，否则重启后界面空白且 hide 时可能用空串覆盖 ini
+            if (ui->FixturecomNameCombo->findText(fixtureCom) < 0)
+                ui->FixturecomNameCombo->addItem(fixtureCom);
+            ui->FixturecomNameCombo->setCurrentText(fixtureCom);
         }
 
         int savedFixtureBaud = 9600;
@@ -330,19 +350,25 @@ void Fixture_uart::loadStationPageConfig() {
         ui->xwdDownScanEnabledCheckBox->setChecked(xwdEnabled);
 
     const TestCaseSerialUiConfig serialUi = TestCaseStore::loadStationSerialUiConfig(stationKey);
-    QString plcFixtureCom = settings.value(QStringLiteral("PlcFixtureComPort")).toString().trimmed();
-    int plcFixtureBaud = serialUi.plcFixtureBaudRate > 0
-                             ? serialUi.plcFixtureBaudRate
-                             : settings.value(QStringLiteral("PlcFixtureBaudRate"), 115200).toInt();
-    if (plcFixtureBaud <= 0)
-        plcFixtureBaud = 115200;
+    // 自动扫码监控口（与流程 PlcFixtureComPort 独立）
+    QString monitorCom = settings.value(QStringLiteral("XwdMonitorComPort")).toString().trimmed();
+    if (monitorCom.isEmpty())
+        monitorCom = settings.value(QStringLiteral("PlcFixtureComPort")).toString().trimmed();
+    int monitorBaud = settings.value(QStringLiteral("XwdMonitorBaudRate"), 0).toInt();
+    if (monitorBaud <= 0) {
+        monitorBaud = serialUi.plcFixtureBaudRate > 0
+                          ? serialUi.plcFixtureBaudRate
+                          : settings.value(QStringLiteral("PlcFixtureBaudRate"), 115200).toInt();
+    }
+    if (monitorBaud <= 0)
+        monitorBaud = 115200;
     if (ui->xwdPlcFixtureComCombo) {
-        ui->xwdPlcFixtureComCombo->setEditText(plcFixtureCom);
-        if (ui->xwdPlcFixtureComCombo->findText(plcFixtureCom) >= 0)
-            ui->xwdPlcFixtureComCombo->setCurrentText(plcFixtureCom);
+        ui->xwdPlcFixtureComCombo->setEditText(monitorCom);
+        if (ui->xwdPlcFixtureComCombo->findText(monitorCom) >= 0)
+            ui->xwdPlcFixtureComCombo->setCurrentText(monitorCom);
     }
     if (ui->xwdPlcFixtureBaudCombo)
-        ui->xwdPlcFixtureBaudCombo->setCurrentText(QString::number(plcFixtureBaud));
+        ui->xwdPlcFixtureBaudCombo->setCurrentText(QString::number(monitorBaud));
 
     const QString scannerCom = settings.value(QStringLiteral("ScannerComPort")).toString().trimmed();
     if (ui->serialScannerComCombo) {
@@ -385,9 +411,19 @@ void Fixture_uart::saveFixturePortConfig() {
         QSettings settings(flowPath, QSettings::IniFormat);
         settings.setIniCodec("UTF-8");
         if (plcSharedPort_) {
+            // 空串不落盘：避免扫口未就绪 / 关闭窗口时把已保存的 PlcFixtureComPort 冲掉
+            if (fixturePort.isEmpty()) {
+                settings.sync();
+                return;
+            }
             settings.beginGroup(QStringLiteral("PreStart_Monitor"));
             settings.setValue(QStringLiteral("PlcFixtureComPort"), fixturePort);
             settings.setValue(QStringLiteral("PlcFixtureBaudRate"), fixBaudRate);
+            // 同一台 XWD：监控口未单独配置时同步，避免只配了流程口却扫不了 DOWN?
+            if (settings.value(QStringLiteral("XwdMonitorComPort")).toString().trimmed().isEmpty()) {
+                settings.setValue(QStringLiteral("XwdMonitorComPort"), fixturePort);
+                settings.setValue(QStringLiteral("XwdMonitorBaudRate"), fixBaudRate);
+            }
             settings.endGroup();
             settings.beginGroup(QStringLiteral("SerialUi"));
             settings.setValue(QStringLiteral("PlcFixtureBaudRate"), fixBaudRate);
@@ -435,109 +471,89 @@ void Fixture_uart::savePreStartMonitorConfig() {
     if (stationKey.isEmpty())
         return;
 
+    TestCaseStore::ensureProfileDirectory(stationKey, TestCaseStore::flowStationDisplayName(stationKey), QString());
+    const QString flowPath = TestCasePaths::profileFlowPath(stationKey);
+    if (flowPath.isEmpty())
+        return;
+
     const bool enabled = ui->preStartMonitorEnabledCheckBox && ui->preStartMonitorEnabledCheckBox->isChecked();
     const bool xwdEnabled = ui->xwdDownScanEnabledCheckBox && ui->xwdDownScanEnabledCheckBox->isChecked();
-    const QString flowPath = TestCasePaths::profileFlowPath(stationKey);
 
-    // 一拖多治具串口配置始终可落盘（本页签承载），与是否启用自动扫码无关
-    const QString plcFixtureCom =
+    QSettings settings(flowPath, QSettings::IniFormat);
+    settings.setIniCodec("UTF-8");
+    settings.beginGroup(QStringLiteral("PreStart_Monitor"));
+
+    // 开关与明细始终落盘（避免「未勾选就不写」导致下次打开空白）
+    settings.setValue(QStringLiteral("Enabled"), enabled);
+    settings.setValue(QStringLiteral("XwdDownScanEnabled"), xwdEnabled);
+
+    settings.setValue(QStringLiteral("PlcDevice"),
+                      ui->plcDeviceCombo ? ui->plcDeviceCombo->currentData().toString()
+                                         : QStringLiteral("XinjiePlcRtu"));
+    settings.setValue(QStringLiteral("PlcComPort"),
+                      ui->plcComPortCombo ? ui->plcComPortCombo->currentText().trimmed() : QString());
+    settings.setValue(QStringLiteral("PlcBaudRate"),
+                      ui->plcBaudRateCombo ? ui->plcBaudRateCombo->currentText().toInt() : 19200);
+    settings.setValue(QStringLiteral("PlcIp"),
+                      ui->plcIpLineEdit ? ui->plcIpLineEdit->text().trimmed() : QString());
+    settings.setValue(QStringLiteral("PlcPort"), ui->plcPortSpinBox ? ui->plcPortSpinBox->value() : 502);
+    const QString waitAddr =
+        ui->plcWaitAddressLineEdit ? ui->plcWaitAddressLineEdit->text().trimmed() : QString();
+    settings.setValue(QStringLiteral("PlcWaitAddress"), waitAddr);
+    bool okNum = false;
+    const int addrNum = waitAddr.startsWith(QLatin1Char('M'), Qt::CaseInsensitive) ? waitAddr.mid(1).toInt(&okNum)
+                                                                                    : waitAddr.toInt(&okNum);
+    if (okNum)
+        settings.setValue(QStringLiteral("PlcWaitAddressM"), addrNum);
+    settings.setValue(QStringLiteral("ScannerIp"),
+                      ui->scannerIpLineEdit ? ui->scannerIpLineEdit->text().trimmed() : QString());
+    settings.setValue(QStringLiteral("ScannerPort"),
+                      ui->scannerPortSpinBox ? ui->scannerPortSpinBox->value() : 2001);
+
+    settings.setValue(QStringLiteral("ScannerComPort"),
+                      ui->serialScannerComCombo ? ui->serialScannerComCombo->currentText().trimmed()
+                                               : QString());
+    int scannerBaud = 9600;
+    if (ui->serialScannerBaudCombo) {
+        bool ok = false;
+        const int b = ui->serialScannerBaudCombo->currentText().toInt(&ok);
+        if (ok && b > 0)
+            scannerBaud = b;
+    }
+    settings.setValue(QStringLiteral("ScannerBaudRate"), scannerBaud);
+    settings.setValue(QStringLiteral("ScannerHexCmd"),
+                      ui->serialScannerHexEdit ? ui->serialScannerHexEdit->text().trimmed() : QString());
+    settings.setValue(QStringLiteral("ScannerTimeoutMs"),
+                      ui->serialScannerTimeoutSpin ? ui->serialScannerTimeoutSpin->value() : 3000);
+    settings.setValue(QStringLiteral("AutoIncrementComByStation"), true);
+
+    // 仅写自动扫码监控口，绝不覆盖「连接PLC治具串口」的 PlcFixtureComPort
+    const QString monitorCom =
         ui->xwdPlcFixtureComCombo ? ui->xwdPlcFixtureComCombo->currentText().trimmed() : QString();
-    int plcFixtureBaud = 115200;
+    int monitorBaud = 115200;
     if (ui->xwdPlcFixtureBaudCombo) {
         bool ok = false;
         const int b = ui->xwdPlcFixtureBaudCombo->currentText().toInt(&ok);
         if (ok && b > 0)
-            plcFixtureBaud = b;
+            monitorBaud = b;
     }
-
-    auto writePlcFixtureKeys = [&](QSettings& settings) {
-        settings.beginGroup(QStringLiteral("PreStart_Monitor"));
-        settings.setValue(QStringLiteral("PlcFixtureComPort"), plcFixtureCom);
-        settings.setValue(QStringLiteral("PlcFixtureBaudRate"), plcFixtureBaud);
-        settings.endGroup();
-        settings.beginGroup(QStringLiteral("SerialUi"));
-        settings.setValue(QStringLiteral("PlcFixtureBaudRate"), plcFixtureBaud);
-        settings.endGroup();
-    };
-
-    // 未启用任一路且工站从未写过监控配置：仅在填了治具口时落盘治具项，避免无关空组
-    if (!enabled && !xwdEnabled) {
-        if (flowPath.isEmpty() || !QFile::exists(flowPath)) {
-            if (!plcFixtureCom.isEmpty()) {
-                TestCaseStore::ensureProfileDirectory(stationKey, TestCaseStore::flowStationDisplayName(stationKey),
-                                                      QString());
-                QSettings settings(TestCasePaths::profileFlowPath(stationKey), QSettings::IniFormat);
-                settings.setIniCodec("UTF-8");
-                writePlcFixtureKeys(settings);
-                settings.sync();
-            }
-            return;
-        }
-        QSettings probe(flowPath, QSettings::IniFormat);
-        probe.setIniCodec("UTF-8");
-        probe.beginGroup(QStringLiteral("PreStart_Monitor"));
-        const bool hadConfig = probe.contains(QStringLiteral("Enabled")) || probe.contains(QStringLiteral("ScannerIp"))
-                               || probe.contains(QStringLiteral("PlcWaitAddress"))
-                               || probe.contains(QStringLiteral("PlcDevice"))
-                               || probe.contains(QStringLiteral("PlcComPort"))
-                               || probe.contains(QStringLiteral("XwdDownScanEnabled"))
-                               || probe.contains(QStringLiteral("ScannerComPort"))
-                               || probe.contains(QStringLiteral("PlcFixtureComPort"));
-        if (!hadConfig && plcFixtureCom.isEmpty()) {
-            probe.endGroup();
-            return;
-        }
-        probe.setValue(QStringLiteral("Enabled"), false);
-        probe.setValue(QStringLiteral("XwdDownScanEnabled"), false);
-        probe.endGroup();
-        writePlcFixtureKeys(probe);
-        probe.sync();
-    } else {
-        TestCaseStore::ensureProfileDirectory(stationKey, TestCaseStore::flowStationDisplayName(stationKey), QString());
-        if (flowPath.isEmpty())
-            return;
-        QSettings settings(flowPath, QSettings::IniFormat);
-        settings.setIniCodec("UTF-8");
-        settings.beginGroup(QStringLiteral("PreStart_Monitor"));
-        settings.setValue(QStringLiteral("Enabled"), enabled);
-        settings.setValue(QStringLiteral("XwdDownScanEnabled"), xwdEnabled);
-        if (enabled) {
-            settings.setValue(QStringLiteral("PlcDevice"), ui->plcDeviceCombo->currentData().toString());
-            settings.setValue(QStringLiteral("PlcComPort"), ui->plcComPortCombo->currentText().trimmed());
-            settings.setValue(QStringLiteral("PlcBaudRate"), ui->plcBaudRateCombo->currentText().toInt());
-            settings.setValue(QStringLiteral("PlcIp"), ui->plcIpLineEdit->text().trimmed());
-            settings.setValue(QStringLiteral("PlcPort"), ui->plcPortSpinBox->value());
-            const QString waitAddr = ui->plcWaitAddressLineEdit->text().trimmed();
-            settings.setValue(QStringLiteral("PlcWaitAddress"), waitAddr);
-            bool okNum = false;
-            const int addrNum = waitAddr.startsWith(QLatin1Char('M'), Qt::CaseInsensitive) ? waitAddr.mid(1).toInt(&okNum)
-                                                                                          : waitAddr.toInt(&okNum);
-            if (okNum)
-                settings.setValue(QStringLiteral("PlcWaitAddressM"), addrNum);
-            settings.setValue(QStringLiteral("ScannerIp"), ui->scannerIpLineEdit->text().trimmed());
-            settings.setValue(QStringLiteral("ScannerPort"), ui->scannerPortSpinBox->value());
-        }
-        if (xwdEnabled) {
-            settings.setValue(QStringLiteral("ScannerComPort"),
-                              ui->serialScannerComCombo ? ui->serialScannerComCombo->currentText().trimmed()
-                                                       : QString());
-            int scannerBaud = 9600;
-            if (ui->serialScannerBaudCombo) {
-                bool ok = false;
-                const int b = ui->serialScannerBaudCombo->currentText().toInt(&ok);
-                if (ok && b > 0)
-                    scannerBaud = b;
-            }
-            settings.setValue(QStringLiteral("ScannerBaudRate"), scannerBaud);
-            settings.setValue(QStringLiteral("ScannerHexCmd"),
-                              ui->serialScannerHexEdit ? ui->serialScannerHexEdit->text().trimmed() : QString());
-            settings.setValue(QStringLiteral("ScannerTimeoutMs"),
-                              ui->serialScannerTimeoutSpin ? ui->serialScannerTimeoutSpin->value() : 3000);
-        }
-        settings.endGroup();
-        writePlcFixtureKeys(settings);
-        settings.sync();
+    settings.setValue(QStringLiteral("XwdMonitorComPort"), monitorCom);
+    settings.setValue(QStringLiteral("XwdMonitorBaudRate"), monitorBaud);
+    // 同一台 XWD：流程口未配时用监控口补上，SET_ALL_UP 与 DOWN? 监控都能通
+    if (settings.value(QStringLiteral("PlcFixtureComPort")).toString().trimmed().isEmpty()
+        && !monitorCom.isEmpty()) {
+        settings.setValue(QStringLiteral("PlcFixtureComPort"), monitorCom);
+        settings.setValue(QStringLiteral("PlcFixtureBaudRate"), monitorBaud);
     }
+    settings.endGroup();
+    settings.sync();
+
+    qDebug().noquote() << QStringLiteral("[扫码配置] 已保存 %1 Enabled=%2 XwdDownScan=%3 监控口=%4@%5")
+                              .arg(flowPath)
+                              .arg(enabled)
+                              .arg(xwdEnabled)
+                              .arg(monitorCom.isEmpty() ? QStringLiteral("(空)") : monitorCom)
+                              .arg(monitorBaud);
 
     for (QWidget* w : QApplication::topLevelWidgets()) {
         if (auto* box = qobject_cast<QFreeWorkBox*>(w)) {
@@ -723,6 +739,12 @@ void Fixture_uart::setFixBaudRate(int baudRate) {
 bool Fixture_uart::tryOpenSerialPort(const QString& portName, bool autoConnect) {
     Q_UNUSED(autoConnect);
     return fixtureManager_->open(portName, fixBaudRate);
+}
+
+QString Fixture_uart::currentFixtureComName() const {
+    if (!ui || !ui->FixturecomNameCombo)
+        return QString();
+    return ui->FixturecomNameCombo->currentText().trimmed();
 }
 
 void Fixture_uart::closeSerialPort() {

@@ -14,6 +14,7 @@ enum class ModbusDeviceRoute {
     HqAmmeterRtu,       // device/hq_ammeter_rtu → HqAmmeterRtuCmd
     LxAmmeterRtu,       // device/lx_ammeter_rtu → LxAmmeterRtuCmd
     Aa55AmmeterRtu,     // device/aa55_ammeter_rtu → Aa55AmmeterRtuCmd
+    FaFbFloatAmmeterRtu, // device/fafb_float_ammeter_rtu → FaFbFloatAmmeterRtuCmd（88 AE / FA FB float）
     MultiTempLoggerRtu, // device/multi_temp_logger_rtu → MultiTempLoggerRtuCmd
     XinjiePlcRtu,       // device/xinjie_plc_rtu → XinjePlcCmd（信捷 PLC RTU，XINJE_PLC/*）
 };

@@ -2041,8 +2041,10 @@ void QFreeWork::refreshButton(ProtocolButtonStateData data) {
     // CommandTimeoutMs=0：只判本包；>0：未匹配则继续等，到期失败
     if (testCaseStepActive_ && !activeTestCase_.hook.enabled && activeTestCase_.gate.enabled
         && activeTestCase_.gate.reportType == QStringLiteral("ProtocolButtonStateData")) {
-        // 空闲按键上报(ID=0)：所有卡控一律忽略；0xA6 状态快照 isKeyNotify=false，档位0仍有效
-        if (data.isKeyNotify && data.keyButtonId == 0)
+        // 空闲按键上报：isKeyNotify 且各键态均为 0 才丢（勿误丢 ToggleKeyNotify 的 modeButtonState）
+        // 0xA6 状态快照 isKeyNotify=false，档位 0 仍有效
+        if (data.isKeyNotify && data.keyButtonId == 0 && data.modeButtonState == 0
+            && data.powerButtonState == 0)
             return;
         QVector<TestCaseGate> gates = TestCaseStore::activeGatesForEvaluation(activeTestCase_);
         if (gates.isEmpty())
@@ -2170,8 +2172,10 @@ void QFreeWork::onUsbInstrumentReport(const ProtocolReport& report) {
                             .arg(data.unit.isEmpty() ? QStringLiteral("V") : data.unit));
             }
 
-            // 连续采样读电流：平均模式只累计；任一模式不合格不立刻结束，合格时收尾
-            if (currentSampleAnyMatchActive_ && data.type == QLatin1String("Current") && testCaseStepActive_
+            // 连续采样：电流/电压任一合格即结案（FAFB 万用表同设备两种读数）
+            if (currentSampleAnyMatchActive_
+                && (data.type == QLatin1String("Current") || data.type == QLatin1String("Voltage"))
+                && testCaseStepActive_
                 && activeTestCase_.gate.enabled
                 && activeTestCase_.gate.reportType == QLatin1String("ProtocolMeasureData")) {
                 if (!data.isOk) {

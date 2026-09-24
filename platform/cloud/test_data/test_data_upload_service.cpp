@@ -11,6 +11,7 @@
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QMutex>
+#include <QMutexLocker>
 #include <QSysInfo>
 #include <QThread>
 #include <QtConcurrent>
@@ -28,6 +29,22 @@ constexpr int kMaxRetryCount = 100;
 QMutex& flushMutex() {
     static QMutex m;
     return m;
+}
+
+/** 一拖多两工位几乎同时 finish 时串行上报，避免 SQLite/临时 zip 互踩 */
+QMutex& uploadSessionMutex() {
+    static QMutex m;
+    return m;
+}
+
+/** SQLite 仅主线程可用；HTTP 必须留在工作线程。 */
+void runDbOnMainThread(const std::function<void()>& fn) {
+    QCoreApplication* app = QCoreApplication::instance();
+    if (!app || QThread::currentThread() == app->thread()) {
+        fn();
+        return;
+    }
+    QMetaObject::invokeMethod(app, fn, Qt::BlockingQueuedConnection);
 }
 
 bool isTestDataUploadEnabled() {
@@ -164,15 +181,19 @@ int uploadBodyOnce(const QJsonObject& body, QString* message) {
 /**
  * 先入队再认领上报：成功删除队列；可重试失败回 pending；不可重试则 failed。
  * 返回 recordId（成功）或 0。
+ * SQLite 必须回主线程：一拖多两工位同秒 finishTestRecord 时 QtConcurrent 并发写库会丢上报。
  */
 int enqueueThenUpload(const QJsonObject& body, QString* message) {
-    const qint64 queueId = TestRecordStore::instance().enqueueCloudUpload(body);
+    qint64 queueId = 0;
+    runDbOnMainThread([&]() { queueId = TestRecordStore::instance().enqueueCloudUpload(body); });
     if (queueId <= 0) {
         // 入队失败仍尝试直传，避免本地库异常时完全丢上报
         return uploadBodyOnce(body, message);
     }
 
-    if (!TestRecordStore::instance().claimCloudUpload(queueId)) {
+    bool claimed = false;
+    runDbOnMainThread([&]() { claimed = TestRecordStore::instance().claimCloudUpload(queueId); });
+    if (!claimed) {
         // 已被补传线程认领，交给 flush
         if (message) {
             *message = QStringLiteral("测试数据已入队待补传 queue_id=%1").arg(queueId);
@@ -188,7 +209,7 @@ int enqueueThenUpload(const QJsonObject& body, QString* message) {
         FactoryCloudClient::post(QStringLiteral("/test-records"), body);
     if (api.ok) {
         const int recordId = api.data.value(QStringLiteral("recordId")).toInt(0);
-        TestRecordStore::instance().markCloudUploadDone(queueId, recordId);
+        runDbOnMainThread([&]() { TestRecordStore::instance().markCloudUploadDone(queueId, recordId); });
         if (message) {
             *message = recordId > 0 ? QStringLiteral("测试数据上报成功（recordId=%1）").arg(recordId)
                                     : QStringLiteral("测试数据上报成功");
@@ -198,12 +219,12 @@ int enqueueThenUpload(const QJsonObject& body, QString* message) {
 
     const QString err = api.message.isEmpty() ? QStringLiteral("测试数据上报失败") : api.message;
     if (shouldEnqueueForRetry(api)) {
-        TestRecordStore::instance().markCloudUploadRetry(queueId, err);
+        runDbOnMainThread([&]() { TestRecordStore::instance().markCloudUploadRetry(queueId, err); });
         if (message) {
             *message = QStringLiteral("%1（已入队待补传 queue_id=%2）").arg(err).arg(queueId);
         }
     } else {
-        TestRecordStore::instance().markCloudUploadFailed(queueId, err);
+        runDbOnMainThread([&]() { TestRecordStore::instance().markCloudUploadFailed(queueId, err); });
         if (message) {
             *message = err;
         }
@@ -265,6 +286,8 @@ void TestDataUploadService::tryUploadAsync(const MesPacketData& pack) {
 void TestDataUploadService::tryUploadTestAndLogAsync(const MesPacketData& pack, int slot) {
     const MesPacketData copy = pack;
     QtConcurrent::run([copy, slot]() {
+        // 同步屏障放行后两工位常在同一秒内 finish，串行化避免并发写库/撞临时 zip
+        QMutexLocker locker(&uploadSessionMutex());
         QString message;
         const int recordId = uploadFromPack(copy, &message);
         if (!message.isEmpty()) {
@@ -276,16 +299,6 @@ void TestDataUploadService::tryUploadTestAndLogAsync(const MesPacketData& pack, 
             qDebug() << QStringLiteral("[LogUpload]") << message;
         }
     });
-}
-
-/** SQLite 仅主线程可用；HTTP 必须留在工作线程，禁止整段补传丢回 GUI。 */
-static void runDbOnMainThread(const std::function<void()>& fn) {
-    QCoreApplication* app = QCoreApplication::instance();
-    if (!app || QThread::currentThread() == app->thread()) {
-        fn();
-        return;
-    }
-    QMetaObject::invokeMethod(app, fn, Qt::BlockingQueuedConnection);
 }
 
 void TestDataUploadService::flushPendingUploads() {

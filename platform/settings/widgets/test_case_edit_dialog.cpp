@@ -847,14 +847,22 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
         }
         return {};
     }
-    if (channel == TestCaseSendChannel::Fixture
-        && FixturePcbaCmdCatalog::fixtureProtocolFromIni(device) == TestCaseFixtureProtocol::Xwd) {
-        if (cmdName == QLatin1String("ReadModbusVoltageCentivolt")) {
+    if (channel == TestCaseSendChannel::Modbus
+        && device.compare(QLatin1String("FaFbFloatAmmeterRtu"), Qt::CaseInsensitive) == 0) {
+        if (cmdName == QLatin1String("ReadVoltageCentivolt")) {
             return QVariantMap{{QStringLiteral("slaveAddr"), QStringLiteral("1")},
                                {QStringLiteral("registerAddress"), QStringLiteral("1")},
                                {QStringLiteral("sampleDurationMs"), QStringLiteral("3000")},
                                {QStringLiteral("sampleIntervalMs"), QStringLiteral("200")}};
         }
+        if (cmdName == QLatin1String("ReadMeasurement")) {
+            return QVariantMap{{QStringLiteral("sampleDurationMs"), QStringLiteral("3000")},
+                               {QStringLiteral("sampleIntervalMs"), QStringLiteral("200")}};
+        }
+        return {};
+    }
+    if (channel == TestCaseSendChannel::Fixture
+        && FixturePcbaCmdCatalog::fixtureProtocolFromIni(device) == TestCaseFixtureProtocol::Xwd) {
         return {};
     }
     if (channel == TestCaseSendChannel::Fixture
@@ -1270,6 +1278,9 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
     }
     for (const auto& item : items)
         box->addItem(item.first, item.second);
+    // 产品通道首项留空：PromptOnly 等上报时 DeviceCmd 为空可选中，避免误存成下拉第一项
+    if (channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial)
+        box->insertItem(0, QStringLiteral("（不发送）"), QString());
 }
 
 TestCaseSendChannel sendChannelFromComboData(const QString& data) {
@@ -2069,8 +2080,16 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
         else
             updateGateFieldsEnabled();
     });
-    connect(ui->checkBox_promptEnabled, &QCheckBox::toggled, this, &TestCaseEditDialog::updatePromptFieldsEnabled);
-    connect(ui->checkBox_promptOnly, &QCheckBox::toggled, this, &TestCaseEditDialog::updatePromptFieldsEnabled);
+    connect(ui->checkBox_promptEnabled, &QCheckBox::toggled, this, [this](bool) {
+        updatePromptFieldsEnabled();
+        if (!loadingDefinition_)
+            syncGateToSendCommand(comboData(ui->comboBox_gateReportType), comboData(ui->comboBox_gateField));
+    });
+    connect(ui->checkBox_promptOnly, &QCheckBox::toggled, this, [this](bool) {
+        updatePromptFieldsEnabled();
+        if (!loadingDefinition_)
+            syncGateToSendCommand(comboData(ui->comboBox_gateReportType), comboData(ui->comboBox_gateField));
+    });
     connect(ui->checkBox_hookEnabled, &QCheckBox::toggled, this, &TestCaseEditDialog::updateHookFieldsEnabled);
     connect(ui->comboBox_hookId, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
             &TestCaseEditDialog::onHookIdChanged);
@@ -2589,7 +2608,12 @@ void TestCaseEditDialog::syncGateToSendCommand(const QString& preferredReportTyp
     const TestCaseSendChannel channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
     const QString protocolOrDevice = comboData(ui->comboBox_productProtocol);
     const QString cmdName = comboData(ui->comboBox_deviceCmd);
-    GateSendBinding binding = GateRegistry::bindingForSend(channel, protocolOrDevice, cmdName);
+    // PromptOnly 只等主动上报，不发指令：卡控类型勿跟 DeviceCmd 走（否则 KeySignalRead 等会冲掉 keyButtonId）
+    const bool promptOnlyGate =
+        ui->checkBox_promptEnabled->isChecked() && ui->checkBox_promptOnly->isChecked();
+    GateSendBinding binding;
+    if (!promptOnlyGate)
+        binding = GateRegistry::bindingForSend(channel, protocolOrDevice, cmdName);
     if (ui->checkBox_hookEnabled->isChecked()) {
         const GateSendBinding hookBinding = GateRegistry::bindingForHook(comboData(ui->comboBox_hookId));
         if (!hookBinding.reportTypes.isEmpty())
@@ -2600,6 +2624,11 @@ void TestCaseEditDialog::syncGateToSendCommand(const QString& preferredReportTyp
     const QString preferredType = preferredReportType.trimmed();
     if (allowedTypes.isEmpty() && !preferredType.isEmpty())
         allowedTypes << preferredType;
+    // 仅提示等按键上报：默认允许 ProtocolButtonStateData
+    if (allowedTypes.isEmpty() && promptOnlyGate)
+        allowedTypes << QStringLiteral("ProtocolButtonStateData");
+    if (promptOnlyGate && binding.defaultField.isEmpty())
+        binding.defaultField = QStringLiteral("keyButtonId");
 
     gateReportTypeLocked_ = (allowedTypes.size() == 1);
     if (allowedTypes.isEmpty())
@@ -2790,6 +2819,9 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
         def.send.productProtocol = productProtocolFromComboData(comboData(ui->comboBox_productProtocol));
     }
     def.send.deviceCmd = comboData(ui->comboBox_deviceCmd);
+    // 仅提示等上报：不写死指令名，避免空选中被保存成下拉第一项（曾冲掉加减/模式按键卡控）
+    if (def.meta.promptOnly)
+        def.send.deviceCmd.clear();
     def.hook.enabled = ui->checkBox_hookEnabled->isChecked();
     def.hook.hookId = comboData(ui->comboBox_hookId);
     if (def.hook.enabled && hookUsesSendParamUi(def.hook.hookId)) {

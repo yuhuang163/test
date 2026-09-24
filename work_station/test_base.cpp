@@ -1,4 +1,5 @@
 #include "test_base.h"
+#include "box_base.h"
 #include "qprotocol_types.h"
 #include "modbus_types.h"
 #include "my_set/my_typedef.h"
@@ -742,31 +743,66 @@ void test_base::showlog(QString msg) {
 int test_base::getIndex() const {
     return m_index;
 }
+void test_base::pumpSiblingStartTasksWhileWaiting() {
+    // 防重入：避免 A wait→B start→B wait→A start 叠进同一工位
+    static thread_local int s_pumpDepth = 0;
+    if (s_pumpDepth > 0)
+        return;
+
+    box_base* box = qobject_cast<box_base*>(window());
+    if (!box) {
+        QWidget* w = parentWidget();
+        while (w && !box) {
+            box = qobject_cast<box_base*>(w);
+            w = w->parentWidget();
+        }
+    }
+    if (!box || box->testList.size() <= 1)
+        return;
+
+    ++s_pumpDepth;
+    for (test_base* peer : box->testList) {
+        if (!peer || peer == this || !peer->isTestContinue || peer->inStartTask_)
+            continue;
+        peer->startTask();
+    }
+    --s_pumpDepth;
+}
+
 void test_base::waitWork(int ms) {
     QTime t;
     t.start();
-    while (t.elapsed() < ms && isTestContinue)
+    while (t.elapsed() < ms && isTestContinue) {
+        pumpSiblingStartTasksWhileWaiting();
         QCoreApplication::processEvents();
+    }
 }
 
 void test_base::waitWorkIdle(int ms) {
     if (ms <= 0 || !isTestContinue) {
+        pumpSiblingStartTasksWhileWaiting();
         QCoreApplication::processEvents();
         return;
     }
+    // 吸力采样 interval 常为 20ms：若 poll 固定 50ms，整段 10s 采样内一次都泵不到兄弟工位，
+    // 二号会卡在「蓝牙已回包却无法收尾」直到一号吸力结束（日志里像「读取版本前空等 10 秒」）。
+    pumpSiblingStartTasksWhileWaiting();
     QEventLoop loop;
     QTimer done;
     done.setSingleShot(true);
     QObject::connect(&done, &QTimer::timeout, &loop, &QEventLoop::quit);
     QTimer poll;
-    poll.setInterval(50);
+    const int pollMs = qBound(5, ms, 50);
+    poll.setInterval(pollMs);
     QObject::connect(&poll, &QTimer::timeout, &loop, [this, &loop]() {
+        pumpSiblingStartTasksWhileWaiting();
         if (!isTestContinue)
             loop.quit();
     });
     done.start(ms);
     poll.start();
     loop.exec();
+    pumpSiblingStartTasksWhileWaiting();
 }
 
 void test_base::updateMainStyle(QString style) {
@@ -1673,12 +1709,21 @@ void test_base::onModbusRtuAmmeterReadingReceived(const QString& value) {
                                          QVariant::fromValue(ProtocolAmmeterReadingData{value})));
 
     const bool isTempLogger = modbusManager.deviceRoute() == ModbusDeviceRoute::MultiTempLoggerRtu;
+    const bool isVoltage = modbusManager.lastRtuReadingIsVoltage();
     ProtocolMeasureData measureData;
     measureData.deviceName = isTempLogger ? QStringLiteral("MultiTempLogger") : QStringLiteral("Modbus_Ammeter");
-    measureData.type = isTempLogger ? QStringLiteral("Temperature") : QStringLiteral("Current");
+    if (isTempLogger) {
+        measureData.type = QStringLiteral("Temperature");
+        measureData.unit = QStringLiteral("℃");
+    } else if (isVoltage) {
+        measureData.type = QStringLiteral("Voltage");
+        measureData.unit = QStringLiteral("V");
+    } else {
+        measureData.type = QStringLiteral("Current");
+        measureData.unit = QStringLiteral("mA");
+    }
     measureData.value = value.toDouble();
     measureData.valueText = value;
-    measureData.unit = isTempLogger ? QStringLiteral("℃") : QStringLiteral("mA");
     measureData.isOk = true;
     onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolMeasureData"),
                                          QVariant::fromValue(measureData)));

@@ -37,6 +37,8 @@ class Fixture_uart : public QWidget {
     bool isFixtureSerialOpen() const;
     bool tryOpenSerialPort(const QString& portName, bool autoConnect = false);
     void closeSerialPort();
+    /** 当前连接/选中的治具 COM 口名称（日志用）。 */
+    QString currentFixtureComName() const;
     void sendPcbaFrame(const QByteArray& frame);
     QFixtureManager* fixtureManager() const {
         return fixtureManager_;

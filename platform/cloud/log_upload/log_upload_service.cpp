@@ -26,6 +26,7 @@
 #include <QTextCodec>
 #include <QTimer>
 #include <QUrl>
+#include <QUuid>
 #include <QDebug>
 
 #if _MSC_VER >= 1600
@@ -272,16 +273,19 @@ bool parseUploadResponse(const QByteArray& body, const QString& uploadUrl, QStri
 }
 
 QString compressExplicitFiles(const QStringList& absPaths, const QStringList& relPaths, QString* error,
-                              QString* warning = nullptr) {
+                              QString* warning = nullptr, int slot = -1) {
     if (absPaths.isEmpty() || absPaths.size() != relPaths.size()) {
         if (error) {
             *error = QStringLiteral("压缩文件列表无效");
         }
         return {};
     }
-    const QString timestamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss"));
-    const QString zipName = LogUploadService::defaultDeviceId() + QStringLiteral("_session_") + timestamp +
-                            QStringLiteral(".zip");
+    // 一拖多两工位同秒收尾时，旧命名会撞同一个临时 zip，后到的删除/覆盖导致另一工位日志上传失败
+    const QString timestamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss_zzz"));
+    const QString uniq = QUuid::createUuid().toString(QUuid::Id128);
+    const QString zipName = LogUploadService::defaultDeviceId() + QStringLiteral("_session_s")
+                            + QString::number(slot >= 0 ? slot : 0) + QLatin1Char('_') + timestamp
+                            + QLatin1Char('_') + uniq + QStringLiteral(".zip");
     const QString zipPath = QDir(QDir::tempPath()).filePath(zipName);
     if (QFile::exists(zipPath) && !QFile::remove(zipPath)) {
         if (error) {
@@ -769,7 +773,7 @@ QString LogUploadService::compressSessionArchive(const QlogSessionInfo& info, QS
             *warning = warning->isEmpty() ? screenErr : *warning + QStringLiteral("；") + screenErr;
         }
     }
-    return compressExplicitFiles(absPaths, relPaths, error, warning);
+    return compressExplicitFiles(absPaths, relPaths, error, warning, info.slot);
 }
 
 bool LogUploadService::uploadSessionFromPack(const MesPacketData& pack, int slot, int testRecordId, QString* message) {

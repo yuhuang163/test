@@ -448,12 +448,7 @@ class QFreeWork : public test_base {
     /** XWD 治具读电流：连续下发/收包采样，Gate 任一合格即通过。 */
     void runXwdFixtureCurrentSampleAnyMatch(const TestCaseDefinition& def, const QByteArray& request, int readChannel,
                                             bool dualFixture, int perReadTimeoutMs);
-    /** Air1 治具浮点电流：连续采样，Gate 任一合格即通过。 */
-    void runAir1FloatCurrentSampleAnyMatch(const TestCaseDefinition& def, int perReadTimeoutMs);
-    /** Air1 Modbus 电压：连续采样，Gate 任一合格即通过。 */
-    void runAir1ModbusVoltageSampleAnyMatch(const TestCaseDefinition& def, quint8 slaveAddr, quint16 registerAddress,
-                                            int perReadTimeoutMs);
-    /** HQ/LX Modbus 电流表：连续读数，Gate 任一合格即通过。 */
+    /** HQ/LX/FAFB Modbus 电流表：连续读数，Gate 任一合格即通过。 */
     void runModbusAmmeterCurrentSampleAnyMatch(const TestCaseDefinition& def, ModbusDeviceRoute route);
     /**
      * 多路温度仪多通道窗口：在 sampleDurationMs 内轮询本工位通道列表。

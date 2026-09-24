@@ -242,7 +242,9 @@ constexpr const char kHintLcdBacklight[] =
 constexpr const char kHintButtonState[] =
     u8"Qaiot：模拟按键 CID=0x10，Param_int/Param_key=0x01~0x0B\r\n"
     u8"01电源 02开始 03模式 04频率 05母乳 06左控 07右控 08恢复出厂 09旅行锁 0A旋钮左 0B旋钮右\r\n"
+    u8"卡控：ProtocolButtonStateData\r\n"
     u8"Qroot：Notify 0x9A，1=开启按键上报 / 0=关闭；Ack body=0xFF 表示已接收\r\n"
+    u8"卡控：ProtocolResultData（result=1）\r\n"
     u8"Qpb：Param_int 为按键索引";
 constexpr const char kHintRootSuctionTest[] =
     u8"Qroot：Req 0x81，CAL=0x03，body：switch(0关1开)+mode(00按摩/01吸乳/02混合)+level(强度)\r\n"
@@ -481,7 +483,7 @@ const Row kRows[] = {
     {DeviceCmd::SdCardInfo, "SdCardInfo", u8"存储卡信息", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::LightSensorInfo, "LightSensorInfo", u8"环境光传感器信息", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::ButtonState, "ButtonState", u8"按键状态/模拟按键", DeviceCmdParamKind::Int, kHintButtonState, kBoth,
-     "ProtocolButtonStateData", "modeButtonState"},
+     "ProtocolResultData,ProtocolButtonStateData", "result"},
     {DeviceCmd::GetPressCaliResult, "GetPressCaliResult", u8"压力校准结果", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::GetImuCaliResult, "GetImuCaliResult", u8"惯性校准结果", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::DeviceInfo, "DeviceInfo", u8"设备信息", DeviceCmdParamKind::None,

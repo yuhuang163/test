@@ -32,10 +32,22 @@ class PlcStationSyncBarrier {
     void executeSyncReadCoil(QFreeWork* ctx, const TestCaseDefinition& def, const QString& defaultAddr = QString());
 
     /**
-     * XWD 治具 DOWN?/UP：走主页「连接PLC治具串口」共享口。
+     * XWD 一拖多控制板文本指令：走主页「连接PLC治具串口」共享口（115200 8N1）。
      * 多工位到齐后由 Leader 统一下发一次；单工位直接执行。
-     * isQueryDown=true 发 DOWN? 并轮询至 OK；false 发 UP 等一行应答。
+     * rawTextEscaped：如 DOWN?\\r\\n / SET_ALL_UP\\r\\n / RELAY_1_ON\\r\\n
+     * pollUntilMatch：true 时超时内轮询至期望（QueryDown→ALL_DOWN_OK）
+     * waitReply：false 时只下发不等待回包（继电器 Set）
      */
+    void executeSyncXwdTextCmd(QFreeWork* ctx, const TestCaseDefinition& def, const QString& rawTextEscaped,
+                               bool pollUntilMatch, const QString& defaultExpect, bool waitReply = true);
+
+    /**
+     * XWD 继电器按工位号立即下发（不等待其它工站）。
+     * 工位 N → RELAY_N_ON / RELAY_N_OFF；流程里配「继电器1接通/断开」即可，2 号工站自动走继电器2。
+     */
+    void executeImmediateXwdRelayByStation(QFreeWork* ctx, const TestCaseDefinition& def, bool turnOn);
+
+    /** @deprecated 请用 executeSyncXwdTextCmd；保留兼容旧调用 */
     void executeSyncXwdDownUp(QFreeWork* ctx, const TestCaseDefinition& def, bool isQueryDown);
 
   private:

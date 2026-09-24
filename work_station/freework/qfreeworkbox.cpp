@@ -51,12 +51,12 @@ QFreeWorkBox::QFreeWorkBox(QWidget* parent) : box_base(parent), ui(new Ui::QFree
     plcFixtureConnectAct_ = ui->menubar->addAction(QStringLiteral("连接PLC治具串口"));
     connect(plcFixtureConnectAct_, &QAction::triggered, this, [this]() { ensurePlcFixtureUartWindow(true); });
 
-    QAction* preStartMonitorAct = ui->menubar->addAction("自动扫码配置");
-    connect(preStartMonitorAct, &QAction::triggered, this, [this]() {
+    // 一个窗口两页签：PLC按键扫码 + 本工站 XWD 到位扫码（含监控治具串口）
+    QAction* autoScanAct = ui->menubar->addAction(QStringLiteral("自动扫码配置"));
+    connect(autoScanAct, &QAction::triggered, this, [this]() {
         if (preStartMonitorUi_ == nullptr)
             preStartMonitorUi_ = new Fixture_uart(nullptr, FixtureUartRole::PreStartMonitor);
-        else
-            preStartMonitorUi_->reloadStationConfig();
+        preStartMonitorUi_->reloadStationConfig();
         preStartMonitorUi_->raise();
         preStartMonitorUi_->show();
         preStartMonitorUi_->activateWindow();
@@ -130,8 +130,10 @@ QFreeWorkBox::~QFreeWorkBox() {
     }
     delete Fixture_uart_ui;
     delete plcFixtureUartUi_;
+    delete xwdMonitorUartUi_;
     Fixture_uart_ui = nullptr;
     plcFixtureUartUi_ = nullptr;
+    xwdMonitorUartUi_ = nullptr;
     delete preStartMonitorUi_;
     qDeleteAll(sharedTempLoggerMutexes_);
     sharedTempLoggerMutexes_.clear();
@@ -143,6 +145,7 @@ void QFreeWorkBox::abortBlockingWaits() {
         plcMonitorTimer_->stop();
         plcMonitorRunning_ = false;
     }
+    releaseXwdMonitorUart();
     if (Fixture_uart_ui && Fixture_uart_ui->fixtureManager())
         Fixture_uart_ui->fixtureManager()->abortPendingWaits();
 }
@@ -206,8 +209,12 @@ QString QFreeWorkBox::resolvedPlcFixtureComName() {
         if (QFile::exists(flowPath)) {
             QSettings flowSettings(flowPath, QSettings::IniFormat);
             flowSettings.setIniCodec("UTF-8");
-            const QString flowPort =
+            // 同一台 XWD：PlcFixture 与监控口任填一处即可
+            QString flowPort =
                 flowSettings.value(QStringLiteral("PreStart_Monitor/PlcFixtureComPort")).toString().trimmed();
+            if (flowPort.isEmpty())
+                flowPort =
+                    flowSettings.value(QStringLiteral("PreStart_Monitor/XwdMonitorComPort")).toString().trimmed();
             if (!flowPort.isEmpty())
                 return flowPort;
         }
@@ -392,6 +399,86 @@ Fixture_uart* QFreeWorkBox::ensurePlcFixtureUartConnected(QString* detailOut) {
     return plcFixtureUartUi_;
 }
 
+Fixture_uart* QFreeWorkBox::ensureXwdMonitorUartConnected(QString* detailOut) {
+    const QString plcPort = resolvedPlcFixtureComName();
+    QString monitorPort = sharedPlcConfig_.xwdMonitorComPort.trimmed();
+    if (monitorPort.isEmpty())
+        monitorPort = plcPort;
+
+    if (monitorPort.isEmpty()) {
+        if (detailOut)
+            *detailOut = QStringLiteral("未配置 XWD 串口（「连接PLC治具串口」或「自动扫码监控串口」任填一处）");
+        return nullptr;
+    }
+
+    // 同一台设备：监控口与 PLC 治具口相同，或只配了一处 → 共用 PLC 治具通道（SET_ALL_UP 同路）
+    const bool sameDevice =
+        plcPort.isEmpty() || monitorPort.compare(plcPort, Qt::CaseInsensitive) == 0;
+    if (sameDevice) {
+        xwdMonitorUsesSharedPlcUart_ = true;
+        ensurePlcFixtureUartWindow(false);
+        const int baud = sharedPlcConfig_.xwdMonitorBaudRate > 0 ? sharedPlcConfig_.xwdMonitorBaudRate
+                                                                 : 115200;
+        if (plcFixtureUartUi_->isFixtureSerialOpen()) {
+            const QString opened = plcFixtureUartUi_->fixtureManager()
+                                       ? plcFixtureUartUi_->fixtureManager()->portName()
+                                       : QString();
+            if (opened.compare(monitorPort, Qt::CaseInsensitive) == 0) {
+                if (detailOut)
+                    *detailOut = monitorPort;
+                return plcFixtureUartUi_;
+            }
+            plcFixtureUartUi_->closeSerialPort();
+        }
+        plcFixtureUartUi_->setFixBaudRate(baud);
+        if (!plcFixtureUartUi_->tryOpenSerialPort(monitorPort, true)) {
+            if (detailOut)
+                *detailOut = QStringLiteral("打开 XWD 共享口失败：%1 @ %2").arg(monitorPort).arg(baud);
+            return nullptr;
+        }
+        if (detailOut)
+            *detailOut = monitorPort;
+        return plcFixtureUartUi_;
+    }
+
+    // 两处配成不同 COM（少见）：单独开监控口
+    xwdMonitorUsesSharedPlcUart_ = false;
+    const int baud = sharedPlcConfig_.xwdMonitorBaudRate > 0 ? sharedPlcConfig_.xwdMonitorBaudRate : 115200;
+    if (xwdMonitorUartUi_ == nullptr)
+        xwdMonitorUartUi_ = new Fixture_uart(nullptr, FixtureUartRole::FixturePort);
+
+    if (xwdMonitorUartUi_->isFixtureSerialOpen()) {
+        const QString opened = xwdMonitorUartUi_->fixtureManager()
+                                   ? xwdMonitorUartUi_->fixtureManager()->portName()
+                                   : QString();
+        if (opened.compare(monitorPort, Qt::CaseInsensitive) == 0 && xwdMonitorUartUi_->fixBaudRate == baud) {
+            if (detailOut)
+                *detailOut = monitorPort;
+            return xwdMonitorUartUi_;
+        }
+        xwdMonitorUartUi_->closeSerialPort();
+    }
+
+    xwdMonitorUartUi_->setFixBaudRate(baud);
+    if (!xwdMonitorUartUi_->tryOpenSerialPort(monitorPort, true)) {
+        if (detailOut)
+            *detailOut = QStringLiteral("自动连接监控串口失败：%1 @ %2").arg(monitorPort).arg(baud);
+        return nullptr;
+    }
+    if (detailOut)
+        *detailOut = monitorPort;
+    return xwdMonitorUartUi_;
+}
+
+void QFreeWorkBox::releaseXwdMonitorUart() {
+    // 共用 PLC 治具通道时不关口，留给流程 SET_ALL_UP / DOWN?
+    if (xwdMonitorUsesSharedPlcUart_)
+        return;
+    if (!xwdMonitorUartUi_ || !xwdMonitorUartUi_->isFixtureSerialOpen())
+        return;
+    xwdMonitorUartUi_->closeSerialPort();
+}
+
 bool QFreeWorkBox::isAnyStationTesting() const {
     for (test_base* station : testList) {
         if (station && station->isTestContinue)
@@ -427,14 +514,21 @@ void QFreeWorkBox::updatePlcMonitorState() {
         const bool plcEnabled = settings.contains("Enabled") && settings.value("Enabled").toBool();
         const bool xwdEnabled = settings.value(QStringLiteral("XwdDownScanEnabled"), false).toBool();
         sharedPlcConfig_.xwdDownScanEnabled = xwdEnabled;
-        sharedPlcConfig_.plcFixtureComPort = settings.value(QStringLiteral("PlcFixtureComPort")).toString().trimmed();
-        {
-            const TestCaseSerialUiConfig serialUi = TestCaseStore::loadStationSerialUiConfig(stationKey);
-            sharedPlcConfig_.plcFixtureBaudRate =
-                serialUi.plcFixtureBaudRate > 0
-                    ? serialUi.plcFixtureBaudRate
-                    : settings.value(QStringLiteral("PlcFixtureBaudRate"), 115200).toInt();
+        // 自动扫码监控口：独立键；旧配置若只有 PlcFixtureComPort 则回退一次便于迁移
+        sharedPlcConfig_.xwdMonitorComPort =
+            settings.value(QStringLiteral("XwdMonitorComPort")).toString().trimmed();
+        if (sharedPlcConfig_.xwdMonitorComPort.isEmpty()) {
+            sharedPlcConfig_.xwdMonitorComPort =
+                settings.value(QStringLiteral("PlcFixtureComPort")).toString().trimmed();
         }
+        sharedPlcConfig_.xwdMonitorBaudRate =
+            settings.value(QStringLiteral("XwdMonitorBaudRate"), 0).toInt();
+        if (sharedPlcConfig_.xwdMonitorBaudRate <= 0) {
+            sharedPlcConfig_.xwdMonitorBaudRate =
+                settings.value(QStringLiteral("PlcFixtureBaudRate"), 115200).toInt();
+        }
+        if (sharedPlcConfig_.xwdMonitorBaudRate <= 0)
+            sharedPlcConfig_.xwdMonitorBaudRate = 115200;
         sharedPlcConfig_.scannerComPort = settings.value(QStringLiteral("ScannerComPort")).toString().trimmed();
         sharedPlcConfig_.scannerBaudRate = settings.value(QStringLiteral("ScannerBaudRate"), 9600).toInt();
         sharedPlcConfig_.scannerHexCmd = settings.value(QStringLiteral("ScannerHexCmd")).toString().trimmed();
@@ -523,10 +617,10 @@ void QFreeWorkBox::updatePlcMonitorState() {
             plcMonitorRunning_ = true;
             if (sharedPlcConfig_.xwdDownScanEnabled) {
                 const QString startLog =
-                    QStringLiteral("[XWD到位扫码] 启动监控: 治具口=%1 @ %2bps，扫码枪=%3 @ %4bps，周期=%5ms")
-                        .arg(sharedPlcConfig_.plcFixtureComPort.isEmpty() ? QStringLiteral("未配置")
-                                                                         : sharedPlcConfig_.plcFixtureComPort)
-                        .arg(sharedPlcConfig_.plcFixtureBaudRate)
+                    QStringLiteral("[XWD到位扫码] 启动监控: 监控口=%1 @ %2bps，扫码枪=%3 @ %4bps，周期=%5ms")
+                        .arg(sharedPlcConfig_.xwdMonitorComPort.isEmpty() ? QStringLiteral("未配置")
+                                                                         : sharedPlcConfig_.xwdMonitorComPort)
+                        .arg(sharedPlcConfig_.xwdMonitorBaudRate)
                         .arg(sharedPlcConfig_.scannerComPort.isEmpty() ? QStringLiteral("未配置")
                                                                       : sharedPlcConfig_.scannerComPort)
                         .arg(sharedPlcConfig_.scannerBaudRate)
@@ -551,6 +645,7 @@ void QFreeWorkBox::updatePlcMonitorState() {
         if (plcMonitorRunning_) {
             plcMonitorTimer_->stop();
             plcMonitorRunning_ = false;
+            releaseXwdMonitorUart();
             qDebug() << "[QFreeWorkBox] 停止全局自动扫码监控";
             emit sendBoxLog(QStringLiteral("[自动扫码] 停止监控"));
         }
@@ -756,25 +851,25 @@ void QFreeWorkBox::triggerAllStationScanners() {
 
 bool QFreeWorkBox::pollXwdDownAndTriggerScan() {
     QString detail;
-    Fixture_uart* plcUart = ensurePlcFixtureUartConnected(&detail);
-    if (!plcUart || !plcUart->isFixtureSerialOpen()) {
+    Fixture_uart* monitorUart = ensureXwdMonitorUartConnected(&detail);
+    if (!monitorUart || !monitorUart->isFixtureSerialOpen()) {
         static qint64 lastLog = 0;
         if (QDateTime::currentMSecsSinceEpoch() - lastLog > 3000) {
-            emit sendBoxLog(QStringLiteral("[XWD到位扫码] 治具串口未就绪: %1").arg(detail));
+            emit sendBoxLog(QStringLiteral("[XWD到位扫码] 监控串口未就绪: %1").arg(detail));
             lastLog = QDateTime::currentMSecsSinceEpoch();
         }
         return false;
     }
 
-    // 与测试步骤 DOWN? 一致：发 DOWN?\r\n，看回包是否含 OK
+    // 与测试步骤 DOWN? 一致：发 DOWN?\r\n；到位通过只认 ALL_DOWN_OK（一拖多全部下压）
     const QByteArray request = XwdRawUartCodec::encodeRawText(QStringLiteral("DOWN?\\r\\n"));
     QByteArray response;
     QString err;
-    QMutex* mu = sharedPlcFixtureMutex();
+    QMutex* mu = xwdMonitorUsesSharedPlcUart_ ? sharedPlcFixtureMutex() : sharedXwdMonitorMutex();
     bool okExchange = false;
     {
         QMutexLocker locker(mu);
-        okExchange = plcUart->exchangeRawFrame(request, &response, 400, &err);
+        okExchange = monitorUart->exchangeRawFrame(request, &response, 400, &err);
     }
     if (!okExchange) {
         // 未到位/无应答属常态，不刷屏
@@ -783,14 +878,15 @@ bool QFreeWorkBox::pollXwdDownAndTriggerScan() {
 
     const QString text = QString::fromUtf8(response).trimmed();
     const QStringList lines = text.split(QRegularExpression(QStringLiteral("[\\r\\n]+")), Qt::SkipEmptyParts);
-    bool downOk = false;
+    QString matchedLine;
     for (const QString& line : lines) {
-        if (line.trimmed().compare(QStringLiteral("OK"), Qt::CaseInsensitive) == 0) {
-            downOk = true;
+        const QString t = line.trimmed();
+        if (t.contains(QStringLiteral("ALL_DOWN_OK"), Qt::CaseInsensitive)) {
+            matchedLine = t;
             break;
         }
     }
-    if (!downOk) {
+    if (matchedLine.isEmpty()) {
         static qint64 lastNoLog = 0;
         if (QDateTime::currentMSecsSinceEpoch() - lastNoLog > 2000) {
             emit sendBoxLog(QStringLiteral("[XWD到位扫码] DOWN? 回读: %1").arg(text.isEmpty() ? QStringLiteral("(空)") : text));
@@ -799,9 +895,12 @@ bool QFreeWorkBox::pollXwdDownAndTriggerScan() {
         return false;
     }
 
-    emit sendBoxLog(QStringLiteral("[XWD到位扫码] DOWN?→OK，停止监控并触发串口扫码枪..."));
+    emit sendBoxLog(QStringLiteral("[XWD到位扫码] DOWN?→%1，停止监控并触发串口扫码枪...")
+                        .arg(matchedLine));
     plcMonitorTimer_->stop();
     plcMonitorRunning_ = false;
+    // 独立监控口才释放；共用 PLC 治具通道则保持打开供后续 SET_ALL_UP
+    releaseXwdMonitorUart();
     triggerAllStationSerialScanners();
     return true;
 }
@@ -814,8 +913,8 @@ void QFreeWorkBox::triggerAllStationSerialScanners() {
             continue;
 
         QString comPort = sharedPlcConfig_.scannerComPort.trimmed();
-        if (sharedPlcConfig_.autoIncrementComByStation && !comPort.isEmpty()) {
-            // COM3 + (工位序号-1) → 一拖多各枪独立口
+        // 一拖多：1 号用配置口，2 号及以后 COM 号自动 +1（COM8→工位2=COM9）
+        if (sharedPlcConfig_.autoIncrementComByStation && !comPort.isEmpty() && fw->getIndex() > 1) {
             static const QRegularExpression re(QStringLiteral("^COM(\\d+)$"),
                                                QRegularExpression::CaseInsensitiveOption);
             const QRegularExpressionMatch m = re.match(comPort);
@@ -840,4 +939,8 @@ void QFreeWorkBox::triggerAllStationSerialScanners() {
 
 QMutex* QFreeWorkBox::sharedPlcFixtureMutex() {
     return &sharedPlcFixtureMutex_;
+}
+
+QMutex* QFreeWorkBox::sharedXwdMonitorMutex() {
+    return &sharedXwdMonitorMutex_;
 }

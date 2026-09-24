@@ -16,6 +16,7 @@
 #include "jieli_bt_box_device.h"
 #include "qfixturemanager.h"
 #include "qprotocol_types.h"
+#include "plc_station_sync_barrier.h"
 #include "shared_instrument.h"
 #include "serial_channel.h"
 #include "visa_channel.h"
@@ -578,6 +579,14 @@ Aa55AmmeterRtuCmd aa55AmmeterRtuCmdFromName(const QString& name) {
     if (name == QLatin1String("ReadMeasurement"))
         return Aa55AmmeterRtuCmd::ReadMeasurement;
     return Aa55AmmeterRtuCmd::ReadMeasurement;
+}
+
+FaFbFloatAmmeterRtuCmd faFbFloatAmmeterRtuCmdFromName(const QString& name) {
+    if (name == QLatin1String("ReadVoltageCentivolt"))
+        return FaFbFloatAmmeterRtuCmd::ReadVoltageCentivolt;
+    if (name == QLatin1String("ReadMeasurement"))
+        return FaFbFloatAmmeterRtuCmd::ReadMeasurement;
+    return FaFbFloatAmmeterRtuCmd::ReadMeasurement;
 }
 
 MultiTempLoggerRtuCmd multiTempLoggerRtuCmdFromName(const QString& name) {
@@ -1509,6 +1518,8 @@ void QFreeWork::runModbusAmmeterCurrentSampleAnyMatch(const TestCaseDefinition& 
             ok = modbusManager.exec(lxAmmeterRtuCmdFromName(def.send.deviceCmd), &errStr);
         else if (route == ModbusDeviceRoute::Aa55AmmeterRtu)
             ok = modbusManager.exec(aa55AmmeterRtuCmdFromName(def.send.deviceCmd), &errStr);
+        else if (route == ModbusDeviceRoute::FaFbFloatAmmeterRtu)
+            ok = modbusManager.exec(faFbFloatAmmeterRtuCmdFromName(def.send.deviceCmd), map, &errStr);
         else if (route == ModbusDeviceRoute::MultiTempLoggerRtu) {
             QVariantMap tempParam = map;
             SharedInstrument::applyTempLoggerParamsForStation(getIndex(), &tempParam);
@@ -2259,6 +2270,28 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                     ctx->markActiveTestCaseStepDone(false, QStringLiteral("超时"), QStringLiteral("失败"));
                 });
                 ctx->showlog(QStringLiteral("等待 AA55 电流表回包：%1（超时 %2ms）").arg(def.send.deviceCmd).arg(timeoutMs));
+            } else {
+                ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
+            }
+        } else if (devRoute == ModbusDeviceRoute::FaFbFloatAmmeterRtu) {
+            if (def.send.action == TestCaseSendAction::Get && def.gate.enabled) {
+                ctx->runModbusAmmeterCurrentSampleAnyMatch(def, devRoute);
+                return;
+            }
+            FaFbFloatAmmeterRtuCmd cmd = faFbFloatAmmeterRtuCmdFromName(def.send.deviceCmd);
+            bool ok = ctx->modbusManager.exec(cmd, resolvedParam, &errStr);
+            if (!ok) {
+                ctx->showlog(QStringLiteral("FAFB 万用表指令 [%1] 下发失败: %2").arg(def.send.deviceCmd, errStr));
+                ctx->markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
+            } else if (def.send.action == TestCaseSendAction::Get) {
+                const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+                QTimer::singleShot(timeoutMs, ctx, [ctx, def]() {
+                    if (!ctx->isActiveTestCaseStep(def.meta.name) || ctx->isActiveTestCaseStepDone())
+                        return;
+                    ctx->showlog(QStringLiteral("FAFB 万用表等待超时：%1").arg(def.send.deviceCmd));
+                    ctx->markActiveTestCaseStepDone(false, QStringLiteral("超时"), QStringLiteral("失败"));
+                });
+                ctx->showlog(QStringLiteral("等待 FAFB 万用表回包：%1（超时 %2ms）").arg(def.send.deviceCmd).arg(timeoutMs));
             } else {
                 ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
             }
@@ -3174,6 +3207,50 @@ void QFreeWork::executeFixtureXwdCase(const TestCaseDefinition& def) {
         return;
     }
 
+    // QueryDown / Up / SetUp / MoveUp / 继电器：走 PLC 治具共享串口一拖多屏障（先于工站 XWD 串口）
+    if (cmd == XwdRawFixtureCmd::QueryDown) {
+        PlcStationSyncBarrier::instance().executeSyncXwdTextCmd(
+            this, def, QStringLiteral("DOWN?\\r\\n"), true, QStringLiteral("ALL_DOWN_OK"), true);
+        return;
+    }
+    if (cmd == XwdRawFixtureCmd::Up) {
+        const bool waitReply = (def.send.action != TestCaseSendAction::Set);
+        PlcStationSyncBarrier::instance().executeSyncXwdTextCmd(
+            this, def, QStringLiteral("UP\\r\\n"), false, QStringLiteral("OK"), waitReply);
+        return;
+    }
+    if (cmd == XwdRawFixtureCmd::SetUp) {
+        const bool waitReply = (def.send.action != TestCaseSendAction::Set);
+        PlcStationSyncBarrier::instance().executeSyncXwdTextCmd(
+            this, def, QStringLiteral("SET_UP\\r\\n"), false, QStringLiteral("OK"), waitReply);
+        return;
+    }
+    if (cmd == XwdRawFixtureCmd::MoveUp) {
+        const bool waitReply = (def.send.action != TestCaseSendAction::Set);
+        PlcStationSyncBarrier::instance().executeSyncXwdTextCmd(
+            this, def, QStringLiteral("SET_ALL_UP\\r\\n"), false, QStringLiteral("OK"), waitReply);
+        return;
+    }
+    if (cmd == XwdRawFixtureCmd::Relay1On || cmd == XwdRawFixtureCmd::Relay2On) {
+        // 工位N→RELAY_N_ON；不等待其它工站（流程配「继电器1接通」即可，2号自动走继电器2）
+        PlcStationSyncBarrier::instance().executeImmediateXwdRelayByStation(this, def, true);
+        return;
+    }
+    if (cmd == XwdRawFixtureCmd::Relay1Off || cmd == XwdRawFixtureCmd::Relay2Off) {
+        PlcStationSyncBarrier::instance().executeImmediateXwdRelayByStation(this, def, false);
+        return;
+    }
+    if (cmd == XwdRawFixtureCmd::LoadOn) {
+        PlcStationSyncBarrier::instance().executeSyncXwdTextCmd(
+            this, def, QStringLiteral("LOAD_ON\\r\\n"), false, QStringLiteral("OK"), false);
+        return;
+    }
+    if (cmd == XwdRawFixtureCmd::LoadOff) {
+        PlcStationSyncBarrier::instance().executeSyncXwdTextCmd(
+            this, def, QStringLiteral("LOAD_OFF\\r\\n"), false, QStringLiteral("OK"), false);
+        return;
+    }
+
     QString errStr;
     if (!ensureXwdJigUartOpen(this, &errStr)) {
         showlog(errStr);
@@ -3182,10 +3259,34 @@ void QFreeWork::executeFixtureXwdCase(const TestCaseDefinition& def) {
     }
 
     QString rawText;
-    if (cmd == XwdRawFixtureCmd::QueryDown)
+    if (cmd == XwdRawFixtureCmd::AddLoad1)
+        rawText = QStringLiteral("01 10 00 2B 00 02 04 00 08 03 E8 31 78");
+    else if (cmd == XwdRawFixtureCmd::AddLoad2)
+        rawText = QStringLiteral("01 10 00 2F 00 02 04 00 01 03 E8 E0 89");
+    else if (cmd == XwdRawFixtureCmd::CloseLoad1)
+        rawText = QStringLiteral("01 10 00 2F 00 02 04 00 01 00 00 E0 37");
+    else if (cmd == XwdRawFixtureCmd::CloseLoad2)
+        rawText = QStringLiteral("01 10 00 2B 00 02 04 00 08 00 00 31 C6");
+    else if (cmd == XwdRawFixtureCmd::QueryDown)
         rawText = QStringLiteral("DOWN?\\r\\n");
-    else if (cmd == XwdRawFixtureCmd::MoveUp)
+    else if (cmd == XwdRawFixtureCmd::Up)
         rawText = QStringLiteral("UP\\r\\n");
+    else if (cmd == XwdRawFixtureCmd::SetUp)
+        rawText = QStringLiteral("SET_UP\\r\\n");
+    else if (cmd == XwdRawFixtureCmd::MoveUp)
+        rawText = QStringLiteral("SET_ALL_UP\\r\\n");
+    else if (cmd == XwdRawFixtureCmd::Relay1On)
+        rawText = QStringLiteral("RELAY_1_ON\\r\\n");
+    else if (cmd == XwdRawFixtureCmd::Relay1Off)
+        rawText = QStringLiteral("RELAY_1_OFF\\r\\n");
+    else if (cmd == XwdRawFixtureCmd::Relay2On)
+        rawText = QStringLiteral("RELAY_2_ON\\r\\n");
+    else if (cmd == XwdRawFixtureCmd::Relay2Off)
+        rawText = QStringLiteral("RELAY_2_OFF\\r\\n");
+    else if (cmd == XwdRawFixtureCmd::LoadOn)
+        rawText = QStringLiteral("LOAD_ON\\r\\n");
+    else if (cmd == XwdRawFixtureCmd::LoadOff)
+        rawText = QStringLiteral("LOAD_OFF\\r\\n");
     else
         rawText = sendParamAsRawText(resolveTestCaseSendParamTree(def.send.param));
     if (rawText.isEmpty()) {
@@ -3225,15 +3326,21 @@ void QFreeWork::executeFixtureXwdCase(const TestCaseDefinition& def) {
         return;
     }
 
-    // DOWN?/UP 或 Gate=valueText：等文本行应答（OK/NO），不走电流采样
-    const bool textLineReply = (cmd == XwdRawFixtureCmd::QueryDown || cmd == XwdRawFixtureCmd::MoveUp
+    // DOWN?/UP/SET_UP/SET_ALL_UP 或 Gate=valueText：等文本行应答，不走电流采样
+    const bool textLineReply = (cmd == XwdRawFixtureCmd::QueryDown || cmd == XwdRawFixtureCmd::Up
+                                || cmd == XwdRawFixtureCmd::SetUp || cmd == XwdRawFixtureCmd::MoveUp
                                 || (def.gate.enabled
                                     && def.gate.field.compare(QLatin1String("valueText"), Qt::CaseInsensitive) == 0));
     if (textLineReply) {
         showlog(QStringLiteral("XWD治具文本指令：%1，超时 %2ms").arg(rawText, QString::number(timeoutMs)));
         const QString expected =
-            def.gate.enabled ? def.gate.expected.trimmed() : QStringLiteral("OK");
-        const QString expectToken = expected.isEmpty() ? QStringLiteral("OK") : expected;
+            def.gate.enabled
+                ? def.gate.expected.trimmed()
+                : (cmd == XwdRawFixtureCmd::QueryDown ? QStringLiteral("ALL_DOWN_OK") : QStringLiteral("OK"));
+        const QString expectToken = expected.isEmpty()
+                                        ? (cmd == XwdRawFixtureCmd::QueryDown ? QStringLiteral("ALL_DOWN_OK")
+                                                                              : QStringLiteral("OK"))
+                                        : expected;
         const bool pollUntilMatch = (cmd == XwdRawFixtureCmd::QueryDown);
         QElapsedTimer waitTimer;
         waitTimer.start();
@@ -3263,7 +3370,10 @@ void QFreeWork::executeFixtureXwdCase(const TestCaseDefinition& def) {
             }
             lastLine = line;
             showlog(QStringLiteral("XWD治具文本回包：%1").arg(line));
-            const bool matched = (line.compare(expectToken, Qt::CaseInsensitive) == 0);
+            const bool matched =
+                (line.compare(expectToken, Qt::CaseInsensitive) == 0)
+                || (expectToken.contains(QStringLiteral("ALL_DOWN_OK"), Qt::CaseInsensitive)
+                    && line.contains(QStringLiteral("ALL_DOWN_OK"), Qt::CaseInsensitive));
             if (!matched) {
                 if (pollUntilMatch) {
                     waitWork(qMin(200, timeoutMs - static_cast<int>(waitTimer.elapsed())));

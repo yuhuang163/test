@@ -62,8 +62,10 @@ class QFreeWorkBox : public box_base {
     void triggerAllStationSerialScanners();
     bool isAnyStationTesting() const;
     void releaseSharedPlcIfIdle();
-    /** PLC 治具串口一拖多互斥（XWD DOWN/UP 与到位扫码共用）。 */
+    /** PLC 治具串口一拖多互斥（流程 UP/DOWN）。 */
     QMutex* sharedPlcFixtureMutex();
+    /** 自动扫码监控口互斥（XWD DOWN?，与流程治具口配置独立）。 */
+    QMutex* sharedXwdMonitorMutex();
     /** 按当前选中工站 flow.ini [SerialUi] 刷新顶部治具/PLC 治具串口菜单文案与波特率。 */
     void applyFixtureMenuLabel();
 
@@ -81,9 +83,15 @@ class QFreeWorkBox : public box_base {
     void ensureFixtureUartWindow(bool show = true);
     /** PLC 治具串口独立窗口；show=false 时仅创建不弹窗。 */
     void ensurePlcFixtureUartWindow(bool show = true);
+    /** 自动扫码监控口：与 PLC 治具同设备时复用共享通道；不同 COM 才另开。 */
+    Fixture_uart* ensureXwdMonitorUartConnected(QString* detailOut = nullptr);
+    void releaseXwdMonitorUart();
 
     Fixture_uart* Fixture_uart_ui = nullptr;
     Fixture_uart* plcFixtureUartUi_ = nullptr;
+    Fixture_uart* xwdMonitorUartUi_ = nullptr;
+    /** 到位监控当前是否走 PLC 治具共享串口（同一台 XWD）。 */
+    bool xwdMonitorUsesSharedPlcUart_ = false;
     QAction* fixtureConnectAct_ = nullptr;
     QAction* plcFixtureConnectAct_ = nullptr;
     Fixture_uart* preStartMonitorUi_ = nullptr;
@@ -98,6 +106,7 @@ class QFreeWorkBox : public box_base {
     bool plcMonitorRunning_ = false;
     PreStartMonitorConfig sharedPlcConfig_;
     QMutex sharedPlcFixtureMutex_;
+    QMutex sharedXwdMonitorMutex_;
 
   private slots:
     void startTest();
