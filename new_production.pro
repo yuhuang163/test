@@ -563,6 +563,7 @@ HEADERS += \
     work_station/box_base.h \
     work_station/camera/cameratest.h \
     work_station/freework/qfreework.h \
+    work_station/freework/freework_presentation.h \
     work_station/freework/qfreeworkbox.h \
     work_station/freework/pre_start_monitor_config.h \
     work_station/freework/shared_instrument.h \
@@ -701,7 +702,7 @@ PRECOMPILED_HEADER += $$PWD/my_set/AbIni.h
 # PCH 文件名与带日期的 TARGET 解耦，避免同日 -1/-2 改名后找不到 pch（C1083）
 QMAKE_PCH_OUTPUT_BASE = new_production
 
-RC_ICONS = ./stytle/picture/lute.ico
+RC_ICONS = ./stytle/picture/m_logo.ico
 # TARGET 固定为 new_production.exe（OTA 版本见 my_set/host_ota_version.h，勿靠 exe 名区分）
 # 调试临时改名可设环境变量 NEW_PRODUCT_BUILD_TARGET 覆盖
 BUILD_TARGET = $$(NEW_PRODUCT_BUILD_TARGET)

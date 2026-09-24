@@ -4,6 +4,7 @@
 
 #include <QEvent>
 #include <QMouseEvent>
+#include <QStyle>
 
 #include "common_utils.h"
 #include "qproduct.h"
@@ -103,12 +104,6 @@ bool caseNeedsDeviceSideParam(const TestCaseDefinition& def) {
            || cmd == QStringLiteral("MacRead") || cmd == QStringLiteral("TupleRead");
 }
 
-constexpr char kTuplePosInactiveStyle[] =
-    "font-size: 18px; background-color: #808080; color: black; border-radius: 6px; padding: 4px 12px;";
-constexpr char kTuplePosActiveStyle[] =
-    "font-size: 18px; background-color: #00FF00; color: black; border: 2px solid black; border-radius: 6px; "
-    "padding: 4px 12px;";
-
 /** 整机 SN 内嵌 SKU：以第 11 位为右端（1 起算），取与上传 sku 等长片段比对（忽略大小写）。
  *  3 位 → 第 9～11 位；7 位 → 第 5～11 位（相对 3 位起点前移 4）。 */
 bool wholeMachineSnEmbeddedSkuMatches(const QString& wholeSn, const QString& sku, QString* detailOut) {
@@ -147,11 +142,21 @@ bool wholeMachineSnEmbeddedSkuMatches(const QString& wholeSn, const QString& sku
 
 } // namespace
 
+static void applyTupleSegStyle(QLabel* label, bool active) {
+    if (!label)
+        return;
+    label->setStyleSheet(QString());
+    label->setProperty("fwSeg", active ? QStringLiteral("active") : QStringLiteral("idle"));
+    label->style()->unpolish(label);
+    label->style()->polish(label);
+    label->update();
+}
+
 void QFreeWork::resetTuplePositionHighlight() {
-    ui->label_tuplePosLeft->setStyleSheet(kTuplePosInactiveStyle);
-    ui->label_tuplePosRight->setStyleSheet(kTuplePosInactiveStyle);
-    ui->label_tuplePosSingle->setStyleSheet(kTuplePosInactiveStyle);
-    ui->label_tuplePosUnspecified->setStyleSheet(kTuplePosInactiveStyle);
+    applyTupleSegStyle(ui->label_tuplePosLeft, false);
+    applyTupleSegStyle(ui->label_tuplePosRight, false);
+    applyTupleSegStyle(ui->label_tuplePosSingle, false);
+    applyTupleSegStyle(ui->label_tuplePosUnspecified, false);
 }
 
 void QFreeWork::updateTuplePositionUiVisible() {
@@ -399,7 +404,7 @@ void QFreeWork::updateTuplePositionHighlight(const QString& position) {
         break;
     }
     if (target) {
-        target->setStyleSheet(kTuplePosActiveStyle);
+        applyTupleSegStyle(target, true);
     }
 }
 

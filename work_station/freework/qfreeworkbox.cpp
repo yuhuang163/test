@@ -3,12 +3,19 @@
 #include <QAction>
 #include <QCoreApplication>
 #include <QDir>
+#include <QIcon>
 #include <QLabel>
+#include <QMenu>
+#include <QMenuBar>
+#include <QPixmap>
 #include <QTimer>
+#include <QToolBar>
+#include <QToolButton>
 
 #include "Abini.h"
 #include "application_shutdown.h"
 #include "asd9026a_device.h"
+#include "my_typedef.h"
 #include "qfixturemanager.h"
 #include "qfreework.h"
 #include "screen_inspect_analyzer.h"
@@ -20,8 +27,42 @@
 #include "ui_qfreework.h"
 #include <QDateTime>
 
+static QIcon freeWorkFwIcon(const char* name, int px = 16) {
+    QPixmap pm(QStringLiteral(":/stytle/picture/fw/%1.png").arg(QLatin1String(name)));
+    if (pm.isNull())
+        return {};
+    return QIcon(pm.scaled(px, px, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+}
+
+static void applyFreeWorkMenuIcons(QMenuBar* bar, QAction* fixtureAct, QAction* plcAct) {
+    if (!bar)
+        return;
+    for (QAction* act : bar->actions()) {
+        if (!act)
+            continue;
+        const QString text = act->text();
+        if (text == QStringLiteral("功能设置"))
+            act->setIcon(freeWorkFwIcon("icon-gear"));
+        else if (text.contains(QStringLiteral("开始测试")))
+            act->setIcon(freeWorkFwIcon("icon-play"));
+        else if (text.contains(QStringLiteral("自动扫码")))
+            act->setIcon(freeWorkFwIcon("icon-monitor"));
+        else if (act == fixtureAct || (text.contains(QStringLiteral("治具串口")) && !text.contains(QStringLiteral("PLC"))))
+            act->setIcon(freeWorkFwIcon("icon-fixture"));
+        else if (act == plcAct || text.contains(QStringLiteral("PLC")))
+            act->setIcon(freeWorkFwIcon("icon-plc"));
+        else if (act->menu() && text.contains(QStringLiteral("帮助")))
+            act->setIcon(freeWorkFwIcon("icon-help"));
+    }
+    if (fixtureAct)
+        fixtureAct->setIcon(freeWorkFwIcon("icon-fixture"));
+    if (plcAct)
+        plcAct->setIcon(freeWorkFwIcon("icon-plc"));
+}
+
 QFreeWorkBox::QFreeWorkBox(QWidget* parent) : box_base(parent), ui(new Ui::QFreeWorkBox) {
     ui->setupUi(this);
+    applyWidgetStyleSheet(this, QStringLiteral("console_shell.qss"));
     asd9026aDevice_ = new Asd9026aDevice(this);
     plcMonitorTimer_ = new QTimer(this);
     connect(plcMonitorTimer_, &QTimer::timeout, this, &QFreeWorkBox::onPlcMonitorTimeout);
@@ -32,6 +73,15 @@ QFreeWorkBox::QFreeWorkBox(QWidget* parent) : box_base(parent), ui(new Ui::QFree
     QTimer::singleShot(800, this, [this]() { recoverCustom(); });
     ShowData(this);
     setWindowTitle("自由工站");
+    // Keep live status labels (including account updates), but align them left.
+    const auto statusLabels = ui->statusbar->findChildren<QLabel*>(QString(), Qt::FindDirectChildrenOnly);
+    for (QLabel* label : statusLabels) {
+        ui->statusbar->removeWidget(label);
+        ui->statusbar->addWidget(label);
+        label->show();
+    }
+    ui->statusbar->addWidget(new QLabel(QStringLiteral("自由测试工站"), ui->statusbar));
+    ui->statusbar->setSizeGripEnabled(false);
     // 启动时清一次历史屏幕检测图（仅根目录测试抓拍；不碰「参考图」子目录）
     {
         const QString inspectRoot =
@@ -39,7 +89,9 @@ QFreeWorkBox::QFreeWorkBox(QWidget* parent) : box_base(parent), ui(new Ui::QFree
         QDir().mkpath(QDir(inspectRoot).filePath(QStringLiteral("参考图")));
         ScreenInspectAnalyzer::cleanupStoredImages(inspectRoot);
     }
-    ui->statusbar->addPermanentWidget(new QLabel(FREE_VER + QString(__DATE__) + " " + QString(__TIME__)));
+    const QString version = QString::fromUtf8(FREE_VER).simplified().section(QLatin1Char(' '), -1);
+    ui->statusbar->addPermanentWidget(new QLabel(version + QStringLiteral("   |   ")
+                                                + QString(__DATE__) + QStringLiteral(" ") + QString(__TIME__)));
 
     fixtureConnectAct_ = ui->menubar->addAction(QStringLiteral("连接治具串口"));
     connect(fixtureConnectAct_, &QAction::triggered, this, [this]() { ensureFixtureUartWindow(true); });
@@ -62,6 +114,30 @@ QFreeWorkBox::QFreeWorkBox(QWidget* parent) : box_base(parent), ui(new Ui::QFree
     connect(startTest_act, &QAction::triggered, this, &QFreeWorkBox::startTest);
 
     applyFixtureMenuLabel();
+    applyFreeWorkMenuIcons(ui->menubar, fixtureConnectAct_, plcFixtureConnectAct_);
+
+    // Windows QMenuBar draws an action's icon instead of its text. A toolbar
+    // explicitly supports both, while sharing the original actions and menus.
+    auto* toolbar = new QToolBar(this);
+    toolbar->setObjectName(QStringLiteral("freeWorkToolbar"));
+    toolbar->setMovable(false);
+    toolbar->setFloatable(false);
+    toolbar->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    toolbar->setIconSize(QSize(18, 18));
+    QAction* helpAction = nullptr;
+    for (QAction* action : ui->menubar->actions()) {
+        if (action->menu() && action->text().contains(QStringLiteral("帮助")))
+            helpAction = action;
+        else
+            toolbar->addAction(action);
+    }
+    if (helpAction) {
+        toolbar->addAction(helpAction);
+        if (auto* button = qobject_cast<QToolButton*>(toolbar->widgetForAction(helpAction)))
+            button->setPopupMode(QToolButton::InstantPopup);
+    }
+    addToolBar(Qt::TopToolBarArea, toolbar);
+    ui->menubar->hide();
 
     // 延时1秒初始化全局 PLC 监控（等待子工位和 flow.ini 加载就绪）
     QTimer::singleShot(1000, this, [this]() { updatePlcMonitorState(); });
@@ -112,6 +188,7 @@ void QFreeWorkBox::applyFixtureMenuLabel() {
             }
         }
     }
+    applyFreeWorkMenuIcons(ui->menubar, fixtureConnectAct_, plcFixtureConnectAct_);
 }
 
 QFreeWorkBox::~QFreeWorkBox() {

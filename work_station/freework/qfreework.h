@@ -73,6 +73,10 @@ class QFreeWork : public test_base {
     void triggerAllStationScanners();
     void triggerScanner(const QString& scannerIp, int scannerPort, int scannerTimeoutMs);
 
+  public slots:
+    void solveMesSucess(const int mechines) override;
+    void solveMesData(const int mechines, QString msg) override;
+
   protected:
     bool shouldHoldCommandRetryUntilGatePass() const override;
 
@@ -369,6 +373,10 @@ class QFreeWork : public test_base {
     void fetchMesRootSku();
     /** BYD：日志页右侧显示 mes_config.ini 的 Resource（工单） */
     void refreshBydMesResourceDisplay();
+    /** 状态大卡样式走 QSS 动态属性 fwCard（idle/mes/wait/ok/fail/busy） */
+    void applyStatusCardStyle(QLabel* label, const QString& role);
+    /** 按 isTestContinue 切换「停止测试」/「测试已停止」外观 */
+    void refreshStopTestButton();
     bool failTupleWriteIfNoValidField(const QString& stepName, bool fieldOk, const QString& emptyReason);
     void reportTupleWriteRecord();
     void debugUpdateTupleMacStatus(const TestCaseDefinition& def);

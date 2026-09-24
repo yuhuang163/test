@@ -1600,9 +1600,301 @@ QLabel#bleotaresult {
 	max-height: 28px;
 }
 
-/* 泵/阀驱动下拉：箭头区占宽，正文要留足 */
-QComboBox#comboDongleDriveType {
-	min-width: 148px;
-	padding-right: 36px;
+/* ========== 自由工站：状态大卡 / 三元组分段 / 菜单 ========== */
+QLabel#mes_state,
+QLabel#test_result,
+QLabel#banding_result {
+	min-height: 48px;
+	max-height: 64px;
+	border-radius: 10px;
+	padding: 4px 12px;
+	font-size: 15px;
+	font-weight: 700;
+	color: #ffffff;
+	background: #94a3b8;
+	border: 1px solid #64748b;
 }
 
+QLabel#mes_state[fwCard="mes"] {
+	background: #94a3b8;
+	border: 1px solid #64748b;
+}
+
+QLabel#mes_state[fwCard="ok"],
+QLabel#test_result[fwCard="ok"],
+QLabel#banding_result[fwCard="ok"] {
+	background: #00FF00;
+	border: 1px solid #00cc00;
+	color: #000000;
+}
+
+QLabel#test_result[fwCard="wait"],
+QLabel#banding_result[fwCard="wait"] {
+	background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #fb923c, stop:1 #ea580c);
+	border: 1px solid #c2410c;
+}
+
+QLabel#mes_state[fwCard="fail"],
+QLabel#test_result[fwCard="fail"],
+QLabel#banding_result[fwCard="fail"] {
+	background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #f87171, stop:1 #dc2626);
+	border: 1px solid #b91c1c;
+}
+
+QLabel#mes_state[fwCard="busy"] {
+	background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #fde047, stop:1 #f59e0b);
+	border: 1px solid #d97706;
+	color: #422006;
+}
+
+QLabel#mes_state[fwCard="idle"],
+QLabel#test_result[fwCard="idle"],
+QLabel#banding_result[fwCard="idle"] {
+	background: #94a3b8;
+	border: 1px solid #64748b;
+}
+
+/* 三元组位置：蓝色分段控件 */
+QLabel#label_tuplePosLeft,
+QLabel#label_tuplePosRight,
+QLabel#label_tuplePosSingle,
+QLabel#label_tuplePosUnspecified {
+	min-width: 44px;
+	min-height: 24px;
+	padding: 2px 10px;
+	border-radius: 6px;
+	font-size: 12px;
+	font-weight: 600;
+	color: #334155;
+	background: #eef3f9;
+	border: 1px solid #d0deef;
+}
+
+QLabel#label_tuplePosLeft[fwSeg="active"],
+QLabel#label_tuplePosRight[fwSeg="active"],
+QLabel#label_tuplePosSingle[fwSeg="active"],
+QLabel#label_tuplePosUnspecified[fwSeg="active"] {
+	color: #ffffff;
+	background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #3b82f6, stop:1 #1d4ed8);
+	border: 1px solid #1d4ed8;
+}
+
+QLabel#label_tuplePosLeft[fwSeg="idle"],
+QLabel#label_tuplePosRight[fwSeg="idle"],
+QLabel#label_tuplePosSingle[fwSeg="idle"],
+QLabel#label_tuplePosUnspecified[fwSeg="idle"] {
+	color: #475569;
+	background: #f8fafc;
+	border: 1px solid #dce8f6;
+}
+
+/* 自由工站顶部：用时/蓝牙同一行高，垂直居中 */
+QWidget#QFreeWork QLabel#test_time_icon {
+	min-height: 26px;
+	max-height: 26px;
+	background: transparent;
+	border: none;
+	padding: 0;
+}
+
+QWidget#QFreeWork QLabel#test_time {
+	min-width: 64px;
+	min-height: 26px;
+	max-height: 26px;
+	padding: 0 8px;
+	border-radius: 6px;
+	background: #ffffff;
+	border: 1px solid #dce8f6;
+	color: #243654;
+	font-size: 13px;
+	font-weight: 600;
+}
+
+QWidget#QFreeWork QLabel#test_time_caption {
+	min-height: 26px;
+	max-height: 26px;
+	padding: 0 4px 0 2px;
+	color: #4a6088;
+	background: transparent;
+	border: none;
+	font-size: 13px;
+}
+
+QWidget#QFreeWork QLabel#bleStatusLabel {
+	min-height: 26px;
+	max-height: 26px;
+	padding: 0 6px;
+	border-radius: 6px;
+	background: #ffffff;
+	border: 1px solid #dce8f6;
+	color: #334155;
+	font-size: 13px;
+}
+
+QWidget#QFreeWork QCheckBox#isformmes,
+QWidget#QFreeWork QCheckBox#isusemes,
+QWidget#QFreeWork QCheckBox#autoStartCheckBox {
+	spacing: 6px;
+	color: #334155;
+}
+
+QWidget#QFreeWork QCheckBox#isformmes::indicator,
+QWidget#QFreeWork QCheckBox#isusemes::indicator,
+QWidget#QFreeWork QCheckBox#autoStartCheckBox::indicator {
+	width: 16px;
+	height: 16px;
+	border-radius: 3px;
+	border: 1px solid #94a3b8;
+	background: #ffffff;
+}
+
+QWidget#QFreeWork QCheckBox#isformmes::indicator:checked,
+QWidget#QFreeWork QCheckBox#isusemes::indicator:checked,
+QWidget#QFreeWork QCheckBox#autoStartCheckBox::indicator:checked {
+	background: #3b82f6;
+	border: 1px solid #1d4ed8;
+}
+
+QMainWindow QMenuBar {
+	background: #f8fbff;
+	border-bottom: 1px solid #dce8f6;
+	padding: 4px 8px;
+	spacing: 6px;
+}
+
+QMainWindow QMenuBar::item {
+	padding: 6px 12px;
+	border-radius: 8px;
+	color: #243654;
+	margin: 0 2px;
+}
+
+QMainWindow QMenuBar::item:selected {
+	background: #e0ecff;
+	color: #1d4ed8;
+}
+
+QMainWindow QStatusBar {
+	background: #eef3f9;
+	border-top: 1px solid #dce8f6;
+	color: #4a6088;
+}
+
+
+/* Free workstation reference layout; scoped to avoid changing other stations. */
+QWidget#QFreeWork { background: #eaf5ff; color: #14295c; }
+QWidget#QFreeWork QWidget#tab { background: white; border-radius: 12px; }
+QWidget#QFreeWork QTabBar::tab {
+    min-height: 32px; margin: 0 6px 8px 0; border-radius: 10px;
+    color: #465e89; background: #fbfdff; border: 1px solid #d5e5ff;
+}
+QWidget#QFreeWork QTabBar::tab:selected {
+    background: qlineargradient(x1:0,y1:0,x2:1,y2:1,stop:0 #229eff,stop:1 #0050ec);
+    color: white; border: 1px solid #1685ff;
+}
+QWidget#QFreeWork QTableWidget#testResultTable { border: 1px solid #d5e5ff; border-radius: 8px; }
+QWidget#QFreeWork QHeaderView::section { background: #eef6ff; color: #39558b; padding: 4px 6px; border-right: 1px solid #d5e5ff; }
+QWidget#QFreeWork QLabel#mes_state, QWidget#QFreeWork QLabel#test_result {
+    min-height: 52px; max-height: 60px; padding: 4px 12px; border: 0; border-radius: 8px;
+}
+QWidget#QFreeWork QLabel#mes_state[fwCard="mes"],
+QWidget#QFreeWork QLabel#mes_state[fwCard="idle"] {
+    background: #94a3b8;
+    border: 1px solid #64748b;
+}
+QWidget#QFreeWork QLabel#test_result[fwCard="wait"] {
+    background: qlineargradient(x1:0,y1:0,x2:1,y2:1,stop:0 #ffb322,stop:1 #ff8c00);
+}
+QWidget#QFreeWork QLabel#test_result[fwCard="busy"] {
+    background: qlineargradient(x1:0,y1:0,x2:1,y2:1,stop:0 #229eff,stop:1 #0050ec);
+}
+QWidget#QFreeWork QLabel#test_result[fwCard="ok"],
+QWidget#QFreeWork QLabel#mes_state[fwCard="ok"] {
+    background: #00FF00;
+    border: 1px solid #00cc00;
+    color: #000000;
+}
+QWidget#QFreeWork QLabel#test_result[fwCard="fail"],
+QWidget#QFreeWork QLabel#mes_state[fwCard="fail"] {
+    background: qlineargradient(x1:0,y1:0,x2:1,y2:1,stop:0 #f87171,stop:1 #dc2626);
+}
+QWidget#QFreeWork QLineEdit#getMac, QWidget#QFreeWork QLineEdit#macInput,
+QWidget#QFreeWork QComboBox#comNameCombo, QWidget#QFreeWork QComboBox#productComNameCombo {
+    min-height: 26px; padding: 3px 8px; font-size: 13px; color: #14295c;
+    background: white; border: 1px solid #cfdeff; border-radius: 6px;
+}
+QWidget#QFreeWork QPushButton#pushButton,
+QWidget#QFreeWork QPushButton#connectButton, QWidget#QFreeWork QPushButton#disconnectButton,
+QWidget#QFreeWork QPushButton#productConnectButton, QWidget#QFreeWork QPushButton#productDisconnectButton {
+    min-height: 26px; padding: 4px 10px; border-radius: 6px; font-size: 13px;
+}
+QWidget#QFreeWork QPushButton#pushButton {
+    color: #14295c; background: #f5faff; border: 1px solid #dfecff;
+}
+/* 产品串口行左侧是说明标签，勿套按钮底/边框 */
+QWidget#QFreeWork QLabel#label_productInst {
+    color: #14295c; background: transparent; border: 0; padding: 0 4px; min-height: 26px;
+}
+QWidget#QFreeWork QPushButton#connectButton {
+    color: white; background: qlineargradient(x1:0,y1:0,x2:1,y2:1,stop:0 #229eff,stop:1 #0050ec);
+    border: 1px solid #1685ff;
+}
+QWidget#QFreeWork QPushButton#connectButton:disabled,
+QWidget#QFreeWork QPushButton#disconnectButton:disabled,
+QWidget#QFreeWork QPushButton#productConnectButton:disabled,
+QWidget#QFreeWork QPushButton#productDisconnectButton:disabled {
+    color: #8a9bb7; background: #edf1f6; border: 1px solid #d7e3f3;
+}
+QWidget#QFreeWork QPushButton#stopTest[fwStop="run"] {
+    min-height: 24px; color: #f0182e; background: #fff0f1;
+    border: 1px solid #ff9aa5; border-radius: 6px; font-size: 13px;
+}
+QWidget#QFreeWork QPushButton#stopTest[fwStop="run"]:hover { background: #ffe0e5; }
+QWidget#QFreeWork QPushButton#stopTest[fwStop="idle"],
+QWidget#QFreeWork QPushButton#stopTest:disabled {
+    min-height: 24px; color: #8a9bb7; background: #f3f5f8;
+    border: 1px solid #d7e3f3; border-radius: 6px; font-size: 13px;
+}
+QWidget#QFreeWork QCheckBox#isformmes::indicator,
+QWidget#QFreeWork QCheckBox#isusemes::indicator {
+    width: 36px; height: 20px; border: 0; background: transparent;
+    image: url(:/stytle/picture/fw/toggle-off.svg);
+}
+QWidget#QFreeWork QCheckBox#isformmes::indicator:checked,
+QWidget#QFreeWork QCheckBox#isusemes::indicator:checked {
+    border: 0; background: transparent; image: url(:/stytle/picture/fw/toggle-on.svg);
+}
+
+/* 自由工站桌面字号：略紧凑，避免整页偏大 */
+QWidget#QFreeWork QLabel, QWidget#QFreeWork QCheckBox,
+QWidget#QFreeWork QTableWidget, QWidget#QFreeWork QHeaderView::section {
+    font-family: "Microsoft YaHei UI", "Microsoft YaHei"; font-size: 13px;
+}
+QWidget#QFreeWork QLabel#test_time { font-size: 13px; font-weight: 700; min-height: 26px; max-height: 26px; }
+QWidget#QFreeWork QLabel#test_time_caption { font-size: 13px; min-height: 26px; max-height: 26px; }
+QWidget#QFreeWork QLabel#bleStatusLabel { font-size: 13px; min-height: 26px; max-height: 26px; }
+QWidget#QFreeWork QPushButton#toggleExtraTabsButton { font-size: 12px; padding: 4px 8px; }
+QWidget#QFreeWork QLabel#label_tuplePosLeft,
+QWidget#QFreeWork QLabel#label_tuplePosRight,
+QWidget#QFreeWork QLabel#label_tuplePosSingle,
+QWidget#QFreeWork QLabel#label_tuplePosUnspecified { font-size: 13px; min-height: 24px; }
+QWidget#QFreeWork QLabel#mes_state, QWidget#QFreeWork QLabel#test_result {
+    min-height: 52px; max-height: 60px;
+}
+QWidget#QFreeWork QLineEdit#getMac, QWidget#QFreeWork QLineEdit#macInput,
+QWidget#QFreeWork QComboBox#comNameCombo, QWidget#QFreeWork QComboBox#productComNameCombo { font-size: 13px; }
+QWidget#QFreeWork QPushButton#pushButton,
+QWidget#QFreeWork QPushButton#connectButton, QWidget#QFreeWork QPushButton#disconnectButton,
+QWidget#QFreeWork QPushButton#productConnectButton, QWidget#QFreeWork QPushButton#productDisconnectButton {
+    font-size: 13px; min-height: 28px;
+}
+QWidget#QFreeWork QLabel#label_productInst { font-size: 13px; min-height: 28px; }
+QWidget#QFreeWork QPushButton#stopTest { min-height: 26px; font-size: 13px; }
+QToolBar#freeWorkToolbar { background: white; border: 0; border-bottom: 1px solid #dce8f6; spacing: 4px; padding: 4px 10px; }
+QToolBar#freeWorkToolbar QToolButton { color: #183265; font-family: "Microsoft YaHei UI"; font-size: 13px; font-weight: 600; padding: 4px 8px; border: 0; border-radius: 6px; background: transparent; }
+QToolBar#freeWorkToolbar QToolButton:hover { background: #eaf3ff; }
+QToolBar#freeWorkToolbar QToolButton:pressed { background: #d7e8ff; }
+QToolBar#freeWorkToolbar QToolButton:disabled { color: #8a9bb7; }
+QMainWindow#QFreeWorkBox QStatusBar { min-height: 28px; background: white; padding: 0 10px; }
+QMainWindow#QFreeWorkBox QStatusBar QLabel { font-family: "Microsoft YaHei UI"; font-size: 12px; color: #435c87; padding: 0 8px; }
+QMainWindow#QFreeWorkBox QStatusBar::item { border: 0; }

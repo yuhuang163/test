@@ -9,6 +9,7 @@
         <file>stytle/picture/product-promo-card.png</file>
         <file>stytle/picture/combo-down-arrow.png</file>
         <file>stytle/picture/combo-up-arrow.png</file>
+        <file>stytle/picture/m_logo.png</file>
         <file>stytle/picture/nav/nav-connect.png</file>
         <file>stytle/picture/nav/nav-connect-on.png</file>
         <file>stytle/picture/nav/nav-business.png</file>
@@ -41,6 +42,28 @@
         <file>stytle/picture/status/icon-refresh.png</file>
         <file>stytle/picture/status/icon-filter.png</file>
         <file>stytle/picture/status/icon-flask.png</file>
+        <file>stytle/picture/fw/toggle-off.svg</file>
+        <file>stytle/picture/fw/toggle-on.svg</file>
+        <file>stytle/picture/fw/icon-station.png</file>
+        <file>stytle/picture/fw/icon-gear.png</file>
+        <file>stytle/picture/fw/icon-fixture.png</file>
+        <file>stytle/picture/fw/icon-plc.png</file>
+        <file>stytle/picture/fw/icon-monitor.png</file>
+        <file>stytle/picture/fw/icon-play.png</file>
+        <file>stytle/picture/fw/icon-help.png</file>
+        <file>stytle/picture/fw/icon-flask.png</file>
+        <file>stytle/picture/fw/icon-doc.png</file>
+        <file>stytle/picture/fw/icon-timer.png</file>
+        <file>stytle/picture/fw/icon-bluetooth.png</file>
+        <file>stytle/picture/fw/icon-expand.png</file>
+        <file>stytle/picture/fw/icon-empty.png</file>
+        <file>stytle/picture/fw/icon-factory.png</file>
+        <file>stytle/picture/fw/icon-hourglass.png</file>
+        <file>stytle/picture/fw/icon-network.png</file>
+        <file>stytle/picture/fw/icon-link.png</file>
+        <file>stytle/picture/fw/icon-copy.png</file>
+        <file>stytle/picture/fw/icon-stop.png</file>
+        <file>stytle/picture/fw/icon-display.png</file>
         <file>translations/qt_zh_CN.qm</file>
         <file>translations/qt_widgets_zh_CN.qm</file>
     </qresource>
