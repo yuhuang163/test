@@ -8,13 +8,19 @@
 #include <QComboBox>
 #include <QCoreApplication>
 #include <QDesktopWidget>
+#include <QGridLayout>
+#include <QGroupBox>
 #include <QLineEdit>
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QMessageBox>
+#include <QSize>
+#include <QSizePolicy>
+#include <QSpacerItem>
 #include <QSpinBox>
 #include <QString>
 #include <QTabWidget>
+#include <QVBoxLayout>
 #include <QVector>
 #include "ui_qsetting.h"
 #include "test_flow/test_flow_editor.h"
@@ -87,9 +93,113 @@ QString tupleBaseUrlForKey(const QString& key) {
 
 } // namespace
 
+/** 关键设置三栏：按窗口宽度弹性分配，避免右栏悬在空洞 col5。 */
+static void applyKeySettingElasticLayout(Ui::qsetting* ui) {
+    if (!ui || !ui->tab_key_setting)
+        return;
+    auto* grid = qobject_cast<QGridLayout*>(ui->tab_key_setting->layout());
+    if (!grid)
+        return;
+
+    if (ui->groupBox_3) {
+        grid->removeWidget(ui->groupBox_3);
+        grid->addWidget(ui->groupBox_3, 0, 1, 5, 1);
+        ui->groupBox_3->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    }
+    if (ui->groupBox_1) {
+        grid->removeWidget(ui->groupBox_1);
+        grid->addWidget(ui->groupBox_1, 0, 2, 5, 1);
+        ui->groupBox_1->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    }
+
+    // 左:中:右 ≈ 3:2:2，拉宽窗口时三栏一起长
+    grid->setColumnStretch(0, 3);
+    grid->setColumnStretch(1, 2);
+    grid->setColumnStretch(2, 2);
+    grid->setColumnMinimumWidth(0, 300);
+    grid->setColumnMinimumWidth(1, 240);
+    grid->setColumnMinimumWidth(2, 220);
+
+    for (QGroupBox* box : {ui->radioButtonGroupWidget, ui->groupBox_2, ui->groupBox_systemProtocol,
+                           ui->groupBox_labelPrinter}) {
+        if (box)
+            box->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
+    }
+
+    // 左栏底部弹簧，避免协议/打印卡片被竖直撑出大片空白
+    bool hasBottomSpacer = false;
+    for (int i = 0; i < grid->count(); ++i) {
+        QLayoutItem* it = grid->itemAt(i);
+        if (!it || !it->spacerItem())
+            continue;
+        int row = 0, col = 0, rs = 1, cs = 1;
+        grid->getItemPosition(i, &row, &col, &rs, &cs);
+        if (col == 0 && row >= 5) {
+            hasBottomSpacer = true;
+            break;
+        }
+    }
+    if (!hasBottomSpacer)
+        grid->addItem(new QSpacerItem(0, 0, QSizePolicy::Minimum, QSizePolicy::Expanding), 5, 0);
+    grid->setRowStretch(5, 1);
+
+    if (auto* mesLay = ui->groupBox_3 ? ui->groupBox_3->findChild<QVBoxLayout*>(QStringLiteral("verticalLayout_13"))
+                                      : nullptr) {
+        if (mesLay->count() == 0 || !mesLay->itemAt(mesLay->count() - 1)->spacerItem())
+            mesLay->addStretch(1);
+    }
+    if (auto* diffLay = ui->groupBox_1 ? qobject_cast<QGridLayout*>(ui->groupBox_1->layout()) : nullptr) {
+        const int lastRow = diffLay->rowCount();
+        bool has = false;
+        for (int i = 0; i < diffLay->count(); ++i) {
+            if (diffLay->itemAt(i) && diffLay->itemAt(i)->spacerItem()) {
+                has = true;
+                break;
+            }
+        }
+        if (!has)
+            diffLay->addItem(new QSpacerItem(0, 0, QSizePolicy::Minimum, QSizePolicy::Expanding), lastRow, 0);
+        diffLay->setRowStretch(lastRow, 1);
+    }
+
+    if (ui->groupBox_3) {
+        for (QLineEdit* le : ui->groupBox_3->findChildren<QLineEdit*>())
+            le->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        for (QComboBox* cb : ui->groupBox_3->findChildren<QComboBox*>())
+            cb->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    }
+
+    if (ui->gridLayout_2) {
+        ui->gridLayout_2->setRowStretch(0, 1);
+        ui->gridLayout_2->setColumnStretch(0, 1);
+    }
+    if (ui->tabWidget)
+        ui->tabWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+}
+
 qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
+    // 独立可缩放窗口（含最大化）；勿被布局 minHint 锁死高度
+    setWindowFlags(Qt::Window);
+    setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+    setMinimumSize(880, 520);
+    setMaximumSize(QWIDGETSIZE_MAX, QWIDGETSIZE_MAX);
+
     ui->setupUi(this);
-    updateMainStyle("Ubuntu.qss");
+    updateMainStyle(QStringLiteral("console_shell.qss"));
+    applyKeySettingElasticLayout(ui);
+    if (ui->tabWidget) {
+        ui->tabWidget->setMinimumSize(0, 0);
+        ui->tabWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    }
+    if (ui->gridLayout_2)
+        ui->gridLayout_2->setSizeConstraint(QLayout::SetDefaultConstraint);
+    // 隐藏页仍可能撑大 Tab 最小高度：压低各页 min，高度交给窗口拖拽
+    for (int i = 0; i < ui->tabWidget->count(); ++i) {
+        if (QWidget* page = ui->tabWidget->widget(i)) {
+            page->setMinimumSize(0, 0);
+            page->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+        }
+    }
     // 假设你已经定义了 QButtonGroup* StationGroup;
     // 假设 StationGroup 已经被定义并初始化
     StationGroup->addButton(findChild<QRadioButton*>("radioButtonDebug"), 0);
@@ -175,25 +285,27 @@ qsetting::qsetting(QWidget* parent) : QWidget(parent), ui(new Ui::qsetting) {
     if (tabUnused >= 0) {
         ui->tabWidget->setTabVisible(tabUnused, false);
     }
+    // 「测试详细配置」已拆到旁路小 ini，界面不再展示
+    const int tabDetailCfg = ui->tabWidget->indexOf(ui->tab_2);
+    if (tabDetailCfg >= 0) {
+        ui->tabWidget->setTabVisible(tabDetailCfg, false);
+    }
 }
 
 void qsetting::initSettingTooltips() {
     setToolTip(QStringLiteral(
         "上位机全局参数；修改工站类型后需重启程序生效。\n"
         "串口、窗口大小、当前工站、WIFI/Name*、FactoryCloud（BaseUrl/登录态等）、协议类型、MES 工厂 →「上位机设置.local.ini」（不入库）；\n"
+        "按键 KeyId/KeyCap、PLC、射频测包/PER → 当前工站「test_case/profiles/{工站名}/flow.ini」对应节（无则回退上位机设置.ini）；\n"
         "其余参数 →「上位机设置.ini」。"));
     // const int tabFixture = ui->tabWidget->indexOf(ui->tab_fixture_setting);
     const int tabKey = ui->tabWidget->indexOf(ui->tab_key_setting);
-    const int tabDetail = ui->tabWidget->indexOf(ui->tab_2);
     const int tabTestFlow = ui->tabWidget->indexOf(ui->tab_test_flow);
     // if (tabFixture >= 0) {
     //     ui->tabWidget->setTabToolTip(tabFixture, QStringLiteral("治具/压感/外设/摄像头及治具测试要求等。"));
     // }
     if (tabKey >= 0) {
         ui->tabWidget->setTabToolTip(tabKey, QStringLiteral("MES、工站、电流/IMU/信号、基础信息与产品差异化等。"));
-    }
-    if (tabDetail >= 0) {
-        ui->tabWidget->setTabToolTip(tabDetail, QStringLiteral("老化、三元组、按键 KeyId、PLC、串口仪器、协议类型等工站专用项。"));
     }
     if (tabTestFlow >= 0) {
         ui->tabWidget->setTabToolTip(tabTestFlow,
@@ -288,8 +400,12 @@ void qsetting::loadConfig() {
     // 假设 SETTINGS 是一个 QSettings 实例
     QString station = SETTINGS.value("SYSTEM/station").toString(); // 读取 station 的值
     const QSize availableSize = QApplication::desktop()->availableGeometry(this).size();
-    QVariant windowSize(availableSize / 4 * 3);
-    this->resize(SETTINGS.value("Window/SettingSize", windowSize).toSize());
+    QVariant windowSize(availableSize * 3 / 4);
+    QSize sz = SETTINGS.value("Window/SettingSize", windowSize).toSize();
+    // 允许拖高/拖矮：落在屏幕可用区内，且不低于窗口最小尺寸
+    sz.setWidth(qBound(880, sz.width(), availableSize.width()));
+    sz.setHeight(qBound(520, sz.height(), availableSize.height()));
+    this->resize(sz);
 
     // 使用映射将 station 和 QRadioButton 关联
     QMap<QString, QRadioButton*> stationMap = {{"IMU_CALI", ui->radioButtonImuCalibration},
@@ -344,15 +460,6 @@ void qsetting::loadConfig() {
         }
         ui->comboBox_systemProtocolType->setCurrentIndex(idx);
     }
-    ui->lineEdit_plcIpAddressStation2->setText(SETTINGS.value(QStringLiteral("PLC/IpAddress_Station2"), QString()).toString());
-    ui->lineEdit_plcPortStation2->setText(SETTINGS.value(QStringLiteral("PLC/Port_Station2"), QString()).toString());
-    ui->lineEdit_plcUnitIdStation2->setText(SETTINGS.value(QStringLiteral("PLC/UnitId_Station2"), QString()).toString());
-    {
-        const int mb2 = SETTINGS.value(QStringLiteral("PLC/MBase_Station2"), -1).toInt();
-        ui->lineEdit_plcMBaseStation2->setText(mb2 < 0 ? QString() : QString::number(mb2));
-    }
-    ui->lineEdit_plcMCoilOffsetStation2->setText(
-        SETTINGS.value(QStringLiteral("PLC/MCoilAddressOffset_Station2"), QString()).toString());
 
     const QString defaultTupleUrl = kTupleEnvPresets.first().baseUrl;
     const QString savedTupleUrl = SETTINGS.value("Tuple/BaseUrl", defaultTupleUrl).toString();
@@ -369,12 +476,6 @@ void qsetting::loadConfig() {
             idx = ui->comboBox_tupleEnvironment->count() - 1;
         }
         ui->comboBox_tupleEnvironment->setCurrentIndex(idx);
-    }
-
-    {
-        const QString capEndian = SETTINGS.value(QStringLiteral("KeyCap/ValueEndian"), QStringLiteral("big")).toString();
-        ui->comboBox_KeyCapValueEndian->setCurrentIndex(
-            capEndian.compare(QStringLiteral("little"), Qt::CaseInsensitive) == 0 ? 1 : 0);
     }
 
     syncFactoryCloudDerivedUrls();
@@ -397,6 +498,7 @@ qsetting::~qsetting() {
     qDebug() << "已经删除页面";
     delete ui;
 }
+
 void qsetting::closeEvent(QCloseEvent* event) {
     if (stationReloading_) {
         qDebug() << "切换工站中，跳过设置页关闭保存";
@@ -499,33 +601,9 @@ void qsetting::saveConfig() {
     SETTINGS.setValue(QStringLiteral("SYSTEM/ProtocolType"),
                       ui->comboBox_systemProtocolType->currentData().toString().trimmed());
 
-    auto savePlcOptional = [](const QString& key, const QString& raw) {
-        const QString t = raw.trimmed();
-        if (t.isEmpty()) {
-            SETTINGS.remove(key);
-        } else {
-            SETTINGS.setValue(key, t);
-        }
-    };
-    savePlcOptional(QStringLiteral("PLC/IpAddress_Station2"), ui->lineEdit_plcIpAddressStation2->text());
-    savePlcOptional(QStringLiteral("PLC/Port_Station2"), ui->lineEdit_plcPortStation2->text());
-    savePlcOptional(QStringLiteral("PLC/UnitId_Station2"), ui->lineEdit_plcUnitIdStation2->text());
-    {
-        const QString t = ui->lineEdit_plcMBaseStation2->text().trimmed();
-        if (t.isEmpty()) {
-            SETTINGS.remove(QStringLiteral("PLC/MBase_Station2"));
-        } else {
-            SETTINGS.setValue(QStringLiteral("PLC/MBase_Station2"), t.toInt());
-        }
-    }
-    savePlcOptional(QStringLiteral("PLC/MCoilAddressOffset_Station2"), ui->lineEdit_plcMCoilOffsetStation2->text());
-
     SETTINGS.setValue("Tuple/Environment", ui->comboBox_tupleEnvironment->currentData().toString());
     SETTINGS.setValue("Tuple/BaseUrl", ui->lineEdit_tupleBaseUrl->text());
 
-    SETTINGS.setValue(QStringLiteral("KeyCap/ValueEndian"),
-                      ui->comboBox_KeyCapValueEndian->currentIndex() == 1 ? QStringLiteral("little")
-                                                                          : QStringLiteral("big"));
     saveLabelPrinterConfig();
     if (ui->comboBox_factory->currentText() == QStringLiteral("byd")) {
         bydmes::loadExternalMesConfig(nullptr);

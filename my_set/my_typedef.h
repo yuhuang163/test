@@ -6,6 +6,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QHash>
 #include <QHostInfo>
 #include <QTextStream>
 #include <QWidget>
@@ -116,8 +117,22 @@ inline bool settingsUseLocalGroup(const QString& groupPath) {
     return !groupPath.isEmpty() && settingsUseLocalFile(groupPath + QStringLiteral("/_"));
 }
 
+/** 原「测试详细配置」：优先读当前工站 profiles/{工站名}/flow.ini，否则回退上位机设置.ini */
+inline bool settingsUseStationFlowIni(const QString& fullKey)
+{
+    if (fullKey.startsWith(QStringLiteral("PLC/"), Qt::CaseInsensitive)
+        || fullKey.startsWith(QStringLiteral("KeyCap/"), Qt::CaseInsensitive)
+        || fullKey.startsWith(QStringLiteral("BrushInstrument/"), Qt::CaseInsensitive)
+        || fullKey.startsWith(QStringLiteral("BlePer/"), Qt::CaseInsensitive)
+        || fullKey.startsWith(QStringLiteral("FreeInstrument/"), Qt::CaseInsensitive)
+        || fullKey.startsWith(QStringLiteral("ProductInfo/KeyId"), Qt::CaseInsensitive))
+        return true;
+    return false;
+}
+
 /**
- * SETTINGS：常改项 → local.ini；其余 → 上位机设置.ini（与原单文件语义一致）。
+ * SETTINGS：常改项 → local.ini；其余 → 上位机设置.ini。
+ * 按键/PLC/射频等「测试详细配置」项：优先当前工站 flow.ini，再回退主 ini。
  */
 class SettingsManager {
   public:
@@ -132,6 +147,15 @@ class SettingsManager {
 
     bool contains(const QString& key) const {
         const QString full = fullKey(key);
+        if (settingsUseStationFlowIni(full)) {
+            if (QSettings* flow = stationFlowIni()) {
+                enter(*flow);
+                const bool has = flow->contains(key);
+                leave(*flow);
+                if (has)
+                    return true;
+            }
+        }
         if (!settingsUseLocalFile(full)) {
             QSettings& ini = baseIni();
             enter(ini);
@@ -144,6 +168,16 @@ class SettingsManager {
 
     QVariant value(const QString& key, const QVariant& defaultValue) const {
         const QString full = fullKey(key);
+        const QVariant miss(QStringLiteral("\x01__SETTINGS_MISS__"));
+        if (settingsUseStationFlowIni(full)) {
+            if (QSettings* flow = stationFlowIni()) {
+                enter(*flow);
+                const QVariant flowV = flow->value(key, miss);
+                leave(*flow);
+                if (flowV != miss)
+                    return flowV;
+            }
+        }
         if (!settingsUseLocalFile(full)) {
             QSettings& ini = baseIni();
             enter(ini);
@@ -155,7 +189,6 @@ class SettingsManager {
         enter(loc);
         // 不用 contains：Ini 嵌套键（mechine/0/comName）在部分环境下 contains 会漏，
         // 误回落到主 ini 旧串口；用哨兵判断本机文件是否已有该项。
-        const QVariant miss(QStringLiteral("\x01__SETTINGS_MISS__"));
         const QVariant localV = loc.value(key, miss);
         leave(loc);
         if (localV != miss)
@@ -168,6 +201,7 @@ class SettingsManager {
     }
 
     void setValue(const QString& key, const QVariant& val) {
+        // 工站 flow.ini 由人工/编排维护；运行时写入仍落主 ini / local.ini
         QSettings& store = settingsUseLocalFile(fullKey(key)) ? localIni() : baseIni();
         enter(store);
         store.setValue(key, val);
@@ -211,6 +245,14 @@ class SettingsManager {
             }
             leave(loc);
         }
+        if (here.isEmpty()) {
+            if (QSettings* flow = stationFlowIni()) {
+                for (const QString& g : flow->childGroups()) {
+                    if (!out.contains(g))
+                        out.append(g);
+                }
+            }
+        }
         return out;
     }
 
@@ -229,6 +271,14 @@ class SettingsManager {
                     out.append(k);
             }
             leave(loc);
+        }
+        if (QSettings* flow = stationFlowIni()) {
+            enter(*flow);
+            for (const QString& k : flow->childKeys()) {
+                if (!out.contains(k))
+                    out.append(k);
+            }
+            leave(*flow);
         }
         return out;
     }
@@ -332,6 +382,26 @@ class SettingsManager {
         static QSettings s(settingsIniPath(SETTING_LOCAL_NAME), QSettings::IniFormat);
         s.setIniCodec(QTextCodec::codecForName("UTF-8"));
         return s;
+    }
+
+    /** 当前选中工站的 profiles/{显示名}/flow.ini；无文件返回 nullptr */
+    static QSettings* stationFlowIni() {
+        // 直接读 local，避免经 SETTINGS.value 再进工站覆盖造成递归
+        const QString name =
+            localIni().value(QStringLiteral("TestOrderMeta/SelectedStationName")).toString().trimmed();
+        if (name.isEmpty())
+            return nullptr;
+        const QString path = QDir(QCoreApplication::applicationDirPath())
+                                 .filePath(QStringLiteral("test_case/profiles/%1/flow.ini").arg(name));
+        if (!QFile::exists(path))
+            return nullptr;
+        static QHash<QString, QSettings*> cache;
+        QSettings*& slot = cache[path];
+        if (!slot) {
+            slot = new QSettings(path, QSettings::IniFormat);
+            slot->setIniCodec(QTextCodec::codecForName("UTF-8"));
+        }
+        return slot;
     }
 
     SettingsManager(const SettingsManager&) = delete;

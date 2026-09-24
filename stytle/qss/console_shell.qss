@@ -1,5 +1,7 @@
 /* Momcozy 控制台壳层：贴合 device-control-panel-final.html */
-QMainWindow {
+QMainWindow,
+QWidget#QFreeWork,
+QWidget#qsetting {
 	background-color: #f3f8ff;
 	font-family: "Microsoft YaHei UI", "Microsoft YaHei", "Segoe UI";
 	font-size: 13px;
@@ -1185,6 +1187,29 @@ QCheckBox::indicator {
 QCheckBox::indicator:checked {
 	background: #3b82f6;
 	border: 1px solid #3b82f6;
+}
+
+QRadioButton {
+	spacing: 6px;
+	padding: 2px 0;
+	color: #243654;
+}
+
+QRadioButton::indicator {
+	width: 14px;
+	height: 14px;
+	border: 1px solid #c9d6e8;
+	border-radius: 7px;
+	background: #ffffff;
+}
+
+QRadioButton::indicator:checked {
+	border: 1px solid #2563eb;
+	background: #3b82f6;
+}
+
+QRadioButton::indicator:hover {
+	border: 1px solid #93c5fd;
 }
 
 QSlider::groove:horizontal {

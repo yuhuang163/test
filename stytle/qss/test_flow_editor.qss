@@ -1,92 +1,137 @@
 /* 流程编排：功能块 + 右键菜单（由 test_flow_editor 加载） */
 
-/* 流程块公共：实体色块；勾选框靠左，文字居中 */
+/* 功能块行：紧凑固定高度，左勾选/序号/标题，右操作钮 */
 TestCaseBlock {
+  max-height: 36px;
   min-height: 36px;
-  padding: 8px 40px;
   border-radius: 8px;
   font-size: 13px;
-  spacing: 0px;
-  text-align: center;
 }
-TestCaseBlock::indicator {
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  subcontrol-position: left center;
-  subcontrol-origin: margin;
-  left: 12px;
-  /* 去掉 Windows/全局样式自带的勾选黑点（方块） */
-  image: none;
+
+TestCaseBlock QToolButton#flowBlockEnable {
+  border: none;
+  background: transparent;
+  padding: 0px;
+  margin: 0px;
+  min-width: 18px;
+  max-width: 18px;
+  min-height: 18px;
+  max-height: 18px;
 }
-TestCaseBlock::indicator:checked {
-  border: 1px solid #15803d;
-  background: #22c55e;
-  image: none;
+
+TestCaseBlock QLabel#flowBlockIndex {
+  min-width: 22px;
+  color: #15803d;
+  font-weight: 700;
+  font-size: 13px;
+  background: transparent;
+  border: none;
 }
-TestCaseBlock::indicator:unchecked {
-  border: 1px solid #6b7280;
+TestCaseBlock QLabel#flowBlockTitle {
+  color: #14532d;
+  font-size: 13px;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+}
+
+TestCaseBlock QWidget#flowBlockActions {
+  background: transparent;
+}
+
+TestCaseBlock QWidget#flowBlockActions QToolButton {
+  min-width: 26px;
+  max-width: 26px;
+  min-height: 26px;
+  max-height: 26px;
+  padding: 0px;
+  margin: 0px;
+  border: 1px solid #86efac;
+  border-radius: 6px;
+  background: #f0fdf4;
+}
+TestCaseBlock QWidget#flowBlockActions QToolButton:hover {
   background: #ffffff;
-  image: none;
+  border: 1px solid #4ade80;
 }
-TestCaseBlock::indicator:indeterminate {
-  border: 1px solid #6b7280;
-  background: #ffffff;
-  image: none;
+TestCaseBlock QWidget#flowBlockActions QToolButton:pressed {
+  background: #dcfce7;
+}
+TestCaseBlock QWidget#flowBlockActions QToolButton:disabled {
+  background: transparent;
+  border: 1px solid #d1d5db;
 }
 
 /* flowState 由 updateBlockStyle 设置 */
 TestCaseBlock[flowState="normal"] {
-  background: #dcfce7;
-  border: 1px solid #86efac;
-  color: #14532d;
+  background: #ecfdf3;
+  border: 1px solid #bbf7d0;
 }
 TestCaseBlock[flowState="normal"]:hover {
-  background: #bbf7d0;
-  border: 1px solid #4ade80;
+  background: #dcfce7;
+  border: 1px solid #86efac;
+}
+TestCaseBlock[flowState="normal"] QLabel#flowBlockIndex {
+  color: #15803d;
+}
+TestCaseBlock[flowState="normal"] QLabel#flowBlockTitle {
+  color: #166534;
 }
 
 TestCaseBlock[flowState="selected"] {
+  background: #dcfce7;
+  border: 1px solid #22c55e;
+}
+TestCaseBlock[flowState="selected"]:hover {
   background: #bbf7d0;
-  border: 2px solid #16a34a;
+  border: 1px solid #16a34a;
+}
+TestCaseBlock[flowState="selected"] QLabel#flowBlockIndex {
+  color: #166534;
+}
+TestCaseBlock[flowState="selected"] QLabel#flowBlockTitle {
   color: #14532d;
   font-weight: 600;
 }
-TestCaseBlock[flowState="selected"]:hover {
-  background: #86efac;
-  border: 2px solid #15803d;
-}
 
 TestCaseBlock[flowState="unchecked"] {
-  background: #e5e7eb;
-  border: 1px solid #9ca3af;
-  color: #4b5563;
+  background: #f3f4f6;
+  border: 1px solid #d1d5db;
 }
 TestCaseBlock[flowState="unchecked"]:hover {
-  background: #d1d5db;
-  border: 1px solid #6b7280;
+  background: #e5e7eb;
+  border: 1px solid #9ca3af;
+}
+TestCaseBlock[flowState="unchecked"] QLabel#flowBlockIndex,
+TestCaseBlock[flowState="unchecked"] QLabel#flowBlockTitle {
+  color: #6b7280;
 }
 
 TestCaseBlock[flowState="uncheckedSelected"] {
+  background: #e5e7eb;
+  border: 1px solid #6b7280;
+}
+TestCaseBlock[flowState="uncheckedSelected"]:hover {
   background: #d1d5db;
-  border: 2px solid #6b7280;
+  border: 1px solid #4b5563;
+}
+TestCaseBlock[flowState="uncheckedSelected"] QLabel#flowBlockIndex,
+TestCaseBlock[flowState="uncheckedSelected"] QLabel#flowBlockTitle {
   color: #374151;
   font-weight: 600;
 }
-TestCaseBlock[flowState="uncheckedSelected"]:hover {
-  background: #c4c9d1;
-  border: 2px solid #4b5563;
-}
 
 TestCaseBlock[flowState="blank"] {
-  background: #f3f4f6;
-  border: 1px dashed #9ca3af;
-  color: #6b7280;
-  font-style: italic;
+  background: #f9fafb;
+  border: 1px dashed #cbd5e1;
 }
 TestCaseBlock[flowState="blank"]:hover {
-  background: #e5e7eb;
-  border: 1px dashed #6b7280;
+  background: #f3f4f6;
+  border: 1px dashed #94a3b8;
+}
+TestCaseBlock[flowState="blank"] QLabel#flowBlockIndex,
+TestCaseBlock[flowState="blank"] QLabel#flowBlockTitle {
+  color: #94a3b8;
 }
 
 /* 右键菜单：深色字 + 白底，避免继承功能块 color 或全局 QMenu 浅灰字 */

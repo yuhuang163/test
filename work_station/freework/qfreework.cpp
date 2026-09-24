@@ -412,7 +412,7 @@ void fitScreenInspectThumb(QLabel* label, const QImage& img, const QString& empt
     label->setPixmap(QPixmap::fromImage(scaled));
 }
 
-/** 按当前标签文字重算 min-width，覆盖全局 Ubuntu.qss 对 Tab 的裁切。 */
+/** 按当前标签文字重算 min-width，覆盖全局 QSS 对 Tab 的裁切。 */
 void setupFreeWorkTabBar(QTabWidget* tabWidget) {
     if (!tabWidget)
         return;
@@ -614,7 +614,7 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     ui->jigDisconnectButton->setEnabled(false);
     ui->usbdisconnectButton->setEnabled(false);
     ui->productDisconnectButton->setEnabled(false);
-    updateMainStyle("Ubuntu.qss");
+    updateMainStyle(QStringLiteral("console_shell.qss"));
     applyFreeWorkExtraTabsVisible(false);
 
     setupFreeWorkTabBar(ui->tabWidget);

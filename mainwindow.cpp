@@ -1034,7 +1034,7 @@ void MainWindow::bindConsoleShellWidgets() {
     consolePageSub_ = uiFind<QLabel>(this, "consolePageSub");
     consoleStack_ = uiFind<QStackedWidget>(this, "consoleStack");
     // 优先用 .ui 里持久 QWidget；若 Designer 再次拆空壳则按 *Lay 运行时补回
-    consoleShell_ = ui->consoleShell;
+    consoleShell_ = uiFind<QWidget>(this, "consoleShell");
     if (!consoleShell_)
         consoleShell_ = wrapNamedLayout(uiFind<QLayout>(this, "gridLayout_3"), uiFind<QLayout>(this, "consoleShellLay"),
                                         QStringLiteral("consoleShell"));
@@ -1043,29 +1043,32 @@ void MainWindow::bindConsoleShellWidgets() {
     consoleRail_ = ui->consoleRail;
     consoleConnectPage_ = ui->consoleConnectPage;
     auto* statusCardLay = uiFind<QLayout>(this, "consoleStatusCardLay");
-    auto bindStatusRow = [&](QWidget* fromUi, const char* layName, const char* widgetName) -> QWidget* {
-        if (fromUi)
+    auto bindStatusRow = [&](const char* widgetName, const char* layName) -> QWidget* {
+        if (QWidget* fromUi = uiFind<QWidget>(this, widgetName))
             return fromUi;
         return wrapNamedLayout(statusCardLay, uiFind<QLayout>(this, layName), QString::fromUtf8(widgetName));
     };
-    consoleStatusDevice_ = bindStatusRow(ui->consoleStatusDevice, "consoleStatusDeviceLay", "consoleStatusDevice");
-    consoleStatusMotor_ = bindStatusRow(ui->consoleStatusMotor, "consoleStatusMotorLay", "consoleStatusMotor");
-    consoleStatusPump_ = bindStatusRow(ui->consoleStatusPump, "consoleStatusPumpLay", "consoleStatusPump");
-    consoleStatusValve_ = bindStatusRow(ui->consoleStatusValve, "consoleStatusValveLay", "consoleStatusValve");
-    consoleMetricBattery_ = bindStatusRow(ui->consoleMetricBattery, "consoleMetricBatteryLay", "consoleMetricBattery");
-    consoleMetricTemp_ = bindStatusRow(ui->consoleMetricTemp, "consoleMetricTempLay", "consoleMetricTemp");
-    consoleFieldReset_ = ui->consoleFieldReset
-        ? ui->consoleFieldReset
-        : wrapNamedLayout(uiFind<QLayout>(this, "consoleCardStep1Lay"), uiFind<QLayout>(this, "consoleFieldResetLay"),
-                          QStringLiteral("consoleFieldReset"));
-    consoleHeader_ = ui->consoleHeader
-        ? ui->consoleHeader
-        : wrapNamedLayout(uiFind<QLayout>(this, "consoleMidLay"), uiFind<QLayout>(this, "consoleHeaderLay"),
-                          QStringLiteral("consoleHeader"));
-    consoleTitleBox_ = ui->consoleTitleBox
-        ? ui->consoleTitleBox
-        : wrapNamedLayout(uiFind<QLayout>(this, "consoleMidLay"), uiFind<QLayout>(this, "consoleTitleLay"),
-                          QStringLiteral("consoleTitleBox"));
+    consoleStatusDevice_ = bindStatusRow("consoleStatusDevice", "consoleStatusDeviceLay");
+    consoleStatusMotor_ = bindStatusRow("consoleStatusMotor", "consoleStatusMotorLay");
+    consoleStatusPump_ = bindStatusRow("consoleStatusPump", "consoleStatusPumpLay");
+    consoleStatusValve_ = bindStatusRow("consoleStatusValve", "consoleStatusValveLay");
+    consoleMetricBattery_ = bindStatusRow("consoleMetricBattery", "consoleMetricBatteryLay");
+    consoleMetricTemp_ = bindStatusRow("consoleMetricTemp", "consoleMetricTempLay");
+    consoleFieldReset_ = uiFind<QWidget>(this, "consoleFieldReset");
+    if (!consoleFieldReset_)
+        consoleFieldReset_ = wrapNamedLayout(uiFind<QLayout>(this, "consoleCardStep1Lay"),
+                                             uiFind<QLayout>(this, "consoleFieldResetLay"),
+                                             QStringLiteral("consoleFieldReset"));
+    consoleHeader_ = uiFind<QWidget>(this, "consoleHeader");
+    if (!consoleHeader_)
+        consoleHeader_ = wrapNamedLayout(uiFind<QLayout>(this, "consoleMidLay"),
+                                         uiFind<QLayout>(this, "consoleHeaderLay"),
+                                         QStringLiteral("consoleHeader"));
+    consoleTitleBox_ = uiFind<QWidget>(this, "consoleTitleBox");
+    if (!consoleTitleBox_)
+        consoleTitleBox_ = wrapNamedLayout(uiFind<QLayout>(this, "consoleMidLay"),
+                                           uiFind<QLayout>(this, "consoleTitleLay"),
+                                           QStringLiteral("consoleTitleBox"));
 }
 
 // 滚动区包裹后 Tab 页是 QScrollArea，逻辑页名在内层 widget 上

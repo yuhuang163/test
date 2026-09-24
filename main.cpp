@@ -13,7 +13,6 @@
 #include <QSysInfo>
 #include <QMessageBox>
 #include <QTextCodec>
-#include <QTextStream>
 #include <QTranslator>
 #include <QtDebug>
 #include <unordered_map>
