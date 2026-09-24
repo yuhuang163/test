@@ -9471,6 +9471,46 @@ Every Baby</string>
                                  </property>
                                 </widget>
                                </item>
+                               <item alignment="Qt::AlignVCenter">
+                                <widget class="QPushButton" name="dongle_pump_on">
+                                 <property name="toolTip">
+                                  <string>下发 AT+PUMPON=1</string>
+                                 </property>
+                                 <property name="text">
+                                  <string>开泵</string>
+                                 </property>
+                                </widget>
+                               </item>
+                               <item alignment="Qt::AlignVCenter">
+                                <widget class="QPushButton" name="dongle_pump_off">
+                                 <property name="toolTip">
+                                  <string>下发 AT+PUMPON=0</string>
+                                 </property>
+                                 <property name="text">
+                                  <string>关泵</string>
+                                 </property>
+                                </widget>
+                               </item>
+                               <item alignment="Qt::AlignVCenter">
+                                <widget class="QPushButton" name="dongle_valve_on">
+                                 <property name="toolTip">
+                                  <string>下发 AT+VALVEON=1</string>
+                                 </property>
+                                 <property name="text">
+                                  <string>开阀</string>
+                                 </property>
+                                </widget>
+                               </item>
+                               <item alignment="Qt::AlignVCenter">
+                                <widget class="QPushButton" name="dongle_valve_off">
+                                 <property name="toolTip">
+                                  <string>下发 AT+VALVEON=0</string>
+                                 </property>
+                                 <property name="text">
+                                  <string>关阀</string>
+                                 </property>
+                                </widget>
+                               </item>
                                <item>
                                 <spacer name="horizontalSpacer_dongle_suction_osr">
                                  <property name="orientation">

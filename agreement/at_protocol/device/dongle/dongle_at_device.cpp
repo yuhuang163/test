@@ -77,6 +77,30 @@ void DongleAtDevice::set(DongleCmd cmd, const QVariant& data) {
         sendAtLine(QStringLiteral("AT+SUCTIONOSR=%1\r\n").arg(gear));
         break;
     }
+    case DongleCmd::PumpOn: {
+        int state = data.toInt();
+        if (state > 1) {
+            state = 1;
+        }
+        if (state < 0) {
+            state = 0;
+        }
+        // 1=按工作段1 频率/占空比开泵；0=PWM 拉 0 关泵
+        sendAtLine(QStringLiteral("AT+PUMPON=%1\r\n").arg(state));
+        break;
+    }
+    case DongleCmd::ValveOn: {
+        int state = data.toInt();
+        if (state > 1) {
+            state = 1;
+        }
+        if (state < 0) {
+            state = 0;
+        }
+        // 1=GPIO42 高开阀；0=拉低关阀
+        sendAtLine(QStringLiteral("AT+VALVEON=%1\r\n").arg(state));
+        break;
+    }
     case DongleCmd::AdcSwitch: {
         int state = data.toInt();
         if (state > 1) {
