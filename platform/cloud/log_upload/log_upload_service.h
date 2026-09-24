@@ -5,6 +5,7 @@
 #include "qlog.h"
 
 #include <QString>
+#include <functional>
 
 /** 打包会话日志并上传到 factory-tool 日志接口 */
 class LogUploadService {
@@ -22,6 +23,9 @@ class LogUploadService {
         int testRecordId = 0;
     };
 
+    /** phase: pack=打包；upload=上传。upload 时 current/total 为已传/总字节，total=0 表示未知。 */
+    using ProgressCallback = std::function<void(const QString& phase, qint64 current, qint64 total)>;
+
     static QString defaultLogRootPath();
     static QString defaultUploadUrl();
     static QString defaultDeviceId();
@@ -36,9 +40,11 @@ class LogUploadService {
     static QString compressSessionArchive(const QlogSessionInfo& info, QString* error, QString* warning = nullptr);
 
     static bool uploadLogArchive(const QString& zipPath, const UploadConfig& cfg, QString* message,
-                                 QString* responseBody = nullptr);
+                                 QString* responseBody = nullptr,
+                                 const ProgressCallback& onProgress = ProgressCallback());
 
-    static bool packAndUpload(const UploadConfig& cfg, QString* message);
+    static bool packAndUpload(const UploadConfig& cfg, QString* message,
+                              const ProgressCallback& onProgress = ProgressCallback());
     static bool uploadSessionFromPack(const MesPacketData& pack, int slot, int testRecordId, QString* message = nullptr);
 };
 
