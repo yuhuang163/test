@@ -18,6 +18,8 @@ enum class DongleCmd {
     BleLog,               // AT+BLERSSILOG= 0/1（连接后 RSSI 上报开关，旧指令 AT+BLELOG）
     GetSuction,           // AT+SUCTION= 0/1
     SetSuctionOsr,        // AT+SUCTIONOSR= 1..4（默认 4=8192X/16ms）
+    PumpOn,               // AT+PUMPON= 0/1（关泵 / 工作段1 开泵）
+    ValveOn,              // AT+VALVEON= 0/1（关阀 / 开阀 GPIO42）
     AdcSwitch,            // AT+HSADC= 0/1（高量程采样）
     LowRangeAdcSwitch,    // AT+LSADC= 0/1
     BleDeviceLog,         // AT+BLEDEVICELOG= 0/1

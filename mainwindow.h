@@ -752,6 +752,10 @@ class MainWindow : public QMainWindow {
     void on_dongle_suction_clear_chart_clicked();
     void on_dongle_suction_follow_latest_clicked();
     void on_dongle_suction_set_osr_clicked();
+    void on_dongle_pump_on_clicked();
+    void on_dongle_pump_off_clicked();
+    void on_dongle_valve_on_clicked();
+    void on_dongle_valve_off_clicked();
     void on_checkBox_adcSwitch_stateChanged(int arg1);
     void on_checkBox_lsAdcSwitch_stateChanged(int arg1);
     void on_btnDongleAtDcon_clicked();
