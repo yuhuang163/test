@@ -192,7 +192,7 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("roi"), QStringLiteral("检测范围 x,y,w,h（空=调试页划定/自动）")},
         {QStringLiteral("ledCount"), QStringLiteral("检测灯数 1~4（同一步分项）")},
         {QStringLiteral("minLuma"), QStringLiteral("亮灭亮度阈值 0~255")},
-        {QStringLiteral("mode"), QStringLiteral("模式（吸奶：1~7 吸乳等；灯检：on/blink 兜底）")},
+        {QStringLiteral("mode"), QStringLiteral("模式（工厂模式仅Qaiot填1=factory_test；吸奶1~7；灯检on/blink）")},
         {QStringLiteral("modes"), QStringLiteral("每灯模式 CSV，如 on,blink,on,on")},
         {QStringLiteral("mode1"), QStringLiteral("灯1：on常亮 / blink闪烁")},
         {QStringLiteral("mode2"), QStringLiteral("灯2：on常亮 / blink闪烁")},
@@ -209,7 +209,7 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("customFreq"), QStringLiteral("自定义频率（1低/2中/3高）")},
         {QStringLiteral("controlType"), QStringLiteral("控制侧（0左/1右/2双边）")},
         {QStringLiteral("pumpFreq"), QStringLiteral("泵频率（0低/1中/2高）")},
-        {QStringLiteral("on"), QStringLiteral("开关（1开/0关）")},
+        {QStringLiteral("on"), QStringLiteral("开关（1进入/开，0退出/关）")},
         {QStringLiteral("state"), QStringLiteral("状态（1运行/0暂停）")},
         {QStringLiteral("which_sn"), QStringLiteral("SN 类型（1整机等）")},
         {QStringLiteral("length"), QStringLiteral("写入SN长度（35=M5原样；39=Air1末尾补0）")},
@@ -518,6 +518,10 @@ QStringList sendParamPreferredOrder(TestCaseSendChannel channel, const QString& 
         return {QStringLiteral("on"), QStringLiteral("state"), QStringLiteral("value")};
     }
     if ((channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial)
+        && cmdName == QLatin1String("FacMode")) {
+        return {QStringLiteral("on"), QStringLiteral("mode"), QStringLiteral("value")};
+    }
+    if ((channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial)
         && cmdName == QLatin1String("Sn")) {
         return {QStringLiteral("value"), QStringLiteral("which_sn"), QStringLiteral("length")};
     }
@@ -775,6 +779,15 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
             return QVariantMap{{QStringLiteral("level"), QStringLiteral("15")}};
         }
         if (cmdName == QLatin1String("Root2PumpState")) {
+            return QVariantMap{{QStringLiteral("on"), QStringLiteral("1")}};
+        }
+        if (cmdName == QLatin1String("FacMode")) {
+            // Qroot/Qfctp/Qpb：只要开关；Qaiot 才要 mode 类型
+            const bool qaiot = device.contains(QLatin1String("Qaiot"), Qt::CaseInsensitive)
+                || device.contains(QLatin1String("aiot"), Qt::CaseInsensitive);
+            if (qaiot)
+                return QVariantMap{{QStringLiteral("on"), QStringLiteral("1")},
+                                   {QStringLiteral("mode"), QStringLiteral("1")}};
             return QVariantMap{{QStringLiteral("on"), QStringLiteral("1")}};
         }
         if (cmdName == QLatin1String("Sn")) {

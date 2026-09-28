@@ -270,9 +270,11 @@ constexpr const char kHintBurningMode[] =
     u8"示例：Param_mode=1 或 {\"mode\":1,\"seconds\":3600}";
 constexpr const char kHintSleep[] = u8"休眠：switch=1 进入，0 退出\r\n示例：{\"switch\":1}";
 constexpr const char kHintFacMode[] =
-    u8"工厂模式：Param_on/value=1 进入 0 退出；Param_mode 模式类型\r\n"
-    u8"0 idle / 1 factory_test / 2 aging / 3 suction / 4 suction_compensate / 5 ate / 6 freeman\r\n"
-    u8"示例：Param_mode=1 Param_on=1";
+    u8"工厂模式进/退：\r\n"
+    u8"Qroot / Qroot2 / Qfctp / Qpb：只需开关，Param_on（或 value）=1 进入 / 0 退出；不要填 mode\r\n"
+    u8"示例：Param_on=1 或 Param_value=1\r\n"
+    u8"Qaiot：另需 Param_mode 指定类型（0 idle / 1 factory_test / 2 aging / 3 suction / 4 compensate / 5 ate / 6 freeman）\r\n"
+    u8"Qaiot 示例：Param_mode=1 Param_on=1";
 constexpr const char kHintSuctionMode[] =
     u8"FCTP 吸力测试模式：enter=1 进入，0 退出\r\n示例：Param_enter=1 或 {\"enter\":1}\r\n"
     u8"注意：Qroot 开泵档位请改用「吸力测试(档位)」+ switch/mode/level";
