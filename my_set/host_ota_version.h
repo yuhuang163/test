@@ -15,7 +15,6 @@
  *
  * 勿把本文件加入 AbIni.h / PRECOMPILED_HEADER。
  */
-#define HOST_OTA_APP_VERSION "1.6.36"
-#define HOST_OTA_BUILD_ID "2026089"
+#define HOST_OTA_APP_VERSION "1.6.36-p"
 
 #endif // HOST_OTA_VERSION_H
