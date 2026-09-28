@@ -23,8 +23,8 @@
 #include <QJsonObject>
 #include <QMutex>
 #include <QProcess>
-#include <QProcessEnvironment>
 #include <QDateTime>
+#include <QThreadPool>
 #include <QMetaObject>
 #include <QSet>
 #include <QSettings>
@@ -43,246 +43,14 @@ namespace {
 
 constexpr const char* kBackupDirName = ".backup";
 constexpr int kHeartbeatIntervalMs = 20000;
-/** 远控命令要快，单独高频拉命令，避免干等下一次 20s 心跳 */
-constexpr int kCommandPollIntervalMs = 800;
+/** 设备命令轮询（网页拉配置等） */
+constexpr int kCommandPollIntervalMs = 3000;
 
 QAtomicInt g_heartbeatBusy(0);
 QAtomicInt g_commandPollBusy(0);
 QAtomicInt g_agentStopped(0);
 QTimer* g_hbTimer = nullptr;
 QTimer* g_cmdTimer = nullptr;
-
-QMutex g_remoteDesktopMutex;
-QHash<QString, qint64> g_remoteDesktopPids; // sessionId -> pid
-
-QString remoteAgentDirBesideBin() {
-    return QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("remote_agent"));
-}
-
-/** 开发机：build/.../bin → 仓库 remote_agent/ */
-QString remoteAgentDirSourceTree() {
-    return QDir(QCoreApplication::applicationDirPath()).absoluteFilePath(QStringLiteral("../../remote_agent"));
-}
-
-bool remoteAgentDirUsable(const QString& dirPath) {
-    const QDir dir(dirPath);
-    if (!dir.exists()) {
-        return false;
-    }
-    if (dir.exists(QStringLiteral("remote_agent.exe"))) {
-        return true;
-    }
-    // 源码树：main.py + (venv 或 run.bat)
-    if (!dir.exists(QStringLiteral("main.py"))) {
-        return false;
-    }
-    return dir.exists(QStringLiteral(".venv/Scripts/python.exe")) || dir.exists(QStringLiteral("run.bat"));
-}
-
-QString remoteAgentDir() {
-    const QString besideBin = remoteAgentDirBesideBin();
-    if (remoteAgentDirUsable(besideBin)) {
-        return besideBin;
-    }
-    const QString src = QDir(remoteAgentDirSourceTree()).absolutePath();
-    if (remoteAgentDirUsable(src)) {
-        return src;
-    }
-    // 默认仍返回 bin 旁路径，便于日志提示缺目录
-    return besideBin;
-}
-
-bool remoteAgentAvailable() {
-    return remoteAgentDirUsable(remoteAgentDir());
-}
-
-QString buildAgentSignalingUrl(const QString& sessionId, const QString& agentToken) {
-    QUrl base(FactoryCloudClient::apiRoot() + QStringLiteral("/remote-desktop/ws"));
-    QUrlQuery q;
-    q.addQueryItem(QStringLiteral("sessionId"), sessionId);
-    q.addQueryItem(QStringLiteral("role"), QStringLiteral("agent"));
-    q.addQueryItem(QStringLiteral("token"), agentToken);
-    base.setQuery(q);
-    QString s = base.toString(QUrl::FullyEncoded);
-    if (s.startsWith(QStringLiteral("https://"), Qt::CaseInsensitive)) {
-        s = QStringLiteral("wss://") + s.mid(8);
-    } else if (s.startsWith(QStringLiteral("http://"), Qt::CaseInsensitive)) {
-        s = QStringLiteral("ws://") + s.mid(7);
-    }
-    return s;
-}
-
-void stopRemoteDesktopSession(const QString& sessionId) {
-    QMutexLocker locker(&g_remoteDesktopMutex);
-    if (!g_remoteDesktopPids.contains(sessionId)) {
-        return;
-    }
-    const qint64 pid = g_remoteDesktopPids.take(sessionId);
-    locker.unlock();
-    if (pid > 0) {
-        QProcess killer;
-        killer.start(QStringLiteral("taskkill"),
-                     {QStringLiteral("/PID"), QString::number(pid), QStringLiteral("/T"), QStringLiteral("/F")});
-        killer.waitForFinished(5000);
-    }
-    qDebug() << QStringLiteral("[RemoteDesktop] 已停止 session") << sessionId << "pid" << pid;
-}
-
-/** 上位机关闭时清理全部远控 Agent（含未登记/PyInstaller 残留） */
-void stopAllRemoteDesktopSessions(bool quickStop = false) {
-    QList<qint64> pids;
-    {
-        QMutexLocker locker(&g_remoteDesktopMutex);
-        pids = g_remoteDesktopPids.values();
-        g_remoteDesktopPids.clear();
-    }
-    const int waitMs = quickStop ? 0 : 5000;
-    for (const qint64 pid : pids) {
-        if (pid <= 0) {
-            continue;
-        }
-        QProcess killer;
-        killer.start(QStringLiteral("taskkill"),
-                     {QStringLiteral("/PID"), QString::number(pid), QStringLiteral("/T"), QStringLiteral("/F")});
-        if (waitMs > 0) {
-            killer.waitForFinished(waitMs);
-        }
-    }
-    // 兜底：按进程名杀干净，避免关闭上位机后 remote_agent.exe 仍挂后台
-    QProcess byName;
-    byName.start(QStringLiteral("taskkill"),
-                 {QStringLiteral("/IM"), QStringLiteral("remote_agent.exe"), QStringLiteral("/T"),
-                  QStringLiteral("/F")});
-    if (quickStop) {
-        // OTA 不锁 exe，异步清理即可，避免 taskkill 空等 8s
-        qDebug() << QStringLiteral("[RemoteDesktop] OTA 快速清理 Agent（不等待 taskkill）");
-        return;
-    }
-    byName.waitForFinished(8000);
-    qDebug() << QStringLiteral("[RemoteDesktop] 已清理全部 Agent 进程");
-}
-
-void startRemoteDesktopSessionImpl(const QJsonObject& payload) {
-    const qint64 t0Ms = QDateTime::currentMSecsSinceEpoch();
-    const QString sessionId = payload.value(QStringLiteral("sessionId")).toString().trimmed();
-    const QString agentToken = payload.value(QStringLiteral("agentToken")).toString().trimmed();
-    if (sessionId.isEmpty() || agentToken.isEmpty()) {
-        qDebug() << QStringLiteral("[RemoteDesktop] start 命令缺少 sessionId/agentToken");
-        return;
-    }
-    if (!remoteAgentAvailable()) {
-        qDebug() << QStringLiteral("[RemoteDesktop] 未找到远控 Agent。产线请部署 bin/remote_agent（exe+_internal）；"
-                                   "开发可在仓库 remote_agent/ 执行 setup_dev.bat");
-        return;
-    }
-
-    const QString workDir = remoteAgentDir();
-    qDebug() << QStringLiteral("[RemoteDesktop] 使用 Agent 目录") << workDir;
-
-    {
-        QMutexLocker locker(&g_remoteDesktopMutex);
-        if (g_remoteDesktopPids.contains(sessionId)) {
-            locker.unlock();
-            qDebug() << QStringLiteral("[RemoteDesktop] 会话已在运行，先结束旧 Agent 再按新参数启动") << sessionId;
-            stopRemoteDesktopSession(sessionId);
-            QThread::msleep(200);
-        }
-    }
-
-    QJsonObject cfg;
-    cfg.insert(QStringLiteral("sessionId"), sessionId);
-    cfg.insert(QStringLiteral("agentToken"), agentToken);
-    cfg.insert(QStringLiteral("signalingUrl"), buildAgentSignalingUrl(sessionId, agentToken));
-    qDebug() << QStringLiteral("[RemoteDesktop] signaling") << cfg.value(QStringLiteral("signalingUrl")).toString();
-    cfg.insert(QStringLiteral("iceServers"), payload.value(QStringLiteral("iceServers")));
-    // 画质由管理端创建会话时下发；缺省与旧行为一致
-    int maxWidth = payload.value(QStringLiteral("maxWidth")).toInt(1920);
-    int fps = payload.value(QStringLiteral("fps")).toInt(30);
-    qint64 maxBitrate = payload.value(QStringLiteral("maxBitrate")).toVariant().toLongLong();
-    if (maxBitrate <= 0)
-        maxBitrate = 12000000;
-    maxWidth = qBound(maxWidth, 640, 1920);
-    fps = qBound(fps, 5, 60);
-    maxBitrate = qBound(maxBitrate, qint64(500000), qint64(25000000));
-    cfg.insert(QStringLiteral("maxWidth"), maxWidth);
-    cfg.insert(QStringLiteral("fps"), fps);
-    cfg.insert(QStringLiteral("maxBitrate"), maxBitrate);
-
-    qDebug() << QStringLiteral("[RemoteDesktop] Agent 推流参数 maxWidth=") << maxWidth << "fps=" << fps
-             << "maxBitrate=" << maxBitrate;
-
-    // 配置走环境变量，不写 session_*.json
-    const QByteArray cfgBytes = QJsonDocument(cfg).toJson(QJsonDocument::Compact);
-    auto* proc = new QProcess(qApp);
-    proc->setWorkingDirectory(workDir);
-    QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
-    env.insert(QStringLiteral("REMOTE_AGENT_CONFIG"), QString::fromUtf8(cfgBytes));
-    proc->setProcessEnvironment(env);
-    const QString agentExe = QDir(workDir).filePath(QStringLiteral("remote_agent.exe"));
-    const QString venvPy = QDir(workDir).filePath(QStringLiteral(".venv/Scripts/python.exe"));
-    const QString mainPy = QDir(workDir).filePath(QStringLiteral("main.py"));
-    const QStringList agentArgs{QStringLiteral("--config"), QStringLiteral("env:REMOTE_AGENT_CONFIG"),
-                                QStringLiteral("--log-dir"), workDir};
-    // 产线：onedir 的 remote_agent.exe（需保留同目录 _internal）；开发机：venv / run.bat
-    QString launchVia;
-    if (QFileInfo::exists(agentExe)) {
-        proc->setProgram(agentExe);
-        proc->setArguments(agentArgs);
-        launchVia = QStringLiteral("exe");
-    } else if (QFileInfo::exists(venvPy) && QFileInfo::exists(mainPy)) {
-        proc->setProgram(venvPy);
-        proc->setArguments(QStringList{mainPy} + agentArgs);
-        launchVia = QStringLiteral("venv");
-    } else {
-        proc->setProgram(QStringLiteral("cmd.exe"));
-        proc->setArguments(QStringList{QStringLiteral("/c"), QStringLiteral("run.bat")} + agentArgs);
-        launchVia = QStringLiteral("run.bat");
-    }
-    proc->setProcessChannelMode(QProcess::MergedChannels);
-    QObject::connect(proc, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished), proc,
-                     [proc, sessionId](int code, QProcess::ExitStatus status) {
-                         const QByteArray tail = proc->readAllStandardOutput().trimmed().right(800);
-                         {
-                             QMutexLocker locker(&g_remoteDesktopMutex);
-                             g_remoteDesktopPids.remove(sessionId);
-                         }
-                         qDebug() << QStringLiteral("[RemoteDesktop] Agent 退出") << sessionId << "code" << code
-                                  << "status" << int(status);
-                         if (!tail.isEmpty()) {
-                             qDebug() << QStringLiteral("[RemoteDesktop] Agent 输出尾部:") << QString::fromUtf8(tail);
-                         }
-                         proc->deleteLater();
-                     });
-    qDebug() << QStringLiteral("[RemoteDesktop] 即将启动 Agent via=") << launchVia << "cwd=" << workDir
-             << "距收到命令" << (QDateTime::currentMSecsSinceEpoch() - t0Ms) << "ms";
-    proc->start();
-    if (!proc->waitForStarted(8000)) {
-        qDebug() << QStringLiteral("[RemoteDesktop] 启动 Agent 失败：") << proc->errorString();
-        proc->deleteLater();
-        return;
-    }
-    {
-        QMutexLocker locker(&g_remoteDesktopMutex);
-        g_remoteDesktopPids.insert(sessionId, proc->processId());
-    }
-    qDebug() << QStringLiteral("[RemoteDesktop] Agent 进程已拉起") << sessionId << "pid" << proc->processId()
-             << "via" << launchVia << "耗时" << (QDateTime::currentMSecsSinceEpoch() - t0Ms) << "ms"
-             << "（若距点击仍很久，多半是命令轮询；进程拉起后还要等 Agent 初始化）";
-}
-
-void startRemoteDesktopSession(const QJsonObject& payload) {
-    // pollDeviceCommands 在 QtConcurrent 线程里跑，QProcess 必须在 GUI 主线程创建/启动
-    QCoreApplication* app = QCoreApplication::instance();
-    if (!app) {
-        return;
-    }
-    if (QThread::currentThread() != app->thread()) {
-        const QJsonObject copy = payload;
-        QTimer::singleShot(0, app, [copy]() { startRemoteDesktopSessionImpl(copy); });
-        return;
-    }
-    startRemoteDesktopSessionImpl(payload);
-}
 
 bool runPowerShell(const QString& script, QString* error, int timeoutMs = 180000) {
     QProcess process;
@@ -1332,7 +1100,6 @@ void TestCaseSyncService::heartbeatAndPollCommands() {
         stations.append(one);
     }
     body.insert(QStringLiteral("stations"), stations);
-    body.insert(QStringLiteral("remoteDesktop"), remoteAgentAvailable());
 
     QElapsedTimer httpTimer;
     httpTimer.start();
@@ -1412,16 +1179,6 @@ void TestCaseSyncService::pollDeviceCommands() {
         const QJsonObject cmd = value.toObject();
         const QString type = cmd.value(QStringLiteral("type")).toString().trimmed();
         const QJsonObject payload = cmd.value(QStringLiteral("payload")).toObject();
-        if (type == QLatin1String("start_remote_desktop")) {
-            startRemoteDesktopSession(payload);
-            ++handled;
-            continue;
-        }
-        if (type == QLatin1String("stop_remote_desktop")) {
-            stopRemoteDesktopSession(payload.value(QStringLiteral("sessionId")).toString().trimmed());
-            ++handled;
-            continue;
-        }
         if (type != QLatin1String("pull_test_profile")) {
             continue;
         }
@@ -1458,9 +1215,6 @@ void TestCaseSyncService::startDeviceAgent() {
         return;
     }
     started = true;
-
-    // 退出进程前必须杀掉远控 Agent，否则 remote_agent.exe 会残留后台
-    QObject::connect(qApp, &QCoreApplication::aboutToQuit, qApp, []() { stopAllRemoteDesktopSessions(); });
 
     Qlog::saveResidentLog(QStringLiteral("agent"),
                           QStringLiteral("启动常驻：heartbeat=%1ms cmdPoll=%2ms")
@@ -1499,7 +1253,6 @@ void TestCaseSyncService::stopDeviceAgent(bool quickStop) {
         delete g_cmdTimer;
         g_cmdTimer = nullptr;
     }
-    stopAllRemoteDesktopSessions(quickStop);
     if (!quickStop) {
         QThreadPool::globalInstance()->waitForDone(3000);
     }

@@ -114,24 +114,24 @@ static void appendKillHostProcesses(QTextStream& vbs) {
 }
 
 static void appendGetHostPidCsv(QTextStream& vbs) {
+    // 必须用 /FO CSV：默认 TABLE 会把镜像名截成 25 字符，长文件名健康检查会误判失败
     vbs << "Function GetHostPidCsv\r\n";
-    vbs << "  Dim f, tmp, line, parts, pids\r\n";
+    vbs << "  Dim f, tmp, line, parts, img, pids\r\n";
     vbs << "  GetHostPidCsv = \"\"\r\n";
     vbs << "  pids = \"\"\r\n";
     vbs << "  On Error Resume Next\r\n";
     vbs << "  tmp = fso.BuildPath(fso.GetSpecialFolder(2), \"ota_pids_\" & pid & \"_\" & Replace(CStr(Timer), \".\", \"\") & \".txt\")\r\n";
-    vbs << "  sh.Run \"cmd /c tasklist /NH /FI \"\"IMAGENAME eq \" & exeName & \"\"\" > \"\"\" & tmp & \"\"\" 2>nul\", 0, True\r\n";
+    vbs << "  sh.Run \"cmd /c tasklist /NH /FO CSV /FI \"\"IMAGENAME eq \" & exeName & \"\"\" > \"\"\" & tmp & \"\"\" 2>nul\", 0, True\r\n";
     vbs << "  If fso.FileExists(tmp) Then\r\n";
     vbs << "    Set f = fso.OpenTextFile(tmp, 1, False)\r\n";
     vbs << "    Do While Not f.AtEndOfStream\r\n";
     vbs << "      line = Trim(f.ReadLine)\r\n";
-    vbs << "      If Len(line) > 0 Then\r\n";
-    vbs << "        If InStr(1, line, exeName, vbTextCompare) = 1 Then\r\n";
-    vbs << "          Do While InStr(line, \"  \") > 0\r\n";
-    vbs << "            line = Replace(line, \"  \", \" \")\r\n";
-    vbs << "          Loop\r\n";
-    vbs << "          parts = Split(line, \" \")\r\n";
-    vbs << "          If UBound(parts) >= 1 Then\r\n";
+    vbs << "      If Len(line) > 0 And Left(line, 1) = \"\"\"\" Then\r\n";
+    vbs << "        parts = Split(line, \"\"\",\"\"\")\r\n";
+    vbs << "        If UBound(parts) >= 1 Then\r\n";
+    vbs << "          img = parts(0)\r\n";
+    vbs << "          If Left(img, 1) = \"\"\"\" Then img = Mid(img, 2)\r\n";
+    vbs << "          If StrComp(img, exeName, vbTextCompare) = 0 Then\r\n";
     vbs << "            If IsNumeric(parts(1)) Then\r\n";
     vbs << "              If Len(pids) > 0 Then pids = pids & \",\"\r\n";
     vbs << "              pids = pids & parts(1)\r\n";
