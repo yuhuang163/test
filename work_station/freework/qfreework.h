@@ -434,7 +434,7 @@ class QFreeWork : public test_base {
     void runBowlCapDiffCheckStep();
     /** 自由工站屏幕检测：GigE/USB 拍照后坏点 / 显示对比 / 位置校准。 */
     void runScreenInspectStep();
-    /** 离散 LED 亮灭：灯数 Param_ledCount（1~4），框来自调试页 LedInspect/Roi1~N。 */
+    /** 离散 LED 亮灭：灯数 Param_ledCount（1~4），框来自本工站 flow.ini [LedInspect] Roi1~N。 */
     void runLedInspectStep();
     /**
      * 屏幕图像识别自动未通过时弹窗：确认是否显示对应颜色。

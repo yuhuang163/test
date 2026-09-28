@@ -9,7 +9,7 @@
 
 /**
  * 离散 LED 检测（与屏幕 ScreenInspect 独立）。
- * 灯数 1~4；灯框 LedInspect/Roi1~N。
+ * 灯数 1~4；灯框存本工站 flow.ini [LedInspect] Roi1~N（调试页按当前工站读写）。
  * 每灯可单独配 on（常亮）或 blink（闪烁）。
  */
 

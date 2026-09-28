@@ -10,6 +10,7 @@
 #include "screen_inspect_gige_capture.h"
 #include "serial_channel.h"
 #include "test_case.h"
+#include "test_case_store.h"
 #include "plc_station_sync_barrier.h"
 
 #include <QMessageBox>
@@ -2681,16 +2682,20 @@ void QFreeWork::runLedInspectStep() {
     QString cameraIp = map.value(QStringLiteral("cameraIp")).toString().trimmed();
     if (cameraIp.isEmpty())
         cameraIp = map.value(QStringLiteral("gigeIp")).toString().trimmed();
-    if (cameraIp.isEmpty())
-        cameraIp = QStringLiteral("169.254.64.10");
     const QString cameraSerial = map.value(QStringLiteral("cameraSerial")).toString().trimmed();
     const int warmupMs = qBound(0, mapInt(QStringLiteral("warmupMs"), 450), 8000);
-    const int ledCount = LedInspectAnalyzer::clampLedCount(mapInt(
-        QStringLiteral("ledCount"), SETTINGS.value(QStringLiteral("LedInspect/LedCount"), 4).toInt()));
-    const double minLuma = mapDouble(
-        QStringLiteral("minLuma"), SETTINGS.value(QStringLiteral("LedInspect/MinLuma"), 80.0).toDouble());
+    const QString stationKey =
+        !activeFlowStationKey_.trimmed().isEmpty() ? activeFlowStationKey_ : TestCaseStore::resolveActiveFlowStationKey();
+    const TestCaseLedInspectConfig ledCfg = TestCaseStore::loadStationLedInspectConfig(stationKey);
+    const TestCaseScreenInspectConfig screenCfg = TestCaseStore::loadStationScreenInspectConfig(stationKey);
+    if (cameraIp.isEmpty())
+        cameraIp = screenCfg.gigEIp.trimmed();
+    if (cameraIp.isEmpty())
+        cameraIp = QStringLiteral("169.254.64.10");
+    const int ledCount = LedInspectAnalyzer::clampLedCount(mapInt(QStringLiteral("ledCount"), ledCfg.ledCount));
+    const double minLuma = mapDouble(QStringLiteral("minLuma"), ledCfg.minLuma);
 
-    // 每灯模式：优先 mode1~mode4 / modes=on,blink,...；否则全局 mode 兜底
+    // 每灯模式：优先 mode1~mode4 / modes=on,blink,...；否则工站/全局 mode 兜底
     QVector<QString> ledModes;
     ledModes.resize(ledCount);
     const QString modesCsv = map.value(QStringLiteral("modes")).toString().trimmed();
@@ -2701,12 +2706,22 @@ void QFreeWork::runLedInspectStep() {
         const QString fromMap = map.value(QStringLiteral("mode")).toString().trimmed();
         if (!fromMap.isEmpty())
             return fromMap;
-        return SETTINGS.value(QStringLiteral("LedInspect/Mode"), QStringLiteral("on")).toString();
+        if (!ledCfg.mode.isEmpty())
+            return ledCfg.mode;
+        return QStringLiteral("on");
     }();
     for (int i = 0; i < ledCount; ++i) {
         QString m = map.value(QStringLiteral("mode%1").arg(i + 1)).toString().trimmed();
-        if (m.isEmpty())
-            m = SETTINGS.value(QStringLiteral("LedInspect/Mode%1").arg(i + 1)).toString().trimmed();
+        if (m.isEmpty()) {
+            if (i == 0)
+                m = ledCfg.mode1;
+            else if (i == 1)
+                m = ledCfg.mode2;
+            else if (i == 2)
+                m = ledCfg.mode3;
+            else if (i == 3)
+                m = ledCfg.mode4;
+        }
         if (m.isEmpty() && i < modesParts.size())
             m = modesParts.at(i).trimmed();
         if (m.isEmpty())
@@ -2755,17 +2770,17 @@ void QFreeWork::runLedInspectStep() {
     ap.modes = ledModes;
     ap.rois.resize(ledCount);
     QStringList missing;
-    // 灯框只认调试页 LedInspect/Roi1~N；同一步多灯，每灯用 mode1~N 单独卡控
+    // 灯框优先本工站 flow.ini [LedInspect] Roi1~N；同一步多灯，每灯用 mode1~N 单独卡控
+    const QStringList stationRois = {ledCfg.roi1, ledCfg.roi2, ledCfg.roi3, ledCfg.roi4};
     for (int i = 0; i < ledCount; ++i) {
-        ap.rois[i] = LedInspectAnalyzer::parseRoi(
-            SETTINGS.value(LedInspectAnalyzer::settingsRoiKey(i + 1)).toString());
+        ap.rois[i] = LedInspectAnalyzer::parseRoi(i < stationRois.size() ? stationRois.at(i) : QString());
         if (ap.rois[i].width() < 4 || ap.rois[i].height() < 4)
             missing << QString::number(i + 1);
     }
     if (!missing.isEmpty()) {
         TestResult = failValue;
         const QString msg = QStringLiteral("未划灯框：灯%1").arg(missing.join(QLatin1Char(',')));
-        showlog(QStringLiteral("LED检测：请先在调试页勾「划灯框」并划齐前%1个灯框（缺灯%2）")
+        showlog(QStringLiteral("LED检测：请先在调试页勾「划灯框」并划齐前%1个灯框（写入本工站 flow.ini；缺灯%2）")
                     .arg(ledCount)
                     .arg(missing.join(QLatin1Char(','))));
         markActiveTestCaseStepDone(false, msg, QStringLiteral("失败"));
@@ -3003,6 +3018,11 @@ void QFreeWork::runScreenInspectStep() {
     QString cameraIp = map.value(QStringLiteral("cameraIp")).toString().trimmed();
     if (cameraIp.isEmpty())
         cameraIp = map.value(QStringLiteral("gigeIp")).toString().trimmed();
+    const QString stationKey =
+        !activeFlowStationKey_.trimmed().isEmpty() ? activeFlowStationKey_ : TestCaseStore::resolveActiveFlowStationKey();
+    const TestCaseScreenInspectConfig screenCfg = TestCaseStore::loadStationScreenInspectConfig(stationKey);
+    if (cameraIp.isEmpty())
+        cameraIp = screenCfg.gigEIp.trimmed();
     if (cameraIp.isEmpty())
         cameraIp = QStringLiteral("169.254.64.10");
     const QString cameraSerial = map.value(QStringLiteral("cameraSerial")).toString().trimmed();
@@ -3173,37 +3193,21 @@ void QFreeWork::runScreenInspectStep() {
                              needSsim ? QStringLiteral("开") : QStringLiteral("跳过")));
         }
     }
-    const int reuseCircleRoi = mapInt(QStringLiteral("reuseCircleRoi"), 0);
+    const int reuseCircleRoi = mapInt(QStringLiteral("reuseCircleRoi"), screenCfg.reuseCircle ? 1 : 0);
     if (reuseCircleRoi && cachedScreenCircleR_ > 0) {
         ap.cachedCircleCx = cachedScreenCircleCx_;
         ap.cachedCircleCy = cachedScreenCircleCy_;
         ap.cachedCircleR = cachedScreenCircleR_;
-    } else if (reuseCircleRoi) {
-        const int fallbackR = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleR"), -1).toInt();
-        if (fallbackR > 0) {
-            ap.cachedCircleCx = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCx"), -1).toInt();
-            ap.cachedCircleCy = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCy"), -1).toInt();
-            ap.cachedCircleR = fallbackR;
-        }
+    } else if (reuseCircleRoi && screenCfg.refCircleR > 0) {
+        ap.cachedCircleCx = screenCfg.refCircleCx;
+        ap.cachedCircleCy = screenCfg.refCircleCy;
+        ap.cachedCircleR = screenCfg.refCircleR;
     }
-    auto readIniCircle = [](const QString& key) -> int {
-        const QVariant v = SETTINGS.value(key);
-        if (v.isValid() && !v.isNull()) {
-            bool ok = false;
-            const int val = v.toInt(&ok);
-            if (ok && val > 0)
-                return val;
-        }
-        return -1;
-    };
-    int rCx = readIniCircle(QStringLiteral("ScreenInspect/RefCircleCx"));
-    if (rCx <= 0) rCx = readIniCircle(QStringLiteral("ScreenInspect/refCircleCx"));
-    int rCy = readIniCircle(QStringLiteral("ScreenInspect/RefCircleCy"));
-    if (rCy <= 0) rCy = readIniCircle(QStringLiteral("ScreenInspect/refCircleCy"));
-    int rR = readIniCircle(QStringLiteral("ScreenInspect/RefCircleR"));
-    if (rR <= 0) rR = readIniCircle(QStringLiteral("ScreenInspect/refCircleR"));
+    int rCx = screenCfg.refCircleCx;
+    int rCy = screenCfg.refCircleCy;
+    int rR = screenCfg.refCircleR;
 
-    // 若未在 ini 中显式配置，但已有缓存/历史标定圆，也作为基准圆参数传给分析器
+    // 若未在工站 flow 中显式配置，但已有缓存/历史标定圆，也作为基准圆参数传给分析器
     if (rR <= 0 && cachedScreenCircleR_ > 0) {
         rCx = cachedScreenCircleCx_;
         rCy = cachedScreenCircleCy_;
