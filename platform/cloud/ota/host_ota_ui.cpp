@@ -15,6 +15,7 @@
 #include <QInputDialog>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QLineEdit>
 #include <QListWidget>
 #include <QListWidgetItem>
 #include <QMessageBox>
@@ -42,6 +43,28 @@ static QString promptUploadReleaseNotes(QWidget* parent) {
             QMessageBox::warning(parent, QStringLiteral("上传上位机"), QStringLiteral("修改内容不能为空，请填写后再上传。"));
         }
     }
+}
+
+/** 弹窗修改本地 appVersion；成功写入返回 true */
+static bool promptEditLocalAppVersion(QWidget* parent) {
+    if (!parent) {
+        return false;
+    }
+    bool ok = false;
+    const QString edited = QInputDialog::getText(
+        parent, QStringLiteral("修改本地版本"),
+        QStringLiteral("本地版本号（写入上位机设置，检查更新/上传均用此号）："), QLineEdit::Normal,
+        FactoryCloudClient::appVersion(), &ok);
+    if (!ok) {
+        return false;
+    }
+    const QString trimmed = edited.trimmed();
+    if (trimmed.isEmpty()) {
+        QMessageBox::warning(parent, QStringLiteral("修改本地版本"), QStringLiteral("版本号不能为空。"));
+        return false;
+    }
+    FactoryCloudClient::setAppVersion(trimmed);
+    return true;
 }
 
 static bool confirmDownloadWithReleaseNotes(QWidget* parent, const HostOtaService::CheckResult& info) {
@@ -313,45 +336,49 @@ bool HostOtaUi::tryInteractiveUpdate(QWidget* parent,
         return false;
     }
 
-    if (check.hasUpdate) {
-        if (check.forceUpgrade) {
-            log(QStringLiteral("[OTA] 服务器要求强制升级到 %1 (buildId=%2)")
-                    .arg(check.appVersion, check.buildId));
+    if (check.forceUpgrade) {
+        log(QStringLiteral("[OTA] 服务器要求强制升级到 %1 (buildId=%2)")
+                .arg(check.appVersion, check.buildId));
+        if (parent) {
+            const QString notes = check.releaseNotes.trimmed();
+            QMessageBox::information(
+                parent, QStringLiteral("软件更新"),
+                QStringLiteral("服务器要求强制升级到 %1（buildId=%2）。\n\n修改内容：\n%3")
+                    .arg(check.appVersion, check.buildId,
+                         notes.isEmpty() ? QStringLiteral("（上传时未填写修改说明）") : notes));
+        }
+        QString message;
+        if (!HostOtaApply::downloadAndApply(check, parent, &message)) {
             if (parent) {
-                const QString notes = check.releaseNotes.trimmed();
-                QMessageBox::information(
-                    parent, QStringLiteral("软件更新"),
-                    QStringLiteral("服务器要求强制升级到 %1（buildId=%2）。\n\n修改内容：\n%3")
-                        .arg(check.appVersion, check.buildId,
-                             notes.isEmpty() ? QStringLiteral("（上传时未填写修改说明）") : notes));
-            }
-            QString message;
-            if (!HostOtaApply::downloadAndApply(check, parent, &message)) {
-                if (parent) {
-                    QMessageBox::warning(parent, QStringLiteral("软件更新"),
-                                         message.isEmpty() ? QStringLiteral("强制升级失败") : message);
-                }
-                if (!message.isEmpty()) {
-                    log(message);
-                }
-                return false;
+                QMessageBox::warning(parent, QStringLiteral("软件更新"),
+                                     message.isEmpty() ? QStringLiteral("强制升级失败") : message);
             }
             if (!message.isEmpty()) {
                 log(message);
             }
-            return true;
+            return false;
         }
-        log(QStringLiteral("[OTA] 发现服务器有新版本，弹出版本选择列表"));
-        return showVersionPicker(parent, logFn);
+        if (!message.isEmpty()) {
+            log(message);
+        }
+        return true;
     }
 
-    // 已是最新或本地更新：admin 可上传当前包；均可从服务器选择任意历史版本下载（含降级）
+    // 有更新也不再直接进选择列表，统一给上传/改号入口（避免云端误判 hasUpdate 时无法上传）
     const QString localVer = FactoryCloudClient::appVersion();
     const QString localBid = FactoryCloudClient::buildId();
-    const QString statusText =
-        check.hostNewer
-            ? QStringLiteral("本地版本（%1，buildId=%2）比服务器新。").arg(localVer, localBid)
-            : QStringLiteral("当前已是最新版本（%1，buildId=%2）。").arg(localVer, localBid);
+    QString statusText;
+    if (check.hasUpdate) {
+        statusText = QStringLiteral("服务器提示有可用版本 %1（buildId=%2）。\n本地：%3（buildId=%4）")
+                         .arg(check.appVersion, check.buildId, localVer, localBid);
+        if (check.hostNewer) {
+            statusText += QStringLiteral("\n本地相对服务器更新，可直接上传当前版本。");
+        }
+    } else if (check.hostNewer) {
+        statusText = QStringLiteral("本地版本（%1，buildId=%2）比服务器新。").arg(localVer, localBid);
+    } else {
+        statusText = QStringLiteral("当前已是最新版本（%1，buildId=%2）。").arg(localVer, localBid);
+    }
     log(QStringLiteral("[OTA] ") + check.message);
 
     if (!parent) {
@@ -363,23 +390,41 @@ bool HostOtaUi::tryInteractiveUpdate(QWidget* parent,
     QMessageBox box(parent);
     box.setWindowTitle(QStringLiteral("检查更新"));
     box.setText(statusText + QStringLiteral("\n\n请选择操作："));
+    QPushButton* editVerBtn = box.addButton(QStringLiteral("修改本地版本"), QMessageBox::ActionRole);
     QPushButton* uploadBtn =
         canUpload ? box.addButton(QStringLiteral("上传当前版本"), QMessageBox::ActionRole) : nullptr;
-    QPushButton* downloadBtn = box.addButton(QStringLiteral("下载其他版本"), QMessageBox::ActionRole);
+    QPushButton* downloadBtn = box.addButton(
+        check.hasUpdate ? QStringLiteral("选择并下载版本") : QStringLiteral("下载其他版本"),
+        QMessageBox::ActionRole);
     QPushButton* cancelBtn = box.addButton(QStringLiteral("取消"), QMessageBox::RejectRole);
-    box.setDefaultButton(cancelBtn);
+    box.setDefaultButton(check.hasUpdate && !check.hostNewer ? downloadBtn : cancelBtn);
     box.exec();
 
     if (box.clickedButton() == cancelBtn || box.clickedButton() == nullptr) {
         log(QStringLiteral("[OTA] 用户取消"));
         return true;
     }
+    if (box.clickedButton() == editVerBtn) {
+        if (promptEditLocalAppVersion(parent)) {
+            log(QStringLiteral("[OTA] 本地版本已改为 ") + FactoryCloudClient::appVersion());
+            QMessageBox::information(parent, QStringLiteral("修改本地版本"),
+                                     QStringLiteral("已保存本地版本：%1\n可再次「检查更新」用新号比对/上传。")
+                                         .arg(FactoryCloudClient::appVersion()));
+        }
+        return true;
+    }
     if (box.clickedButton() == downloadBtn) {
-        log(QStringLiteral("[OTA] 用户选择下载其他版本"));
+        log(QStringLiteral("[OTA] 用户选择下载版本"));
         return showVersionPicker(parent, logFn);
     }
     if (!canUpload || box.clickedButton() != uploadBtn) {
         log(QStringLiteral("[OTA] 未选择上传（非管理员无上传入口）"));
+        return true;
+    }
+
+    // 上传前可再确认/修改本地版本号
+    if (!promptEditLocalAppVersion(parent)) {
+        log(QStringLiteral("[OTA] 用户取消上传或未确认版本号"));
         return true;
     }
 

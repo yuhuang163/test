@@ -116,6 +116,7 @@ void HostOtaService::saveLocalReleaseNotes(const QString& appVersion, const QStr
     if (ver.isEmpty()) {
         return;
     }
+    FactoryCloudClient::setAppVersion(ver);
     SETTINGS.setValue(QStringLiteral("FactoryCloud/HostReleaseNotesVersion"), ver);
     SETTINGS.setValue(QStringLiteral("FactoryCloud/HostReleaseNotes"), notes);
     SETTINGS.sync();

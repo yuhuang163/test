@@ -150,12 +150,54 @@ QString FactoryCloudClient::stationKey() {
 }
 
 QString FactoryCloudClient::appVersion() {
-    // 来自 host_ota_version.h（非 PCH），与固定 TARGET 解耦
-    return QStringLiteral(HOST_OTA_APP_VERSION);
+    // 优先本地 Ini；未写过则用编译默认并落盘，便于「检查更新」里改号
+    const QString key = QStringLiteral("FactoryCloud/HostAppVersion");
+    QString local = SETTINGS.value(key).toString().trimmed();
+    if (local.isEmpty()) {
+        local = QStringLiteral(HOST_OTA_APP_VERSION);
+        SETTINGS.setValue(key, local);
+        SETTINGS.sync();
+    }
+    return local;
+}
+
+void FactoryCloudClient::setAppVersion(const QString& version) {
+    const QString v = version.trimmed();
+    if (v.isEmpty()) {
+        return;
+    }
+    SETTINGS.setValue(QStringLiteral("FactoryCloud/HostAppVersion"), v);
+    SETTINGS.sync();
+    qDebug() << "[OTA] 本地版本已更新 HostAppVersion=" << v;
 }
 
 QString FactoryCloudClient::buildId() {
-    return QStringLiteral(HOST_OTA_BUILD_ID);
+    // 编译时刻自动生成 yyyyMMdd-HHmmss（兼容云端 yyyyMMdd-N 比较）；勿再手改宏
+    static const QString kBuildId = []() -> QString {
+        static const char kMonths[] = "JanFebMarAprMayJunJulAugSepOctNovDec";
+        const char* date = __DATE__; // "Mmm dd yyyy"
+        const char* time = __TIME__; // "hh:mm:ss"
+        int month = 1;
+        for (int i = 0; i < 12; ++i) {
+            if (date[0] == kMonths[i * 3] && date[1] == kMonths[i * 3 + 1] && date[2] == kMonths[i * 3 + 2]) {
+                month = i + 1;
+                break;
+            }
+        }
+        const int day = (date[4] == ' ') ? (date[5] - '0') : ((date[4] - '0') * 10 + (date[5] - '0'));
+        const int year = (date[7] - '0') * 1000 + (date[8] - '0') * 100 + (date[9] - '0') * 10 + (date[10] - '0');
+        const int hour = (time[0] - '0') * 10 + (time[1] - '0');
+        const int minute = (time[3] - '0') * 10 + (time[4] - '0');
+        const int second = (time[6] - '0') * 10 + (time[7] - '0');
+        return QStringLiteral("%1%2%3-%4%5%6")
+            .arg(year, 4, 10, QLatin1Char('0'))
+            .arg(month, 2, 10, QLatin1Char('0'))
+            .arg(day, 2, 10, QLatin1Char('0'))
+            .arg(hour, 2, 10, QLatin1Char('0'))
+            .arg(minute, 2, 10, QLatin1Char('0'))
+            .arg(second, 2, 10, QLatin1Char('0'));
+    }();
+    return kBuildId;
 }
 
 QString FactoryCloudClient::packageName() {
