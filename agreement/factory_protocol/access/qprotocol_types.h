@@ -714,7 +714,7 @@ enum class DeviceCmd {
     BurshBacklog,        // 【Qpb】使用积压/日志类（param.toInt()，get_bursh_backlog）
     TrimRead,            // 【Qfctp】读 trim（无参，getCaseTrimRead）
     MacRead,             // 【Qfctp】读 MAC（无参，getCaseMacRead）
-    RssiRead,            // 【Qfctp】读 RSSI（param 为 QVariantMap，含 mode，getCaseRssiRead）
+    RssiRead,            // 【Qfctp】读 RSSI（param map：mode=0 BLE / 1 BT，getCaseRssiRead）
     KeySignalRead,       // 【Qfctp】读按键电容（param 为 QVariantMap，含 key，getCaseKeySignalRead）
     LightCalibRead,      // 【Qfctp】读光感校准（param 为 QVariantMap，含 index，getCaseLightCalibRead）
     ChargeCurrentRead,   // 【Qfctp】读充电电流 TLV 0x0020（无参，应答 uint32 mA，getCaseChargeCurrentRead）

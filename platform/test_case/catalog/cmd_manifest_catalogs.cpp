@@ -415,6 +415,25 @@ CmdManifestCatalog& DeviceCmdCatalog::catalog() {
     return catalog;
 }
 
+QStringList DeviceCmdCatalog::allCmdNames(TestCaseSendAction action, TestCaseProductProtocol protocol) {
+    QStringList names;
+    const int n = DeviceCmdManifest::rowCount();
+    const DeviceCmdManifest::Row* rows = DeviceCmdManifest::rows();
+    for (int i = 0; i < n; ++i) {
+        const DeviceCmdManifest::Row& row = rows[i];
+        if (!row.enumName)
+            continue;
+        if (!TestCaseCmdManifest::matchesSendAction(row.sendActions, action))
+            continue;
+        const QString enumName = QString::fromLatin1(row.enumName);
+        if (!DeviceCmdManifest::matchesProductProtocol(enumName, protocol))
+            continue;
+        names.append(enumName);
+    }
+    names.sort();
+    return names;
+}
+
 TestCaseProductProtocol DeviceCmdCatalog::productProtocolFromIni(const QString& text) {
     const QString t = text.trimmed();
     if (t.compare(QStringLiteral("Qpb"), Qt::CaseInsensitive) == 0 || t.compare(QStringLiteral("PB"), Qt::CaseInsensitive) == 0)
