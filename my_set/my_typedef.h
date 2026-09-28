@@ -61,6 +61,7 @@ inline bool factoryCloudUsesLocalFile(const QString& fullKey) {
         QStringLiteral("FactoryCloud/AuthRoles"),
         QStringLiteral("FactoryCloud/HostReleaseNotes"),
         QStringLiteral("FactoryCloud/HostReleaseNotesVersion"),
+        QStringLiteral("FactoryCloud/HostAppVersion"),
     };
     for (const QString& k : kFactoryCloudLocalKeys) {
         if (fullKey.compare(k, Qt::CaseInsensitive) == 0)
@@ -250,6 +251,7 @@ class SettingsManager {
             QStringLiteral("AuthRoles"),
             QStringLiteral("HostReleaseNotes"),
             QStringLiteral("HostReleaseNotesVersion"),
+            QStringLiteral("HostAppVersion"),
         };
         QSettings& base = baseIni();
         QSettings& loc = localIni();

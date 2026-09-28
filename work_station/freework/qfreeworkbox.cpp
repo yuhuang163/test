@@ -9,6 +9,7 @@
 #include "Abini.h"
 #include "application_shutdown.h"
 #include "asd9026a_device.h"
+#include "factory_cloud_client.h"
 #include "qfixturemanager.h"
 #include "qfreework.h"
 #include "screen_inspect_analyzer.h"
@@ -39,7 +40,9 @@ QFreeWorkBox::QFreeWorkBox(QWidget* parent) : box_base(parent), ui(new Ui::QFree
         QDir().mkpath(QDir(inspectRoot).filePath(QStringLiteral("参考图")));
         ScreenInspectAnalyzer::cleanupStoredImages(inspectRoot);
     }
-    ui->statusbar->addPermanentWidget(new QLabel(FREE_VER + QString(__DATE__) + " " + QString(__TIME__)));
+    // 右下角：整包 OTA 版本 + 本文件编译时刻（与工站 FREE_VER 窗口标题无关）
+    ui->statusbar->addPermanentWidget(new QLabel(FactoryCloudClient::appVersion() + QStringLiteral(" ") +
+                                                 QString(__DATE__) + QStringLiteral(" ") + QString(__TIME__)));
 
     fixtureConnectAct_ = ui->menubar->addAction(QStringLiteral("连接治具串口"));
     connect(fixtureConnectAct_, &QAction::triggered, this, [this]() { ensureFixtureUartWindow(true); });

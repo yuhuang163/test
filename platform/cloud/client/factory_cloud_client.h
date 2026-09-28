@@ -24,6 +24,8 @@ class FactoryCloudClient {
     static QString deviceId();
     static QString stationKey();
     static QString appVersion();
+    /** 写入本地 FactoryCloud/HostAppVersion；空串忽略 */
+    static void setAppVersion(const QString& version);
     static QString buildId();
     static QString packageName();
     static QString accessToken();
