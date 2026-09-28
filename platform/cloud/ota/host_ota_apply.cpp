@@ -2,6 +2,7 @@
 
 #include "application_shutdown.h"
 #include "factory_cloud_client.h"
+#include "host_ota_service.h"
 #include "host_ota_ui.h"
 #include "host_ota_vbs.h"
 
@@ -711,6 +712,8 @@ bool HostOtaApply::downloadAndApply(const HostOtaService::CheckResult& info,
     }
 
     HostOtaUi::showRestartCountdown(parent);
+    // 重启前落盘新版本更新说明，供升级后上报测试结果时附带
+    HostOtaService::saveLocalReleaseNotes(info.appVersion, info.releaseNotes);
     QString replaceErr;
     if (!startOtaReplaceVbs(txn, &replaceErr)) {
         if (message) {

@@ -5,6 +5,7 @@
 #include "host_ota_apply.h"
 #include "host_ota_rollback.h"
 #include "host_ota_ui.h"
+#include "my_set/my_typedef.h"
 
 #include <functional>
 
@@ -107,6 +108,31 @@ bool HostOtaService::downloadAndApply(const CheckResult& info, QWidget* parent, 
 
 void HostOtaService::cleanupStaleBackupProcess() {
     HostOtaRollback::cleanupStaleBackupProcess();
+}
+
+void HostOtaService::saveLocalReleaseNotes(const QString& appVersion, const QString& releaseNotes) {
+    const QString ver = appVersion.trimmed();
+    const QString notes = releaseNotes.trimmed();
+    if (ver.isEmpty()) {
+        return;
+    }
+    SETTINGS.setValue(QStringLiteral("FactoryCloud/HostReleaseNotesVersion"), ver);
+    SETTINGS.setValue(QStringLiteral("FactoryCloud/HostReleaseNotes"), notes);
+    SETTINGS.sync();
+    qDebug() << "[OTA] 已本地保存版本更新信息 version=" << ver << "notesLen=" << notes.size();
+}
+
+QString HostOtaService::localReleaseNotesForCurrentVersion() {
+    const QString current = FactoryCloudClient::appVersion().trimmed();
+    if (current.isEmpty()) {
+        return {};
+    }
+    const QString storedVer =
+        SETTINGS.value(QStringLiteral("FactoryCloud/HostReleaseNotesVersion")).toString().trimmed();
+    if (storedVer.isEmpty() || storedVer.compare(current, Qt::CaseInsensitive) != 0) {
+        return {};
+    }
+    return SETTINGS.value(QStringLiteral("FactoryCloud/HostReleaseNotes")).toString().trimmed();
 }
 
 bool HostOtaService::uploadCurrentExe(QString* message, const QString& releaseNotes) {
