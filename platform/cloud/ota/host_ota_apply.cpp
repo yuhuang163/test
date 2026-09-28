@@ -571,7 +571,7 @@ static bool createOtaTransaction(const QList<OtaFileSpec>& changed,
     outTxn->stagingDir = stagingDir;
     outTxn->backupDir = backupDir;
     outTxn->txnId = txnId;
-    outTxn->logPath = QDir(appDir).filePath(QStringLiteral("ota_replace.log"));
+    outTxn->logPath = QDir(appDir).filePath(QStringLiteral("所有log/上位机log/ota_replace.log"));
     outTxn->vbsFileName = QDir(appDir).filePath(QStringLiteral("ota_replace.vbs"));
     outTxn->exeName = exeName;
     outTxn->toVersion = toVersion;
