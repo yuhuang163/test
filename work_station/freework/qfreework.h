@@ -42,10 +42,6 @@ struct QFreeWorkMesSegment {
     QString costTime;
 };
 
-void appendOneMesStep(QVector<QFreeWorkMesSegment>* out, const QString& name, const QString& value,
-                      const QString& maxValue, const QString& minValue, const QString& standardValue,
-                      const QString& unit, const QString& result, const QString& costTime);
-
 #include "pre_start_monitor_config.h"
 
 class QFreeWork : public test_base {
@@ -72,6 +68,8 @@ class QFreeWork : public test_base {
     bool isPrimaryMonitorStation() const;
     void triggerAllStationScanners();
     void triggerScanner(const QString& scannerIp, int scannerPort, int scannerTimeoutMs);
+    /** 串口扫码枪：发十六进制触发报文，读条码回填 SN 并开测。 */
+    void triggerSerialScanner(const QString& comPort, int baudRate, const QString& hexCmd, int timeoutMs);
 
   protected:
     bool shouldHoldCommandRetryUntilGatePass() const override;
@@ -108,6 +106,10 @@ class QFreeWork : public test_base {
     bool evaluateActiveTestCaseGate(const QString& reportType, const QVariant& payload);
     bool tryCompleteActiveTestCaseTupleCompare(const ProtocolTupleData& data);
     void markActiveTestCaseStepDone(bool pass, const QString& testData, const QString& ask = QString());
+    /** 一拖多 PLC 同步会话键（WRITE_M11 / READ_M0…）；空表示未在屏障内。 */
+    void setPlcSyncWaitKey(const QString& key) { plcSyncWaitKey_ = key; }
+    QString plcSyncWaitKey() const { return plcSyncWaitKey_; }
+    void clearPlcSyncWaitKey() { plcSyncWaitKey_.clear(); }
     QString activeTestCaseStepTestData() const {
         return stepRuntime_.testData;
     }
@@ -163,6 +165,18 @@ class QFreeWork : public test_base {
     /** BYD 开局扫码过程码：MES Start/Complete/AddSfcKey 的 SFC；勿被 MES 主板 SN / 三元组整机 SN 冲掉 */
     QString mesProcessCode_;
     QString macAddress = "没有mac地址";
+    /** SN 前四位/型号卡控失败标记（Hook SN_PREFIX4_CHECK 与 Gate prefix4 共用） */
+    bool productModelMismatch_ = false;
+
+    /** 空碗/满碗读电容步骤缓存（差值卡控用，非同一次 0xAD 回包） */
+    bool hasBowlEmptyCapCache_ = false;
+    bool hasBowlFullCapCache_ = false;
+    int bowlEmptyCapCh0_ = 0;
+    int bowlEmptyCapCh1_ = 0;
+    int bowlEmptyCapCh2_ = 0;
+    int bowlFullCapCh0_ = 0;
+    int bowlFullCapCh1_ = 0;
+    int bowlFullCapCh2_ = 0;
 
     // --- RSSI / WiFi / 电量 / 电流 ---
     QString BT_RSSI = "";
@@ -392,6 +406,11 @@ class QFreeWork : public test_base {
     void runHikvisionScannerReadStep();
     /** Dongle 单通道吸力采样；判定走 ProtocolDongleSuctionPeakData Gate。 */
     void runDongleSuctionSampleSingleStep();
+    /** 吸力采样窗口到期/中止后的收尾（异步，不堵 startTask）。 */
+    void onDongleSuctionSamplePoll();
+    void finishDongleSuctionSampleDualEval();
+    void finishDongleSuctionSampleSingleEval();
+    void abortDongleSuctionSampleWindow(const QString& reasonLog);
     /** V3 光感单点校准（产品协议）：采光感取平均 → 写平均值并回读。亮度由前一步治具 VES 设置。 */
     void runLightSensorGoldenCalibStep();
     /** 光感校准：仅采光感取平均并写入（不含回读）。 */
@@ -409,8 +428,14 @@ class QFreeWork : public test_base {
     bool evaluateLightSensorFivePointRule(QString* detailOut);
     /** VES 四通道光源：固定通道 1，亮度由步骤 Param_brightness 配置（0~255）。 */
     void runVesCh1SetBrightnessStep();
+    /** 由扫码 PCBA 主板 SN 拼 35 位整机 SN，回填界面 SN 栏（不发协议；写入另配「写入SN码」）。 */
+    void runGenerateWholeMachineSnStep();
+    /** 用前面空碗读 / 满碗读缓存算 TOP/MID/BOT 差值并卡控（不发 0xAD）。 */
+    void runBowlCapDiffCheckStep();
     /** 自由工站屏幕检测：GigE/USB 拍照后坏点 / 显示对比 / 位置校准。 */
     void runScreenInspectStep();
+    /** 离散 LED 亮灭：灯数 Param_ledCount（1~4），框来自调试页 LedInspect/Roi1~N。 */
+    void runLedInspectStep();
     /**
      * 屏幕图像识别自动未通过时弹窗：确认是否显示对应颜色。
      * 点「是」=是该颜色→返回 true（通过）；点「否」=不是→返回 false（不通过）。
@@ -427,12 +452,18 @@ class QFreeWork : public test_base {
      */
     void runScpiProgrammableCurrentSampleAnyMatch(const TestCaseDefinition& def, const QVariant& commandParam);
     void runAsdProgrammableCurrentSampleAnyMatch(const TestCaseDefinition& def, quint8 moduleAddr, int channel);
+    /** ASD 读电流异步采样 tick（一拖多不堵 startTask）。 */
+    void onAsdCurrentSamplePoll();
+    void finishAsdCurrentSampleWindowFail();
+    void abortAsdCurrentSampleWindow();
+    /** 当前等待的一拖多 PLC 同步会话键（WRITE_M11 / READ_M0…）；空表示未在屏障内。 */
+    QString plcSyncWaitKey_;
     /** 治具/USB 电流表 Hook「读取治具电流测量值」：连续采样，任一值落入 SETTINGS 电流卡控即通过。 */
     void runJigAmmeterCurrentSampleAnyMatch();
     /** XWD 治具读电流：连续下发/收包采样，Gate 任一合格即通过。 */
     void runXwdFixtureCurrentSampleAnyMatch(const TestCaseDefinition& def, const QByteArray& request, int readChannel,
                                             bool dualFixture, int perReadTimeoutMs);
-    /** HQ/LX Modbus 电流表：连续读数，Gate 任一合格即通过。 */
+    /** HQ/LX/FAFB Modbus 电流表：连续读数，Gate 任一合格即通过。 */
     void runModbusAmmeterCurrentSampleAnyMatch(const TestCaseDefinition& def, ModbusDeviceRoute route);
     /**
      * 多路温度仪多通道窗口：在 sampleDurationMs 内轮询本工位通道列表。
@@ -469,16 +500,32 @@ class QFreeWork : public test_base {
     double suctionPeakBaselineKpa_ = -8.0;
     /** 低于该压力才计入吸气周期，避免噪声误计为峰。 */
     double suctionPeakDipStartKpa_ = -10.0;
-    /** 采样窗口内至少需要的完整「吸→回放」周期峰个数（单/双通道共用，默认 3）。 */
+    /** 采样窗口内至少需要的完整峰顶个数（加强后过峰顶才计，单/双通道共用，默认 3）。 */
     int suctionMinPeakCount_ = 3;
     /** 吸力修正：界面/曲线/判定 = 原始 kPa + 本值，步骤 Param_offsetKpa，默认 0 */
     double suctionOffsetKpa_ = 0.0;
     bool dongleSuctionReadEnabled_ = false;
     bool dongleSuctionSampleActive_ = false;
+    /** true=双通道采样窗口；false=单通道。由异步 poll 收尾。 */
+    bool dongleSuctionSampleIsDual_ = false;
+    bool dongleSuctionSampleRestoreOff_ = false;
+    int dongleSuctionSampleTargetMs_ = 10000;
+    QTimer* dongleSuctionSamplePollTimer_ = nullptr;
     /** 读电流连续采样：窗口内任一卡控合格即通过，不合格不立刻结束步骤。 */
     bool currentSampleAnyMatchActive_ = false;
+    /** ASD 异步采样窗口状态（其它读电流路径仍可同步，仅 ASD 走 timer）。 */
+    quint8 currentSampleAsdModuleAddr_ = 1;
+    int currentSampleAsdChannel_ = 1;
+    int currentSampleTargetMs_ = 3000;
+    int currentSampleIntervalMs_ = 200;
+    QElapsedTimer currentSampleWindowTimer_;
+    QTimer* currentSamplePollTimer_ = nullptr;
+    /** true=采完用均值卡控；false=任一值合格即过（Param_sampleJudgeMode=average|any） */
+    bool currentSampleJudgeByAverage_ = false;
     int currentSampleCount_ = 0;
+    double currentSampleSum_ = 0.0;
     QString currentSampleLastValueText_;
+    QString currentSampleLastUnit_;
     QVector<double> dongleSuctionCh1Samples_;
     QVector<double> dongleSuctionCh2Samples_;
     QVector<double> dongleSuctionCh3Samples_;
@@ -549,6 +596,9 @@ class QFreeWork : public test_base {
     void refreshBaseData(ProtocolBaseInfoData data) override;
     void refreshBattaryData(ProtocolBatteryData data) override;
     void refreshSn(ProtocolSnData data) override;
+    void refreshRoot2BowlCalibCap(const QString& reportType, ProtocolRoot2BowlCalibCapData data) override;
+    void refreshRoot2BowlCapDiff(ProtocolRoot2BowlCapDiffData data) override;
+    void refreshRoot2PoseAngle(ProtocolRoot2PoseAngleData data) override;
     void refreshMacData(ProtocolMacData data) override;
     void refreshPeriphData(ProtocolPeriphStateData data) override;
     void refreshRssiRead(ProtocolRssiData data) override;

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>420</width>
-    <height>380</height>
+    <width>480</width>
+    <height>520</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -38,6 +38,9 @@
         </item>
         <item row="1" column="1">
          <widget class="QComboBox" name="FixturecomNameCombo">
+          <property name="editable">
+           <bool>true</bool>
+          </property>
           <property name="sizePolicy">
            <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
             <horstretch>0</horstretch>
@@ -78,141 +81,329 @@
       </widget>
      </item>
      <item>
-      <widget class="QCheckBox" name="preStartMonitorEnabledCheckBox">
+      <widget class="QTabWidget" name="autoScanTabWidget">
        <property name="visible">
         <bool>false</bool>
        </property>
-       <property name="text">
-        <string>启用自动扫码枪与PLC线圈监控</string>
+       <property name="currentIndex">
+        <number>0</number>
        </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QLabel" name="preStartMonitorHintLabel">
-       <property name="visible">
-        <bool>false</bool>
-       </property>
-       <property name="wordWrap">
-        <bool>true</bool>
-       </property>
-       <property name="text">
-        <string>未启用时不写入扫码枪/线圈配置；勾选启用后可配置并保存。</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QGroupBox" name="preStartMonitorGroup">
-       <property name="title">
-        <string>PLC 按键监听与自动扫码配置</string>
-       </property>
-       <layout class="QFormLayout" name="preStartMonitorFormLayout">
-        <item row="0" column="0">
-         <widget class="QLabel" name="plcDeviceLabel">
-          <property name="text">
-           <string>PLC 通信方式</string>
-          </property>
-         </widget>
-        </item>
-        <item row="0" column="1">
-         <widget class="QComboBox" name="plcDeviceCombo"/>
-        </item>
-        <item row="1" column="0">
-         <widget class="QLabel" name="plcComPortLabel">
-          <property name="text">
-           <string>PLC 串口</string>
-          </property>
-         </widget>
-        </item>
-        <item row="1" column="1">
-         <widget class="QComboBox" name="plcComPortCombo">
-          <property name="editable">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="0">
-         <widget class="QLabel" name="plcBaudRateLabel">
-          <property name="text">
-           <string>串口波特率</string>
-          </property>
-         </widget>
-        </item>
-        <item row="2" column="1">
-         <widget class="QComboBox" name="plcBaudRateCombo">
-          <property name="editable">
-           <bool>true</bool>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="0">
-         <widget class="QLabel" name="plcIpLabel">
-          <property name="text">
-           <string>PLC IP 地址</string>
-          </property>
-         </widget>
-        </item>
-        <item row="3" column="1">
-         <widget class="QLineEdit" name="plcIpLineEdit"/>
-        </item>
-        <item row="4" column="0">
-         <widget class="QLabel" name="plcPortLabel">
-          <property name="text">
-           <string>PLC 端口</string>
-          </property>
-         </widget>
-        </item>
-        <item row="4" column="1">
-         <widget class="QSpinBox" name="plcPortSpinBox">
-          <property name="maximum">
-           <number>65535</number>
-          </property>
-          <property name="value">
-           <number>502</number>
-          </property>
-         </widget>
-        </item>
-        <item row="5" column="0">
-         <widget class="QLabel" name="plcWaitAddressLabel">
-          <property name="text">
-           <string>监听按键/线圈</string>
-          </property>
-         </widget>
-        </item>
-        <item row="5" column="1">
-         <widget class="QLineEdit" name="plcWaitAddressLineEdit">
-          <property name="placeholderText">
-           <string>如 M5 或 M100</string>
-          </property>
-         </widget>
-        </item>
-        <item row="6" column="0">
-         <widget class="QLabel" name="scannerIpLabel">
-          <property name="text">
-           <string>海康扫码枪 IP</string>
-          </property>
-         </widget>
-        </item>
-        <item row="6" column="1">
-         <widget class="QLineEdit" name="scannerIpLineEdit"/>
-        </item>
-        <item row="7" column="0">
-         <widget class="QLabel" name="scannerPortLabel">
-          <property name="text">
-           <string>扫码枪端口</string>
-          </property>
-         </widget>
-        </item>
-        <item row="7" column="1">
-         <widget class="QSpinBox" name="scannerPortSpinBox">
-          <property name="maximum">
-           <number>65535</number>
-          </property>
-          <property name="value">
-           <number>2001</number>
-          </property>
-         </widget>
-        </item>
-       </layout>
+       <widget class="QWidget" name="plcScanTab">
+        <attribute name="title">
+         <string>PLC扫码配置</string>
+        </attribute>
+        <layout class="QVBoxLayout" name="plcScanTabLayout">
+         <item>
+          <widget class="QCheckBox" name="preStartMonitorEnabledCheckBox">
+           <property name="text">
+            <string>启用 PLC 按键监听与海康扫码枪</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="preStartMonitorHintLabel">
+           <property name="wordWrap">
+            <bool>true</bool>
+           </property>
+           <property name="text">
+            <string>未启用时不写入扫码枪/线圈明细；勾选启用后可配置并保存。</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="preStartMonitorGroup">
+           <property name="title">
+            <string>PLC 按键监听与海康扫码</string>
+           </property>
+           <layout class="QFormLayout" name="preStartMonitorFormLayout">
+            <item row="0" column="0">
+             <widget class="QLabel" name="plcDeviceLabel">
+              <property name="text">
+               <string>PLC 通信方式</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QComboBox" name="plcDeviceCombo"/>
+            </item>
+            <item row="1" column="0">
+             <widget class="QLabel" name="plcComPortLabel">
+              <property name="text">
+               <string>PLC 串口</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QComboBox" name="plcComPortCombo">
+              <property name="editable">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QLabel" name="plcBaudRateLabel">
+              <property name="text">
+               <string>串口波特率</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="1">
+             <widget class="QComboBox" name="plcBaudRateCombo">
+              <property name="editable">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="0">
+             <widget class="QLabel" name="plcIpLabel">
+              <property name="text">
+               <string>PLC IP 地址</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="1">
+             <widget class="QLineEdit" name="plcIpLineEdit"/>
+            </item>
+            <item row="4" column="0">
+             <widget class="QLabel" name="plcPortLabel">
+              <property name="text">
+               <string>PLC 端口</string>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="1">
+             <widget class="QSpinBox" name="plcPortSpinBox">
+              <property name="maximum">
+               <number>65535</number>
+              </property>
+              <property name="value">
+               <number>502</number>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="0">
+             <widget class="QLabel" name="plcWaitAddressLabel">
+              <property name="text">
+               <string>监听按键/线圈</string>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="1">
+             <widget class="QLineEdit" name="plcWaitAddressLineEdit">
+              <property name="placeholderText">
+               <string>如 M5 或 M100</string>
+              </property>
+             </widget>
+            </item>
+            <item row="6" column="0">
+             <widget class="QLabel" name="scannerIpLabel">
+              <property name="text">
+               <string>海康扫码枪 IP</string>
+              </property>
+             </widget>
+            </item>
+            <item row="6" column="1">
+             <widget class="QLineEdit" name="scannerIpLineEdit"/>
+            </item>
+            <item row="7" column="0">
+             <widget class="QLabel" name="scannerPortLabel">
+              <property name="text">
+               <string>扫码枪端口</string>
+              </property>
+             </widget>
+            </item>
+            <item row="7" column="1">
+             <widget class="QSpinBox" name="scannerPortSpinBox">
+              <property name="maximum">
+               <number>65535</number>
+              </property>
+              <property name="value">
+               <number>2001</number>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <spacer name="plcScanTabSpacer">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </widget>
+       <widget class="QWidget" name="xwdScanTab">
+        <attribute name="title">
+         <string>本工站自动扫码</string>
+        </attribute>
+        <layout class="QVBoxLayout" name="xwdScanTabLayout">
+         <item>
+          <widget class="QGroupBox" name="xwdPlcFixtureGroup">
+           <property name="title">
+            <string>自动扫码监控串口（XWD DOWN?）</string>
+           </property>
+           <layout class="QGridLayout" name="xwdPlcFixtureLayout">
+            <item row="0" column="0">
+             <widget class="QLabel" name="xwdPlcFixtureComLabel">
+              <property name="text">
+               <string>监控串口</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QComboBox" name="xwdPlcFixtureComCombo">
+              <property name="editable">
+               <bool>true</bool>
+              </property>
+              <property name="sizePolicy">
+               <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                <horstretch>0</horstretch>
+                <verstretch>0</verstretch>
+               </sizepolicy>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="2">
+             <widget class="QLabel" name="xwdPlcFixtureBaudLabel">
+              <property name="text">
+               <string>波特率</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="3">
+             <widget class="QComboBox" name="xwdPlcFixtureBaudCombo">
+              <property name="editable">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0" colspan="4">
+             <widget class="QLabel" name="xwdPlcFixtureHintLabel">
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+              <property name="text">
+               <string>与流程 SET_ALL_UP 为同一台 XWD。可与「连接PLC治具串口」任填一处；两处都配请填同一 COM，运行时共用一路串口。</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="xwdDownScanEnabledCheckBox">
+           <property name="text">
+            <string>启用 XWD 到位自动扫码（DOWN?→OK 后串口扫码枪）</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="xwdDownScanHintLabel">
+           <property name="wordWrap">
+            <bool>true</bool>
+           </property>
+           <property name="text">
+            <string>轮询治具 DOWN?；仅当回读含 ALL_DOWN_OK 后触发扫码。一拖多时 1 号用下方串口，2 号及以后 COM 自动 +1。</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QGroupBox" name="serialScannerGroup">
+           <property name="title">
+            <string>串口扫码枪</string>
+           </property>
+           <layout class="QFormLayout" name="serialScannerFormLayout">
+            <item row="0" column="0">
+             <widget class="QLabel" name="serialScannerComLabel">
+              <property name="text">
+               <string>扫码枪串口</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QComboBox" name="serialScannerComCombo">
+              <property name="editable">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0">
+             <widget class="QLabel" name="serialScannerBaudLabel">
+              <property name="text">
+               <string>波特率</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QComboBox" name="serialScannerBaudCombo">
+              <property name="editable">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QLabel" name="serialScannerHexLabel">
+              <property name="text">
+               <string>触发报文(十六进制)</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="1">
+             <widget class="QLineEdit" name="serialScannerHexEdit">
+              <property name="placeholderText">
+               <string>例：16 54 0D</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="0">
+             <widget class="QLabel" name="serialScannerTimeoutLabel">
+              <property name="text">
+               <string>读码超时(ms)</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="1">
+             <widget class="QSpinBox" name="serialScannerTimeoutSpin">
+              <property name="minimum">
+               <number>200</number>
+              </property>
+              <property name="maximum">
+               <number>60000</number>
+              </property>
+              <property name="singleStep">
+               <number>100</number>
+              </property>
+              <property name="value">
+               <number>3000</number>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item>
+          <spacer name="xwdScanTabSpacer">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </widget>
       </widget>
      </item>
     </layout>

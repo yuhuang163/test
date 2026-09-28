@@ -1,9 +1,12 @@
 #include "qfreework.h"
 #include "hikvision_scanner_tcp.h"
 
+#include "common_utils.h"
+
 #include <algorithm>
 
 #include <QElapsedTimer>
+#include <QRegularExpression>
 #include <QSettings>
 #include <QTimer>
 #include <QVariantMap>
@@ -18,11 +21,6 @@
 #pragma execution_character_set(push, "utf-8")
 #endif
 
-struct DeferredSuctionLogFlush {
-    DeferredSuctionLogFlush() { Qlog::setBufferedLogFlushDeferred(true); }
-    ~DeferredSuctionLogFlush() { Qlog::setBufferedLogFlushDeferred(false); }
-};
-
 struct SuctionCycleExtract {
     QVector<double> peaks;
     QVector<int> peakIndexes; // 各周期最低点在 samples 中的下标，供曲线标注
@@ -31,11 +29,11 @@ struct SuctionCycleExtract {
 
 static SuctionCycleExtract extractSuctionCycles(const QVector<double>& samples, double baseline, double dipStart) {
     SuctionCycleExtract out;
-    enum class PeakPhase { AtBaseline, InCycle };
-    PeakPhase phase = PeakPhase::AtBaseline;
-    bool cycleMinInit = false;
-    double cycleMinKpa = 0.0;
-    int cycleMinIndex = 0;
+    // 只认「加强段里的最低点」为峰顶：变负=加强追最低点；开始回升=过峰顶立刻记；结束仍在加强则不算
+    bool strengthening = false;
+    bool minInit = false;
+    double minKpa = 0.0;
+    int minIndex = 0;
     bool trackingReturn = false;
     bool returnInit = false;
     double returnMaxKpa = 0.0;
@@ -48,42 +46,50 @@ static SuctionCycleExtract extractSuctionCycles(const QVector<double>& samples, 
     for (int i = 0; i < samples.size(); ++i) {
         const double kpa = samples.at(i);
         if (kpa >= baseline) {
-            if (phase == PeakPhase::InCycle && cycleMinInit && cycleMinKpa <= dipStart) {
-                out.peaks.append(cycleMinKpa);
-                out.peakIndexes.append(cycleMinIndex);
-                trackingReturn = true;
-                returnMaxKpa = kpa;
-                returnInit = true;
-            } else if (phase == PeakPhase::AtBaseline && trackingReturn) {
+            if (trackingReturn) {
                 if (!returnInit || kpa > returnMaxKpa) {
                     returnMaxKpa = kpa;
                     returnInit = true;
                 }
             }
-            phase = PeakPhase::AtBaseline;
-            cycleMinInit = false;
+            strengthening = false;
+            minInit = false;
             continue;
         }
-        if (kpa < dipStart) {
-            if (phase == PeakPhase::AtBaseline) {
-                finishReturnPlateau();
-                phase = PeakPhase::InCycle;
-                cycleMinKpa = kpa;
-                cycleMinIndex = i;
-                cycleMinInit = true;
-            } else if (!cycleMinInit || kpa < cycleMinKpa) {
-                cycleMinKpa = kpa;
-                cycleMinIndex = i;
-                cycleMinInit = true;
-            }
+
+        const bool goingDeeper = (i > 0 && kpa < samples.at(i - 1));
+        const bool goingShallower = (i > 0 && kpa > samples.at(i - 1));
+
+        if (!strengthening) {
+            // 已在衰弱的半截不入；只有继续变负且低于入峰线才开加强
+            if (!goingDeeper || kpa >= dipStart)
+                continue;
+            finishReturnPlateau();
+            strengthening = true;
+            minKpa = kpa;
+            minIndex = i;
+            minInit = true;
             continue;
         }
-        if (phase == PeakPhase::InCycle && (!cycleMinInit || kpa < cycleMinKpa)) {
-            cycleMinKpa = kpa;
-            cycleMinIndex = i;
-            cycleMinInit = true;
+
+        if (kpa < minKpa) {
+            minKpa = kpa;
+            minIndex = i;
+            minInit = true;
+            continue;
+        }
+        if (goingShallower && minInit && minKpa <= dipStart) {
+            // 加强后开始回升 → 最低点即完整峰顶
+            out.peaks.append(minKpa);
+            out.peakIndexes.append(minIndex);
+            trackingReturn = true;
+            returnMaxKpa = baseline;
+            returnInit = false;
+            strengthening = false;
+            minInit = false;
         }
     }
+    // 采样结束仍在加强：峰顶未出现，不算
     finishReturnPlateau();
     return out;
 }
@@ -214,6 +220,11 @@ void QFreeWork::startPlcKeyButtonTest(const QString& testName, const QString& pr
 void QFreeWork::runDongleSuctionSampleStep() {
     applySuctionGateFromStepParam(activeTestCase_.send.param);
 
+    if (dongleSuctionSampleActive_) {
+        showlog(QStringLiteral("采集双通道吸力：上一窗采样尚未结束，忽略重复启动"));
+        return;
+    }
+
     if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
         stepRuntime_.done = true;
         stepRuntime_.pass = false;
@@ -261,48 +272,73 @@ void QFreeWork::runDongleSuctionSampleStep() {
     suctionChartRightKpa_.reserve(reserveN);
 
     // 计时器先于 dongleSuctionSampleActive_ 起，保证首个采样点就有时间
+    // 一拖多：不可在 startTask 内 waitWorkIdle 堵 10s（会嵌套泵邻工位并把两边采样串行化）
+    dongleSuctionSampleIsDual_ = true;
+    dongleSuctionSampleTargetMs_ = durationMs;
+    dongleSuctionSampleRestoreOff_ = restoreOff;
     dongleSuctionSampleTimer_.start();
     dongleSuctionSampleActive_ = true;
-    DeferredSuctionLogFlush deferDongleLogFlush;
-    QElapsedTimer sampleTimer;
-    sampleTimer.start();
-    // 取样点密度由 AT+SUCTION_DATA 决定；waitWorkIdle 只泵事件且不占满 CPU，不丢点。
-    // 采样期间不刷界面日志、不实时画曲线，结束再落盘并绘制完整曲线。
-    while (sampleTimer.elapsed() < durationMs) {
-        if (!isTestContinue) {
-            dongleSuctionSampleActive_ = false;
-            if (restoreOff)
-                setDongleSuctionReadEnabled(false);
-            finalizeSuctionChartPlot();
-            stepRuntime_.done = true;
-            stepRuntime_.pass = false;
-            stepRuntime_.testData = QStringLiteral("测试中止");
-            TestResult = failValue;
-            showlog(QStringLiteral("采集双通道吸力已中止"));
-            markActiveTestCaseStepDone(false, stepRuntime_.testData, QStringLiteral("失败"));
-            return;
-        }
-        waitWorkIdle(qMin(intervalMs, durationMs - static_cast<int>(sampleTimer.elapsed())));
+    Qlog::setBufferedLogFlushDeferred(true);
+    if (!dongleSuctionSamplePollTimer_) {
+        dongleSuctionSamplePollTimer_ = new QTimer(this);
+        QObject::connect(dongleSuctionSamplePollTimer_, &QTimer::timeout, this, [this]() { onDongleSuctionSamplePoll(); });
     }
+    dongleSuctionSamplePollTimer_->start(intervalMs);
+}
+
+void QFreeWork::abortDongleSuctionSampleWindow(const QString& reasonLog) {
+    if (dongleSuctionSamplePollTimer_)
+        dongleSuctionSamplePollTimer_->stop();
     dongleSuctionSampleActive_ = false;
-    if (restoreOff)
+    if (dongleSuctionSampleRestoreOff_)
         setDongleSuctionReadEnabled(false);
+    Qlog::setBufferedLogFlushDeferred(false);
     finalizeSuctionChartPlot();
-    // 交 Qlog 暂存，测完随会话日志包导出 CSV（此时还不知 PASS/NG，不能定文件名）
+    stepRuntime_.done = true;
+    stepRuntime_.pass = false;
+    stepRuntime_.testData = QStringLiteral("测试中止");
+    TestResult = failValue;
+    showlog(reasonLog);
+    markActiveTestCaseStepDone(false, stepRuntime_.testData, QStringLiteral("失败"));
+}
+
+void QFreeWork::onDongleSuctionSamplePoll() {
+    if (!dongleSuctionSampleActive_)
+        return;
+    if (!isTestContinue) {
+        abortDongleSuctionSampleWindow(dongleSuctionSampleIsDual_ ? QStringLiteral("采集双通道吸力已中止")
+                                                                  : QStringLiteral("采集单通道吸力已中止"));
+        return;
+    }
+    if (dongleSuctionSampleTimer_.elapsed() < dongleSuctionSampleTargetMs_)
+        return;
+    if (dongleSuctionSamplePollTimer_)
+        dongleSuctionSamplePollTimer_->stop();
+    dongleSuctionSampleActive_ = false;
+    if (dongleSuctionSampleRestoreOff_)
+        setDongleSuctionReadEnabled(false);
+    Qlog::setBufferedLogFlushDeferred(false);
+    finalizeSuctionChartPlot();
     Qlog::setSuctionSamples(getIndex(), dongleSuctionSampleTimeSec_, dongleSuctionCh1Samples_,
                             dongleSuctionCh2Samples_, dongleSuctionCh3Samples_);
+    if (dongleSuctionSampleIsDual_)
+        finishDongleSuctionSampleDualEval();
+    else
+        finishDongleSuctionSampleSingleEval();
+}
 
+void QFreeWork::finishDongleSuctionSampleDualEval() {
     if (dongleSuctionCh1Samples_.isEmpty() || dongleSuctionCh2Samples_.isEmpty()) {
         showlog(QStringLiteral("采集双通道吸力失败：采样窗口内未收到 CH1/CH2 AT+SUCTION_DATA"));
         markActiveTestCaseStepDone(false, QStringLiteral("无吸力采样点"), QStringLiteral("失败"));
         return;
     }
 
-    // 与单通道相同：完整「吸→回基线」周期才记峰，拦截一直保持吸力不放气
+    // 峰顶=加强段最低点；过峰顶回升后记下；结束仍在加强不算
     const double baseline = suctionPeakBaselineKpa_ + suctionOffsetKpa_;
     const double dipStart = suctionPeakDipStartKpa_ + suctionOffsetKpa_;
-    const SuctionCycleExtract ch1Cycles = extractSuctionCycles(dongleSuctionCh1Samples_, baseline, dipStart);
-    const SuctionCycleExtract ch2Cycles = extractSuctionCycles(dongleSuctionCh2Samples_, baseline, dipStart);
+    SuctionCycleExtract ch1Cycles = extractSuctionCycles(dongleSuctionCh1Samples_, baseline, dipStart);
+    SuctionCycleExtract ch2Cycles = extractSuctionCycles(dongleSuctionCh2Samples_, baseline, dipStart);
     const QVector<double>& ch1Peaks = ch1Cycles.peaks;
     const QVector<double>& ch2Peaks = ch2Cycles.peaks;
     if (!ch1Peaks.isEmpty() || !ch2Peaks.isEmpty()) {
@@ -421,6 +457,11 @@ void QFreeWork::runDongleSuctionSampleStep() {
 void QFreeWork::runDongleSuctionSampleSingleStep() {
     applySuctionGateFromStepParam(activeTestCase_.send.param);
 
+    if (dongleSuctionSampleActive_) {
+        showlog(QStringLiteral("采集单通道吸力：上一窗采样尚未结束，忽略重复启动"));
+        return;
+    }
+
     if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
         stepRuntime_.done = true;
         stepRuntime_.pass = false;
@@ -469,36 +510,23 @@ void QFreeWork::runDongleSuctionSampleSingleStep() {
     suctionChartRightKpa_.reserve(reserveN);
 
     // 计时器先于 dongleSuctionSampleActive_ 起，保证首个采样点就有时间
+    // 一拖多：异步窗口，beginStep 立刻返回，TotallyTask 可继续推进邻工位
+    dongleSuctionSampleIsDual_ = false;
+    dongleSuctionSampleTargetMs_ = durationMs;
+    dongleSuctionSampleRestoreOff_ = restoreOff;
     dongleSuctionSampleTimer_.start();
     dongleSuctionSampleActive_ = true;
-    DeferredSuctionLogFlush deferDongleLogFlush;
-    QElapsedTimer sampleTimer;
-    sampleTimer.start();
-    // 同双通道：入库跟 AT 帧；intervalMs 只用于泵事件，不降采样
-    while (sampleTimer.elapsed() < durationMs) {
-        if (!isTestContinue) {
-            dongleSuctionSampleActive_ = false;
-            if (restoreOff)
-                setDongleSuctionReadEnabled(false);
-            finalizeSuctionChartPlot();
-            stepRuntime_.done = true;
-            stepRuntime_.pass = false;
-            stepRuntime_.testData = QStringLiteral("测试中止");
-            TestResult = failValue;
-            showlog(QStringLiteral("采集单通道吸力已中止"));
-            markActiveTestCaseStepDone(false, stepRuntime_.testData, QStringLiteral("失败"));
-            return;
-        }
-        waitWorkIdle(qMin(intervalMs, durationMs - static_cast<int>(sampleTimer.elapsed())));
+    Qlog::setBufferedLogFlushDeferred(true);
+    if (!dongleSuctionSamplePollTimer_) {
+        dongleSuctionSamplePollTimer_ = new QTimer(this);
+        QObject::connect(dongleSuctionSamplePollTimer_, &QTimer::timeout, this, [this]() { onDongleSuctionSamplePoll(); });
     }
-    dongleSuctionSampleActive_ = false;
-    if (restoreOff)
-        setDongleSuctionReadEnabled(false);
-    finalizeSuctionChartPlot();
-    // 交 Qlog 暂存，测完随会话日志包导出 CSV（此时还不知 PASS/NG，不能定文件名）
-    Qlog::setSuctionSamples(getIndex(), dongleSuctionSampleTimeSec_, dongleSuctionCh1Samples_,
-                            dongleSuctionCh2Samples_, dongleSuctionCh3Samples_);
+    dongleSuctionSamplePollTimer_->start(intervalMs);
+}
 
+void QFreeWork::finishDongleSuctionSampleSingleEval() {
+    const int chIndex = qBound(0, suctionSingleChannelIndex_, 2);
+    const QString channelName = QStringLiteral("CH%1").arg(chIndex + 1);
     const QVector<double>* samplesPtr = &dongleSuctionCh1Samples_;
     if (chIndex == 1)
         samplesPtr = &dongleSuctionCh2Samples_;
@@ -511,11 +539,10 @@ void QFreeWork::runDongleSuctionSampleSingleStep() {
         return;
     }
 
-    // 周期峰值：吸气回基线后取本周期最低点（真正的吸力峰）；峰值差=各峰中最大-最小，
-    // 切勿用窗口绝对值最高-最低（会把基线≈0 算进去，diff≈40+）
+    // 峰顶=加强段最低点；峰值差=各完整峰中最大-最小
     const double baseline = suctionPeakBaselineKpa_ + suctionOffsetKpa_;
     const double dipStart = suctionPeakDipStartKpa_ + suctionOffsetKpa_;
-    const SuctionCycleExtract cycles = extractSuctionCycles(samples, baseline, dipStart);
+    SuctionCycleExtract cycles = extractSuctionCycles(samples, baseline, dipStart);
     const QVector<double>& cyclePeaks = cycles.peaks;
     const int minPeaks = qMax(1, suctionMinPeakCount_);
 
@@ -1098,24 +1125,6 @@ void QFreeWork::runAirPressureSampleStep() {
             appendPressureRow(QStringLiteral("气压%1").arg(i + 1), v);
         }
     }
-    // MES 必须在 testResultTableUpdate 之前写：该函数会 clear 传入的 rows
-    const QString baseTag = activeTestCase_.meta.displayName.trimmed().isEmpty()
-                                ? (activeTestCase_.meta.name.trimmed().isEmpty()
-                                       ? activeTestCase_.meta.mesTag.trimmed()
-                                       : activeTestCase_.meta.name.trimmed())
-                                : activeTestCase_.meta.displayName.trimmed();
-    const QString costTime =
-        QString::number(stepRuntime_.caseTimer.isValid() ? stepRuntime_.caseTimer.elapsed() : 0);
-    const QString maxVal = QString::number(gateHi, 'f', 3);
-    const QString minVal = QString::number(gateLo, 'f', 3);
-    for (const TestItem& item : rows) {
-        const QString itemName =
-            baseTag.isEmpty() ? item.testItem : QStringLiteral("%1_%2").arg(baseTag, item.testItem);
-        appendOneMesStep(&freeWorkMesSegments_, itemName, item.testData, maxVal, minVal, QString(),
-                         QStringLiteral("kPa"),
-                         item.testResult == passValue ? QStringLiteral("PASS") : QStringLiteral("FAIL"),
-                         costTime);
-    }
     testResultTableUpdate(rows);
     testCaseMultiGateTableEmitted_ = true;
 
@@ -1413,4 +1422,146 @@ void QFreeWork::runHikvisionScannerReadStep() {
         showlog(QStringLiteral("扫码失败: %1").arg(error));
         markActiveTestCaseStepDone(false, error, QStringLiteral("失败"));
     }
+}
+
+void QFreeWork::runGenerateWholeMachineSnStep() {
+    // 图1 智能机整机 SN（Air1/G100=35）：产品4+备用4+SKU3+MAC12+工厂2+日期3+预留1+版本1+产线1+流水4
+    // 图2 智能机 PCBA SN（28）：产品4+MAC12+工厂2+类型2+日期3+流水5；本步只吃主板（类型建议 MB）
+    const TestCaseDefinition& def = activeTestCase();
+    QVariantMap map;
+    if (def.send.param.canConvert<QVariantMap>())
+        map = resolveTestCaseSendParamTree(def.send.param).toMap();
+
+    const auto takeParam = [&map](const QString& key) -> QString {
+        if (!map.contains(key))
+            return {};
+        return map.value(key).toString().trimmed();
+    };
+
+    QString pcbaRaw = takeParam(QStringLiteral("pcbaSn"));
+    if (pcbaRaw.isEmpty())
+        pcbaRaw = resolvedPcbaSnText();
+    QString pcba = CommonUtils::extractSnFromUrlOrText(pcbaRaw);
+    pcba.remove(QRegularExpression(QStringLiteral("\\s+")));
+    pcba = pcba.toUpper();
+
+    if (pcba.size() != 28) {
+        const QString tip = QStringLiteral("PCBA SN须为智能机28位（当前%1位：%2）").arg(pcba.size()).arg(pcba);
+        showlog(QStringLiteral("生成整机SN失败：%1；非智能机/URL前缀机型暂未适配").arg(tip));
+        markActiveTestCaseStepDone(false, tip, QStringLiteral("失败"));
+        return;
+    }
+
+    const QString product = pcba.mid(0, 4);
+    const QString mac = pcba.mid(4, 12);
+    const QString factory = pcba.mid(16, 2);
+    const QString pcbaType = pcba.mid(18, 2);
+    const QString pcbaDate = pcba.mid(20, 3);
+    if (!QRegularExpression(QStringLiteral("^[0-9A-F]{12}$")).match(mac).hasMatch()) {
+        showlog(QStringLiteral("生成整机SN失败：PCBA SN 中 MAC 段非法：%1").arg(mac));
+        markActiveTestCaseStepDone(false, QStringLiteral("MAC非法:%1").arg(mac), QStringLiteral("失败"));
+        return;
+    }
+
+    const QString expectType = takeParam(QStringLiteral("pcbaType"));
+    if (!expectType.isEmpty() && pcbaType.compare(expectType, Qt::CaseInsensitive) != 0) {
+        const QString tip = QStringLiteral("PCBA类型=%1，期望=%2").arg(pcbaType, expectType.toUpper());
+        showlog(QStringLiteral("生成整机SN失败：%1（主板一般为 MB）").arg(tip));
+        markActiveTestCaseStepDone(false, tip, QStringLiteral("失败"));
+        return;
+    }
+
+    QString spare = takeParam(QStringLiteral("spare"));
+    if (spare.isEmpty())
+        spare = QStringLiteral("0000"); // 图1 备用位暂无追溯意义
+    QString sku = takeParam(QStringLiteral("sku"));
+    if (sku.isEmpty())
+        sku = pack.sku.trimmed();
+    QString date = takeParam(QStringLiteral("date"));
+    if (date.isEmpty())
+        date = pcbaDate; // 无附表一编码规则时默认沿用 PCBA 生产日；组装日请填 Param_date
+    QString reserved = takeParam(QStringLiteral("reserved")); // 图1 F：如 Air1 左右单撑
+    QString version = takeParam(QStringLiteral("version"));   // 图1 N：附表三
+    QString line = takeParam(QStringLiteral("line"));         // 图1 P：附表二
+    QString serial = takeParam(QStringLiteral("serial"));     // 图1 整机日流水 4 位（≠PCBA 5 位流水）
+    QString factoryOut = takeParam(QStringLiteral("factory"));
+    if (factoryOut.isEmpty())
+        factoryOut = factory;
+
+    QStringList missing;
+    if (sku.size() != 3)
+        missing << QStringLiteral("sku(3位，MES ROOTSKU/Param_sku，附表二)");
+    if (spare.size() != 4)
+        missing << QStringLiteral("spare(4位备用，默认0000)");
+    if (date.size() != 3)
+        missing << QStringLiteral("date(3位YMD，附表一；或沿用PCBA)");
+    if (reserved.size() != 1)
+        missing << QStringLiteral("reserved(1位F，如Air1:1左2右3单撑)");
+    if (version.size() != 1)
+        missing << QStringLiteral("version(1位N，附表三生产版本)");
+    if (line.size() != 1)
+        missing << QStringLiteral("line(1位P，附表二产线)");
+    if (serial.size() != 4 || !QRegularExpression(QStringLiteral("^\\d{4}$")).match(serial).hasMatch())
+        missing << QStringLiteral("serial(4位日流水，需号段/MES计数，不能用PCBA5位流水)");
+    if (factoryOut.size() != 2)
+        missing << QStringLiteral("factory(2位工厂代码)");
+
+    if (!missing.isEmpty()) {
+        const QString tip = QStringLiteral("缺少：%1").arg(missing.join(QStringLiteral("；")));
+        showlog(QStringLiteral("生成整机SN失败：%1；PCBA解析 product=%2 mac=%3 factory=%4 type=%5 date=%6")
+                    .arg(tip, product, mac, factory, pcbaType, pcbaDate));
+        markActiveTestCaseStepDone(false, tip, QStringLiteral("失败"));
+        return;
+    }
+
+    const QString whole =
+        product + spare.toUpper() + sku.toUpper() + mac + factoryOut.toUpper() + date.toUpper() + reserved.toUpper()
+        + version.toUpper() + line.toUpper() + serial;
+    if (whole.size() != 35) {
+        showlog(QStringLiteral("生成整机SN失败：拼出长度=%1（期望35） sn=%2").arg(whole.size()).arg(whole));
+        markActiveTestCaseStepDone(false, QStringLiteral("长度异常:%1").arg(whole.size()), QStringLiteral("失败"));
+        return;
+    }
+
+    setWholeMachineSn(whole);
+    stepRuntime_.testData = whole;
+    showlog(QStringLiteral("已生成整机SN并回填界面SN栏：%1（来源PCBA=%2 type=%3 sku=%4 reserved=%5 version=%6 line=%7 serial=%8）")
+                .arg(whole, pcba, pcbaType, sku, reserved, version, line, serial));
+    markActiveTestCaseStepDone(true, whole, QStringLiteral("通过"));
+}
+
+void QFreeWork::runBowlCapDiffCheckStep() {
+    if (!hasBowlEmptyCapCache_ || !hasBowlFullCapCache_) {
+        QStringList miss;
+        if (!hasBowlEmptyCapCache_)
+            miss << QStringLiteral("空碗读值(请先执行读取空碗电容)");
+        if (!hasBowlFullCapCache_)
+            miss << QStringLiteral("满碗读值(请先执行读取满碗电容)");
+        const QString tip = miss.join(QStringLiteral("；"));
+        showlog(QStringLiteral("空满碗电容差值失败：缺少%1").arg(tip));
+        markActiveTestCaseStepDone(false, tip, QStringLiteral("失败"));
+        return;
+    }
+
+    ProtocolRoot2BowlCapDiffData diff;
+    diff.topDiff = static_cast<double>(bowlFullCapCh0_ - bowlEmptyCapCh0_); // F0 顶
+    diff.midDiff = static_cast<double>(bowlFullCapCh2_ - bowlEmptyCapCh2_); // F2 中
+    diff.botDiff = static_cast<double>(bowlFullCapCh1_ - bowlEmptyCapCh1_); // F1 底
+
+    const QString testData = QStringLiteral("TOP=%1(%2-%3) MID=%4(%5-%6) BOT=%7(%8-%9)")
+                                 .arg(diff.topDiff, 0, 'f', 2)
+                                 .arg(bowlFullCapCh0_)
+                                 .arg(bowlEmptyCapCh0_)
+                                 .arg(diff.midDiff, 0, 'f', 2)
+                                 .arg(bowlFullCapCh2_)
+                                 .arg(bowlEmptyCapCh2_)
+                                 .arg(diff.botDiff, 0, 'f', 2)
+                                 .arg(bowlFullCapCh1_)
+                                 .arg(bowlEmptyCapCh1_);
+    showlog(QStringLiteral("空满碗电容差值（取前序步骤缓存）：%1").arg(testData));
+
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolRoot2BowlCapDiffData"), QVariant::fromValue(diff)))
+        return;
+
+    markActiveTestCaseStepDone(true, testData, QStringLiteral("通过"));
 }

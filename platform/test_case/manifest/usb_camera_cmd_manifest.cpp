@@ -38,6 +38,11 @@ constexpr const char kHintScreenCameraCalibration[] =
     u8"Param_cameraIp / ScreenInspect/GigEIp；Param_cameraSource=usb 用 USB\r\n"
     u8"Param_roi 检测范围（建议先在调试页拖拽划定）；Param_warmupMs 预热\r\n"
     u8"弹窗请操作员目视对照：是=位置OK继续，否=未对准失败。本步不做坏点/相似度卡控";
+constexpr const char kHintLedOnOffCheck[] =
+    u8"离散 LED：调试页划 Roi1~N；同一步 1~4 灯，每灯单独卡控\r\n"
+    u8"Param_mode1~mode4=on常亮 / blink闪烁（也可用 modes=on,blink,on,on）\r\n"
+    u8"有任一只灯为 blink 则连拍；常亮灯要求窗口内全程亮，闪烁灯要求既亮又灭\r\n"
+    u8"Param_ledCount / sampleDurationMs / sampleIntervalMs / minLuma / cameraIp 等";
 
 const Row kRows[] = {
     {UsbCameraCmd::ScreenCameraCalibration, "ScreenCameraCalibration", u8"屏幕拍照·位置校准", DeviceCmdParamKind::JsonMap,
@@ -46,6 +51,8 @@ const Row kRows[] = {
      kHintScreenDeadPixel, kGet, "ProtocolScreenInspectData", "deadPixels"},
     {UsbCameraCmd::ScreenDisplayAnomalyCheck, "ScreenDisplayAnomalyCheck", u8"屏幕拍照·显示对比",
      DeviceCmdParamKind::JsonMap, kHintScreenDisplayAnomaly, kGet, "ProtocolScreenInspectData", "ssim"},
+    {UsbCameraCmd::LedOnOffCheck, "LedOnOffCheck", u8"LED拍照·亮灭检测", DeviceCmdParamKind::JsonMap,
+     kHintLedOnOffCheck, kGet, "ProtocolLedInspectData", "allOn"},
 };
 
 } // namespace

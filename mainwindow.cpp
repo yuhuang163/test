@@ -670,6 +670,16 @@ void MainWindow::onProtocolReport(const ProtocolReport& report) {
     } else if (reportType == QLatin1String("ProtocolPumpStallCurrentData")
                && payload.canConvert<ProtocolPumpStallCurrentData>()) {
         refreshPumpStallCurrent(payload.value<ProtocolPumpStallCurrentData>());
+    } else if ((reportType == QLatin1String("ProtocolRoot2BowlEmptyCapData")
+                || reportType == QLatin1String("ProtocolRoot2BowlFullCapData"))
+               && payload.canConvert<ProtocolRoot2BowlCalibCapData>()) {
+        refreshRoot2BowlCalibCap(reportType, payload.value<ProtocolRoot2BowlCalibCapData>());
+    } else if (reportType == QLatin1String("ProtocolRoot2BowlCapDiffData")
+               && payload.canConvert<ProtocolRoot2BowlCapDiffData>()) {
+        refreshRoot2BowlCapDiff(payload.value<ProtocolRoot2BowlCapDiffData>());
+    } else if (reportType == QLatin1String("ProtocolRoot2PoseAngleData")
+               && payload.canConvert<ProtocolRoot2PoseAngleData>()) {
+        refreshRoot2PoseAngle(payload.value<ProtocolRoot2PoseAngleData>());
     } else if (reportType == QLatin1String("ProtocolTupleData") && payload.canConvert<ProtocolTupleData>()) {
         refreshTupleData(payload.value<ProtocolTupleData>());
     } else {
@@ -881,6 +891,34 @@ void MainWindow::refreshFlangeStatus(ProtocolTypeData data) {
 void MainWindow::refreshPumpStallCurrent(ProtocolPumpStallCurrentData data) {
     ui->root_pump_stall_value->setText(QStringLiteral("泵堵电流 ADC：%1").arg(data.adcValue));
     showlog(QStringLiteral("泵堵电流：ADC=%1 (0x82)").arg(data.adcValue));
+}
+
+void MainWindow::refreshRoot2BowlCalibCap(const QString& reportType, ProtocolRoot2BowlCalibCapData data) {
+    const bool full = reportType == QLatin1String("ProtocolRoot2BowlFullCapData");
+    if (full) {
+        showlog(QStringLiteral("满碗校准电容：F0=%1 F1=%2 F2=%3 (0xAD)")
+                    .arg(data.fullCh0)
+                    .arg(data.fullCh1)
+                    .arg(data.fullCh2));
+    } else {
+        showlog(QStringLiteral("空碗校准电容：F0=%1 F1=%2 F2=%3 (0xAD)")
+                    .arg(data.emptyCh0)
+                    .arg(data.emptyCh1)
+                    .arg(data.emptyCh2));
+    }
+}
+
+void MainWindow::refreshRoot2BowlCapDiff(ProtocolRoot2BowlCapDiffData data) {
+    showlog(QStringLiteral("空满碗电容差值：TOP=%1 MID=%2 BOT=%3 (0xAD)")
+                .arg(data.topDiff, 0, 'f', 2)
+                .arg(data.midDiff, 0, 'f', 2)
+                .arg(data.botDiff, 0, 'f', 2));
+}
+
+void MainWindow::refreshRoot2PoseAngle(ProtocolRoot2PoseAngleData data) {
+    showlog(QStringLiteral("姿态角：俯仰=%1° 翻滚=%2° (0xDA)")
+                .arg(data.pitch01deg / 10.0, 0, 'f', 1)
+                .arg(data.roll01deg / 10.0, 0, 'f', 1));
 }
 
 void MainWindow::refreshTupleData(ProtocolTupleData data) {

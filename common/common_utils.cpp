@@ -380,6 +380,7 @@ static const ProductEntry kProductTable[] = {
     {"W1 Lite",  "qroot", true, "W1 Lite",  true},
     {"W1",       "qroot", true, "W1",       true}, 
     {"Air1",       "qroot2", true, "Air1",       true},
+    {"M5 Smart",       "qroot2", true, "M5 Smart",       true},
 };
 
 /** 主窗口 BLE 扫描过滤名补充项（无产品映射，仅作筛选提示）。 */

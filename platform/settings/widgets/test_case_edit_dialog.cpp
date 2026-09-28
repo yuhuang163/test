@@ -61,6 +61,7 @@ QVariantMap sendParamAsJsonMap(const QVariant& param) {
         QVariantMap map;
         map.insert(QStringLiteral("which_sn"), static_cast<int>(payload.which_sn));
         map.insert(QStringLiteral("sn"), QString::fromUtf8(payload.sn));
+        map.insert(QStringLiteral("length"), payload.snLength > 0 ? payload.snLength : 35);
         return map;
     }
     if (param.type() == QVariant::Map || param.type() == QVariant::Hash)
@@ -115,6 +116,16 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("seconds"), QStringLiteral("倒计时等待秒数（COUNTDOWN_WAIT）")},
         {QStringLiteral("waitSeconds"), QStringLiteral("倒计时等待秒数（同 seconds）")},
         {QStringLiteral("prompt"), QStringLiteral("倒计时弹窗提示文字（可选）")},
+        {QStringLiteral("spare"), QStringLiteral("整机SN备用4位（默认0000）")},
+        {QStringLiteral("expected"), QStringLiteral("期望SN前四位")},
+        {QStringLiteral("sku"), QStringLiteral("整机SN SKU 3位（附表二/MES）")},
+        {QStringLiteral("reserved"), QStringLiteral("整机SN预留F：Air1 1左/2右/3单撑")},
+        {QStringLiteral("version"), QStringLiteral("整机SN生产版本N（附表三）")},
+        {QStringLiteral("serial"), QStringLiteral("整机SN当日流水4位")},
+        {QStringLiteral("pcbaType"), QStringLiteral("期望PCBA类型（主板MB）")},
+        {QStringLiteral("date"), QStringLiteral("整机SN日期3位（空则用PCBA日期）")},
+        {QStringLiteral("factory"), QStringLiteral("工厂代码2位（空则用PCBA工厂）")},
+        {QStringLiteral("pcbaSn"), QStringLiteral("PCBA主板SN（空则用界面SN栏）")},
         {QStringLiteral("brightness"), QStringLiteral("亮度（0~255）")},
         {QStringLiteral("index"), QStringLiteral("光感校准写入下标（0~19）")},
         {QStringLiteral("golden"), QStringLiteral("本点金样光感值")},
@@ -136,6 +147,7 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("channelLock"), QStringLiteral("锁定通道号（不按工位改）")},
         {QStringLiteral("slaveAddr"), QStringLiteral("Modbus 从站地址")},
         {QStringLiteral("addr"), QStringLiteral("Modbus 从站地址")},
+        {QStringLiteral("registerAddress"), QStringLiteral("保持寄存器地址（Air1电压常用1/4）")},
         {QStringLiteral("tempDeviceIndex"), QStringLiteral("温度仪设备序号（从 0）")},
         {QStringLiteral("tempDeviceIndexLock"), QStringLiteral("锁定温度仪设备序号")},
         {QStringLiteral("tempBaudRate"), QStringLiteral("温度仪串口波特率")},
@@ -145,7 +157,7 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("sharedComName"), QStringLiteral("共享串口名（运行时解析）")},
         {QStringLiteral("txHex"), QStringLiteral("发送十六进制报文")},
         {QStringLiteral("string"), QStringLiteral("原文/字符串参数")},
-        {QStringLiteral("line"), QStringLiteral("SCPI 原始行")},
+        {QStringLiteral("line"), QStringLiteral("整机SN产线P（附表二；SCPI步骤则为原始行）")},
         {QStringLiteral("mLeft"), QStringLiteral("PLC 左工位线圈")},
         {QStringLiteral("mRight"), QStringLiteral("PLC 右工位线圈")},
         {QStringLiteral("address"), QStringLiteral("地址（如 M20、D100、X0）")},
@@ -178,6 +190,31 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("referencePath"), QStringLiteral("参考图路径（双击选择，自动存入 screen_inspect/参考图）")},
         {QStringLiteral("saveCapture"), QStringLiteral("保存拍摄图（1开/0关）")},
         {QStringLiteral("roi"), QStringLiteral("检测范围 x,y,w,h（空=调试页划定/自动）")},
+        {QStringLiteral("ledCount"), QStringLiteral("检测灯数 1~4（同一步分项）")},
+        {QStringLiteral("minLuma"), QStringLiteral("亮灭亮度阈值 0~255")},
+        {QStringLiteral("mode"), QStringLiteral("模式（吸奶：1~7 吸乳等；灯检：on/blink 兜底）")},
+        {QStringLiteral("modes"), QStringLiteral("每灯模式 CSV，如 on,blink,on,on")},
+        {QStringLiteral("mode1"), QStringLiteral("灯1：on常亮 / blink闪烁")},
+        {QStringLiteral("mode2"), QStringLiteral("灯2：on常亮 / blink闪烁")},
+        {QStringLiteral("mode3"), QStringLiteral("灯3：on常亮 / blink闪烁")},
+        {QStringLiteral("mode4"), QStringLiteral("灯4：on常亮 / blink闪烁")},
+        {QStringLiteral("sampleDurationMs"), QStringLiteral("有闪烁灯时采样窗口 ms")},
+        {QStringLiteral("sampleIntervalMs"), QStringLiteral("采样间隔 ms")},
+        {QStringLiteral("status"), QStringLiteral("泵开关（0停止/1运行）")},
+        {QStringLiteral("level"), QStringLiteral("档位（1~15）")},
+        {QStringLiteral("switch"), QStringLiteral("开关（0关/1开）")},
+        {QStringLiteral("enter"), QStringLiteral("进入/退出（1进/0退）")},
+        {QStringLiteral("customMode"), QStringLiteral("自定义模式")},
+        {QStringLiteral("customLevel"), QStringLiteral("自定义档位")},
+        {QStringLiteral("customFreq"), QStringLiteral("自定义频率（1低/2中/3高）")},
+        {QStringLiteral("controlType"), QStringLiteral("控制侧（0左/1右/2双边）")},
+        {QStringLiteral("pumpFreq"), QStringLiteral("泵频率（0低/1中/2高）")},
+        {QStringLiteral("on"), QStringLiteral("开关（1开/0关）")},
+        {QStringLiteral("state"), QStringLiteral("状态（1运行/0暂停）")},
+        {QStringLiteral("which_sn"), QStringLiteral("SN 类型（1整机等）")},
+        {QStringLiteral("length"), QStringLiteral("写入SN长度（35=M5原样；39=Air1末尾补0）")},
+        {QStringLiteral("snLength"), QStringLiteral("写入SN长度（同 length）")},
+        {QStringLiteral("color"), QStringLiteral("颜色")},
     };
     if (kMap.contains(k))
         return kMap.value(k);
@@ -203,6 +240,7 @@ bool hookUsesSendParamUi(const QString& hookId) {
     return hookId == QLatin1String("COUNTDOWN_WAIT") || hookId == QLatin1String("LIGHT_SENSOR_GOLDEN_CALIB")
         || hookId == QLatin1String("LIGHT_SENSOR_CALIB_WRITE") || hookId == QLatin1String("LIGHT_SENSOR_CALIB_READ")
         || hookId == QLatin1String("VES_CH1_SET_BRIGHTNESS") || hookId == QLatin1String("AIR_PRESSURE_SAMPLE")
+        || hookId == QLatin1String("GENERATE_WHOLE_MACHINE_SN") || hookId == QLatin1String("SN_PREFIX4_CHECK")
         || hookId.startsWith(QLatin1String("PLC_SYNC_"));
 }
 
@@ -211,6 +249,22 @@ QVariantMap hookSendParamDefaultMap(const QString& hookId) {
         QVariantMap map;
         map.insert(QStringLiteral("seconds"), QStringLiteral("5"));
         map.insert(QStringLiteral("prompt"), QStringLiteral("请等待"));
+        return map;
+    }
+    if (hookId == QLatin1String("SN_PREFIX4_CHECK")) {
+        QVariantMap map;
+        map.insert(QStringLiteral("expected"), QString());
+        return map;
+    }
+    if (hookId == QLatin1String("GENERATE_WHOLE_MACHINE_SN")) {
+        QVariantMap map;
+        map.insert(QStringLiteral("spare"), QStringLiteral("0000"));
+        map.insert(QStringLiteral("sku"), QString());
+        map.insert(QStringLiteral("reserved"), QString());
+        map.insert(QStringLiteral("version"), QString());
+        map.insert(QStringLiteral("line"), QString());
+        map.insert(QStringLiteral("serial"), QString());
+        map.insert(QStringLiteral("pcbaType"), QStringLiteral("MB"));
         return map;
     }
     if (hookId == QLatin1String("LIGHT_SENSOR_GOLDEN_CALIB")) {
@@ -436,6 +490,36 @@ QStringList sendParamPreferredOrder(TestCaseSendChannel channel, const QString& 
             || cmdName == QLatin1String("ScreenCameraCalibration"))
             keys.append(QStringLiteral("referencePath"));
         return keys;
+    }
+    if (channel == TestCaseSendChannel::Fixture && cmdName == QLatin1String("LedOnOffCheck")) {
+        return {QStringLiteral("cameraSource"), QStringLiteral("cameraIp"), QStringLiteral("cameraSerial"),
+                QStringLiteral("cameraIndex"), QStringLiteral("cameraName"), QStringLiteral("warmupMs"),
+                QStringLiteral("saveCapture"), QStringLiteral("ledCount"), QStringLiteral("minLuma"),
+                QStringLiteral("mode1"), QStringLiteral("mode2"), QStringLiteral("mode3"), QStringLiteral("mode4"),
+                QStringLiteral("modes"), QStringLiteral("mode"), QStringLiteral("sampleDurationMs"),
+                QStringLiteral("sampleIntervalMs")};
+    }
+    if ((channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial)
+        && (cmdName == QLatin1String("RootPumpControl") || cmdName == QLatin1String("RootSuctionTest"))) {
+        return {QStringLiteral("status"), QStringLiteral("switch"), QStringLiteral("mode"), QStringLiteral("level"),
+                QStringLiteral("customMode"), QStringLiteral("customLevel"), QStringLiteral("customFreq"),
+                QStringLiteral("controlType"), QStringLiteral("pumpFreq")};
+    }
+    if ((channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial)
+        && cmdName == QLatin1String("Root2ModeSet")) {
+        return {QStringLiteral("mode")};
+    }
+    if ((channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial)
+        && cmdName == QLatin1String("Root2LevelSet")) {
+        return {QStringLiteral("level")};
+    }
+    if ((channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial)
+        && cmdName == QLatin1String("Root2PumpState")) {
+        return {QStringLiteral("on"), QStringLiteral("state"), QStringLiteral("value")};
+    }
+    if ((channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial)
+        && cmdName == QLatin1String("Sn")) {
+        return {QStringLiteral("value"), QStringLiteral("which_sn"), QStringLiteral("length")};
     }
     return {};
 }
@@ -668,10 +752,35 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
         return {};
     }
     if (channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial) {
+        if (cmdName == QLatin1String("RootPumpControl")) {
+            // 0xC0：status/mode/level 必填；其余可按需改（吸乳模式常见 mode=1）
+            return QVariantMap{{QStringLiteral("status"), QStringLiteral("1")},
+                               {QStringLiteral("mode"), QStringLiteral("1")},
+                               {QStringLiteral("level"), QStringLiteral("15")},
+                               {QStringLiteral("customMode"), QStringLiteral("1")},
+                               {QStringLiteral("customLevel"), QStringLiteral("1")},
+                               {QStringLiteral("customFreq"), QStringLiteral("2")},
+                               {QStringLiteral("controlType"), QStringLiteral("2")},
+                               {QStringLiteral("pumpFreq"), QStringLiteral("1")}};
+        }
         if (cmdName == QLatin1String("RootSuctionTest")) {
             return QVariantMap{{QStringLiteral("switch"), QStringLiteral("1")},
                                {QStringLiteral("mode"), QStringLiteral("1")},
                                {QStringLiteral("level"), QStringLiteral("8")}};
+        }
+        if (cmdName == QLatin1String("Root2ModeSet")) {
+            return QVariantMap{{QStringLiteral("mode"), QStringLiteral("2")}};
+        }
+        if (cmdName == QLatin1String("Root2LevelSet")) {
+            return QVariantMap{{QStringLiteral("level"), QStringLiteral("15")}};
+        }
+        if (cmdName == QLatin1String("Root2PumpState")) {
+            return QVariantMap{{QStringLiteral("on"), QStringLiteral("1")}};
+        }
+        if (cmdName == QLatin1String("Sn")) {
+            return QVariantMap{{QStringLiteral("value"), QStringLiteral("$SN")},
+                               {QStringLiteral("which_sn"), QStringLiteral("1")},
+                               {QStringLiteral("length"), QStringLiteral("35")}};
         }
         if (cmdName == QLatin1String("SuctionMode")) {
             return QVariantMap{{QStringLiteral("enter"), QStringLiteral("1")}};
@@ -738,6 +847,24 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
         }
         return {};
     }
+    if (channel == TestCaseSendChannel::Modbus
+        && device.compare(QLatin1String("FaFbFloatAmmeterRtu"), Qt::CaseInsensitive) == 0) {
+        if (cmdName == QLatin1String("ReadVoltageCentivolt")) {
+            return QVariantMap{{QStringLiteral("slaveAddr"), QStringLiteral("1")},
+                               {QStringLiteral("registerAddress"), QStringLiteral("1")},
+                               {QStringLiteral("sampleDurationMs"), QStringLiteral("3000")},
+                               {QStringLiteral("sampleIntervalMs"), QStringLiteral("200")}};
+        }
+        if (cmdName == QLatin1String("ReadMeasurement")) {
+            return QVariantMap{{QStringLiteral("sampleDurationMs"), QStringLiteral("3000")},
+                               {QStringLiteral("sampleIntervalMs"), QStringLiteral("200")}};
+        }
+        return {};
+    }
+    if (channel == TestCaseSendChannel::Fixture
+        && FixturePcbaCmdCatalog::fixtureProtocolFromIni(device) == TestCaseFixtureProtocol::Xwd) {
+        return {};
+    }
     if (channel == TestCaseSendChannel::Fixture
         && FixturePcbaCmdCatalog::fixtureProtocolFromIni(device) == TestCaseFixtureProtocol::UsbCamera) {
         if (cmdName == QLatin1String("ScreenDeadPixelCheck")
@@ -764,6 +891,23 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
                 map.remove(QStringLiteral("deadRadiusPercent"));
             }
             return map;
+        }
+        if (cmdName == QLatin1String("LedOnOffCheck")) {
+            return QVariantMap{{QStringLiteral("cameraSource"), QString()},
+                               {QStringLiteral("cameraIp"), QStringLiteral("169.254.64.10")},
+                               {QStringLiteral("cameraSerial"), QString()},
+                               {QStringLiteral("cameraIndex"), QStringLiteral("0")},
+                               {QStringLiteral("cameraName"), QString()},
+                               {QStringLiteral("warmupMs"), QStringLiteral("450")},
+                               {QStringLiteral("saveCapture"), QStringLiteral("1")},
+                               {QStringLiteral("ledCount"), QStringLiteral("4")},
+                               {QStringLiteral("minLuma"), QStringLiteral("80")},
+                               {QStringLiteral("mode1"), QStringLiteral("on")},
+                               {QStringLiteral("mode2"), QStringLiteral("on")},
+                               {QStringLiteral("mode3"), QStringLiteral("blink")},
+                               {QStringLiteral("mode4"), QStringLiteral("blink")},
+                               {QStringLiteral("sampleDurationMs"), QStringLiteral("1500")},
+                               {QStringLiteral("sampleIntervalMs"), QStringLiteral("80")}};
         }
         return {};
     }
@@ -1134,6 +1278,9 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
     }
     for (const auto& item : items)
         box->addItem(item.first, item.second);
+    // 产品通道首项留空：PromptOnly 等上报时 DeviceCmd 为空可选中，避免误存成下拉第一项
+    if (channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial)
+        box->insertItem(0, QStringLiteral("（不发送）"), QString());
 }
 
 TestCaseSendChannel sendChannelFromComboData(const QString& data) {
@@ -1449,6 +1596,9 @@ void applyHookSendParamUi(Ui::TestCaseEditDialog* ui, const QString& hookId, con
     uiSchema.kind = SendCmdParamKind::JsonMap;
     if (hookId == QLatin1String("COUNTDOWN_WAIT")) {
         uiSchema.hint = QStringLiteral("seconds：倒计时秒数（必填，>0）；prompt：弹窗提示文字（可选）");
+    } else if (hookId == QLatin1String("SN_PREFIX4_CHECK")) {
+        uiSchema.hint = QStringLiteral(
+            "期望SN前四位：必填，如 V300/M5SM；比对本轮产品 SN（支持 URL 的 sn= 参数；BYD 过程码不可用）");
     } else if (hookId == QLatin1String("LIGHT_SENSOR_GOLDEN_CALIB")) {
         uiSchema.hint = QStringLiteral(
             "产品协议单点：index 写入下标；golden 金样光感（仅日志）；waitMs/minSamples 采光感取平均并写回读；"
@@ -1799,8 +1949,11 @@ const QHash<QString, QString>& hookDisplayNameMap() {
         {QStringLiteral("DONGLE_SUCTION_SAMPLE_SINGLE"), QStringLiteral("采集单通道吸力(旧Hook，请改用Dongle指令)")},
         {QStringLiteral("SN_WRITE_TAIL"), QStringLiteral("写入 SN 码")},
         {QStringLiteral("MAC_WRITE_ROOT"), QStringLiteral("写入 MAC 地址（Qroot）")},
+        {QStringLiteral("GENERATE_WHOLE_MACHINE_SN"), QStringLiteral("由PCBA主板SN生成整机SN并回填界面")},
+        {QStringLiteral("BOWL_CAP_DIFF_CHECK"), QStringLiteral("空满碗电容差值卡控（取前序空/满读值）")},
         {QStringLiteral("PRINT_WHOLE_MACHINE_SN"), QStringLiteral("打印整机 SN 二维码")},
         {QStringLiteral("QR_SN_CONSISTENCY_CHECK"), QStringLiteral("二维码一致性校验（与开局SN比对）")},
+        {QStringLiteral("SN_PREFIX4_CHECK"), QStringLiteral("产品型号卡控（PCBA SN前四位，不通讯产品）")},
         {QStringLiteral("COUNTDOWN_WAIT"), QStringLiteral("倒计时等待弹窗（到点自动下一步）")},
         {QStringLiteral("LIGHT_SENSOR_GOLDEN_CALIB"), QStringLiteral("光感单点校准（设亮度→采光感→写+回读，旧）")},
         {QStringLiteral("LIGHT_SENSOR_CALIB_WRITE"), QStringLiteral("光感写入校准值（采光感→写）")},
@@ -1927,8 +2080,16 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
         else
             updateGateFieldsEnabled();
     });
-    connect(ui->checkBox_promptEnabled, &QCheckBox::toggled, this, &TestCaseEditDialog::updatePromptFieldsEnabled);
-    connect(ui->checkBox_promptOnly, &QCheckBox::toggled, this, &TestCaseEditDialog::updatePromptFieldsEnabled);
+    connect(ui->checkBox_promptEnabled, &QCheckBox::toggled, this, [this](bool) {
+        updatePromptFieldsEnabled();
+        if (!loadingDefinition_)
+            syncGateToSendCommand(comboData(ui->comboBox_gateReportType), comboData(ui->comboBox_gateField));
+    });
+    connect(ui->checkBox_promptOnly, &QCheckBox::toggled, this, [this](bool) {
+        updatePromptFieldsEnabled();
+        if (!loadingDefinition_)
+            syncGateToSendCommand(comboData(ui->comboBox_gateReportType), comboData(ui->comboBox_gateField));
+    });
     connect(ui->checkBox_hookEnabled, &QCheckBox::toggled, this, &TestCaseEditDialog::updateHookFieldsEnabled);
     connect(ui->comboBox_hookId, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
             &TestCaseEditDialog::onHookIdChanged);
@@ -2447,7 +2608,12 @@ void TestCaseEditDialog::syncGateToSendCommand(const QString& preferredReportTyp
     const TestCaseSendChannel channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
     const QString protocolOrDevice = comboData(ui->comboBox_productProtocol);
     const QString cmdName = comboData(ui->comboBox_deviceCmd);
-    GateSendBinding binding = GateRegistry::bindingForSend(channel, protocolOrDevice, cmdName);
+    // PromptOnly 只等主动上报，不发指令：卡控类型勿跟 DeviceCmd 走（否则 KeySignalRead 等会冲掉 keyButtonId）
+    const bool promptOnlyGate =
+        ui->checkBox_promptEnabled->isChecked() && ui->checkBox_promptOnly->isChecked();
+    GateSendBinding binding;
+    if (!promptOnlyGate)
+        binding = GateRegistry::bindingForSend(channel, protocolOrDevice, cmdName);
     if (ui->checkBox_hookEnabled->isChecked()) {
         const GateSendBinding hookBinding = GateRegistry::bindingForHook(comboData(ui->comboBox_hookId));
         if (!hookBinding.reportTypes.isEmpty())
@@ -2458,6 +2624,11 @@ void TestCaseEditDialog::syncGateToSendCommand(const QString& preferredReportTyp
     const QString preferredType = preferredReportType.trimmed();
     if (allowedTypes.isEmpty() && !preferredType.isEmpty())
         allowedTypes << preferredType;
+    // 仅提示等按键上报：默认允许 ProtocolButtonStateData
+    if (allowedTypes.isEmpty() && promptOnlyGate)
+        allowedTypes << QStringLiteral("ProtocolButtonStateData");
+    if (promptOnlyGate && binding.defaultField.isEmpty())
+        binding.defaultField = QStringLiteral("keyButtonId");
 
     gateReportTypeLocked_ = (allowedTypes.size() == 1);
     if (allowedTypes.isEmpty())
@@ -2648,6 +2819,9 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
         def.send.productProtocol = productProtocolFromComboData(comboData(ui->comboBox_productProtocol));
     }
     def.send.deviceCmd = comboData(ui->comboBox_deviceCmd);
+    // 仅提示等上报：不写死指令名，避免空选中被保存成下拉第一项（曾冲掉加减/模式按键卡控）
+    if (def.meta.promptOnly)
+        def.send.deviceCmd.clear();
     def.hook.enabled = ui->checkBox_hookEnabled->isChecked();
     def.hook.hookId = comboData(ui->comboBox_hookId);
     if (def.hook.enabled && hookUsesSendParamUi(def.hook.hookId)) {

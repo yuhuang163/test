@@ -24,7 +24,14 @@ constexpr const char kHintSn[] =
     u8"  PCBA SN：$PCBA_SN / $SN（扫码/MES，解析 MAC 等，勿用于写整机）\r\n"
     u8"Qaiot device_side_id：Param_side=0 Left / 1 Right / 2 Independent（默认2）\r\n"
     u8"  也可用 left/right/independent 或 Param_position=L/R\r\n"
-    u8"Qroot：读 0xA0 / 写 0xA1(≤40)；which_sn=7→0xF8；which_sn=6→0xF9；读 6/7 兼容 0xF7";
+    u8"Qroot：读 0xA0 / 写 0xA1(≤40)；which_sn=7→0xF8；which_sn=6→0xF9；读 6/7 兼容 0xF7\r\n"
+    u8"Qroot2：读 0xA0；写 0xA1；Param_length=写入长度（默认35；填39则末尾补0至39，Air1用）\r\n"
+    u8"Qroot2【仅 M5 Smart】：读整机SN用 Root2M5SnRead(0xF1)；写整机SN 0xA1 length=35\r\n"
+    u8"  烧录三元组：which_sn=7→0xF8 productID(≤6)；which_sn=6→0xF9 deviceID(≤16)；WriteKey→0xFA(≤16)\r\n"
+    u8"  读三元组：TupleRead 或 Get Sn which_sn=6/7 → 0xF7（Ack 30B）\r\n"
+    u8"获取整机SN校验（Gate）：Enabled=true ReportType=ProtocolSnData Field=value Op=eq\r\n"
+    u8"  Expected 留空，或填 $WHOLE_MACHINE_SN（优先已有整机SN，否则扫码/界面框）\r\n"
+    u8"产品型号卡控：Get+Gate Field=prefix4 Op=eq Expected=四位型号前缀（或 ExpectedSettingsKey）";
 constexpr const char kHintRootHeatLevelControl[] =
     u8"Qroot：Req 0x83，CAL=0x02，body：switch(0关1开)+level(0=L1/1=L2/2=L3)\r\n"
     u8"示例：Param_switch=1 Param_level=1 → 开 L2\r\n"
@@ -32,24 +39,29 @@ constexpr const char kHintRootHeatLevelControl[] =
 constexpr const char kHintTupleRead[] =
     u8"Qaiot：Param_dataType=2/3/4 只读单项；Param_side=0/1/2（Left/Right/Independent，默认2）\r\n"
     u8"比对在步骤逻辑中与云端三元组比较\r\n"
-    u8"Qroot：Req 0xF7，Ack 30B=ProductID(6)+DeviceID(16)+KeyTail(8 RC4密文)\r\n"
+    u8"Qroot / Qroot2【M5 Smart】：Req 0xF7 空 body（AA 55 00 F7 00 09）\r\n"
+    u8"Ack CAL=0x1E(30B)：productID[0..5]+deviceID[6..21]+KeyTail[22..29](RC4密文)\r\n"
     u8"密钥校验：用完整 16B deviceSecret 对 KeyTail 做 RC4 解密，应等于密钥后 8 字节";
 constexpr const char kHintWriteKey[] =
     u8"写 deviceSecret：value=$TUPLE_DEVICE_SECRET（默认取云端已获取三元组）\r\n"
     u8"Qaiot：Param_side=0 Left / 1 Right / 2 Independent（默认2）\r\n"
-    u8"Qroot：Req 0xFA，密钥 ≤16 字节截断";
+    u8"Qroot / Qroot2【M5 Smart】：Req 0xFA，密钥 ≤16 字节截断";
 constexpr const char kHintSoftVersionRead[] =
     u8"Qroot：Req 0x91，回包 soft_version(2B)+hw_version(1B)\r\n"
     u8"Qroot2/Air1：Req 0xA5 body 0x01；Ack byte2=软版 byte3=硬版\r\n"
+    u8"Qroot2【仅 M5 Smart】：Req 0xF0 body 4B(默认 AA551100)；Ack 含型号/硬软版(111→11.1)/SN 等\r\n"
     u8"Qaiot：Param_field=soft_version|hw_version|res_version（默认固件）\r\n"
     u8"卡控：ReportType=ProtocolBaseInfoData，Field 与上对应，Op=compareVersions";
 constexpr const char kHintQroot2ModeSet[] =
-    u8"Qroot2/Air1：Req 0xA2，body=01刺激 02吸乳 03混合\r\n示例：Param_mode=2";
+    u8"Qroot2/Air1：Req 0xA2，body=01按摩 02吸乳 03混合 04个性化 05智能\r\n"
+    u8"Qroot2【仅 M5 Smart】：改走 0xC0（RootPumpControl 字段）\r\n示例：Param_mode=1";
 constexpr const char kHintQroot2LevelSet[] =
-    u8"Qroot2/Air1：Req 0xA3，body=档位1-15\r\n示例：Param_level=5";
+    u8"Qroot2/Air1：Req 0xA3，body=档位1-15\r\n"
+    u8"Qroot2【仅 M5 Smart】：改走 0xC0\r\n示例：Param_level=5";
 constexpr const char kHintQroot2PumpState[] =
     u8"Qroot2/Air1：Req 0xA4，控制泵启动/暂停\r\n"
-    u8"body：01运行 00暂停\r\n示例：Param_on=1 或 Param_state=1";
+    u8"body：01运行 00暂停\r\n"
+    u8"Qroot2【仅 M5 Smart】：改走 0xC0 Param_status\r\n示例：Param_on=1 或 Param_state=1";
 constexpr const char kHintQroot2LedControl[] =
     u8"Qroot2/Air1：Req 0x90，body=02+color+state\r\n"
     u8"color：00红 01白 02绿；state：01开 00关\r\n示例：Param_color=0 Param_on=1";
@@ -58,7 +70,27 @@ constexpr const char kHintQroot2KeyTest[] =
     u8"Ack：byte1泵状态(0/1) byte2模式(1~5) byte3档位(1~15)\r\n卡控：ProtocolButtonStateData";
 constexpr const char kHintQroot2StateRead[] =
     u8"Qroot2/Air1：Req 0xA6，读回泵状态、模式与档位\r\n"
-    u8"Ack：byte1泵状态(0/1) byte2模式(1~5) byte3档位(1~15)\r\n卡控：ProtocolButtonStateData(level/mode/pump_state)";
+    u8"Qroot2【仅 M5 Smart】：Req 0xB0 空 body，Ack CAL=0x2D（电量+状态+模式+档位…）\r\n"
+    u8"Ack：byte1泵状态(0/1) byte2模式(1~5) byte3档位(1~15)（Air1 0xA6）\r\n"
+    u8"卡控：ProtocolButtonStateData(level/mode/pump_state)；CommandTimeoutMs=0 只判一包，>0 监控至超时";
+constexpr const char kHintQroot2PoseSwitch[] =
+    u8"Qroot2：写角度检测开关 Req 0xDB body 0关1开（会因姿势停泵）\r\n"
+    u8"勿与 App 姿态开关 0xCB / 设备信息 0xF0 混淆；确认停泵相关请用 Root2PoseSwitchRead(0xDC)\r\n"
+    u8"示例：Param_on=1";
+constexpr const char kHintQroot2PoseSwitchRead[] =
+    u8"Qroot2：读角度检测开关 Req 0xDC 空 body（AA 55 00 DC 00 24）\r\n"
+    u8"Ack：AA 55 01 DC 01 [状态]；00关 01开；用于确认会否因姿势停泵\r\n"
+    u8"勿用 0xF0（App posture_switch）；卡控：ReportType=ProtocolTypeData，Field=type，Expected=0|1";
+constexpr const char kHintQroot2BowlEmptyCapRead[] =
+    u8"Qroot2：Req 0xAD 空 body 读已存空/满校准电容（AA 55 00 AD 00 53）\r\n"
+    u8"Ack 13B：result + empty_ch0/1/2 + full_ch0/1/2（uint16 大端）；本命令卡控空碗三通道\r\n"
+    u8"卡控：ReportType=ProtocolRoot2BowlEmptyCapData，Field=emptyCh0|emptyCh1|emptyCh2 或 *";
+constexpr const char kHintQroot2BowlFullCapRead[] =
+    u8"Qroot2：Req 0xAD 空 body 读已存空/满校准电容（与空碗读同一帧）\r\n"
+    u8"本命令卡控满碗三通道；卡控：ReportType=ProtocolRoot2BowlFullCapData，Field=fullCh0|fullCh1|fullCh2 或 *";
+constexpr const char kHintQroot2BowlCapDiffRead[] =
+    u8"空满碗电容差值卡控（不发 0xAD）：须配 Hook=BOWL_CAP_DIFF_CHECK，取前序「读取空/满碗电容」缓存算 TOP/MID/BOT\r\n"
+    u8"卡控：ReportType=ProtocolRoot2BowlCapDiffData，Field=topDiff|midDiff|botDiff 或 multi；阈值写在步骤 Gate ItemN_Low/High";
 constexpr const char kHintPeriphState[] =
     u8"Qaiot 读传感器 CID=0x08：Param_type=0x00~0x0D\r\n"
     u8"00 IMU(回 36B=9×float LE: kx..bz) / 04 电容fsensor(回 1B 0/1)\r\n"
@@ -145,9 +177,22 @@ constexpr const char kHintAgingStatusRead[] =
     u8"Field=status/finishedFlag/batteryMaxTempC/flangeMaxTempC/stallCount/stallThreshold/stallCurrent0~4";
 constexpr const char kHintGetBattery[] =
     u8"Qroot：Notify 0xE0+0x01 查询；回包 percent(1B)+voltage 大端 0.01V\r\n"
+    u8"Qroot2/Air1：Req 0xB0 空 body；Ack byte0=电量% byte1=工作/充电状态(充电中02)\r\n"
+    u8"Qroot2【仅 M5 Smart】：同 Req 0xB0，Ack CAL=0x2D（电量/状态/左右/模式/档位/自定义…）\r\n"
     u8"Qaiot CID=0x0E：Param_field=percent|voltage|current|temperature（默认四项）\r\n"
     u8"字段 Type：01 percent%  02 voltage mV  03 current mA  04 temperature °C\r\n"
-    u8"卡控：ReportType=ProtocolBatteryData，Field=percent/voltageMv/currentMa/temperatureC";
+    u8"卡控：ReportType=ProtocolBatteryData，Field=percent/chargeState/voltageMv/currentMa/temperatureC";
+constexpr const char kHintQroot2PoseAngleRead[] =
+    u8"Qroot2：Req 0xDA 空 body 读姿态角（AA 55 00 DA 00 26）；产测「获取角度信息」\r\n"
+    u8"Ack 4B：pitch/roll 各 int16 大端，单位 0.1°（÷10 为度）；无 yaw；固件不判 ±10°\r\n"
+    u8"注意：读的是上次缓存（角度异常时才更新）；水平时常为 0,0，可靠测需固件改当场采 IMU\r\n"
+    u8"卡控：ReportType=ProtocolRoot2PoseAngleData，Field=pitch01deg|roll01deg，Low=-10 High=10（单位：度）";
+constexpr const char kHintQroot2PoseAbnormalWait[] =
+    u8"Qroot2：等待 Notify 0xD3 角度异常停机上报（本命令不发令）\r\n"
+    u8"前置：0xDB 开角度检测、泵在转、连着 BLE；歪过门限并保持约1s\r\n"
+    u8"门限：|pitch|>50° 或 |roll|>40°；payload 同 0xDA（pitch/roll 0.1° 大端）\r\n"
+    u8"卡控示例：Field=absRoll01deg Low=40（|roll|≥40° 左右倾）；absPitch01deg Low=50（|pitch|≥50° 前后）；单位均为度\r\n"
+    u8"CommandTimeoutMs 建议 ≥15000；Prompt 提示操作员按方向倾斜";
 constexpr const char kHintRootBatteryTemp[] =
     u8"Qroot：Notify 0x80+0x01 查询电池温度\r\n"
     u8"卡控：ReportType=ProtocolBatteryTempData，Field=type";
@@ -156,11 +201,14 @@ constexpr const char kHintRootHeatTemp[] =
     u8"卡控（可选）：ReportType=ProtocolHeatTempData，Field=type";
 constexpr const char kHintFactoryReset[] =
     u8"Qroot：Notify 0xFC+0x04 恢复出厂；应答 0xE0/0xFC 返回 0x04\r\n"
+    u8"Qroot2【仅 M5 Smart】：Req 0xFC+0x04 复位（抹除用户设备设置）\r\n"
     u8"Qaiot CID=0x0C：side + type=0x01(factory_reset) + data\r\n"
     u8"可选 Param_side=0/1/2；Param_data=附加数据 hex\r\n"
     u8"卡控：ReportType=ProtocolResultData，Field=result，Expected=1";
 constexpr const char kHintShipMode[] =
     u8"Qfctp：关机 TLV；Qroot：Req 0xFC+0x01 关机\r\n"
+    u8"Qroot2/Air1：Req 0xAB+0x00（BLE_CMD_SET_PWROFF）；Ack 回显 body\r\n"
+    u8"Qroot2【仅 M5 Smart】：Req 0xFC+0x01 关机\r\n"
     u8"Qaiot CID=0x0C：side + type=0x02(power_off) + data\r\n"
     u8"可选 Param_side=0/1/2；Param_data=附加数据 hex\r\n"
     u8"卡控（可选）：ReportType=ProtocolResultData，Field=result，Expected=1";
@@ -194,7 +242,9 @@ constexpr const char kHintLcdBacklight[] =
 constexpr const char kHintButtonState[] =
     u8"Qaiot：模拟按键 CID=0x10，Param_int/Param_key=0x01~0x0B\r\n"
     u8"01电源 02开始 03模式 04频率 05母乳 06左控 07右控 08恢复出厂 09旅行锁 0A旋钮左 0B旋钮右\r\n"
+    u8"卡控：ProtocolButtonStateData\r\n"
     u8"Qroot：Notify 0x9A，1=开启按键上报 / 0=关闭；Ack body=0xFF 表示已接收\r\n"
+    u8"卡控：ProtocolResultData（result=1）\r\n"
     u8"Qpb：Param_int 为按键索引";
 constexpr const char kHintRootSuctionTest[] =
     u8"Qroot：Req 0x81，CAL=0x03，body：switch(0关1开)+mode(00按摩/01吸乳/02混合)+level(强度)\r\n"
@@ -203,7 +253,9 @@ constexpr const char kHintRootSuctionTest[] =
     u8"注意：FCTP「进入/退出吸力测试模式」请改用「吸力模式(进/退)」+ Param_enter";
 constexpr const char kHintRootPumpControl[] =
     u8"Qroot：Req 0xC0 吸奶器控制，CAL=0x0A\r\n"
-    u8"Param_status=0停止1运行；mode=吸奶模式1~7；level=档位1~15\r\n"
+    u8"Qroot2【仅 M5 Smart】：同 Cmd 0xC0 CAL=0x0A（Air1 请用 Root2ModeSet/LevelSet/PumpState）\r\n"
+    u8"Param_status=0停止1运行；Param_mode=吸奶/吸乳模式1~7；Param_level=档位1~15\r\n"
+    u8"示例（吸乳跑泵）：Param_status=1 Param_mode=1 Param_level=15\r\n"
     u8"Param_customMode=自定义模式；customLevel=自定义档位；customFreq=1低2中3高\r\n"
     u8"Param_controlType=0左1右2双边；pumpFreq=0低1中2高\r\n"
     u8"卡控（可选）：ReportType=ProtocolTypeData，Field=type，Expected=controlType";
@@ -319,14 +371,27 @@ const Row kRows[] = {
     {DeviceCmd::RootHeatLevelControl, "RootHeatLevelControl", u8"加热档位", DeviceCmdParamKind::JsonMap,
      kHintRootHeatLevelControl, kSet, "ProtocolResultData", "result"},
     {DeviceCmd::RootPumpControl, "RootPumpControl", u8"吸奶器控制", DeviceCmdParamKind::JsonMap, kHintRootPumpControl, kSet},
-    {DeviceCmd::Root2PoseSwitch, "Root2PoseSwitch", u8"姿态开关", DeviceCmdParamKind::JsonMap,
-     u8"Qroot2/Air1：Req 0xDB body 0关1开\r\n示例：Param_on=1", kSet},
+    {DeviceCmd::Root2PoseAngleRead, "Root2PoseAngleRead", u8"读姿态角", DeviceCmdParamKind::None,
+     kHintQroot2PoseAngleRead, kGet, "ProtocolRoot2PoseAngleData", "pitch01deg"},
+    {DeviceCmd::Root2PoseAbnormalWait, "Root2PoseAbnormalWait", u8"等待角度异常停机上报", DeviceCmdParamKind::None,
+     kHintQroot2PoseAbnormalWait, kGet, "ProtocolRoot2PoseAngleData", "absRoll01deg"},
+    {DeviceCmd::Root2PoseSwitch, "Root2PoseSwitch", u8"角度检测开关(写)", DeviceCmdParamKind::JsonMap,
+     kHintQroot2PoseSwitch, kSet},
+    {DeviceCmd::Root2PoseSwitchRead, "Root2PoseSwitchRead", u8"读角度检测开关", DeviceCmdParamKind::None,
+     kHintQroot2PoseSwitchRead, kGet, "ProtocolTypeData", "type"},
     {DeviceCmd::Root2PoseCalib, "Root2PoseCalib", u8"姿态校准", DeviceCmdParamKind::None,
-     u8"Qroot2/Air1：Req 0xDD body 0x01", kSet},
+     u8"Qroot2/Air1：Req 0xDD body 0x01（写入零点，会当场读 IMU，非只读）", kSet},
     {DeviceCmd::Root2BowlCalib, "Root2BowlCalib", u8"空/满碗校准", DeviceCmdParamKind::JsonMap,
      u8"Qroot2/Air1：Req 0xAE，仅发 0空碗/1满碗，固件当场读电容写入 Flash，勿下发空满电容数值\r\n"
      u8"须同一次上电内先空后满；示例：Param_value=0",
      kSet},
+    {DeviceCmd::Root2BowlEmptyCapRead, "Root2BowlEmptyCapRead", u8"读取空碗电容", DeviceCmdParamKind::None,
+     kHintQroot2BowlEmptyCapRead, kGet, "ProtocolRoot2BowlEmptyCapData", "emptyCh0"},
+    {DeviceCmd::Root2BowlFullCapRead, "Root2BowlFullCapRead", u8"读取满碗电容", DeviceCmdParamKind::None,
+     kHintQroot2BowlFullCapRead, kGet, "ProtocolRoot2BowlFullCapData", "fullCh0"},
+    // 仅作 Gate 回包绑定；实际判定走 Hook BOWL_CAP_DIFF_CHECK，协议层不发令
+    {DeviceCmd::Root2BowlCapDiffRead, "Root2BowlCapDiffRead", u8"空满碗电容差值", DeviceCmdParamKind::None,
+     kHintQroot2BowlCapDiffRead, kGet, "ProtocolRoot2BowlCapDiffData", "topDiff"},
     {DeviceCmd::Root2ModeSet, "Root2ModeSet", u8"设置模式", DeviceCmdParamKind::JsonMap, kHintQroot2ModeSet, kSet},
     {DeviceCmd::Root2LevelSet, "Root2LevelSet", u8"设置档位", DeviceCmdParamKind::JsonMap, kHintQroot2LevelSet, kSet},
     {DeviceCmd::Root2PumpState, "Root2PumpState", u8"控制运行暂停", DeviceCmdParamKind::JsonMap, kHintQroot2PumpState, kSet},
@@ -335,6 +400,21 @@ const Row kRows[] = {
     {DeviceCmd::Root2StateRead, "Root2StateRead", u8"读取运行状态", DeviceCmdParamKind::None, kHintQroot2StateRead, kGet,
      "ProtocolButtonStateData", "level"},
     {DeviceCmd::Root2LedControl, "Root2LedControl", u8"控制灯光", DeviceCmdParamKind::JsonMap, kHintQroot2LedControl, kSet},
+    {DeviceCmd::Root2M5DeviceInfo, "Root2M5DeviceInfo", u8"M5设备信息(0xF0)", DeviceCmdParamKind::None,
+     u8"Qroot2【仅 M5 Smart】：Req 0xF0；Ack→ProtocolBaseInfoData(soft_version 等)", kGet, "ProtocolBaseInfoData",
+     "soft_version"},
+    {DeviceCmd::Root2M5SnRead, "Root2M5SnRead", u8"M5读SN(0xF1)", DeviceCmdParamKind::None,
+     u8"Qroot2【仅 M5 Smart】：Req 0xF1 空 body；Ack→ProtocolSnData", kGet, "ProtocolSnData", "sn"},
+    {DeviceCmd::Root2M5PumpStatus, "Root2M5PumpStatus", u8"M5吸奶器状态(0xB0)", DeviceCmdParamKind::None,
+     u8"Qroot2【仅 M5 Smart】：Req 0xB0；Ack CAL=0x2D 完整状态", kGet, "ProtocolButtonStateData", "level"},
+    {DeviceCmd::Root2M5Shutdown, "Root2M5Shutdown", u8"M5关机(0xFC+01)", DeviceCmdParamKind::None,
+     u8"Qroot2【仅 M5 Smart】：Req 0xFC body 0x01", kSet},
+    {DeviceCmd::Root2M5Reboot, "Root2M5Reboot", u8"M5重启(0xFC+02)", DeviceCmdParamKind::None,
+     u8"Qroot2【仅 M5 Smart】：Req 0xFC body 0x02", kSet},
+    {DeviceCmd::Root2M5EnterOta, "Root2M5EnterOta", u8"M5进OTA(0xFC+03)", DeviceCmdParamKind::None,
+     u8"Qroot2【仅 M5 Smart】：Req 0xFC body 0x03", kSet},
+    {DeviceCmd::Root2M5FactoryReset, "Root2M5FactoryReset", u8"M5复位(0xFC+04)", DeviceCmdParamKind::None,
+     u8"Qroot2【仅 M5 Smart】：Req 0xFC body 0x04 抹除用户设置", kSet},
     {DeviceCmd::PressSensorTemp, "PressSensorTemp", u8"压力传感器温度", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::UartReceive, "UartReceive", u8"串口接收开关", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::RgbColor, "RgbColor", u8"RGB颜色", DeviceCmdParamKind::None, nullptr, kSet},
@@ -403,10 +483,12 @@ const Row kRows[] = {
     {DeviceCmd::SdCardInfo, "SdCardInfo", u8"存储卡信息", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::LightSensorInfo, "LightSensorInfo", u8"环境光传感器信息", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::ButtonState, "ButtonState", u8"按键状态/模拟按键", DeviceCmdParamKind::Int, kHintButtonState, kBoth,
-     "ProtocolButtonStateData", "modeButtonState"},
+     "ProtocolResultData,ProtocolButtonStateData", "result"},
     {DeviceCmd::GetPressCaliResult, "GetPressCaliResult", u8"压力校准结果", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::GetImuCaliResult, "GetImuCaliResult", u8"惯性校准结果", DeviceCmdParamKind::None, nullptr, kGet},
-    {DeviceCmd::DeviceInfo, "DeviceInfo", u8"设备信息", DeviceCmdParamKind::None, nullptr, kGet},
+    {DeviceCmd::DeviceInfo, "DeviceInfo", u8"设备信息", DeviceCmdParamKind::None,
+     u8"Qroot2【仅 M5 Smart】：Req 0xF0 body 4B(默认 AA551100)；Ack→ProtocolBaseInfoData(product_name/soft_version/hw_version)",
+     kGet, "ProtocolBaseInfoData", "soft_version"},
     {DeviceCmd::ConnectInfo, "ConnectInfo", u8"连接信息", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::WifiInfo, "WifiInfo", u8"无线网络信息", DeviceCmdParamKind::None, nullptr, kGet},
     {DeviceCmd::GetServoMotorInfo, "GetServoMotorInfo", u8"舵机信息", DeviceCmdParamKind::None, nullptr, kGet},
@@ -534,6 +616,15 @@ QVariant normalizeSendParam(DeviceCmd cmd, const QVariant& param) {
             payload.which_sn = static_cast<FacDevInfoType>(whichFromMap());
             payload.sn = snBytes;
             payload.sideId = -1;
+            payload.snLength = 35;
+            if (map.contains(QStringLiteral("length")))
+                payload.snLength = map.value(QStringLiteral("length")).toInt();
+            else if (map.contains(QStringLiteral("snLength")))
+                payload.snLength = map.value(QStringLiteral("snLength")).toInt();
+            else if (map.contains(QStringLiteral("sn_length")))
+                payload.snLength = map.value(QStringLiteral("sn_length")).toInt();
+            if (payload.snLength != 39)
+                payload.snLength = 35;
             static const QStringList sideKeys = {QStringLiteral("side"),
                                                 QStringLiteral("device_side_id"),
                                                 QStringLiteral("deviceSideId"),

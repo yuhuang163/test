@@ -1,4 +1,5 @@
 #include "test_base.h"
+#include "box_base.h"
 #include "qprotocol_types.h"
 #include "modbus_types.h"
 #include "my_set/my_typedef.h"
@@ -742,31 +743,66 @@ void test_base::showlog(QString msg) {
 int test_base::getIndex() const {
     return m_index;
 }
+void test_base::pumpSiblingStartTasksWhileWaiting() {
+    // 防重入：避免 A wait→B start→B wait→A start 叠进同一工位
+    static thread_local int s_pumpDepth = 0;
+    if (s_pumpDepth > 0)
+        return;
+
+    box_base* box = qobject_cast<box_base*>(window());
+    if (!box) {
+        QWidget* w = parentWidget();
+        while (w && !box) {
+            box = qobject_cast<box_base*>(w);
+            w = w->parentWidget();
+        }
+    }
+    if (!box || box->testList.size() <= 1)
+        return;
+
+    ++s_pumpDepth;
+    for (test_base* peer : box->testList) {
+        if (!peer || peer == this || !peer->isTestContinue || peer->inStartTask_)
+            continue;
+        peer->startTask();
+    }
+    --s_pumpDepth;
+}
+
 void test_base::waitWork(int ms) {
     QTime t;
     t.start();
-    while (t.elapsed() < ms && isTestContinue)
+    while (t.elapsed() < ms && isTestContinue) {
+        pumpSiblingStartTasksWhileWaiting();
         QCoreApplication::processEvents();
+    }
 }
 
 void test_base::waitWorkIdle(int ms) {
     if (ms <= 0 || !isTestContinue) {
+        pumpSiblingStartTasksWhileWaiting();
         QCoreApplication::processEvents();
         return;
     }
+    // 吸力采样 interval 常为 20ms：若 poll 固定 50ms，整段 10s 采样内一次都泵不到兄弟工位，
+    // 二号会卡在「蓝牙已回包却无法收尾」直到一号吸力结束（日志里像「读取版本前空等 10 秒」）。
+    pumpSiblingStartTasksWhileWaiting();
     QEventLoop loop;
     QTimer done;
     done.setSingleShot(true);
     QObject::connect(&done, &QTimer::timeout, &loop, &QEventLoop::quit);
     QTimer poll;
-    poll.setInterval(50);
+    const int pollMs = qBound(5, ms, 50);
+    poll.setInterval(pollMs);
     QObject::connect(&poll, &QTimer::timeout, &loop, [this, &loop]() {
+        pumpSiblingStartTasksWhileWaiting();
         if (!isTestContinue)
             loop.quit();
     });
     done.start(ms);
     poll.start();
     loop.exec();
+    pumpSiblingStartTasksWhileWaiting();
 }
 
 void test_base::updateMainStyle(QString style) {
@@ -916,6 +952,16 @@ void test_base::onProtocolReport(const ProtocolReport& report) {
     } else if (reportType == QLatin1String("ProtocolPumpStallCurrentData")
                && payload.canConvert<ProtocolPumpStallCurrentData>()) {
         refreshPumpStallCurrent(payload.value<ProtocolPumpStallCurrentData>());
+    } else if ((reportType == QLatin1String("ProtocolRoot2BowlEmptyCapData")
+                || reportType == QLatin1String("ProtocolRoot2BowlFullCapData"))
+               && payload.canConvert<ProtocolRoot2BowlCalibCapData>()) {
+        refreshRoot2BowlCalibCap(reportType, payload.value<ProtocolRoot2BowlCalibCapData>());
+    } else if (reportType == QLatin1String("ProtocolRoot2BowlCapDiffData")
+               && payload.canConvert<ProtocolRoot2BowlCapDiffData>()) {
+        refreshRoot2BowlCapDiff(payload.value<ProtocolRoot2BowlCapDiffData>());
+    } else if (reportType == QLatin1String("ProtocolRoot2PoseAngleData")
+               && payload.canConvert<ProtocolRoot2PoseAngleData>()) {
+        refreshRoot2PoseAngle(payload.value<ProtocolRoot2PoseAngleData>());
     } else if (reportType == QLatin1String("ProtocolRootAgingHistoryData")
                && payload.canConvert<ProtocolRootAgingHistoryData>()) {
         refreshRootAgingHistory(payload.value<ProtocolRootAgingHistoryData>());
@@ -1001,6 +1047,9 @@ void test_base::solveGetBrushResponse(int data) {
         return;
     }
     const bool success = (data != 0);
+    // 卡控未通过前不停超时表（回包不对就继续监控/重发）
+    if (success && shouldHoldCommandRetryUntilGatePass())
+        return;
     finishCommandRetryWait(
         success,
         success ? QStringLiteral("sendCommandWithRetry完成，收到设备响应")
@@ -1110,6 +1159,8 @@ void test_base::finishTestRecord(const MesPacketData& packIn, bool useMes) {
     if (Qlog::hasActiveSession(m_index)) {
         Qlog::endSession(m_index, result);
     }
+    // 先于异步上传钉住吸力附件，避免下一轮开测 initData 清缓存导致平台缺 CSV/曲线
+    Qlog::pinSessionUploadArtifacts(m_index);
     TestDataUploadService::tryUploadTestAndLogAsync(pack, m_index);
     if (useMes) {
         emit send_end_test_pass(pack);
@@ -1425,8 +1476,14 @@ void test_base::getMac(QString sn_to_search) {
 }
 void test_base::closeEvent(QCloseEvent*) {
     qDebug() << getIndex() << "test_base关闭";
+    isTestContinue = 0;
     if (at)
         at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00");
+    // 关窗时 isTestContinue 已清，不能走 waitWork（会立刻返回）
+    QElapsedTimer t;
+    t.start();
+    while (t.elapsed() < 50)
+        QCoreApplication::processEvents();
 }
 
 void test_base::ensureSnInputLatinIme() {
@@ -1654,12 +1711,21 @@ void test_base::onModbusRtuAmmeterReadingReceived(const QString& value) {
                                          QVariant::fromValue(ProtocolAmmeterReadingData{value})));
 
     const bool isTempLogger = modbusManager.deviceRoute() == ModbusDeviceRoute::MultiTempLoggerRtu;
+    const bool isVoltage = modbusManager.lastRtuReadingIsVoltage();
     ProtocolMeasureData measureData;
     measureData.deviceName = isTempLogger ? QStringLiteral("MultiTempLogger") : QStringLiteral("Modbus_Ammeter");
-    measureData.type = isTempLogger ? QStringLiteral("Temperature") : QStringLiteral("Current");
+    if (isTempLogger) {
+        measureData.type = QStringLiteral("Temperature");
+        measureData.unit = QStringLiteral("℃");
+    } else if (isVoltage) {
+        measureData.type = QStringLiteral("Voltage");
+        measureData.unit = QStringLiteral("V");
+    } else {
+        measureData.type = QStringLiteral("Current");
+        measureData.unit = QStringLiteral("mA");
+    }
     measureData.value = value.toDouble();
     measureData.valueText = value;
-    measureData.unit = isTempLogger ? QStringLiteral("℃") : QStringLiteral("mA");
     measureData.isOk = true;
     onUsbInstrumentReport(ProtocolReport(QStringLiteral("ProtocolMeasureData"),
                                          QVariant::fromValue(measureData)));

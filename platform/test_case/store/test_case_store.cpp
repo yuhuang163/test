@@ -877,6 +877,7 @@ bool isMultiFieldGateReportType(const QString& reportType) {
         || reportType == QLatin1String("ProtocolFixturePcbaData")
         || reportType == QLatin1String("ProtocolJieliBtBoxData")
         || reportType == QLatin1String("ProtocolScreenInspectData")
+        || reportType == QLatin1String("ProtocolLedInspectData")
         || reportType == QLatin1String("ProtocolPeriphStateData");
 }
 
