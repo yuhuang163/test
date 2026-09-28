@@ -36,6 +36,11 @@ class HostOtaService {
     /** 将当前运行中的 exe 上传至服务器（用于首次注册版本）。releaseNotes 为本次修改说明。 */
     static bool uploadCurrentExe(QString* message = nullptr, const QString& releaseNotes = QString());
 
+    /** 本机落盘当前版本更新说明（升级下载成功后 / 管理员上传成功后）。 */
+    static void saveLocalReleaseNotes(const QString& appVersion, const QString& releaseNotes);
+    /** 读取与当前运行版本匹配的更新说明；版本不一致或未存则返回空。 */
+    static QString localReleaseNotesForCurrentVersion();
+
     /** 弹出版本选择对话框，让用户选择要升级的版本。*/
     static bool showVersionPicker(QWidget* parent,
                                   const std::function<void(const QString&)>& logFn = nullptr);

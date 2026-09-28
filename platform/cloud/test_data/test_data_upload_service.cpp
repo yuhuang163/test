@@ -2,6 +2,7 @@
 
 #include "auth_service.h"
 #include "factory_cloud_client.h"
+#include "host_ota_service.h"
 #include "log_upload_service.h"
 #include "qlog.h"
 #include "test_case.h"
@@ -110,8 +111,14 @@ bool buildUploadBody(const MesPacketData& pack, QJsonObject* body, QString* mess
     body->insert(QStringLiteral("machineNo"), pack.machineNo.trimmed());
     body->insert(QStringLiteral("product"), pack.product.trimmed());
     body->insert(QStringLiteral("lotName"), pack.lotName.trimmed());
-    body->insert(QStringLiteral("userNo"), pack.userNo.trimmed());
+    // 云端「操作员」用工厂云登录用户名；MES 过站仍用 pack.userNo / Employee_ID
+    const QString cloudUser = SETTINGS.value(QStringLiteral("FactoryCloud/AuthUser")).toString().trimmed();
+    body->insert(QStringLiteral("userNo"), cloudUser.isEmpty() ? pack.userNo.trimmed() : cloudUser);
     body->insert(QStringLiteral("clientVersion"), FactoryCloudClient::appVersion());
+    const QString releaseNotes = HostOtaService::localReleaseNotesForCurrentVersion();
+    if (!releaseNotes.isEmpty()) {
+        body->insert(QStringLiteral("releaseNotes"), releaseNotes);
+    }
     // 云端：本机北京墙钟 + timeBase 标志（旧上位机无此字段，服务端按 UTC）
     body->insert(QStringLiteral("testedAt"),
                  QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-ddTHH:mm:ss.zzz")));

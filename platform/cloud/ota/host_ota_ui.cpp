@@ -3,6 +3,7 @@
 #include "auth_service.h"
 #include "factory_cloud_client.h"
 #include "host_ota_apply.h"
+#include "host_ota_service.h"
 #include "my_set/my_typedef.h"
 #include "ui_host_ota_ui.h"
 
@@ -152,6 +153,8 @@ bool HostOtaUi::uploadCurrentExe(QString* message, const QString& releaseNotes) 
     if (message) {
         *message = QStringLiteral("上位机版本已上报（%1 buildId=%2）").arg(appVer, bid);
     }
+    // 本机当前版本即刚上传的包，同步落盘更新说明供测试结果上报
+    HostOtaService::saveLocalReleaseNotes(appVer, releaseNotes);
     qDebug() << "[OTA] 上传成功:" << appVer << bid;
     return true;
 }

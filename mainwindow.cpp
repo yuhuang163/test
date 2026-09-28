@@ -6253,6 +6253,70 @@ void MainWindow::on_dongle_suction_set_osr_clicked() {
     showlog(QStringLiteral("已发送 AT+SUCTIONOSR=%1（%2）").arg(gear).arg(desc));
 }
 
+void MainWindow::on_dongle_pump_on_clicked() {
+    if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
+        openDongleSerialPort();
+        if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
+            showlog(QStringLiteral("开泵失败：无法打开 Dongle 串口"));
+            return;
+        }
+    }
+    if (!at) {
+        showlog(QStringLiteral("AT+PUMPON 发送失败：Dongle 未就绪"));
+        return;
+    }
+    at->set(DongleCmd::PumpOn, 1);
+    showlog(QStringLiteral("已发送 AT+PUMPON=1（开泵）"));
+}
+
+void MainWindow::on_dongle_pump_off_clicked() {
+    if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
+        openDongleSerialPort();
+        if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
+            showlog(QStringLiteral("关泵失败：无法打开 Dongle 串口"));
+            return;
+        }
+    }
+    if (!at) {
+        showlog(QStringLiteral("AT+PUMPON 发送失败：Dongle 未就绪"));
+        return;
+    }
+    at->set(DongleCmd::PumpOn, 0);
+    showlog(QStringLiteral("已发送 AT+PUMPON=0（关泵）"));
+}
+
+void MainWindow::on_dongle_valve_on_clicked() {
+    if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
+        openDongleSerialPort();
+        if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
+            showlog(QStringLiteral("开阀失败：无法打开 Dongle 串口"));
+            return;
+        }
+    }
+    if (!at) {
+        showlog(QStringLiteral("AT+VALVEON 发送失败：Dongle 未就绪"));
+        return;
+    }
+    at->set(DongleCmd::ValveOn, 1);
+    showlog(QStringLiteral("已发送 AT+VALVEON=1（开阀）"));
+}
+
+void MainWindow::on_dongle_valve_off_clicked() {
+    if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
+        openDongleSerialPort();
+        if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
+            showlog(QStringLiteral("关阀失败：无法打开 Dongle 串口"));
+            return;
+        }
+    }
+    if (!at) {
+        showlog(QStringLiteral("AT+VALVEON 发送失败：Dongle 未就绪"));
+        return;
+    }
+    at->set(DongleCmd::ValveOn, 0);
+    showlog(QStringLiteral("已发送 AT+VALVEON=0（关阀）"));
+}
+
 void MainWindow::on_checkBox_adcSwitch_stateChanged(int arg1) {
     if (!at) {
         showlog(QStringLiteral("AT+HSADC 发送失败：Dongle 未就绪"));

@@ -105,6 +105,8 @@ Dongle 控制指令与异步上报均为 **ASCII 文本行**，以 **`CRLF`（`\
 | `AT+MAINDATA` | 主通道数据透传开关 | 下发 |
 | `AT+BLERSSILOG` | 连接后 RSSI 上报开关（旧指令 `AT+BLELOG`） | 下发 |
 | `AT+SUCTION` | 双通道吸力读取开关 | 下发 → 持续 `SUCTION_DATA` 上报 |
+| `AT+PUMPON` | 吸力专项开/关泵 | 下发（1=工作段1 PWM，0=关） |
+| `AT+VALVEON` | 吸力专项开/关阀 | 下发（1=GPIO42 高，0=低） |
 | `AT+HSADC` | 高量程 ADC 采样开关 | 下发 |
 | `AT+LSADC` | 低量程 ADC 采样开关 | 下发 |
 | `AT+BLEDEVICELOG` | 被连设备 BLE 日志开关 | 下发 |
@@ -258,6 +260,21 @@ Dongle 控制指令与异步上报均为 **ASCII 文本行**，以 **`CRLF`（`\
 
 ---
 
+### 3.8.1 `AT+PUMPON` / `AT+VALVEON` — 吸力专项泵/阀
+
+**上位机 → Dongle**
+
+| 命令 | 字段 | 说明 |
+|------|------|------|
+| `AT+PUMPON` | `1` | 开泵：按工作段 1 的频率/占空比输出 PWM |
+| `AT+PUMPON` | `0` | 关泵：PWM 拉 0 |
+| `AT+VALVEON` | `1` | 开阀：GPIO42 拉高 |
+| `AT+VALVEON` | `0` | 关阀：GPIO42 拉低 |
+
+行示例：`AT+PUMPON=1\r\n`、`AT+VALVEON=0\r\n`
+
+---
+
 ### 3.9 `AT+HSADC` / `AT+LSADC` — ADC 量程采样开关
 
 **上位机 → Dongle**
@@ -391,6 +408,8 @@ Dongle 控制指令与异步上报均为 **ASCII 文本行**，以 **`CRLF`（`\
 | `MainDataPassthrough` | `AT+MAINDATA=` |
 | `BleLog` | `AT+BLERSSILOG=` |
 | `GetSuction` | `AT+SUCTION=` |
+| `PumpOn` | `AT+PUMPON=` |
+| `ValveOn` | `AT+VALVEON=` |
 | `AdcSwitch` | `AT+HSADC=` |
 | `LowRangeAdcSwitch` | `AT+LSADC=` |
 | `BleDeviceLog` | `AT+BLEDEVICELOG=` |
