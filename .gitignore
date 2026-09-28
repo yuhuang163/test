@@ -31,3 +31,7 @@ __pycache__/
 路特上位机运行环境.zip
 
 **/上位机设置.local.ini
+
+.tmp_fu_patches/
+.tmp_blob_check.bin
+.tmp_*

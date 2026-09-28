@@ -1,17 +1,14 @@
 #ifndef XWD_RAW_UART_CODEC_H
 #define XWD_RAW_UART_CODEC_H
-
 #include <QByteArray>
 #include <QString>
 #include <QtGlobal>
-
 #if _MSC_VER >= 1600
 #pragma execution_character_set(push, "utf-8")
 #endif
 
 /** 欣旺达 XWD 治具（蓝牙盒/吸力等同物理层）：hex 或 UTF-8 原文；读电流解析。 */
 namespace XwdRawUartCodec {
-
 QByteArray encodeRawText(const QString& text, bool* parsedAsHex = nullptr);
 
 /** 解析 readonce 文本回包，例如：
@@ -21,11 +18,8 @@ QByteArray encodeRawText(const QString& text, bool* parsedAsHex = nullptr);
  */
 bool parseReadOnceReply(const QString& text, double* ch1Ma, double* ch2Ma, bool* hasCh1 = nullptr,
                         bool* hasCh2 = nullptr);
-
 } // namespace XwdRawUartCodec
-
 #if _MSC_VER >= 1600
 #pragma execution_character_set(pop)
 #endif
-
 #endif // XWD_RAW_UART_CODEC_H
