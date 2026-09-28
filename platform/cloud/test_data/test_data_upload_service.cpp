@@ -3,11 +3,13 @@
 #include "auth_service.h"
 #include "factory_cloud_client.h"
 #include "log_upload_service.h"
+#include "qlog.h"
 #include "test_case.h"
 #include "test_record_store.h"
 
 #include <QCoreApplication>
 #include <QDateTime>
+#include <QFile>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QMutex>
@@ -284,8 +286,41 @@ void TestDataUploadService::tryUploadAsync(const MesPacketData& pack) {
 }
 
 void TestDataUploadService::tryUploadTestAndLogAsync(const MesPacketData& pack, int slot) {
+    // 主线程：先刷盘 + 钉住吸力附件 + 同步打 zip，避免异步排队期间
+    // 下一轮 initData / 同工位再次 endSession 冲掉 lastSessionInfo 或附件。
+    Qlog::flushLogBuffers();
+    Qlog::pinSessionUploadArtifacts(slot);
+
+    QString zipPath;
+    QString zipError;
+    QString zipWarning;
+    LogUploadService::UploadConfig logCfg;
+    QString logCfgError;
+    const bool wantLogUpload = LogUploadService::isUploadOnTestCompleteEnabled()
+                               && !AuthService::isOfflineSession();
+    if (wantLogUpload) {
+        const QlogSessionInfo info = Qlog::lastSessionInfo(slot);
+        if (!info.valid) {
+            qDebug().noquote() << QStringLiteral("[LogUpload] slot=%1 无有效会话信息，跳过同步打包").arg(slot);
+        } else {
+            zipPath = LogUploadService::compressSessionArchive(info, &zipError, &zipWarning);
+            if (zipPath.isEmpty()) {
+                qDebug().noquote() << QStringLiteral("[LogUpload] slot=%1 同步打包失败: %2").arg(slot).arg(zipError);
+            } else if (!zipWarning.isEmpty()) {
+                qDebug().noquote() << QStringLiteral("[LogUpload] slot=%1 打包警告: %2").arg(slot).arg(zipWarning);
+            }
+            if (!LogUploadService::configFromPack(pack, &logCfg, &logCfgError)) {
+                qDebug().noquote() << QStringLiteral("[LogUpload] slot=%1 配置失败: %2").arg(slot).arg(logCfgError);
+                if (!zipPath.isEmpty()) {
+                    QFile::remove(zipPath);
+                    zipPath.clear();
+                }
+            }
+        }
+    }
+
     const MesPacketData copy = pack;
-    QtConcurrent::run([copy, slot]() {
+    QtConcurrent::run([copy, slot, zipPath, logCfg, wantLogUpload]() {
         // 同步屏障放行后两工位常在同一秒内 finish，串行化避免并发写库/撞临时 zip
         QMutexLocker locker(&uploadSessionMutex());
         QString message;
@@ -293,7 +328,27 @@ void TestDataUploadService::tryUploadTestAndLogAsync(const MesPacketData& pack, 
         if (!message.isEmpty()) {
             qDebug() << QStringLiteral("[TestDataUpload]") << message;
         }
-        // 上报失败时 recordId=0，日志仍尝试上传（与原逻辑一致）
+
+        if (!wantLogUpload)
+            return;
+
+        if (!zipPath.isEmpty()) {
+            LogUploadService::UploadConfig cfg = logCfg;
+            cfg.testRecordId = recordId;
+            QString uploadMessage;
+            const bool ok = LogUploadService::uploadLogArchive(zipPath, cfg, &uploadMessage);
+            QFile::remove(zipPath);
+            if (!uploadMessage.isEmpty())
+                qDebug() << QStringLiteral("[LogUpload]") << uploadMessage;
+            if (!ok) {
+                qDebug().noquote() << QStringLiteral("[LogUpload] slot=%1 预打包上传失败，回退现场再打").arg(slot);
+                LogUploadService::uploadSessionFromPack(copy, slot, recordId, &uploadMessage);
+                if (!uploadMessage.isEmpty())
+                    qDebug() << QStringLiteral("[LogUpload]") << uploadMessage;
+            }
+            return;
+        }
+
         LogUploadService::uploadSessionFromPack(copy, slot, recordId, &message);
         if (!message.isEmpty()) {
             qDebug() << QStringLiteral("[LogUpload]") << message;

@@ -47,6 +47,10 @@ class QFreeWorkBox : public box_base {
     Asd9026aDevice* sharedAsd9026aDevice() const {
         return asd9026aDevice_;
     }
+    /** ASD9026A 共享串口互斥（一拖多同时读电流/配置时串行化收发）。 */
+    QMutex* sharedAsd9026aMutex() {
+        return &sharedAsd9026aMutex_;
+    }
     /** 所有子工位均已停止时释放共享 ASD9026A 串口。 */
     void releaseSharedAsd9026aIfIdle();
     /** 两工位共用一台多路温度记录仪时的共享串口（按步骤 Param 设备序号）。 */
@@ -96,6 +100,7 @@ class QFreeWorkBox : public box_base {
     QAction* plcFixtureConnectAct_ = nullptr;
     Fixture_uart* preStartMonitorUi_ = nullptr;
     Asd9026aDevice* asd9026aDevice_ = nullptr;
+    QMutex sharedAsd9026aMutex_;
     QHash<int, SerialChannel*> sharedTempLoggerChannels_;
     QHash<int, QMutex*> sharedTempLoggerMutexes_;
     QHash<int, SerialChannel::OpenParams> sharedTempLoggerOpenParams_;

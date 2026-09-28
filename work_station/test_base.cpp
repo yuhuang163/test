@@ -1159,6 +1159,8 @@ void test_base::finishTestRecord(const MesPacketData& packIn, bool useMes) {
     if (Qlog::hasActiveSession(m_index)) {
         Qlog::endSession(m_index, result);
     }
+    // 先于异步上传钉住吸力附件，避免下一轮开测 initData 清缓存导致平台缺 CSV/曲线
+    Qlog::pinSessionUploadArtifacts(m_index);
     TestDataUploadService::tryUploadTestAndLogAsync(pack, m_index);
     if (useMes) {
         emit send_end_test_pass(pack);

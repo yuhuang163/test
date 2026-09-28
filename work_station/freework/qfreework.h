@@ -106,6 +106,10 @@ class QFreeWork : public test_base {
     bool evaluateActiveTestCaseGate(const QString& reportType, const QVariant& payload);
     bool tryCompleteActiveTestCaseTupleCompare(const ProtocolTupleData& data);
     void markActiveTestCaseStepDone(bool pass, const QString& testData, const QString& ask = QString());
+    /** 一拖多 PLC 同步会话键（WRITE_M11 / READ_M0…）；空表示未在屏障内。 */
+    void setPlcSyncWaitKey(const QString& key) { plcSyncWaitKey_ = key; }
+    QString plcSyncWaitKey() const { return plcSyncWaitKey_; }
+    void clearPlcSyncWaitKey() { plcSyncWaitKey_.clear(); }
     QString activeTestCaseStepTestData() const {
         return stepRuntime_.testData;
     }
@@ -402,6 +406,11 @@ class QFreeWork : public test_base {
     void runHikvisionScannerReadStep();
     /** Dongle 单通道吸力采样；判定走 ProtocolDongleSuctionPeakData Gate。 */
     void runDongleSuctionSampleSingleStep();
+    /** 吸力采样窗口到期/中止后的收尾（异步，不堵 startTask）。 */
+    void onDongleSuctionSamplePoll();
+    void finishDongleSuctionSampleDualEval();
+    void finishDongleSuctionSampleSingleEval();
+    void abortDongleSuctionSampleWindow(const QString& reasonLog);
     /** V3 光感单点校准（产品协议）：采光感取平均 → 写平均值并回读。亮度由前一步治具 VES 设置。 */
     void runLightSensorGoldenCalibStep();
     /** 光感校准：仅采光感取平均并写入（不含回读）。 */
@@ -443,6 +452,12 @@ class QFreeWork : public test_base {
      */
     void runScpiProgrammableCurrentSampleAnyMatch(const TestCaseDefinition& def, const QVariant& commandParam);
     void runAsdProgrammableCurrentSampleAnyMatch(const TestCaseDefinition& def, quint8 moduleAddr, int channel);
+    /** ASD 读电流异步采样 tick（一拖多不堵 startTask）。 */
+    void onAsdCurrentSamplePoll();
+    void finishAsdCurrentSampleWindowFail();
+    void abortAsdCurrentSampleWindow();
+    /** 当前等待的一拖多 PLC 同步会话键（WRITE_M11 / READ_M0…）；空表示未在屏障内。 */
+    QString plcSyncWaitKey_;
     /** 治具/USB 电流表 Hook「读取治具电流测量值」：连续采样，任一值落入 SETTINGS 电流卡控即通过。 */
     void runJigAmmeterCurrentSampleAnyMatch();
     /** XWD 治具读电流：连续下发/收包采样，Gate 任一合格即通过。 */
@@ -485,14 +500,26 @@ class QFreeWork : public test_base {
     double suctionPeakBaselineKpa_ = -8.0;
     /** 低于该压力才计入吸气周期，避免噪声误计为峰。 */
     double suctionPeakDipStartKpa_ = -10.0;
-    /** 采样窗口内至少需要的完整「吸→回放」周期峰个数（单/双通道共用，默认 3）。 */
+    /** 采样窗口内至少需要的完整峰顶个数（加强后过峰顶才计，单/双通道共用，默认 3）。 */
     int suctionMinPeakCount_ = 3;
     /** 吸力修正：界面/曲线/判定 = 原始 kPa + 本值，步骤 Param_offsetKpa，默认 0 */
     double suctionOffsetKpa_ = 0.0;
     bool dongleSuctionReadEnabled_ = false;
     bool dongleSuctionSampleActive_ = false;
+    /** true=双通道采样窗口；false=单通道。由异步 poll 收尾。 */
+    bool dongleSuctionSampleIsDual_ = false;
+    bool dongleSuctionSampleRestoreOff_ = false;
+    int dongleSuctionSampleTargetMs_ = 10000;
+    QTimer* dongleSuctionSamplePollTimer_ = nullptr;
     /** 读电流连续采样：窗口内任一卡控合格即通过，不合格不立刻结束步骤。 */
     bool currentSampleAnyMatchActive_ = false;
+    /** ASD 异步采样窗口状态（其它读电流路径仍可同步，仅 ASD 走 timer）。 */
+    quint8 currentSampleAsdModuleAddr_ = 1;
+    int currentSampleAsdChannel_ = 1;
+    int currentSampleTargetMs_ = 3000;
+    int currentSampleIntervalMs_ = 200;
+    QElapsedTimer currentSampleWindowTimer_;
+    QTimer* currentSamplePollTimer_ = nullptr;
     /** true=采完用均值卡控；false=任一值合格即过（Param_sampleJudgeMode=average|any） */
     bool currentSampleJudgeByAverage_ = false;
     int currentSampleCount_ = 0;

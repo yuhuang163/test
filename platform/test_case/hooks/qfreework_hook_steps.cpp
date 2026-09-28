@@ -21,11 +21,6 @@
 #pragma execution_character_set(push, "utf-8")
 #endif
 
-struct DeferredSuctionLogFlush {
-    DeferredSuctionLogFlush() { Qlog::setBufferedLogFlushDeferred(true); }
-    ~DeferredSuctionLogFlush() { Qlog::setBufferedLogFlushDeferred(false); }
-};
-
 struct SuctionCycleExtract {
     QVector<double> peaks;
     QVector<int> peakIndexes; // 各周期最低点在 samples 中的下标，供曲线标注
@@ -34,11 +29,11 @@ struct SuctionCycleExtract {
 
 static SuctionCycleExtract extractSuctionCycles(const QVector<double>& samples, double baseline, double dipStart) {
     SuctionCycleExtract out;
-    enum class PeakPhase { AtBaseline, InCycle };
-    PeakPhase phase = PeakPhase::AtBaseline;
-    bool cycleMinInit = false;
-    double cycleMinKpa = 0.0;
-    int cycleMinIndex = 0;
+    // 只认「加强段里的最低点」为峰顶：变负=加强追最低点；开始回升=过峰顶立刻记；结束仍在加强则不算
+    bool strengthening = false;
+    bool minInit = false;
+    double minKpa = 0.0;
+    int minIndex = 0;
     bool trackingReturn = false;
     bool returnInit = false;
     double returnMaxKpa = 0.0;
@@ -51,42 +46,50 @@ static SuctionCycleExtract extractSuctionCycles(const QVector<double>& samples, 
     for (int i = 0; i < samples.size(); ++i) {
         const double kpa = samples.at(i);
         if (kpa >= baseline) {
-            if (phase == PeakPhase::InCycle && cycleMinInit && cycleMinKpa <= dipStart) {
-                out.peaks.append(cycleMinKpa);
-                out.peakIndexes.append(cycleMinIndex);
-                trackingReturn = true;
-                returnMaxKpa = kpa;
-                returnInit = true;
-            } else if (phase == PeakPhase::AtBaseline && trackingReturn) {
+            if (trackingReturn) {
                 if (!returnInit || kpa > returnMaxKpa) {
                     returnMaxKpa = kpa;
                     returnInit = true;
                 }
             }
-            phase = PeakPhase::AtBaseline;
-            cycleMinInit = false;
+            strengthening = false;
+            minInit = false;
             continue;
         }
-        if (kpa < dipStart) {
-            if (phase == PeakPhase::AtBaseline) {
-                finishReturnPlateau();
-                phase = PeakPhase::InCycle;
-                cycleMinKpa = kpa;
-                cycleMinIndex = i;
-                cycleMinInit = true;
-            } else if (!cycleMinInit || kpa < cycleMinKpa) {
-                cycleMinKpa = kpa;
-                cycleMinIndex = i;
-                cycleMinInit = true;
-            }
+
+        const bool goingDeeper = (i > 0 && kpa < samples.at(i - 1));
+        const bool goingShallower = (i > 0 && kpa > samples.at(i - 1));
+
+        if (!strengthening) {
+            // 已在衰弱的半截不入；只有继续变负且低于入峰线才开加强
+            if (!goingDeeper || kpa >= dipStart)
+                continue;
+            finishReturnPlateau();
+            strengthening = true;
+            minKpa = kpa;
+            minIndex = i;
+            minInit = true;
             continue;
         }
-        if (phase == PeakPhase::InCycle && (!cycleMinInit || kpa < cycleMinKpa)) {
-            cycleMinKpa = kpa;
-            cycleMinIndex = i;
-            cycleMinInit = true;
+
+        if (kpa < minKpa) {
+            minKpa = kpa;
+            minIndex = i;
+            minInit = true;
+            continue;
+        }
+        if (goingShallower && minInit && minKpa <= dipStart) {
+            // 加强后开始回升 → 最低点即完整峰顶
+            out.peaks.append(minKpa);
+            out.peakIndexes.append(minIndex);
+            trackingReturn = true;
+            returnMaxKpa = baseline;
+            returnInit = false;
+            strengthening = false;
+            minInit = false;
         }
     }
+    // 采样结束仍在加强：峰顶未出现，不算
     finishReturnPlateau();
     return out;
 }
@@ -217,6 +220,11 @@ void QFreeWork::startPlcKeyButtonTest(const QString& testName, const QString& pr
 void QFreeWork::runDongleSuctionSampleStep() {
     applySuctionGateFromStepParam(activeTestCase_.send.param);
 
+    if (dongleSuctionSampleActive_) {
+        showlog(QStringLiteral("采集双通道吸力：上一窗采样尚未结束，忽略重复启动"));
+        return;
+    }
+
     if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
         stepRuntime_.done = true;
         stepRuntime_.pass = false;
@@ -264,48 +272,73 @@ void QFreeWork::runDongleSuctionSampleStep() {
     suctionChartRightKpa_.reserve(reserveN);
 
     // 计时器先于 dongleSuctionSampleActive_ 起，保证首个采样点就有时间
+    // 一拖多：不可在 startTask 内 waitWorkIdle 堵 10s（会嵌套泵邻工位并把两边采样串行化）
+    dongleSuctionSampleIsDual_ = true;
+    dongleSuctionSampleTargetMs_ = durationMs;
+    dongleSuctionSampleRestoreOff_ = restoreOff;
     dongleSuctionSampleTimer_.start();
     dongleSuctionSampleActive_ = true;
-    DeferredSuctionLogFlush deferDongleLogFlush;
-    QElapsedTimer sampleTimer;
-    sampleTimer.start();
-    // 取样点密度由 AT+SUCTION_DATA 决定；waitWorkIdle 只泵事件且不占满 CPU，不丢点。
-    // 采样期间不刷界面日志、不实时画曲线，结束再落盘并绘制完整曲线。
-    while (sampleTimer.elapsed() < durationMs) {
-        if (!isTestContinue) {
-            dongleSuctionSampleActive_ = false;
-            if (restoreOff)
-                setDongleSuctionReadEnabled(false);
-            finalizeSuctionChartPlot();
-            stepRuntime_.done = true;
-            stepRuntime_.pass = false;
-            stepRuntime_.testData = QStringLiteral("测试中止");
-            TestResult = failValue;
-            showlog(QStringLiteral("采集双通道吸力已中止"));
-            markActiveTestCaseStepDone(false, stepRuntime_.testData, QStringLiteral("失败"));
-            return;
-        }
-        waitWorkIdle(qMin(intervalMs, durationMs - static_cast<int>(sampleTimer.elapsed())));
+    Qlog::setBufferedLogFlushDeferred(true);
+    if (!dongleSuctionSamplePollTimer_) {
+        dongleSuctionSamplePollTimer_ = new QTimer(this);
+        QObject::connect(dongleSuctionSamplePollTimer_, &QTimer::timeout, this, [this]() { onDongleSuctionSamplePoll(); });
     }
+    dongleSuctionSamplePollTimer_->start(intervalMs);
+}
+
+void QFreeWork::abortDongleSuctionSampleWindow(const QString& reasonLog) {
+    if (dongleSuctionSamplePollTimer_)
+        dongleSuctionSamplePollTimer_->stop();
     dongleSuctionSampleActive_ = false;
-    if (restoreOff)
+    if (dongleSuctionSampleRestoreOff_)
         setDongleSuctionReadEnabled(false);
+    Qlog::setBufferedLogFlushDeferred(false);
     finalizeSuctionChartPlot();
-    // 交 Qlog 暂存，测完随会话日志包导出 CSV（此时还不知 PASS/NG，不能定文件名）
+    stepRuntime_.done = true;
+    stepRuntime_.pass = false;
+    stepRuntime_.testData = QStringLiteral("测试中止");
+    TestResult = failValue;
+    showlog(reasonLog);
+    markActiveTestCaseStepDone(false, stepRuntime_.testData, QStringLiteral("失败"));
+}
+
+void QFreeWork::onDongleSuctionSamplePoll() {
+    if (!dongleSuctionSampleActive_)
+        return;
+    if (!isTestContinue) {
+        abortDongleSuctionSampleWindow(dongleSuctionSampleIsDual_ ? QStringLiteral("采集双通道吸力已中止")
+                                                                  : QStringLiteral("采集单通道吸力已中止"));
+        return;
+    }
+    if (dongleSuctionSampleTimer_.elapsed() < dongleSuctionSampleTargetMs_)
+        return;
+    if (dongleSuctionSamplePollTimer_)
+        dongleSuctionSamplePollTimer_->stop();
+    dongleSuctionSampleActive_ = false;
+    if (dongleSuctionSampleRestoreOff_)
+        setDongleSuctionReadEnabled(false);
+    Qlog::setBufferedLogFlushDeferred(false);
+    finalizeSuctionChartPlot();
     Qlog::setSuctionSamples(getIndex(), dongleSuctionSampleTimeSec_, dongleSuctionCh1Samples_,
                             dongleSuctionCh2Samples_, dongleSuctionCh3Samples_);
+    if (dongleSuctionSampleIsDual_)
+        finishDongleSuctionSampleDualEval();
+    else
+        finishDongleSuctionSampleSingleEval();
+}
 
+void QFreeWork::finishDongleSuctionSampleDualEval() {
     if (dongleSuctionCh1Samples_.isEmpty() || dongleSuctionCh2Samples_.isEmpty()) {
         showlog(QStringLiteral("采集双通道吸力失败：采样窗口内未收到 CH1/CH2 AT+SUCTION_DATA"));
         markActiveTestCaseStepDone(false, QStringLiteral("无吸力采样点"), QStringLiteral("失败"));
         return;
     }
 
-    // 与单通道相同：完整「吸→回基线」周期才记峰，拦截一直保持吸力不放气
+    // 峰顶=加强段最低点；过峰顶回升后记下；结束仍在加强不算
     const double baseline = suctionPeakBaselineKpa_ + suctionOffsetKpa_;
     const double dipStart = suctionPeakDipStartKpa_ + suctionOffsetKpa_;
-    const SuctionCycleExtract ch1Cycles = extractSuctionCycles(dongleSuctionCh1Samples_, baseline, dipStart);
-    const SuctionCycleExtract ch2Cycles = extractSuctionCycles(dongleSuctionCh2Samples_, baseline, dipStart);
+    SuctionCycleExtract ch1Cycles = extractSuctionCycles(dongleSuctionCh1Samples_, baseline, dipStart);
+    SuctionCycleExtract ch2Cycles = extractSuctionCycles(dongleSuctionCh2Samples_, baseline, dipStart);
     const QVector<double>& ch1Peaks = ch1Cycles.peaks;
     const QVector<double>& ch2Peaks = ch2Cycles.peaks;
     if (!ch1Peaks.isEmpty() || !ch2Peaks.isEmpty()) {
@@ -424,6 +457,11 @@ void QFreeWork::runDongleSuctionSampleStep() {
 void QFreeWork::runDongleSuctionSampleSingleStep() {
     applySuctionGateFromStepParam(activeTestCase_.send.param);
 
+    if (dongleSuctionSampleActive_) {
+        showlog(QStringLiteral("采集单通道吸力：上一窗采样尚未结束，忽略重复启动"));
+        return;
+    }
+
     if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
         stepRuntime_.done = true;
         stepRuntime_.pass = false;
@@ -472,36 +510,23 @@ void QFreeWork::runDongleSuctionSampleSingleStep() {
     suctionChartRightKpa_.reserve(reserveN);
 
     // 计时器先于 dongleSuctionSampleActive_ 起，保证首个采样点就有时间
+    // 一拖多：异步窗口，beginStep 立刻返回，TotallyTask 可继续推进邻工位
+    dongleSuctionSampleIsDual_ = false;
+    dongleSuctionSampleTargetMs_ = durationMs;
+    dongleSuctionSampleRestoreOff_ = restoreOff;
     dongleSuctionSampleTimer_.start();
     dongleSuctionSampleActive_ = true;
-    DeferredSuctionLogFlush deferDongleLogFlush;
-    QElapsedTimer sampleTimer;
-    sampleTimer.start();
-    // 同双通道：入库跟 AT 帧；intervalMs 只用于泵事件，不降采样
-    while (sampleTimer.elapsed() < durationMs) {
-        if (!isTestContinue) {
-            dongleSuctionSampleActive_ = false;
-            if (restoreOff)
-                setDongleSuctionReadEnabled(false);
-            finalizeSuctionChartPlot();
-            stepRuntime_.done = true;
-            stepRuntime_.pass = false;
-            stepRuntime_.testData = QStringLiteral("测试中止");
-            TestResult = failValue;
-            showlog(QStringLiteral("采集单通道吸力已中止"));
-            markActiveTestCaseStepDone(false, stepRuntime_.testData, QStringLiteral("失败"));
-            return;
-        }
-        waitWorkIdle(qMin(intervalMs, durationMs - static_cast<int>(sampleTimer.elapsed())));
+    Qlog::setBufferedLogFlushDeferred(true);
+    if (!dongleSuctionSamplePollTimer_) {
+        dongleSuctionSamplePollTimer_ = new QTimer(this);
+        QObject::connect(dongleSuctionSamplePollTimer_, &QTimer::timeout, this, [this]() { onDongleSuctionSamplePoll(); });
     }
-    dongleSuctionSampleActive_ = false;
-    if (restoreOff)
-        setDongleSuctionReadEnabled(false);
-    finalizeSuctionChartPlot();
-    // 交 Qlog 暂存，测完随会话日志包导出 CSV（此时还不知 PASS/NG，不能定文件名）
-    Qlog::setSuctionSamples(getIndex(), dongleSuctionSampleTimeSec_, dongleSuctionCh1Samples_,
-                            dongleSuctionCh2Samples_, dongleSuctionCh3Samples_);
+    dongleSuctionSamplePollTimer_->start(intervalMs);
+}
 
+void QFreeWork::finishDongleSuctionSampleSingleEval() {
+    const int chIndex = qBound(0, suctionSingleChannelIndex_, 2);
+    const QString channelName = QStringLiteral("CH%1").arg(chIndex + 1);
     const QVector<double>* samplesPtr = &dongleSuctionCh1Samples_;
     if (chIndex == 1)
         samplesPtr = &dongleSuctionCh2Samples_;
@@ -514,11 +539,10 @@ void QFreeWork::runDongleSuctionSampleSingleStep() {
         return;
     }
 
-    // 周期峰值：吸气回基线后取本周期最低点（真正的吸力峰）；峰值差=各峰中最大-最小，
-    // 切勿用窗口绝对值最高-最低（会把基线≈0 算进去，diff≈40+）
+    // 峰顶=加强段最低点；峰值差=各完整峰中最大-最小
     const double baseline = suctionPeakBaselineKpa_ + suctionOffsetKpa_;
     const double dipStart = suctionPeakDipStartKpa_ + suctionOffsetKpa_;
-    const SuctionCycleExtract cycles = extractSuctionCycles(samples, baseline, dipStart);
+    SuctionCycleExtract cycles = extractSuctionCycles(samples, baseline, dipStart);
     const QVector<double>& cyclePeaks = cycles.peaks;
     const int minPeaks = qMax(1, suctionMinPeakCount_);
 

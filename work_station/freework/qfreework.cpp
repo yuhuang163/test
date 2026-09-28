@@ -10,6 +10,7 @@
 #include "screen_inspect_gige_capture.h"
 #include "serial_channel.h"
 #include "test_case.h"
+#include "plc_station_sync_barrier.h"
 
 #include <QMessageBox>
 #include <QCloseEvent>
@@ -1268,6 +1269,8 @@ void QFreeWork::runTestFlowBootstrap() {
         onTestSessionStarting(sn, mac);
     }
     showlog(QStringLiteral("开始测试"));
+    // 只清本工位 waitKey + 上一轮「近期完成」缓存；不打断对端已在等的同步会话
+    PlcStationSyncBarrier::instance().onStationTestStarting(this);
     // 清掉上一轮残留的指令重试定时器，避免本轮同步治具步骤被误判超时
     if (commandRetryTimer)
         finishCommandRetryWait(true, QString());
@@ -1447,7 +1450,9 @@ bool QFreeWork::tickOrderedTestStepLoop() {
             const bool fixtureOrSerialAsync =
                 caseDef.send.channel == TestCaseSendChannel::Fixture
                 || (caseDef.send.channel == TestCaseSendChannel::ProductSerial && !productSerialProtocolSet);
-            if (!caseDef.hook.enabled && !dongleBleConnect && !productGet && !fixtureOrSerialAsync) {
+            // Dongle 吸力采样等 needAsyncDone 步骤不可在此提前 done（异步窗尚未结案）
+            if (!caseDef.hook.enabled && !dongleBleConnect && !productGet && !fixtureOrSerialAsync
+                && !TestCaseRunner::needAsyncDone(caseDef)) {
                 if (!TestCaseRunner::stepWaitsForPromptAck(caseDef) || testCasePromptAcknowledged_) {
                     stepRuntime_.done = true;
                     stepRuntime_.pass = true;
@@ -1493,8 +1498,7 @@ bool QFreeWork::tickOrderedTestStepLoop() {
                     stepRuntime_.pass = true;
                 }
             }
-            // 阻塞型 Hook（如 DONGLE_SUCTION_SAMPLE）在 waitWork/QEventLoop 内会重入 startTask，
-            // 不可凭 lastCommandRetryCount 提前 done，否则与采样循环并发导致第二次卡死。
+            // 吸力采样已改为 QTimer 异步窗口，不再在 waitWork 内堵死重入 startTask
         }
 
         if (needAsyncDone && !stepRuntime_.done) {
@@ -3464,6 +3468,9 @@ void QFreeWork::initData(bool deferDongleAtForVisa) {
     suppressProductBleAutoReconnect_ = false;
     isovertime = 0;
     dongleSuctionSampleActive_ = false;
+    if (dongleSuctionSamplePollTimer_)
+        dongleSuctionSamplePollTimer_->stop();
+    Qlog::clearBufferedLogFlushDeferred();
     dongleSuctionCh1Samples_.clear();
     dongleSuctionCh2Samples_.clear();
     dongleSuctionSampleTimeSec_.clear();

@@ -2225,6 +2225,8 @@ void QFreeWork::onUsbInstrumentReport(const ProtocolReport& report) {
                             .arg(pass ? QStringLiteral("卡控通过") : QStringLiteral("未达标(继续)")));
                 if (pass) {
                     currentSampleAnyMatchActive_ = false;
+                    if (currentSamplePollTimer_)
+                        currentSamplePollTimer_->stop();
                     GateStepDisplay display = GateRegistry::formatStepDisplay(
                         gatesForEval.first(), gatesForEval, QStringLiteral("ProtocolMeasureData"),
                         QVariant::fromValue(data), gatesForEval.size() > 1);

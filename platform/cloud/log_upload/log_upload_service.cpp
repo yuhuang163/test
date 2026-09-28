@@ -295,8 +295,13 @@ QString compressExplicitFiles(const QStringList& absPaths, const QStringList& re
     }
 
     QString addBlock;
+    int missingHostSession = 0;
     for (int i = 0; i < absPaths.size(); ++i) {
         if (!QFile::exists(absPaths.at(i))) {
+            qDebug().noquote() << QStringLiteral("[LogUpload] 打包跳过（文件不存在）: %1").arg(absPaths.at(i));
+            // 第 0 项固定是工位会话主 log，缺失则整包无意义
+            if (i == 0)
+                ++missingHostSession;
             continue;
         }
         const QString src = QDir::toNativeSeparators(absPaths.at(i));
@@ -308,7 +313,19 @@ QString compressExplicitFiles(const QStringList& absPaths, const QStringList& re
             "try{$in=[IO.File]::Open($src,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::ReadWrite);"
             "$ent=$zip.CreateEntry($rel,[IO.Compression.CompressionLevel]::Optimal);"
             "$out=$ent.Open();$in.CopyTo($out);$out.Dispose();$in.Dispose();$added++}"
-            "catch{$skipped+=$rel};");
+            "catch{$skipped+=$rel;[Console]::Error.WriteLine(('zipfail:'+$rel+'|'+$($_.Exception.Message)))};");
+    }
+    if (missingHostSession > 0) {
+        if (error) {
+            *error = QStringLiteral("工位会话日志文件不存在，无法打包：") + absPaths.first();
+        }
+        return {};
+    }
+    if (addBlock.isEmpty()) {
+        if (error) {
+            *error = QStringLiteral("会话附件均不存在，无法打包");
+        }
+        return {};
     }
 
     const QString zipPathNative = QDir::toNativeSeparators(zipPath);

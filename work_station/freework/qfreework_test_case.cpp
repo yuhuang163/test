@@ -1046,6 +1046,9 @@ void QFreeWork::setActiveTestCase(const TestCaseDefinition& def) {
     testCaseStepResult_ = {};
     testCaseMultiGateTableEmitted_ = false;
     currentSampleAnyMatchActive_ = false;
+    if (currentSamplePollTimer_)
+        currentSamplePollTimer_->stop();
+    clearPlcSyncWaitKey();
     currentSampleCount_ = 0;
     currentSampleLastValueText_.clear();
     airPressureCollecting_ = false;
@@ -1061,6 +1064,9 @@ void QFreeWork::clearActiveTestCase() {
     testCaseStepResult_ = {};
     testCaseMultiGateTableEmitted_ = false;
     currentSampleAnyMatchActive_ = false;
+    if (currentSamplePollTimer_)
+        currentSamplePollTimer_->stop();
+    clearPlcSyncWaitKey();
     currentSampleCount_ = 0;
     currentSampleLastValueText_.clear();
     airPressureCollecting_ = false;
@@ -1371,7 +1377,6 @@ void QFreeWork::runAsdProgrammableCurrentSampleAnyMatch(const TestCaseDefinition
         map = resolveTestCaseSendParamTree(def.send.param).toMap();
     const int durationMs = currentSampleDurationMs(def, map);
     const int intervalMs = currentSampleIntervalMs(map);
-    const QString channelText = QStringLiteral("CH%1").arg(channel);
     auto* box = qobject_cast<QFreeWorkBox*>(window());
     Asd9026aDevice* asdDevice = box ? box->sharedAsd9026aDevice() : nullptr;
     if (!asdDevice) {
@@ -1379,58 +1384,115 @@ void QFreeWork::runAsdProgrammableCurrentSampleAnyMatch(const TestCaseDefinition
         showlog(QStringLiteral("ASD9026A 共享设备对象不存在"));
         return;
     }
+    if (currentSampleAnyMatchActive_) {
+        showlog(QStringLiteral("ASD9026A 读电流：上一窗采样尚未结束，忽略重复启动"));
+        return;
+    }
 
     currentSampleAnyMatchActive_ = true;
     currentSampleCount_ = 0;
+    currentSampleSum_ = 0.0;
     currentSampleLastValueText_.clear();
+    currentSampleAsdModuleAddr_ = moduleAddr;
+    currentSampleAsdChannel_ = channel;
+    currentSampleTargetMs_ = durationMs;
+    currentSampleIntervalMs_ = intervalMs;
+    currentSampleWindowTimer_.start();
     showlog(QStringLiteral("ASD9026A 读电流连续采样：窗口 %1ms，间隔 %2ms，期间任一值卡控合格即通过")
                 .arg(durationMs)
                 .arg(intervalMs));
 
-    QElapsedTimer sampleTimer;
-    sampleTimer.start();
-    while (sampleTimer.elapsed() < durationMs && !isActiveTestCaseStepDone()) {
-        if (!isTestContinue) {
-            currentSampleAnyMatchActive_ = false;
-            markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
-            showlog(QStringLiteral("ASD9026A 读电流连续采样已中止"));
-            return;
-        }
-        Asd9026aAnalogStatus status;
-        QString errStr;
-        if (!asdDevice->readAnalogStatus(moduleAddr, &status, &errStr)) {
-            showlog(QStringLiteral("ASD9026A 读电流采样失败（继续）：%1").arg(errStr));
-        } else {
-            const double currentMa = status.current * 1000.0;
-            ProtocolMeasureData measureData;
-            measureData.deviceName = QStringLiteral("ASD9026A");
-            measureData.channel = channelText;
-            measureData.type = QStringLiteral("Current");
-            measureData.value = currentMa;
-            measureData.valueText = QStringLiteral("%1 mA").arg(currentMa, 0, 'f', 4);
-            measureData.unit = QStringLiteral("mA");
-            measureData.isOk = true;
-            onUsbInstrumentReport(
-                ProtocolReport(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(measureData)));
-        }
-        if (isActiveTestCaseStepDone())
-            break;
-        const int remain = durationMs - static_cast<int>(sampleTimer.elapsed());
-        if (remain <= 0)
-            break;
-        waitWork(qMin(intervalMs, remain));
+    // 一拖多：不可在 startTask 内 while+waitWork 堵窗口（会饿死邻工位采样）
+    if (!currentSamplePollTimer_) {
+        currentSamplePollTimer_ = new QTimer(this);
+        QObject::connect(currentSamplePollTimer_, &QTimer::timeout, this, [this]() { onAsdCurrentSamplePoll(); });
     }
+    currentSamplePollTimer_->setInterval(qMax(20, intervalMs));
+    currentSamplePollTimer_->start();
+    // 立即采一次，避免首点再等一个 interval
+    onAsdCurrentSamplePoll();
+}
 
+void QFreeWork::abortAsdCurrentSampleWindow() {
+    if (currentSamplePollTimer_)
+        currentSamplePollTimer_->stop();
+    currentSampleAnyMatchActive_ = false;
+    markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
+    showlog(QStringLiteral("ASD9026A 读电流连续采样已中止"));
+}
+
+void QFreeWork::finishAsdCurrentSampleWindowFail() {
+    if (currentSamplePollTimer_)
+        currentSamplePollTimer_->stop();
     currentSampleAnyMatchActive_ = false;
     if (isActiveTestCaseStepDone())
         return;
-
     const QString failData =
         currentSampleLastValueText_.isEmpty() ? QStringLiteral("无有效读数") : currentSampleLastValueText_;
     showlog(QStringLiteral("ASD9026A 读电流采样结束：共 %1 次，无一值落入卡控范围，判定失败（末次 %2）")
                 .arg(currentSampleCount_)
                 .arg(failData));
     markActiveTestCaseStepDone(false, failData, QStringLiteral("失败"));
+}
+
+void QFreeWork::onAsdCurrentSamplePoll() {
+    if (!currentSampleAnyMatchActive_)
+        return;
+    if (isActiveTestCaseStepDone()) {
+        if (currentSamplePollTimer_)
+            currentSamplePollTimer_->stop();
+        currentSampleAnyMatchActive_ = false;
+        return;
+    }
+    if (!isTestContinue) {
+        abortAsdCurrentSampleWindow();
+        return;
+    }
+    if (currentSampleWindowTimer_.elapsed() >= currentSampleTargetMs_) {
+        finishAsdCurrentSampleWindowFail();
+        return;
+    }
+
+    auto* box = qobject_cast<QFreeWorkBox*>(window());
+    Asd9026aDevice* asdDevice = box ? box->sharedAsd9026aDevice() : nullptr;
+    if (!asdDevice) {
+        if (currentSamplePollTimer_)
+            currentSamplePollTimer_->stop();
+        currentSampleAnyMatchActive_ = false;
+        markActiveTestCaseStepDone(false, QStringLiteral("共享设备不存在"), QStringLiteral("失败"));
+        showlog(QStringLiteral("ASD9026A 共享设备对象不存在"));
+        return;
+    }
+
+    Asd9026aAnalogStatus status;
+    QString errStr;
+    bool ok = false;
+    // 同线程不可阻塞抢锁：邻工位持锁时 processEvents 再 lock 会死锁，抢不到就本拍跳过
+    if (!box->sharedAsd9026aMutex()->tryLock())
+        return;
+    ok = asdDevice->readAnalogStatus(currentSampleAsdModuleAddr_, &status, &errStr);
+    box->sharedAsd9026aMutex()->unlock();
+    if (!ok) {
+        showlog(QStringLiteral("ASD9026A 读电流采样失败（继续）：%1").arg(errStr));
+    } else {
+        const double currentMa = status.current * 1000.0;
+        ProtocolMeasureData measureData;
+        measureData.deviceName = QStringLiteral("ASD9026A");
+        measureData.channel = QStringLiteral("CH%1").arg(currentSampleAsdChannel_);
+        measureData.type = QStringLiteral("Current");
+        measureData.value = currentMa;
+        measureData.valueText = QStringLiteral("%1 mA").arg(currentMa, 0, 'f', 4);
+        measureData.unit = QStringLiteral("mA");
+        measureData.isOk = true;
+        onUsbInstrumentReport(
+            ProtocolReport(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(measureData)));
+    }
+
+    if (isActiveTestCaseStepDone()) {
+        if (currentSamplePollTimer_)
+            currentSamplePollTimer_->stop();
+        currentSampleAnyMatchActive_ = false;
+    }
 }
 
 void QFreeWork::runJigAmmeterCurrentSampleAnyMatch() {
@@ -2035,6 +2097,28 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
         const QString deviceKey = def.send.device;
         ModbusDeviceRoute devRoute = ModbusDeviceCatalog::deviceRouteFromIni(deviceKey);
         ctx->modbusManager.setDeviceRoute(devRoute);
+
+        // RTU 电流表/万用表/信捷走工位「万用表串口」：仅配置 COM 不够，步骤执行时须自动打开
+        // （开测 beginUiStartTest 仅对 lx/jj 工厂自动开 USB；温度仪共享口另走 ensureSharedTempLoggerChannel）
+        const bool needStationUsbRtu =
+            devRoute == ModbusDeviceRoute::HqAmmeterRtu || devRoute == ModbusDeviceRoute::LxAmmeterRtu
+            || devRoute == ModbusDeviceRoute::Aa55AmmeterRtu
+            || devRoute == ModbusDeviceRoute::FaFbFloatAmmeterRtu
+            || devRoute == ModbusDeviceRoute::XinjiePlcRtu;
+        if (needStationUsbRtu) {
+            if (!ctx->usbSerialPort || !ctx->usbSerialPort->isOpen())
+                ctx->openUsbSerialPort();
+            if (!ctx->usbSerialPort || !ctx->usbSerialPort->isOpen()) {
+                const QString port =
+                    ctx->getUsbcomNameCombo() ? ctx->getUsbcomNameCombo()->currentText().trimmed() : QString();
+                ctx->showlog(QStringLiteral("Modbus RTU 串口未打开：请在工位选择万用表串口（当前=%1 @ %2）")
+                                 .arg(port.isEmpty() ? QStringLiteral("未选") : port)
+                                 .arg(ctx->usbBaudRate));
+                ctx->markActiveTestCaseStepDone(false, QStringLiteral("Modbus RTU 串口未打开"),
+                                                QStringLiteral("失败"));
+                return;
+            }
+        }
 
         const QVariant resolvedParam = ctx->resolveTestCaseSendParamTree(def.send.param);
         QString errStr;
@@ -3050,6 +3134,32 @@ void QFreeWork::executeFixtureAsd9026aCase(const TestCaseDefinition& def) {
             ProtocolReport(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(measureData)));
     };
 
+    // 连续采样走异步，不在此抢串口锁
+    if (cmd == Asd9026aCmd::ReadProgrammableCurrent && def.gate.enabled) {
+        runAsdProgrammableCurrentSampleAnyMatch(def, moduleAddr, channel);
+        return;
+    }
+
+    // 同线程禁用阻塞锁：抢不到则延后重试，避免与邻工位采样嵌套死锁
+    if (!box->sharedAsd9026aMutex()->tryLock()) {
+        showlog(QStringLiteral("ASD9026A 串口忙，稍后重试…"));
+        QTimer::singleShot(50, this, [this, def]() {
+            if (!isTestContinue || !testCaseStepActive_ || isActiveTestCaseStepDone())
+                return;
+            if (activeTestCase_.meta.name != def.meta.name)
+                return;
+            executeFixtureAsd9026aCase(def);
+        });
+        return;
+    }
+    struct AsdLockGuard {
+        QMutex* m = nullptr;
+        ~AsdLockGuard() {
+            if (m)
+                m->unlock();
+        }
+    } asdLockGuard{box->sharedAsd9026aMutex()};
+
     bool ok = false;
     QString testData = QStringLiteral("-");
     QString actualTxHex;
@@ -3135,10 +3245,6 @@ void QFreeWork::executeFixtureAsd9026aCase(const TestCaseDefinition& def) {
     }
     case Asd9026aCmd::ReadProgrammableVoltage:
     case Asd9026aCmd::ReadProgrammableCurrent: {
-        if (cmd == Asd9026aCmd::ReadProgrammableCurrent && def.gate.enabled) {
-            runAsdProgrammableCurrentSampleAnyMatch(def, moduleAddr, channel);
-            return;
-        }
         Asd9026aAnalogStatus status;
         if (!txHexOverride.isEmpty()) {
             QByteArray response;

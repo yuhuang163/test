@@ -10,11 +10,14 @@
 #include "qprotocol_types.h"
 
 #include <QCoreApplication>
+#include <QDateTime>
 #include <QDebug>
 #include <QElapsedTimer>
 #include <QMutexLocker>
 #include <QThread>
 #include <QTimer>
+
+static constexpr qint64 kRecentSyncCompletionTtlMs = 60000;
 
 static QFreeWorkBox* freeWorkBoxForPlc(QFreeWork* ctx) {
     if (!ctx)
@@ -198,6 +201,91 @@ void PlcStationSyncBarrier::scheduleSessionTimeout(const QString& sessionKey, Sy
     });
 }
 
+void PlcStationSyncBarrier::rememberRecentCompletion(const QString& sessionKey, bool success,
+                                                     const QString& resultData) {
+    RecentSyncCompletion recent;
+    recent.success = success;
+    recent.resultData = resultData;
+    recent.completedAtMs = QDateTime::currentMSecsSinceEpoch();
+    recentCompletions_.insert(sessionKey, recent);
+}
+
+void PlcStationSyncBarrier::dropOrphanSessionsLocked() {
+    for (auto it = activeSessions_.begin(); it != activeSessions_.end();) {
+        SyncSession* session = it.value();
+        if (!session) {
+            it = activeSessions_.erase(it);
+            continue;
+        }
+        for (int i = session->arrived.size() - 1; i >= 0; --i) {
+            QFreeWork* s = session->arrived.at(i);
+            if (!s || !s->isTestContinue || s->plcSyncWaitKey() != session->key)
+                session->arrived.removeAt(i);
+        }
+        if (session->arrived.isEmpty() || session->finished) {
+            delete session;
+            it = activeSessions_.erase(it);
+        } else {
+            ++it;
+        }
+    }
+}
+
+void PlcStationSyncBarrier::onStationTestStarting(QFreeWork* ctx) {
+    if (ctx)
+        ctx->clearPlcSyncWaitKey();
+    QMutexLocker locker(&mutex_);
+    // 必须清近期完成：否则 60s 内下一轮会误 adopt 上一轮 M0/M11 结果而跳过真同步
+    recentCompletions_.clear();
+    dropOrphanSessionsLocked();
+}
+
+void PlcStationSyncBarrier::pruneAndRegisterLocked(SyncSession* session, QFreeWork* ctx, const QString& sessionKey) {
+    if (!session || !ctx)
+        return;
+    for (int i = session->arrived.size() - 1; i >= 0; --i) {
+        QFreeWork* s = session->arrived.at(i);
+        if (!s || !s->isTestContinue) {
+            session->arrived.removeAt(i);
+            continue;
+        }
+        // 必须仍挂在本同步会话上；关电源等其它步骤的 done 工位不算数
+        if (s->plcSyncWaitKey() != sessionKey) {
+            session->arrived.removeAt(i);
+            continue;
+        }
+        if (s != ctx && s->isActiveTestCaseStepDone()) {
+            session->arrived.removeAt(i);
+            continue;
+        }
+    }
+    if (!session->arrived.contains(ctx))
+        session->arrived.append(ctx);
+}
+
+bool PlcStationSyncBarrier::tryAdoptRecentCompletion(QFreeWork* ctx, const QString& sessionKey,
+                                                     const QString& adoptLog) {
+    if (!ctx)
+        return false;
+    RecentSyncCompletion recent;
+    {
+        QMutexLocker locker(&mutex_);
+        auto it = recentCompletions_.find(sessionKey);
+        if (it == recentCompletions_.end())
+            return false;
+        if (QDateTime::currentMSecsSinceEpoch() - it->completedAtMs > kRecentSyncCompletionTtlMs) {
+            recentCompletions_.erase(it);
+            return false;
+        }
+        recent = it.value();
+    }
+    ctx->clearPlcSyncWaitKey();
+    ctx->showlog(adoptLog);
+    ctx->markActiveTestCaseStepDone(recent.success, recent.resultData,
+                                    recent.success ? QStringLiteral("通过") : QStringLiteral("失败"));
+    return true;
+}
+
 void PlcStationSyncBarrier::completeSession(const QString& sessionKey, SyncSession* session, bool success,
                                             const QString& resultData, const QString& logText) {
     QList<QFreeWork*> arrived;
@@ -210,11 +298,16 @@ void PlcStationSyncBarrier::completeSession(const QString& sessionKey, SyncSessi
         session->resultData = resultData;
         arrived = session->arrived;
         activeSessions_.remove(sessionKey);
+        rememberRecentCompletion(sessionKey, success, resultData);
     }
-    // 不按步骤中文名过滤：成功区「测试完成上升」与失败区「气缸抬起」可同属一次 SET_ALL_UP 会话
+    // arrived 内工位一律尝试结案；仅当明确在等「另一个」会话时才跳过
     for (QFreeWork* station : arrived) {
         if (!station || station->isActiveTestCaseStepDone())
             continue;
+        const QString waitKey = station->plcSyncWaitKey();
+        if (!waitKey.isEmpty() && waitKey != sessionKey)
+            continue;
+        station->clearPlcSyncWaitKey();
         station->showlog(logText);
         station->markActiveTestCaseStepDone(success, resultData,
                                             success ? QStringLiteral("通过") : QStringLiteral("失败"));
@@ -276,19 +369,47 @@ void PlcStationSyncBarrier::executeSyncWriteCoil(QFreeWork* ctx, const TestCaseD
     }
 
     // 一拖多模式：进入同步屏障
+    // 会话键按线圈地址（如 M11），不按步骤中文名——成功区「测试完成」与失败区「测试完成 副本」可同会话同步
     const QString stepName = def.meta.name.trimmed().isEmpty() ? def.hook.hookId : def.meta.name.trimmed();
-    const QString sessionKey = QStringLiteral("WRITE_%1").arg(stepName);
+    const QString sessionKey = QStringLiteral("WRITE_%1").arg(addr.trimmed().toUpper());
+
+    // 对端已先到齐并结案：本工位迟到则直接沿用结果，禁止再开「1/2」新会话傻等
+    if (tryAdoptRecentCompletion(
+            ctx, sessionKey,
+            QStringLiteral("[一拖多同步写线圈] 工位%1迟到：%2 已由其它工站完成同步，直接放行")
+                .arg(ctx->getIndex())
+                .arg(addr))) {
+        return;
+    }
+
+    // 先挂 key，再登记：清洗时才能识别「谁真正在等本会话」
+    ctx->setPlcSyncWaitKey(sessionKey);
 
     SyncSession* session = nullptr;
     bool isLeader = false;
     bool createdSession = false;
     int arrivedIndex = 0;
     int requiredCount = totalActive;
+    QString arrivedIds;
 
     {
         QMutexLocker locker(&mutex_);
         session = activeSessions_.value(sessionKey, nullptr);
         if (!session) {
+            // 创建前再查一次近期完成（与上面无锁窗口竞态）
+            const auto it = recentCompletions_.find(sessionKey);
+            if (it != recentCompletions_.end()
+                && QDateTime::currentMSecsSinceEpoch() - it->completedAtMs <= kRecentSyncCompletionTtlMs) {
+                const RecentSyncCompletion recent = it.value();
+                locker.unlock();
+                ctx->clearPlcSyncWaitKey();
+                ctx->showlog(QStringLiteral("[一拖多同步写线圈] 工位%1迟到：%2 已由其它工站完成同步，直接放行")
+                                 .arg(ctx->getIndex())
+                                 .arg(addr));
+                ctx->markActiveTestCaseStepDone(recent.success, recent.resultData,
+                                                recent.success ? QStringLiteral("通过") : QStringLiteral("失败"));
+                return;
+            }
             session = new SyncSession();
             session->key = sessionKey;
             session->stepName = stepName;
@@ -296,16 +417,24 @@ void PlcStationSyncBarrier::executeSyncWriteCoil(QFreeWork* ctx, const TestCaseD
             activeSessions_.insert(sessionKey, session);
             createdSession = true;
         }
-        if (!session->arrived.contains(ctx)) {
-            session->arrived.append(ctx);
-        }
+        pruneAndRegisterLocked(session, ctx, sessionKey);
         arrivedIndex = session->arrived.size();
         requiredCount = session->requiredCount;
         isLeader = (arrivedIndex >= requiredCount);
+        for (QFreeWork* s : session->arrived) {
+            if (!arrivedIds.isEmpty())
+                arrivedIds += QLatin1Char(',');
+            arrivedIds += s ? QString::number(s->getIndex()) : QStringLiteral("?");
+        }
     }
 
-    ctx->showlog(QStringLiteral("[一拖多同步写线圈] 工位%1已就绪，等待其他工站到齐... (当前 %2/%3)")
-                     .arg(ctx->getIndex()).arg(arrivedIndex).arg(requiredCount));
+    ctx->showlog(QStringLiteral("[一拖多同步写线圈] 工位%1已就绪（步骤=%2，目标=%3），等待其他工站到齐... (当前 %4/%5，已到=%6)")
+                     .arg(ctx->getIndex())
+                     .arg(stepName)
+                     .arg(addr)
+                     .arg(arrivedIndex)
+                     .arg(requiredCount)
+                     .arg(arrivedIds));
     if (createdSession)
         scheduleSessionTimeout(sessionKey, session, syncWaitMs);
 
@@ -313,9 +442,10 @@ void PlcStationSyncBarrier::executeSyncWriteCoil(QFreeWork* ctx, const TestCaseD
         // 所有在测工站到齐，由 Leader 执行一次统一写入
         QString errStr;
         Fixture_uart* uart = sharedFixtureUartForPlc(ctx, &errStr);
-        ctx->showlog(QStringLiteral("[一拖多同步写线圈] 所有工站已到齐(%1/%2)！由工位%3使用独立PLC治具串口写线圈: %4 (脉冲=%5)")
+        ctx->showlog(QStringLiteral("[一拖多同步写线圈] 所有工站已到齐(%1/%2，工位%3)！由工位%4使用独立PLC治具串口写线圈: %5 (脉冲=%6)")
                          .arg(requiredCount)
                          .arg(requiredCount)
+                         .arg(arrivedIds)
                          .arg(ctx->getIndex())
                          .arg(addr)
                          .arg(pulse ? "是" : "否"));
@@ -399,19 +529,45 @@ void PlcStationSyncBarrier::executeSyncReadCoil(QFreeWork* ctx, const TestCaseDe
     }
 
     // 一拖多模式：进入同步屏障
+    // 会话键按线圈地址，不按步骤中文名（成功区/失败区同地址可同会话）
     const QString stepName = def.meta.name.trimmed().isEmpty() ? def.hook.hookId : def.meta.name.trimmed();
-    const QString sessionKey = QStringLiteral("READ_%1").arg(stepName);
+    const QString sessionKey = QStringLiteral("READ_%1").arg(addr.trimmed().toUpper());
+
+    if (tryAdoptRecentCompletion(
+            ctx, sessionKey,
+            QStringLiteral("[一拖多同步监控] 工位%1迟到：%2 已由其它工站完成同步，直接放行")
+                .arg(ctx->getIndex())
+                .arg(addr))) {
+        return;
+    }
+
+    ctx->setPlcSyncWaitKey(sessionKey);
 
     SyncSession* session = nullptr;
     bool isLeader = false;
     bool createdSession = false;
     int arrivedIndex = 0;
     int requiredCount = totalActive;
+    QString arrivedIds;
 
     {
         QMutexLocker locker(&mutex_);
         session = activeSessions_.value(sessionKey, nullptr);
         if (!session) {
+            // 创建前再查一次近期完成（与上面无锁窗口竞态）
+            const auto it = recentCompletions_.find(sessionKey);
+            if (it != recentCompletions_.end()
+                && QDateTime::currentMSecsSinceEpoch() - it->completedAtMs <= kRecentSyncCompletionTtlMs) {
+                const RecentSyncCompletion recent = it.value();
+                locker.unlock();
+                ctx->clearPlcSyncWaitKey();
+                ctx->showlog(QStringLiteral("[一拖多同步监控] 工位%1迟到：%2 已由其它工站完成同步，直接放行")
+                                 .arg(ctx->getIndex())
+                                 .arg(addr));
+                ctx->markActiveTestCaseStepDone(recent.success, recent.resultData,
+                                                recent.success ? QStringLiteral("通过") : QStringLiteral("失败"));
+                return;
+            }
             session = new SyncSession();
             session->key = sessionKey;
             session->stepName = stepName;
@@ -419,16 +575,24 @@ void PlcStationSyncBarrier::executeSyncReadCoil(QFreeWork* ctx, const TestCaseDe
             activeSessions_.insert(sessionKey, session);
             createdSession = true;
         }
-        if (!session->arrived.contains(ctx)) {
-            session->arrived.append(ctx);
-        }
+        pruneAndRegisterLocked(session, ctx, sessionKey);
         arrivedIndex = session->arrived.size();
         requiredCount = session->requiredCount;
         isLeader = (arrivedIndex >= requiredCount);
+        for (QFreeWork* s : session->arrived) {
+            if (!arrivedIds.isEmpty())
+                arrivedIds += QLatin1Char(',');
+            arrivedIds += s ? QString::number(s->getIndex()) : QStringLiteral("?");
+        }
     }
 
-    ctx->showlog(QStringLiteral("[一拖多同步监控] 工位%1已就绪，等待其他工站到齐... (当前 %2/%3)")
-                     .arg(ctx->getIndex()).arg(arrivedIndex).arg(requiredCount));
+    ctx->showlog(QStringLiteral("[一拖多同步监控] 工位%1已就绪（步骤=%2，目标=%3），等待其他工站到齐... (当前 %4/%5，已到=%6)")
+                     .arg(ctx->getIndex())
+                     .arg(stepName)
+                     .arg(addr)
+                     .arg(arrivedIndex)
+                     .arg(requiredCount)
+                     .arg(arrivedIds));
     if (createdSession)
         scheduleSessionTimeout(sessionKey, session, syncWaitMs);
 
@@ -436,9 +600,10 @@ void PlcStationSyncBarrier::executeSyncReadCoil(QFreeWork* ctx, const TestCaseDe
         // 所有工站到齐，由 Leader 开始统一轮询监控该线圈
         QString errStr;
         Fixture_uart* uart = sharedFixtureUartForPlc(ctx, &errStr);
-        ctx->showlog(QStringLiteral("[一拖多同步监控] 所有工站已到齐(%1/%2)！由工位%3使用独立PLC治具串口轮询 [%4]，超时 %5ms")
+        ctx->showlog(QStringLiteral("[一拖多同步监控] 所有工站已到齐(%1/%2，工位%3)！由工位%4使用独立PLC治具串口轮询 [%5]，超时 %6ms")
                          .arg(requiredCount)
                          .arg(requiredCount)
+                         .arg(arrivedIds)
                          .arg(ctx->getIndex())
                          .arg(addr)
                          .arg(timeoutMs));
@@ -672,16 +837,40 @@ void PlcStationSyncBarrier::executeSyncXwdTextCmd(QFreeWork* ctx, const TestCase
     // 会话键只按指令（SET_ALL_UP），不按步骤中文名——失败区抬起与成功区抬起可同会话同步
     const QString sessionKey = QStringLiteral("XWD_%1").arg(cmdLabel);
 
+    if (tryAdoptRecentCompletion(
+            ctx, sessionKey,
+            QStringLiteral("[一拖多XWD %1] 工位%2迟到：该指令已由其它工站完成同步，直接放行")
+                .arg(cmdLabel)
+                .arg(ctx->getIndex()))) {
+        return;
+    }
+
+    ctx->setPlcSyncWaitKey(sessionKey);
+
     SyncSession* session = nullptr;
     bool isLeader = false;
     bool createdSession = false;
     int arrivedIndex = 0;
     int requiredCount = totalActive;
+    QString arrivedIds;
 
     {
         QMutexLocker locker(&mutex_);
         session = activeSessions_.value(sessionKey, nullptr);
         if (!session) {
+            const auto it = recentCompletions_.find(sessionKey);
+            if (it != recentCompletions_.end()
+                && QDateTime::currentMSecsSinceEpoch() - it->completedAtMs <= kRecentSyncCompletionTtlMs) {
+                const RecentSyncCompletion recent = it.value();
+                locker.unlock();
+                ctx->clearPlcSyncWaitKey();
+                ctx->showlog(QStringLiteral("[一拖多XWD %1] 工位%2迟到：该指令已由其它工站完成同步，直接放行")
+                                 .arg(cmdLabel)
+                                 .arg(ctx->getIndex()));
+                ctx->markActiveTestCaseStepDone(recent.success, recent.resultData,
+                                                recent.success ? QStringLiteral("通过") : QStringLiteral("失败"));
+                return;
+            }
             session = new SyncSession();
             session->key = sessionKey;
             session->stepName = stepName;
@@ -689,19 +878,24 @@ void PlcStationSyncBarrier::executeSyncXwdTextCmd(QFreeWork* ctx, const TestCase
             activeSessions_.insert(sessionKey, session);
             createdSession = true;
         }
-        if (!session->arrived.contains(ctx))
-            session->arrived.append(ctx);
+        pruneAndRegisterLocked(session, ctx, sessionKey);
         arrivedIndex = session->arrived.size();
         requiredCount = session->requiredCount;
         isLeader = (arrivedIndex >= requiredCount);
+        for (QFreeWork* s : session->arrived) {
+            if (!arrivedIds.isEmpty())
+                arrivedIds += QLatin1Char(',');
+            arrivedIds += s ? QString::number(s->getIndex()) : QStringLiteral("?");
+        }
     }
 
-    ctx->showlog(QStringLiteral("[一拖多XWD %1] 工位%2步骤「%3」已就绪，等待其它工站到齐（含失败区同指令）… (%4/%5)")
+    ctx->showlog(QStringLiteral("[一拖多XWD %1] 工位%2步骤「%3」已就绪，等待其它工站到齐（含失败区同指令）… (%4/%5，已到=%6)")
                      .arg(cmdLabel)
                      .arg(ctx->getIndex())
                      .arg(stepName)
                      .arg(arrivedIndex)
-                     .arg(requiredCount));
+                     .arg(requiredCount)
+                     .arg(arrivedIds));
     if (createdSession)
         scheduleSessionTimeout(sessionKey, session, syncWaitMs);
 
