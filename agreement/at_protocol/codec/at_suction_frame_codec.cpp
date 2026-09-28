@@ -147,21 +147,9 @@ void AtSuctionFrameCodec::feed(const QByteArray& chunk, const FrameHandler& onFr
     phyRx_.setSuctionHandler(onFrame);
     QList<QByteArray> unused;
     phyRx_.feed(chunk, unused);
-    // 二进制 PHY chunk 里的可打印字节会污染 textBuffer_，遇帧头则清空
-    if (chunk.size() >= kDonglePhyHeaderSize) {
-        bool phyHeader = true;
-        for (int i = 0; i < kDonglePhyHeaderSize; ++i) {
-            if (static_cast<quint8>(chunk.at(i)) != kDonglePhyRxHeaderByte) {
-                phyHeader = false;
-                break;
-            }
-        }
-        if (phyHeader)
-            textBuffer_.clear();
-    }
-    for (char c : chunk)
-        appendTextByte(c);
-    flushTextFrames(onFrame);
+    // 临时屏蔽文本通道吸力（$...;）：二进制包可打印字节会误拼假帧导致曲线尖刺。
+    // AT+SUCTION_DATA 仍由 DongleAtDevice 处理，与此处无关。
+    textBuffer_.clear();
 }
 
 #if _MSC_VER >= 1600
