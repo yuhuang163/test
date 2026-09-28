@@ -35,3 +35,7 @@ __pycache__/
 .tmp_fu_patches/
 .tmp_blob_check.bin
 .tmp_*
+
+# 本机 Cursor 规则，仅本地保留不入库
+.cursor/rules/no-auto-compile-when-hung.mdc
+.cursor/rules/no-encoding-corruption.mdc
