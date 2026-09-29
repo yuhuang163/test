@@ -460,6 +460,13 @@ class QFreeWork : public test_base {
     void finishScpiCurrentSampleWindowFail();
     void abortAsdCurrentSampleWindow();
     void abortScpiCurrentSampleWindow();
+    /** COUNTDOWN_WAIT：结果表倒计时（无弹窗，一拖多不堵 startTask）。 */
+    void runCountdownWaitStep();
+    void onCountdownWaitPoll();
+    void finishCountdownWaitSuccess();
+    void abortCountdownWait(bool markFail);
+    void ensureCountdownWaitTableRow(const QString& stepName, const QString& dataText);
+    void removeCountdownWaitTableRow();
     /** 当前等待的一拖多 PLC 同步会话键（WRITE_M11 / READ_M0…）；空表示未在屏障内。 */
     QString plcSyncWaitKey_;
     /** 治具/USB 电流表 Hook「读取治具电流测量值」：连续采样，任一值落入 SETTINGS 电流卡控即通过。 */
@@ -529,6 +536,14 @@ class QFreeWork : public test_base {
     int currentSampleIntervalMs_ = 200;
     QElapsedTimer currentSampleWindowTimer_;
     QTimer* currentSamplePollTimer_ = nullptr;
+    /** COUNTDOWN_WAIT 异步倒计时（结果表刷新，无弹窗）。 */
+    bool countdownWaitActive_ = false;
+    int countdownWaitTotalSec_ = 0;
+    int countdownWaitLastShownSec_ = -1;
+    int countdownWaitTableRow_ = -1;
+    QString countdownWaitStepName_;
+    QElapsedTimer countdownWaitElapsed_;
+    QTimer* countdownWaitTimer_ = nullptr;
     /** true=采完用均值卡控；false=任一值合格即过（Param_sampleJudgeMode=average|any） */
     bool currentSampleJudgeByAverage_ = false;
     int currentSampleCount_ = 0;

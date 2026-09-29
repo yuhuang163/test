@@ -30,6 +30,8 @@
 #include <QElapsedTimer>
 #include <QEventLoop>
 #include <QMutexLocker>
+#include <QTableWidget>
+#include <QTableWidgetItem>
 #include <QThread>
 
 #include <memory>
@@ -1312,6 +1314,139 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
         showlog(QStringLiteral("卡控通过：%1").arg(detail));
     }
     return true;
+}
+
+void QFreeWork::ensureCountdownWaitTableRow(const QString& stepName, const QString& dataText) {
+    QTableWidget* table = testResultTable();
+    if (!table)
+        return;
+    const auto cellFlags = Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsEditable;
+    if (countdownWaitTableRow_ < 0 || countdownWaitTableRow_ >= table->rowCount()) {
+        countdownWaitTableRow_ = table->rowCount();
+        table->insertRow(countdownWaitTableRow_);
+        auto* nameCell = new QTableWidgetItem(stepName);
+        auto* dataCell = new QTableWidgetItem(dataText);
+        auto* resultCell = new QTableWidgetItem(QStringLiteral("等待中"));
+        auto* askCell = new QTableWidgetItem(QStringLiteral("-"));
+        nameCell->setFlags(cellFlags);
+        dataCell->setFlags(cellFlags);
+        resultCell->setFlags(cellFlags);
+        askCell->setFlags(cellFlags);
+        nameCell->setTextAlignment(Qt::AlignCenter);
+        dataCell->setTextAlignment(Qt::AlignCenter);
+        resultCell->setTextAlignment(Qt::AlignCenter);
+        askCell->setTextAlignment(Qt::AlignCenter);
+        table->setItem(countdownWaitTableRow_, 0, nameCell);
+        table->setItem(countdownWaitTableRow_, 1, dataCell);
+        table->setItem(countdownWaitTableRow_, 2, resultCell);
+        table->setItem(countdownWaitTableRow_, 3, askCell);
+        table->scrollToBottom();
+        return;
+    }
+    if (QTableWidgetItem* existing = table->item(countdownWaitTableRow_, 1)) {
+        existing->setText(dataText);
+        return;
+    }
+    auto* created = new QTableWidgetItem(dataText);
+    created->setFlags(cellFlags);
+    created->setTextAlignment(Qt::AlignCenter);
+    table->setItem(countdownWaitTableRow_, 1, created);
+}
+
+void QFreeWork::removeCountdownWaitTableRow() {
+    QTableWidget* table = testResultTable();
+    if (table && countdownWaitTableRow_ >= 0 && countdownWaitTableRow_ < table->rowCount())
+        table->removeRow(countdownWaitTableRow_);
+    countdownWaitTableRow_ = -1;
+}
+
+void QFreeWork::runCountdownWaitStep() {
+    // Param_seconds / Param_waitSeconds；可选 Param_prompt（仅写日志，界面改走结果表）
+    const TestCaseDefinition& def = activeTestCase();
+    QVariantMap map;
+    if (def.send.param.canConvert<QVariantMap>())
+        map = resolveTestCaseSendParamTree(def.send.param).toMap();
+    int seconds = 0;
+    if (map.contains(QStringLiteral("seconds")))
+        seconds = map.value(QStringLiteral("seconds")).toInt();
+    else if (map.contains(QStringLiteral("waitSeconds")))
+        seconds = map.value(QStringLiteral("waitSeconds")).toInt();
+    if (seconds <= 0) {
+        markActiveTestCaseStepDone(false, QStringLiteral("未配置等待秒数"), QStringLiteral("失败"));
+        showlog(QStringLiteral("倒计时等待失败：请在步骤 Param_seconds 填写大于 0 的秒数"));
+        return;
+    }
+    if (countdownWaitActive_) {
+        showlog(QStringLiteral("倒计时等待：上一窗尚未结束，忽略重复启动"));
+        return;
+    }
+
+    QString prompt = map.value(QStringLiteral("prompt")).toString().trimmed();
+    if (prompt.isEmpty())
+        prompt = def.meta.promptText.trimmed();
+    if (prompt.isEmpty())
+        prompt = QStringLiteral("请等待");
+
+    countdownWaitActive_ = true;
+    countdownWaitTotalSec_ = seconds;
+    countdownWaitLastShownSec_ = -1;
+    countdownWaitStepName_ = TestCaseRunner::stepLabel(def);
+    if (countdownWaitStepName_.trimmed().isEmpty())
+        countdownWaitStepName_ = QStringLiteral("倒计时等待");
+    countdownWaitElapsed_.start();
+    ensureCountdownWaitTableRow(countdownWaitStepName_,
+                                QStringLiteral("剩余%1秒").arg(seconds));
+    showlog(QStringLiteral("倒计时等待开始：%1 秒（%2，结果表显示）").arg(seconds).arg(prompt));
+
+    if (!countdownWaitTimer_) {
+        countdownWaitTimer_ = new QTimer(this);
+        QObject::connect(countdownWaitTimer_, &QTimer::timeout, this, [this]() { onCountdownWaitPoll(); });
+    }
+    countdownWaitTimer_->setInterval(200);
+    countdownWaitTimer_->start();
+    onCountdownWaitPoll();
+}
+
+void QFreeWork::onCountdownWaitPoll() {
+    if (!countdownWaitActive_)
+        return;
+    if (!isTestContinue) {
+        abortCountdownWait(true);
+        return;
+    }
+    const qint64 totalMs = static_cast<qint64>(countdownWaitTotalSec_) * 1000;
+    const qint64 elapsed = countdownWaitElapsed_.elapsed();
+    if (elapsed >= totalMs) {
+        finishCountdownWaitSuccess();
+        return;
+    }
+    const int leftSec = qMax(0, static_cast<int>((totalMs - elapsed + 999) / 1000));
+    if (leftSec == countdownWaitLastShownSec_)
+        return;
+    countdownWaitLastShownSec_ = leftSec;
+    ensureCountdownWaitTableRow(countdownWaitStepName_, QStringLiteral("剩余%1秒").arg(leftSec));
+}
+
+void QFreeWork::finishCountdownWaitSuccess() {
+    if (countdownWaitTimer_)
+        countdownWaitTimer_->stop();
+    countdownWaitActive_ = false;
+    // 先去掉临时「等待中」行，由步骤收尾写入正式结果行（含 CSV/MES）
+    removeCountdownWaitTableRow();
+    const QString data = QStringLiteral("%1秒").arg(countdownWaitTotalSec_);
+    markActiveTestCaseStepDone(true, data, QStringLiteral("通过"));
+    showlog(QStringLiteral("倒计时等待完成：%1").arg(data));
+}
+
+void QFreeWork::abortCountdownWait(bool markFail) {
+    if (countdownWaitTimer_)
+        countdownWaitTimer_->stop();
+    countdownWaitActive_ = false;
+    removeCountdownWaitTableRow();
+    if (!markFail)
+        return;
+    markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
+    showlog(QStringLiteral("倒计时等待已中止"));
 }
 
 void QFreeWork::runScpiProgrammableCurrentSampleAnyMatch(const TestCaseDefinition& def, const QVariant& commandParam) {

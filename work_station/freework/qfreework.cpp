@@ -3468,6 +3468,8 @@ void QFreeWork::initData(bool deferDongleAtForVisa) {
     dongleSuctionSampleActive_ = false;
     if (dongleSuctionSamplePollTimer_)
         dongleSuctionSamplePollTimer_->stop();
+    if (countdownWaitActive_)
+        abortCountdownWait(false);
     Qlog::clearBufferedLogFlushDeferred();
     dongleSuctionCh1Samples_.clear();
     dongleSuctionCh2Samples_.clear();
