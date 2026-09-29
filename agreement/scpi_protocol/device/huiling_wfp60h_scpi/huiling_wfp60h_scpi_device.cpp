@@ -176,17 +176,19 @@ bool HuilingWfp60hScpiDevice::set(HuilingScpiCmd cmd, const QVariant& data) {
             return true;
         };
         if (pairAgilent) {
-            for (int ch = 1; ch <= profile.stationsPerDevice; ++ch) {
-                // 量程仅主路有意义；辅路测量参数固定
-                if (ch == 1 && setRange && !writeCurrentRangeIfConfigured(profile, data))
-                    return false;
-                if (!writeVoltCurr(agilentTmplForChannel(voltTmpl, ch), agilentTmplForChannel(currTmpl, ch)))
-                    return false;
-                qDebug().noquote() << QStringLiteral("[Scpi] 已配置通道%1：%2 V / %3 A")
-                                          .arg(ch)
-                                          .arg(voltageV, 0, 'f', 3)
-                                          .arg(currentA, 0, 'f', 3);
-            }
+            // 解耦后按本工位通道写 V/I（工位1→VOLT，工位2→VOLT2）；勿每工位全量写两路，避免同 GPIB 排队卡顿
+            qDebug().noquote() << "[Scpi] TX uncouple outputs: INST:COUP:OUTP:STAT NONE";
+            if (!transport_->writeLine(QStringLiteral("INST:COUP:OUTP:STAT NONE")))
+                return false;
+            const int ch = profile.powerChannel > 0 ? profile.powerChannel : 1;
+            if (ch == 1 && setRange && !writeCurrentRangeIfConfigured(profile, data))
+                return false;
+            if (!writeVoltCurr(agilentTmplForChannel(voltTmpl, ch), agilentTmplForChannel(currTmpl, ch)))
+                return false;
+            qDebug().noquote() << QStringLiteral("[Scpi] 已配置通道%1：%2 V / %3 A")
+                                      .arg(ch)
+                                      .arg(voltageV, 0, 'f', 3)
+                                      .arg(currentA, 0, 'f', 3);
             return true;
         }
         if (!writePowerChannelSelectIfConfigured(profile))
@@ -218,8 +220,10 @@ bool HuilingWfp60hScpiDevice::set(HuilingScpiCmd cmd, const QVariant& data) {
     case HuilingScpiCmd::ReadProgrammableCurrent:
         if (!writePowerChannelSelectIfConfigured(profile))
             return false;
-        if (!writeCurrentRangeIfConfigured(profile, data)) {
-            return false;
+        // 辅路 MEAS:CURR2? 量程固定，勿再发 SENS:CURR:RANG（多一次 GPIB 写+间隔易拖慢工位2/4）
+        if (profile.powerChannel <= 1 || !profile.scpiReadCurrentCmd.contains(QStringLiteral("CURR2"), Qt::CaseInsensitive)) {
+            if (!writeCurrentRangeIfConfigured(profile, data))
+                return false;
         }
         if (visaSync) {
             return queryProgrammablePower(profile.scpiReadCurrentCmd, ProgrammablePowerReadPending::Current);

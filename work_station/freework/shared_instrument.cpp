@@ -35,9 +35,9 @@ QString rewriteHuilingChannelDigit(QString cmd, int channel) {
     return out;
 }
 
-/** Agilent 66319D 辅路：VOLT2/CURR2/OUTP2/MEAS:VOLT2?，不是 INST OUT2 + VOLT。 */
+/** Agilent 66319D 辅路：VOLT2/CURR2/OUTP2/MEAS:CURR2?（手册示例，非 INST OUT）。 */
 QString rewriteAgilentAuxChannelCmd(QString cmd, int channel) {
-    if (cmd.isEmpty() || channel <= 1)
+    if (cmd.isEmpty() || channel < 1)
         return cmd;
     const QString trimmed = cmd.trimmed();
     static const QRegularExpression already(
@@ -46,7 +46,20 @@ QString rewriteAgilentAuxChannelCmd(QString cmd, int channel) {
     if (already.match(trimmed).hasMatch())
         return cmd;
 
+    // 通道1：OUTP ON/OFF → OUTP1，避免默认 INST:COUP ALL 时裸 OUTP 两路一起开关
+    if (channel == 1) {
+        static const QRegularExpression reOutp1(QStringLiteral(R"(^(\s*)(OUTP)(\b))"),
+                                                QRegularExpression::CaseInsensitiveOption);
+        const QRegularExpressionMatch m = reOutp1.match(cmd);
+        if (!m.hasMatch())
+            return cmd;
+        QString out = cmd;
+        out.insert(m.capturedEnd(2), QLatin1Char('1'));
+        return out;
+    }
+
     const QString n = QString::number(channel);
+    // 手册：MEAS:CURR2? / MEAS:VOLT2?（[:DC] 可省略；勿写成 MEAS:CURR2:DC? 当唯一形式）
     static const QRegularExpression reMeasVolt(QStringLiteral(R"(MEAS:VOLT(?::DC)?\?)"),
                                                QRegularExpression::CaseInsensitiveOption);
     static const QRegularExpression reMeasCurr(QStringLiteral(R"(MEAS:CURR(?::DC)?\?)"),

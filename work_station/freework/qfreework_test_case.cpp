@@ -2632,7 +2632,13 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                 if (def.send.deviceCmd == QLatin1String("ProgrammablePowerOutput")) {
                     const bool enable = stepParams.commandParam.toBool();
                     testData = enable ? QStringLiteral("ON") : QStringLiteral("OFF");
-                    ctx->showlog(QStringLiteral("程控电源输出%1").arg(enable ? QStringLiteral("已打开") : QStringLiteral("已关闭")));
+                    const QString outCmd =
+                        (enable ? profile.scpiOutputOnCmd : profile.scpiOutputOffCmd).trimmed();
+                    const int ch = profile.powerChannel > 0 ? profile.powerChannel : 1;
+                    ctx->showlog(QStringLiteral("程控电源输出%1：通道%2 → %3")
+                                     .arg(enable ? QStringLiteral("已打开") : QStringLiteral("已关闭"))
+                                     .arg(ch)
+                                     .arg(outCmd.isEmpty() ? QStringLiteral("(空)") : outCmd));
                 } else if (def.send.deviceCmd == QLatin1String("ConfigureProgrammablePower")) {
                     const QVariantMap cmdMap = stepParams.commandParam.toMap();
                     const double voltageV =
@@ -2645,6 +2651,11 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                                          .arg(voltageV, 0, 'f', 2)
                                          .arg(currentA, 0, 'f', 3)
                                          .arg(profile.stationsPerDevice));
+                    } else if (profile.powerChannel > 1) {
+                        ctx->showlog(QStringLiteral("程控电源已配置：通道%1，%2 V，限流 %3 A")
+                                         .arg(profile.powerChannel)
+                                         .arg(voltageV, 0, 'f', 2)
+                                         .arg(currentA, 0, 'f', 3));
                     } else {
                         ctx->showlog(QStringLiteral("程控电源已配置：%1 V，限流 %2 A")
                                          .arg(voltageV, 0, 'f', 2)
