@@ -70,6 +70,21 @@ QFreeWorkBox::QFreeWorkBox(QWidget* parent) : box_base(parent), ui(new Ui::QFree
     QAction* startTest_act = ui->menubar->addAction("开始测试");
     connect(startTest_act, &QAction::triggered, this, &QFreeWorkBox::startTest);
 
+    QAction* use_mes_act = ui->menubar->addAction(QStringLiteral("开关MES"));
+    connect(use_mes_act, &QAction::triggered, this, [this]() {
+        // 以工位0当前状态为准，全体工位同步勾选/取消「使用MES」与「从MES取MAC」
+        const bool nextChecked =
+            (!testList.isEmpty() && testList[0]->getIsUseMes())
+                ? !testList[0]->getIsUseMes()->isChecked()
+                : false;
+        for (test_base* t : testList) {
+            if (auto* use = t->getIsUseMes())
+                use->setChecked(nextChecked);
+            if (auto* form = t->getIsFormMes())
+                form->setChecked(nextChecked);
+        }
+    });
+
     applyFixtureMenuLabel();
 
     // 延时1秒初始化全局 PLC 监控（等待子工位和 flow.ini 加载就绪）
@@ -731,25 +746,7 @@ void QFreeWorkBox::onPlcMonitorTimeout() {
             connectParams.insert(QStringLiteral("parity"), QStringLiteral("even"));
 
             if (!sharedPlcModbusManager_.exec(XinjePlcCmd::Connect, connectParams, nullptr, &err)) {
-                static qint64 lastConnLog = 0;
-                const QString failMsg = QStringLiteral("[信捷PLC按键监控] 串口连接失败: %1 (COM=%2, 波特率=%3, 站号=%4)")
-                                            .arg(err)
-                                            .arg(comPort.isEmpty() ? QStringLiteral("未配置") : comPort)
-                                            .arg(sharedPlcConfig_.plcBaudRate)
-                                            .arg(sharedPlcConfig_.plcSlaveId);
-                qDebug().noquote() << failMsg;
-                if (QDateTime::currentMSecsSinceEpoch() - lastConnLog > 3000) {
-                    emit sendBoxLog(failMsg);
-                    lastConnLog = QDateTime::currentMSecsSinceEpoch();
-                }
                 return;
-            } else {
-                const QString okMsg = QStringLiteral("[信捷PLC按键监控] 串口连接成功: %1 @ %2bps (站号=%3)")
-                                          .arg(comPort)
-                                          .arg(sharedPlcConfig_.plcBaudRate)
-                                          .arg(sharedPlcConfig_.plcSlaveId);
-                qDebug().noquote() << okMsg;
-                emit sendBoxLog(okMsg);
             }
         }
 
@@ -771,30 +768,13 @@ void QFreeWorkBox::onPlcMonitorTimeout() {
 
         if (ok) {
             const bool triggered = (result.isValid() && result.toBool());
-            const int readVal = result.toInt();
-            const QString logMsg = QStringLiteral("[信捷PLC按键监控] COM=%1 轮询地址: %2, 读值: %3 (%4)")
-                                      .arg(sharedPlcConfig_.plcComPort.isEmpty() ? QStringLiteral("(默认)") : sharedPlcConfig_.plcComPort)
-                                      .arg(addr)
-                                      .arg(readVal)
-                                      .arg(triggered ? QStringLiteral("● 按键已按下/触发") : QStringLiteral("○ 按键未按下/空闲"));
-            qDebug().noquote() << logMsg;
-            emit sendBoxLog(logMsg);
-
             if (triggered) {
-                qDebug() << "[QFreeWorkBox] Xinjie PLC Trigger detected on" << addr << "! Stopping monitor and triggering all station scanners.";
-                emit sendBoxLog(QStringLiteral("[信捷PLC按键监控] 检测到启动按键信号 (%1=1)，停止监控并联动触发一拖多所有扫码枪...").arg(addr));
                 plcMonitorTimer_->stop();
                 plcMonitorRunning_ = false;
                 // 故意不断开串口：后续测试步骤仍走同一信捷 COM
                 lock.unlock();
                 triggerAllStationScanners();
             }
-        } else {
-            const QString errLog = QStringLiteral("[信捷PLC按键监控] COM=%1 读取地址 %2 失败: %3")
-                                      .arg(sharedPlcConfig_.plcComPort.isEmpty() ? QStringLiteral("(默认)") : sharedPlcConfig_.plcComPort)
-                                      .arg(addr, plcErr);
-            qDebug().noquote() << errLog;
-            emit sendBoxLog(errLog);
         }
         return;
     }
@@ -812,23 +792,7 @@ void QFreeWorkBox::onPlcMonitorTimeout() {
         }
 
         if (!sharedPlcModbusManager_.exec(PlcCmd::Connect, connectParams, nullptr, &err)) {
-            static qint64 lastLog = 0;
-            if (QDateTime::currentMSecsSinceEpoch() - lastLog > 3000) {
-                const QString failMsg = QStringLiteral("[H5U PLC按键监控] 连接失败: %1 (IP=%2:%3)")
-                                            .arg(err)
-                                            .arg(sharedPlcConfig_.plcIp)
-                                            .arg(sharedPlcConfig_.plcPort);
-                qDebug().noquote() << failMsg;
-                emit sendBoxLog(failMsg);
-                lastLog = QDateTime::currentMSecsSinceEpoch();
-            }
             return;
-        } else {
-            const QString okMsg = QStringLiteral("[H5U PLC按键监控] TCP已连接: %1:%2")
-                                      .arg(sharedPlcConfig_.plcIp)
-                                      .arg(sharedPlcConfig_.plcPort);
-            qDebug().noquote() << okMsg;
-            emit sendBoxLog(okMsg);
         }
     }
 
@@ -839,31 +803,15 @@ void QFreeWorkBox::onPlcMonitorTimeout() {
 
     if (ok) {
         const bool triggered = (result.isValid() && result.toBool());
-        const int readVal = result.toInt();
-        const QString logMsg = QStringLiteral("[H5U PLC按键监控] 轮询地址: M%1, 读值: %2 (%3)")
-                                  .arg(sharedPlcConfig_.plcWaitAddressM)
-                                  .arg(readVal)
-                                  .arg(triggered ? QStringLiteral("● 按键已按下/触发") : QStringLiteral("○ 按键未按下/空闲"));
-        qDebug().noquote() << logMsg;
-        emit sendBoxLog(logMsg);
-
         if (triggered) {
-            qDebug() << "[QFreeWorkBox] PLC Trigger detected! Stopping monitor and triggering all station scanners.";
-            emit sendBoxLog(QStringLiteral("[H5U PLC按键监控] 检测到启动按键信号 (M%1=1)，停止监控并联动触发一拖多所有扫码枪...").arg(sharedPlcConfig_.plcWaitAddressM));
             plcMonitorTimer_->stop();
             plcMonitorRunning_ = false;
             triggerAllStationScanners();
         }
-    } else {
-        const QString errLog = QStringLiteral("[H5U PLC按键监控] 读取地址 M%1 失败: %2")
-                                  .arg(sharedPlcConfig_.plcWaitAddressM).arg(plcErr);
-        qDebug().noquote() << errLog;
-        emit sendBoxLog(errLog);
     }
 }
 
 void QFreeWorkBox::triggerAllStationScanners() {
-    int triggeredCount = 0;
     for (test_base* t : testList) {
         auto* fw = qobject_cast<QFreeWork*>(t);
         if (!fw || fw->isTestContinue)
@@ -883,26 +831,14 @@ void QFreeWorkBox::triggerAllStationScanners() {
             }
         }
 
-        const QString triggerLog = QStringLiteral("[PLC按键联动] 收到启动信号，触发工位#%1扫码枪 (IP: %2:%3)...")
-                                      .arg(fw->getIndex())
-                                      .arg(stationScannerIp)
-                                      .arg(sharedPlcConfig_.scannerPort);
-        emit sendBoxLog(triggerLog);
         fw->triggerScanner(stationScannerIp, sharedPlcConfig_.scannerPort, sharedPlcConfig_.scannerTimeoutMs);
-        ++triggeredCount;
     }
-    emit sendBoxLog(QStringLiteral("[PLC按键联动] 已向 %1 个一拖多工位并发发送扫码指令").arg(triggeredCount));
 }
 
 bool QFreeWorkBox::pollXwdDownAndTriggerScan() {
     QString detail;
     Fixture_uart* monitorUart = ensureXwdMonitorUartConnected(&detail);
     if (!monitorUart || !monitorUart->isFixtureSerialOpen()) {
-        static qint64 lastLog = 0;
-        if (QDateTime::currentMSecsSinceEpoch() - lastLog > 3000) {
-            emit sendBoxLog(QStringLiteral("[XWD到位扫码] 监控串口未就绪: %1").arg(detail));
-            lastLog = QDateTime::currentMSecsSinceEpoch();
-        }
         return false;
     }
 
@@ -932,16 +868,9 @@ bool QFreeWorkBox::pollXwdDownAndTriggerScan() {
         }
     }
     if (matchedLine.isEmpty()) {
-        static qint64 lastNoLog = 0;
-        if (QDateTime::currentMSecsSinceEpoch() - lastNoLog > 2000) {
-            emit sendBoxLog(QStringLiteral("[XWD到位扫码] DOWN? 回读: %1").arg(text.isEmpty() ? QStringLiteral("(空)") : text));
-            lastNoLog = QDateTime::currentMSecsSinceEpoch();
-        }
         return false;
     }
 
-    emit sendBoxLog(QStringLiteral("[XWD到位扫码] DOWN?→%1，停止监控并触发串口扫码枪...")
-                        .arg(matchedLine));
     plcMonitorTimer_->stop();
     plcMonitorRunning_ = false;
     // 独立监控口才释放；共用 PLC 治具通道则保持打开供后续 SET_ALL_UP
@@ -951,7 +880,6 @@ bool QFreeWorkBox::pollXwdDownAndTriggerScan() {
 }
 
 void QFreeWorkBox::triggerAllStationSerialScanners() {
-    int triggeredCount = 0;
     for (test_base* t : testList) {
         auto* fw = qobject_cast<QFreeWork*>(t);
         if (!fw || fw->isTestContinue)
@@ -971,15 +899,8 @@ void QFreeWorkBox::triggerAllStationSerialScanners() {
 
         const int baud = sharedPlcConfig_.scannerBaudRate > 0 ? sharedPlcConfig_.scannerBaudRate : 9600;
         const int timeout = sharedPlcConfig_.scannerTimeoutMs > 0 ? sharedPlcConfig_.scannerTimeoutMs : 3000;
-        emit sendBoxLog(QStringLiteral("[XWD到位扫码] 触发工位#%1 串口扫码枪 %2 @ %3bps hex=%4")
-                            .arg(fw->getIndex())
-                            .arg(comPort.isEmpty() ? QStringLiteral("未配置") : comPort)
-                            .arg(baud)
-                            .arg(sharedPlcConfig_.scannerHexCmd));
         fw->triggerSerialScanner(comPort, baud, sharedPlcConfig_.scannerHexCmd, timeout);
-        ++triggeredCount;
     }
-    emit sendBoxLog(QStringLiteral("[XWD到位扫码] 已向 %1 个工位发送串口扫码指令").arg(triggeredCount));
 }
 
 QMutex* QFreeWorkBox::sharedPlcFixtureMutex() {

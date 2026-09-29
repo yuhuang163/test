@@ -193,7 +193,8 @@ bool HuilingWfp60hScpiDevice::set(HuilingScpiCmd cmd, const QVariant& data) {
                 if (!transport_->writeLine(QStringLiteral("INST:COUP:OUTP:STAT NONE")))
                     return false;
             }
-            if (ch == 1 && setRange && !writeCurrentRangeIfConfigured(profile, data))
+            // 量程指令仅主路有效，但工位1/2步进需一致：任一通道配置步都发同一 currentRange（去重）
+            if (setRange && !writeCurrentRangeIfConfigured(profile, data))
                 return false;
             if (!writeVoltCurr(agilentTmplForChannel(voltTmpl, ch), agilentTmplForChannel(currTmpl, ch)))
                 return false;
@@ -232,11 +233,9 @@ bool HuilingWfp60hScpiDevice::set(HuilingScpiCmd cmd, const QVariant& data) {
     case HuilingScpiCmd::ReadProgrammableCurrent:
         if (!writePowerChannelSelectIfConfigured(profile))
             return false;
-        // 辅路 MEAS:CURR2? 量程固定，勿再发 SENS:CURR:RANG（多一次 GPIB 写+间隔易拖慢工位2/4）
-        if (profile.powerChannel <= 1 || !profile.scpiReadCurrentCmd.contains(QStringLiteral("CURR2"), Qt::CaseInsensitive)) {
-            if (!writeCurrentRangeIfConfigured(profile, data))
-                return false;
-        }
+        // 工位1/2 读电流都按步骤 currentRange 切量程（SENS 仅主路；同台去重，首包一次）
+        if (!writeCurrentRangeIfConfigured(profile, data))
+            return false;
         if (visaSync) {
             return queryProgrammablePower(profile.scpiReadCurrentCmd, ProgrammablePowerReadPending::Current);
         }
