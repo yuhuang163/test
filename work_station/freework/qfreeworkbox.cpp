@@ -70,6 +70,21 @@ QFreeWorkBox::QFreeWorkBox(QWidget* parent) : box_base(parent), ui(new Ui::QFree
     QAction* startTest_act = ui->menubar->addAction("开始测试");
     connect(startTest_act, &QAction::triggered, this, &QFreeWorkBox::startTest);
 
+    QAction* use_mes_act = ui->menubar->addAction(QStringLiteral("开关MES"));
+    connect(use_mes_act, &QAction::triggered, this, [this]() {
+        // 以工位0当前状态为准，全体工位同步勾选/取消「使用MES」与「从MES取MAC」
+        const bool nextChecked =
+            (!testList.isEmpty() && testList[0]->getIsUseMes())
+                ? !testList[0]->getIsUseMes()->isChecked()
+                : false;
+        for (test_base* t : testList) {
+            if (auto* use = t->getIsUseMes())
+                use->setChecked(nextChecked);
+            if (auto* form = t->getIsFormMes())
+                form->setChecked(nextChecked);
+        }
+    });
+
     applyFixtureMenuLabel();
 
     // 延时1秒初始化全局 PLC 监控（等待子工位和 flow.ini 加载就绪）
