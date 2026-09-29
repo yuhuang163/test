@@ -33,11 +33,11 @@ class XinjePlcRtuDevice : public QObject {
   private:
     struct Config {
         QString comPort;
+        /** 现场信捷：19200 8-E-1（与演示 DLL 的 115200 8N1 不同，以现场为准） */
         int baudRate = 19200;
         quint8 slaveId = 1;
         int requestTimeoutMs = 2000;
         SerialChannel::RtsDtrMode rtsMode = SerialChannel::RtsDtrMode::None;
-        // 信捷 PLC 出厂通信格式为 19200 8-E-1
         QSerialPort::Parity parity = QSerialPort::EvenParity;
     };
 

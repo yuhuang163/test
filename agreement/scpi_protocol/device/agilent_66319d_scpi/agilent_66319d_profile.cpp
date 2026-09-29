@@ -49,6 +49,8 @@ Agilent66319dScpiProfile fromParamMap(const QVariantMap& map) {
     applyCmd("scpiChannelSelectCmd", &HuilingWfp60hScpiProfile::scpiChannelSelectCmd);
     if (map.contains(QStringLiteral("powerChannel")))
         profile.powerChannel = qBound(0, map.value(QStringLiteral("powerChannel")).toInt(), 8);
+    if (map.contains(QStringLiteral("stationsPerDevice")))
+        profile.stationsPerDevice = qBound(1, map.value(QStringLiteral("stationsPerDevice")).toInt(), 8);
     return profile;
 }
 

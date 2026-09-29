@@ -244,14 +244,13 @@ XinjePlcRtuDevice::Config XinjePlcRtuDevice::configFromSettings() const {
     }
     cfg.comPort = normalizeComPort(comPort);
 
-    int defBaud = SETTINGS.value(QStringLiteral("mechine/0/masterFixtureBaudRate"),
-                  SETTINGS.value(QStringLiteral("Fixture/BaudRate"), 9600)).toInt();
+    int defBaud = SETTINGS.value(QStringLiteral("XINJE_PLC/BaudRate"), 19200).toInt();
     if (defBaud <= 0)
-        defBaud = 9600;
+        defBaud = 19200;
 
-    cfg.baudRate = SETTINGS.value(QStringLiteral("XINJE_PLC/BaudRate_Station%1").arg(st),
-                                  SETTINGS.value(QStringLiteral("XINJE_PLC/BaudRate"), defBaud))
-                       .toInt();
+    cfg.baudRate = SETTINGS.value(QStringLiteral("XINJE_PLC/BaudRate_Station%1").arg(st), defBaud).toInt();
+    if (cfg.baudRate <= 0)
+        cfg.baudRate = 19200;
     cfg.slaveId = quint8(SETTINGS.value(QStringLiteral("XINJE_PLC/SlaveId_Station%1").arg(st),
                                         SETTINGS.value(QStringLiteral("XINJE_PLC/SlaveId"), 1))
                              .toUInt());
@@ -259,16 +258,15 @@ XinjePlcRtuDevice::Config XinjePlcRtuDevice::configFromSettings() const {
         SETTINGS.value(QStringLiteral("XINJE_PLC/RequestTimeoutMs_Station%1").arg(st),
                        SETTINGS.value(QStringLiteral("XINJE_PLC/RequestTimeoutMs"), 2000))
             .toInt();
-    // 默认不做 RTS 控制（与信捷官方演示 Open(com,baud,8,"N",1) 一致）；
-    // 仅在手动 RS485 收发切换的转换器上才需要把 rtsMode 配成 rs485
+    // 默认无 RTS；仅 RS485 收发切换器才配 rtsMode=rs485。校验位默认偶校验 8-E-1
     cfg.rtsMode = rtsModeFromText(
         SETTINGS.value(QStringLiteral("XINJE_PLC/RtsMode_Station%1").arg(st),
                        SETTINGS.value(QStringLiteral("XINJE_PLC/RtsMode"), QStringLiteral("none")))
             .toString());
     cfg.parity = parityFromText(SETTINGS.value(QStringLiteral("XINJE_PLC/Parity_Station%1").arg(st),
-                                               SETTINGS.value(QStringLiteral("XINJE_PLC/Parity"), QStringLiteral("none")))
+                                               SETTINGS.value(QStringLiteral("XINJE_PLC/Parity"), QStringLiteral("even")))
                                     .toString(),
-                                cfg.parity);
+                                QSerialPort::EvenParity);
     return cfg;
 }
 
@@ -345,7 +343,8 @@ bool XinjePlcRtuDevice::transact(const QByteArray& request, QByteArray* response
     QByteArray raw;
     if (!serial_->exchangeCollect(request, &raw, timeoutMs)) {
         if (errorMessage) {
-            *errorMessage = QStringLiteral("信捷 PLC 等待应答超时");
+            *errorMessage = QStringLiteral("信捷 PLC 等待应答超时（未收到回包；核对 COM/19200 8-E-1/站号/接线） TX=%1")
+                                .arg(QString::fromLatin1(request.toHex(' ').toUpper()));
         }
         return false;
     }
@@ -501,6 +500,10 @@ bool XinjePlcRtuDevice::get(XinjePlcCmd cmd, const QVariant& param, QVariant* re
             return false;
         }
         const QByteArray pdu = QModbusPdu::buildReadCoilsRequestPdu(addr.modbusAddress, quint16(quantity));
+        logLine(QStringLiteral("信捷 ReadCoils %1 addr=0x%2 quantity=%3")
+                    .arg(addrText)
+                    .arg(addr.modbusAddress, 4, 16, QChar('0'))
+                    .arg(quantity));
         QByteArray responsePdu;
         if (!transactPdu(cfg.slaveId, pdu, &responsePdu, cfg.requestTimeoutMs, errorMessage)) {
             return false;

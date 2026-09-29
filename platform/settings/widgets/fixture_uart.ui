@@ -242,7 +242,7 @@
        </widget>
        <widget class="QWidget" name="xwdScanTab">
         <attribute name="title">
-         <string>本工站自动扫码</string>
+         <string>串口扫码配置</string>
         </attribute>
         <layout class="QVBoxLayout" name="xwdScanTabLayout">
          <item>

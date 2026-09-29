@@ -2098,14 +2098,28 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
         ModbusDeviceRoute devRoute = ModbusDeviceCatalog::deviceRouteFromIni(deviceKey);
         ctx->modbusManager.setDeviceRoute(devRoute);
 
-        // RTU 电流表/万用表/信捷走工位「万用表串口」：仅配置 COM 不够，步骤执行时须自动打开
-        // （开测 beginUiStartTest 仅对 lx/jj 工厂自动开 USB；温度仪共享口另走 ensureSharedTempLoggerChannel）
+        // RTU 电流表/万用表走工位「万用表串口」；信捷在自由工站走 Box 共享口，勿再开万用表口
         const bool needStationUsbRtu =
             devRoute == ModbusDeviceRoute::HqAmmeterRtu || devRoute == ModbusDeviceRoute::LxAmmeterRtu
             || devRoute == ModbusDeviceRoute::Aa55AmmeterRtu
-            || devRoute == ModbusDeviceRoute::FaFbFloatAmmeterRtu
-            || devRoute == ModbusDeviceRoute::XinjiePlcRtu;
+            || devRoute == ModbusDeviceRoute::FaFbFloatAmmeterRtu;
+        const bool xinjieUseSharedBox = (devRoute == ModbusDeviceRoute::XinjiePlcRtu)
+            && (qobject_cast<QFreeWorkBox*>(ctx->window()) != nullptr);
         if (needStationUsbRtu) {
+            if (!ctx->usbSerialPort || !ctx->usbSerialPort->isOpen())
+                ctx->openUsbSerialPort();
+            if (!ctx->usbSerialPort || !ctx->usbSerialPort->isOpen()) {
+                const QString port =
+                    ctx->getUsbcomNameCombo() ? ctx->getUsbcomNameCombo()->currentText().trimmed() : QString();
+                ctx->showlog(QStringLiteral("Modbus RTU 串口未打开：请在工位选择万用表串口（当前=%1 @ %2）")
+                                 .arg(port.isEmpty() ? QStringLiteral("未选") : port)
+                                 .arg(ctx->usbBaudRate));
+                ctx->markActiveTestCaseStepDone(false, QStringLiteral("Modbus RTU 串口未打开"),
+                                                QStringLiteral("失败"));
+                return;
+            }
+        }
+        if (devRoute == ModbusDeviceRoute::XinjiePlcRtu && !xinjieUseSharedBox) {
             if (!ctx->usbSerialPort || !ctx->usbSerialPort->isOpen())
                 ctx->openUsbSerialPort();
             if (!ctx->usbSerialPort || !ctx->usbSerialPort->isOpen()) {
@@ -2184,6 +2198,25 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             }
         } else if (devRoute == ModbusDeviceRoute::XinjiePlcRtu) {
             XinjePlcCmd xjCmd = xinjiePlcCmdFromName(def.send.deviceCmd);
+            auto* xinjieBox = qobject_cast<QFreeWorkBox*>(ctx->window());
+            auto execXinje = [&](XinjePlcCmd cmd, const QVariant& param, QVariant* result, QString* err) -> bool {
+                if (xinjieBox) {
+                    QMutexLocker lock(xinjieBox->sharedXinjePlcMutex());
+                    if (!xinjieBox->ensureSharedXinjePlcConnected(param, err))
+                        return false;
+                    if (cmd == XinjePlcCmd::Connect)
+                        return true;
+                    // 测试中不断开共享口，避免后续步骤/其它工位失联
+                    if (cmd == XinjePlcCmd::Disconnect)
+                        return true;
+                    xinjieBox->sharedXinjePlcManager().setDeviceRoute(ModbusDeviceRoute::XinjiePlcRtu);
+                    return xinjieBox->sharedXinjePlcManager().exec(cmd, param, result, err);
+                }
+                ctx->modbusManager.setDeviceRoute(ModbusDeviceRoute::XinjiePlcRtu);
+                return ctx->modbusManager.exec(cmd, param, result, err);
+            };
+            if (xinjieBox)
+                qDebug() << "[信捷PLC] 使用自动扫码共享串口，不重复打开";
             if ((xjCmd == XinjePlcCmd::ReadCoils || xjCmd == XinjePlcCmd::ReadDiscreteInputs)
                 && def.send.action == TestCaseSendAction::Get && def.gate.enabled) {
                 const int timeoutMs = qMax(1000, TestCaseRunner::commandTimeoutMs(def));
@@ -2201,7 +2234,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                     }
                     QVariant resultVal;
                     QString errStr;
-                    bool ok = ctx->modbusManager.exec(xjCmd, resolvedParam, &resultVal, &errStr);
+                    bool ok = execXinje(xjCmd, resolvedParam, &resultVal, &errStr);
                     ++sampleIdx;
                     if (ok) {
                         ProtocolMeasureData measureData;
@@ -2267,7 +2300,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             }
 
             QVariant resultVal;
-            bool ok = ctx->modbusManager.exec(xjCmd, resolvedParam, &resultVal, &errStr);
+            bool ok = execXinje(xjCmd, resolvedParam, &resultVal, &errStr);
             if (!ok) {
                 ctx->showlog(QStringLiteral("信捷 PLC 指令 [%1] 执行失败: %2").arg(def.send.deviceCmd, errStr));
                 ctx->markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
@@ -2520,6 +2553,17 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                     ctx->showlog(QStringLiteral("共享程控电源：%1（VISA 地址无效，请检查配置Visa程控电源步骤的 visaAddress/visaAddress0）")
                                      .arg(shareDetail));
             }
+            // 读电流前打出实际 SCPI，便于确认辅路是否已改成 MEAS:CURR2?
+            if (def.send.deviceCmd.compare(QLatin1String("ReadProgrammableCurrent"), Qt::CaseInsensitive) == 0) {
+                const int ch = visaLoadMap.value(QStringLiteral("powerChannel")).toInt();
+                const QString readCmd =
+                    visaLoadMap.value(QStringLiteral("scpiReadCurrentCmd")).toString().trimmed();
+                if (!readCmd.isEmpty()) {
+                    ctx->showlog(QStringLiteral("读电流指令：通道%1 → %2")
+                                     .arg(ch > 0 ? ch : 1)
+                                     .arg(readCmd));
+                }
+            }
             const int visaTimeoutMs = TestCaseRunner::commandTimeoutMs(def);
             const QString resolvedVisaAddr = visaLoadMap.value(QStringLiteral("visaAddress")).toString().trimmed();
             if (looksLikeBluetoothMacAddress(resolvedVisaAddr)) {
@@ -2596,7 +2640,16 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                     const double currentA =
                         huilingParamDouble(cmdMap, QStringLiteral("current"), profile.scpiPowerCurrentA);
                     testData = QStringLiteral("V=%1V,I=%2A").arg(voltageV, 0, 'f', 2).arg(currentA, 0, 'f', 3);
-                    ctx->showlog(QStringLiteral("程控电源已配置：%1 V，限流 %2 A").arg(voltageV, 0, 'f', 2).arg(currentA, 0, 'f', 3));
+                    if (profile.stationsPerDevice > 1 && !profile.scpiChannelSelectCmd.trimmed().isEmpty()) {
+                        ctx->showlog(QStringLiteral("程控电源已配置：%1 V，限流 %2 A（通道1~%3 均已写入）")
+                                         .arg(voltageV, 0, 'f', 2)
+                                         .arg(currentA, 0, 'f', 3)
+                                         .arg(profile.stationsPerDevice));
+                    } else {
+                        ctx->showlog(QStringLiteral("程控电源已配置：%1 V，限流 %2 A")
+                                         .arg(voltageV, 0, 'f', 2)
+                                         .arg(currentA, 0, 'f', 3));
+                    }
                 }
                 if (def.send.action == TestCaseSendAction::Get) {
                     if (!def.gate.enabled) {

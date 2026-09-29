@@ -35,6 +35,37 @@ QString rewriteHuilingChannelDigit(QString cmd, int channel) {
     return out;
 }
 
+/** Agilent 66319D 辅路：VOLT2/CURR2/OUTP2/MEAS:VOLT2?，不是 INST OUT2 + VOLT。 */
+QString rewriteAgilentAuxChannelCmd(QString cmd, int channel) {
+    if (cmd.isEmpty() || channel <= 1)
+        return cmd;
+    const QString trimmed = cmd.trimmed();
+    static const QRegularExpression already(
+        QStringLiteral(R"(^(?:VOLT|CURR|OUTP)\d+\b|MEAS:(?:VOLT|CURR)\d+)"),
+        QRegularExpression::CaseInsensitiveOption);
+    if (already.match(trimmed).hasMatch())
+        return cmd;
+
+    const QString n = QString::number(channel);
+    static const QRegularExpression reMeasVolt(QStringLiteral(R"(MEAS:VOLT(?::DC)?\?)"),
+                                               QRegularExpression::CaseInsensitiveOption);
+    static const QRegularExpression reMeasCurr(QStringLiteral(R"(MEAS:CURR(?::DC)?\?)"),
+                                               QRegularExpression::CaseInsensitiveOption);
+    if (reMeasVolt.match(cmd).hasMatch())
+        return QString(cmd).replace(reMeasVolt, QStringLiteral("MEAS:VOLT%1?").arg(n));
+    if (reMeasCurr.match(cmd).hasMatch())
+        return QString(cmd).replace(reMeasCurr, QStringLiteral("MEAS:CURR%1?").arg(n));
+
+    static const QRegularExpression reRoot(QStringLiteral(R"(^(\s*)(VOLT|CURR|OUTP)(\b))"),
+                                           QRegularExpression::CaseInsensitiveOption);
+    const QRegularExpressionMatch m = reRoot.match(cmd);
+    if (!m.hasMatch())
+        return cmd;
+    QString out = cmd;
+    out.insert(m.capturedEnd(2), n);
+    return out;
+}
+
 void rewriteScpiCmdsInMap(QVariantMap* map, int channel) {
     if (!map || channel < 1)
         return;
@@ -53,10 +84,14 @@ void rewriteScpiCmdsInMap(QVariantMap* map, int channel) {
         map->insert(k, rewriteHuilingChannelDigit(raw, channel));
     }
     if (!anyHuiling) {
-        QString selectCmd = map->value(QStringLiteral("scpiChannelSelectCmd")).toString().trimmed();
-        if (selectCmd.isEmpty())
-            selectCmd = QStringLiteral("INST OUT%1");
-        map->insert(QStringLiteral("scpiChannelSelectCmd"), selectCmd);
+        // Agilent：按通道改写 VOLT2/CURR2…；勿再默认塞 INST OUT（辅路不是选通写法）
+        for (const char* key : kKeys) {
+            const QString k = QString::fromLatin1(key);
+            if (!map->contains(k))
+                continue;
+            map->insert(k, rewriteAgilentAuxChannelCmd(map->value(k).toString(), channel));
+        }
+        map->remove(QStringLiteral("scpiChannelSelectCmd"));
     } else {
         map->remove(QStringLiteral("scpiChannelSelectCmd"));
     }
