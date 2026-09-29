@@ -21,10 +21,12 @@ void HuilingWfp60hScpiDevice::setTransport(ScpiTransport* transport) {
 
 void HuilingWfp60hScpiDevice::setProfilePatch(const HuilingWfp60hScpiProfile& patch) {
     profilePatch_ = patch;
+    lastProgCurrentRangeSent_.clear();
 }
 
 void HuilingWfp60hScpiDevice::clearProfilePatch() {
     profilePatch_.reset();
+    lastProgCurrentRangeSent_.clear();
 }
 
 HuilingWfp60hScpiProfile HuilingWfp60hScpiDevice::activeProfile() const {
@@ -81,17 +83,25 @@ void HuilingWfp60hScpiDevice::CONFigureFUNCtion(const QString& p) {
 
 bool HuilingWfp60hScpiDevice::writeCurrentRangeIfConfigured(const HuilingWfp60hScpiProfile& profile,
                                                             const QVariant& data) {
-    QString range = profile.scpiRange;
-    if (data.canConvert<QVariantMap>()) {
-        const QString stepRange = data.toMap().value(QStringLiteral("currentRange")).toString().trimmed();
-        if (!stepRange.isEmpty())
-            range = stepRange;
-    }
+    // 与配置步一致：仅步骤显式带 currentRange 才发；勿用 profile 默认量程在每次读电流时刷总线
+    if (!data.canConvert<QVariantMap>())
+        return true;
+    const QVariantMap m = data.toMap();
+    if (!m.contains(QStringLiteral("currentRange")))
+        return true;
+    const QString range = m.value(QStringLiteral("currentRange")).toString().trimmed();
+    if (range.isEmpty())
+        return true;
+    if (range == lastProgCurrentRangeSent_)
+        return true;
     const QString line = profile.buildSetCurrentRangeLine(range);
     if (line.isEmpty())
         return true;
     qDebug().noquote() << "[Scpi] TX range:" << line;
-    return transport_->writeLine(line);
+    if (!transport_->writeLine(line))
+        return false;
+    lastProgCurrentRangeSent_ = range;
+    return true;
 }
 
 bool HuilingWfp60hScpiDevice::writePowerChannelSelectIfConfigured(const HuilingWfp60hScpiProfile& profile) {
@@ -176,11 +186,13 @@ bool HuilingWfp60hScpiDevice::set(HuilingScpiCmd cmd, const QVariant& data) {
             return true;
         };
         if (pairAgilent) {
-            // 解耦后按本工位通道写 V/I（工位1→VOLT，工位2→VOLT2）；勿每工位全量写两路，避免同 GPIB 排队卡顿
-            qDebug().noquote() << "[Scpi] TX uncouple outputs: INST:COUP:OUTP:STAT NONE";
-            if (!transport_->writeLine(QStringLiteral("INST:COUP:OUTP:STAT NONE")))
-                return false;
+            // 解耦只需发一次；本工位只写本通道 V/I
             const int ch = profile.powerChannel > 0 ? profile.powerChannel : 1;
+            if (ch <= 1) {
+                qDebug().noquote() << "[Scpi] TX uncouple outputs: INST:COUP:OUTP:STAT NONE";
+                if (!transport_->writeLine(QStringLiteral("INST:COUP:OUTP:STAT NONE")))
+                    return false;
+            }
             if (ch == 1 && setRange && !writeCurrentRangeIfConfigured(profile, data))
                 return false;
             if (!writeVoltCurr(agilentTmplForChannel(voltTmpl, ch), agilentTmplForChannel(currTmpl, ch)))

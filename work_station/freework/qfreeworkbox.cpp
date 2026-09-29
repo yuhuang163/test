@@ -683,39 +683,12 @@ void QFreeWorkBox::updatePlcMonitorState() {
         if (!plcMonitorRunning_) {
             plcMonitorTimer_->start(sharedPlcConfig_.plcPollIntervalMs);
             plcMonitorRunning_ = true;
-            if (sharedPlcConfig_.xwdDownScanEnabled) {
-                const QString startLog =
-                    QStringLiteral("[XWD到位扫码] 启动监控: 监控口=%1 @ %2bps，扫码枪=%3 @ %4bps，周期=%5ms")
-                        .arg(sharedPlcConfig_.xwdMonitorComPort.isEmpty() ? QStringLiteral("未配置")
-                                                                         : sharedPlcConfig_.xwdMonitorComPort)
-                        .arg(sharedPlcConfig_.xwdMonitorBaudRate)
-                        .arg(sharedPlcConfig_.scannerComPort.isEmpty() ? QStringLiteral("未配置")
-                                                                      : sharedPlcConfig_.scannerComPort)
-                        .arg(sharedPlcConfig_.scannerBaudRate)
-                        .arg(sharedPlcConfig_.plcPollIntervalMs);
-                qDebug().noquote() << startLog;
-                emit sendBoxLog(startLog);
-            }
-            if (sharedPlcConfig_.enabled) {
-                const bool isXinjie = sharedPlcConfig_.plcDevice.contains(QLatin1String("Xinjie"), Qt::CaseInsensitive)
-                                      || sharedPlcConfig_.plcDevice.contains(QLatin1String("Xinje"), Qt::CaseInsensitive);
-                const QString startLog = QStringLiteral("[PLC按键监控] 启动全局PLC监控: 设备=%1, 串口/IP=%2, 轮询地址=%3, 周期=%4ms")
-                                            .arg(sharedPlcConfig_.plcDevice)
-                                            .arg(isXinjie ? (sharedPlcConfig_.plcComPort.isEmpty() ? QStringLiteral("未配置COM口") : sharedPlcConfig_.plcComPort)
-                                                          : QStringLiteral("%1:%2").arg(sharedPlcConfig_.plcIp).arg(sharedPlcConfig_.plcPort))
-                                            .arg(sharedPlcConfig_.plcWaitAddress)
-                                            .arg(sharedPlcConfig_.plcPollIntervalMs);
-                qDebug().noquote() << startLog;
-                emit sendBoxLog(startLog);
-            }
         }
     } else {
         if (plcMonitorRunning_) {
             plcMonitorTimer_->stop();
             plcMonitorRunning_ = false;
             releaseXwdMonitorUart();
-            qDebug() << "[QFreeWorkBox] 停止全局自动扫码监控";
-            emit sendBoxLog(QStringLiteral("[自动扫码] 停止监控"));
         }
     }
 }
