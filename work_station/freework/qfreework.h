@@ -653,8 +653,6 @@ class QFreeWork : public test_base {
     void on_snbanding_returnPressed();
     void on_mac_combo_textActivated(const QString& arg1);
     void on_clear_scan_clicked();
-    void on_connectwifi_clicked();
-    void on_disconnectwifi_clicked();
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();
     void on_jigConnectButton_clicked();
@@ -664,7 +662,6 @@ class QFreeWork : public test_base {
     void on_productConnectButton_clicked();
     void on_productDisconnectButton_clicked();
     void on_pushButton_clicked();
-    void on_pushButton_2_clicked();
     void on_stopTest_clicked();
     void on_toggleExtraTabsButton_clicked();
     void on_clearSuctionChartButton_clicked();

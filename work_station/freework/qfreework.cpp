@@ -689,9 +689,6 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     measure_wait_time = SETTINGS.value("Current/measure_wait_time").toInt();
 
     RssiTestTime = SETTINGS.value("BLE/RssiCount").toInt();
-    ui->wifiUserName->setText(SETTINGS.value(QString("WIFI/Name%1").arg(getIndex()), "请在配置文件中设置").toString());
-
-    ui->wifiPassword->setText(SETTINGS.value("WIFI/Password", "usmile123").toString());
 
     showlog("HighCurrent=" + QString::number(HighCurrent));
     showlog("LowCurrent=" + QString::number(LowCurrent));
@@ -1096,9 +1093,6 @@ void QFreeWork::beginUiStartTest() {
         if (!usbSerialPort->isOpen())
             openUsbSerialPort();
     }
-    if (!macAddress.isEmpty() && macAddress != QStringLiteral("没有mac地址"))
-        ui->macLabel->setText("蓝牙mac: " + macAddress);
-
     ui->test_result->setText("WAIT");
     ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: "
                                    "10px; padding: 10px; text-align: center; ");
@@ -1667,7 +1661,6 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     }
     ui->test_time->setText(CommonUtils::formatElapsedSeconds(TestTime));
     ui->macInput->clear();
-    ui->snInput->clear();
     ui->macInput->setDisabled(0);
     ui->getMac->setDisabled(0);
     // 先退出本工位测试态；最后一个工位结束时才能安全释放共享 ASD 串口。
@@ -1752,10 +1745,6 @@ void QFreeWork::refreshDongleWifi(QString data) {
     SETTINGS.setValue("WIFI/Password", "usmile123");
     // 保存名称，带有索引
     SETTINGS.setValue(QString("WIFI/Name%1").arg(getIndex()), data);
-
-    ui->wifiUserName->setText(SETTINGS.value(QString("WIFI/Name%1").arg(getIndex()), "请在配置文件中设置").toString());
-
-    ui->wifiPassword->setText(SETTINGS.value("WIFI/Password", "123445566").toString());
 }
 
 void QFreeWork::refreshBleState(int state) {
@@ -2060,18 +2049,16 @@ void QFreeWork::applyFreeWorkExtraTabsVisible(bool visible) {
     if (!bar)
         return;
 
-    const int expandIdx = ui->tabWidget->indexOf(ui->tab_2);
     const int chartIdx = ui->tabWidget->indexOf(ui->tab_chart);
     const int screenIdx = ui->tabWidget->indexOf(ui->tab_screenInspect);
     const int bleIdx = ui->tabWidget->indexOf(ui->tab_3);
-    bar->setTabVisible(expandIdx, visible);
     bar->setTabVisible(chartIdx, visible);
     bar->setTabVisible(screenIdx, visible);
     bar->setTabVisible(bleIdx, visible);
 
     if (!visible) {
         const int cur = ui->tabWidget->currentIndex();
-        if (cur == expandIdx || cur == chartIdx || cur == screenIdx || cur == bleIdx)
+        if (cur == chartIdx || cur == screenIdx || cur == bleIdx)
             ui->tabWidget->setCurrentIndex(kFreeWorkTabMain);
     }
 
@@ -2087,8 +2074,8 @@ void QFreeWork::on_toggleExtraTabsButton_clicked() {
     QTabBar* bar = ui->tabWidget->tabBar();
     if (!bar)
         return;
-    const int expandIdx = ui->tabWidget->indexOf(ui->tab_2);
-    applyFreeWorkExtraTabsVisible(!bar->isTabVisible(expandIdx));
+    const int chartIdx = ui->tabWidget->indexOf(ui->tab_chart);
+    applyFreeWorkExtraTabsVisible(!bar->isTabVisible(chartIdx));
 }
 
 void QFreeWork::loadSuctionGateSettings() {
@@ -3459,7 +3446,6 @@ void QFreeWork::runScreenInspectStep() {
 }
 
 void QFreeWork::initData(bool deferDongleAtForVisa) {
-    ui->product_sn->setText("芯片存储的整机sn:");
     ui->bleStatusLabel->setText("蓝牙连接：");
     rssitestcount = 0;
 
@@ -3523,9 +3509,6 @@ void QFreeWork::initData(bool deferDongleAtForVisa) {
     TestResult = passValue;
     wifiresult = "未测";
     bleresult = "未测";
-    ui->battary_state->setText("充电状态为:");
-    ui->battary_value->setText("电量为:");
-    ui->battary_voltage->setText("电压为:");
     deviceTailSnFromDevice = "";
     wholeMachineSn_.clear();
     transitionCode_.clear();
@@ -3631,31 +3614,6 @@ CmwGprfRunResult QFreeWork::runCmwGprf(CmwGprfCommand command, const QString& sc
     return cmwFacade_.run(command, params);
 }
 
-void QFreeWork::on_disconnectwifi_clicked() {
-    if (at->getConnected()) {
-        protocolManager.set(DeviceCmd::WifiDisconnect);
-        showlog("已发送断开wifi");
-    } else {
-        showlog("请等待连接设备后再试");
-    }
-}
-void QFreeWork::on_connectwifi_clicked() {
-    QString wifiName = SETTINGS.value(QString("WIFI/Name%1").arg(getIndex())).toString();
-    QString wifiPassword = SETTINGS.value("WIFI/Password").toString();
-
-    // QString wifiName = SETTINGS.value("WIFI/Name").toString();
-
-    QByteArray wifiNameBytes = wifiName.toUtf8();
-    QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
-
-    if (at->getConnected()) {
-        protocolManager.set(DeviceCmd::WifiConnect, QVariant::fromValue(WifiConnectPayload{wifiNameBytes, wifiPasswordBytes}));
-        showlog("已发送连接wifi");
-    } else {
-        showlog("请等待连接设备后再试");
-    }
-}
-
 void QFreeWork::on_macInput_returnPressed() {
     if (!dongleSerialPort->isOpen()) {
         on_connectButton_clicked();
@@ -3693,10 +3651,6 @@ void QFreeWork::on_macInput_returnPressed() {
 
 void QFreeWork::on_pushButton_clicked() {
     runPlcModbusConnectTest();
-}
-
-void QFreeWork::on_pushButton_2_clicked() {
-    at->set(DongleCmd::BleLog, 1); // 日志开
 }
 
 void QFreeWork::on_getMac_returnPressed() {
