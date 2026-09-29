@@ -30,6 +30,8 @@
 #include <QElapsedTimer>
 #include <QEventLoop>
 #include <QMutexLocker>
+#include <QTableWidget>
+#include <QTableWidgetItem>
 #include <QThread>
 
 #include <memory>
@@ -1317,71 +1319,238 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
     return true;
 }
 
+void QFreeWork::ensureCountdownWaitTableRow(const QString& stepName, const QString& dataText) {
+    QTableWidget* table = testResultTable();
+    if (!table)
+        return;
+    const auto cellFlags = Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsEditable;
+    if (countdownWaitTableRow_ < 0 || countdownWaitTableRow_ >= table->rowCount()) {
+        countdownWaitTableRow_ = table->rowCount();
+        table->insertRow(countdownWaitTableRow_);
+        auto* nameCell = new QTableWidgetItem(stepName);
+        auto* dataCell = new QTableWidgetItem(dataText);
+        auto* resultCell = new QTableWidgetItem(QStringLiteral("等待中"));
+        auto* askCell = new QTableWidgetItem(QStringLiteral("-"));
+        nameCell->setFlags(cellFlags);
+        dataCell->setFlags(cellFlags);
+        resultCell->setFlags(cellFlags);
+        askCell->setFlags(cellFlags);
+        nameCell->setTextAlignment(Qt::AlignCenter);
+        dataCell->setTextAlignment(Qt::AlignCenter);
+        resultCell->setTextAlignment(Qt::AlignCenter);
+        askCell->setTextAlignment(Qt::AlignCenter);
+        table->setItem(countdownWaitTableRow_, 0, nameCell);
+        table->setItem(countdownWaitTableRow_, 1, dataCell);
+        table->setItem(countdownWaitTableRow_, 2, resultCell);
+        table->setItem(countdownWaitTableRow_, 3, askCell);
+        table->scrollToBottom();
+        return;
+    }
+    if (QTableWidgetItem* existing = table->item(countdownWaitTableRow_, 1)) {
+        existing->setText(dataText);
+        return;
+    }
+    auto* created = new QTableWidgetItem(dataText);
+    created->setFlags(cellFlags);
+    created->setTextAlignment(Qt::AlignCenter);
+    table->setItem(countdownWaitTableRow_, 1, created);
+}
+
+void QFreeWork::removeCountdownWaitTableRow() {
+    QTableWidget* table = testResultTable();
+    if (table && countdownWaitTableRow_ >= 0 && countdownWaitTableRow_ < table->rowCount())
+        table->removeRow(countdownWaitTableRow_);
+    countdownWaitTableRow_ = -1;
+}
+
+void QFreeWork::runCountdownWaitStep() {
+    // Param_seconds / Param_waitSeconds；可选 Param_prompt（仅写日志，界面改走结果表）
+    const TestCaseDefinition& def = activeTestCase();
+    QVariantMap map;
+    if (def.send.param.canConvert<QVariantMap>())
+        map = resolveTestCaseSendParamTree(def.send.param).toMap();
+    int seconds = 0;
+    if (map.contains(QStringLiteral("seconds")))
+        seconds = map.value(QStringLiteral("seconds")).toInt();
+    else if (map.contains(QStringLiteral("waitSeconds")))
+        seconds = map.value(QStringLiteral("waitSeconds")).toInt();
+    if (seconds <= 0) {
+        markActiveTestCaseStepDone(false, QStringLiteral("未配置等待秒数"), QStringLiteral("失败"));
+        showlog(QStringLiteral("倒计时等待失败：请在步骤 Param_seconds 填写大于 0 的秒数"));
+        return;
+    }
+    if (countdownWaitActive_) {
+        showlog(QStringLiteral("倒计时等待：上一窗尚未结束，忽略重复启动"));
+        return;
+    }
+
+    QString prompt = map.value(QStringLiteral("prompt")).toString().trimmed();
+    if (prompt.isEmpty())
+        prompt = def.meta.promptText.trimmed();
+    if (prompt.isEmpty())
+        prompt = QStringLiteral("请等待");
+
+    countdownWaitActive_ = true;
+    countdownWaitTotalSec_ = seconds;
+    countdownWaitLastShownSec_ = -1;
+    countdownWaitStepName_ = TestCaseRunner::stepLabel(def);
+    if (countdownWaitStepName_.trimmed().isEmpty())
+        countdownWaitStepName_ = QStringLiteral("倒计时等待");
+    countdownWaitElapsed_.start();
+    ensureCountdownWaitTableRow(countdownWaitStepName_,
+                                QStringLiteral("剩余%1秒").arg(seconds));
+    showlog(QStringLiteral("倒计时等待开始：%1 秒（%2，结果表显示）").arg(seconds).arg(prompt));
+
+    if (!countdownWaitTimer_) {
+        countdownWaitTimer_ = new QTimer(this);
+        QObject::connect(countdownWaitTimer_, &QTimer::timeout, this, [this]() { onCountdownWaitPoll(); });
+    }
+    countdownWaitTimer_->setInterval(200);
+    countdownWaitTimer_->start();
+    onCountdownWaitPoll();
+}
+
+void QFreeWork::onCountdownWaitPoll() {
+    if (!countdownWaitActive_)
+        return;
+    if (!isTestContinue) {
+        abortCountdownWait(true);
+        return;
+    }
+    const qint64 totalMs = static_cast<qint64>(countdownWaitTotalSec_) * 1000;
+    const qint64 elapsed = countdownWaitElapsed_.elapsed();
+    if (elapsed >= totalMs) {
+        finishCountdownWaitSuccess();
+        return;
+    }
+    const int leftSec = qMax(0, static_cast<int>((totalMs - elapsed + 999) / 1000));
+    if (leftSec == countdownWaitLastShownSec_)
+        return;
+    countdownWaitLastShownSec_ = leftSec;
+    ensureCountdownWaitTableRow(countdownWaitStepName_, QStringLiteral("剩余%1秒").arg(leftSec));
+}
+
+void QFreeWork::finishCountdownWaitSuccess() {
+    if (countdownWaitTimer_)
+        countdownWaitTimer_->stop();
+    countdownWaitActive_ = false;
+    // 先去掉临时「等待中」行，由步骤收尾写入正式结果行（含 CSV/MES）
+    removeCountdownWaitTableRow();
+    const QString data = QStringLiteral("%1秒").arg(countdownWaitTotalSec_);
+    markActiveTestCaseStepDone(true, data, QStringLiteral("通过"));
+    showlog(QStringLiteral("倒计时等待完成：%1").arg(data));
+}
+
+void QFreeWork::abortCountdownWait(bool markFail) {
+    if (countdownWaitTimer_)
+        countdownWaitTimer_->stop();
+    countdownWaitActive_ = false;
+    removeCountdownWaitTableRow();
+    if (!markFail)
+        return;
+    markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
+    showlog(QStringLiteral("倒计时等待已中止"));
+}
+
 void QFreeWork::runScpiProgrammableCurrentSampleAnyMatch(const TestCaseDefinition& def, const QVariant& commandParam) {
     QVariantMap map;
     if (def.send.param.canConvert<QVariantMap>())
         map = resolveTestCaseSendParamTree(def.send.param).toMap();
     const int durationMs = currentSampleDurationMs(def, map);
     const int intervalMs = currentSampleIntervalMs(map);
-    const QString stepName = def.meta.name;
 
     currentSampleAnyMatchActive_ = true;
+    currentSamplePollKind_ = 2; // SCPI
     currentSampleCount_ = 0;
     currentSampleLastValueText_.clear();
+    currentSampleScpiParam_ = commandParam;
+    currentSampleScpiRangeAttached_ = true;
+    currentSampleTargetMs_ = durationMs;
+    currentSampleIntervalMs_ = intervalMs;
+    currentSampleWindowTimer_.start();
     showlog(QStringLiteral("读电流连续采样：窗口 %1ms，间隔 %2ms，期间任一值卡控合格即通过")
                 .arg(durationMs)
                 .arg(intervalMs));
 
-    QElapsedTimer sampleTimer;
-    sampleTimer.start();
-    // 量程只在首包带一次，后续纯 MEAS，否则 GPIB 每次多写 SENS 会把 3s 窗压成四五次采样
-    QVariant readParam = commandParam;
-    bool rangeAttached = true;
-    while (sampleTimer.elapsed() < durationMs && isActiveTestCaseStep(stepName) && !isActiveTestCaseStepDone()) {
-        if (!isTestContinue) {
-            currentSampleAnyMatchActive_ = false;
-            markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
-            showlog(QStringLiteral("读电流连续采样已中止"));
-            return;
-        }
-        QString errStr;
-        bool ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, readParam, &errStr);
-        if (!ok) {
-            VisaChannel::waitWork(200);
-            ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, readParam, &errStr);
-        }
-        if (!ok) {
-            VisaChannel::waitWork(300);
-            ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, readParam, &errStr);
-        }
-        if (ok && rangeAttached && readParam.canConvert<QVariantMap>()) {
-            QVariantMap stripped = readParam.toMap();
-            stripped.remove(QStringLiteral("currentRange"));
-            readParam = stripped;
-            rangeAttached = false;
-        }
-        if (!ok) {
-            showlog(QStringLiteral("读电流采样失败（继续）：%1").arg(errStr));
-        }
-        if (!isActiveTestCaseStep(stepName) || isActiveTestCaseStepDone())
-            break;
-        const int remain = durationMs - static_cast<int>(sampleTimer.elapsed());
-        if (remain <= 0)
-            break;
-        waitWork(qMin(intervalMs, remain));
+    // 一拖多：不可在 startTask 内 while+waitWork 堵窗口（会饿死邻工位 / TotallyTask 单轮数秒）
+    if (!currentSamplePollTimer_) {
+        currentSamplePollTimer_ = new QTimer(this);
+        QObject::connect(currentSamplePollTimer_, &QTimer::timeout, this, [this]() { onCurrentSamplePoll(); });
     }
+    currentSamplePollTimer_->setInterval(qMax(20, intervalMs));
+    currentSamplePollTimer_->start();
+    onScpiCurrentSamplePoll();
+}
 
+void QFreeWork::abortScpiCurrentSampleWindow() {
+    if (currentSamplePollTimer_)
+        currentSamplePollTimer_->stop();
     currentSampleAnyMatchActive_ = false;
-    // 仅当仍是本步且未结案时才判失败，避免 any-match 通过后被窗口收尾覆盖
-    if (!isActiveTestCaseStep(stepName) || isActiveTestCaseStepDone())
-        return;
+    currentSamplePollKind_ = 0;
+    markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
+    showlog(QStringLiteral("读电流连续采样已中止"));
+}
 
+void QFreeWork::finishScpiCurrentSampleWindowFail() {
+    if (currentSamplePollTimer_)
+        currentSamplePollTimer_->stop();
+    currentSampleAnyMatchActive_ = false;
+    currentSamplePollKind_ = 0;
+    if (isActiveTestCaseStepDone())
+        return;
     const QString failData =
         currentSampleLastValueText_.isEmpty() ? QStringLiteral("无有效读数") : currentSampleLastValueText_;
     showlog(QStringLiteral("读电流采样结束：共 %1 次，无一值落入卡控范围，判定失败（末次 %2）")
                 .arg(currentSampleCount_)
                 .arg(failData));
     markActiveTestCaseStepDone(false, failData, QStringLiteral("失败"));
+}
+
+void QFreeWork::onCurrentSamplePoll() {
+    if (currentSamplePollKind_ == 2)
+        onScpiCurrentSamplePoll();
+    else if (currentSamplePollKind_ == 1)
+        onAsdCurrentSamplePoll();
+}
+
+void QFreeWork::onScpiCurrentSamplePoll() {
+    if (!currentSampleAnyMatchActive_ || currentSamplePollKind_ != 2)
+        return;
+    if (isActiveTestCaseStepDone()) {
+        if (currentSamplePollTimer_)
+            currentSamplePollTimer_->stop();
+        currentSampleAnyMatchActive_ = false;
+        currentSamplePollKind_ = 0;
+        return;
+    }
+    if (!isTestContinue) {
+        abortScpiCurrentSampleWindow();
+        return;
+    }
+    if (currentSampleWindowTimer_.elapsed() >= currentSampleTargetMs_) {
+        finishScpiCurrentSampleWindowFail();
+        return;
+    }
+
+    QString errStr;
+    // 每拍只读一次：失败留给下一拍，避免在 startTask/定时器回调里连重试堵死邻工位
+    const bool ok =
+        scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, currentSampleScpiParam_, &errStr);
+    if (ok && currentSampleScpiRangeAttached_ && currentSampleScpiParam_.canConvert<QVariantMap>()) {
+        QVariantMap stripped = currentSampleScpiParam_.toMap();
+        stripped.remove(QStringLiteral("currentRange"));
+        currentSampleScpiParam_ = stripped;
+        currentSampleScpiRangeAttached_ = false;
+    }
+    if (!ok)
+        showlog(QStringLiteral("读电流采样失败（继续）：%1").arg(errStr));
+
+    if (isActiveTestCaseStepDone()) {
+        if (currentSamplePollTimer_)
+            currentSamplePollTimer_->stop();
+        currentSampleAnyMatchActive_ = false;
+        currentSamplePollKind_ = 0;
+    }
 }
 
 void QFreeWork::runAsdProgrammableCurrentSampleAnyMatch(const TestCaseDefinition& def, quint8 moduleAddr,
@@ -1404,6 +1573,7 @@ void QFreeWork::runAsdProgrammableCurrentSampleAnyMatch(const TestCaseDefinition
     }
 
     currentSampleAnyMatchActive_ = true;
+    currentSamplePollKind_ = 1; // ASD
     currentSampleCount_ = 0;
     currentSampleSum_ = 0.0;
     currentSampleLastValueText_.clear();
@@ -1419,7 +1589,7 @@ void QFreeWork::runAsdProgrammableCurrentSampleAnyMatch(const TestCaseDefinition
     // 一拖多：不可在 startTask 内 while+waitWork 堵窗口（会饿死邻工位采样）
     if (!currentSamplePollTimer_) {
         currentSamplePollTimer_ = new QTimer(this);
-        QObject::connect(currentSamplePollTimer_, &QTimer::timeout, this, [this]() { onAsdCurrentSamplePoll(); });
+        QObject::connect(currentSamplePollTimer_, &QTimer::timeout, this, [this]() { onCurrentSamplePoll(); });
     }
     currentSamplePollTimer_->setInterval(qMax(20, intervalMs));
     currentSamplePollTimer_->start();
@@ -1431,6 +1601,7 @@ void QFreeWork::abortAsdCurrentSampleWindow() {
     if (currentSamplePollTimer_)
         currentSamplePollTimer_->stop();
     currentSampleAnyMatchActive_ = false;
+    currentSamplePollKind_ = 0;
     markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
     showlog(QStringLiteral("ASD9026A 读电流连续采样已中止"));
 }
@@ -1439,6 +1610,7 @@ void QFreeWork::finishAsdCurrentSampleWindowFail() {
     if (currentSamplePollTimer_)
         currentSamplePollTimer_->stop();
     currentSampleAnyMatchActive_ = false;
+    currentSamplePollKind_ = 0;
     if (isActiveTestCaseStepDone())
         return;
     const QString failData =
@@ -1450,12 +1622,13 @@ void QFreeWork::finishAsdCurrentSampleWindowFail() {
 }
 
 void QFreeWork::onAsdCurrentSamplePoll() {
-    if (!currentSampleAnyMatchActive_)
+    if (!currentSampleAnyMatchActive_ || currentSamplePollKind_ != 1)
         return;
     if (isActiveTestCaseStepDone()) {
         if (currentSamplePollTimer_)
             currentSamplePollTimer_->stop();
         currentSampleAnyMatchActive_ = false;
+        currentSamplePollKind_ = 0;
         return;
     }
     if (!isTestContinue) {
@@ -1506,6 +1679,7 @@ void QFreeWork::onAsdCurrentSamplePoll() {
         if (currentSamplePollTimer_)
             currentSamplePollTimer_->stop();
         currentSampleAnyMatchActive_ = false;
+        currentSamplePollKind_ = 0;
     }
 }
 

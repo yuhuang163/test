@@ -70,6 +70,17 @@ QFreeWorkBox::QFreeWorkBox(QWidget* parent) : box_base(parent), ui(new Ui::QFree
     QAction* startTest_act = ui->menubar->addAction("开始测试");
     connect(startTest_act, &QAction::triggered, this, &QFreeWorkBox::startTest);
 
+    QAction* end_test_act = ui->menubar->addAction(QStringLiteral("结束所有测试"));
+    connect(end_test_act, &QAction::triggered, this, [this]() {
+        // click() 会触发 pressed（中止上报）再走 on_stopTest_clicked
+        for (test_base* t : testList) {
+            if (auto* btn = t->getEndTestButton())
+                btn->click();
+        }
+        if (!testList.isEmpty() && testList[0]->getMacLineEdit())
+            testList[0]->getMacLineEdit()->setFocus();
+    });
+
     QAction* use_mes_act = ui->menubar->addAction(QStringLiteral("开关MES"));
     connect(use_mes_act, &QAction::triggered, this, [this]() {
         // 以工位0当前状态为准，全体工位同步勾选/取消「使用MES」与「从MES取MAC」

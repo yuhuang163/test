@@ -2298,7 +2298,7 @@ const QHash<QString, QString>& hookDisplayNameMap() {
         {QStringLiteral("PRINT_WHOLE_MACHINE_SN"), QStringLiteral("打印整机 SN 二维码")},
         {QStringLiteral("QR_SN_CONSISTENCY_CHECK"), QStringLiteral("二维码一致性校验（与开局SN比对）")},
         {QStringLiteral("SN_PREFIX4_CHECK"), QStringLiteral("产品型号卡控（PCBA SN前四位，不通讯产品）")},
-        {QStringLiteral("COUNTDOWN_WAIT"), QStringLiteral("倒计时等待弹窗（到点自动下一步）")},
+        {QStringLiteral("COUNTDOWN_WAIT"), QStringLiteral("倒计时等待（结果表倒计时，到点自动下一步）")},
         {QStringLiteral("LIGHT_SENSOR_GOLDEN_CALIB"), QStringLiteral("光感单点校准（设亮度→采光感→写+回读，旧）")},
         {QStringLiteral("LIGHT_SENSOR_CALIB_WRITE"), QStringLiteral("光感写入校准值（采光感→写）")},
         {QStringLiteral("LIGHT_SENSOR_CALIB_READ"), QStringLiteral("光感读取校准值（回读+五点终判）")},
