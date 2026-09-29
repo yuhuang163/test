@@ -1179,6 +1179,9 @@ bool QFreeWork::shouldHoldCommandRetryUntilGatePass() const {
 }
 
 bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVariant& payload) {
+    // 步骤已结案后忽略后续上报，避免 any-match 通过后再被低电流覆盖为失败
+    if (isActiveTestCaseStepDone())
+        return false;
     if (!testCaseStepActive_ || !activeTestCase_.gate.enabled)
         return false;
     if (activeTestCase_.gate.reportType != reportType)
@@ -1320,6 +1323,7 @@ void QFreeWork::runScpiProgrammableCurrentSampleAnyMatch(const TestCaseDefinitio
         map = resolveTestCaseSendParamTree(def.send.param).toMap();
     const int durationMs = currentSampleDurationMs(def, map);
     const int intervalMs = currentSampleIntervalMs(map);
+    const QString stepName = def.meta.name;
 
     currentSampleAnyMatchActive_ = true;
     currentSampleCount_ = 0;
@@ -1333,7 +1337,7 @@ void QFreeWork::runScpiProgrammableCurrentSampleAnyMatch(const TestCaseDefinitio
     // 量程只在首包带一次，后续纯 MEAS，否则 GPIB 每次多写 SENS 会把 3s 窗压成四五次采样
     QVariant readParam = commandParam;
     bool rangeAttached = true;
-    while (sampleTimer.elapsed() < durationMs && !isActiveTestCaseStepDone()) {
+    while (sampleTimer.elapsed() < durationMs && isActiveTestCaseStep(stepName) && !isActiveTestCaseStepDone()) {
         if (!isTestContinue) {
             currentSampleAnyMatchActive_ = false;
             markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
@@ -1359,7 +1363,7 @@ void QFreeWork::runScpiProgrammableCurrentSampleAnyMatch(const TestCaseDefinitio
         if (!ok) {
             showlog(QStringLiteral("读电流采样失败（继续）：%1").arg(errStr));
         }
-        if (isActiveTestCaseStepDone())
+        if (!isActiveTestCaseStep(stepName) || isActiveTestCaseStepDone())
             break;
         const int remain = durationMs - static_cast<int>(sampleTimer.elapsed());
         if (remain <= 0)
@@ -1368,7 +1372,8 @@ void QFreeWork::runScpiProgrammableCurrentSampleAnyMatch(const TestCaseDefinitio
     }
 
     currentSampleAnyMatchActive_ = false;
-    if (isActiveTestCaseStepDone())
+    // 仅当仍是本步且未结案时才判失败，避免 any-match 通过后被窗口收尾覆盖
+    if (!isActiveTestCaseStep(stepName) || isActiveTestCaseStepDone())
         return;
 
     const QString failData =
@@ -1518,6 +1523,7 @@ void QFreeWork::runJigAmmeterCurrentSampleAnyMatch() {
     // ini 里 CommandTimeoutMs=300 过短，至少 1s
     durationMs = qMax(1000, durationMs);
     const int intervalMs = currentSampleIntervalMs(map);
+    const QString stepName = activeTestCase_.meta.name;
 
     currentSampleAnyMatchActive_ = true;
     currentSampleCount_ = 0;
@@ -1528,7 +1534,8 @@ void QFreeWork::runJigAmmeterCurrentSampleAnyMatch() {
 
     QElapsedTimer sampleTimer;
     sampleTimer.start();
-    while (sampleTimer.elapsed() < durationMs && !stepRuntime_.done && !isActiveTestCaseStepDone()) {
+    while (sampleTimer.elapsed() < durationMs && !stepRuntime_.done && isActiveTestCaseStep(stepName)
+           && !isActiveTestCaseStepDone()) {
         if (!isTestContinue) {
             currentSampleAnyMatchActive_ = false;
             markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
@@ -1538,6 +1545,8 @@ void QFreeWork::runJigAmmeterCurrentSampleAnyMatch() {
         QString errStr;
         if (!execAmmeterMeasure(&errStr))
             showlog(QStringLiteral("治具电流采样下发失败（继续）：%1").arg(errStr));
+        if (!isActiveTestCaseStep(stepName) || isActiveTestCaseStepDone())
+            break;
         const int remain = durationMs - static_cast<int>(sampleTimer.elapsed());
         if (remain <= 0)
             break;
@@ -1545,7 +1554,7 @@ void QFreeWork::runJigAmmeterCurrentSampleAnyMatch() {
     }
 
     currentSampleAnyMatchActive_ = false;
-    if (stepRuntime_.done || isActiveTestCaseStepDone())
+    if (stepRuntime_.done || !isActiveTestCaseStep(stepName) || isActiveTestCaseStepDone())
         return;
 
     const QString failData =
@@ -1564,6 +1573,7 @@ void QFreeWork::runModbusAmmeterCurrentSampleAnyMatch(const TestCaseDefinition& 
         map = resolveTestCaseSendParamTree(def.send.param).toMap();
     const int durationMs = qMax(1000, currentSampleDurationMs(def, map));
     const int intervalMs = currentSampleIntervalMs(map);
+    const QString stepName = def.meta.name;
 
     currentSampleAnyMatchActive_ = true;
     currentSampleCount_ = 0;
@@ -1574,7 +1584,7 @@ void QFreeWork::runModbusAmmeterCurrentSampleAnyMatch(const TestCaseDefinition& 
 
     QElapsedTimer sampleTimer;
     sampleTimer.start();
-    while (sampleTimer.elapsed() < durationMs && !isActiveTestCaseStepDone()) {
+    while (sampleTimer.elapsed() < durationMs && isActiveTestCaseStep(stepName) && !isActiveTestCaseStepDone()) {
         if (!isTestContinue) {
             currentSampleAnyMatchActive_ = false;
             markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
@@ -1642,7 +1652,7 @@ void QFreeWork::runModbusAmmeterCurrentSampleAnyMatch(const TestCaseDefinition& 
             ok = false;
         if (!ok)
             showlog(QStringLiteral("Modbus 电流表采样下发失败（继续）：%1").arg(errStr));
-        if (isActiveTestCaseStepDone())
+        if (!isActiveTestCaseStep(stepName) || isActiveTestCaseStepDone())
             break;
         const int remain = durationMs - static_cast<int>(sampleTimer.elapsed());
         if (remain <= 0)
@@ -1651,7 +1661,7 @@ void QFreeWork::runModbusAmmeterCurrentSampleAnyMatch(const TestCaseDefinition& 
     }
 
     currentSampleAnyMatchActive_ = false;
-    if (isActiveTestCaseStepDone())
+    if (!isActiveTestCaseStep(stepName) || isActiveTestCaseStepDone())
         return;
 
     const QString failData =
@@ -1930,6 +1940,7 @@ void QFreeWork::runXwdFixtureCurrentSampleAnyMatch(const TestCaseDefinition& def
     const int durationMs = qMax(1000, currentSampleDurationMs(def, map));
     const int intervalMs = currentSampleIntervalMs(map);
     const int timeoutMs = qMax(2000, perReadTimeoutMs);
+    const QString stepName = def.meta.name;
 
     currentSampleAnyMatchActive_ = true;
     currentSampleCount_ = 0;
@@ -1941,7 +1952,7 @@ void QFreeWork::runXwdFixtureCurrentSampleAnyMatch(const TestCaseDefinition& def
 
     QElapsedTimer sampleTimer;
     sampleTimer.start();
-    while (sampleTimer.elapsed() < durationMs && !isActiveTestCaseStepDone()) {
+    while (sampleTimer.elapsed() < durationMs && isActiveTestCaseStep(stepName) && !isActiveTestCaseStepDone()) {
         if (!isTestContinue) {
             currentSampleAnyMatchActive_ = false;
             markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
@@ -1993,7 +2004,7 @@ void QFreeWork::runXwdFixtureCurrentSampleAnyMatch(const TestCaseDefinition& def
             }
         }
 
-        if (isActiveTestCaseStepDone())
+        if (!isActiveTestCaseStep(stepName) || isActiveTestCaseStepDone())
             break;
         const int remain = durationMs - static_cast<int>(sampleTimer.elapsed());
         if (remain <= 0)
@@ -2002,7 +2013,7 @@ void QFreeWork::runXwdFixtureCurrentSampleAnyMatch(const TestCaseDefinition& def
     }
 
     currentSampleAnyMatchActive_ = false;
-    if (isActiveTestCaseStepDone())
+    if (!isActiveTestCaseStep(stepName) || isActiveTestCaseStepDone())
         return;
 
     const QString failData =
@@ -2014,6 +2025,9 @@ void QFreeWork::runXwdFixtureCurrentSampleAnyMatch(const TestCaseDefinition& def
 }
 
 void QFreeWork::markActiveTestCaseStepDone(bool pass, const QString& testData, const QString& ask) {
+    // 已结案不再覆盖（例如 any-match 已通过，窗口收尾勿写成失败）
+    if (testCaseStepResult_.done)
+        return;
     testCaseStepResult_.done = true;
     testCaseStepResult_.pass = pass;
     testCaseStepResult_.testData = testData;

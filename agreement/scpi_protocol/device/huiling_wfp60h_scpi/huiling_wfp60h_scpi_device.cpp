@@ -185,6 +185,18 @@ bool HuilingWfp60hScpiDevice::set(HuilingScpiCmd cmd, const QVariant& data) {
             }
             return true;
         };
+        // 配置后确保本通道输出打开（避免上轮关输出后本轮只设压未开出）
+        auto ensureOutputOn = [&](int ch) -> bool {
+            QString onCmd = profile.scpiOutputOnCmd.trimmed();
+            if (pairAgilent) {
+                // Agilent 分路：勿发裸 OUTP ON（默认耦合时会双路一起动）
+                onCmd = (ch >= 2) ? QStringLiteral("OUTP2 ON") : QStringLiteral("OUTP1 ON");
+            } else if (onCmd.isEmpty() || onCmd.contains(QLatin1Char('?'))) {
+                onCmd = QStringLiteral("OUTP ON");
+            }
+            qDebug().noquote() << "[Scpi] TX output after configure:" << onCmd;
+            return transport_->writeLine(onCmd);
+        };
         if (pairAgilent) {
             // 解耦只需发一次；本工位只写本通道 V/I
             const int ch = profile.powerChannel > 0 ? profile.powerChannel : 1;
@@ -198,6 +210,8 @@ bool HuilingWfp60hScpiDevice::set(HuilingScpiCmd cmd, const QVariant& data) {
                 return false;
             if (!writeVoltCurr(agilentTmplForChannel(voltTmpl, ch), agilentTmplForChannel(currTmpl, ch)))
                 return false;
+            if (!ensureOutputOn(ch))
+                return false;
             qDebug().noquote() << QStringLiteral("[Scpi] 已配置通道%1：%2 V / %3 A")
                                       .arg(ch)
                                       .arg(voltageV, 0, 'f', 3)
@@ -208,7 +222,14 @@ bool HuilingWfp60hScpiDevice::set(HuilingScpiCmd cmd, const QVariant& data) {
             return false;
         if (setRange && !writeCurrentRangeIfConfigured(profile, data))
             return false;
-        return writeVoltCurr(voltTmpl, currTmpl);
+        if (!writeVoltCurr(voltTmpl, currTmpl))
+            return false;
+        {
+            const int ch = profile.powerChannel > 0 ? profile.powerChannel : 1;
+            if (!ensureOutputOn(ch))
+                return false;
+        }
+        return true;
     }
     case HuilingScpiCmd::ProgrammablePowerOutput: {
         if (!writePowerChannelSelectIfConfigured(profile))

@@ -2164,15 +2164,15 @@ void QFreeWork::onUsbInstrumentReport(const ProtocolReport& report) {
             }
 
             // 连续采样：电流/电压任一合格即结案（FAFB 万用表同设备两种读数）
+            // 已结案后不再进 any-match，避免后续低电流样本走默认卡控覆盖通过结果
             if (currentSampleAnyMatchActive_
+                && !isActiveTestCaseStepDone()
                 && (data.type == QLatin1String("Current") || data.type == QLatin1String("Voltage"))
                 && testCaseStepActive_
                 && activeTestCase_.gate.enabled
                 && activeTestCase_.gate.reportType == QLatin1String("ProtocolMeasureData")) {
                 if (!data.isOk) {
                     showlog(QStringLiteral("读电流采样：本次无效，继续"));
-                    test_base::onUsbInstrumentReport(
-                        ProtocolReport(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(data)));
                     return;
                 }
                 ++currentSampleCount_;
@@ -2188,8 +2188,6 @@ void QFreeWork::onUsbInstrumentReport(const ProtocolReport& report) {
                                 .arg(currentSampleLastValueText_)
                                 .arg(currentSampleSum_ / static_cast<double>(currentSampleCount_), 0, 'f', 4)
                                 .arg(currentSampleLastUnit_));
-                    test_base::onUsbInstrumentReport(
-                        ProtocolReport(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(data)));
                     return;
                 }
 
@@ -2198,8 +2196,6 @@ void QFreeWork::onUsbInstrumentReport(const ProtocolReport& report) {
                     currentSampleAnyMatchActive_ = false;
                     markActiveTestCaseStepDone(false, QStringLiteral("-"), QStringLiteral("失败"));
                     showlog(QStringLiteral("卡控失败：未启用任何判定项"));
-                    test_base::onUsbInstrumentReport(
-                        ProtocolReport(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(data)));
                     return;
                 }
                 bool pass = false;
@@ -2225,19 +2221,22 @@ void QFreeWork::onUsbInstrumentReport(const ProtocolReport& report) {
                         display.testData = detail;
                     markActiveTestCaseStepDone(true, display.testData, display.ask);
                     showlog(QStringLiteral("卡控通过（连续采样任一合格）：%1").arg(detail));
+                    // 任一合格即结案：勿再走 test_base / evaluateActiveTestCaseGate，防止后续样本覆盖
+                    return;
                 }
-                test_base::onUsbInstrumentReport(
-                    ProtocolReport(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(data)));
+                // 未达标继续采样：直接返回，勿落入下方默认卡控
                 return;
             }
 
-            if (!data.isOk && testCaseStepActive_ && activeTestCase_.gate.enabled &&
-                activeTestCase_.gate.reportType == QLatin1String("ProtocolMeasureData")) {
-                markActiveTestCaseStepDone(false, QStringLiteral("读取失败"), QStringLiteral("失败"));
-                if (commandRetryTimer)
-                    finishCommandRetryWait(false, QStringLiteral("读取失败"));
-            } else {
-                evaluateActiveTestCaseGate(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(data));
+            if (!isActiveTestCaseStepDone()) {
+                if (!data.isOk && testCaseStepActive_ && activeTestCase_.gate.enabled &&
+                    activeTestCase_.gate.reportType == QLatin1String("ProtocolMeasureData")) {
+                    markActiveTestCaseStepDone(false, QStringLiteral("读取失败"), QStringLiteral("失败"));
+                    if (commandRetryTimer)
+                        finishCommandRetryWait(false, QStringLiteral("读取失败"));
+                } else {
+                    evaluateActiveTestCaseGate(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(data));
+                }
             }
             test_base::onUsbInstrumentReport(
                 ProtocolReport(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(data)));
