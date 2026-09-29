@@ -601,7 +601,6 @@ void QFreeWork::refreshSn(ProtocolSnData data) {
     const QString expectedWholeMachineSn = resolvedExpectedTailSnText();
     qDebug() << getIndex() << "dev_info" << data.value;
     qDebug() << getIndex() << "deviceTailSnFromDevice" << deviceTailSnFromDevice;
-    ui->product_sn->setText("芯片存储的整机sn:" + deviceTailSnFromDevice);
 
     // Gate 启用时走通用卡控（Expected 空则用界面/整机 SN 期望）
     if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolSnData"), QVariant::fromValue(data)))
@@ -751,8 +750,6 @@ void QFreeWork::refreshMacData(ProtocolMacData data) {
         return;
 
     macAddress = mac;
-    if (ui && ui->macLabel)
-        ui->macLabel->setText(QStringLiteral("蓝牙mac: ") + mac);
 
     if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolMacData"), QVariant::fromValue(data)))
         return;
@@ -1036,7 +1033,6 @@ void QFreeWork::refreshPeriphData(ProtocolPeriphStateData data) {
 
 void QFreeWork::refreshBleRssi(QString data) {
     // qDebug() << data;
-    ui->BLE_RSSI->setText("BLE的RSSI:" + data);
     // showlog("zzzzz"+data);
     BLE_RSSI = data;
     bool ok;
@@ -1060,11 +1056,9 @@ void QFreeWork::refreshRssiRead(ProtocolRssiData data) {
         const bool isBtCase = caseName == QStringLiteral("获取BT RSSI") || mesTag == QStringLiteral("BT_RSSI");
         const bool isBleCase = caseName == QStringLiteral("获取BLE RSSI") || mesTag == QStringLiteral("BLE_RSSI");
         if (isBtCase) {
-            ui->WIFI_RSSI->setText(QStringLiteral("BT的RSSI：") + value);
             BT_RSSI = value;
             intblerssi = rssi;
         } else if (isBleCase) {
-            ui->BLE_RSSI->setText(QStringLiteral("BLE的RSSI:") + value);
             BLE_RSSI = value;
             intblerssi = rssi;
         }
@@ -1087,10 +1081,8 @@ void QFreeWork::refreshRssiRead(ProtocolRssiData data) {
     const bool pass = (rssi > BleLowRssi && rssi < BleHighRssi);
 
     if (isBtStep) {
-        ui->WIFI_RSSI->setText(QStringLiteral("BT的RSSI：") + value);
         BT_RSSI = value;
     } else {
-        ui->BLE_RSSI->setText(QStringLiteral("BLE的RSSI:") + value);
         BLE_RSSI = value;
     }
 
@@ -1858,7 +1850,6 @@ void QFreeWork::refreshWifiMsg(QString data) {
         // qDebug() << getIndex() << "RSSI:" << rssi;
         // qDebug() << getIndex() << " 设备的wifiMac:" << wifiMac;
         if (macAddress == wifiMac) {
-            ui->WIFI_RSSI->setText("WIFI的RSSI：" + rssi);
             // qDebug() << getIndex()<< getIndex() << " 比对成功";
             refreshWifiState(1);
             WIFI_RSSI = rssi;

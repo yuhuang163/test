@@ -3747,8 +3747,6 @@ void QFreeWork::executeFixtureJieliBtBoxCase(const TestCaseDefinition& def) {
 
     // 同步到工站 RSSI 显示（与产品 BLE RSSI 共用上限下限卡控时可叠加 Gate）
     BLE_RSSI = QString::number(info.rssi);
-    if (ui && ui->BLE_RSSI)
-        ui->BLE_RSSI->setText(QStringLiteral("BLE的RSSI:") + BLE_RSSI);
 
     ProtocolJieliBtBoxData report;
     report.freqOffset = info.freqOffset;

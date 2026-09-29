@@ -430,8 +430,6 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         fw->macAddress = macText;
         if (fw->ui && fw->ui->macInput)
             fw->ui->macInput->setText(macText);
-        if (fw->ui && fw->ui->macLabel)
-            fw->ui->macLabel->setText(QStringLiteral("蓝牙mac: ") + macText);
         fw->stepRuntime_.testData = macText;
         fw->setCommandWaitSource(CommandWaitSource::ProductProtocol);
         const int macTimeoutMs = TestCaseRunner::commandTimeoutMs(fw->activeTestCase());
