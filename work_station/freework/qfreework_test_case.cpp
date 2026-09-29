@@ -1322,61 +1322,97 @@ void QFreeWork::runScpiProgrammableCurrentSampleAnyMatch(const TestCaseDefinitio
     const int intervalMs = currentSampleIntervalMs(map);
 
     currentSampleAnyMatchActive_ = true;
+    currentSamplePollKind_ = 2; // SCPI
     currentSampleCount_ = 0;
     currentSampleLastValueText_.clear();
+    currentSampleScpiParam_ = commandParam;
+    currentSampleScpiRangeAttached_ = true;
+    currentSampleTargetMs_ = durationMs;
+    currentSampleIntervalMs_ = intervalMs;
+    currentSampleWindowTimer_.start();
     showlog(QStringLiteral("读电流连续采样：窗口 %1ms，间隔 %2ms，期间任一值卡控合格即通过")
                 .arg(durationMs)
                 .arg(intervalMs));
 
-    QElapsedTimer sampleTimer;
-    sampleTimer.start();
-    // 量程只在首包带一次，后续纯 MEAS，否则 GPIB 每次多写 SENS 会把 3s 窗压成四五次采样
-    QVariant readParam = commandParam;
-    bool rangeAttached = true;
-    while (sampleTimer.elapsed() < durationMs && !isActiveTestCaseStepDone()) {
-        if (!isTestContinue) {
-            currentSampleAnyMatchActive_ = false;
-            markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
-            showlog(QStringLiteral("读电流连续采样已中止"));
-            return;
-        }
-        QString errStr;
-        bool ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, readParam, &errStr);
-        if (!ok) {
-            VisaChannel::waitWork(200);
-            ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, readParam, &errStr);
-        }
-        if (!ok) {
-            VisaChannel::waitWork(300);
-            ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, readParam, &errStr);
-        }
-        if (ok && rangeAttached && readParam.canConvert<QVariantMap>()) {
-            QVariantMap stripped = readParam.toMap();
-            stripped.remove(QStringLiteral("currentRange"));
-            readParam = stripped;
-            rangeAttached = false;
-        }
-        if (!ok) {
-            showlog(QStringLiteral("读电流采样失败（继续）：%1").arg(errStr));
-        }
-        if (isActiveTestCaseStepDone())
-            break;
-        const int remain = durationMs - static_cast<int>(sampleTimer.elapsed());
-        if (remain <= 0)
-            break;
-        waitWork(qMin(intervalMs, remain));
+    // 一拖多：不可在 startTask 内 while+waitWork 堵窗口（会饿死邻工位 / TotallyTask 单轮数秒）
+    if (!currentSamplePollTimer_) {
+        currentSamplePollTimer_ = new QTimer(this);
+        QObject::connect(currentSamplePollTimer_, &QTimer::timeout, this, [this]() { onCurrentSamplePoll(); });
     }
+    currentSamplePollTimer_->setInterval(qMax(20, intervalMs));
+    currentSamplePollTimer_->start();
+    onScpiCurrentSamplePoll();
+}
 
+void QFreeWork::abortScpiCurrentSampleWindow() {
+    if (currentSamplePollTimer_)
+        currentSamplePollTimer_->stop();
     currentSampleAnyMatchActive_ = false;
+    currentSamplePollKind_ = 0;
+    markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
+    showlog(QStringLiteral("读电流连续采样已中止"));
+}
+
+void QFreeWork::finishScpiCurrentSampleWindowFail() {
+    if (currentSamplePollTimer_)
+        currentSamplePollTimer_->stop();
+    currentSampleAnyMatchActive_ = false;
+    currentSamplePollKind_ = 0;
     if (isActiveTestCaseStepDone())
         return;
-
     const QString failData =
         currentSampleLastValueText_.isEmpty() ? QStringLiteral("无有效读数") : currentSampleLastValueText_;
     showlog(QStringLiteral("读电流采样结束：共 %1 次，无一值落入卡控范围，判定失败（末次 %2）")
                 .arg(currentSampleCount_)
                 .arg(failData));
     markActiveTestCaseStepDone(false, failData, QStringLiteral("失败"));
+}
+
+void QFreeWork::onCurrentSamplePoll() {
+    if (currentSamplePollKind_ == 2)
+        onScpiCurrentSamplePoll();
+    else if (currentSamplePollKind_ == 1)
+        onAsdCurrentSamplePoll();
+}
+
+void QFreeWork::onScpiCurrentSamplePoll() {
+    if (!currentSampleAnyMatchActive_ || currentSamplePollKind_ != 2)
+        return;
+    if (isActiveTestCaseStepDone()) {
+        if (currentSamplePollTimer_)
+            currentSamplePollTimer_->stop();
+        currentSampleAnyMatchActive_ = false;
+        currentSamplePollKind_ = 0;
+        return;
+    }
+    if (!isTestContinue) {
+        abortScpiCurrentSampleWindow();
+        return;
+    }
+    if (currentSampleWindowTimer_.elapsed() >= currentSampleTargetMs_) {
+        finishScpiCurrentSampleWindowFail();
+        return;
+    }
+
+    QString errStr;
+    // 每拍只读一次：失败留给下一拍，避免在 startTask/定时器回调里连重试堵死邻工位
+    const bool ok =
+        scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, currentSampleScpiParam_, &errStr);
+    if (ok && currentSampleScpiRangeAttached_ && currentSampleScpiParam_.canConvert<QVariantMap>()) {
+        QVariantMap stripped = currentSampleScpiParam_.toMap();
+        stripped.remove(QStringLiteral("currentRange"));
+        currentSampleScpiParam_ = stripped;
+        currentSampleScpiRangeAttached_ = false;
+    }
+    if (!ok)
+        showlog(QStringLiteral("读电流采样失败（继续）：%1").arg(errStr));
+
+    if (isActiveTestCaseStepDone()) {
+        if (currentSamplePollTimer_)
+            currentSamplePollTimer_->stop();
+        currentSampleAnyMatchActive_ = false;
+        currentSamplePollKind_ = 0;
+    }
 }
 
 void QFreeWork::runAsdProgrammableCurrentSampleAnyMatch(const TestCaseDefinition& def, quint8 moduleAddr,
@@ -1399,6 +1435,7 @@ void QFreeWork::runAsdProgrammableCurrentSampleAnyMatch(const TestCaseDefinition
     }
 
     currentSampleAnyMatchActive_ = true;
+    currentSamplePollKind_ = 1; // ASD
     currentSampleCount_ = 0;
     currentSampleSum_ = 0.0;
     currentSampleLastValueText_.clear();
@@ -1414,7 +1451,7 @@ void QFreeWork::runAsdProgrammableCurrentSampleAnyMatch(const TestCaseDefinition
     // 一拖多：不可在 startTask 内 while+waitWork 堵窗口（会饿死邻工位采样）
     if (!currentSamplePollTimer_) {
         currentSamplePollTimer_ = new QTimer(this);
-        QObject::connect(currentSamplePollTimer_, &QTimer::timeout, this, [this]() { onAsdCurrentSamplePoll(); });
+        QObject::connect(currentSamplePollTimer_, &QTimer::timeout, this, [this]() { onCurrentSamplePoll(); });
     }
     currentSamplePollTimer_->setInterval(qMax(20, intervalMs));
     currentSamplePollTimer_->start();
@@ -1426,6 +1463,7 @@ void QFreeWork::abortAsdCurrentSampleWindow() {
     if (currentSamplePollTimer_)
         currentSamplePollTimer_->stop();
     currentSampleAnyMatchActive_ = false;
+    currentSamplePollKind_ = 0;
     markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
     showlog(QStringLiteral("ASD9026A 读电流连续采样已中止"));
 }
@@ -1434,6 +1472,7 @@ void QFreeWork::finishAsdCurrentSampleWindowFail() {
     if (currentSamplePollTimer_)
         currentSamplePollTimer_->stop();
     currentSampleAnyMatchActive_ = false;
+    currentSamplePollKind_ = 0;
     if (isActiveTestCaseStepDone())
         return;
     const QString failData =
@@ -1445,12 +1484,13 @@ void QFreeWork::finishAsdCurrentSampleWindowFail() {
 }
 
 void QFreeWork::onAsdCurrentSamplePoll() {
-    if (!currentSampleAnyMatchActive_)
+    if (!currentSampleAnyMatchActive_ || currentSamplePollKind_ != 1)
         return;
     if (isActiveTestCaseStepDone()) {
         if (currentSamplePollTimer_)
             currentSamplePollTimer_->stop();
         currentSampleAnyMatchActive_ = false;
+        currentSamplePollKind_ = 0;
         return;
     }
     if (!isTestContinue) {
@@ -1501,6 +1541,7 @@ void QFreeWork::onAsdCurrentSamplePoll() {
         if (currentSamplePollTimer_)
             currentSamplePollTimer_->stop();
         currentSampleAnyMatchActive_ = false;
+        currentSamplePollKind_ = 0;
     }
 }
 
