@@ -1471,7 +1471,15 @@ bool QFreeWork::tickOrderedTestStepLoop() {
             } else if (dongleBleConnect && at->getConnected()) {
                 stepRuntime_.done = true;
                 stepRuntime_.pass = true;
-                    stepRuntime_.testData = QStringLiteral("已连接");
+                stepRuntime_.testData = QStringLiteral("已连接");
+            } else if (dongleBleConnect && lastCommandRetryCount > 0 && !at->getConnected()) {
+                // 指令等待已结束（如曾收到 CONNECT_SUCCESS）但此刻未连接：
+                // 重试定时器已停，若再等 getConnected 会永久卡在 needAsyncDone，界面不显示失败
+                stepRuntime_.done = true;
+                stepRuntime_.pass = false;
+                stepRuntime_.testData = QStringLiteral("蓝牙未保持连接");
+                TestResult = failValue;
+                showlog(QStringLiteral("步骤失败：%1（蓝牙应答后未保持连接）").arg(functionName));
             } else if (productGet && lastCommandRetryCount > 0) {
                 // 无 Gate 的 Product Get：协议层已应答即可过步（有 Gate 时由 evaluateActiveTestCaseGate 收尾）
                 stepRuntime_.done = true;
