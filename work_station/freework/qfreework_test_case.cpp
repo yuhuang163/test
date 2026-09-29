@@ -1330,6 +1330,9 @@ void QFreeWork::runScpiProgrammableCurrentSampleAnyMatch(const TestCaseDefinitio
 
     QElapsedTimer sampleTimer;
     sampleTimer.start();
+    // 量程只在首包带一次，后续纯 MEAS，否则 GPIB 每次多写 SENS 会把 3s 窗压成四五次采样
+    QVariant readParam = commandParam;
+    bool rangeAttached = true;
     while (sampleTimer.elapsed() < durationMs && !isActiveTestCaseStepDone()) {
         if (!isTestContinue) {
             currentSampleAnyMatchActive_ = false;
@@ -1338,14 +1341,20 @@ void QFreeWork::runScpiProgrammableCurrentSampleAnyMatch(const TestCaseDefinitio
             return;
         }
         QString errStr;
-        bool ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, commandParam, &errStr);
+        bool ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, readParam, &errStr);
         if (!ok) {
             VisaChannel::waitWork(200);
-            ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, commandParam, &errStr);
+            ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, readParam, &errStr);
         }
         if (!ok) {
             VisaChannel::waitWork(300);
-            ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, commandParam, &errStr);
+            ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, readParam, &errStr);
+        }
+        if (ok && rangeAttached && readParam.canConvert<QVariantMap>()) {
+            QVariantMap stripped = readParam.toMap();
+            stripped.remove(QStringLiteral("currentRange"));
+            readParam = stripped;
+            rangeAttached = false;
         }
         if (!ok) {
             showlog(QStringLiteral("读电流采样失败（继续）：%1").arg(errStr));
