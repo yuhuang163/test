@@ -710,15 +710,18 @@ QVariantMap huilingVisaLinkKeysFromMap(const QVariantMap& map) {
         QStringLiteral("visaDeviceIndex"),
         QStringLiteral("sharedPair"),
         QStringLiteral("stationsPerDevice"),
-        QStringLiteral("visaAddress0"),
-        QStringLiteral("visaAddress1"),
-        QStringLiteral("visaAddress_0"),
-        QStringLiteral("visaAddress_1"),
     };
     QVariantMap out;
     for (const QString& key : keys) {
         if (map.contains(key))
             out.insert(key, map.value(key));
+    }
+    // 一拖四：保留全部 visaAddress0..N（旧只抄 0/1，工位3/4 丢地址后回落到工位1）
+    static const QRegularExpression visaAddrKeyRe(QStringLiteral(R"(^visaAddress_?\d+$)"),
+                                                  QRegularExpression::CaseInsensitiveOption);
+    for (auto it = map.constBegin(); it != map.constEnd(); ++it) {
+        if (visaAddrKeyRe.match(it.key()).hasMatch())
+            out.insert(it.key(), it.value());
     }
     return out;
 }

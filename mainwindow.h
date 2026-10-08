@@ -208,6 +208,10 @@ class MainWindow : public QMainWindow {
     void bindDongleSuctionPlotXRangeFollow(QCustomPlot* plot);
     void bindDongleSuctionPlotHover(QCustomPlot* plot);
     void applyDongleSuctionPlotXRange(QCustomPlot* plot, double tSec);
+    /** 按当前 X 视口灌点：视口内点少则原样，过多则按像素 min-max LOD */
+    void syncDongleSuctionPlotGraphsToXRange(QCustomPlot* plot);
+    /** 用户滚轮/拖拽改范围后合并刷新视口曲线 */
+    void scheduleDongleSuctionPlotLod(QCustomPlot* plot);
     void setDongleSuctionChartFollowLatest(bool follow);
     void syncDongleSuctionFollowStateFromUserRange(const QCPRange& range);
     double dongleSuctionXWindowSec() const;
