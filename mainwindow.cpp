@@ -21,8 +21,10 @@
 #include <QTabWidget>
 #include <QTableWidget>
 #include <QTableWidgetItem>
+#include <QTimer>
 #include <QVBoxLayout>
 #include <QtConcurrent>
+#include <algorithm>
 
 #include "md5.h"
 #include "productlicense.h"
@@ -5196,6 +5198,57 @@ constexpr DongleSuctionPeakGuideLineDef kDongleSuctionPeakGuideDefs[] = {
     {"dongleSuctionGuideDipStart", "dongleSuctionGuideDipStartLbl", QColor(130, 70, 190), Qt::DashLine, 1},
 };
 
+/** 视口点过多时按桶保留 min/max，放大时 n<=maxPoints 则原样输出 */
+static void buildDongleSuctionMinMaxLod(const QVector<double>& times, const QVector<double>& values, int i0, int i1,
+                                       int maxPoints, QVector<double>* outT, QVector<double>* outY) {
+    outT->clear();
+    outY->clear();
+    if (!outT || !outY || i0 > i1 || i0 < 0 || i1 >= times.size() || i1 >= values.size())
+        return;
+    const int n = i1 - i0 + 1;
+    if (n <= maxPoints) {
+        outT->reserve(n);
+        outY->reserve(n);
+        for (int i = i0; i <= i1; ++i) {
+            outT->append(times.at(i));
+            outY->append(values.at(i));
+        }
+        return;
+    }
+    const int buckets = qMax(1, maxPoints / 2);
+    outT->reserve(buckets * 2);
+    outY->reserve(buckets * 2);
+    for (int b = 0; b < buckets; ++b) {
+        const int start = i0 + (b * n) / buckets;
+        const int end = i0 + ((b + 1) * n) / buckets - 1;
+        if (start > end)
+            continue;
+        int iMin = start;
+        int iMax = start;
+        double yMin = values.at(start);
+        double yMax = values.at(start);
+        for (int i = start + 1; i <= end; ++i) {
+            const double y = values.at(i);
+            if (y < yMin) {
+                yMin = y;
+                iMin = i;
+            }
+            if (y > yMax) {
+                yMax = y;
+                iMax = i;
+            }
+        }
+        if (iMin > iMax)
+            qSwap(iMin, iMax);
+        outT->append(times.at(iMin));
+        outY->append(values.at(iMin));
+        if (iMax != iMin) {
+            outT->append(times.at(iMax));
+            outY->append(values.at(iMax));
+        }
+    }
+}
+
 QCPItemStraightLine* dongleSuctionFindOrCreateGuideLine(QCustomPlot* plot, const char* name) {
     if (!plot)
         return nullptr;
@@ -5552,9 +5605,20 @@ void MainWindow::setupDongleSuctionPlotWidget(QCustomPlot* plot) {
         return;
     while (plot->graphCount() < 3)
         plot->addGraph();
-    plot->graph(0)->setPen(QPen(QColor(30, 120, 220), 2));
-    plot->graph(1)->setPen(QPen(QColor(220, 80, 50), 2));
-    plot->graph(2)->setPen(QPen(QColor(50, 160, 80), 2));
+    // 线宽2；视口 LOD + 快折线；悬停走独立缓冲层，避免 mouseMove 全图重画
+    const QColor pens[kDongleSuctionChannelCount] = {QColor(30, 120, 220), QColor(220, 80, 50), QColor(50, 160, 80)};
+    for (int i = 0; i < kDongleSuctionChannelCount; ++i) {
+        plot->graph(i)->setPen(QPen(pens[i], 2));
+        plot->graph(i)->setAntialiased(false);
+        plot->graph(i)->setAdaptiveSampling(true);
+    }
+    plot->setNotAntialiasedElements(QCP::aePlottables);
+    plot->setPlottingHints(plot->plottingHints() | QCP::phFastPolylines);
+    if (!plot->layer("dongleSuctionHover")) {
+        plot->addLayer(QStringLiteral("dongleSuctionHover"), plot->layer(QStringLiteral("main")), QCustomPlot::limAbove);
+        if (QCPLayer* hoverLayer = plot->layer("dongleSuctionHover"))
+            hoverLayer->setMode(QCPLayer::lmBuffered);
+    }
     if (plot->legend)
         plot->legend->setVisible(false);
 
@@ -5589,24 +5653,36 @@ void MainWindow::bindDongleSuctionPlotHover(QCustomPlot* plot) {
         return;
     plot->setProperty("dongleSuctionHoverBound", true);
 
+    if (!plot->layer("dongleSuctionHover")) {
+        plot->addLayer(QStringLiteral("dongleSuctionHover"), plot->layer(QStringLiteral("main")), QCustomPlot::limAbove);
+        if (QCPLayer* hoverLayer = plot->layer("dongleSuctionHover"))
+            hoverLayer->setMode(QCPLayer::lmBuffered);
+    }
+    QCPLayer* hoverLayer = plot->layer("dongleSuctionHover");
+
     auto* vLine = new QCPItemStraightLine(plot);
     vLine->setObjectName(QStringLiteral("dongleSuctionHoverVLine"));
     vLine->setPen(QPen(QColor(80, 80, 80, 140), 1, Qt::DashLine));
     vLine->point1->setType(QCPItemPosition::ptPlotCoords);
     vLine->point2->setType(QCPItemPosition::ptPlotCoords);
     vLine->setVisible(false);
+    if (hoverLayer)
+        vLine->setLayer(hoverLayer);
 
     QCPItemTracer* tracers[kDongleSuctionChannelCount] = {};
     for (int i = 0; i < kDongleSuctionChannelCount; ++i) {
         auto* tracer = new QCPItemTracer(plot);
         tracer->setObjectName(QStringLiteral("dongleSuctionHoverTracer%1").arg(i));
-        tracer->setGraph(plot->graph(i));
+        // 不绑 graph：曲线可能是 LOD 抽样点，悬停坐标改由全量向量决定
         tracer->setStyle(QCPItemTracer::tsCircle);
         tracer->setSize(7);
         tracer->setPen(plot->graph(i)->pen());
         tracer->setBrush(QBrush(Qt::white));
         tracer->setInterpolating(false);
+        tracer->position->setType(QCPItemPosition::ptPlotCoords);
         tracer->setVisible(false);
+        if (hoverLayer)
+            tracer->setLayer(hoverLayer);
         tracers[i] = tracer;
     }
 
@@ -5623,9 +5699,22 @@ void MainWindow::bindDongleSuctionPlotHover(QCustomPlot* plot) {
     QFont hoverFont = font();
     hoverFont.setPointSize(8);
     hoverLabel->setFont(hoverFont);
+    if (hoverLayer)
+        hoverLabel->setLayer(hoverLayer);
+
+    auto replotHoverOnly = [plot, hoverLayer]() {
+        if (hoverLayer && hoverLayer->mode() == QCPLayer::lmBuffered)
+            hoverLayer->replot();
+        else
+            plot->replot(QCustomPlot::rpQueuedReplot);
+    };
 
     connect(plot, &QCustomPlot::mouseMove, this,
-            [this, plot, vLine, tracers, hoverLabel](QMouseEvent* event) {
+            [this, plot, vLine, tracers, hoverLabel, replotHoverOnly](QMouseEvent* event) {
+                // 拖拽/缩放时不刷悬停，避免与轴范围刷新抢重绘
+                if (event->buttons() != Qt::NoButton)
+                    return;
+
                 auto hideHover = [&]() {
                     bool needReplot = vLine->visible() || hoverLabel->visible();
                     vLine->setVisible(false);
@@ -5635,8 +5724,9 @@ void MainWindow::bindDongleSuctionPlotHover(QCustomPlot* plot) {
                             needReplot = true;
                         tracers[i]->setVisible(false);
                     }
+                    plot->setProperty("dongleSuctionHoverIdx", -1);
                     if (needReplot)
-                        plot->replot(QCustomPlot::rpQueuedReplot);
+                        replotHoverOnly();
                 };
 
                 const QCPAxisRect* axisRect = plot->axisRect();
@@ -5659,6 +5749,17 @@ void MainWindow::bindDongleSuctionPlotHover(QCustomPlot* plot) {
                     idx = (tSec - times.at(i0) <= times.at(i1) - tSec) ? i0 : i1;
                 }
 
+                // 同一采样点不重画；跨点时约 30fps 节流
+                const int lastIdx = plot->property("dongleSuctionHoverIdx").toInt();
+                if (idx == lastIdx && vLine->visible())
+                    return;
+                const qint64 nowMs = QDateTime::currentMSecsSinceEpoch();
+                const qint64 lastMs = plot->property("dongleSuctionHoverMs").toLongLong();
+                if (vLine->visible() && (nowMs - lastMs) < 33)
+                    return;
+                plot->setProperty("dongleSuctionHoverIdx", idx);
+                plot->setProperty("dongleSuctionHoverMs", nowMs);
+
                 const double t = times.at(idx);
                 const double ch1 = dongleSuctionChartCh1_.at(idx);
                 const double ch2 = dongleSuctionChartCh2_.at(idx);
@@ -5669,9 +5770,9 @@ void MainWindow::bindDongleSuctionPlotHover(QCustomPlot* plot) {
                 vLine->point1->setCoords(t, yMin);
                 vLine->point2->setCoords(t, yMax);
                 vLine->setVisible(true);
+                const double chVals[kDongleSuctionChannelCount] = {ch1, ch2, ch3};
                 for (int i = 0; i < kDongleSuctionChannelCount; ++i) {
-                    tracers[i]->setGraphKey(t);
-                    tracers[i]->updatePosition();
+                    tracers[i]->position->setCoords(t, chVals[i]);
                     tracers[i]->setVisible(true);
                 }
 
@@ -5682,8 +5783,64 @@ void MainWindow::bindDongleSuctionPlotHover(QCustomPlot* plot) {
                                         .arg(ch3, 0, 'f', 3));
                 hoverLabel->position->setCoords(t, ch1);
                 hoverLabel->setVisible(true);
-                plot->replot(QCustomPlot::rpQueuedReplot);
+                replotHoverOnly();
             });
+}
+
+void MainWindow::syncDongleSuctionPlotGraphsToXRange(QCustomPlot* plot) {
+    if (!plot || plot->graphCount() < 3)
+        return;
+    if (dongleSuctionChartTimeSec_.isEmpty()) {
+        for (int i = 0; i < kDongleSuctionChannelCount; ++i)
+            plot->graph(i)->data()->clear();
+        return;
+    }
+
+    const QCPRange xr = plot->xAxis->range();
+    const double margin = qMax(0.05, xr.size() * 0.02);
+    const double t0 = xr.lower - margin;
+    const double t1 = xr.upper + margin;
+    const auto& times = dongleSuctionChartTimeSec_;
+    auto lo = std::lower_bound(times.constBegin(), times.constEnd(), t0);
+    auto hi = std::upper_bound(times.constBegin(), times.constEnd(), t1);
+    int i0 = int(lo - times.constBegin());
+    int i1 = int(hi - times.constBegin()) - 1;
+    if (i1 < i0) {
+        for (int i = 0; i < kDongleSuctionChannelCount; ++i)
+            plot->graph(i)->data()->clear();
+        return;
+    }
+    i0 = qBound(0, i0, times.size() - 1);
+    i1 = qBound(0, i1, times.size() - 1);
+
+    int pixelW = 800;
+    if (const QCPAxisRect* rect = plot->axisRect())
+        pixelW = qMax(100, rect->width());
+    // 约每像素 1 个绘制点（min+max 合起来）；拉远更稀，放大仍可原样
+    const int maxPoints = qMax(200, pixelW);
+
+    const QVector<double>* chans[kDongleSuctionChannelCount] = {&dongleSuctionChartCh1_, &dongleSuctionChartCh2_,
+                                                                &dongleSuctionChartCh3_};
+    QVector<double> outT;
+    QVector<double> outY;
+    for (int g = 0; g < kDongleSuctionChannelCount; ++g) {
+        buildDongleSuctionMinMaxLod(times, *chans[g], i0, i1, maxPoints, &outT, &outY);
+        plot->graph(g)->setData(outT, outY, true);
+    }
+}
+
+void MainWindow::scheduleDongleSuctionPlotLod(QCustomPlot* plot) {
+    if (!plot)
+        return;
+    const int gen = plot->property("dongleSuctionLodGen").toInt() + 1;
+    plot->setProperty("dongleSuctionLodGen", gen);
+    QTimer::singleShot(16, this, [this, plot, gen]() {
+        if (!plot || plot->property("dongleSuctionLodGen").toInt() != gen)
+            return;
+        syncDongleSuctionPlotGraphsToXRange(plot);
+        updateDongleSuctionPeakGuideLines(plot);
+        plot->replot(QCustomPlot::rpQueuedReplot);
+    });
 }
 
 void MainWindow::bindDongleSuctionPlotXRangeFollow(QCustomPlot* plot) {
@@ -5694,7 +5851,12 @@ void MainWindow::bindDongleSuctionPlotXRangeFollow(QCustomPlot* plot) {
         return;
     plot->setProperty("dongleSuctionXFollowBound", true);
     connect(plot->xAxis, QOverload<const QCPRange&>::of(&QCPAxis::rangeChanged), this,
-            [this](const QCPRange& range) { syncDongleSuctionFollowStateFromUserRange(range); });
+            [this, plot](const QCPRange& range) {
+                syncDongleSuctionFollowStateFromUserRange(range);
+                // 跟随自动改范围时由 refresh/append 同步灌点；用户滚轮/拖拽在此合并刷新
+                if (!dongleSuctionApplyingXRange_)
+                    scheduleDongleSuctionPlotLod(plot);
+            });
 }
 
 void MainWindow::syncDongleSuctionFollowStateFromUserRange(const QCPRange& range) {
@@ -5721,10 +5883,16 @@ void MainWindow::setDongleSuctionChartFollowLatest(bool follow) {
     if (!follow || dongleSuctionChartTimeSec_.isEmpty())
         return;
     const double tSec = dongleSuctionChartTimeSec_.last();
-    if (dongleSuctionPlot_)
-        applyDongleSuctionPlotXRange(dongleSuctionPlot_, tSec);
-    if (dongleSuctionPlotPopup_)
-        applyDongleSuctionPlotXRange(dongleSuctionPlotPopup_, tSec);
+    auto refreshOne = [this, tSec](QCustomPlot* plot) {
+        if (!plot)
+            return;
+        applyDongleSuctionPlotXRange(plot, tSec);
+        syncDongleSuctionPlotGraphsToXRange(plot);
+        updateDongleSuctionPeakGuideLines(plot);
+        plot->replot(QCustomPlot::rpQueuedReplot);
+    };
+    refreshOne(dongleSuctionPlot_);
+    refreshOne(dongleSuctionPlotPopup_);
 }
 
 void MainWindow::applyDongleSuctionPlotXRange(QCustomPlot* plot, double tSec) {
@@ -5827,14 +5995,12 @@ void MainWindow::refreshDongleSuctionPlotWidget(QCustomPlot* plot) {
     }
 
     const double tSec = dongleSuctionChartTimeSec_.last();
-    plot->graph(0)->setData(dongleSuctionChartTimeSec_, dongleSuctionChartCh1_);
-    plot->graph(1)->setData(dongleSuctionChartTimeSec_, dongleSuctionChartCh2_);
-    plot->graph(2)->setData(dongleSuctionChartTimeSec_, dongleSuctionChartCh3_);
     if (plot == dongleSuctionPlot_)
         dongleSuctionChartPlottedCount_ = dongleSuctionChartTimeSec_.size();
-    else     if (plot == dongleSuctionPlotPopup_)
+    else if (plot == dongleSuctionPlotPopup_)
         dongleSuctionPopupPlottedCount_ = dongleSuctionChartTimeSec_.size();
     applyDongleSuctionPlotXRange(plot, tSec);
+    syncDongleSuctionPlotGraphsToXRange(plot);
     plot->yAxis->setRange(yMin, yMax);
     updateDongleSuctionPeakGuideLines(plot);
     plot->replot(QCustomPlot::rpQueuedReplot);
@@ -5845,21 +6011,14 @@ void MainWindow::appendDongleSuctionPlotIncremental(QCustomPlot* plot, int& plot
         return;
 
     const int n = dongleSuctionChartTimeSec_.size();
-    if (plottedCount < n) {
-        for (int i = plottedCount; i < n; ++i) {
-            const double t = dongleSuctionChartTimeSec_.at(i);
-            plot->graph(0)->addData(t, dongleSuctionChartCh1_.at(i));
-            plot->graph(1)->addData(t, dongleSuctionChartCh2_.at(i));
-            plot->graph(2)->addData(t, dongleSuctionChartCh3_.at(i));
-        }
-        plottedCount = n;
-    }
+    plottedCount = n;
 
     double yMin = -40.0;
     double yMax = 0.0;
     dongleSuctionYAxisRange(yMin, yMax);
     const double tSec = dongleSuctionChartTimeSec_.isEmpty() ? 0.0 : dongleSuctionChartTimeSec_.last();
     applyDongleSuctionPlotXRange(plot, tSec);
+    syncDongleSuctionPlotGraphsToXRange(plot);
     plot->yAxis->setRange(yMin, yMax);
     updateDongleSuctionPeakGuideLines(plot);
     plot->replot(QCustomPlot::rpQueuedReplot);
