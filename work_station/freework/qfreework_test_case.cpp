@@ -12,6 +12,7 @@
 #include "asd9026a_codec.h"
 #include "asd9026a_device.h"
 #include "xwd_raw_fixture_device.h"
+#include "universal_fixture_codec.h"
 #include "xwd_raw_uart_codec.h"
 #include "jieli_bt_box_device.h"
 #include "qfixturemanager.h"
@@ -2267,6 +2268,8 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             ctx->executeFixtureAsd9026aCase(def);
         else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::Xwd)
             ctx->executeFixtureXwdCase(def);
+        else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::Universal)
+            ctx->executeFixtureUniversalCase(def);
         else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::JieliBtBox)
             ctx->executeFixtureJieliBtBoxCase(def);
         else
@@ -3866,6 +3869,314 @@ void QFreeWork::executeFixtureXwdCase(const TestCaseDefinition& def) {
         return;
     }
     markActiveTestCaseStepDone(true, replyText, QStringLiteral("通过"));
+}
+
+void QFreeWork::executeFixtureUniversalCase(const TestCaseDefinition& def) {
+    if (def.send.fixtureProtocol != TestCaseFixtureProtocol::Universal) {
+        showlog(QStringLiteral("通用治具协议类型不匹配，请检查 Send/Protocol"));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+
+    UniversalFixtureCmd cmd;
+    if (!cmdEnumFromName(UniversalFixtureCmdCatalog::catalog(), def.send.deviceCmd, cmd)) {
+        showlog(QStringLiteral("未知通用治具指令：%1").arg(def.send.deviceCmd));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+    if (!UniversalFixtureCmdCatalog::catalog().isCmdForAction(static_cast<int>(cmd), def.send.action)) {
+        showlog(QStringLiteral("通用治具指令与操作方式不匹配：%1").arg(def.send.deviceCmd));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+
+    auto* box = qobject_cast<QFreeWorkBox*>(window());
+    QString fixtureConnectDetail;
+    bool fixtureAutoConnected = false;
+    Fixture_uart* uart =
+        box ? box->ensureFixtureUartConnected(getIndex(), &fixtureConnectDetail, &fixtureAutoConnected) : nullptr;
+    if (!uart || !uart->isFixtureSerialOpen()) {
+        const QString msg = fixtureConnectDetail.isEmpty()
+                                ? QStringLiteral("治具串口未连接，请检查菜单「连接治具串口」")
+                                : fixtureConnectDetail;
+        showlog(msg);
+        markActiveTestCaseStepDone(false, QStringLiteral("治具未连接"), QStringLiteral("失败"));
+        return;
+    }
+    if (fixtureAutoConnected)
+        showlog(QStringLiteral("已自动连接治具串口：%1").arg(fixtureConnectDetail));
+
+    const QVariant resolvedParam = resolveTestCaseSendParamTree(def.send.param);
+    const QVariantMap cmdMap = resolvedParam.canConvert<QVariantMap>() ? resolvedParam.toMap() : QVariantMap{};
+
+    auto resolveSlot = [this, &cmdMap, &resolvedParam](bool broadcastCmd) -> quint8 {
+        if (broadcastCmd)
+            return UniversalFixture::kSlotBroadcast;
+        if (cmdMap.contains(QStringLiteral("slot"))) {
+            const int s = cmdMap.value(QStringLiteral("slot")).toInt();
+            return static_cast<quint8>(qBound(1, s, 15));
+        }
+        return static_cast<quint8>(resolveFixtureMachineIndex(resolvedParam));
+    };
+
+    auto defaultTimeoutMs = [](UniversalFixtureCmd c) -> int {
+        switch (c) {
+        case UniversalFixtureCmd::CylinderDown:
+        case UniversalFixtureCmd::CylinderUp:
+        case UniversalFixtureCmd::BroadcastCylinderDown:
+        case UniversalFixtureCmd::BroadcastCylinderUp:
+            return 2500;
+        case UniversalFixtureCmd::ReadCurrent:
+            return 1000;
+        default:
+            return 500;
+        }
+    };
+    int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+    if (timeoutMs <= 0)
+        timeoutMs = defaultTimeoutMs(cmd);
+    else
+        timeoutMs = qMax(timeoutMs, defaultTimeoutMs(cmd));
+
+    if (cmd == UniversalFixtureCmd::SendRaw) {
+        const QString rawText = sendParamAsRawText(resolvedParam).trimmed();
+        if (rawText.isEmpty()) {
+            showlog(QStringLiteral("通用治具 SendRaw 内容为空，请配置 Param_string"));
+            markActiveTestCaseStepDone(false, QStringLiteral("参数为空"), QStringLiteral("失败"));
+            return;
+        }
+        bool parsedAsHex = false;
+        const QByteArray request = XwdRawUartCodec::encodeRawText(rawText, &parsedAsHex);
+        if (request.isEmpty()) {
+            showlog(QStringLiteral("通用治具 SendRaw 编码为空"));
+            markActiveTestCaseStepDone(false, QStringLiteral("参数为空"), QStringLiteral("失败"));
+            return;
+        }
+        QString errStr;
+        if (def.send.action != TestCaseSendAction::Get) {
+            if (!uart->sendRawFrame(request, &errStr)) {
+                showlog(QStringLiteral("通用治具发送失败：%1").arg(errStr));
+                markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
+                return;
+            }
+            const QString txHex = QString::fromLatin1(request.toHex(' ').toUpper());
+            showlog(QStringLiteral("通用治具已发送：%1").arg(txHex));
+            if (!def.gate.enabled)
+                markActiveTestCaseStepDone(true, txHex, QStringLiteral("通过"));
+            return;
+        }
+        QByteArray response;
+        if (!uart->exchangeRawFrame(request, &response, timeoutMs, &errStr)) {
+            showlog(QStringLiteral("通用治具收发失败：%1").arg(errStr));
+            markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
+            return;
+        }
+        const QString rxHex = QString::fromLatin1(response.toHex(' ').toUpper());
+        showlog(QStringLiteral("通用治具回包：%1").arg(rxHex));
+        ProtocolMeasureData measureData;
+        measureData.deviceName = QStringLiteral("UniversalFixture");
+        measureData.type = QStringLiteral("Reply");
+        measureData.valueText = rxHex;
+        measureData.isOk = true;
+        if (def.gate.enabled
+            && evaluateActiveTestCaseGate(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(measureData)))
+            return;
+        markActiveTestCaseStepDone(true, rxHex, QStringLiteral("通过"));
+        return;
+    }
+
+    quint8 ch = 0;
+    quint8 st = UniversalFixture::kStOn;
+    bool isMeasure = false;
+    bool broadcast = false;
+    switch (cmd) {
+    case UniversalFixtureCmd::CylinderDown:
+        ch = UniversalFixture::kChCylinder;
+        st = UniversalFixture::kStOn;
+        break;
+    case UniversalFixtureCmd::CylinderUp:
+        ch = UniversalFixture::kChCylinder;
+        st = UniversalFixture::kStOff;
+        break;
+    case UniversalFixtureCmd::BroadcastCylinderDown:
+        ch = UniversalFixture::kChCylinder;
+        st = UniversalFixture::kStOn;
+        broadcast = true;
+        break;
+    case UniversalFixtureCmd::BroadcastCylinderUp:
+        ch = UniversalFixture::kChCylinder;
+        st = UniversalFixture::kStOff;
+        broadcast = true;
+        break;
+    case UniversalFixtureCmd::Relay1On:
+        ch = UniversalFixture::kChRelay1;
+        st = UniversalFixture::kStOn;
+        break;
+    case UniversalFixtureCmd::Relay1Off:
+        ch = UniversalFixture::kChRelay1;
+        st = UniversalFixture::kStOff;
+        break;
+    case UniversalFixtureCmd::Relay2On:
+        ch = UniversalFixture::kChRelay2;
+        st = UniversalFixture::kStOn;
+        break;
+    case UniversalFixtureCmd::Relay2Off:
+        ch = UniversalFixture::kChRelay2;
+        st = UniversalFixture::kStOff;
+        break;
+    case UniversalFixtureCmd::Relay3On:
+        ch = UniversalFixture::kChRelay3;
+        st = UniversalFixture::kStOn;
+        break;
+    case UniversalFixtureCmd::Relay3Off:
+        ch = UniversalFixture::kChRelay3;
+        st = UniversalFixture::kStOff;
+        break;
+    case UniversalFixtureCmd::Relay4On:
+        ch = UniversalFixture::kChRelay4;
+        st = UniversalFixture::kStOn;
+        break;
+    case UniversalFixtureCmd::Relay4Off:
+        ch = UniversalFixture::kChRelay4;
+        st = UniversalFixture::kStOff;
+        break;
+    case UniversalFixtureCmd::ReadCurrent:
+        isMeasure = true;
+        ch = static_cast<quint8>(cmdMap.value(QStringLiteral("ch"), 1).toInt());
+        if (ch > 2)
+            ch = 1;
+        break;
+    case UniversalFixtureCmd::SendRaw:
+        break;
+    default:
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+
+    const quint8 slot = resolveSlot(broadcast);
+    const QByteArray request = isMeasure ? UniversalFixtureCodec::buildMeasureFrame(slot, ch)
+                                         : UniversalFixtureCodec::buildControlFrame(slot, ch, st);
+    showlog(QStringLiteral("通用治具发送：%1").arg(QString::fromLatin1(request.toHex(' ').toUpper())));
+
+    QString errStr;
+    QByteArray response;
+    if (!uart->exchangeRawFrame(request, &response, timeoutMs, &errStr)) {
+        showlog(QStringLiteral("通用治具等待应答失败：%1").arg(errStr));
+        markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
+        return;
+    }
+    showlog(QStringLiteral("通用治具原始回包：%1").arg(QString::fromLatin1(response.toHex(' ').toUpper())));
+
+    if (isMeasure) {
+        QByteArray parseBuf = response;
+        const QVector<UniversalFixture::MeasureRsp> frames =
+            UniversalFixtureCodec::takeAllMeasureRsp(&parseBuf, slot);
+        if (frames.isEmpty()) {
+            showlog(QStringLiteral("通用治具未解析到电流应答帧"));
+            markActiveTestCaseStepDone(false, QStringLiteral("无测量应答"), QStringLiteral("失败"));
+            return;
+        }
+        bool allOk = true;
+        QString detail;
+        for (const UniversalFixture::MeasureRsp& one : frames) {
+            if (one.status != 0x00) {
+                allOk = false;
+                showlog(QStringLiteral("通用治具电流失败 SLOT=%1 CH=%2 STATUS=%3(%4)")
+                            .arg(one.slot)
+                            .arg(one.ch)
+                            .arg(one.status)
+                            .arg(UniversalFixtureCodec::measureStatusText(one.status)));
+                continue;
+            }
+            const double ma = one.currentMa();
+            showlog(QStringLiteral("通用治具电流 SLOT=%1 CH=%2 = %3 mA")
+                        .arg(one.slot)
+                        .arg(one.ch)
+                        .arg(ma, 0, 'f', 2));
+            ProtocolMeasureData measureData;
+            measureData.deviceName = QStringLiteral("UniversalFixture");
+            measureData.channel = QStringLiteral("SLOT%1/CH%2").arg(one.slot).arg(one.ch);
+            measureData.type = QStringLiteral("Current");
+            measureData.value = ma;
+            measureData.valueText = QString::number(ma, 'f', 2);
+            measureData.unit = QStringLiteral("mA");
+            measureData.isOk = true;
+            onUsbInstrumentReport(
+                ProtocolReport(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(measureData)));
+            if (!detail.isEmpty())
+                detail.append(QLatin1Char(' '));
+            detail.append(QStringLiteral("CH%1=%2mA").arg(one.ch).arg(ma, 0, 'f', 2));
+            if (def.gate.enabled
+                && evaluateActiveTestCaseGate(QStringLiteral("ProtocolMeasureData"),
+                                              QVariant::fromValue(measureData)))
+                return;
+        }
+        if (!allOk) {
+            markActiveTestCaseStepDone(false, detail.isEmpty() ? QStringLiteral("测量失败") : detail,
+                                       QStringLiteral("失败"));
+            return;
+        }
+        if (!def.gate.enabled)
+            markActiveTestCaseStepDone(true, detail, QStringLiteral("通过"));
+        return;
+    }
+
+    QByteArray buf = response;
+    if (broadcast) {
+        int okCount = 0;
+        int failCount = 0;
+        QString detail;
+        while (true) {
+            UniversalFixture::ControlAck ack;
+            QString parseErr;
+            if (!UniversalFixtureCodec::takeControlAck(&buf, UniversalFixture::kSlotBroadcast, ch, st, &ack,
+                                                       &parseErr))
+                break;
+            if (ack.status == 0x00) {
+                ++okCount;
+                showlog(QStringLiteral("通用治具到位成功 SLOT=%1 CH=%2 ST=%3")
+                            .arg(ack.slot)
+                            .arg(ack.ch)
+                            .arg(ack.st));
+            } else {
+                ++failCount;
+                showlog(QStringLiteral("通用治具到位失败 SLOT=%1 STATUS=%2(%3)")
+                            .arg(ack.slot)
+                            .arg(ack.status)
+                            .arg(UniversalFixtureCodec::controlStatusText(ack.status)));
+            }
+            if (!detail.isEmpty())
+                detail.append(QLatin1Char(','));
+            detail.append(QStringLiteral("S%1=%2").arg(ack.slot).arg(ack.status, 2, 16, QChar('0')));
+        }
+        if (okCount <= 0 || failCount > 0) {
+            markActiveTestCaseStepDone(false, detail.isEmpty() ? QStringLiteral("无到位应答") : detail,
+                                       QStringLiteral("失败"));
+            return;
+        }
+        if (!def.gate.enabled)
+            markActiveTestCaseStepDone(true, detail, QStringLiteral("通过"));
+        return;
+    }
+
+    UniversalFixture::ControlAck ack;
+    QString parseErr;
+    if (!UniversalFixtureCodec::takeControlAck(&buf, slot, ch, st, &ack, &parseErr)) {
+        showlog(QStringLiteral("通用治具到位应答解析失败：%1").arg(parseErr));
+        markActiveTestCaseStepDone(false, parseErr, QStringLiteral("失败"));
+        return;
+    }
+    if (ack.status != 0x00) {
+        const QString msg = QStringLiteral("到位失败 STATUS=%1(%2)")
+                                .arg(ack.status)
+                                .arg(UniversalFixtureCodec::controlStatusText(ack.status));
+        showlog(QStringLiteral("通用治具%1").arg(msg));
+        markActiveTestCaseStepDone(false, msg, QStringLiteral("失败"));
+        return;
+    }
+    showlog(QStringLiteral("通用治具到位成功 SLOT=%1 CH=%2 ST=%3").arg(ack.slot).arg(ack.ch).arg(ack.st));
+    if (!def.gate.enabled)
+        markActiveTestCaseStepDone(true, QStringLiteral("SLOT=%1").arg(ack.slot), QStringLiteral("通过"));
 }
 
 void QFreeWork::executeFixtureJieliBtBoxCase(const TestCaseDefinition& def) {

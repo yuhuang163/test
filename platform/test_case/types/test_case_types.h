@@ -32,7 +32,8 @@ enum class TestCaseFixtureProtocol {
     Xwd, // 原 XWD_BLE / XWD_SUCTION 同一治具串口物理层
     JieliBtBox,
     UsbCamera,
-    VesLight // VES 四通道光源，协议固定走通道 1
+    VesLight, // VES 四通道光源，协议固定走通道 1
+    Universal // 通用治具串口协议 V1.2（气缸/继电器/电流 + SLOT）
 };
 // clang-format on
 

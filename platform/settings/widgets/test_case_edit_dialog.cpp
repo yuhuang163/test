@@ -1496,6 +1496,8 @@ void fillFixtureProtocolCombo(QComboBox* box) {
                  FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::UsbCamera));
     box->addItem(FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol::VesLight),
                  FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::VesLight));
+    box->addItem(FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol::Universal),
+                 FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::Universal));
 }
 
 void fillProtocolComboForChannel(QComboBox* box, TestCaseSendChannel channel) {
@@ -1550,6 +1552,11 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
             items.reserve(names.size());
             for (const QString& name : names)
                 items.append({XwdRawFixtureCmdCatalog::catalog().cmdUiLabel(name), name});
+        } else if (proto == TestCaseFixtureProtocol::Universal) {
+            const QStringList names = UniversalFixtureCmdCatalog::catalog().allCmdNames(action);
+            items.reserve(names.size());
+            for (const QString& name : names)
+                items.append({UniversalFixtureCmdCatalog::catalog().cmdUiLabel(name), name});
         } else if (proto == TestCaseFixtureProtocol::JieliBtBox) {
             const QStringList names = JieliBtBoxCmdCatalog::catalog().allCmdNames(action);
             items.reserve(names.size());
@@ -1741,6 +1748,18 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
                 if (XwdRawFixtureCmdCatalog::catalog().paramSchemaFor(static_cast<int>(xwdCmd), schema)) {
                     out.valid = true;
                     out.hint = XwdRawFixtureCmdCatalog::catalog().paramUiHint(name);
+                    out.kind = sendParamUiKindFromSchema(schema.kind);
+                }
+            }
+            return out;
+        }
+        if (proto == TestCaseFixtureProtocol::Universal) {
+            UniversalFixtureCmd uniCmd;
+            if (cmdEnumFromName(UniversalFixtureCmdCatalog::catalog(), name, uniCmd)) {
+                DeviceCmdParamSchema schema;
+                if (UniversalFixtureCmdCatalog::catalog().paramSchemaFor(static_cast<int>(uniCmd), schema)) {
+                    out.valid = true;
+                    out.hint = UniversalFixtureCmdCatalog::catalog().paramUiHint(name);
                     out.kind = sendParamUiKindFromSchema(schema.kind);
                 }
             }

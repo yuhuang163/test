@@ -84,6 +84,29 @@ class XwdRawFixtureCmdCatalog {
     static CmdManifestCatalog& catalog();
 };
 
+/** 通用治具串口协议 V1.2（Send/Channel=Fixture 且 Protocol=Universal）。 */
+enum class UniversalFixtureCmd {
+    CylinderDown,
+    CylinderUp,
+    BroadcastCylinderDown,
+    BroadcastCylinderUp,
+    Relay1On,
+    Relay1Off,
+    Relay2On,
+    Relay2Off,
+    Relay3On,
+    Relay3Off,
+    Relay4On,
+    Relay4Off,
+    ReadCurrent,
+    SendRaw,
+};
+
+class UniversalFixtureCmdCatalog {
+  public:
+    static CmdManifestCatalog& catalog();
+};
+
 /** 杰理蓝牙盒子：串口 TLV 上报频偏/RSSI（Send/Channel=Fixture 且 Protocol=JieliBtBox）。 */
 enum class JieliBtBoxCmd {
     WaitRfInfo,

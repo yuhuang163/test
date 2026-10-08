@@ -153,6 +153,8 @@ INCLUDEPATH += agreement/fixture_protocol/uart_fixture/device/imu_fixture_device
 INCLUDEPATH += agreement/fixture_protocol/hz_fixture/access
 INCLUDEPATH += agreement/fixture_protocol/hz_fixture/codec
 INCLUDEPATH += agreement/fixture_protocol/hz_fixture/device/hz_pcba_fixture_device
+INCLUDEPATH += agreement/fixture_protocol/universal_fixture/access
+INCLUDEPATH += agreement/fixture_protocol/universal_fixture/codec
 INCLUDEPATH += agreement/fixture_protocol/xwd_fixture/access
 INCLUDEPATH += agreement/fixture_protocol/xwd_fixture/codec
 INCLUDEPATH += agreement/fixture_protocol/xwd_fixture/device/xwd_fixture_device
@@ -271,6 +273,7 @@ SOURCES += \
     agreement/fixture_protocol/uart_fixture/device/press_fixture_device/press_fixture_device.cpp \
     agreement/fixture_protocol/uart_fixture/device/camera_fixture_device/camera_fixture_device.cpp \
     agreement/fixture_protocol/uart_fixture/device/imu_fixture_device/imu_fixture_device.cpp \
+    agreement/fixture_protocol/universal_fixture/codec/universal_fixture_codec.cpp \
     agreement/fixture_protocol/asd9026a/codec/asd9026a_codec.cpp \
     agreement/fixture_protocol/asd9026a/device/asd9026a_device/asd9026a_device.cpp \
     agreement/fixture_protocol/xwd_fixture/codec/fixture_uart_codec.cpp \
@@ -310,6 +313,7 @@ SOURCES += \
     platform/test_case/manifest/usb_camera_cmd_manifest.cpp \
     platform/test_case/manifest/ves_light_cmd_manifest.cpp \
     platform/test_case/manifest/fixture_pcba_cmd_manifest.cpp \
+    platform/test_case/manifest/universal_fixture_cmd_manifest.cpp \
     platform/test_case/manifest/asd9026a_cmd_manifest.cpp \
     platform/test_case/manifest/xwd_fixture_cmd_manifest.cpp \
     platform/test_case/manifest/jieli_bt_box_cmd_manifest.cpp \
@@ -458,6 +462,8 @@ HEADERS += \
     agreement/fixture_protocol/uart_fixture/device/press_fixture_device/press_fixture_device.h \
     agreement/fixture_protocol/uart_fixture/device/camera_fixture_device/camera_fixture_device.h \
     agreement/fixture_protocol/uart_fixture/device/imu_fixture_device/imu_fixture_device.h \
+    agreement/fixture_protocol/universal_fixture/access/universal_fixture_types.h \
+    agreement/fixture_protocol/universal_fixture/codec/universal_fixture_codec.h \
     agreement/fixture_protocol/asd9026a/codec/asd9026a_codec.h \
     agreement/fixture_protocol/asd9026a/device/asd9026a_device/asd9026a_device.h \
     agreement/fixture_protocol/uart_fixture/access/fixture_uart_types.h \
@@ -502,6 +508,7 @@ HEADERS += \
     platform/test_case/manifest/usb_camera_cmd_manifest.h \
     platform/test_case/manifest/ves_light_cmd_manifest.h \
     platform/test_case/manifest/fixture_pcba_cmd_manifest.h \
+    platform/test_case/manifest/universal_fixture_cmd_manifest.h \
     platform/test_case/manifest/asd9026a_cmd_manifest.h \
     platform/test_case/manifest/xwd_fixture_cmd_manifest.h \
     platform/test_case/manifest/jieli_bt_box_cmd_manifest.h \

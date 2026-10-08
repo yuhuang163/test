@@ -138,6 +138,7 @@ class QFreeWork : public test_base {
     void executeFixturePcbaCase(const TestCaseDefinition& def);
     void executeFixtureAsd9026aCase(const TestCaseDefinition& def);
     void executeFixtureXwdCase(const TestCaseDefinition& def);
+    void executeFixtureUniversalCase(const TestCaseDefinition& def);
     void executeFixtureJieliBtBoxCase(const TestCaseDefinition& def);
     void executeFixtureVesLightCase(const TestCaseDefinition& def);
     /** VES 单通道指令固定 CH1，brightness 0~255。失败时 failReason 非空。 */

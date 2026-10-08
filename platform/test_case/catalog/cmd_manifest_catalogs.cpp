@@ -14,6 +14,7 @@
 #include "tuple_cmd_manifest.h"
 #include "usb_camera_cmd_manifest.h"
 #include "ves_light_cmd_manifest.h"
+#include "universal_fixture_cmd_manifest.h"
 #include "xwd_fixture_cmd_manifest.h"
 
 #include <QMetaType>
@@ -92,6 +93,17 @@ static CmdManifestRegistry makeXwdRawFixtureCmdRegistry(const CmdManifestRegistr
     reg.rows.reserve(XwdRawFixtureCmdManifest::rowCount());
     for (int i = 0; i < XwdRawFixtureCmdManifest::rowCount(); ++i) {
         const XwdRawFixtureCmdManifest::Row& r = XwdRawFixtureCmdManifest::rows()[i];
+        reg.rows.append({static_cast<int>(r.cmd), r.enumName, r.uiLabel, r.paramKind, r.paramHint, r.sendActions});
+    }
+    return reg;
+}
+
+static CmdManifestRegistry makeUniversalFixtureCmdRegistry(const CmdManifestRegistry::Policy& policy) {
+    CmdManifestRegistry reg;
+    reg.policy = policy;
+    reg.rows.reserve(UniversalFixtureCmdManifest::rowCount());
+    for (int i = 0; i < UniversalFixtureCmdManifest::rowCount(); ++i) {
+        const UniversalFixtureCmdManifest::Row& r = UniversalFixtureCmdManifest::rows()[i];
         reg.rows.append({static_cast<int>(r.cmd), r.enumName, r.uiLabel, r.paramKind, r.paramHint, r.sendActions});
     }
     return reg;
@@ -259,6 +271,19 @@ CmdManifestRegistry::Policy XwdRawFixtureCmdManifestCatalog::xwdPolicy() {
 
 XwdRawFixtureCmdManifestCatalog::XwdRawFixtureCmdManifestCatalog()
     : CmdManifestCatalog(makeXwdRawFixtureCmdRegistry(xwdPolicy())) {}
+
+// ---------- UniversalFixtureCmdManifestCatalog ----------
+
+CmdManifestRegistry::Policy UniversalFixtureCmdManifestCatalog::universalPolicy() {
+    CmdManifestRegistry::Policy p;
+    p.uiLabelMode = CmdCatalogUiLabelMode::Raw;
+    p.cmdToNameFallback = CmdCatalogCmdToNameFallback::Empty;
+    p.paramHintStyle = CmdCatalogParamHintStyle::HintOnly;
+    return p;
+}
+
+UniversalFixtureCmdManifestCatalog::UniversalFixtureCmdManifestCatalog()
+    : CmdManifestCatalog(makeUniversalFixtureCmdRegistry(universalPolicy())) {}
 
 // ---------- JieliBtBoxCmdManifestCatalog ----------
 
@@ -512,6 +537,11 @@ CmdManifestCatalog& XwdRawFixtureCmdCatalog::catalog() {
     return catalog;
 }
 
+CmdManifestCatalog& UniversalFixtureCmdCatalog::catalog() {
+    static UniversalFixtureCmdManifestCatalog catalog;
+    return catalog;
+}
+
 CmdManifestCatalog& JieliBtBoxCmdCatalog::catalog() {
     static JieliBtBoxCmdManifestCatalog catalog;
     return catalog;
@@ -552,6 +582,10 @@ TestCaseFixtureProtocol FixturePcbaCmdCatalog::fixtureProtocolFromIni(const QStr
         || text.compare(QStringLiteral("VES_LIGHT"), Qt::CaseInsensitive) == 0
         || text.compare(QStringLiteral("VesLight"), Qt::CaseInsensitive) == 0)
         return TestCaseFixtureProtocol::VesLight;
+    if (text.compare(QStringLiteral("Universal"), Qt::CaseInsensitive) == 0
+        || text.compare(QStringLiteral("UNIVERSAL"), Qt::CaseInsensitive) == 0
+        || text.compare(QStringLiteral("通用治具"), Qt::CaseInsensitive) == 0)
+        return TestCaseFixtureProtocol::Universal;
     if (text.compare(QStringLiteral("Pcba"), Qt::CaseInsensitive) == 0 || text.compare(QStringLiteral("PCBA"), Qt::CaseInsensitive) == 0)
         return TestCaseFixtureProtocol::Pcba;
     return TestCaseFixtureProtocol::Pcba;
@@ -569,6 +603,8 @@ QString FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol prot
         return QStringLiteral("USB_CAMERA");
     case TestCaseFixtureProtocol::VesLight:
         return QStringLiteral("VES");
+    case TestCaseFixtureProtocol::Universal:
+        return QStringLiteral("Universal");
     case TestCaseFixtureProtocol::Pcba:
     default:
         return QStringLiteral("Pcba");
@@ -587,6 +623,8 @@ QString FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol pr
         return QStringLiteral("USB摄像头");
     case TestCaseFixtureProtocol::VesLight:
         return QStringLiteral("VES光源");
+    case TestCaseFixtureProtocol::Universal:
+        return QStringLiteral("通用治具");
     case TestCaseFixtureProtocol::Pcba:
     default:
         return QStringLiteral("PCBA测试协议");
