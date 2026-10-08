@@ -280,8 +280,12 @@ bool applyVisaParamsForStation(int stationIndex1Based, QVariantMap* paramMap, QS
     }
 
     const QString tableAddr = visaAddressFromParam(*paramMap, deviceIndex);
-    if (!tableAddr.isEmpty())
+    if (!tableAddr.isEmpty()) {
         paramMap->insert(QStringLiteral("visaAddress"), tableAddr);
+    } else if (enabled) {
+        // 缺 visaAddressN 时禁止沿用步骤单地址（常与工位1相同），避免工位3/4误读工位1
+        paramMap->remove(QStringLiteral("visaAddress"));
+    }
 
     paramMap->insert(QStringLiteral("sharedPair"), true);
     paramMap->insert(QStringLiteral("stationsPerDevice"), per);
@@ -291,11 +295,18 @@ bool applyVisaParamsForStation(int stationIndex1Based, QVariantMap* paramMap, QS
 
     if (detailOut) {
         const QString addr = paramMap->value(QStringLiteral("visaAddress")).toString().trimmed();
-        *detailOut = QStringLiteral("工位%1→VISA设备%2 通道%3%4")
-                         .arg(stationIndex1Based)
-                         .arg(deviceIndex)
-                         .arg(channel)
-                         .arg(addr.isEmpty() ? QString() : QStringLiteral(" 地址=%1").arg(addr));
+        if (addr.isEmpty() && enabled) {
+            *detailOut = QStringLiteral("工位%1→VISA设备%2 通道%3（缺 visaAddress%2，请在配置步骤补齐）")
+                             .arg(stationIndex1Based)
+                             .arg(deviceIndex)
+                             .arg(channel);
+        } else {
+            *detailOut = QStringLiteral("工位%1→VISA设备%2 通道%3%4")
+                             .arg(stationIndex1Based)
+                             .arg(deviceIndex)
+                             .arg(channel)
+                             .arg(addr.isEmpty() ? QString() : QStringLiteral(" 地址=%1").arg(addr));
+        }
     }
     return true;
 }
