@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
 .SYNOPSIS
     在飞书应用云空间创建文档，并自动为指定邮箱授予可管理权限。
