@@ -32,6 +32,9 @@ int rowCount();
 const Row* findByCmd(DeviceCmd cmd);
 const Row* findByEnumName(const QString& enumName);
 
+/** 编辑器指令下拉：enumName 须落在当前协议 set/get 的 DeviceCmd case 名单内（与 build/_device_cmd_by_protocol.json 一致，勿用前缀猜测）。 */
+bool matchesProductProtocol(const QString& enumName, TestCaseProductProtocol protocol);
+
 /** 将 case ini 中的 JsonMap 参数转换为协议 set/get 可接受的 QVariant。 */
 QVariant normalizeSendParam(DeviceCmd cmd, const QVariant& param);
 

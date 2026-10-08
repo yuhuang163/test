@@ -5,6 +5,7 @@
 
 #include "my_set/my_typedef.h"
 
+#include <QApplication>
 #include <QDateTime>
 #include <QJsonArray>
 #include <QJsonObject>
@@ -194,12 +195,22 @@ bool AuthService::promptReLoginIfExpired(QWidget* parent) {
     }
 
     prompting = true;
+    // 清掉过期 token，避免业务仍拿旧凭证；与启动登录一致：必须重新登录
+    logout();
+
     if (parent) {
         QMessageBox::warning(parent, QStringLiteral("登录过期"),
-                             QStringLiteral("云平台登录已过期，请重新登录。未登录时测试数据将无法上传云端。"));
-        LoginDialog loginDialog(parent);
-        loginDialog.setWindowModality(Qt::ApplicationModal);
-        loginDialog.exec();
+                             QStringLiteral("云平台登录已过期，请重新登录。取消登录将退出上位机。"));
+        while (!isLoggedIn()) {
+            LoginDialog loginDialog(parent);
+            loginDialog.setWindowModality(Qt::ApplicationModal);
+            if (loginDialog.exec() != QDialog::Accepted) {
+                prompting = false;
+                // 与 main.cpp 启动未登录点取消一致：不允许以未登录状态继续测
+                QApplication::quit();
+                return false;
+            }
+        }
     }
     prompting = false;
     return isLoggedIn();

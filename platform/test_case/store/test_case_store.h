@@ -59,6 +59,14 @@ class TestCaseStore {
     /** 工站 flow.ini [DeviceSide]：三元组位置 / device_side_id */
     static TestCaseDeviceSideConfig loadStationDeviceSideConfig(const QString& stationKey);
     static bool saveStationDeviceSideConfig(const QString& stationKey, const TestCaseDeviceSideConfig& config);
+    /** 当前选中/活动工站键（编排 SelectedStation → 名称兜底 → default） */
+    static QString resolveActiveFlowStationKey();
+    /** 工站 flow.ini [LedInspect]；缺键时回退全局 SETTINGS LedInspect/* */
+    static TestCaseLedInspectConfig loadStationLedInspectConfig(const QString& stationKey = QString());
+    static bool saveStationLedInspectConfig(const QString& stationKey, const TestCaseLedInspectConfig& config);
+    /** 工站 flow.ini [ScreenInspect] 参考圆/GigE；缺键回退全局 ScreenInspect/* */
+    static TestCaseScreenInspectConfig loadStationScreenInspectConfig(const QString& stationKey = QString());
+    static bool saveStationScreenInspectConfig(const QString& stationKey, const TestCaseScreenInspectConfig& config);
     /** profiles/{工站}/profile.ini [Profile/ProfileVersion]；stationKey 空则当前选中工站，缺失返回 0 */
     static int loadStationProfileVersion(const QString& stationKey = QString());
     /** profiles/{工站}/profile.ini [StationCustom/SkipDefaultPreInspection] 或 [Profile/SkipDefaultPreInspection] */

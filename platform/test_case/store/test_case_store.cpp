@@ -2356,6 +2356,153 @@ bool TestCaseStore::saveStationDeviceSideConfig(const QString& stationKey, const
     return true;
 }
 
+QString TestCaseStore::resolveActiveFlowStationKey() {
+    QString stationKey = resolveFlowStationKey(loadSelectedFlowStationKey());
+    if (stationKey.isEmpty() || loadStationFlowItems(stationKey).isEmpty()) {
+        const QString byName = resolveFlowStationKey(loadSelectedFlowStationName());
+        if (!byName.isEmpty())
+            stationKey = byName;
+    }
+    if (stationKey.isEmpty())
+        stationKey = QStringLiteral("default");
+    return stationKey;
+}
+
+TestCaseLedInspectConfig TestCaseStore::loadStationLedInspectConfig(const QString& stationKey) {
+    TestCaseLedInspectConfig out;
+    out.ledCount = qBound(1, SETTINGS.value(QStringLiteral("LedInspect/LedCount"), 4).toInt(), 4);
+    out.minLuma = SETTINGS.value(QStringLiteral("LedInspect/MinLuma"), 80).toInt();
+    out.mode = SETTINGS.value(QStringLiteral("LedInspect/Mode")).toString().trimmed();
+    out.mode1 = SETTINGS.value(QStringLiteral("LedInspect/Mode1")).toString().trimmed();
+    out.mode2 = SETTINGS.value(QStringLiteral("LedInspect/Mode2")).toString().trimmed();
+    out.mode3 = SETTINGS.value(QStringLiteral("LedInspect/Mode3")).toString().trimmed();
+    out.mode4 = SETTINGS.value(QStringLiteral("LedInspect/Mode4")).toString().trimmed();
+    out.roi1 = SETTINGS.value(QStringLiteral("LedInspect/Roi1")).toString().trimmed();
+    out.roi2 = SETTINGS.value(QStringLiteral("LedInspect/Roi2")).toString().trimmed();
+    out.roi3 = SETTINGS.value(QStringLiteral("LedInspect/Roi3")).toString().trimmed();
+    out.roi4 = SETTINGS.value(QStringLiteral("LedInspect/Roi4")).toString().trimmed();
+
+    TestCasePaths::ensureRootDir();
+    ensureFilesystemLayout();
+    const QString key = stationKey.trimmed().isEmpty() ? resolveActiveFlowStationKey() : stationKey.trimmed();
+    const QString profileFlow = TestCasePaths::profileFlowPath(key);
+    if (!QFile::exists(profileFlow))
+        return out;
+
+    QSettings profileIni(profileFlow, QSettings::IniFormat);
+    applyTestCaseIniCodec(profileIni);
+    profileIni.beginGroup(QStringLiteral("LedInspect"));
+    if (profileIni.contains(QStringLiteral("LedCount")))
+        out.ledCount = qBound(1, profileIni.value(QStringLiteral("LedCount"), out.ledCount).toInt(), 4);
+    if (profileIni.contains(QStringLiteral("MinLuma")))
+        out.minLuma = profileIni.value(QStringLiteral("MinLuma"), out.minLuma).toInt();
+    if (profileIni.contains(QStringLiteral("Mode")))
+        out.mode = profileIni.value(QStringLiteral("Mode")).toString().trimmed();
+    if (profileIni.contains(QStringLiteral("Mode1")))
+        out.mode1 = profileIni.value(QStringLiteral("Mode1")).toString().trimmed();
+    if (profileIni.contains(QStringLiteral("Mode2")))
+        out.mode2 = profileIni.value(QStringLiteral("Mode2")).toString().trimmed();
+    if (profileIni.contains(QStringLiteral("Mode3")))
+        out.mode3 = profileIni.value(QStringLiteral("Mode3")).toString().trimmed();
+    if (profileIni.contains(QStringLiteral("Mode4")))
+        out.mode4 = profileIni.value(QStringLiteral("Mode4")).toString().trimmed();
+    if (profileIni.contains(QStringLiteral("Roi1")))
+        out.roi1 = profileIni.value(QStringLiteral("Roi1")).toString().trimmed();
+    if (profileIni.contains(QStringLiteral("Roi2")))
+        out.roi2 = profileIni.value(QStringLiteral("Roi2")).toString().trimmed();
+    if (profileIni.contains(QStringLiteral("Roi3")))
+        out.roi3 = profileIni.value(QStringLiteral("Roi3")).toString().trimmed();
+    if (profileIni.contains(QStringLiteral("Roi4")))
+        out.roi4 = profileIni.value(QStringLiteral("Roi4")).toString().trimmed();
+    profileIni.endGroup();
+    return out;
+}
+
+bool TestCaseStore::saveStationLedInspectConfig(const QString& stationKey, const TestCaseLedInspectConfig& config) {
+    TestCasePaths::ensureRootDir();
+    const QString key = stationKey.trimmed().isEmpty() ? resolveActiveFlowStationKey() : stationKey.trimmed();
+    if (key.isEmpty())
+        return false;
+    ensureProfileDirectory(key, flowStationDisplayName(key), QString());
+
+    const QString profileFlow = TestCasePaths::profileFlowPath(key);
+    QSettings profileIni(profileFlow, QSettings::IniFormat);
+    applyTestCaseIniCodec(profileIni);
+    profileIni.beginGroup(QStringLiteral("LedInspect"));
+    profileIni.setValue(QStringLiteral("LedCount"), qBound(1, config.ledCount, 4));
+    profileIni.setValue(QStringLiteral("MinLuma"), config.minLuma);
+    profileIni.setValue(QStringLiteral("Mode"), config.mode);
+    profileIni.setValue(QStringLiteral("Mode1"), config.mode1);
+    profileIni.setValue(QStringLiteral("Mode2"), config.mode2);
+    profileIni.setValue(QStringLiteral("Mode3"), config.mode3);
+    profileIni.setValue(QStringLiteral("Mode4"), config.mode4);
+    profileIni.setValue(QStringLiteral("Roi1"), config.roi1);
+    profileIni.setValue(QStringLiteral("Roi2"), config.roi2);
+    profileIni.setValue(QStringLiteral("Roi3"), config.roi3);
+    profileIni.setValue(QStringLiteral("Roi4"), config.roi4);
+    profileIni.endGroup();
+    syncTestCaseIni(profileIni, profileFlow);
+    return true;
+}
+
+TestCaseScreenInspectConfig TestCaseStore::loadStationScreenInspectConfig(const QString& stationKey) {
+    TestCaseScreenInspectConfig out;
+    out.refCircleCx = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCx"), -1).toInt();
+    out.refCircleCy = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCy"), -1).toInt();
+    out.refCircleR = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleR"), -1).toInt();
+    out.reuseCircle = SETTINGS.value(QStringLiteral("ScreenInspect/ReuseCircle"), false).toBool();
+    out.gigEIp = SETTINGS.value(QStringLiteral("ScreenInspect/GigEIp"), QStringLiteral("169.254.64.10")).toString().trimmed();
+    if (out.gigEIp.isEmpty())
+        out.gigEIp = QStringLiteral("169.254.64.10");
+
+    TestCasePaths::ensureRootDir();
+    ensureFilesystemLayout();
+    const QString key = stationKey.trimmed().isEmpty() ? resolveActiveFlowStationKey() : stationKey.trimmed();
+    const QString profileFlow = TestCasePaths::profileFlowPath(key);
+    if (!QFile::exists(profileFlow))
+        return out;
+
+    QSettings profileIni(profileFlow, QSettings::IniFormat);
+    applyTestCaseIniCodec(profileIni);
+    profileIni.beginGroup(QStringLiteral("ScreenInspect"));
+    if (profileIni.contains(QStringLiteral("RefCircleCx")))
+        out.refCircleCx = profileIni.value(QStringLiteral("RefCircleCx"), out.refCircleCx).toInt();
+    if (profileIni.contains(QStringLiteral("RefCircleCy")))
+        out.refCircleCy = profileIni.value(QStringLiteral("RefCircleCy"), out.refCircleCy).toInt();
+    if (profileIni.contains(QStringLiteral("RefCircleR")))
+        out.refCircleR = profileIni.value(QStringLiteral("RefCircleR"), out.refCircleR).toInt();
+    if (profileIni.contains(QStringLiteral("ReuseCircle")))
+        out.reuseCircle = profileIni.value(QStringLiteral("ReuseCircle"), out.reuseCircle).toBool();
+    if (profileIni.contains(QStringLiteral("GigEIp"))) {
+        const QString ip = profileIni.value(QStringLiteral("GigEIp")).toString().trimmed();
+        if (!ip.isEmpty())
+            out.gigEIp = ip;
+    }
+    profileIni.endGroup();
+    return out;
+}
+
+bool TestCaseStore::saveStationScreenInspectConfig(const QString& stationKey, const TestCaseScreenInspectConfig& config) {
+    TestCasePaths::ensureRootDir();
+    const QString key = stationKey.trimmed().isEmpty() ? resolveActiveFlowStationKey() : stationKey.trimmed();
+    if (key.isEmpty())
+        return false;
+    ensureProfileDirectory(key, flowStationDisplayName(key), QString());
+
+    const QString profileFlow = TestCasePaths::profileFlowPath(key);
+    QSettings profileIni(profileFlow, QSettings::IniFormat);
+    applyTestCaseIniCodec(profileIni);
+    profileIni.beginGroup(QStringLiteral("ScreenInspect"));
+    profileIni.setValue(QStringLiteral("RefCircleCx"), config.refCircleCx);
+    profileIni.setValue(QStringLiteral("RefCircleCy"), config.refCircleCy);
+    profileIni.setValue(QStringLiteral("RefCircleR"), config.refCircleR);
+    profileIni.setValue(QStringLiteral("ReuseCircle"), config.reuseCircle);
+    profileIni.setValue(QStringLiteral("GigEIp"), config.gigEIp.trimmed());
+    profileIni.endGroup();
+    syncTestCaseIni(profileIni, profileFlow);
+    return true;
+}
+
 QVector<TestFlowItemEntry> TestCaseStore::loadStationFlowItems(const QString& stationKey) {
     TestCasePaths::ensureRootDir();
     ensureFilesystemLayout();

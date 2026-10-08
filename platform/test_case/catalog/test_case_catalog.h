@@ -15,6 +15,8 @@ class DeviceCmdCatalog {
     static TestCaseProductProtocol productProtocolFromIni(const QString& text);
     static QString productProtocolToIni(TestCaseProductProtocol protocol);
     static QString productProtocolUiLabel(TestCaseProductProtocol protocol);
+    /** 产品通道指令名：在 Set/Get 过滤基础上再按产品协议收窄。 */
+    static QStringList allCmdNames(TestCaseSendAction action, TestCaseProductProtocol protocol);
 };
 
 class DongleCmdCatalog {

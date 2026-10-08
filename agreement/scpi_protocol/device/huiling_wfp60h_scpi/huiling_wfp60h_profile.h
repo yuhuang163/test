@@ -19,10 +19,15 @@ struct HuilingWfp60hScpiProfile {
     QString scpiReadCurrentCmd;
     /** 66319D 电流量程：如 SENS:CURR:RANG %1；WFP60H 留空。 */
     QString scpiSetCurrentRangeCmd;
-    /** 双通道电源：先选通再 VOLT/OUTP，如 INST OUT%1；会凌 SOURceN 类可留空。 */
+    /** 可选选通命令（含 %1）；Agilent 66319D 辅路用 VOLT2/CURR2，通常留空。 */
     QString scpiChannelSelectCmd;
     /** 1/2；0 表示不发通道选择。 */
     int powerChannel = 0;
+    /**
+     * 二托二共用一台 Agilent 时：配置步写 VOLT/CURR 与 VOLT2/CURR2（同一套电压电流）。
+     * 会凌 SOURceN 改写路径保持 1（仍只配本工位通道）。
+     */
+    int stationsPerDevice = 1;
 
     static HuilingWfp60hScpiProfile defaults();
     /** 暂与 defaults 相同（常量表）；后续若需再接入 SETTINGS。 */

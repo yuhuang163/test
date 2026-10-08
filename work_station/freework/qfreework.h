@@ -434,7 +434,7 @@ class QFreeWork : public test_base {
     void runBowlCapDiffCheckStep();
     /** 自由工站屏幕检测：GigE/USB 拍照后坏点 / 显示对比 / 位置校准。 */
     void runScreenInspectStep();
-    /** 离散 LED 亮灭：灯数 Param_ledCount（1~4），框来自调试页 LedInspect/Roi1~N。 */
+    /** 离散 LED 亮灭：灯数 Param_ledCount（1~4），框来自本工站 flow.ini [LedInspect] Roi1~N。 */
     void runLedInspectStep();
     /**
      * 屏幕图像识别自动未通过时弹窗：确认是否显示对应颜色。
@@ -452,10 +452,21 @@ class QFreeWork : public test_base {
      */
     void runScpiProgrammableCurrentSampleAnyMatch(const TestCaseDefinition& def, const QVariant& commandParam);
     void runAsdProgrammableCurrentSampleAnyMatch(const TestCaseDefinition& def, quint8 moduleAddr, int channel);
-    /** ASD 读电流异步采样 tick（一拖多不堵 startTask）。 */
+    /** 读电流异步采样 tick（SCPI/ASD，一拖多不堵 startTask）。 */
+    void onCurrentSamplePoll();
     void onAsdCurrentSamplePoll();
+    void onScpiCurrentSamplePoll();
     void finishAsdCurrentSampleWindowFail();
+    void finishScpiCurrentSampleWindowFail();
     void abortAsdCurrentSampleWindow();
+    void abortScpiCurrentSampleWindow();
+    /** COUNTDOWN_WAIT：结果表倒计时（无弹窗，一拖多不堵 startTask）。 */
+    void runCountdownWaitStep();
+    void onCountdownWaitPoll();
+    void finishCountdownWaitSuccess();
+    void abortCountdownWait(bool markFail);
+    void ensureCountdownWaitTableRow(const QString& stepName, const QString& dataText);
+    void removeCountdownWaitTableRow();
     /** 当前等待的一拖多 PLC 同步会话键（WRITE_M11 / READ_M0…）；空表示未在屏障内。 */
     QString plcSyncWaitKey_;
     /** 治具/USB 电流表 Hook「读取治具电流测量值」：连续采样，任一值落入 SETTINGS 电流卡控即通过。 */
@@ -513,13 +524,26 @@ class QFreeWork : public test_base {
     QTimer* dongleSuctionSamplePollTimer_ = nullptr;
     /** 读电流连续采样：窗口内任一卡控合格即通过，不合格不立刻结束步骤。 */
     bool currentSampleAnyMatchActive_ = false;
-    /** ASD 异步采样窗口状态（其它读电流路径仍可同步，仅 ASD 走 timer）。 */
+    /** 0=空闲 1=ASD 2=SCPI（66319D/慧灵等），决定 onCurrentSamplePoll 分支。 */
+    quint8 currentSamplePollKind_ = 0;
+    /** ASD 异步采样窗口状态。 */
     quint8 currentSampleAsdModuleAddr_ = 1;
     int currentSampleAsdChannel_ = 1;
+    /** SCPI 读电流异步采样：首包可带量程，后续纯 MEAS。 */
+    QVariant currentSampleScpiParam_;
+    bool currentSampleScpiRangeAttached_ = false;
     int currentSampleTargetMs_ = 3000;
     int currentSampleIntervalMs_ = 200;
     QElapsedTimer currentSampleWindowTimer_;
     QTimer* currentSamplePollTimer_ = nullptr;
+    /** COUNTDOWN_WAIT 异步倒计时（结果表刷新，无弹窗）。 */
+    bool countdownWaitActive_ = false;
+    int countdownWaitTotalSec_ = 0;
+    int countdownWaitLastShownSec_ = -1;
+    int countdownWaitTableRow_ = -1;
+    QString countdownWaitStepName_;
+    QElapsedTimer countdownWaitElapsed_;
+    QTimer* countdownWaitTimer_ = nullptr;
     /** true=采完用均值卡控；false=任一值合格即过（Param_sampleJudgeMode=average|any） */
     bool currentSampleJudgeByAverage_ = false;
     int currentSampleCount_ = 0;
@@ -653,8 +677,6 @@ class QFreeWork : public test_base {
     void on_snbanding_returnPressed();
     void on_mac_combo_textActivated(const QString& arg1);
     void on_clear_scan_clicked();
-    void on_connectwifi_clicked();
-    void on_disconnectwifi_clicked();
     void on_connectButton_clicked();
     void on_disconnectButton_clicked();
     void on_jigConnectButton_clicked();
@@ -664,7 +686,6 @@ class QFreeWork : public test_base {
     void on_productConnectButton_clicked();
     void on_productDisconnectButton_clicked();
     void on_pushButton_clicked();
-    void on_pushButton_2_clicked();
     void on_stopTest_clicked();
     void on_toggleExtraTabsButton_clicked();
     void on_clearSuctionChartButton_clicked();

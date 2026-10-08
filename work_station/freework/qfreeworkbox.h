@@ -66,6 +66,15 @@ class QFreeWorkBox : public box_base {
     void triggerAllStationSerialScanners();
     bool isAnyStationTesting() const;
     void releaseSharedPlcIfIdle();
+    /**
+     * 信捷 RTU：自动扫码监控与测试步骤共用同一 SerialChannel / QModbusManager，
+     * 避免同 COM 二次打开报占用。一拖多工位并发时须先锁 sharedXinjePlcMutex()。
+     */
+    QMutex* sharedXinjePlcMutex();
+    QModbusManager& sharedXinjePlcManager();
+    /** 按自动扫码配置 + 步骤 Param 确保串口已打开（已打开且同 COM 则复用）。 */
+    bool ensureSharedXinjePlcConnected(const QVariant& param = {}, QString* errorMessage = nullptr);
+    QString sharedXinjePlcComPort() const;
     /** PLC 治具串口一拖多互斥（流程 UP/DOWN）。 */
     QMutex* sharedPlcFixtureMutex();
     /** 自动扫码监控口互斥（XWD DOWN?，与流程治具口配置独立）。 */
@@ -107,11 +116,14 @@ class QFreeWorkBox : public box_base {
 
     // 全局共享 PLC 按键 / XWD 到位监控
     QModbusManager sharedPlcModbusManager_;
+    /** 信捷 RTU 自动扫码监控专用串口通道（与工位万用表口独立） */
+    SerialChannel* sharedPlcSerialChannel_ = nullptr;
     QTimer* plcMonitorTimer_ = nullptr;
     bool plcMonitorRunning_ = false;
     PreStartMonitorConfig sharedPlcConfig_;
     QMutex sharedPlcFixtureMutex_;
     QMutex sharedXwdMonitorMutex_;
+    QMutex sharedXinjePlcMutex_;
 
   private slots:
     void startTest();

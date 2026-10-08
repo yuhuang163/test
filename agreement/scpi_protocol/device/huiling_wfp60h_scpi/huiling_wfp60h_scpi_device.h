@@ -66,6 +66,8 @@ class HuilingWfp60hScpiDevice : public QObject, public IScpiDevice {
     std::map<QString, CommandCallback> commandList_;
     std::optional<HuilingWfp60hScpiProfile> profilePatch_;
     ProgrammablePowerReadPending pendingProgPowerRead_ = ProgrammablePowerReadPending::None;
+    /** 已下发的量程；连续采样时避免每次 SENS:CURR:RANG 拖垮 GPIB（约 200+150ms/次）。 */
+    QString lastProgCurrentRangeSent_;
 };
 
 #endif // HUILING_WFP60H_SCPI_DEVICE_H

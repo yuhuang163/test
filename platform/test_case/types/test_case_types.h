@@ -149,4 +149,28 @@ struct TestCaseDeviceSideConfig {
     int sideId = -1;
 };
 
+/** 工站 flow.ini [LedInspect]：离散 LED 灯框与阈值（调试页按当前工站读写） */
+struct TestCaseLedInspectConfig {
+    int ledCount = 4;
+    int minLuma = 80;
+    QString mode; // 全局兜底 on/blink
+    QString mode1;
+    QString mode2;
+    QString mode3;
+    QString mode4;
+    QString roi1; // x,y,w,h
+    QString roi2;
+    QString roi3;
+    QString roi4;
+};
+
+/** 工站 flow.ini [ScreenInspect]：参考圆与 GigE（调试页按当前工站读写） */
+struct TestCaseScreenInspectConfig {
+    int refCircleCx = -1;
+    int refCircleCy = -1;
+    int refCircleR = -1;
+    bool reuseCircle = false;
+    QString gigEIp = QStringLiteral("169.254.64.10");
+};
+
 #endif // PLATFORM_TEST_CASE_TYPES_H
