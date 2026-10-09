@@ -71,7 +71,8 @@ QPushButton#consoleNavBiz,
 QPushButton#consoleNavPeriph,
 QPushButton#consoleNavDongle,
 QPushButton#consoleNavOta,
-QPushButton#consoleNavMisc {
+QPushButton#consoleNavMisc,
+QPushButton#consoleNavAiot {
 	text-align: left;
 	padding: 0 12px 0 10px;
 	min-height: 44px;
@@ -89,7 +90,8 @@ QPushButton#consoleNavBiz:hover,
 QPushButton#consoleNavPeriph:hover,
 QPushButton#consoleNavDongle:hover,
 QPushButton#consoleNavOta:hover,
-QPushButton#consoleNavMisc:hover {
+QPushButton#consoleNavMisc:hover,
+QPushButton#consoleNavAiot:hover {
 	background: rgba(255, 255, 255, 230);
 	border: 1px solid #93c5fd;
 	color: #2563eb;
@@ -100,7 +102,8 @@ QPushButton#consoleNavBiz:pressed,
 QPushButton#consoleNavPeriph:pressed,
 QPushButton#consoleNavDongle:pressed,
 QPushButton#consoleNavOta:pressed,
-QPushButton#consoleNavMisc:pressed {
+QPushButton#consoleNavMisc:pressed,
+QPushButton#consoleNavAiot:pressed {
 	background: #9ec0ee;
 	border: 1px solid #2563eb;
 	color: #0f3f9a;
@@ -111,7 +114,8 @@ QPushButton#consoleNavBiz:checked,
 QPushButton#consoleNavPeriph:checked,
 QPushButton#consoleNavDongle:checked,
 QPushButton#consoleNavOta:checked,
-QPushButton#consoleNavMisc:checked {
+QPushButton#consoleNavMisc:checked,
+QPushButton#consoleNavAiot:checked {
 	background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #62a3fb, stop:1 #3b82f6);
 	border: 1px solid #2563eb;
 	color: #ffffff;
@@ -122,7 +126,8 @@ QPushButton#consoleNavBiz:checked:pressed,
 QPushButton#consoleNavPeriph:checked:pressed,
 QPushButton#consoleNavDongle:checked:pressed,
 QPushButton#consoleNavOta:checked:pressed,
-QPushButton#consoleNavMisc:checked:pressed {
+QPushButton#consoleNavMisc:checked:pressed,
+QPushButton#consoleNavAiot:checked:pressed {
 	background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #1e4fd0, stop:1 #163ea8);
 	border: 1px solid #0f2d6b;
 	color: #ffffff;
@@ -787,6 +792,110 @@ QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox, QPlainTextEdit, QTextEdit {
 	padding: 0 8px;
 	selection-background-color: #3b82f6;
 	selection-color: #ffffff;
+}
+
+QListWidget#pick_device {
+	min-height: 110px;
+	border: 1px solid #dce8f6;
+	border-radius: 10px;
+	background: #f7fafe;
+	color: #243654;
+	padding: 4px;
+	outline: none;
+}
+
+QListWidget#pick_device::item {
+	min-height: 28px;
+	padding: 4px 8px;
+	border-radius: 6px;
+}
+
+QListWidget#pick_device::item:selected {
+	background: #eaf3ff;
+	color: #2563eb;
+}
+
+QListWidget#pick_device::item:hover {
+	background: #f0f6ff;
+}
+
+/* app业务控制：状态运行数据小卡片（大字数值 + 小字说明；覆盖 consoleWorkPage 统一行高） */
+QWidget#tab_aiot_app {
+	background: #f3f5f8;
+}
+
+QWidget#consoleWorkPage QGroupBox#aiotStatusBox,
+QGroupBox#aiotStatusBox {
+	background: transparent;
+	border: none;
+	margin-top: 10px;
+	padding: 4px 0 0 0;
+	font-size: 14px;
+	font-weight: 700;
+	color: #1f2937;
+}
+
+QGroupBox#aiotStatusBox::title {
+	subcontrol-origin: margin;
+	left: 2px;
+	padding: 0 2px;
+}
+
+QWidget#consoleWorkPage QGroupBox#aiotStatusBox QFrame[aiotStatusCard="1"],
+QFrame[aiotStatusCard="1"] {
+	background: #ffffff;
+	border: 1px solid #e5e7eb;
+	border-radius: 10px;
+	min-height: 72px;
+	max-height: 96px;
+}
+
+QWidget#consoleWorkPage QGroupBox#aiotStatusBox QLabel[aiotCardRole="title"],
+QLabel[aiotCardRole="title"] {
+	min-height: 16px;
+	max-height: 18px;
+	color: #4b5563;
+	font-size: 12px;
+	font-weight: 600;
+	background: transparent;
+	border: none;
+	padding: 0;
+}
+
+QWidget#consoleWorkPage QGroupBox#aiotStatusBox QLabel[aiotCardRole="value"],
+QLabel[aiotCardRole="value"] {
+	min-height: 20px;
+	max-height: 40px;
+	color: #111827;
+	font-size: 16px;
+	font-weight: 700;
+	background: transparent;
+	border: none;
+	padding: 0;
+}
+
+QWidget#consoleWorkPage QGroupBox#aiotStatusBox QLabel[aiotCardRole="sub"],
+QLabel[aiotCardRole="sub"] {
+	min-height: 16px;
+	max-height: 36px;
+	color: #4b5563;
+	font-size: 12px;
+	font-weight: 500;
+	background: transparent;
+	border: none;
+	padding: 0;
+}
+
+QWidget#consoleWorkPage QGroupBox#aiotStatusBox QLabel[aiotCardRole="badge"],
+QLabel[aiotCardRole="badge"] {
+	min-height: 16px;
+	max-height: 36px;
+	color: #4b5563;
+	font-size: 12px;
+	font-weight: 500;
+	background: transparent;
+	border: none;
+	padding: 0;
 }
 
 QComboBox {
@@ -1537,7 +1646,8 @@ QPushButton#consoleNavBiz[btnPressed="true"],
 QPushButton#consoleNavPeriph[btnPressed="true"],
 QPushButton#consoleNavDongle[btnPressed="true"],
 QPushButton#consoleNavOta[btnPressed="true"],
-QPushButton#consoleNavMisc[btnPressed="true"] {
+QPushButton#consoleNavMisc[btnPressed="true"],
+QPushButton#consoleNavAiot[btnPressed="true"] {
 	background: #9ec0ee;
 	border: 2px solid #1d4ed8;
 	color: #0f2d6b;
@@ -1548,7 +1658,8 @@ QPushButton#consoleNavBiz:checked[btnPressed="true"],
 QPushButton#consoleNavPeriph:checked[btnPressed="true"],
 QPushButton#consoleNavDongle:checked[btnPressed="true"],
 QPushButton#consoleNavOta:checked[btnPressed="true"],
-QPushButton#consoleNavMisc:checked[btnPressed="true"] {
+QPushButton#consoleNavMisc:checked[btnPressed="true"],
+QPushButton#consoleNavAiot:checked[btnPressed="true"] {
 	background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #163ea8, stop:1 #0f2d6b);
 	border: 2px solid #0b1f4a;
 	color: #ffffff;

@@ -366,6 +366,41 @@
              </widget>
             </item>
             <item>
+             <widget class="QPushButton" name="consoleNavAiot">
+              <property name="cursor">
+               <cursorShape>PointingHandCursor</cursorShape>
+              </property>
+              <property name="text">
+               <string>业务调试</string>
+              </property>
+              <property name="icon">
+               <iconset resource="new_production.qrc">
+                <normaloff>:/stytle/picture/nav/nav-app.png</normaloff>
+                <normalon>:/stytle/picture/nav/nav-app-on.png</normalon>
+                <activeon>:/stytle/picture/nav/nav-app-on.png</activeon>
+                <selectedon>:/stytle/picture/nav/nav-app-on.png</selectedon>:/stytle/picture/nav/nav-app.png</iconset>
+              </property>
+              <property name="iconSize">
+               <size>
+                <width>18</width>
+                <height>18</height>
+               </size>
+              </property>
+              <property name="checkable">
+               <bool>true</bool>
+              </property>
+              <property name="checked">
+               <bool>false</bool>
+              </property>
+              <property name="autoExclusive">
+               <bool>true</bool>
+              </property>
+              <attribute name="buttonGroup">
+               <string notr="true">consoleNavGroup</string>
+              </attribute>
+             </widget>
+            </item>
+            <item>
              <widget class="QPushButton" name="consoleNavPeriph">
               <property name="cursor">
                <cursorShape>PointingHandCursor</cursorShape>
@@ -1791,7 +1826,7 @@ Every Baby</string>
                       <property name="minimumSize">
                        <size>
                         <width>0</width>
-                        <height>168</height>
+                        <height>240</height>
                        </size>
                       </property>
                       <property name="frameShape">
@@ -1941,37 +1976,72 @@ Every Baby</string>
                             <number>0</number>
                            </property>
                            <item>
-                            <widget class="QComboBox" name="pick_device">
+                            <widget class="QListWidget" name="pick_device">
                              <property name="sizePolicy">
-                              <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                               <horstretch>0</horstretch>
-                               <verstretch>0</verstretch>
+                              <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                               <horstretch>1</horstretch>
+                               <verstretch>1</verstretch>
                               </sizepolicy>
                              </property>
-                             <property name="editable">
+                             <property name="minimumSize">
+                              <size>
+                               <width>0</width>
+                               <height>110</height>
+                              </size>
+                             </property>
+                             <property name="toolTip">
+                              <string>点击列表中的设备即可连接；可滚动查看更多。</string>
+                             </property>
+                             <property name="alternatingRowColors">
+                              <bool>false</bool>
+                             </property>
+                             <property name="selectionMode">
+                              <enum>QAbstractItemView::SingleSelection</enum>
+                             </property>
+                             <property name="uniformItemSizes">
                               <bool>true</bool>
                              </property>
                             </widget>
                            </item>
                            <item>
-                            <widget class="QPushButton" name="start_search">
-                             <property name="toolTip">
-                              <string>未开串口时先自动连接；已连接则清空列表后重新扫描附近蓝牙。</string>
+                            <layout class="QVBoxLayout" name="consolePickBtnLay">
+                             <property name="spacing">
+                              <number>8</number>
                              </property>
-                             <property name="text">
-                              <string>开始搜索</string>
-                             </property>
-                            </widget>
-                           </item>
-                           <item>
-                            <widget class="QPushButton" name="connectPickMacButton">
-                             <property name="toolTip">
-                              <string>用当前列表里选中的 MAC 连接产品。</string>
-                             </property>
-                             <property name="text">
-                              <string>连接MAC</string>
-                             </property>
-                            </widget>
+                             <item>
+                              <widget class="QPushButton" name="start_search">
+                               <property name="toolTip">
+                                <string>未开串口时先自动连接；已连接则清空列表后重新扫描附近蓝牙。</string>
+                               </property>
+                               <property name="text">
+                                <string>开始搜索</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item>
+                              <widget class="QPushButton" name="connectPickMacButton">
+                               <property name="toolTip">
+                                <string>用当前列表里选中的 MAC 连接产品。</string>
+                               </property>
+                               <property name="text">
+                                <string>连接MAC</string>
+                               </property>
+                              </widget>
+                             </item>
+                             <item>
+                              <spacer name="consolePickBtnSp">
+                               <property name="orientation">
+                                <enum>Qt::Vertical</enum>
+                               </property>
+                               <property name="sizeHint" stdset="0">
+                                <size>
+                                 <width>20</width>
+                                 <height>40</height>
+                                </size>
+                               </property>
+                              </spacer>
+                             </item>
+                            </layout>
                            </item>
                           </layout>
                          </item>
@@ -2067,7 +2137,7 @@ Every Baby</string>
                        <item>
                         <widget class="QLabel" name="consolePickHint">
                          <property name="text">
-                          <string>选好设备后会自动连接 · 点搜索可清空列表重搜</string>
+                          <string>点击列表中的设备即可连接 · 点搜索可清空列表重搜</string>
                          </property>
                         </widget>
                        </item>
@@ -13322,6 +13392,931 @@ Every Baby</string>
                       </widget>
                      </widget>
                     </widget>
+                   </item>
+                  </layout>
+                 </widget>
+                </widget>
+                <widget class="QScrollArea" name="debugTabScroll_tab_aiot_app">
+                 <property name="frameShape">
+                  <enum>QFrame::NoFrame</enum>
+                 </property>
+                 <property name="widgetResizable">
+                  <bool>true</bool>
+                 </property>
+                 <attribute name="title">
+                  <string>app业务控制</string>
+                 </attribute>
+                 <widget class="QWidget" name="tab_aiot_app">
+                  <property name="geometry">
+                   <rect>
+                    <x>0</x>
+                    <y>0</y>
+                    <width>1205</width>
+                    <height>601</height>
+                   </rect>
+                  </property>
+                  <layout class="QVBoxLayout" name="verticalLayout_aiot_app">
+                   <property name="spacing">
+                    <number>8</number>
+                   </property>
+                   <property name="leftMargin">
+                    <number>8</number>
+                   </property>
+                   <property name="topMargin">
+                    <number>8</number>
+                   </property>
+                   <property name="rightMargin">
+                    <number>8</number>
+                   </property>
+                   <property name="bottomMargin">
+                    <number>8</number>
+                   </property>
+                   <item>
+                    <widget class="QGroupBox" name="aiotStatusBox">
+                     <property name="title">
+                      <string>状态运行数据</string>
+                     </property>
+                     <layout class="QVBoxLayout" name="aiotStatusOuterLay">
+                      <property name="spacing">
+                       <number>8</number>
+                      </property>
+                      <item>
+                       <layout class="QGridLayout" name="aiotStatusCardsLay">
+                        <property name="horizontalSpacing">
+                         <number>6</number>
+                        </property>
+                        <property name="verticalSpacing">
+                         <number>6</number>
+                        </property>
+                        <item row="0" column="0">
+                         <widget class="QFrame" name="aiotCardRun">
+                          <property name="aiotStatusCard" stdset="0">
+                           <string>1</string>
+                          </property>
+                          <property name="frameShape">
+                           <enum>QFrame::StyledPanel</enum>
+                          </property>
+                          <layout class="QVBoxLayout" name="aiotCardRunLay">
+                           <property name="spacing">
+                            <number>2</number>
+                           </property>
+                           <property name="leftMargin">
+                            <number>8</number>
+                           </property>
+                           <property name="topMargin">
+                            <number>6</number>
+                           </property>
+                           <property name="rightMargin">
+                            <number>8</number>
+                           </property>
+                           <property name="bottomMargin">
+                            <number>6</number>
+                           </property>
+                           <item>
+                            <widget class="QLabel" name="aiotConnName">
+                             <property name="aiotCardRole" stdset="0">
+                              <string>title</string>
+                             </property>
+                             <property name="text">
+                              <string>运行状态</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLabel" name="aiotConnLabel">
+                             <property name="aiotCardRole" stdset="0">
+                              <string>value</string>
+                             </property>
+                             <property name="text">
+                              <string>-</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLabel" name="aiotRunSubLabel">
+                             <property name="aiotCardRole" stdset="0">
+                              <string>badge</string>
+                             </property>
+                             <property name="text">
+                              <string>未就绪</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <spacer name="aiotCardRunSp">
+                             <property name="orientation">
+                              <enum>Qt::Vertical</enum>
+                             </property>
+                             <property name="sizeHint" stdset="0">
+                              <size>
+                               <width>20</width>
+                               <height>1</height>
+                              </size>
+                             </property>
+                            </spacer>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                        <item row="0" column="1">
+                         <widget class="QFrame" name="aiotCardTime">
+                          <property name="aiotStatusCard" stdset="0">
+                           <string>1</string>
+                          </property>
+                          <property name="frameShape">
+                           <enum>QFrame::StyledPanel</enum>
+                          </property>
+                          <layout class="QVBoxLayout" name="aiotCardTimeLay">
+                           <property name="spacing">
+                            <number>2</number>
+                           </property>
+                           <property name="leftMargin">
+                            <number>8</number>
+                           </property>
+                           <property name="topMargin">
+                            <number>6</number>
+                           </property>
+                           <property name="rightMargin">
+                            <number>8</number>
+                           </property>
+                           <property name="bottomMargin">
+                            <number>6</number>
+                           </property>
+                           <item>
+                            <widget class="QLabel" name="aiotTimeName">
+                             <property name="aiotCardRole" stdset="0">
+                              <string>title</string>
+                             </property>
+                             <property name="text">
+                              <string>吸乳时长</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLabel" name="aiotTimeLabel">
+                             <property name="aiotCardRole" stdset="0">
+                              <string>value</string>
+                             </property>
+                             <property name="text">
+                              <string>00:00</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLabel" name="aiotTimeSubLabel">
+                             <property name="aiotCardRole" stdset="0">
+                              <string>sub</string>
+                             </property>
+                             <property name="text">
+                              <string>本次会话累计</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <spacer name="aiotCardTimeSp">
+                             <property name="orientation">
+                              <enum>Qt::Vertical</enum>
+                             </property>
+                             <property name="sizeHint" stdset="0">
+                              <size>
+                               <width>20</width>
+                               <height>1</height>
+                              </size>
+                             </property>
+                            </spacer>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                        <item row="0" column="2">
+                         <widget class="QFrame" name="aiotCardLevel">
+                          <property name="aiotStatusCard" stdset="0">
+                           <string>1</string>
+                          </property>
+                          <property name="frameShape">
+                           <enum>QFrame::StyledPanel</enum>
+                          </property>
+                          <layout class="QVBoxLayout" name="aiotCardLevelLay">
+                           <property name="spacing">
+                            <number>2</number>
+                           </property>
+                           <property name="leftMargin">
+                            <number>8</number>
+                           </property>
+                           <property name="topMargin">
+                            <number>6</number>
+                           </property>
+                           <property name="rightMargin">
+                            <number>8</number>
+                           </property>
+                           <property name="bottomMargin">
+                            <number>6</number>
+                           </property>
+                           <item>
+                            <widget class="QLabel" name="aiotLevelName">
+                             <property name="aiotCardRole" stdset="0">
+                              <string>title</string>
+                             </property>
+                             <property name="text">
+                              <string>当前档位</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLabel" name="aiotLevelLabel">
+                             <property name="aiotCardRole" stdset="0">
+                              <string>value</string>
+                             </property>
+                             <property name="text">
+                              <string>-</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLabel" name="aiotLevelSubLabel">
+                             <property name="aiotCardRole" stdset="0">
+                              <string>sub</string>
+                             </property>
+                             <property name="text">
+                              <string>左右可不同 · 最大15档</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <spacer name="aiotCardLevelSp">
+                             <property name="orientation">
+                              <enum>Qt::Vertical</enum>
+                             </property>
+                             <property name="sizeHint" stdset="0">
+                              <size>
+                               <width>20</width>
+                               <height>1</height>
+                              </size>
+                             </property>
+                            </spacer>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                        <item row="1" column="0">
+                         <widget class="QFrame" name="aiotCardMode">
+                          <property name="aiotStatusCard" stdset="0">
+                           <string>1</string>
+                          </property>
+                          <property name="frameShape">
+                           <enum>QFrame::StyledPanel</enum>
+                          </property>
+                          <layout class="QVBoxLayout" name="aiotCardModeLay">
+                           <property name="spacing">
+                            <number>2</number>
+                           </property>
+                           <property name="leftMargin">
+                            <number>8</number>
+                           </property>
+                           <property name="topMargin">
+                            <number>6</number>
+                           </property>
+                           <property name="rightMargin">
+                            <number>8</number>
+                           </property>
+                           <property name="bottomMargin">
+                            <number>6</number>
+                           </property>
+                           <item>
+                            <widget class="QLabel" name="aiotModeName">
+                             <property name="aiotCardRole" stdset="0">
+                              <string>title</string>
+                             </property>
+                             <property name="text">
+                              <string>工作模式</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLabel" name="aiotModeLabel">
+                             <property name="aiotCardRole" stdset="0">
+                              <string>value</string>
+                             </property>
+                             <property name="text">
+                              <string>-</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLabel" name="aiotModeSubLabel">
+                             <property name="aiotCardRole" stdset="0">
+                              <string>sub</string>
+                             </property>
+                             <property name="text">
+                              <string>当前模式</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <spacer name="aiotCardModeSp">
+                             <property name="orientation">
+                              <enum>Qt::Vertical</enum>
+                             </property>
+                             <property name="sizeHint" stdset="0">
+                              <size>
+                               <width>20</width>
+                               <height>1</height>
+                              </size>
+                             </property>
+                            </spacer>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                        <item row="1" column="1">
+                         <widget class="QFrame" name="aiotCardHeat">
+                          <property name="aiotStatusCard" stdset="0">
+                           <string>1</string>
+                          </property>
+                          <property name="frameShape">
+                           <enum>QFrame::StyledPanel</enum>
+                          </property>
+                          <layout class="QVBoxLayout" name="aiotCardHeatLay">
+                           <property name="spacing">
+                            <number>2</number>
+                           </property>
+                           <property name="leftMargin">
+                            <number>8</number>
+                           </property>
+                           <property name="topMargin">
+                            <number>6</number>
+                           </property>
+                           <property name="rightMargin">
+                            <number>8</number>
+                           </property>
+                           <property name="bottomMargin">
+                            <number>6</number>
+                           </property>
+                           <item>
+                            <widget class="QLabel" name="aiotHeatStateName">
+                             <property name="aiotCardRole" stdset="0">
+                              <string>title</string>
+                             </property>
+                             <property name="text">
+                              <string>加热状态</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLabel" name="aiotHeatStateLabel">
+                             <property name="aiotCardRole" stdset="0">
+                              <string>value</string>
+                             </property>
+                             <property name="text">
+                              <string>-</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLabel" name="aiotHeatTempLabel">
+                             <property name="aiotCardRole" stdset="0">
+                              <string>sub</string>
+                             </property>
+                             <property name="wordWrap">
+                              <bool>true</bool>
+                             </property>
+                             <property name="text">
+                              <string>目标 - · 时长 -</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLabel" name="aiotHeatTimeLabel">
+                             <property name="visible">
+                              <bool>false</bool>
+                             </property>
+                             <property name="text">
+                              <string>-</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <spacer name="aiotCardHeatSp">
+                             <property name="orientation">
+                              <enum>Qt::Vertical</enum>
+                             </property>
+                             <property name="sizeHint" stdset="0">
+                              <size>
+                               <width>20</width>
+                               <height>1</height>
+                              </size>
+                             </property>
+                            </spacer>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                        <item row="1" column="2">
+                         <widget class="QFrame" name="aiotCardLight">
+                          <property name="aiotStatusCard" stdset="0">
+                           <string>1</string>
+                          </property>
+                          <property name="frameShape">
+                           <enum>QFrame::StyledPanel</enum>
+                          </property>
+                          <layout class="QVBoxLayout" name="aiotCardLightLay">
+                           <property name="spacing">
+                            <number>2</number>
+                           </property>
+                           <property name="leftMargin">
+                            <number>8</number>
+                           </property>
+                           <property name="topMargin">
+                            <number>6</number>
+                           </property>
+                           <property name="rightMargin">
+                            <number>8</number>
+                           </property>
+                           <property name="bottomMargin">
+                            <number>6</number>
+                           </property>
+                           <item>
+                            <widget class="QLabel" name="aiotLightStateName">
+                             <property name="aiotCardRole" stdset="0">
+                              <string>title</string>
+                             </property>
+                             <property name="text">
+                              <string>红光状态</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLabel" name="aiotLightStateLabel">
+                             <property name="aiotCardRole" stdset="0">
+                              <string>value</string>
+                             </property>
+                             <property name="text">
+                              <string>-</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <widget class="QLabel" name="aiotLightModeLabel">
+                             <property name="aiotCardRole" stdset="0">
+                              <string>sub</string>
+                             </property>
+                             <property name="text">
+                              <string>模式 -</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item>
+                            <spacer name="aiotCardLightSp">
+                             <property name="orientation">
+                              <enum>Qt::Vertical</enum>
+                             </property>
+                             <property name="sizeHint" stdset="0">
+                              <size>
+                               <width>20</width>
+                               <height>1</height>
+                              </size>
+                             </property>
+                            </spacer>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                       </layout>
+                      </item>
+                      <item>
+                       <layout class="QHBoxLayout" name="aiotStatusActionLay">
+                        <item>
+                         <widget class="QPushButton" name="aiotRefreshBtn">
+                          <property name="text">
+                           <string>刷新状态</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item>
+                         <widget class="QPushButton" name="aiotExportJsonBtn">
+                          <property name="toolTip">
+                           <string>导出本页状态与控制参数为 JSON</string>
+                          </property>
+                          <property name="text">
+                           <string>导出JSON</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item>
+                         <widget class="QPushButton" name="aiotImportJsonBtn">
+                          <property name="toolTip">
+                           <string>从 JSON 导入并回填界面，可下发控制参数</string>
+                          </property>
+                          <property name="text">
+                           <string>导入JSON</string>
+                          </property>
+                         </widget>
+                        </item>
+                        <item>
+                         <spacer name="aiotStatusActionSp">
+                          <property name="orientation">
+                           <enum>Qt::Horizontal</enum>
+                          </property>
+                          <property name="sizeHint" stdset="0">
+                           <size>
+                            <width>40</width>
+                            <height>20</height>
+                           </size>
+                          </property>
+                         </spacer>
+                        </item>
+                       </layout>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QGroupBox" name="aiotSideBox">
+                     <property name="title">
+                      <string>作用侧</string>
+                     </property>
+                     <layout class="QHBoxLayout" name="aiotSideLay">
+                      <item>
+                       <widget class="QLabel" name="aiotSideName">
+                        <property name="text">
+                         <string>pump_side</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QComboBox" name="aiotSideCombo">
+                        <property name="toolTip">
+                         <string>0x00 左 / 0x01 右 / 0x02 同步 / 0x03 单机；下发与刷新查询都会带上</string>
+                        </property>
+                        <property name="minimumContentsLength">
+                         <number>12</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QLabel" name="aiotSideHint">
+                        <property name="text">
+                         <string>左 / 右 / 同步 / 单机</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <spacer name="aiotSideSp">
+                        <property name="orientation">
+                         <enum>Qt::Horizontal</enum>
+                        </property>
+                        <property name="sizeHint" stdset="0">
+                         <size>
+                          <width>40</width>
+                          <height>20</height>
+                         </size>
+                        </property>
+                       </spacer>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QGroupBox" name="aiotPowerBox">
+                     <property name="title">
+                      <string>开关键</string>
+                     </property>
+                     <layout class="QHBoxLayout" name="aiotPowerLay">
+                      <item>
+                       <widget class="QPushButton" name="aiotStartBtn">
+                        <property name="toolTip">
+                         <string>pump_enable=0x01 开始吸乳</string>
+                        </property>
+                        <property name="text">
+                         <string>开始</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="aiotPauseBtn">
+                        <property name="toolTip">
+                         <string>pump_enable=0x02 暂停（可再开始继续）</string>
+                        </property>
+                        <property name="text">
+                         <string>暂停</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="aiotStopBtn">
+                        <property name="toolTip">
+                         <string>pump_enable=0x03 结束流程（关闭泵阀，区别于暂停）</string>
+                        </property>
+                        <property name="text">
+                         <string>结束</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QLabel" name="aiotPowerHint">
+                        <property name="text">
+                         <string>开机：设备长按 2 秒 · 结束≠暂停</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <spacer name="aiotPowerSp">
+                        <property name="orientation">
+                         <enum>Qt::Horizontal</enum>
+                        </property>
+                        <property name="sizeHint" stdset="0">
+                         <size>
+                          <width>40</width>
+                          <height>20</height>
+                         </size>
+                        </property>
+                       </spacer>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QGroupBox" name="aiotModeBox">
+                     <property name="title">
+                      <string>模式键</string>
+                     </property>
+                     <layout class="QHBoxLayout" name="aiotModeLay">
+                      <item>
+                       <widget class="QPushButton" name="aiotModeSuckBtn">
+                        <property name="text">
+                         <string>吸乳</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="aiotModeMassageBtn">
+                        <property name="text">
+                         <string>按摩</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="aiotModeMixBtn">
+                        <property name="text">
+                         <string>混合</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <spacer name="aiotModeSp">
+                        <property name="orientation">
+                         <enum>Qt::Horizontal</enum>
+                        </property>
+                        <property name="sizeHint" stdset="0">
+                         <size>
+                          <width>40</width>
+                          <height>20</height>
+                         </size>
+                        </property>
+                       </spacer>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QGroupBox" name="aiotLevelBox">
+                     <property name="title">
+                      <string>档位</string>
+                     </property>
+                     <layout class="QHBoxLayout" name="aiotLevelLay">
+                      <item>
+                       <widget class="QPushButton" name="aiotLevelDownBtn">
+                        <property name="text">
+                         <string>减档</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="aiotLevelUpBtn">
+                        <property name="text">
+                         <string>加档</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QSpinBox" name="aiotLevelSpin">
+                        <property name="toolTip">
+                         <string>直接输入吸乳档位后点发送</string>
+                        </property>
+                        <property name="suffix">
+                         <string>档</string>
+                        </property>
+                        <property name="minimum">
+                         <number>1</number>
+                        </property>
+                        <property name="maximum">
+                         <number>15</number>
+                        </property>
+                        <property name="value">
+                         <number>1</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="aiotLevelSendBtn">
+                        <property name="text">
+                         <string>发送档位</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QLabel" name="aiotLevelHint">
+                        <property name="text">
+                         <string>吸乳档 1～15</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <spacer name="aiotLevelSp">
+                        <property name="orientation">
+                         <enum>Qt::Horizontal</enum>
+                        </property>
+                        <property name="sizeHint" stdset="0">
+                         <size>
+                          <width>40</width>
+                          <height>20</height>
+                         </size>
+                        </property>
+                       </spacer>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QGroupBox" name="aiotHeatBox">
+                     <property name="title">
+                      <string>加热键</string>
+                     </property>
+                     <layout class="QHBoxLayout" name="aiotHeatLay">
+                      <item>
+                       <widget class="QPushButton" name="aiotHeatOnBtn">
+                        <property name="text">
+                         <string>加热开</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="aiotHeatOffBtn">
+                        <property name="text">
+                         <string>加热关</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="aiotHeatDownBtn">
+                        <property name="text">
+                         <string>温度-</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="aiotHeatUpBtn">
+                        <property name="text">
+                         <string>温度+</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QSpinBox" name="aiotHeatTempSpin">
+                        <property name="toolTip">
+                         <string>目标温度（对应加热档 1～6）</string>
+                        </property>
+                        <property name="suffix">
+                         <string>°C</string>
+                        </property>
+                        <property name="minimum">
+                         <number>36</number>
+                        </property>
+                        <property name="maximum">
+                         <number>41</number>
+                        </property>
+                        <property name="value">
+                         <number>36</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QSpinBox" name="aiotHeatDurationSpin">
+                        <property name="toolTip">
+                         <string>加热时长 heat_duration_time（秒）</string>
+                        </property>
+                        <property name="suffix">
+                         <string>秒</string>
+                        </property>
+                        <property name="minimum">
+                         <number>1</number>
+                        </property>
+                        <property name="maximum">
+                         <number>3600</number>
+                        </property>
+                        <property name="singleStep">
+                         <number>10</number>
+                        </property>
+                        <property name="value">
+                         <number>300</number>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="aiotHeatSendBtn">
+                        <property name="toolTip">
+                         <string>下发当前温度与加热时长</string>
+                        </property>
+                        <property name="text">
+                         <string>发送加热</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QLabel" name="aiotHeatHint">
+                        <property name="text">
+                         <string>36～41°C · 时长 1～3600 秒</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <spacer name="aiotHeatSp">
+                        <property name="orientation">
+                         <enum>Qt::Horizontal</enum>
+                        </property>
+                        <property name="sizeHint" stdset="0">
+                         <size>
+                          <width>40</width>
+                          <height>20</height>
+                         </size>
+                        </property>
+                       </spacer>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                   <item>
+                    <widget class="QGroupBox" name="aiotLightBox">
+                     <property name="title">
+                      <string>舒缓键</string>
+                     </property>
+                     <layout class="QHBoxLayout" name="aiotLightLay">
+                      <item>
+                       <widget class="QPushButton" name="aiotLightOnBtn">
+                        <property name="text">
+                         <string>红光开</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="aiotLightOffBtn">
+                        <property name="text">
+                         <string>红光关</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QPushButton" name="aiotLightModeBtn">
+                        <property name="text">
+                         <string>切换红光模式</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <widget class="QLabel" name="aiotLightHint">
+                        <property name="text">
+                         <string>模式 1 / 2 / 3</string>
+                        </property>
+                       </widget>
+                      </item>
+                      <item>
+                       <spacer name="aiotLightSp">
+                        <property name="orientation">
+                         <enum>Qt::Horizontal</enum>
+                        </property>
+                        <property name="sizeHint" stdset="0">
+                         <size>
+                          <width>40</width>
+                          <height>20</height>
+                         </size>
+                        </property>
+                       </spacer>
+                      </item>
+                     </layout>
+                    </widget>
+                   </item>
+                   <item>
+                    <spacer name="aiotPageSp">
+                     <property name="orientation">
+                      <enum>Qt::Vertical</enum>
+                     </property>
+                     <property name="sizeHint" stdset="0">
+                      <size>
+                       <width>20</width>
+                       <height>20</height>
+                      </size>
+                     </property>
+                    </spacer>
                    </item>
                   </layout>
                  </widget>

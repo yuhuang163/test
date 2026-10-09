@@ -504,8 +504,12 @@ void MainWindow::onDongleSerialFrame(const QByteArray& dataTemp) {
 
     at->parseCmd(dataTemp); // at回应用
     // 吸力/温度高频流已由 QAT 解析，跳过产测 phyRx_ 重复解包以免主线程卡顿
-    if (!shouldSkipDongleStreamUartLog(dataTemp))
+    if (!shouldSkipDongleStreamUartLog(dataTemp)) {
         protocolManager.parseCmd(dataTemp);
+        // 应用层页固定走 QaiotApp，不跟设置里的当前协议。通道 5/6/7 与产测通道分开收。
+        if (qaiotApp)
+            qaiotApp->parseCmd(dataTemp);
+    }
     getMacAddress(dataTemp); // 搜索设备用
 
     // 吸力/温度流式 AT 文本与 channel=4 二进制：协议已处理，勿刷主窗口串口 UI / 逐帧落盘
@@ -1765,6 +1769,9 @@ void MainWindow::refreshMacData(ProtocolMacData data) {
         macLabel->setText(QStringLiteral("蓝牙mac: ") + mac);
     if (auto* e = findChild<QLineEdit*>(QStringLiteral("meta_mac")))
         e->setText(mac);
+    if (ui && ui->macInput)
+        ui->macInput->setText(mac);
+    updateConsoleConnectFlow();
 }
 
 void MainWindow::refreshBleRssi(QString data) {
@@ -2510,6 +2517,8 @@ void MainWindow::showlog(QString msg) {
 }
 
 void MainWindow::updateComboBox() {
+    if (!ui || !ui->pick_device)
+        return;
     // 遍历设备信息，根据 rssi 的值进行过滤
     for (auto it = deviceMap.begin(); it != deviceMap.end(); ++it) {
         QString deviceAddress = it.key();
@@ -2519,15 +2528,29 @@ void MainWindow::updateComboBox() {
         // qDebug() << "设备地址：" << deviceName<<deviceAddress<<deviceRssi;
         if (deviceName.contains(ui->name_range->currentText(), Qt::CaseInsensitive)
             && deviceRssi.toInt() > ui->rssi_range->value() && deviceAddress.length() == 17) {
-            // 展示「名称  MAC」，itemData 仍为纯 MAC 供连接使用
+            // 展示「名称  MAC」，UserRole 仍为纯 MAC 供连接使用
             const QString label = deviceName.trimmed().isEmpty()
                                      ? deviceAddress
                                      : QStringLiteral("%1  %2").arg(deviceName.trimmed(), deviceAddress);
-            const int index = ui->pick_device->findData(deviceAddress);
-            if (index == -1) {
-                ui->pick_device->addItem(label, deviceAddress);
-            } else if (ui->pick_device->itemText(index) != label) {
-                ui->pick_device->setItemText(index, label);
+            int index = -1;
+            for (int i = 0; i < ui->pick_device->count(); ++i) {
+                QListWidgetItem* row = ui->pick_device->item(i);
+                if (row && row->data(Qt::UserRole).toString() == deviceAddress) {
+                    index = i;
+                    break;
+                }
+            }
+            if (index < 0) {
+                auto* row = new QListWidgetItem(label);
+                row->setData(Qt::UserRole, deviceAddress);
+                ui->pick_device->addItem(row);
+            } else {
+                QString curText = ui->pick_device->item(index)->text();
+                const QString marker = QStringLiteral("  · 当前连接");
+                if (curText.endsWith(marker))
+                    curText.chop(marker.size());
+                if (curText != label)
+                    ui->pick_device->item(index)->setText(label);
             }
         }
     }
@@ -2616,6 +2639,10 @@ void MainWindow::saveCustom() {
     SETTINGS.setValue(QString("%1/%2").arg(baseKey).arg("comName"), ui->comNameCombo->currentText());
     SETTINGS.setValue("Window/otaFilePath", ui->otaFilePath->text());
     SETTINGS.setValue("Window/otaFilePath_source", ui->otaFilePath_source->text());
+    if (ui->name_range)
+        SETTINGS.setValue(QStringLiteral("Window/DongleNameFilter"), ui->name_range->currentText().trimmed());
+    if (ui->rssi_range)
+        SETTINGS.setValue(QStringLiteral("Window/DongleRssiFilter"), ui->rssi_range->value());
 
     SETTINGS.setValue("WIFI/otaWifiName", ui->wifiUserName_2->text());
     SETTINGS.setValue("WIFI/otaWifiPassword", ui->wifiPassword_2->text());
@@ -2683,6 +2710,28 @@ void MainWindow::recoverCustom() {
     ui->otaFilePath->setText(SETTINGS.value("Window/otaFilePath").toString());
 
     ui->otaFilePath_source->setText(SETTINGS.value("Window/otaFilePath_source").toString());
+
+    // 名称筛选 / 最低信号：列表已在构造期填好后再恢复
+    if (ui->name_range) {
+        const QString savedName = SETTINGS.value(QStringLiteral("Window/DongleNameFilter")).toString().trimmed();
+        if (!savedName.isEmpty()) {
+            const bool blocked = ui->name_range->blockSignals(true);
+            const int idx = ui->name_range->findText(savedName, Qt::MatchFixedString);
+            if (idx >= 0)
+                ui->name_range->setCurrentIndex(idx);
+            else
+                ui->name_range->setCurrentText(savedName); // 可编辑下拉，保留自定义名
+            ui->name_range->blockSignals(blocked);
+        }
+    }
+    if (ui->rssi_range && SETTINGS.contains(QStringLiteral("Window/DongleRssiFilter"))) {
+        const int rssi = SETTINGS.value(QStringLiteral("Window/DongleRssiFilter"), -60).toInt();
+        const bool blocked = ui->rssi_range->blockSignals(true);
+        ui->rssi_range->setValue(rssi);
+        ui->rssi_range->blockSignals(blocked);
+        if (ui->rssi_range_value)
+            ui->rssi_range_value->setText(QStringLiteral("%1 dBm").arg(ui->rssi_range->value()));
+    }
 
     qDebug() << "配置内容" << comName;
 }

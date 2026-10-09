@@ -13,6 +13,8 @@
 #include <QMenu>
 #include <QPushButton>
 #include <QList>
+#include <QListWidget>
+#include <QListWidgetItem>
 #include <QVector>
 #include <QRandomGenerator>
 #include <QSlider>
@@ -25,6 +27,8 @@
 #include <QTableView>
 #include <QStackedWidget>
 #include <QPair>
+#include <QFormLayout>
+#include <QVBoxLayout>
 #include <QGridLayout>
 #include <QLayout>
 #include <QLayoutItem>
@@ -62,6 +66,10 @@
 #include "common_utils.h"
 #include <QDateTime>
 #include <QDir>
+#include <QFile>
+#include <QFileDialog>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QTextStream>
 #include "app_help_menu.h"
 #include "host_ota_service.h"
@@ -1105,17 +1113,30 @@ void MainWindow::selectConsoleNav(int id) {
         return;
     const bool connectPage = (id == 0);
     consoleStack_->setCurrentIndex(connectPage ? 0 : 1);
-    if (!connectPage)
-        ui->tabWidget->setCurrentIndex(id - 1);
-    static const char* titles[] = {"设备连接", "产品业务控制", "外设", "Dongle", "OTA/压测", "其它"};
+    if (!connectPage) {
+        int tabIndex = id - 1;
+        if (id == 6) {
+            tabIndex = -1;
+            for (int i = 0; i < ui->tabWidget->count(); ++i) {
+                if (ui->tabWidget->tabText(i) == QStringLiteral("app业务控制")) {
+                    tabIndex = i;
+                    break;
+                }
+            }
+        }
+        if (tabIndex >= 0)
+            ui->tabWidget->setCurrentIndex(tabIndex);
+    }
+    static const char* titles[] = {"设备连接", "产品业务控制", "外设", "Dongle", "OTA/压测", "其它", "app业务控制"};
     static const char* subs[] = {
         "完成三步后即可进入业务控制",
         "基础属性与产品业务控制",
         "外设调试",
         "吸力曲线、泵阀与 AT",
         "本地 / 云端 / 蓝牙升级与压测",
-        "专用调试与其它工具"};
-    if (id >= 0 && id < 6) {
+        "专用调试与其它工具",
+        "开关、档位、加热、红光"};
+    if (id >= 0 && id < 7) {
         if (consolePageTitle_)
             consolePageTitle_->setText(QString::fromUtf8(titles[id]));
         if (consolePageSub_)
@@ -1124,7 +1145,7 @@ void MainWindow::selectConsoleNav(int id) {
     if (consoleEnterPlayed_)
         playConsolePageEnter(connectPage ? static_cast<QWidget*>(ui->groupBox_5) : ui->consoleWorkPage);
     // 本机记忆：下次启动回到当前导航页（写入 上位机设置.local.ini）
-    if (!consoleUiRestoring && id >= 0 && id < 6)
+    if (!consoleUiRestoring && id >= 0 && id < 7)
         SETTINGS.setValue(QStringLiteral("Window/ConsoleNavId"), id);
 }
 
@@ -1240,13 +1261,15 @@ void MainWindow::initConsoleShell() {
     consoleNavGroup_->addButton(ui->consoleNavDongle, 3);
     consoleNavGroup_->addButton(ui->consoleNavOta, 4);
     consoleNavGroup_->addButton(ui->consoleNavMisc, 5);
+    consoleNavGroup_->addButton(ui->consoleNavAiot, 6);
     connect(consoleNavGroup_, &QButtonGroup::idClicked, this, &MainWindow::selectConsoleNav);
     // .ui 已带 icon；此处再处理白底透明，选中态用 *-on.png
     applyConsoleNavIcons(
         {ui->consoleNavConnect, ui->consoleNavBiz, ui->consoleNavPeriph, ui->consoleNavDongle, ui->consoleNavOta,
-         ui->consoleNavMisc},
+         ui->consoleNavMisc, ui->consoleNavAiot},
         {QStringLiteral("nav-connect"), QStringLiteral("nav-business"), QStringLiteral("nav-peripheral"),
-         QStringLiteral("nav-dongle"), QStringLiteral("nav-ota"), QStringLiteral("nav-misc")});
+         QStringLiteral("nav-dongle"), QStringLiteral("nav-ota"), QStringLiteral("nav-misc"),
+         QStringLiteral("nav-app")});
     if (ui->consoleLogClearBtn)
         ui->consoleLogClearBtn->setIcon(QIcon(QStringLiteral(":/stytle/picture/status/icon-refresh.png")));
 
@@ -1371,7 +1394,7 @@ void MainWindow::initConsoleShell() {
     if (ui->consoleNavConnect)
         ui->consoleNavConnect->setChecked(true);
     consoleUiRestoring = true;
-    const int navId = qBound(0, SETTINGS.value(QStringLiteral("Window/ConsoleNavId"), 0).toInt(), 5);
+    const int navId = qBound(0, SETTINGS.value(QStringLiteral("Window/ConsoleNavId"), 0).toInt(), 6);
     if (consoleNavGroup_) {
         if (QAbstractButton* btn = consoleNavGroup_->button(navId))
             btn->setChecked(true);
@@ -1513,13 +1536,21 @@ void MainWindow::installPhysicalDevicePads() {
             updateConsoleConnectFlow();
             return;
         }
-        // 列表项文案含设备名，用 itemData 里的 MAC 保持选中
-        const QString currentMac = ui->pick_device->currentData().toString();
+        // 列表项文案含设备名，用 UserRole 里的 MAC 保持选中
+        QString currentMac;
+        if (QListWidgetItem* cur = ui->pick_device->currentItem())
+            currentMac = cur->data(Qt::UserRole).toString();
         ui->pick_device->clear();
         updateComboBox();
-        const int idx = currentMac.isEmpty() ? -1 : ui->pick_device->findData(currentMac);
-        if (idx >= 0)
-            ui->pick_device->setCurrentIndex(idx);
+        if (!currentMac.isEmpty()) {
+            for (int i = 0; i < ui->pick_device->count(); ++i) {
+                QListWidgetItem* row = ui->pick_device->item(i);
+                if (row && row->data(Qt::UserRole).toString() == currentMac) {
+                    ui->pick_device->setCurrentRow(i);
+                    break;
+                }
+            }
+        }
         updateConsoleConnectFlow();
     };
     if (ui->name_range)
@@ -1608,10 +1639,13 @@ void MainWindow::updateConsoleConnectFlow() {
                (doneThrough >= 2) ? QStringLiteral("已设置")
                                   : (active == 2 ? QStringLiteral("当前步骤") : QStringLiteral("待设置")),
                (doneThrough >= 2) ? "ok" : (active == 2 ? "active" : "pending"));
+    const QString curMac = macAddress.trimmed();
+    const bool showCurMac = bleOk && curMac.contains(QLatin1Char(':'))
+                            && !curMac.contains(QStringLiteral("没有mac"));
     QString pickText = QStringLiteral("待搜索");
     const char* pickKind = "pending";
     if (doneThrough >= 3) {
-        pickText = QStringLiteral("已连接");
+        pickText = showCurMac ? QStringLiteral("已连接 %1").arg(curMac) : QStringLiteral("已连接");
         pickKind = "ok";
     } else if (found > 0) {
         pickText = QStringLiteral("已发现 %1 台").arg(found);
@@ -1622,21 +1656,46 @@ void MainWindow::updateConsoleConnectFlow() {
     }
     applyBadge(uiFind<QLabel>(this, "consoleStepStatusPick"), pickText, pickKind);
     if (QLabel* hint = uiFind<QLabel>(this, "consoleFlowHint")) {
-        if (doneThrough >= 3)
-            hint->setText(QStringLiteral("设备已连接，可以进入业务控制"));
-        else if (active == 1)
-            hint->setText(QStringLiteral("当前步骤 · 选择串口并点击「连接」，或直接改筛选条件自动连接"));
-        else if (active == 2)
-            hint->setText(QStringLiteral("当前步骤 · 按需调整名称与信号，再搜索设备"));
-        else if (found > 0)
-            hint->setText(QStringLiteral("当前步骤 · 从列表选择设备，点「连接MAC」"));
-        else
-            hint->setText(QStringLiteral("当前步骤 · 点「开始搜索」扫描附近设备"));
+        // 已连接时卡片角标/列表已标明 MAC，不再重复「当前连接」文案
+        if (doneThrough >= 3) {
+            hint->clear();
+            hint->setVisible(false);
+        } else {
+            hint->setVisible(true);
+            if (active == 1)
+                hint->setText(QStringLiteral("当前步骤 · 选择串口并点击「连接」，或直接改筛选条件自动连接"));
+            else if (active == 2)
+                hint->setText(QStringLiteral("当前步骤 · 按需调整名称与信号，再搜索设备"));
+            else if (found > 0)
+                hint->setText(QStringLiteral("当前步骤 · 点击列表中的设备连接，或点「连接MAC」"));
+            else
+                hint->setText(QStringLiteral("当前步骤 · 点「开始搜索」扫描附近设备"));
+        }
     }
-    // 未开串口也可改筛选（会先自动连串口）；连接 MAC 仍需已开串口
+    // 列表项标出当前连接的 MAC，避免多台同名时看不出连的是哪台
+    if (ui->pick_device) {
+        const QString marker = QStringLiteral("  · 当前连接");
+        const QString curMacLower = curMac.toLower();
+        for (int i = 0; i < ui->pick_device->count(); ++i) {
+            QListWidgetItem* row = ui->pick_device->item(i);
+            if (!row)
+                continue;
+            QString base = row->text();
+            if (base.endsWith(marker))
+                base.chop(marker.size());
+            const QString rowMac = row->data(Qt::UserRole).toString().trimmed().toLower();
+            if (showCurMac && !rowMac.isEmpty() && rowMac == curMacLower) {
+                row->setText(base + marker);
+                ui->pick_device->setCurrentItem(row);
+                ui->pick_device->scrollToItem(row);
+            } else {
+                row->setText(base);
+            }
+        }
+    }
+    // 未开串口也可改筛选、搜索、连接（点击时会先自动连串口）
     if (QFrame* card2 = uiFind<QFrame>(this, "consoleCardStep2"))
         card2->setEnabled(true);
-    // 选设备步：串口未开也可点「开始搜索」（会先自动连串口）
     if (QFrame* card4 = uiFind<QFrame>(this, "consoleCardStep4"))
         card4->setEnabled(true);
     if (ui->start_search)
@@ -1644,9 +1703,9 @@ void MainWindow::updateConsoleConnectFlow() {
     if (ui->pick_device)
         ui->pick_device->setEnabled(serialOpen && consoleStep2Touched_);
     if (ui->connectPickMacButton)
-        ui->connectPickMacButton->setEnabled(serialOpen && consoleStep2Touched_);
+        ui->connectPickMacButton->setEnabled(true);
     if (ui->connectProductButton)
-        ui->connectProductButton->setEnabled(serialOpen);
+        ui->connectProductButton->setEnabled(true);
     if (QWidget* page = uiFind<QWidget>(this, "groupBox_5"))
         consolePolishWidget(page);
 }
@@ -1774,6 +1833,7 @@ void MainWindow::playConsoleEnterAnimations() {
         ui->consoleNavDongle,
         ui->consoleNavOta,
         ui->consoleNavMisc,
+        ui->consoleNavAiot,
     };
     for (int i = 0; i < navs.size(); ++i)
         consoleSlideFade(navs.at(i), QPoint(-10, 0), 320, 40 + i * 40, spring);
@@ -1885,6 +1945,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
                                           pb(new Qpb(dongleSerialPort)),
                                           qfctp(new Qfctp(dongleSerialPort)),
                                           qaiot(new Qaiot(dongleSerialPort)),
+                                          qaiotApp(new QaiotApp(dongleSerialPort)),
                                           qroot(new Qroot(dongleSerialPort)),
                                           qroot2(new Qroot2(dongleSerialPort)),
                                           at(new QatManager(dongleSerialPort, this)),
@@ -1897,6 +1958,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     bindConsoleShellWidgets();
     initDongleSuctionChart();
     initQaiotFeatureButtons();
+    initAiotAppPage();
     initDebugTabChrome();
     if (ui->screenInspectPage)
         ui->screenInspectPage->bindDesignerUi();
@@ -1909,12 +1971,15 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     protocolManager.bindQpb(pb);
     protocolManager.bindQfctp(qfctp);
     protocolManager.bindQaiot(qaiot);
+    protocolManager.bindQaiotApp(qaiotApp);
     protocolManager.bindQroot(qroot);
     protocolManager.bindQroot2(qroot2);
     const std::string protocolName =
         SETTINGS.value("SYSTEM/ProtocolType", "qpb").toString().toStdString();
     auto selectedType = QProtocolManager::protocolTypeFromString(protocolName);
-    if (selectedType == QProtocolManager::ProtocolType::Unknown) {
+    if (selectedType == QProtocolManager::ProtocolType::Unknown
+        || selectedType == QProtocolManager::ProtocolType::QaiotApp) {
+        // 应用层不作为全局协议，只在「应用层」页直接发 qaiotApp
         selectedType = QProtocolManager::ProtocolType::Qpb;
     }
     if (!pb) {
@@ -2003,14 +2068,29 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
         ui->yedengslider_value->setText(QString("%1/100").arg(value));
     });
     connect(ui->connectProductButton, &QPushButton::clicked, this, &MainWindow::on_macInput_returnPressed);
+    // 点列表行即可连接；「连接MAC」用当前选中行
+    if (ui->pick_device) {
+        connect(ui->pick_device, &QListWidget::itemClicked, this, [this](QListWidgetItem* item) {
+            if (!item)
+                return;
+            QString mac = item->data(Qt::UserRole).toString().trimmed();
+            if (mac.isEmpty())
+                mac = item->text().trimmed();
+            if (ui->macInput && !mac.isEmpty())
+                ui->macInput->setText(mac);
+            on_pick_device_textActivated(mac);
+        });
+    }
     if (auto* btn = uiFind<QPushButton>(this, "connectPickMacButton")) {
         connect(btn, &QPushButton::clicked, this, [this]() {
             if (!ui || !ui->pick_device)
                 return;
-            // itemData 存纯 MAC；展示文案为「名称  MAC」
-            QString mac = ui->pick_device->currentData().toString().trimmed();
+            QListWidgetItem* item = ui->pick_device->currentItem();
+            if (!item)
+                return;
+            QString mac = item->data(Qt::UserRole).toString().trimmed();
             if (mac.isEmpty())
-                mac = ui->pick_device->currentText().trimmed();
+                mac = item->text().trimmed();
             if (ui->macInput && !mac.isEmpty())
                 ui->macInput->setText(mac);
             on_pick_device_textActivated(mac);
@@ -2286,6 +2366,8 @@ void MainWindow::onProtocolReport(const ProtocolReport& report) {
         refreshPbInfo(payload.toString());
     } else if (reportType == QLatin1String("ProtocolOtaResult")) {
         refreshOtaResult(payload.toInt());
+    } else if (reportType == QLatin1String("ProtocolAiotAppPanel")) {
+        refreshAiotAppPanel(payload.toMap());
     } else if (reportType == QLatin1String("ProtocolPbDate")) {
         refreshPbData(payload.toString());
     } else if (reportType == QLatin1String("ProtocolPressCalibResultData") && payload.canConvert<ProtocolPressCalibResultData>()) {
@@ -2687,6 +2769,493 @@ void MainWindow::initQaiotFeatureButtons() {
                {QStringLiteral("负压过高(34)"), 34}});
 }
 
+void MainWindow::initAiotAppPage() {
+    if (!ui->aiotRefreshBtn)
+        return;
+    if (ui->aiotSideCombo && ui->aiotSideCombo->count() == 0) {
+        ui->aiotSideCombo->addItem(QStringLiteral("左 Left"), 0);
+        ui->aiotSideCombo->addItem(QStringLiteral("右 Right"), 1);
+        ui->aiotSideCombo->addItem(QStringLiteral("同步 Sync"), 2);
+        ui->aiotSideCombo->addItem(QStringLiteral("单机 independence"), 3);
+        ui->aiotSideCombo->setCurrentIndex(2); // 默认同步
+    }
+    connect(ui->aiotRefreshBtn, &QPushButton::clicked, this, &MainWindow::aiotRefreshStatus);
+    if (ui->aiotExportJsonBtn)
+        connect(ui->aiotExportJsonBtn, &QPushButton::clicked, this, &MainWindow::aiotExportPageJson);
+    if (ui->aiotImportJsonBtn)
+        connect(ui->aiotImportJsonBtn, &QPushButton::clicked, this, &MainWindow::aiotImportPageJson);
+    connect(ui->aiotStartBtn, &QPushButton::clicked, this, [this] {
+        QVariantMap m;
+        m.insert(QStringLiteral("enable"), 1);
+        aiotSendPump(m);
+        showlog(QStringLiteral("app业务控制：开始（pump_enable=0x01）"));
+    });
+    connect(ui->aiotPauseBtn, &QPushButton::clicked, this, [this] {
+        QVariantMap m;
+        m.insert(QStringLiteral("enable"), QStringLiteral("pause"));
+        aiotSendPump(m);
+        showlog(QStringLiteral("app业务控制：暂停（pump_enable=0x02）"));
+    });
+    connect(ui->aiotStopBtn, &QPushButton::clicked, this, [this] {
+        // 协议 pump_enable=0x03 stop：结束流程关泵阀，区别于 0x02 暂停
+        QVariantMap m;
+        m.insert(QStringLiteral("enable"), QStringLiteral("stop"));
+        aiotSendPump(m);
+        showlog(QStringLiteral("app业务控制：结束流程（pump_enable=0x03）"));
+    });
+    connect(ui->aiotModeSuckBtn, &QPushButton::clicked, this, [this] {
+        QVariantMap m;
+        m.insert(QStringLiteral("mode"), 2);
+        m.insert(QStringLiteral("type"), 0);
+        aiotSendPump(m);
+        ui->aiotModeLabel->setText(QStringLiteral("吸乳"));
+        showlog(QStringLiteral("app业务控制：模式 吸乳"));
+    });
+    connect(ui->aiotModeMassageBtn, &QPushButton::clicked, this, [this] {
+        QVariantMap m;
+        m.insert(QStringLiteral("mode"), 1);
+        m.insert(QStringLiteral("type"), 0);
+        aiotSendPump(m);
+        ui->aiotModeLabel->setText(QStringLiteral("按摩"));
+        showlog(QStringLiteral("app业务控制：模式 按摩"));
+    });
+    connect(ui->aiotModeMixBtn, &QPushButton::clicked, this, [this] {
+        QVariantMap m;
+        m.insert(QStringLiteral("mode"), 3);
+        m.insert(QStringLiteral("type"), 0);
+        aiotSendPump(m);
+        ui->aiotModeLabel->setText(QStringLiteral("混合"));
+        showlog(QStringLiteral("app业务控制：模式 混合"));
+    });
+    connect(ui->aiotLevelDownBtn, &QPushButton::clicked, this, [this] {
+        aiotPumpLevel_ = qMax(1, aiotPumpLevel_ - 1);
+        if (ui->aiotLevelSpin)
+            ui->aiotLevelSpin->setValue(aiotPumpLevel_);
+        QVariantMap m;
+        m.insert(QStringLiteral("level"), aiotPumpLevel_);
+        aiotSendPump(m);
+        ui->aiotLevelLabel->setText(QStringLiteral("%1 / 15").arg(aiotPumpLevel_, 2, 10, QChar('0')));
+        showlog(QStringLiteral("app业务控制：档位 %1").arg(aiotPumpLevel_));
+    });
+    connect(ui->aiotLevelUpBtn, &QPushButton::clicked, this, [this] {
+        aiotPumpLevel_ = qMin(15, aiotPumpLevel_ + 1);
+        if (ui->aiotLevelSpin)
+            ui->aiotLevelSpin->setValue(aiotPumpLevel_);
+        QVariantMap m;
+        m.insert(QStringLiteral("level"), aiotPumpLevel_);
+        aiotSendPump(m);
+        ui->aiotLevelLabel->setText(QStringLiteral("%1 / 15").arg(aiotPumpLevel_, 2, 10, QChar('0')));
+        showlog(QStringLiteral("app业务控制：档位 %1").arg(aiotPumpLevel_));
+    });
+    connect(ui->aiotLevelSendBtn, &QPushButton::clicked, this, [this] {
+        if (!ui->aiotLevelSpin)
+            return;
+        aiotPumpLevel_ = ui->aiotLevelSpin->value();
+        QVariantMap m;
+        m.insert(QStringLiteral("level"), aiotPumpLevel_);
+        aiotSendPump(m);
+        ui->aiotLevelLabel->setText(QStringLiteral("%1 / 15").arg(aiotPumpLevel_, 2, 10, QChar('0')));
+        showlog(QStringLiteral("app业务控制：发送档位 %1").arg(aiotPumpLevel_));
+    });
+    connect(ui->aiotHeatOnBtn, &QPushButton::clicked, this, [this] {
+        if (ui->aiotHeatDurationSpin)
+            aiotHeatDuration_ = qBound(1, ui->aiotHeatDurationSpin->value(), 3600);
+        aiotHeatOn_ = true;
+        aiotSendHeat(1, aiotHeatLevel_);
+        ui->aiotHeatStateLabel->setText(QStringLiteral("开"));
+        if (ui->aiotHeatTempLabel) {
+            ui->aiotHeatTempLabel->setText(QStringLiteral("目标 %1°C · 时长 %2 秒")
+                                              .arg(35 + aiotHeatLevel_)
+                                              .arg(aiotHeatDuration_));
+        }
+        showlog(QStringLiteral("app业务控制：加热开 %1°C / %2秒")
+                    .arg(35 + aiotHeatLevel_)
+                    .arg(aiotHeatDuration_));
+    });
+    connect(ui->aiotHeatOffBtn, &QPushButton::clicked, this, [this] {
+        aiotHeatOn_ = false;
+        aiotSendHeat(0, aiotHeatLevel_);
+        ui->aiotHeatStateLabel->setText(QStringLiteral("关"));
+        showlog(QStringLiteral("app业务控制：加热关"));
+    });
+    connect(ui->aiotHeatDownBtn, &QPushButton::clicked, this, [this] {
+        aiotHeatLevel_ = qMax(1, aiotHeatLevel_ - 1);
+        if (ui->aiotHeatTempSpin)
+            ui->aiotHeatTempSpin->setValue(35 + aiotHeatLevel_);
+        if (ui->aiotHeatDurationSpin)
+            aiotHeatDuration_ = qBound(1, ui->aiotHeatDurationSpin->value(), 3600);
+        aiotSendHeat(aiotHeatOn_ ? 1 : 0, aiotHeatLevel_);
+        if (ui->aiotHeatTempLabel) {
+            ui->aiotHeatTempLabel->setText(QStringLiteral("目标 %1°C · 时长 %2 秒")
+                                              .arg(35 + aiotHeatLevel_)
+                                              .arg(aiotHeatDuration_));
+        }
+        showlog(QStringLiteral("app业务控制：加热 %1°C").arg(35 + aiotHeatLevel_));
+    });
+    connect(ui->aiotHeatUpBtn, &QPushButton::clicked, this, [this] {
+        aiotHeatLevel_ = qMin(6, aiotHeatLevel_ + 1);
+        if (ui->aiotHeatTempSpin)
+            ui->aiotHeatTempSpin->setValue(35 + aiotHeatLevel_);
+        if (ui->aiotHeatDurationSpin)
+            aiotHeatDuration_ = qBound(1, ui->aiotHeatDurationSpin->value(), 3600);
+        aiotSendHeat(aiotHeatOn_ ? 1 : 0, aiotHeatLevel_);
+        if (ui->aiotHeatTempLabel) {
+            ui->aiotHeatTempLabel->setText(QStringLiteral("目标 %1°C · 时长 %2 秒")
+                                              .arg(35 + aiotHeatLevel_)
+                                              .arg(aiotHeatDuration_));
+        }
+        showlog(QStringLiteral("app业务控制：加热 %1°C").arg(35 + aiotHeatLevel_));
+    });
+    connect(ui->aiotHeatSendBtn, &QPushButton::clicked, this, [this] {
+        if (!ui->aiotHeatTempSpin)
+            return;
+        // 协议 heat_level 1～6 对应 36～41°C；时长按秒下发
+        aiotHeatLevel_ = qBound(1, ui->aiotHeatTempSpin->value() - 35, 6);
+        ui->aiotHeatTempSpin->setValue(35 + aiotHeatLevel_);
+        if (ui->aiotHeatDurationSpin)
+            aiotHeatDuration_ = qBound(1, ui->aiotHeatDurationSpin->value(), 3600);
+        aiotSendHeat(aiotHeatOn_ ? 1 : 0, aiotHeatLevel_);
+        if (ui->aiotHeatTempLabel) {
+            ui->aiotHeatTempLabel->setText(QStringLiteral("目标 %1°C · 时长 %2 秒")
+                                              .arg(35 + aiotHeatLevel_)
+                                              .arg(aiotHeatDuration_));
+        }
+        showlog(QStringLiteral("app业务控制：发送加热 %1°C / %2秒")
+                    .arg(35 + aiotHeatLevel_)
+                    .arg(aiotHeatDuration_));
+    });
+    connect(ui->aiotLightOnBtn, &QPushButton::clicked, this, [this] {
+        aiotLightOn_ = true;
+        aiotSendLight(1, aiotLightType_);
+        ui->aiotLightStateLabel->setText(QStringLiteral("开"));
+        showlog(QStringLiteral("app业务控制：红光开 模式%1").arg(aiotLightType_ + 1));
+    });
+    connect(ui->aiotLightOffBtn, &QPushButton::clicked, this, [this] {
+        aiotLightOn_ = false;
+        aiotSendLight(0, aiotLightType_);
+        ui->aiotLightStateLabel->setText(QStringLiteral("关"));
+        showlog(QStringLiteral("app业务控制：红光关"));
+    });
+    connect(ui->aiotLightModeBtn, &QPushButton::clicked, this, [this] {
+        aiotLightType_ = (aiotLightType_ + 1) % 3;
+        aiotSendLight(aiotLightOn_ ? 1 : 0, aiotLightType_);
+        ui->aiotLightModeLabel->setText(QStringLiteral("模式 %1/3").arg(aiotLightType_ + 1));
+        showlog(QStringLiteral("app业务控制：红光模式%1").arg(aiotLightType_ + 1));
+    });
+    // 状态卡三列均分；窄屏时已是两行网格，避免单行撑出工作区
+    if (ui->aiotStatusCardsLay) {
+        for (int c = 0; c < 3; ++c)
+            ui->aiotStatusCardsLay->setColumnStretch(c, 1);
+    }
+    const QList<QLabel*> aiotValueLabs = {ui->aiotConnLabel, ui->aiotTimeLabel, ui->aiotLevelLabel,
+                                          ui->aiotModeLabel, ui->aiotHeatStateLabel, ui->aiotLightStateLabel};
+    for (QLabel* lab : aiotValueLabs) {
+        if (!lab)
+            continue;
+        lab->setWordWrap(true);
+        lab->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    }
+}
+
+int MainWindow::aiotSelectedSide() const {
+    if (!ui || !ui->aiotSideCombo || ui->aiotSideCombo->currentIndex() < 0)
+        return 2;
+    const QVariant d = ui->aiotSideCombo->currentData();
+    const int side = d.isValid() ? d.toInt() : 2;
+    return qBound(0, side, 3);
+}
+
+void MainWindow::aiotSendPump(const QVariantMap& map) {
+    if (!qaiotApp)
+        return;
+    QVariantMap m = map;
+    m.insert(QStringLiteral("side"), aiotSelectedSide());
+    qaiotApp->set(DeviceCmd::AppPumpControl, m);
+}
+
+void MainWindow::aiotSendHeat(int enable, int level) {
+    if (!qaiotApp)
+        return;
+    QVariantMap m;
+    m.insert(QStringLiteral("side"), aiotSelectedSide());
+    m.insert(QStringLiteral("enable"), enable);
+    m.insert(QStringLiteral("level"), level);
+    m.insert(QStringLiteral("duration"), aiotHeatDuration_);
+    qaiotApp->set(DeviceCmd::AppHeatControl, m);
+}
+
+void MainWindow::aiotSendLight(int enable, int type) {
+    if (!qaiotApp)
+        return;
+    QVariantMap m;
+    m.insert(QStringLiteral("side"), aiotSelectedSide());
+    m.insert(QStringLiteral("enable"), enable);
+    m.insert(QStringLiteral("type"), type);
+    qaiotApp->set(DeviceCmd::AppLightControl, m);
+}
+
+void MainWindow::aiotRefreshStatus() {
+    if (!qaiotApp)
+        return;
+    QVariantMap sideParam;
+    sideParam.insert(QStringLiteral("side"), aiotSelectedSide());
+    qaiotApp->get(DeviceCmd::AppCommonStatus, sideParam);
+    QTimer::singleShot(150, this, [this, sideParam] {
+        if (qaiotApp)
+            qaiotApp->get(DeviceCmd::AppPumpStatus, sideParam);
+    });
+    QTimer::singleShot(300, this, [this, sideParam] {
+        if (qaiotApp)
+            qaiotApp->get(DeviceCmd::AppHeatStatus, sideParam);
+    });
+    QTimer::singleShot(450, this, [this, sideParam] {
+        if (qaiotApp)
+            qaiotApp->get(DeviceCmd::AppLightStatus, sideParam);
+    });
+    showlog(QStringLiteral("app业务控制：刷新状态（side=%1）").arg(aiotSelectedSide()));
+}
+
+void MainWindow::aiotExportPageJson() {
+    auto labelText = [this](QLabel* lab) -> QString {
+        return lab ? lab->text().trimmed() : QString();
+    };
+    QJsonObject status;
+    status.insert(QStringLiteral("run"), labelText(ui->aiotConnLabel));
+    status.insert(QStringLiteral("runSub"), labelText(ui->aiotRunSubLabel));
+    status.insert(QStringLiteral("time"), labelText(ui->aiotTimeLabel));
+    status.insert(QStringLiteral("level"), labelText(ui->aiotLevelLabel));
+    status.insert(QStringLiteral("mode"), labelText(ui->aiotModeLabel));
+    status.insert(QStringLiteral("heat"), labelText(ui->aiotHeatStateLabel));
+    status.insert(QStringLiteral("heatSub"), labelText(ui->aiotHeatTempLabel));
+    status.insert(QStringLiteral("light"), labelText(ui->aiotLightStateLabel));
+    status.insert(QStringLiteral("lightMode"), labelText(ui->aiotLightModeLabel));
+
+    QJsonObject control;
+    control.insert(QStringLiteral("side"), aiotSelectedSide());
+    control.insert(QStringLiteral("pumpLevel"), aiotPumpLevel_);
+    control.insert(QStringLiteral("mode"), labelText(ui->aiotModeLabel));
+    control.insert(QStringLiteral("heatOn"), aiotHeatOn_);
+    control.insert(QStringLiteral("heatLevel"), aiotHeatLevel_);
+    control.insert(QStringLiteral("heatTempC"), 35 + aiotHeatLevel_);
+    control.insert(QStringLiteral("heatDurationSec"), aiotHeatDuration_);
+    control.insert(QStringLiteral("lightOn"), aiotLightOn_);
+    control.insert(QStringLiteral("lightMode"), aiotLightType_ + 1);
+
+    QJsonObject root;
+    root.insert(QStringLiteral("version"), 1);
+    root.insert(QStringLiteral("page"), QStringLiteral("app业务控制"));
+    root.insert(QStringLiteral("exportedAt"), QDateTime::currentDateTime().toString(Qt::ISODate));
+    root.insert(QStringLiteral("status"), status);
+    root.insert(QStringLiteral("control"), control);
+
+    const QString path = QFileDialog::getSaveFileName(
+        this,
+        QStringLiteral("导出 app业务控制 JSON"),
+        QDir::homePath() + QStringLiteral("/aiot_app_page.json"),
+        QStringLiteral("JSON (*.json)"));
+    if (path.isEmpty())
+        return;
+    QFile f(path);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        showlog(QStringLiteral("app业务控制：导出失败，无法写入 %1").arg(path));
+        return;
+    }
+    f.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
+    f.close();
+    showlog(QStringLiteral("app业务控制：已导出 JSON %1").arg(path));
+}
+
+void MainWindow::aiotImportPageJson() {
+    const QString path = QFileDialog::getOpenFileName(
+        this,
+        QStringLiteral("导入 app业务控制 JSON"),
+        QDir::homePath(),
+        QStringLiteral("JSON (*.json)"));
+    if (path.isEmpty())
+        return;
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly)) {
+        showlog(QStringLiteral("app业务控制：导入失败，无法读取 %1").arg(path));
+        return;
+    }
+    QJsonParseError err;
+    const QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &err);
+    f.close();
+    if (err.error != QJsonParseError::NoError || !doc.isObject()) {
+        showlog(QStringLiteral("app业务控制：导入失败，JSON 无效：%1").arg(err.errorString()));
+        return;
+    }
+    const QJsonObject root = doc.object();
+    const QJsonObject status = root.value(QStringLiteral("status")).toObject();
+    const QJsonObject control = root.value(QStringLiteral("control")).toObject();
+
+    auto setLab = [](QLabel* lab, const QJsonObject& obj, const char* key) {
+        if (!lab || !obj.contains(QLatin1String(key)))
+            return;
+        const QString t = obj.value(QLatin1String(key)).toString().trimmed();
+        if (!t.isEmpty())
+            lab->setText(t);
+    };
+    setLab(ui->aiotConnLabel, status, "run");
+    setLab(ui->aiotRunSubLabel, status, "runSub");
+    setLab(ui->aiotTimeLabel, status, "time");
+    setLab(ui->aiotLevelLabel, status, "level");
+    setLab(ui->aiotModeLabel, status, "mode");
+    setLab(ui->aiotHeatStateLabel, status, "heat");
+    setLab(ui->aiotHeatTempLabel, status, "heatSub");
+    setLab(ui->aiotLightStateLabel, status, "light");
+    setLab(ui->aiotLightModeLabel, status, "lightMode");
+
+    if (control.contains(QStringLiteral("side")) && ui->aiotSideCombo) {
+        const int side = qBound(0, control.value(QStringLiteral("side")).toInt(), 3);
+        const int idx = ui->aiotSideCombo->findData(side);
+        if (idx >= 0)
+            ui->aiotSideCombo->setCurrentIndex(idx);
+    }
+    if (control.contains(QStringLiteral("pumpLevel"))) {
+        aiotPumpLevel_ = qBound(1, control.value(QStringLiteral("pumpLevel")).toInt(), 15);
+        if (ui->aiotLevelSpin)
+            ui->aiotLevelSpin->setValue(aiotPumpLevel_);
+    }
+    if (control.contains(QStringLiteral("heatLevel"))) {
+        aiotHeatLevel_ = qBound(1, control.value(QStringLiteral("heatLevel")).toInt(), 6);
+    } else if (control.contains(QStringLiteral("heatTempC"))) {
+        aiotHeatLevel_ = qBound(1, control.value(QStringLiteral("heatTempC")).toInt() - 35, 6);
+    }
+    if (ui->aiotHeatTempSpin)
+        ui->aiotHeatTempSpin->setValue(35 + aiotHeatLevel_);
+    if (control.contains(QStringLiteral("heatDurationSec"))) {
+        const int dur = control.value(QStringLiteral("heatDurationSec")).toInt();
+        if (dur > 0) {
+            aiotHeatDuration_ = dur;
+            if (ui->aiotHeatDurationSpin)
+                ui->aiotHeatDurationSpin->setValue(qBound(1, aiotHeatDuration_, 3600));
+        }
+    }
+    if (control.contains(QStringLiteral("heatOn")))
+        aiotHeatOn_ = control.value(QStringLiteral("heatOn")).toBool();
+    if (control.contains(QStringLiteral("lightOn")))
+        aiotLightOn_ = control.value(QStringLiteral("lightOn")).toBool();
+    if (control.contains(QStringLiteral("lightMode"))) {
+        const int mode1based = control.value(QStringLiteral("lightMode")).toInt();
+        if (mode1based >= 1 && mode1based <= 3)
+            aiotLightType_ = mode1based - 1;
+    }
+    if (ui->aiotLightModeLabel && !status.contains(QStringLiteral("lightMode")))
+        ui->aiotLightModeLabel->setText(QStringLiteral("模式 %1/3").arg(aiotLightType_ + 1));
+    if (ui->aiotHeatStateLabel && !status.contains(QStringLiteral("heat")))
+        ui->aiotHeatStateLabel->setText(aiotHeatOn_ ? QStringLiteral("开") : QStringLiteral("关"));
+    if (ui->aiotLightStateLabel && !status.contains(QStringLiteral("light")))
+        ui->aiotLightStateLabel->setText(aiotLightOn_ ? QStringLiteral("开") : QStringLiteral("关"));
+
+    // 有控制段则下发到设备（模式 / 档位 / 加热 / 红光）
+    if (!control.isEmpty()) {
+        const QString modeText = control.value(QStringLiteral("mode")).toString();
+        int modeId = 0;
+        if (modeText.contains(QStringLiteral("按摩")))
+            modeId = 1;
+        else if (modeText.contains(QStringLiteral("吸乳")))
+            modeId = 2;
+        else if (modeText.contains(QStringLiteral("混合")))
+            modeId = 3;
+        if (modeId > 0) {
+            QVariantMap m;
+            m.insert(QStringLiteral("mode"), modeId);
+            m.insert(QStringLiteral("type"), 0);
+            aiotSendPump(m);
+            if (ui->aiotModeLabel && !status.contains(QStringLiteral("mode")))
+                ui->aiotModeLabel->setText(modeText.contains(QStringLiteral(" / "))
+                                              ? modeText
+                                              : (modeId == 1   ? QStringLiteral("按摩")
+                                                 : modeId == 2 ? QStringLiteral("吸乳")
+                                                               : QStringLiteral("混合")));
+        }
+        {
+            QVariantMap m;
+            m.insert(QStringLiteral("level"), aiotPumpLevel_);
+            aiotSendPump(m);
+        }
+        aiotSendHeat(aiotHeatOn_ ? 1 : 0, aiotHeatLevel_);
+        aiotSendLight(aiotLightOn_ ? 1 : 0, aiotLightType_);
+    }
+    showlog(QStringLiteral("app业务控制：已导入 JSON %1").arg(path));
+}
+
+void MainWindow::refreshAiotAppPanel(const QVariantMap& panel) {
+    const QString kind = panel.value(QStringLiteral("kind")).toString();
+    if (kind == QLatin1String("common")) {
+        // 连接侧信息放小字徽标；大字留给吸乳运行状态
+        if (ui->aiotRunSubLabel) {
+            const QString st = panel.value(QStringLiteral("status")).toString();
+            ui->aiotRunSubLabel->setText(st.isEmpty() ? QStringLiteral("就绪") : st);
+        }
+    } else if (kind == QLatin1String("pump")) {
+        if (ui->aiotConnLabel && panel.contains(QStringLiteral("status")))
+            ui->aiotConnLabel->setText(panel.value(QStringLiteral("status")).toString());
+        if (ui->aiotTimeLabel && panel.contains(QStringLiteral("elapsedText")))
+            ui->aiotTimeLabel->setText(panel.value(QStringLiteral("elapsedText")).toString());
+        // 档位按左右两侧分别上报，大字用 levelText；加减档仍跟活跃侧 level 走
+        if (panel.contains(QStringLiteral("level"))) {
+            aiotPumpLevel_ = qBound(1, panel.value(QStringLiteral("level")).toInt(), 15);
+            if (ui->aiotLevelSpin)
+                ui->aiotLevelSpin->setValue(aiotPumpLevel_);
+        }
+        if (ui->aiotLevelLabel) {
+            if (panel.contains(QStringLiteral("levelText")))
+                ui->aiotLevelLabel->setText(panel.value(QStringLiteral("levelText")).toString());
+            else if (panel.contains(QStringLiteral("level")))
+                ui->aiotLevelLabel->setText(QStringLiteral("%1 / 15").arg(aiotPumpLevel_, 2, 10, QChar('0')));
+        }
+        if (ui->aiotModeLabel && panel.contains(QStringLiteral("mode")))
+            ui->aiotModeLabel->setText(panel.value(QStringLiteral("mode")).toString());
+    } else if (kind == QLatin1String("heat")) {
+        if (ui->aiotHeatStateLabel && panel.contains(QStringLiteral("status")))
+            ui->aiotHeatStateLabel->setText(panel.value(QStringLiteral("status")).toString());
+        if (panel.contains(QStringLiteral("on")))
+            aiotHeatOn_ = panel.value(QStringLiteral("on")).toInt() != 0;
+        if (panel.contains(QStringLiteral("level"))) {
+            const int lv = panel.value(QStringLiteral("level")).toInt();
+            if (lv >= 1 && lv <= 6) {
+                aiotHeatLevel_ = lv;
+                if (ui->aiotHeatTempSpin)
+                    ui->aiotHeatTempSpin->setValue(35 + aiotHeatLevel_);
+            }
+        }
+        if (panel.contains(QStringLiteral("duration")) && panel.value(QStringLiteral("duration")).toInt() > 0) {
+            aiotHeatDuration_ = panel.value(QStringLiteral("duration")).toInt();
+            if (ui->aiotHeatDurationSpin)
+                ui->aiotHeatDurationSpin->setValue(qBound(1, aiotHeatDuration_, 3600));
+        }
+        if (ui->aiotHeatTimeLabel && panel.contains(QStringLiteral("durationText")))
+            ui->aiotHeatTimeLabel->setText(panel.value(QStringLiteral("durationText")).toString());
+        if (ui->aiotHeatTempLabel) {
+            const QString temp = panel.value(QStringLiteral("tempText")).toString();
+            const QString dur = panel.value(QStringLiteral("durationText")).toString();
+            const QString tempPart = temp.isEmpty()
+                                        ? QStringLiteral("%1°C").arg(35 + aiotHeatLevel_)
+                                        : temp;
+            const QString durPart = dur.isEmpty() ? QStringLiteral("-") : dur;
+            ui->aiotHeatTempLabel->setText(QStringLiteral("目标 %1 · 时长 %2").arg(tempPart, durPart));
+        }
+    } else if (kind == QLatin1String("light")) {
+        if (ui->aiotLightStateLabel && panel.contains(QStringLiteral("status")))
+            ui->aiotLightStateLabel->setText(panel.value(QStringLiteral("status")).toString());
+        if (panel.contains(QStringLiteral("on")))
+            aiotLightOn_ = panel.value(QStringLiteral("on")).toInt() != 0;
+        if (panel.contains(QStringLiteral("type"))) {
+            const int t = panel.value(QStringLiteral("type")).toInt();
+            if (t >= 0 && t <= 2)
+                aiotLightType_ = t;
+        }
+        if (ui->aiotLightModeLabel) {
+            if (panel.contains(QStringLiteral("mode")))
+                ui->aiotLightModeLabel->setText(panel.value(QStringLiteral("mode")).toString());
+            else
+                ui->aiotLightModeLabel->setText(QStringLiteral("模式 %1/3").arg(aiotLightType_ + 1));
+        }
+    }
+}
+
 void MainWindow::sendUnifiedFacMode(bool enter) {
     auto* facType = uiFind<QComboBox>(this, "qaiot_fac_mode_type");
     const int mode = facType ? facType->currentData().toInt() : 1;
@@ -3033,7 +3602,8 @@ void MainWindow::setting_ui() {
 void MainWindow::applySystemProtocolFromSettings() {
     auto selectedType = QProtocolManager::protocolTypeFromString(
         SETTINGS.value(QStringLiteral("SYSTEM/ProtocolType"), QStringLiteral("qpb")).toString().toStdString());
-    if (selectedType == QProtocolManager::ProtocolType::Unknown)
+    if (selectedType == QProtocolManager::ProtocolType::Unknown
+        || selectedType == QProtocolManager::ProtocolType::QaiotApp)
         selectedType = QProtocolManager::ProtocolType::Qpb;
     if ((selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctp) ||
         ((selectedType == QProtocolManager::ProtocolType::Qaiot ||
@@ -4368,18 +4938,26 @@ void MainWindow::on_pick_device_textActivated(const QString& arg1) {
     if (!dongleSerialPort->isOpen()) {
         on_connectButton_clicked();
     }
-    // 列表展示「名称  MAC」，优先 itemData，否则从文案里抽 MAC
+    // 列表展示「名称  MAC」，优先 UserRole，否则从文案里抽 MAC
     QString mac = arg1.trimmed();
     if (ui->pick_device) {
-        const int idx = ui->pick_device->findText(arg1);
-        if (idx >= 0) {
-            const QString dataMac = ui->pick_device->itemData(idx).toString().trimmed();
-            if (!dataMac.isEmpty())
-                mac = dataMac;
-        } else if (ui->pick_device->currentText() == arg1) {
-            const QString dataMac = ui->pick_device->currentData().toString().trimmed();
-            if (!dataMac.isEmpty())
-                mac = dataMac;
+        for (int i = 0; i < ui->pick_device->count(); ++i) {
+            QListWidgetItem* row = ui->pick_device->item(i);
+            if (!row)
+                continue;
+            if (row->text() == arg1 || row->data(Qt::UserRole).toString() == arg1) {
+                const QString dataMac = row->data(Qt::UserRole).toString().trimmed();
+                if (!dataMac.isEmpty())
+                    mac = dataMac;
+                break;
+            }
+        }
+        if (QListWidgetItem* cur = ui->pick_device->currentItem()) {
+            if (cur->text() == arg1 || cur->data(Qt::UserRole).toString() == arg1) {
+                const QString dataMac = cur->data(Qt::UserRole).toString().trimmed();
+                if (!dataMac.isEmpty())
+                    mac = dataMac;
+            }
         }
     }
     static const QRegularExpression kMacExact(QStringLiteral("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$"));

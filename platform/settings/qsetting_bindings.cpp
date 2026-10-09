@@ -275,7 +275,7 @@ static const Row kSettings[] = {
     TIP("pushButton_testFlowDownloadSteps", "已迁到工站右键/工站管理菜单「下载用例库」（工具栏按钮已隐藏）。"),
     TIP("pushButton_testFlowUploadSteps", "已迁到工站右键/工站管理菜单「上传用例库」（工具栏按钮已隐藏）。"),
     TIP("pushButton_testFlowClear", "已迁到编排区右键「一键清空」（工具栏按钮已隐藏）。"),
-    TIP("comboBox_systemProtocolType", "设备协议 qpb / qfctp / qaiot v1、v2 / qroot（W1/M8）/ qroot2（Air1），经蓝牙透传。关闭设置后立即生效，无需重启。"),
+    TIP("comboBox_systemProtocolType", "设备协议 qpb / qfctp / qaiot v1、v2 / qroot（W1/M8）/ qroot2（Air1），经蓝牙透传。应用层按键在主窗口「应用层」页。关闭设置后立即生效，无需重启。"),
     TIP("comboBox_tupleEnvironment", "三元组环境预设。"),
     TIP("lineEdit_tupleBaseUrl", "Tuple/BaseUrl。"),
     TIP("lineEdit_imu_status", "外设 imu 状态期望值。"),

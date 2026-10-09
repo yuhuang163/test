@@ -50,6 +50,7 @@ class QAction;
 #include <QWheelEvent>
 #include "qfctp.h"
 #include "qaiot.h"
+#include "qaiot_app.h"
 #include "qroot.h"
 #include "qroot2.h"
 #include "root_ble_ota.h"
@@ -361,6 +362,13 @@ class MainWindow : public QMainWindow {
     QProtocolManager protocolManager;
     Qfctp* qfctp = nullptr;
     Qaiot* qaiot = nullptr;
+    QaiotApp* qaiotApp = nullptr;
+    int aiotPumpLevel_ = 1;
+    int aiotHeatLevel_ = 1;
+    int aiotHeatDuration_ = 300;
+    int aiotLightType_ = 0;
+    bool aiotHeatOn_ = false;
+    bool aiotLightOn_ = false;
     Qroot* qroot = nullptr;
     Qroot2* qroot2 = nullptr;
     Qpb* pb = nullptr;
@@ -567,6 +575,15 @@ class MainWindow : public QMainWindow {
     void refreshDongleDeviceName(const QString& name);
     /** 模式/工厂下拉：填充 itemData；通信走设置页当前协议 */
     void initQaiotFeatureButtons();
+    void initAiotAppPage();
+    void aiotRefreshStatus();
+    void aiotExportPageJson();
+    void aiotImportPageJson();
+    void refreshAiotAppPanel(const QVariantMap& panel);
+    int aiotSelectedSide() const;
+    void aiotSendPump(const QVariantMap& map);
+    void aiotSendHeat(int enable, int level);
+    void aiotSendLight(int enable, int type);
     void sendUnifiedFacMode(bool enter);
     void logExtraProtocolReport(const QString& reportType, const QVariant& payload);
 

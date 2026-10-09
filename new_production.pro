@@ -104,6 +104,7 @@ INCLUDEPATH += agreement/factory_protocol/codec/aiot
 INCLUDEPATH += agreement/factory_protocol/protocol/qpb
 INCLUDEPATH += agreement/factory_protocol/protocol/qfctp
 INCLUDEPATH += agreement/factory_protocol/protocol/qaiot
+INCLUDEPATH += agreement/factory_protocol/protocol/qaiot_app
 INCLUDEPATH += agreement/factory_protocol/protocol/qroot
 INCLUDEPATH += agreement/factory_protocol/protocol/qroot2
 INCLUDEPATH += agreement/factory_protocol/protocol
@@ -249,6 +250,7 @@ SOURCES += \
     agreement/factory_protocol/codec/fctp/comm_protocol_parser.cpp \
     agreement/factory_protocol/codec/aiot/aiot_link_codec.cpp \
     agreement/factory_protocol/protocol/qaiot/qaiot.cpp \
+    agreement/factory_protocol/protocol/qaiot_app/qaiot_app.cpp \
     agreement/factory_protocol/protocol/qfctp/qfctp.cpp \
     agreement/factory_protocol/protocol/qroot/qroot.cpp \
     agreement/factory_protocol/protocol/qroot2/qroot2.cpp \
@@ -433,6 +435,7 @@ HEADERS += \
     agreement/factory_protocol/codec/aiot/aiot_link_defs.h \
     agreement/factory_protocol/codec/aiot/aiot_link_codec.h \
     agreement/factory_protocol/protocol/qaiot/qaiot.h \
+    agreement/factory_protocol/protocol/qaiot_app/qaiot_app.h \
     agreement/factory_protocol/protocol/qfctp/qfctp.h \
     agreement/factory_protocol/protocol/qroot/qroot.h \
     agreement/factory_protocol/protocol/qroot2/qroot2.h \

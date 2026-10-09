@@ -125,7 +125,8 @@ test_base::test_base(QWidget* parent) : QWidget(parent),
 void test_base::applySystemProtocolFromSettings() {
     auto selectedType = QProtocolManager::protocolTypeFromString(
         SETTINGS.value(QStringLiteral("SYSTEM/ProtocolType"), QStringLiteral("qpb")).toString().toStdString());
-    if (selectedType == QProtocolManager::ProtocolType::Unknown)
+    if (selectedType == QProtocolManager::ProtocolType::Unknown
+        || selectedType == QProtocolManager::ProtocolType::QaiotApp)
         selectedType = QProtocolManager::ProtocolType::Qpb;
     if ((selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctp) ||
         ((selectedType == QProtocolManager::ProtocolType::Qaiot ||
@@ -155,6 +156,7 @@ QProtocolManager::ProtocolType productProtocolTypeFromCase(TestCaseProductProtoc
         return QProtocolManager::ProtocolType::Qaiot;
     case TestCaseProductProtocol::QaiotV2:
         return QProtocolManager::ProtocolType::QaiotV2;
+    case TestCaseProductProtocol::QaiotApp:
     case TestCaseProductProtocol::Qfctp:
     default:
         return QProtocolManager::ProtocolType::Qfctp;
@@ -176,11 +178,19 @@ void applyProductProtocolToManager(QProtocolManager& manager, TestCaseProductPro
 } // namespace
 
 void test_base::applyTestCaseProductProtocol(TestCaseProductProtocol protocol) {
+    if (protocol == TestCaseProductProtocol::QaiotApp) {
+        showlog(QStringLiteral("应用层协议只在主窗口「应用层」页使用，本步已按 qfctp 下发"));
+        protocol = TestCaseProductProtocol::Qfctp;
+    }
     applyTestCaseProductProtocol(protocol, TestCaseSendChannel::Product);
     applyProductProtocolToManager(productSerialProtocolManager, protocol, {});
 }
 
 void test_base::applyTestCaseProductProtocol(TestCaseProductProtocol protocol, TestCaseSendChannel channel) {
+    if (protocol == TestCaseProductProtocol::QaiotApp) {
+        showlog(QStringLiteral("应用层协议只在主窗口「应用层」页使用，本步已按 qfctp 下发"));
+        protocol = TestCaseProductProtocol::Qfctp;
+    }
     QProtocolManager::ProtocolType selectedType = productProtocolTypeFromCase(protocol);
     const bool productSerialChannel = channel == TestCaseSendChannel::ProductSerial;
     if (productSerialChannel) {
