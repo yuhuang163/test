@@ -2687,6 +2687,18 @@ void MainWindow::recoverCustom() {
     qDebug() << "配置内容" << comName;
 }
 
+// 基础信息表：未上报/默认 0 显示为空，避免界面上一片 0
+static QString basicInfoDisplayInt(int value) {
+    return value == 0 ? QString() : QString::number(value);
+}
+
+static QString basicInfoDisplayText(const QString& value) {
+    const QString text = value.trimmed();
+    if (text.isEmpty() || text == QLatin1String("0"))
+        return {};
+    return text;
+}
+
 void MainWindow::initBasicInfo() {
     struct namePair {
         QString name;
@@ -2775,20 +2787,26 @@ void MainWindow::initBasicInfo() {
                          const ProtocolBaseInfoData baseInfo = report.payload.value<ProtocolBaseInfoData>();
                          connectProductName = baseInfo.product_name;
 
-                         basicInfoModel->getTestItemByName("product_name")->setData(baseInfo.product_name, Qt::DisplayRole);
-                         basicInfoModel->getTestItemByName("algo_version")->setData(baseInfo.algo_version, Qt::DisplayRole);
+                         basicInfoModel->getTestItemByName("product_name")
+                             ->setData(basicInfoDisplayText(baseInfo.product_name), Qt::DisplayRole);
+                         basicInfoModel->getTestItemByName("algo_version")
+                             ->setData(basicInfoDisplayText(baseInfo.algo_version), Qt::DisplayRole);
                          basicInfoModel->getTestItemByName("pb_phone_ver")
-                             ->setData(QString("%1").arg(baseInfo.pb_phone_ver), Qt::DisplayRole);
+                             ->setData(basicInfoDisplayInt(baseInfo.pb_phone_ver), Qt::DisplayRole);
                          basicInfoModel->getTestItemByName("pb_factory_ver")
-                             ->setData(QString("%1").arg(baseInfo.pb_factory_ver), Qt::DisplayRole);
+                             ->setData(basicInfoDisplayInt(baseInfo.pb_factory_ver), Qt::DisplayRole);
                          basicInfoModel->getTestItemByName("camera_id")
-                             ->setData(QString("%1").arg(baseInfo.camera_version), Qt::DisplayRole);
-                         basicInfoModel->getTestItemByName("hw_version")->setData(baseInfo.hw_version, Qt::DisplayRole);
+                             ->setData(basicInfoDisplayText(baseInfo.camera_version), Qt::DisplayRole);
+                         basicInfoModel->getTestItemByName("hw_version")
+                             ->setData(basicInfoDisplayText(baseInfo.hw_version), Qt::DisplayRole);
                          basicInfoModel->getTestItemByName("soft_version")
-                             ->setData(QString("%1").arg(baseInfo.soft_version), Qt::DisplayRole);
-                         basicInfoModel->getTestItemByName("res_version")->setData(baseInfo.res_version, Qt::DisplayRole);
-                         basicInfoModel->getTestItemByName("presure_version")->setData(baseInfo.presure_version, Qt::DisplayRole);
-                         basicInfoModel->getTestItemByName("fsensor_version")->setData(baseInfo.fsensor_version, Qt::DisplayRole);
+                             ->setData(basicInfoDisplayText(baseInfo.soft_version), Qt::DisplayRole);
+                         basicInfoModel->getTestItemByName("res_version")
+                             ->setData(basicInfoDisplayText(baseInfo.res_version), Qt::DisplayRole);
+                         basicInfoModel->getTestItemByName("presure_version")
+                             ->setData(basicInfoDisplayText(baseInfo.presure_version), Qt::DisplayRole);
+                         basicInfoModel->getTestItemByName("fsensor_version")
+                             ->setData(basicInfoDisplayText(baseInfo.fsensor_version), Qt::DisplayRole);
 
                          QString mac;
 
@@ -2812,13 +2830,14 @@ void MainWindow::initBasicInfo() {
 
                          qDebug() << "wifimac结果" << mac;
                          basicInfoModel->getTestItemByName("wifi_mac")->setData(mac, Qt::DisplayRole);
-                         basicInfoModel->getTestItemByName("imu_id")->setData(QString("%1").arg(baseInfo.imu_id), Qt::DisplayRole);
+                         basicInfoModel->getTestItemByName("imu_id")
+                             ->setData(basicInfoDisplayInt(baseInfo.imu_id), Qt::DisplayRole);
                          basicInfoModel->getTestItemByName("age_state")
-                             ->setData(QString("%1").arg(baseInfo.ageing_state), Qt::DisplayRole);
+                             ->setData(basicInfoDisplayInt(baseInfo.ageing_state), Qt::DisplayRole);
                          basicInfoModel->getTestItemByName("motor_ver")
-                             ->setData(QString("%1").arg(baseInfo.motor_version), Qt::DisplayRole);
+                             ->setData(basicInfoDisplayText(baseInfo.motor_version), Qt::DisplayRole);
                          basicInfoModel->getTestItemByName("bleVersion")
-                             ->setData(QString("%1").arg(baseInfo.ble_version), Qt::DisplayRole);
+                             ->setData(basicInfoDisplayText(baseInfo.ble_version), Qt::DisplayRole);
 
                          writeDataToCSVFile();
                      });

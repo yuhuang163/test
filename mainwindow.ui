@@ -45,7 +45,7 @@
        </sizepolicy>
       </property>
       <property name="pixmap">
-       <pixmap>:/stytle/picture/app-bg-silk.png</pixmap>
+       <pixmap resource="new_production.qrc">:/stytle/picture/app-bg-silk.png</pixmap>
       </property>
       <property name="scaledContents">
        <bool>true</bool>
@@ -130,7 +130,7 @@
              </size>
             </property>
             <property name="pixmap">
-             <pixmap>:/stytle/picture/sidebar-mom-bg.jpg</pixmap>
+             <pixmap resource="new_production.qrc">:/stytle/picture/sidebar-mom-bg.jpg</pixmap>
             </property>
             <property name="scaledContents">
              <bool>false</bool>
@@ -304,7 +304,7 @@
                <string>连接</string>
               </property>
               <property name="icon">
-               <iconset>
+               <iconset resource="new_production.qrc">
                 <normaloff>:/stytle/picture/nav/nav-connect.png</normaloff>
                 <normalon>:/stytle/picture/nav/nav-connect-on.png</normalon>
                 <activeon>:/stytle/picture/nav/nav-connect-on.png</activeon>
@@ -339,7 +339,7 @@
                <string>业务控制</string>
               </property>
               <property name="icon">
-               <iconset>
+               <iconset resource="new_production.qrc">
                 <normaloff>:/stytle/picture/nav/nav-business.png</normaloff>
                 <normalon>:/stytle/picture/nav/nav-business-on.png</normalon>
                 <activeon>:/stytle/picture/nav/nav-business-on.png</activeon>
@@ -374,7 +374,7 @@
                <string>外设</string>
               </property>
               <property name="icon">
-               <iconset>
+               <iconset resource="new_production.qrc">
                 <normaloff>:/stytle/picture/nav/nav-peripheral.png</normaloff>
                 <normalon>:/stytle/picture/nav/nav-peripheral-on.png</normalon>
                 <activeon>:/stytle/picture/nav/nav-peripheral-on.png</activeon>
@@ -409,7 +409,7 @@
                <string>Dongle</string>
               </property>
               <property name="icon">
-               <iconset>
+               <iconset resource="new_production.qrc">
                 <normaloff>:/stytle/picture/nav/nav-dongle.png</normaloff>
                 <normalon>:/stytle/picture/nav/nav-dongle-on.png</normalon>
                 <activeon>:/stytle/picture/nav/nav-dongle-on.png</activeon>
@@ -444,7 +444,7 @@
                <string>OTA/压测</string>
               </property>
               <property name="icon">
-               <iconset>
+               <iconset resource="new_production.qrc">
                 <normaloff>:/stytle/picture/nav/nav-ota.png</normaloff>
                 <normalon>:/stytle/picture/nav/nav-ota-on.png</normalon>
                 <activeon>:/stytle/picture/nav/nav-ota-on.png</activeon>
@@ -479,7 +479,7 @@
                <string>其它</string>
               </property>
               <property name="icon">
-               <iconset>
+               <iconset resource="new_production.qrc">
                 <normaloff>:/stytle/picture/nav/nav-misc.png</normaloff>
                 <normalon>:/stytle/picture/nav/nav-misc-on.png</normalon>
                 <activeon>:/stytle/picture/nav/nav-misc-on.png</activeon>
@@ -671,7 +671,7 @@ Every Baby</string>
                <string/>
               </property>
               <property name="icon">
-               <iconset>
+               <iconset resource="new_production.qrc">
                 <normaloff>:/stytle/picture/status/icon-gear.png</normaloff>
                 <normalon>:/stytle/picture/status/icon-gear.png</normalon>
                 <activeon>:/stytle/picture/status/icon-gear.png</activeon>
@@ -715,7 +715,7 @@ Every Baby</string>
                <string/>
               </property>
               <property name="icon">
-               <iconset>
+               <iconset resource="new_production.qrc">
                 <normaloff>:/stytle/picture/status/icon-help.png</normaloff>
                 <normalon>:/stytle/picture/status/icon-help.png</normalon>
                 <activeon>:/stytle/picture/status/icon-help.png</activeon>
@@ -2180,7 +2180,7 @@ Every Baby</string>
                  <bool>true</bool>
                 </property>
                 <property name="currentIndex">
-                 <number>2</number>
+                 <number>0</number>
                 </property>
                 <property name="usesScrollButtons">
                  <bool>true</bool>
@@ -2212,8 +2212,8 @@ Every Baby</string>
                    <rect>
                     <x>0</x>
                     <y>0</y>
-                    <width>971</width>
-                    <height>735</height>
+                    <width>1222</width>
+                    <height>445</height>
                    </rect>
                   </property>
                   <layout class="QVBoxLayout" name="verticalLayout_debug_production" stretch="1">
@@ -2241,7 +2241,7 @@ Every Baby</string>
                       </sizepolicy>
                      </property>
                      <property name="currentIndex">
-                      <number>5</number>
+                      <number>1</number>
                      </property>
                      <property name="usesScrollButtons">
                       <bool>true</bool>
@@ -2270,8 +2270,8 @@ Every Baby</string>
                         <rect>
                          <x>0</x>
                          <y>0</y>
-                         <width>971</width>
-                         <height>712</height>
+                         <width>1222</width>
+                         <height>422</height>
                         </rect>
                        </property>
                        <layout class="QVBoxLayout" name="verticalLayout_tab_biz_basic">
@@ -2370,8 +2370,8 @@ Every Baby</string>
                         <rect>
                          <x>0</x>
                          <y>0</y>
-                         <width>971</width>
-                         <height>712</height>
+                         <width>1222</width>
+                         <height>422</height>
                         </rect>
                        </property>
                        <layout class="QVBoxLayout" name="verticalLayout_tab_biz_factory">
@@ -2659,8 +2659,8 @@ Every Baby</string>
                         <rect>
                          <x>0</x>
                          <y>0</y>
-                         <width>971</width>
-                         <height>712</height>
+                         <width>1222</width>
+                         <height>422</height>
                         </rect>
                        </property>
                        <layout class="QVBoxLayout" name="verticalLayout_tab_biz_mode">
@@ -3195,8 +3195,8 @@ Every Baby</string>
                         <rect>
                          <x>0</x>
                          <y>0</y>
-                         <width>971</width>
-                         <height>712</height>
+                         <width>1222</width>
+                         <height>422</height>
                         </rect>
                        </property>
                        <layout class="QVBoxLayout" name="verticalLayout_tab_biz_meta">
@@ -3641,15 +3641,15 @@ Every Baby</string>
                        <bool>true</bool>
                       </property>
                       <attribute name="title">
-                       <string>功能测试</string>
+                       <string>自定义测试</string>
                       </attribute>
                       <widget class="QWidget" name="tab_4">
                        <property name="geometry">
                         <rect>
                          <x>0</x>
                          <y>0</y>
-                         <width>971</width>
-                         <height>712</height>
+                         <width>1222</width>
+                         <height>422</height>
                         </rect>
                        </property>
                        <layout class="QGridLayout" name="gridLayout_4">
@@ -4056,8 +4056,8 @@ Every Baby</string>
                         <rect>
                          <x>0</x>
                          <y>0</y>
-                         <width>971</width>
-                         <height>712</height>
+                         <width>1222</width>
+                         <height>422</height>
                         </rect>
                        </property>
                        <layout class="QGridLayout" name="gridLayout_2">
@@ -4243,8 +4243,8 @@ Every Baby</string>
                    <rect>
                     <x>0</x>
                     <y>0</y>
-                    <width>971</width>
-                    <height>735</height>
+                    <width>1222</width>
+                    <height>445</height>
                    </rect>
                   </property>
                   <layout class="QVBoxLayout" name="verticalLayout_debug_peripheral" stretch="1">
@@ -4301,8 +4301,8 @@ Every Baby</string>
                         <rect>
                          <x>0</x>
                          <y>0</y>
-                         <width>971</width>
-                         <height>712</height>
+                         <width>1222</width>
+                         <height>422</height>
                         </rect>
                        </property>
                        <layout class="QVBoxLayout" name="verticalLayout_tab_periph_state">
@@ -10922,8 +10922,8 @@ Every Baby</string>
                    <rect>
                     <x>0</x>
                     <y>0</y>
-                    <width>971</width>
-                    <height>735</height>
+                    <width>1222</width>
+                    <height>445</height>
                    </rect>
                   </property>
                   <layout class="QVBoxLayout" name="verticalLayout_debug_ota">
@@ -10974,8 +10974,8 @@ Every Baby</string>
                         <rect>
                          <x>0</x>
                          <y>0</y>
-                         <width>971</width>
-                         <height>712</height>
+                         <width>1222</width>
+                         <height>422</height>
                         </rect>
                        </property>
                        <layout class="QGridLayout" name="gridLayout_9">
@@ -12480,8 +12480,8 @@ Every Baby</string>
                    <rect>
                     <x>0</x>
                     <y>0</y>
-                    <width>971</width>
-                    <height>735</height>
+                    <width>1222</width>
+                    <height>445</height>
                    </rect>
                   </property>
                   <layout class="QVBoxLayout" name="verticalLayout_debug_misc">
@@ -13104,8 +13104,8 @@ Every Baby</string>
                         <rect>
                          <x>0</x>
                          <y>0</y>
-                         <width>965</width>
-                         <height>707</height>
+                         <width>1216</width>
+                         <height>417</height>
                         </rect>
                        </property>
                        <widget class="QLineEdit" name="calculate">
@@ -14234,7 +14234,7 @@ Every Baby</string>
                </size>
               </property>
               <property name="pixmap">
-               <pixmap>:/stytle/picture/product-promo-card.png</pixmap>
+               <pixmap resource="new_production.qrc">:/stytle/picture/product-promo-card.png</pixmap>
               </property>
               <property name="scaledContents">
                <bool>false</bool>
@@ -14274,7 +14274,9 @@ Every Baby</string>
    <container>1</container>
   </customwidget>
  </customwidgets>
- <resources/>
+ <resources>
+  <include location="new_production.qrc"/>
+ </resources>
  <connections/>
  <buttongroups>
   <buttongroup name="consoleNavGroup"/>

@@ -1013,6 +1013,11 @@ QWidget#consoleWorkPage QGroupBox QGroupBox {
 QGroupBox#groupBox_6 {
 	padding: 8px 8px 6px 8px;
 }
+QGroupBox#groupBox_6::title {
+	color: #243654;
+	font-size: 13px;
+	font-weight: 700;
+}
 QGroupBox#groupBox_6 QGroupBox {
 	margin-top: 2px;
 	padding: 4px 6px 4px 6px;
@@ -1024,9 +1029,9 @@ QGroupBox#groupBox_6 QGroupBox::title {
 	subcontrol-origin: margin;
 	left: 8px;
 	padding: 0 4px;
-	color: #5b6f88;
+	color: #243654;
 	font-size: 12px;
-	font-weight: 600;
+	font-weight: 700;
 }
 QGroupBox#groupBox_6 QLineEdit {
 	min-width: 64px;
@@ -1420,7 +1425,7 @@ QLabel#consoleStatusDeviceState {
 }
 
 QLabel#consoleStatusDeviceState[kind="on"] {
-	color: #2563eb;
+	color: #16a34a;
 }
 
 QLabel#consoleStatusMotorState,

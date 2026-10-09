@@ -44,6 +44,7 @@ void TestModel::resetAllTestResult() {
         item2->setData("", Qt::DisplayRole);
         QBrush brush(Qt::white);
         item1->setBackground(brush);
+        item2->setBackground(brush);
     }
 }
 
@@ -102,6 +103,10 @@ void TestItems::updateTestResult() {
     testResult->setData(resultDisPlay[result].desc, Qt::DisplayRole);
     QBrush brush(resultDisPlay[result].color);
     testResult->setBackground(brush);
+
+    // 已读到实测值：测试值格浅绿底；空值保持白底
+    const QString shown = testValue->data(Qt::DisplayRole).toString().trimmed();
+    testValue->setBackground(shown.isEmpty() ? QBrush(Qt::white) : QBrush(QColor(0x86, 0xef, 0xac)));
 }
 
 TestItems::TestItems(QString name, QString displayName, QString value) {
