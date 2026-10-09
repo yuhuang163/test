@@ -12,10 +12,12 @@
 #include "asd9026a_codec.h"
 #include "asd9026a_device.h"
 #include "xwd_raw_fixture_device.h"
+#include "universal_fixture_codec.h"
 #include "xwd_raw_uart_codec.h"
 #include "jieli_bt_box_device.h"
 #include "qfixturemanager.h"
 #include "qprotocol_types.h"
+#include "plc_station_sync_barrier.h"
 #include "shared_instrument.h"
 #include "serial_channel.h"
 #include "visa_channel.h"
@@ -29,6 +31,8 @@
 #include <QElapsedTimer>
 #include <QEventLoop>
 #include <QMutexLocker>
+#include <QTableWidget>
+#include <QTableWidgetItem>
 #include <QThread>
 
 #include <memory>
@@ -248,6 +252,45 @@ bool sendAndCollectXwdReadOnceReply(SerialChannel* channel, QSerialPort* port, c
     qDebug().noquote() << "XWD FIXTURE TX:" << QString::fromLatin1(request.toHex(' ').toUpper());
     Qlog().save_jig_uart_log(1, request);
     // 直接进入事件循环再等待回包，避免 waitForBytesWritten 内先收到 CH1 并提前触发 loop.quit()。
+    timeout.start(qMax(1, timeoutMs));
+    loop.exec();
+    QObject::disconnect(frameConnection);
+    return true;
+}
+
+// 等一行文本应答（如 OK/NO），用于 DOWN?/UP
+bool sendAndCollectXwdLineReply(SerialChannel* channel, QSerialPort* port, const QByteArray& request,
+                                int timeoutMs, QString* line, QString* errorMessage) {
+    if (!channel || !port || !port->isOpen() || !line)
+        return false;
+
+    line->clear();
+    channel->clearReceiveBuffer();
+    QByteArray buf;
+
+    QEventLoop loop;
+    QTimer timeout;
+    timeout.setSingleShot(true);
+    const QMetaObject::Connection frameConnection =
+        QObject::connect(channel, &SerialChannel::frameReceived, &loop, [&](const QByteArray& frame) {
+            buf.append(frame);
+            const int nl = buf.indexOf('\n');
+            if (nl < 0)
+                return;
+            *line = QString::fromUtf8(buf.left(nl)).trimmed();
+            if (!line->isEmpty())
+                loop.quit();
+        });
+    QObject::connect(&timeout, &QTimer::timeout, &loop, &QEventLoop::quit);
+
+    if (channel->write(request) != request.size()) {
+        QObject::disconnect(frameConnection);
+        if (errorMessage)
+            *errorMessage = QStringLiteral("XWD治具串口写入失败");
+        return false;
+    }
+    qDebug().noquote() << "XWD FIXTURE TX:" << QString::fromLatin1(request.toHex(' ').toUpper());
+    Qlog().save_jig_uart_log(1, request);
     timeout.start(qMax(1, timeoutMs));
     loop.exec();
     QObject::disconnect(frameConnection);
@@ -535,6 +578,20 @@ LxAmmeterRtuCmd lxAmmeterRtuCmdFromName(const QString& name) {
     return LxAmmeterRtuCmd::ReadMeasurement;
 }
 
+Aa55AmmeterRtuCmd aa55AmmeterRtuCmdFromName(const QString& name) {
+    if (name == QLatin1String("ReadMeasurement"))
+        return Aa55AmmeterRtuCmd::ReadMeasurement;
+    return Aa55AmmeterRtuCmd::ReadMeasurement;
+}
+
+FaFbFloatAmmeterRtuCmd faFbFloatAmmeterRtuCmdFromName(const QString& name) {
+    if (name == QLatin1String("ReadVoltageCentivolt"))
+        return FaFbFloatAmmeterRtuCmd::ReadVoltageCentivolt;
+    if (name == QLatin1String("ReadMeasurement"))
+        return FaFbFloatAmmeterRtuCmd::ReadMeasurement;
+    return FaFbFloatAmmeterRtuCmd::ReadMeasurement;
+}
+
 MultiTempLoggerRtuCmd multiTempLoggerRtuCmdFromName(const QString& name) {
     if (name.compare(QLatin1String("SendRaw"), Qt::CaseInsensitive) == 0)
         return MultiTempLoggerRtuCmd::SendRaw;
@@ -653,15 +710,18 @@ QVariantMap huilingVisaLinkKeysFromMap(const QVariantMap& map) {
         QStringLiteral("visaDeviceIndex"),
         QStringLiteral("sharedPair"),
         QStringLiteral("stationsPerDevice"),
-        QStringLiteral("visaAddress0"),
-        QStringLiteral("visaAddress1"),
-        QStringLiteral("visaAddress_0"),
-        QStringLiteral("visaAddress_1"),
     };
     QVariantMap out;
     for (const QString& key : keys) {
         if (map.contains(key))
             out.insert(key, map.value(key));
+    }
+    // 一拖四：保留全部 visaAddress0..N（旧只抄 0/1，工位3/4 丢地址后回落到工位1）
+    static const QRegularExpression visaAddrKeyRe(QStringLiteral(R"(^visaAddress_?\d+$)"),
+                                                  QRegularExpression::CaseInsensitiveOption);
+    for (auto it = map.constBegin(); it != map.constEnd(); ++it) {
+        if (visaAddrKeyRe.match(it.key()).hasMatch())
+            out.insert(it.key(), it.value());
     }
     return out;
 }
@@ -992,6 +1052,9 @@ void QFreeWork::setActiveTestCase(const TestCaseDefinition& def) {
     testCaseStepResult_ = {};
     testCaseMultiGateTableEmitted_ = false;
     currentSampleAnyMatchActive_ = false;
+    if (currentSamplePollTimer_)
+        currentSamplePollTimer_->stop();
+    clearPlcSyncWaitKey();
     currentSampleCount_ = 0;
     currentSampleLastValueText_.clear();
     airPressureCollecting_ = false;
@@ -1007,6 +1070,9 @@ void QFreeWork::clearActiveTestCase() {
     testCaseStepResult_ = {};
     testCaseMultiGateTableEmitted_ = false;
     currentSampleAnyMatchActive_ = false;
+    if (currentSamplePollTimer_)
+        currentSamplePollTimer_->stop();
+    clearPlcSyncWaitKey();
     currentSampleCount_ = 0;
     currentSampleLastValueText_.clear();
     airPressureCollecting_ = false;
@@ -1108,15 +1174,20 @@ bool QFreeWork::isActiveTestCaseStep(const QString& stepLabel) const {
 }
 
 bool QFreeWork::shouldHoldCommandRetryUntilGatePass() const {
-    // 弹窗+按键卡控：0xA6 等轮询回包未匹配时继续窗口内重发，勿因第一次 ACK 结束等待
+    // CommandTimeoutMs=0：只判一包，ACK 后停表；>0：未匹配前保持窗口并重发
     if (!testCaseStepActive_ || stepRuntime_.done)
         return false;
-    if (!activeTestCase_.meta.promptEnabled || !activeTestCase_.gate.enabled)
+    if (!activeTestCase_.gate.enabled)
         return false;
-    return activeTestCase_.gate.reportType == QStringLiteral("ProtocolButtonStateData");
+    if (activeTestCase_.gate.reportType != QStringLiteral("ProtocolButtonStateData"))
+        return false;
+    return activeTestCase_.timing.commandTimeoutMs > 0;
 }
 
 bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVariant& payload) {
+    // 步骤已结案后忽略后续上报，避免 any-match 通过后再被低电流覆盖为失败
+    if (isActiveTestCaseStepDone())
+        return false;
     if (!testCaseStepActive_ || !activeTestCase_.gate.enabled)
         return false;
     if (activeTestCase_.gate.reportType != reportType)
@@ -1252,6 +1323,139 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
     return true;
 }
 
+void QFreeWork::ensureCountdownWaitTableRow(const QString& stepName, const QString& dataText) {
+    QTableWidget* table = testResultTable();
+    if (!table)
+        return;
+    const auto cellFlags = Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsEditable;
+    if (countdownWaitTableRow_ < 0 || countdownWaitTableRow_ >= table->rowCount()) {
+        countdownWaitTableRow_ = table->rowCount();
+        table->insertRow(countdownWaitTableRow_);
+        auto* nameCell = new QTableWidgetItem(stepName);
+        auto* dataCell = new QTableWidgetItem(dataText);
+        auto* resultCell = new QTableWidgetItem(QStringLiteral("等待中"));
+        auto* askCell = new QTableWidgetItem(QStringLiteral("-"));
+        nameCell->setFlags(cellFlags);
+        dataCell->setFlags(cellFlags);
+        resultCell->setFlags(cellFlags);
+        askCell->setFlags(cellFlags);
+        nameCell->setTextAlignment(Qt::AlignCenter);
+        dataCell->setTextAlignment(Qt::AlignCenter);
+        resultCell->setTextAlignment(Qt::AlignCenter);
+        askCell->setTextAlignment(Qt::AlignCenter);
+        table->setItem(countdownWaitTableRow_, 0, nameCell);
+        table->setItem(countdownWaitTableRow_, 1, dataCell);
+        table->setItem(countdownWaitTableRow_, 2, resultCell);
+        table->setItem(countdownWaitTableRow_, 3, askCell);
+        table->scrollToBottom();
+        return;
+    }
+    if (QTableWidgetItem* existing = table->item(countdownWaitTableRow_, 1)) {
+        existing->setText(dataText);
+        return;
+    }
+    auto* created = new QTableWidgetItem(dataText);
+    created->setFlags(cellFlags);
+    created->setTextAlignment(Qt::AlignCenter);
+    table->setItem(countdownWaitTableRow_, 1, created);
+}
+
+void QFreeWork::removeCountdownWaitTableRow() {
+    QTableWidget* table = testResultTable();
+    if (table && countdownWaitTableRow_ >= 0 && countdownWaitTableRow_ < table->rowCount())
+        table->removeRow(countdownWaitTableRow_);
+    countdownWaitTableRow_ = -1;
+}
+
+void QFreeWork::runCountdownWaitStep() {
+    // Param_seconds / Param_waitSeconds；可选 Param_prompt（仅写日志，界面改走结果表）
+    const TestCaseDefinition& def = activeTestCase();
+    QVariantMap map;
+    if (def.send.param.canConvert<QVariantMap>())
+        map = resolveTestCaseSendParamTree(def.send.param).toMap();
+    int seconds = 0;
+    if (map.contains(QStringLiteral("seconds")))
+        seconds = map.value(QStringLiteral("seconds")).toInt();
+    else if (map.contains(QStringLiteral("waitSeconds")))
+        seconds = map.value(QStringLiteral("waitSeconds")).toInt();
+    if (seconds <= 0) {
+        markActiveTestCaseStepDone(false, QStringLiteral("未配置等待秒数"), QStringLiteral("失败"));
+        showlog(QStringLiteral("倒计时等待失败：请在步骤 Param_seconds 填写大于 0 的秒数"));
+        return;
+    }
+    if (countdownWaitActive_) {
+        showlog(QStringLiteral("倒计时等待：上一窗尚未结束，忽略重复启动"));
+        return;
+    }
+
+    QString prompt = map.value(QStringLiteral("prompt")).toString().trimmed();
+    if (prompt.isEmpty())
+        prompt = def.meta.promptText.trimmed();
+    if (prompt.isEmpty())
+        prompt = QStringLiteral("请等待");
+
+    countdownWaitActive_ = true;
+    countdownWaitTotalSec_ = seconds;
+    countdownWaitLastShownSec_ = -1;
+    countdownWaitStepName_ = TestCaseRunner::stepLabel(def);
+    if (countdownWaitStepName_.trimmed().isEmpty())
+        countdownWaitStepName_ = QStringLiteral("倒计时等待");
+    countdownWaitElapsed_.start();
+    ensureCountdownWaitTableRow(countdownWaitStepName_,
+                                QStringLiteral("剩余%1秒").arg(seconds));
+    showlog(QStringLiteral("倒计时等待开始：%1 秒（%2，结果表显示）").arg(seconds).arg(prompt));
+
+    if (!countdownWaitTimer_) {
+        countdownWaitTimer_ = new QTimer(this);
+        QObject::connect(countdownWaitTimer_, &QTimer::timeout, this, [this]() { onCountdownWaitPoll(); });
+    }
+    countdownWaitTimer_->setInterval(200);
+    countdownWaitTimer_->start();
+    onCountdownWaitPoll();
+}
+
+void QFreeWork::onCountdownWaitPoll() {
+    if (!countdownWaitActive_)
+        return;
+    if (!isTestContinue) {
+        abortCountdownWait(true);
+        return;
+    }
+    const qint64 totalMs = static_cast<qint64>(countdownWaitTotalSec_) * 1000;
+    const qint64 elapsed = countdownWaitElapsed_.elapsed();
+    if (elapsed >= totalMs) {
+        finishCountdownWaitSuccess();
+        return;
+    }
+    const int leftSec = qMax(0, static_cast<int>((totalMs - elapsed + 999) / 1000));
+    if (leftSec == countdownWaitLastShownSec_)
+        return;
+    countdownWaitLastShownSec_ = leftSec;
+    ensureCountdownWaitTableRow(countdownWaitStepName_, QStringLiteral("剩余%1秒").arg(leftSec));
+}
+
+void QFreeWork::finishCountdownWaitSuccess() {
+    if (countdownWaitTimer_)
+        countdownWaitTimer_->stop();
+    countdownWaitActive_ = false;
+    // 先去掉临时「等待中」行，由步骤收尾写入正式结果行（含 CSV/MES）
+    removeCountdownWaitTableRow();
+    const QString data = QStringLiteral("%1秒").arg(countdownWaitTotalSec_);
+    markActiveTestCaseStepDone(true, data, QStringLiteral("通过"));
+    showlog(QStringLiteral("倒计时等待完成：%1").arg(data));
+}
+
+void QFreeWork::abortCountdownWait(bool markFail) {
+    if (countdownWaitTimer_)
+        countdownWaitTimer_->stop();
+    countdownWaitActive_ = false;
+    removeCountdownWaitTableRow();
+    if (!markFail)
+        return;
+    markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
+    showlog(QStringLiteral("倒计时等待已中止"));
+}
+
 void QFreeWork::runScpiProgrammableCurrentSampleAnyMatch(const TestCaseDefinition& def, const QVariant& commandParam) {
     QVariantMap map;
     if (def.send.param.canConvert<QVariantMap>())
@@ -1260,52 +1464,97 @@ void QFreeWork::runScpiProgrammableCurrentSampleAnyMatch(const TestCaseDefinitio
     const int intervalMs = currentSampleIntervalMs(map);
 
     currentSampleAnyMatchActive_ = true;
+    currentSamplePollKind_ = 2; // SCPI
     currentSampleCount_ = 0;
     currentSampleLastValueText_.clear();
+    currentSampleScpiParam_ = commandParam;
+    currentSampleScpiRangeAttached_ = true;
+    currentSampleTargetMs_ = durationMs;
+    currentSampleIntervalMs_ = intervalMs;
+    currentSampleWindowTimer_.start();
     showlog(QStringLiteral("读电流连续采样：窗口 %1ms，间隔 %2ms，期间任一值卡控合格即通过")
                 .arg(durationMs)
                 .arg(intervalMs));
 
-    QElapsedTimer sampleTimer;
-    sampleTimer.start();
-    while (sampleTimer.elapsed() < durationMs && !isActiveTestCaseStepDone()) {
-        if (!isTestContinue) {
-            currentSampleAnyMatchActive_ = false;
-            markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
-            showlog(QStringLiteral("读电流连续采样已中止"));
-            return;
-        }
-        QString errStr;
-        bool ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, commandParam, &errStr);
-        if (!ok) {
-            VisaChannel::waitWork(200);
-            ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, commandParam, &errStr);
-        }
-        if (!ok) {
-            VisaChannel::waitWork(300);
-            ok = scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, commandParam, &errStr);
-        }
-        if (!ok) {
-            showlog(QStringLiteral("读电流采样失败（继续）：%1").arg(errStr));
-        }
-        if (isActiveTestCaseStepDone())
-            break;
-        const int remain = durationMs - static_cast<int>(sampleTimer.elapsed());
-        if (remain <= 0)
-            break;
-        waitWork(qMin(intervalMs, remain));
+    // 一拖多：不可在 startTask 内 while+waitWork 堵窗口（会饿死邻工位 / TotallyTask 单轮数秒）
+    if (!currentSamplePollTimer_) {
+        currentSamplePollTimer_ = new QTimer(this);
+        QObject::connect(currentSamplePollTimer_, &QTimer::timeout, this, [this]() { onCurrentSamplePoll(); });
     }
+    currentSamplePollTimer_->setInterval(qMax(20, intervalMs));
+    currentSamplePollTimer_->start();
+    onScpiCurrentSamplePoll();
+}
 
+void QFreeWork::abortScpiCurrentSampleWindow() {
+    if (currentSamplePollTimer_)
+        currentSamplePollTimer_->stop();
     currentSampleAnyMatchActive_ = false;
+    currentSamplePollKind_ = 0;
+    markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
+    showlog(QStringLiteral("读电流连续采样已中止"));
+}
+
+void QFreeWork::finishScpiCurrentSampleWindowFail() {
+    if (currentSamplePollTimer_)
+        currentSamplePollTimer_->stop();
+    currentSampleAnyMatchActive_ = false;
+    currentSamplePollKind_ = 0;
     if (isActiveTestCaseStepDone())
         return;
-
     const QString failData =
         currentSampleLastValueText_.isEmpty() ? QStringLiteral("无有效读数") : currentSampleLastValueText_;
     showlog(QStringLiteral("读电流采样结束：共 %1 次，无一值落入卡控范围，判定失败（末次 %2）")
                 .arg(currentSampleCount_)
                 .arg(failData));
     markActiveTestCaseStepDone(false, failData, QStringLiteral("失败"));
+}
+
+void QFreeWork::onCurrentSamplePoll() {
+    if (currentSamplePollKind_ == 2)
+        onScpiCurrentSamplePoll();
+    else if (currentSamplePollKind_ == 1)
+        onAsdCurrentSamplePoll();
+}
+
+void QFreeWork::onScpiCurrentSamplePoll() {
+    if (!currentSampleAnyMatchActive_ || currentSamplePollKind_ != 2)
+        return;
+    if (isActiveTestCaseStepDone()) {
+        if (currentSamplePollTimer_)
+            currentSamplePollTimer_->stop();
+        currentSampleAnyMatchActive_ = false;
+        currentSamplePollKind_ = 0;
+        return;
+    }
+    if (!isTestContinue) {
+        abortScpiCurrentSampleWindow();
+        return;
+    }
+    if (currentSampleWindowTimer_.elapsed() >= currentSampleTargetMs_) {
+        finishScpiCurrentSampleWindowFail();
+        return;
+    }
+
+    QString errStr;
+    // 每拍只读一次：失败留给下一拍，避免在 startTask/定时器回调里连重试堵死邻工位
+    const bool ok =
+        scpiVisaManager()->exec(HuilingScpiCmd::ReadProgrammableCurrent, currentSampleScpiParam_, &errStr);
+    if (ok && currentSampleScpiRangeAttached_ && currentSampleScpiParam_.canConvert<QVariantMap>()) {
+        QVariantMap stripped = currentSampleScpiParam_.toMap();
+        stripped.remove(QStringLiteral("currentRange"));
+        currentSampleScpiParam_ = stripped;
+        currentSampleScpiRangeAttached_ = false;
+    }
+    if (!ok)
+        showlog(QStringLiteral("读电流采样失败（继续）：%1").arg(errStr));
+
+    if (isActiveTestCaseStepDone()) {
+        if (currentSamplePollTimer_)
+            currentSamplePollTimer_->stop();
+        currentSampleAnyMatchActive_ = false;
+        currentSamplePollKind_ = 0;
+    }
 }
 
 void QFreeWork::runAsdProgrammableCurrentSampleAnyMatch(const TestCaseDefinition& def, quint8 moduleAddr,
@@ -1315,7 +1564,6 @@ void QFreeWork::runAsdProgrammableCurrentSampleAnyMatch(const TestCaseDefinition
         map = resolveTestCaseSendParamTree(def.send.param).toMap();
     const int durationMs = currentSampleDurationMs(def, map);
     const int intervalMs = currentSampleIntervalMs(map);
-    const QString channelText = QStringLiteral("CH%1").arg(channel);
     auto* box = qobject_cast<QFreeWorkBox*>(window());
     Asd9026aDevice* asdDevice = box ? box->sharedAsd9026aDevice() : nullptr;
     if (!asdDevice) {
@@ -1323,58 +1571,120 @@ void QFreeWork::runAsdProgrammableCurrentSampleAnyMatch(const TestCaseDefinition
         showlog(QStringLiteral("ASD9026A 共享设备对象不存在"));
         return;
     }
+    if (currentSampleAnyMatchActive_) {
+        showlog(QStringLiteral("ASD9026A 读电流：上一窗采样尚未结束，忽略重复启动"));
+        return;
+    }
 
     currentSampleAnyMatchActive_ = true;
+    currentSamplePollKind_ = 1; // ASD
     currentSampleCount_ = 0;
+    currentSampleSum_ = 0.0;
     currentSampleLastValueText_.clear();
+    currentSampleAsdModuleAddr_ = moduleAddr;
+    currentSampleAsdChannel_ = channel;
+    currentSampleTargetMs_ = durationMs;
+    currentSampleIntervalMs_ = intervalMs;
+    currentSampleWindowTimer_.start();
     showlog(QStringLiteral("ASD9026A 读电流连续采样：窗口 %1ms，间隔 %2ms，期间任一值卡控合格即通过")
                 .arg(durationMs)
                 .arg(intervalMs));
 
-    QElapsedTimer sampleTimer;
-    sampleTimer.start();
-    while (sampleTimer.elapsed() < durationMs && !isActiveTestCaseStepDone()) {
-        if (!isTestContinue) {
-            currentSampleAnyMatchActive_ = false;
-            markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
-            showlog(QStringLiteral("ASD9026A 读电流连续采样已中止"));
-            return;
-        }
-        Asd9026aAnalogStatus status;
-        QString errStr;
-        if (!asdDevice->readAnalogStatus(moduleAddr, &status, &errStr)) {
-            showlog(QStringLiteral("ASD9026A 读电流采样失败（继续）：%1").arg(errStr));
-        } else {
-            const double currentMa = status.current * 1000.0;
-            ProtocolMeasureData measureData;
-            measureData.deviceName = QStringLiteral("ASD9026A");
-            measureData.channel = channelText;
-            measureData.type = QStringLiteral("Current");
-            measureData.value = currentMa;
-            measureData.valueText = QStringLiteral("%1 mA").arg(currentMa, 0, 'f', 4);
-            measureData.unit = QStringLiteral("mA");
-            measureData.isOk = true;
-            onUsbInstrumentReport(
-                ProtocolReport(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(measureData)));
-        }
-        if (isActiveTestCaseStepDone())
-            break;
-        const int remain = durationMs - static_cast<int>(sampleTimer.elapsed());
-        if (remain <= 0)
-            break;
-        waitWork(qMin(intervalMs, remain));
+    // 一拖多：不可在 startTask 内 while+waitWork 堵窗口（会饿死邻工位采样）
+    if (!currentSamplePollTimer_) {
+        currentSamplePollTimer_ = new QTimer(this);
+        QObject::connect(currentSamplePollTimer_, &QTimer::timeout, this, [this]() { onCurrentSamplePoll(); });
     }
+    currentSamplePollTimer_->setInterval(qMax(20, intervalMs));
+    currentSamplePollTimer_->start();
+    // 立即采一次，避免首点再等一个 interval
+    onAsdCurrentSamplePoll();
+}
 
+void QFreeWork::abortAsdCurrentSampleWindow() {
+    if (currentSamplePollTimer_)
+        currentSamplePollTimer_->stop();
     currentSampleAnyMatchActive_ = false;
+    currentSamplePollKind_ = 0;
+    markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
+    showlog(QStringLiteral("ASD9026A 读电流连续采样已中止"));
+}
+
+void QFreeWork::finishAsdCurrentSampleWindowFail() {
+    if (currentSamplePollTimer_)
+        currentSamplePollTimer_->stop();
+    currentSampleAnyMatchActive_ = false;
+    currentSamplePollKind_ = 0;
     if (isActiveTestCaseStepDone())
         return;
-
     const QString failData =
         currentSampleLastValueText_.isEmpty() ? QStringLiteral("无有效读数") : currentSampleLastValueText_;
     showlog(QStringLiteral("ASD9026A 读电流采样结束：共 %1 次，无一值落入卡控范围，判定失败（末次 %2）")
                 .arg(currentSampleCount_)
                 .arg(failData));
     markActiveTestCaseStepDone(false, failData, QStringLiteral("失败"));
+}
+
+void QFreeWork::onAsdCurrentSamplePoll() {
+    if (!currentSampleAnyMatchActive_ || currentSamplePollKind_ != 1)
+        return;
+    if (isActiveTestCaseStepDone()) {
+        if (currentSamplePollTimer_)
+            currentSamplePollTimer_->stop();
+        currentSampleAnyMatchActive_ = false;
+        currentSamplePollKind_ = 0;
+        return;
+    }
+    if (!isTestContinue) {
+        abortAsdCurrentSampleWindow();
+        return;
+    }
+    if (currentSampleWindowTimer_.elapsed() >= currentSampleTargetMs_) {
+        finishAsdCurrentSampleWindowFail();
+        return;
+    }
+
+    auto* box = qobject_cast<QFreeWorkBox*>(window());
+    Asd9026aDevice* asdDevice = box ? box->sharedAsd9026aDevice() : nullptr;
+    if (!asdDevice) {
+        if (currentSamplePollTimer_)
+            currentSamplePollTimer_->stop();
+        currentSampleAnyMatchActive_ = false;
+        markActiveTestCaseStepDone(false, QStringLiteral("共享设备不存在"), QStringLiteral("失败"));
+        showlog(QStringLiteral("ASD9026A 共享设备对象不存在"));
+        return;
+    }
+
+    Asd9026aAnalogStatus status;
+    QString errStr;
+    bool ok = false;
+    // 同线程不可阻塞抢锁：邻工位持锁时 processEvents 再 lock 会死锁，抢不到就本拍跳过
+    if (!box->sharedAsd9026aMutex()->tryLock())
+        return;
+    ok = asdDevice->readAnalogStatus(currentSampleAsdModuleAddr_, &status, &errStr);
+    box->sharedAsd9026aMutex()->unlock();
+    if (!ok) {
+        showlog(QStringLiteral("ASD9026A 读电流采样失败（继续）：%1").arg(errStr));
+    } else {
+        const double currentMa = status.current * 1000.0;
+        ProtocolMeasureData measureData;
+        measureData.deviceName = QStringLiteral("ASD9026A");
+        measureData.channel = QStringLiteral("CH%1").arg(currentSampleAsdChannel_);
+        measureData.type = QStringLiteral("Current");
+        measureData.value = currentMa;
+        measureData.valueText = QStringLiteral("%1 mA").arg(currentMa, 0, 'f', 4);
+        measureData.unit = QStringLiteral("mA");
+        measureData.isOk = true;
+        onUsbInstrumentReport(
+            ProtocolReport(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(measureData)));
+    }
+
+    if (isActiveTestCaseStepDone()) {
+        if (currentSamplePollTimer_)
+            currentSamplePollTimer_->stop();
+        currentSampleAnyMatchActive_ = false;
+        currentSamplePollKind_ = 0;
+    }
 }
 
 void QFreeWork::runJigAmmeterCurrentSampleAnyMatch() {
@@ -1391,6 +1701,7 @@ void QFreeWork::runJigAmmeterCurrentSampleAnyMatch() {
     // ini 里 CommandTimeoutMs=300 过短，至少 1s
     durationMs = qMax(1000, durationMs);
     const int intervalMs = currentSampleIntervalMs(map);
+    const QString stepName = activeTestCase_.meta.name;
 
     currentSampleAnyMatchActive_ = true;
     currentSampleCount_ = 0;
@@ -1401,7 +1712,8 @@ void QFreeWork::runJigAmmeterCurrentSampleAnyMatch() {
 
     QElapsedTimer sampleTimer;
     sampleTimer.start();
-    while (sampleTimer.elapsed() < durationMs && !stepRuntime_.done && !isActiveTestCaseStepDone()) {
+    while (sampleTimer.elapsed() < durationMs && !stepRuntime_.done && isActiveTestCaseStep(stepName)
+           && !isActiveTestCaseStepDone()) {
         if (!isTestContinue) {
             currentSampleAnyMatchActive_ = false;
             markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
@@ -1411,6 +1723,8 @@ void QFreeWork::runJigAmmeterCurrentSampleAnyMatch() {
         QString errStr;
         if (!execAmmeterMeasure(&errStr))
             showlog(QStringLiteral("治具电流采样下发失败（继续）：%1").arg(errStr));
+        if (!isActiveTestCaseStep(stepName) || isActiveTestCaseStepDone())
+            break;
         const int remain = durationMs - static_cast<int>(sampleTimer.elapsed());
         if (remain <= 0)
             break;
@@ -1418,7 +1732,7 @@ void QFreeWork::runJigAmmeterCurrentSampleAnyMatch() {
     }
 
     currentSampleAnyMatchActive_ = false;
-    if (stepRuntime_.done || isActiveTestCaseStepDone())
+    if (stepRuntime_.done || !isActiveTestCaseStep(stepName) || isActiveTestCaseStepDone())
         return;
 
     const QString failData =
@@ -1437,6 +1751,7 @@ void QFreeWork::runModbusAmmeterCurrentSampleAnyMatch(const TestCaseDefinition& 
         map = resolveTestCaseSendParamTree(def.send.param).toMap();
     const int durationMs = qMax(1000, currentSampleDurationMs(def, map));
     const int intervalMs = currentSampleIntervalMs(map);
+    const QString stepName = def.meta.name;
 
     currentSampleAnyMatchActive_ = true;
     currentSampleCount_ = 0;
@@ -1447,7 +1762,7 @@ void QFreeWork::runModbusAmmeterCurrentSampleAnyMatch(const TestCaseDefinition& 
 
     QElapsedTimer sampleTimer;
     sampleTimer.start();
-    while (sampleTimer.elapsed() < durationMs && !isActiveTestCaseStepDone()) {
+    while (sampleTimer.elapsed() < durationMs && isActiveTestCaseStep(stepName) && !isActiveTestCaseStepDone()) {
         if (!isTestContinue) {
             currentSampleAnyMatchActive_ = false;
             markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
@@ -1460,6 +1775,10 @@ void QFreeWork::runModbusAmmeterCurrentSampleAnyMatch(const TestCaseDefinition& 
             ok = modbusManager.exec(hqAmmeterRtuCmdFromName(def.send.deviceCmd), &errStr);
         else if (route == ModbusDeviceRoute::LxAmmeterRtu)
             ok = modbusManager.exec(lxAmmeterRtuCmdFromName(def.send.deviceCmd), &errStr);
+        else if (route == ModbusDeviceRoute::Aa55AmmeterRtu)
+            ok = modbusManager.exec(aa55AmmeterRtuCmdFromName(def.send.deviceCmd), &errStr);
+        else if (route == ModbusDeviceRoute::FaFbFloatAmmeterRtu)
+            ok = modbusManager.exec(faFbFloatAmmeterRtuCmdFromName(def.send.deviceCmd), map, &errStr);
         else if (route == ModbusDeviceRoute::MultiTempLoggerRtu) {
             QVariantMap tempParam = map;
             SharedInstrument::applyTempLoggerParamsForStation(getIndex(), &tempParam);
@@ -1511,7 +1830,7 @@ void QFreeWork::runModbusAmmeterCurrentSampleAnyMatch(const TestCaseDefinition& 
             ok = false;
         if (!ok)
             showlog(QStringLiteral("Modbus 电流表采样下发失败（继续）：%1").arg(errStr));
-        if (isActiveTestCaseStepDone())
+        if (!isActiveTestCaseStep(stepName) || isActiveTestCaseStepDone())
             break;
         const int remain = durationMs - static_cast<int>(sampleTimer.elapsed());
         if (remain <= 0)
@@ -1520,7 +1839,7 @@ void QFreeWork::runModbusAmmeterCurrentSampleAnyMatch(const TestCaseDefinition& 
     }
 
     currentSampleAnyMatchActive_ = false;
-    if (isActiveTestCaseStepDone())
+    if (!isActiveTestCaseStep(stepName) || isActiveTestCaseStepDone())
         return;
 
     const QString failData =
@@ -1799,6 +2118,7 @@ void QFreeWork::runXwdFixtureCurrentSampleAnyMatch(const TestCaseDefinition& def
     const int durationMs = qMax(1000, currentSampleDurationMs(def, map));
     const int intervalMs = currentSampleIntervalMs(map);
     const int timeoutMs = qMax(2000, perReadTimeoutMs);
+    const QString stepName = def.meta.name;
 
     currentSampleAnyMatchActive_ = true;
     currentSampleCount_ = 0;
@@ -1810,7 +2130,7 @@ void QFreeWork::runXwdFixtureCurrentSampleAnyMatch(const TestCaseDefinition& def
 
     QElapsedTimer sampleTimer;
     sampleTimer.start();
-    while (sampleTimer.elapsed() < durationMs && !isActiveTestCaseStepDone()) {
+    while (sampleTimer.elapsed() < durationMs && isActiveTestCaseStep(stepName) && !isActiveTestCaseStepDone()) {
         if (!isTestContinue) {
             currentSampleAnyMatchActive_ = false;
             markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
@@ -1862,7 +2182,7 @@ void QFreeWork::runXwdFixtureCurrentSampleAnyMatch(const TestCaseDefinition& def
             }
         }
 
-        if (isActiveTestCaseStepDone())
+        if (!isActiveTestCaseStep(stepName) || isActiveTestCaseStepDone())
             break;
         const int remain = durationMs - static_cast<int>(sampleTimer.elapsed());
         if (remain <= 0)
@@ -1871,7 +2191,7 @@ void QFreeWork::runXwdFixtureCurrentSampleAnyMatch(const TestCaseDefinition& def
     }
 
     currentSampleAnyMatchActive_ = false;
-    if (isActiveTestCaseStepDone())
+    if (!isActiveTestCaseStep(stepName) || isActiveTestCaseStepDone())
         return;
 
     const QString failData =
@@ -1883,6 +2203,9 @@ void QFreeWork::runXwdFixtureCurrentSampleAnyMatch(const TestCaseDefinition& def
 }
 
 void QFreeWork::markActiveTestCaseStepDone(bool pass, const QString& testData, const QString& ask) {
+    // 已结案不再覆盖（例如 any-match 已通过，窗口收尾勿写成失败）
+    if (testCaseStepResult_.done)
+        return;
     testCaseStepResult_.done = true;
     testCaseStepResult_.pass = pass;
     testCaseStepResult_.testData = testData;
@@ -1948,6 +2271,8 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             ctx->executeFixtureAsd9026aCase(def);
         else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::Xwd)
             ctx->executeFixtureXwdCase(def);
+        else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::Universal)
+            ctx->executeFixtureUniversalCase(def);
         else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::JieliBtBox)
             ctx->executeFixtureJieliBtBoxCase(def);
         else
@@ -1975,6 +2300,42 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
         const QString deviceKey = def.send.device;
         ModbusDeviceRoute devRoute = ModbusDeviceCatalog::deviceRouteFromIni(deviceKey);
         ctx->modbusManager.setDeviceRoute(devRoute);
+
+        // RTU 电流表/万用表走工位「万用表串口」；信捷在自由工站走 Box 共享口，勿再开万用表口
+        const bool needStationUsbRtu =
+            devRoute == ModbusDeviceRoute::HqAmmeterRtu || devRoute == ModbusDeviceRoute::LxAmmeterRtu
+            || devRoute == ModbusDeviceRoute::Aa55AmmeterRtu
+            || devRoute == ModbusDeviceRoute::FaFbFloatAmmeterRtu;
+        const bool xinjieUseSharedBox = (devRoute == ModbusDeviceRoute::XinjiePlcRtu)
+            && (qobject_cast<QFreeWorkBox*>(ctx->window()) != nullptr);
+        if (needStationUsbRtu) {
+            if (!ctx->usbSerialPort || !ctx->usbSerialPort->isOpen())
+                ctx->openUsbSerialPort();
+            if (!ctx->usbSerialPort || !ctx->usbSerialPort->isOpen()) {
+                const QString port =
+                    ctx->getUsbcomNameCombo() ? ctx->getUsbcomNameCombo()->currentText().trimmed() : QString();
+                ctx->showlog(QStringLiteral("Modbus RTU 串口未打开：请在工位选择万用表串口（当前=%1 @ %2）")
+                                 .arg(port.isEmpty() ? QStringLiteral("未选") : port)
+                                 .arg(ctx->usbBaudRate));
+                ctx->markActiveTestCaseStepDone(false, QStringLiteral("Modbus RTU 串口未打开"),
+                                                QStringLiteral("失败"));
+                return;
+            }
+        }
+        if (devRoute == ModbusDeviceRoute::XinjiePlcRtu && !xinjieUseSharedBox) {
+            if (!ctx->usbSerialPort || !ctx->usbSerialPort->isOpen())
+                ctx->openUsbSerialPort();
+            if (!ctx->usbSerialPort || !ctx->usbSerialPort->isOpen()) {
+                const QString port =
+                    ctx->getUsbcomNameCombo() ? ctx->getUsbcomNameCombo()->currentText().trimmed() : QString();
+                ctx->showlog(QStringLiteral("Modbus RTU 串口未打开：请在工位选择万用表串口（当前=%1 @ %2）")
+                                 .arg(port.isEmpty() ? QStringLiteral("未选") : port)
+                                 .arg(ctx->usbBaudRate));
+                ctx->markActiveTestCaseStepDone(false, QStringLiteral("Modbus RTU 串口未打开"),
+                                                QStringLiteral("失败"));
+                return;
+            }
+        }
 
         const QVariant resolvedParam = ctx->resolveTestCaseSendParamTree(def.send.param);
         QString errStr;
@@ -2040,6 +2401,25 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             }
         } else if (devRoute == ModbusDeviceRoute::XinjiePlcRtu) {
             XinjePlcCmd xjCmd = xinjiePlcCmdFromName(def.send.deviceCmd);
+            auto* xinjieBox = qobject_cast<QFreeWorkBox*>(ctx->window());
+            auto execXinje = [&](XinjePlcCmd cmd, const QVariant& param, QVariant* result, QString* err) -> bool {
+                if (xinjieBox) {
+                    QMutexLocker lock(xinjieBox->sharedXinjePlcMutex());
+                    if (!xinjieBox->ensureSharedXinjePlcConnected(param, err))
+                        return false;
+                    if (cmd == XinjePlcCmd::Connect)
+                        return true;
+                    // 测试中不断开共享口，避免后续步骤/其它工位失联
+                    if (cmd == XinjePlcCmd::Disconnect)
+                        return true;
+                    xinjieBox->sharedXinjePlcManager().setDeviceRoute(ModbusDeviceRoute::XinjiePlcRtu);
+                    return xinjieBox->sharedXinjePlcManager().exec(cmd, param, result, err);
+                }
+                ctx->modbusManager.setDeviceRoute(ModbusDeviceRoute::XinjiePlcRtu);
+                return ctx->modbusManager.exec(cmd, param, result, err);
+            };
+            if (xinjieBox)
+                qDebug() << "[信捷PLC] 使用自动扫码共享串口，不重复打开";
             if ((xjCmd == XinjePlcCmd::ReadCoils || xjCmd == XinjePlcCmd::ReadDiscreteInputs)
                 && def.send.action == TestCaseSendAction::Get && def.gate.enabled) {
                 const int timeoutMs = qMax(1000, TestCaseRunner::commandTimeoutMs(def));
@@ -2057,7 +2437,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                     }
                     QVariant resultVal;
                     QString errStr;
-                    bool ok = ctx->modbusManager.exec(xjCmd, resolvedParam, &resultVal, &errStr);
+                    bool ok = execXinje(xjCmd, resolvedParam, &resultVal, &errStr);
                     ++sampleIdx;
                     if (ok) {
                         ProtocolMeasureData measureData;
@@ -2123,7 +2503,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             }
 
             QVariant resultVal;
-            bool ok = ctx->modbusManager.exec(xjCmd, resolvedParam, &resultVal, &errStr);
+            bool ok = execXinje(xjCmd, resolvedParam, &resultVal, &errStr);
             if (!ok) {
                 ctx->showlog(QStringLiteral("信捷 PLC 指令 [%1] 执行失败: %2").arg(def.send.deviceCmd, errStr));
                 ctx->markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
@@ -2188,6 +2568,50 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                     ctx->markActiveTestCaseStepDone(false, QStringLiteral("超时"), QStringLiteral("失败"));
                 });
                 ctx->showlog(QStringLiteral("等待 LX 电流表回包：%1（超时 %2ms）").arg(def.send.deviceCmd).arg(timeoutMs));
+            } else {
+                ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
+            }
+        } else if (devRoute == ModbusDeviceRoute::Aa55AmmeterRtu) {
+            if (def.send.action == TestCaseSendAction::Get && def.gate.enabled) {
+                ctx->runModbusAmmeterCurrentSampleAnyMatch(def, devRoute);
+                return;
+            }
+            Aa55AmmeterRtuCmd cmd = aa55AmmeterRtuCmdFromName(def.send.deviceCmd);
+            bool ok = ctx->modbusManager.exec(cmd, &errStr);
+            if (!ok) {
+                ctx->showlog(QStringLiteral("AA55 电流表指令 [%1] 下发失败: %2").arg(def.send.deviceCmd, errStr));
+                ctx->markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
+            } else if (def.send.action == TestCaseSendAction::Get) {
+                const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+                QTimer::singleShot(timeoutMs, ctx, [ctx, def]() {
+                    if (!ctx->isActiveTestCaseStep(def.meta.name) || ctx->isActiveTestCaseStepDone())
+                        return;
+                    ctx->showlog(QStringLiteral("AA55 电流表等待超时：%1").arg(def.send.deviceCmd));
+                    ctx->markActiveTestCaseStepDone(false, QStringLiteral("超时"), QStringLiteral("失败"));
+                });
+                ctx->showlog(QStringLiteral("等待 AA55 电流表回包：%1（超时 %2ms）").arg(def.send.deviceCmd).arg(timeoutMs));
+            } else {
+                ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
+            }
+        } else if (devRoute == ModbusDeviceRoute::FaFbFloatAmmeterRtu) {
+            if (def.send.action == TestCaseSendAction::Get && def.gate.enabled) {
+                ctx->runModbusAmmeterCurrentSampleAnyMatch(def, devRoute);
+                return;
+            }
+            FaFbFloatAmmeterRtuCmd cmd = faFbFloatAmmeterRtuCmdFromName(def.send.deviceCmd);
+            bool ok = ctx->modbusManager.exec(cmd, resolvedParam, &errStr);
+            if (!ok) {
+                ctx->showlog(QStringLiteral("FAFB 万用表指令 [%1] 下发失败: %2").arg(def.send.deviceCmd, errStr));
+                ctx->markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
+            } else if (def.send.action == TestCaseSendAction::Get) {
+                const int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+                QTimer::singleShot(timeoutMs, ctx, [ctx, def]() {
+                    if (!ctx->isActiveTestCaseStep(def.meta.name) || ctx->isActiveTestCaseStepDone())
+                        return;
+                    ctx->showlog(QStringLiteral("FAFB 万用表等待超时：%1").arg(def.send.deviceCmd));
+                    ctx->markActiveTestCaseStepDone(false, QStringLiteral("超时"), QStringLiteral("失败"));
+                });
+                ctx->showlog(QStringLiteral("等待 FAFB 万用表回包：%1（超时 %2ms）").arg(def.send.deviceCmd).arg(timeoutMs));
             } else {
                 ctx->markActiveTestCaseStepDone(true, QStringLiteral("-"), QStringLiteral("通过"));
             }
@@ -2332,6 +2756,17 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                     ctx->showlog(QStringLiteral("共享程控电源：%1（VISA 地址无效，请检查配置Visa程控电源步骤的 visaAddress/visaAddress0）")
                                      .arg(shareDetail));
             }
+            // 读电流前打出实际 SCPI，便于确认辅路是否已改成 MEAS:CURR2?
+            if (def.send.deviceCmd.compare(QLatin1String("ReadProgrammableCurrent"), Qt::CaseInsensitive) == 0) {
+                const int ch = visaLoadMap.value(QStringLiteral("powerChannel")).toInt();
+                const QString readCmd =
+                    visaLoadMap.value(QStringLiteral("scpiReadCurrentCmd")).toString().trimmed();
+                if (!readCmd.isEmpty()) {
+                    ctx->showlog(QStringLiteral("读电流指令：通道%1 → %2")
+                                     .arg(ch > 0 ? ch : 1)
+                                     .arg(readCmd));
+                }
+            }
             const int visaTimeoutMs = TestCaseRunner::commandTimeoutMs(def);
             const QString resolvedVisaAddr = visaLoadMap.value(QStringLiteral("visaAddress")).toString().trimmed();
             if (looksLikeBluetoothMacAddress(resolvedVisaAddr)) {
@@ -2400,7 +2835,13 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                 if (def.send.deviceCmd == QLatin1String("ProgrammablePowerOutput")) {
                     const bool enable = stepParams.commandParam.toBool();
                     testData = enable ? QStringLiteral("ON") : QStringLiteral("OFF");
-                    ctx->showlog(QStringLiteral("程控电源输出%1").arg(enable ? QStringLiteral("已打开") : QStringLiteral("已关闭")));
+                    const QString outCmd =
+                        (enable ? profile.scpiOutputOnCmd : profile.scpiOutputOffCmd).trimmed();
+                    const int ch = profile.powerChannel > 0 ? profile.powerChannel : 1;
+                    ctx->showlog(QStringLiteral("程控电源输出%1：通道%2 → %3")
+                                     .arg(enable ? QStringLiteral("已打开") : QStringLiteral("已关闭"))
+                                     .arg(ch)
+                                     .arg(outCmd.isEmpty() ? QStringLiteral("(空)") : outCmd));
                 } else if (def.send.deviceCmd == QLatin1String("ConfigureProgrammablePower")) {
                     const QVariantMap cmdMap = stepParams.commandParam.toMap();
                     const double voltageV =
@@ -2408,7 +2849,21 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
                     const double currentA =
                         huilingParamDouble(cmdMap, QStringLiteral("current"), profile.scpiPowerCurrentA);
                     testData = QStringLiteral("V=%1V,I=%2A").arg(voltageV, 0, 'f', 2).arg(currentA, 0, 'f', 3);
-                    ctx->showlog(QStringLiteral("程控电源已配置：%1 V，限流 %2 A").arg(voltageV, 0, 'f', 2).arg(currentA, 0, 'f', 3));
+                    if (profile.stationsPerDevice > 1 && !profile.scpiChannelSelectCmd.trimmed().isEmpty()) {
+                        ctx->showlog(QStringLiteral("程控电源已配置：%1 V，限流 %2 A（通道1~%3 均已写入）")
+                                         .arg(voltageV, 0, 'f', 2)
+                                         .arg(currentA, 0, 'f', 3)
+                                         .arg(profile.stationsPerDevice));
+                    } else if (profile.powerChannel > 1) {
+                        ctx->showlog(QStringLiteral("程控电源已配置：通道%1，%2 V，限流 %3 A")
+                                         .arg(profile.powerChannel)
+                                         .arg(voltageV, 0, 'f', 2)
+                                         .arg(currentA, 0, 'f', 3));
+                    } else {
+                        ctx->showlog(QStringLiteral("程控电源已配置：%1 V，限流 %2 A")
+                                         .arg(voltageV, 0, 'f', 2)
+                                         .arg(currentA, 0, 'f', 3));
+                    }
                 }
                 if (def.send.action == TestCaseSendAction::Get) {
                     if (!def.gate.enabled) {
@@ -2946,6 +3401,32 @@ void QFreeWork::executeFixtureAsd9026aCase(const TestCaseDefinition& def) {
             ProtocolReport(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(measureData)));
     };
 
+    // 连续采样走异步，不在此抢串口锁
+    if (cmd == Asd9026aCmd::ReadProgrammableCurrent && def.gate.enabled) {
+        runAsdProgrammableCurrentSampleAnyMatch(def, moduleAddr, channel);
+        return;
+    }
+
+    // 同线程禁用阻塞锁：抢不到则延后重试，避免与邻工位采样嵌套死锁
+    if (!box->sharedAsd9026aMutex()->tryLock()) {
+        showlog(QStringLiteral("ASD9026A 串口忙，稍后重试…"));
+        QTimer::singleShot(50, this, [this, def]() {
+            if (!isTestContinue || !testCaseStepActive_ || isActiveTestCaseStepDone())
+                return;
+            if (activeTestCase_.meta.name != def.meta.name)
+                return;
+            executeFixtureAsd9026aCase(def);
+        });
+        return;
+    }
+    struct AsdLockGuard {
+        QMutex* m = nullptr;
+        ~AsdLockGuard() {
+            if (m)
+                m->unlock();
+        }
+    } asdLockGuard{box->sharedAsd9026aMutex()};
+
     bool ok = false;
     QString testData = QStringLiteral("-");
     QString actualTxHex;
@@ -3031,10 +3512,6 @@ void QFreeWork::executeFixtureAsd9026aCase(const TestCaseDefinition& def) {
     }
     case Asd9026aCmd::ReadProgrammableVoltage:
     case Asd9026aCmd::ReadProgrammableCurrent: {
-        if (cmd == Asd9026aCmd::ReadProgrammableCurrent && def.gate.enabled) {
-            runAsdProgrammableCurrentSampleAnyMatch(def, moduleAddr, channel);
-            return;
-        }
         Asd9026aAnalogStatus status;
         if (!txHexOverride.isEmpty()) {
             QByteArray response;
@@ -3103,6 +3580,50 @@ void QFreeWork::executeFixtureXwdCase(const TestCaseDefinition& def) {
         return;
     }
 
+    // QueryDown / Up / SetUp / MoveUp / 继电器：走 PLC 治具共享串口一拖多屏障（先于工站 XWD 串口）
+    if (cmd == XwdRawFixtureCmd::QueryDown) {
+        PlcStationSyncBarrier::instance().executeSyncXwdTextCmd(
+            this, def, QStringLiteral("DOWN?\\r\\n"), true, QStringLiteral("ALL_DOWN_OK"), true);
+        return;
+    }
+    if (cmd == XwdRawFixtureCmd::Up) {
+        const bool waitReply = (def.send.action != TestCaseSendAction::Set);
+        PlcStationSyncBarrier::instance().executeSyncXwdTextCmd(
+            this, def, QStringLiteral("UP\\r\\n"), false, QStringLiteral("OK"), waitReply);
+        return;
+    }
+    if (cmd == XwdRawFixtureCmd::SetUp) {
+        const bool waitReply = (def.send.action != TestCaseSendAction::Set);
+        PlcStationSyncBarrier::instance().executeSyncXwdTextCmd(
+            this, def, QStringLiteral("SET_UP\\r\\n"), false, QStringLiteral("OK"), waitReply);
+        return;
+    }
+    if (cmd == XwdRawFixtureCmd::MoveUp) {
+        const bool waitReply = (def.send.action != TestCaseSendAction::Set);
+        PlcStationSyncBarrier::instance().executeSyncXwdTextCmd(
+            this, def, QStringLiteral("SET_ALL_UP\\r\\n"), false, QStringLiteral("OK"), waitReply);
+        return;
+    }
+    if (cmd == XwdRawFixtureCmd::Relay1On || cmd == XwdRawFixtureCmd::Relay2On) {
+        // 工位N→RELAY_N_ON；不等待其它工站（流程配「继电器1接通」即可，2号自动走继电器2）
+        PlcStationSyncBarrier::instance().executeImmediateXwdRelayByStation(this, def, true);
+        return;
+    }
+    if (cmd == XwdRawFixtureCmd::Relay1Off || cmd == XwdRawFixtureCmd::Relay2Off) {
+        PlcStationSyncBarrier::instance().executeImmediateXwdRelayByStation(this, def, false);
+        return;
+    }
+    if (cmd == XwdRawFixtureCmd::LoadOn) {
+        PlcStationSyncBarrier::instance().executeSyncXwdTextCmd(
+            this, def, QStringLiteral("LOAD_ON\\r\\n"), false, QStringLiteral("OK"), false);
+        return;
+    }
+    if (cmd == XwdRawFixtureCmd::LoadOff) {
+        PlcStationSyncBarrier::instance().executeSyncXwdTextCmd(
+            this, def, QStringLiteral("LOAD_OFF\\r\\n"), false, QStringLiteral("OK"), false);
+        return;
+    }
+
     QString errStr;
     if (!ensureXwdJigUartOpen(this, &errStr)) {
         showlog(errStr);
@@ -3110,7 +3631,37 @@ void QFreeWork::executeFixtureXwdCase(const TestCaseDefinition& def) {
         return;
     }
 
-    const QString rawText = sendParamAsRawText(resolveTestCaseSendParamTree(def.send.param));
+    QString rawText;
+    if (cmd == XwdRawFixtureCmd::AddLoad1)
+        rawText = QStringLiteral("01 10 00 2B 00 02 04 00 08 03 E8 31 78");
+    else if (cmd == XwdRawFixtureCmd::AddLoad2)
+        rawText = QStringLiteral("01 10 00 2F 00 02 04 00 01 03 E8 E0 89");
+    else if (cmd == XwdRawFixtureCmd::CloseLoad1)
+        rawText = QStringLiteral("01 10 00 2F 00 02 04 00 01 00 00 E0 37");
+    else if (cmd == XwdRawFixtureCmd::CloseLoad2)
+        rawText = QStringLiteral("01 10 00 2B 00 02 04 00 08 00 00 31 C6");
+    else if (cmd == XwdRawFixtureCmd::QueryDown)
+        rawText = QStringLiteral("DOWN?\\r\\n");
+    else if (cmd == XwdRawFixtureCmd::Up)
+        rawText = QStringLiteral("UP\\r\\n");
+    else if (cmd == XwdRawFixtureCmd::SetUp)
+        rawText = QStringLiteral("SET_UP\\r\\n");
+    else if (cmd == XwdRawFixtureCmd::MoveUp)
+        rawText = QStringLiteral("SET_ALL_UP\\r\\n");
+    else if (cmd == XwdRawFixtureCmd::Relay1On)
+        rawText = QStringLiteral("RELAY_1_ON\\r\\n");
+    else if (cmd == XwdRawFixtureCmd::Relay1Off)
+        rawText = QStringLiteral("RELAY_1_OFF\\r\\n");
+    else if (cmd == XwdRawFixtureCmd::Relay2On)
+        rawText = QStringLiteral("RELAY_2_ON\\r\\n");
+    else if (cmd == XwdRawFixtureCmd::Relay2Off)
+        rawText = QStringLiteral("RELAY_2_OFF\\r\\n");
+    else if (cmd == XwdRawFixtureCmd::LoadOn)
+        rawText = QStringLiteral("LOAD_ON\\r\\n");
+    else if (cmd == XwdRawFixtureCmd::LoadOff)
+        rawText = QStringLiteral("LOAD_OFF\\r\\n");
+    else
+        rawText = sendParamAsRawText(resolveTestCaseSendParamTree(def.send.param));
     if (rawText.isEmpty()) {
         showlog(QStringLiteral("XWD治具发送内容为空，请配置 Send/Param/string"));
         markActiveTestCaseStepDone(false, QStringLiteral("参数为空"), QStringLiteral("失败"));
@@ -3139,15 +3690,104 @@ void QFreeWork::executeFixtureXwdCase(const TestCaseDefinition& def) {
         return;
     }
 
+    int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+    if (timeoutMs < 2000)
+        timeoutMs = 2000;
+    if (!jigSerialChannel_) {
+        showlog(QStringLiteral("XWD治具串口通道未初始化"));
+        markActiveTestCaseStepDone(false, QStringLiteral("串口未连接"), QStringLiteral("失败"));
+        return;
+    }
+
+    // DOWN?/UP/SET_UP/SET_ALL_UP 或 Gate=valueText：等文本行应答，不走电流采样
+    const bool textLineReply = (cmd == XwdRawFixtureCmd::QueryDown || cmd == XwdRawFixtureCmd::Up
+                                || cmd == XwdRawFixtureCmd::SetUp || cmd == XwdRawFixtureCmd::MoveUp
+                                || (def.gate.enabled
+                                    && def.gate.field.compare(QLatin1String("valueText"), Qt::CaseInsensitive) == 0));
+    if (textLineReply) {
+        showlog(QStringLiteral("XWD治具文本指令：%1，超时 %2ms").arg(rawText, QString::number(timeoutMs)));
+        const QString expected =
+            def.gate.enabled
+                ? def.gate.expected.trimmed()
+                : (cmd == XwdRawFixtureCmd::QueryDown ? QStringLiteral("ALL_DOWN_OK") : QStringLiteral("OK"));
+        const QString expectToken = expected.isEmpty()
+                                        ? (cmd == XwdRawFixtureCmd::QueryDown ? QStringLiteral("ALL_DOWN_OK")
+                                                                              : QStringLiteral("OK"))
+                                        : expected;
+        const bool pollUntilMatch = (cmd == XwdRawFixtureCmd::QueryDown);
+        QElapsedTimer waitTimer;
+        waitTimer.start();
+        QString lastLine;
+        while (true) {
+            if (!isTestContinue) {
+                markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
+                return;
+            }
+            const int remain = timeoutMs - static_cast<int>(waitTimer.elapsed());
+            if (remain <= 0)
+                break;
+            QString line;
+            QString receiveError;
+            const int onceMs = pollUntilMatch ? qMin(800, remain) : remain;
+            if (!sendAndCollectXwdLineReply(jigSerialChannel_, jigSerialPort, request, onceMs, &line,
+                                            &receiveError)) {
+                showlog(receiveError);
+                markActiveTestCaseStepDone(false, QStringLiteral("写入失败"), QStringLiteral("失败"));
+                return;
+            }
+            if (line.isEmpty()) {
+                if (!pollUntilMatch)
+                    break;
+                waitWork(qMin(200, remain));
+                continue;
+            }
+            lastLine = line;
+            showlog(QStringLiteral("XWD治具文本回包：%1").arg(line));
+            const bool matched =
+                (line.compare(expectToken, Qt::CaseInsensitive) == 0)
+                || (expectToken.contains(QStringLiteral("ALL_DOWN_OK"), Qt::CaseInsensitive)
+                    && line.contains(QStringLiteral("ALL_DOWN_OK"), Qt::CaseInsensitive));
+            if (!matched) {
+                if (pollUntilMatch) {
+                    waitWork(qMin(200, timeoutMs - static_cast<int>(waitTimer.elapsed())));
+                    continue;
+                }
+                ProtocolMeasureData measureData;
+                measureData.deviceName = QStringLiteral("XWD");
+                measureData.type = QStringLiteral("Reply");
+                measureData.valueText = line;
+                measureData.isOk = false;
+                if (def.gate.enabled
+                    && evaluateActiveTestCaseGate(QStringLiteral("ProtocolMeasureData"),
+                                                  QVariant::fromValue(measureData)))
+                    return;
+                markActiveTestCaseStepDone(false, line, QStringLiteral("失败"));
+                return;
+            }
+            ProtocolMeasureData measureData;
+            measureData.deviceName = QStringLiteral("XWD");
+            measureData.type = QStringLiteral("Reply");
+            measureData.valueText = line;
+            measureData.isOk = true;
+            if (def.gate.enabled
+                && evaluateActiveTestCaseGate(QStringLiteral("ProtocolMeasureData"),
+                                              QVariant::fromValue(measureData)))
+                return;
+            markActiveTestCaseStepDone(true, line, QStringLiteral("通过"));
+            return;
+        }
+        showlog(QStringLiteral("XWD治具文本应答超时（期望 %1，末次 %2）")
+                    .arg(expectToken, lastLine.isEmpty() ? QStringLiteral("-") : lastLine));
+        markActiveTestCaseStepDone(false, lastLine.isEmpty() ? QStringLiteral("接收超时") : lastLine,
+                                   QStringLiteral("失败"));
+        return;
+    }
+
     if (parsedAsHex)
         showlog(QStringLiteral("XWD治具读取下发（十六进制）：%1").arg(rawText));
     else
         showlog(QStringLiteral("XWD治具读取下发（原文）：%1").arg(rawText));
 
-    int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
-    // 该治具实测回包常 >300ms；过短超时会“设备已回、上位机已放弃”
-    if (timeoutMs < 2000)
-        timeoutMs = 2000;
     // 可由步骤指定读取通道；未指定时，一拖二按工位号取通道，一拖一取 CH1。
     const int stationSlots = qMax(1, SETTINGS.value(QStringLiteral("User/formColumn"), 1).toInt()
                                          * SETTINGS.value(QStringLiteral("User/formRow"), 1).toInt());
@@ -3164,11 +3804,6 @@ void QFreeWork::executeFixtureXwdCase(const TestCaseDefinition& def) {
                 .arg(configuredReadChannel == readChannel
                          ? QStringLiteral("步骤配置")
                          : (dualFixture ? QStringLiteral("一拖二") : QStringLiteral("一拖一"))));
-    if (!jigSerialChannel_) {
-        showlog(QStringLiteral("XWD治具串口通道未初始化"));
-        markActiveTestCaseStepDone(false, QStringLiteral("串口未连接"), QStringLiteral("失败"));
-        return;
-    }
 
     if (def.gate.enabled) {
         runXwdFixtureCurrentSampleAnyMatch(def, request, readChannel, dualFixture, timeoutMs);
@@ -3237,6 +3872,314 @@ void QFreeWork::executeFixtureXwdCase(const TestCaseDefinition& def) {
         return;
     }
     markActiveTestCaseStepDone(true, replyText, QStringLiteral("通过"));
+}
+
+void QFreeWork::executeFixtureUniversalCase(const TestCaseDefinition& def) {
+    if (def.send.fixtureProtocol != TestCaseFixtureProtocol::Universal) {
+        showlog(QStringLiteral("通用治具协议类型不匹配，请检查 Send/Protocol"));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+
+    UniversalFixtureCmd cmd;
+    if (!cmdEnumFromName(UniversalFixtureCmdCatalog::catalog(), def.send.deviceCmd, cmd)) {
+        showlog(QStringLiteral("未知通用治具指令：%1").arg(def.send.deviceCmd));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+    if (!UniversalFixtureCmdCatalog::catalog().isCmdForAction(static_cast<int>(cmd), def.send.action)) {
+        showlog(QStringLiteral("通用治具指令与操作方式不匹配：%1").arg(def.send.deviceCmd));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+
+    auto* box = qobject_cast<QFreeWorkBox*>(window());
+    QString fixtureConnectDetail;
+    bool fixtureAutoConnected = false;
+    Fixture_uart* uart =
+        box ? box->ensureFixtureUartConnected(getIndex(), &fixtureConnectDetail, &fixtureAutoConnected) : nullptr;
+    if (!uart || !uart->isFixtureSerialOpen()) {
+        const QString msg = fixtureConnectDetail.isEmpty()
+                                ? QStringLiteral("治具串口未连接，请检查菜单「连接治具串口」")
+                                : fixtureConnectDetail;
+        showlog(msg);
+        markActiveTestCaseStepDone(false, QStringLiteral("治具未连接"), QStringLiteral("失败"));
+        return;
+    }
+    if (fixtureAutoConnected)
+        showlog(QStringLiteral("已自动连接治具串口：%1").arg(fixtureConnectDetail));
+
+    const QVariant resolvedParam = resolveTestCaseSendParamTree(def.send.param);
+    const QVariantMap cmdMap = resolvedParam.canConvert<QVariantMap>() ? resolvedParam.toMap() : QVariantMap{};
+
+    auto resolveSlot = [this, &cmdMap, &resolvedParam](bool broadcastCmd) -> quint8 {
+        if (broadcastCmd)
+            return UniversalFixture::kSlotBroadcast;
+        if (cmdMap.contains(QStringLiteral("slot"))) {
+            const int s = cmdMap.value(QStringLiteral("slot")).toInt();
+            return static_cast<quint8>(qBound(1, s, 15));
+        }
+        return static_cast<quint8>(resolveFixtureMachineIndex(resolvedParam));
+    };
+
+    auto defaultTimeoutMs = [](UniversalFixtureCmd c) -> int {
+        switch (c) {
+        case UniversalFixtureCmd::CylinderDown:
+        case UniversalFixtureCmd::CylinderUp:
+        case UniversalFixtureCmd::BroadcastCylinderDown:
+        case UniversalFixtureCmd::BroadcastCylinderUp:
+            return 2500;
+        case UniversalFixtureCmd::ReadCurrent:
+            return 1000;
+        default:
+            return 500;
+        }
+    };
+    int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+    if (timeoutMs <= 0)
+        timeoutMs = defaultTimeoutMs(cmd);
+    else
+        timeoutMs = qMax(timeoutMs, defaultTimeoutMs(cmd));
+
+    if (cmd == UniversalFixtureCmd::SendRaw) {
+        const QString rawText = sendParamAsRawText(resolvedParam).trimmed();
+        if (rawText.isEmpty()) {
+            showlog(QStringLiteral("通用治具 SendRaw 内容为空，请配置 Param_string"));
+            markActiveTestCaseStepDone(false, QStringLiteral("参数为空"), QStringLiteral("失败"));
+            return;
+        }
+        bool parsedAsHex = false;
+        const QByteArray request = XwdRawUartCodec::encodeRawText(rawText, &parsedAsHex);
+        if (request.isEmpty()) {
+            showlog(QStringLiteral("通用治具 SendRaw 编码为空"));
+            markActiveTestCaseStepDone(false, QStringLiteral("参数为空"), QStringLiteral("失败"));
+            return;
+        }
+        QString errStr;
+        if (def.send.action != TestCaseSendAction::Get) {
+            if (!uart->sendRawFrame(request, &errStr)) {
+                showlog(QStringLiteral("通用治具发送失败：%1").arg(errStr));
+                markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
+                return;
+            }
+            const QString txHex = QString::fromLatin1(request.toHex(' ').toUpper());
+            showlog(QStringLiteral("通用治具已发送：%1").arg(txHex));
+            if (!def.gate.enabled)
+                markActiveTestCaseStepDone(true, txHex, QStringLiteral("通过"));
+            return;
+        }
+        QByteArray response;
+        if (!uart->exchangeRawFrame(request, &response, timeoutMs, &errStr)) {
+            showlog(QStringLiteral("通用治具收发失败：%1").arg(errStr));
+            markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
+            return;
+        }
+        const QString rxHex = QString::fromLatin1(response.toHex(' ').toUpper());
+        showlog(QStringLiteral("通用治具回包：%1").arg(rxHex));
+        ProtocolMeasureData measureData;
+        measureData.deviceName = QStringLiteral("UniversalFixture");
+        measureData.type = QStringLiteral("Reply");
+        measureData.valueText = rxHex;
+        measureData.isOk = true;
+        if (def.gate.enabled
+            && evaluateActiveTestCaseGate(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(measureData)))
+            return;
+        markActiveTestCaseStepDone(true, rxHex, QStringLiteral("通过"));
+        return;
+    }
+
+    quint8 ch = 0;
+    quint8 st = UniversalFixture::kStOn;
+    bool isMeasure = false;
+    bool broadcast = false;
+    switch (cmd) {
+    case UniversalFixtureCmd::CylinderDown:
+        ch = UniversalFixture::kChCylinder;
+        st = UniversalFixture::kStOn;
+        break;
+    case UniversalFixtureCmd::CylinderUp:
+        ch = UniversalFixture::kChCylinder;
+        st = UniversalFixture::kStOff;
+        break;
+    case UniversalFixtureCmd::BroadcastCylinderDown:
+        ch = UniversalFixture::kChCylinder;
+        st = UniversalFixture::kStOn;
+        broadcast = true;
+        break;
+    case UniversalFixtureCmd::BroadcastCylinderUp:
+        ch = UniversalFixture::kChCylinder;
+        st = UniversalFixture::kStOff;
+        broadcast = true;
+        break;
+    case UniversalFixtureCmd::Relay1On:
+        ch = UniversalFixture::kChRelay1;
+        st = UniversalFixture::kStOn;
+        break;
+    case UniversalFixtureCmd::Relay1Off:
+        ch = UniversalFixture::kChRelay1;
+        st = UniversalFixture::kStOff;
+        break;
+    case UniversalFixtureCmd::Relay2On:
+        ch = UniversalFixture::kChRelay2;
+        st = UniversalFixture::kStOn;
+        break;
+    case UniversalFixtureCmd::Relay2Off:
+        ch = UniversalFixture::kChRelay2;
+        st = UniversalFixture::kStOff;
+        break;
+    case UniversalFixtureCmd::Relay3On:
+        ch = UniversalFixture::kChRelay3;
+        st = UniversalFixture::kStOn;
+        break;
+    case UniversalFixtureCmd::Relay3Off:
+        ch = UniversalFixture::kChRelay3;
+        st = UniversalFixture::kStOff;
+        break;
+    case UniversalFixtureCmd::Relay4On:
+        ch = UniversalFixture::kChRelay4;
+        st = UniversalFixture::kStOn;
+        break;
+    case UniversalFixtureCmd::Relay4Off:
+        ch = UniversalFixture::kChRelay4;
+        st = UniversalFixture::kStOff;
+        break;
+    case UniversalFixtureCmd::ReadCurrent:
+        isMeasure = true;
+        ch = static_cast<quint8>(cmdMap.value(QStringLiteral("ch"), 1).toInt());
+        if (ch > 2)
+            ch = 1;
+        break;
+    case UniversalFixtureCmd::SendRaw:
+        break;
+    default:
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+
+    const quint8 slot = resolveSlot(broadcast);
+    const QByteArray request = isMeasure ? UniversalFixtureCodec::buildMeasureFrame(slot, ch)
+                                         : UniversalFixtureCodec::buildControlFrame(slot, ch, st);
+    showlog(QStringLiteral("通用治具发送：%1").arg(QString::fromLatin1(request.toHex(' ').toUpper())));
+
+    QString errStr;
+    QByteArray response;
+    if (!uart->exchangeRawFrame(request, &response, timeoutMs, &errStr)) {
+        showlog(QStringLiteral("通用治具等待应答失败：%1").arg(errStr));
+        markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
+        return;
+    }
+    showlog(QStringLiteral("通用治具原始回包：%1").arg(QString::fromLatin1(response.toHex(' ').toUpper())));
+
+    if (isMeasure) {
+        QByteArray parseBuf = response;
+        const QVector<UniversalFixture::MeasureRsp> frames =
+            UniversalFixtureCodec::takeAllMeasureRsp(&parseBuf, slot);
+        if (frames.isEmpty()) {
+            showlog(QStringLiteral("通用治具未解析到电流应答帧"));
+            markActiveTestCaseStepDone(false, QStringLiteral("无测量应答"), QStringLiteral("失败"));
+            return;
+        }
+        bool allOk = true;
+        QString detail;
+        for (const UniversalFixture::MeasureRsp& one : frames) {
+            if (one.status != 0x00) {
+                allOk = false;
+                showlog(QStringLiteral("通用治具电流失败 SLOT=%1 CH=%2 STATUS=%3(%4)")
+                            .arg(one.slot)
+                            .arg(one.ch)
+                            .arg(one.status)
+                            .arg(UniversalFixtureCodec::measureStatusText(one.status)));
+                continue;
+            }
+            const double ma = one.currentMa();
+            showlog(QStringLiteral("通用治具电流 SLOT=%1 CH=%2 = %3 mA")
+                        .arg(one.slot)
+                        .arg(one.ch)
+                        .arg(ma, 0, 'f', 2));
+            ProtocolMeasureData measureData;
+            measureData.deviceName = QStringLiteral("UniversalFixture");
+            measureData.channel = QStringLiteral("SLOT%1/CH%2").arg(one.slot).arg(one.ch);
+            measureData.type = QStringLiteral("Current");
+            measureData.value = ma;
+            measureData.valueText = QString::number(ma, 'f', 2);
+            measureData.unit = QStringLiteral("mA");
+            measureData.isOk = true;
+            onUsbInstrumentReport(
+                ProtocolReport(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(measureData)));
+            if (!detail.isEmpty())
+                detail.append(QLatin1Char(' '));
+            detail.append(QStringLiteral("CH%1=%2mA").arg(one.ch).arg(ma, 0, 'f', 2));
+            if (def.gate.enabled
+                && evaluateActiveTestCaseGate(QStringLiteral("ProtocolMeasureData"),
+                                              QVariant::fromValue(measureData)))
+                return;
+        }
+        if (!allOk) {
+            markActiveTestCaseStepDone(false, detail.isEmpty() ? QStringLiteral("测量失败") : detail,
+                                       QStringLiteral("失败"));
+            return;
+        }
+        if (!def.gate.enabled)
+            markActiveTestCaseStepDone(true, detail, QStringLiteral("通过"));
+        return;
+    }
+
+    QByteArray buf = response;
+    if (broadcast) {
+        int okCount = 0;
+        int failCount = 0;
+        QString detail;
+        while (true) {
+            UniversalFixture::ControlAck ack;
+            QString parseErr;
+            if (!UniversalFixtureCodec::takeControlAck(&buf, UniversalFixture::kSlotBroadcast, ch, st, &ack,
+                                                       &parseErr))
+                break;
+            if (ack.status == 0x00) {
+                ++okCount;
+                showlog(QStringLiteral("通用治具到位成功 SLOT=%1 CH=%2 ST=%3")
+                            .arg(ack.slot)
+                            .arg(ack.ch)
+                            .arg(ack.st));
+            } else {
+                ++failCount;
+                showlog(QStringLiteral("通用治具到位失败 SLOT=%1 STATUS=%2(%3)")
+                            .arg(ack.slot)
+                            .arg(ack.status)
+                            .arg(UniversalFixtureCodec::controlStatusText(ack.status)));
+            }
+            if (!detail.isEmpty())
+                detail.append(QLatin1Char(','));
+            detail.append(QStringLiteral("S%1=%2").arg(ack.slot).arg(ack.status, 2, 16, QChar('0')));
+        }
+        if (okCount <= 0 || failCount > 0) {
+            markActiveTestCaseStepDone(false, detail.isEmpty() ? QStringLiteral("无到位应答") : detail,
+                                       QStringLiteral("失败"));
+            return;
+        }
+        if (!def.gate.enabled)
+            markActiveTestCaseStepDone(true, detail, QStringLiteral("通过"));
+        return;
+    }
+
+    UniversalFixture::ControlAck ack;
+    QString parseErr;
+    if (!UniversalFixtureCodec::takeControlAck(&buf, slot, ch, st, &ack, &parseErr)) {
+        showlog(QStringLiteral("通用治具到位应答解析失败：%1").arg(parseErr));
+        markActiveTestCaseStepDone(false, parseErr, QStringLiteral("失败"));
+        return;
+    }
+    if (ack.status != 0x00) {
+        const QString msg = QStringLiteral("到位失败 STATUS=%1(%2)")
+                                .arg(ack.status)
+                                .arg(UniversalFixtureCodec::controlStatusText(ack.status));
+        showlog(QStringLiteral("通用治具%1").arg(msg));
+        markActiveTestCaseStepDone(false, msg, QStringLiteral("失败"));
+        return;
+    }
+    showlog(QStringLiteral("通用治具到位成功 SLOT=%1 CH=%2 ST=%3").arg(ack.slot).arg(ack.ch).arg(ack.st));
+    if (!def.gate.enabled)
+        markActiveTestCaseStepDone(true, QStringLiteral("SLOT=%1").arg(ack.slot), QStringLiteral("通过"));
 }
 
 void QFreeWork::executeFixtureJieliBtBoxCase(const TestCaseDefinition& def) {
@@ -3315,8 +4258,6 @@ void QFreeWork::executeFixtureJieliBtBoxCase(const TestCaseDefinition& def) {
 
     // 同步到工站 RSSI 显示（与产品 BLE RSSI 共用上限下限卡控时可叠加 Gate）
     BLE_RSSI = QString::number(info.rssi);
-    if (ui && ui->BLE_RSSI)
-        ui->BLE_RSSI->setText(QStringLiteral("BLE的RSSI:") + BLE_RSSI);
 
     ProtocolJieliBtBoxData report;
     report.freqOffset = info.freqOffset;

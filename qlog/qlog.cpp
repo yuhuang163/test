@@ -83,9 +83,11 @@ QMutex g_sessionMutex;
 QHash<int, SessionState> g_activeSessions;
 QHash<int, SessionState> g_lastEndedSessions;
 QHash<int, SuctionSampleBuffer> g_suctionSamples;
+QHash<int, SuctionSampleBuffer> g_pinnedSuctionSamples;
 QHash<int, QStringList> g_suctionExtraFiles;
 QHash<int, QStringList> g_screenInspectFiles;
 QHash<int, QStringList> g_suctionCurveFiles;
+QHash<int, QStringList> g_pinnedSuctionCurveFiles;
 
 bool sessionLogEnabled() {
     return SETTINGS.value(QStringLiteral("FactoryCloud/Log/SessionLogEnabled"), true).toBool();
@@ -235,6 +237,8 @@ QHash<QString, BufferedLogFile> g_bufferedLogs;
 QElapsedTimer g_bufferedLogClock;
 qint64 g_bufferedLogLastFlushMs = 0;
 bool g_bufferedLogFlushDeferred = false;
+/** 多工位同时吸力采样时共用推迟落盘；用深度避免一侧 endSession 把另一侧的推迟提前关掉 */
+int g_bufferedLogFlushDeferredDepth = 0;
 
 void writeBufferedLogToDisk(const QString& absolutePath, BufferedLogFile& buf) {
     if (buf.pending.isEmpty()) {
@@ -654,6 +658,8 @@ void Qlog::endSession(int slot, const QString& result) {
     if (!sessionLogEnabled()) {
         return;
     }
+    // 只强制刷盘，不改推迟深度（避免一拖多另一侧还在吸力采样时被关掉推迟）
+    flushLogBuffers();
     QMutexLocker lock(&g_sessionMutex);
     if (!g_activeSessions.contains(slot) || !g_activeSessions[slot].active) {
         return;
@@ -834,10 +840,21 @@ void Qlog::flushLogBuffers() {
 
 void Qlog::setBufferedLogFlushDeferred(bool deferred) {
     QMutexLocker lock(&g_bufferedLogMutex);
-    g_bufferedLogFlushDeferred = deferred;
-    if (!deferred) {
-        flushBufferedLogsLocked();
+    if (deferred) {
+        ++g_bufferedLogFlushDeferredDepth;
+    } else if (g_bufferedLogFlushDeferredDepth > 0) {
+        --g_bufferedLogFlushDeferredDepth;
     }
+    g_bufferedLogFlushDeferred = g_bufferedLogFlushDeferredDepth > 0;
+    // 仍有工位在采样则只刷盘、保持推迟；深度归零才真正退出推迟模式
+    flushBufferedLogsLocked();
+}
+
+void Qlog::clearBufferedLogFlushDeferred() {
+    QMutexLocker lock(&g_bufferedLogMutex);
+    g_bufferedLogFlushDeferredDepth = 0;
+    g_bufferedLogFlushDeferred = false;
+    flushBufferedLogsLocked();
 }
 
 void Qlog::saveDongleUartLogMain(const QString& data) {
@@ -975,6 +992,15 @@ void Qlog::setSuctionSamples(int slot, const QVector<double>& timeSec, const QVe
     buf.ch3 = ch3;
 }
 
+void Qlog::pinSessionUploadArtifacts(int slot) {
+    QMutexLocker lock(&g_sessionMutex);
+    // 活缓冲 → 钉住区；上传 take 钉住区，下一轮 initData 清活缓冲不影响
+    if (g_suctionSamples.contains(slot))
+        g_pinnedSuctionSamples.insert(slot, g_suctionSamples.take(slot));
+    if (g_suctionCurveFiles.contains(slot))
+        g_pinnedSuctionCurveFiles.insert(slot, g_suctionCurveFiles.take(slot));
+}
+
 QString Qlog::exportSuctionSamplesCsv(const QlogSessionInfo& info, QString* error) {
     if (!info.valid) {
         return {};
@@ -982,12 +1008,12 @@ QString Qlog::exportSuctionSamplesCsv(const QlogSessionInfo& info, QString* erro
     SuctionSampleBuffer buf;
     {
         QMutexLocker lock(&g_sessionMutex);
-        if (!g_suctionSamples.contains(info.slot)) {
-            // 非吸力工站属常态，不置 error 以免每轮上传都带无用告警
+        if (g_pinnedSuctionSamples.contains(info.slot))
+            buf = g_pinnedSuctionSamples.take(info.slot);
+        else if (g_suctionSamples.contains(info.slot))
+            buf = g_suctionSamples.take(info.slot);
+        else
             return {};
-        }
-        // take：本轮取走，避免下一轮没采样时又把上一轮数据传一遍
-        buf = g_suctionSamples.take(info.slot);
     }
     if (buf.timeSec.isEmpty()) {
         return {};
@@ -1120,11 +1146,12 @@ QStringList Qlog::exportSuctionCurveImageFiles(const QlogSessionInfo& info, QStr
     QStringList srcPaths;
     {
         QMutexLocker lock(&g_sessionMutex);
-        if (!g_suctionCurveFiles.contains(info.slot)) {
+        if (g_pinnedSuctionCurveFiles.contains(info.slot))
+            srcPaths = g_pinnedSuctionCurveFiles.take(info.slot);
+        else if (g_suctionCurveFiles.contains(info.slot))
+            srcPaths = g_suctionCurveFiles.take(info.slot);
+        else
             return {};
-        }
-        // take：本轮取走，避免下一轮无采样时又把上一轮图传一遍
-        srcPaths = g_suctionCurveFiles.take(info.slot);
     }
     if (srcPaths.isEmpty()) {
         return {};

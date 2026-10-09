@@ -25,21 +25,16 @@ bool parseReadOnceReply(const QString& text, double* ch1Ma, double* ch2Ma, bool*
     if (hasCh2)
         *hasCh2 = false;
 
+    // CH1: ... xxx.xxmA ... / CH2: ...
     static const QRegularExpression re(
-        QStringLiteral(R"(CH\s*([12])\s*:\s*([-+]?\d+(?:\.\d+)?)\s*V\s*([-+]?\d+(?:\.\d+)?)\s*mA)"),
+        QStringLiteral(R"(CH\s*([12])\s*:[^\n]*?([-+]?\d+(?:\.\d+)?)\s*mA)"),
         QRegularExpression::CaseInsensitiveOption);
-
     bool any = false;
-    QRegularExpressionMatchIterator it = re.globalMatch(text);
+    auto it = re.globalMatch(text);
     while (it.hasNext()) {
         const QRegularExpressionMatch m = it.next();
-        bool ok = false;
-        const int ch = m.captured(1).toInt(&ok);
-        if (!ok)
-            continue;
-        const double ma = m.captured(3).toDouble(&ok);
-        if (!ok)
-            continue;
+        const int ch = m.captured(1).toInt();
+        const double ma = m.captured(2).toDouble();
         if (ch == 1) {
             if (ch1Ma)
                 *ch1Ma = ma;

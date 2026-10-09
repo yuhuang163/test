@@ -11,6 +11,10 @@
 class QCamera;
 class QCameraImageCapture;
 class QCameraViewfinder;
+class QCheckBox;
+class QComboBox;
+class QSpinBox;
+class QPushButton;
 
 struct ScreenInspectUi;
 
@@ -39,6 +43,8 @@ class ScreenInspectWidget : public QWidget {
     void on_btnSaveAsRef_clicked();
     void on_btnInspect_clicked();
     void on_btnClearRoi_clicked();
+    void on_btnClearLedRois_clicked();
+    void on_btnLedOnOffInspect_clicked();
     void on_btnColorBlue_clicked();
     void on_btnColorGreen_clicked();
     void on_btnColorRed_clicked();
@@ -105,6 +111,11 @@ class ScreenInspectWidget : public QWidget {
     void loadSavedReferenceIfAny();
     QRect labelPosToImage(const QPoint& pos) const;
     void saveManualRoi(const QRect& r);
+    void saveLedRoi(int index0, const QRect& r);
+    bool ledRoiModeActive() const;
+    void rebuildLedIndexCombo();
+    void loadLedRoisFromSettings();
+    int currentLedCount() const;
 
     void enterLcdMode(std::function<void()> onDone = nullptr);
     void exitLcdMode();
@@ -114,9 +125,15 @@ class ScreenInspectWidget : public QWidget {
     void calibrateReferenceCircle();
     void updateCircleStatusUi();
     void appendLog(const QString& text);
+    /** 写当前工站 flow.ini [LedInspect]（Roi/灯数/阈值） */
+    void persistStationLedInspectConfig();
+    /** 写当前工站 flow.ini [ScreenInspect]（参考圆/GigE/复用圆） */
+    void persistStationScreenInspectConfig();
+    QString boundStationKey() const;
 
     ScreenInspectUi* ui = nullptr;
     bool uiBound_ = false;
+    QString loadedStationKey_;
     QCamera* camera_ = nullptr;
     QCameraImageCapture* capture_ = nullptr;
     QCameraViewfinder* viewfinder_ = nullptr;
@@ -128,9 +145,17 @@ class ScreenInspectWidget : public QWidget {
     bool inspectRunning_ = false;
     bool busy_ = false;
     QRect manualRoi_;
+    QRect ledRois_[4];
     QPoint roiDragStart_;
     QPoint roiDragCur_;
     bool roiDragging_ = false;
+
+    QCheckBox* checkBox_drawLedRoi_ = nullptr;
+    QSpinBox* spinBox_ledCount_ = nullptr;
+    QComboBox* comboBox_ledIndex_ = nullptr;
+    QSpinBox* spinBox_ledMinLuma_ = nullptr;
+    QPushButton* btnClearLedRois_ = nullptr;
+    QPushButton* btnLedOnOffInspect_ = nullptr;
 
     ScreenInspectAnalyzer::ScreenCircle refCircle_;
     ScreenInspectAnalyzer::ScreenCircle lastDetectedCircle_;

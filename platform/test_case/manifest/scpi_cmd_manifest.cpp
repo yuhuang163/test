@@ -30,7 +30,8 @@ const Row kRows[] = {
      u8"复用配置步骤；可选 scpiReadVoltageCmd / visaAddress", kGet, "ProtocolMeasureData", "value"},
     {ScpiDeviceRoute::HuilingWfp60h, "ReadProgrammableCurrent", u8"读取工作电流（程控电源源电流）",
      u8"复用配置步骤；可选 scpiReadCurrentCmd / visaAddress\n"
-     u8"开 Gate 时连续采样：Param_sampleDurationMs(默认用 CommandTimeoutMs/3000)、Param_sampleIntervalMs(默认200)；期间任一值合格即通过",
+     u8"开 Gate 时连续采样：Param_sampleDurationMs、Param_sampleIntervalMs\n"
+     u8"Param_sampleJudgeMode=any（默认）|average（采完后用平均值卡控）",
      kGet, "ProtocolMeasureData", "value"},
     {ScpiDeviceRoute::HuilingWfp60h, "InitializeProgrammablePower", u8"初始化源通道",
      u8"复用配置步骤；或填写 visaAddress、voltage/current 及 SCPI 模板", kGet},
@@ -55,7 +56,8 @@ const Row kRows[] = {
     {ScpiDeviceRoute::Agilent66319d, "ReadProgrammableCurrent", u8"读取工作电流（程控电源源电流）",
      u8"复用配置步骤；读前按 currentRange 发 scpiSetCurrentRangeCmd\n"
      u8"Param_currentRange=3(工作)/0.02(休眠)；可选 scpiReadCurrentCmd / scpiSetCurrentRangeCmd\n"
-     u8"开 Gate 时连续采样：Param_sampleDurationMs(默认 CommandTimeoutMs/3000)、Param_sampleIntervalMs(默认200)；期间任一值合格即通过",
+     u8"开 Gate 时连续采样：Param_sampleDurationMs、Param_sampleIntervalMs\n"
+     u8"Param_sampleJudgeMode=any（默认，任一值合格即过）|average（采完后用平均值卡控）",
      kGet, "ProtocolMeasureData", "value"},
     {ScpiDeviceRoute::Agilent66319d, "InitializeProgrammablePower", u8"初始化源通道",
      u8"复用配置步骤；或填写 visaAddress、voltage/current 及 SCPI 模板", kGet},
@@ -75,7 +77,8 @@ const Row kRows[] = {
     {ScpiDeviceRoute::GenericVisaPower, "ReadProgrammableCurrent", u8"读取工作电流（程控电源源电流）",
      u8"复用配置步骤；可选 scpiReadCurrentCmd / visaAddress\n"
      u8"模板空则不切量程；currentRange 与 scpiSetCurrentRangeCmd 都填才发量程\n"
-     u8"开 Gate 时连续采样：Param_sampleDurationMs(默认 CommandTimeoutMs/3000)、Param_sampleIntervalMs(默认200)；期间任一值合格即通过",
+     u8"开 Gate 时连续采样：Param_sampleDurationMs、Param_sampleIntervalMs\n"
+     u8"Param_sampleJudgeMode=any（默认）|average（采完后用平均值卡控）",
      kGet, "ProtocolMeasureData", "value"},
     {ScpiDeviceRoute::GenericVisaPower, "InitializeProgrammablePower", u8"初始化源通道",
      u8"复用配置步骤；或填写 visaAddress、voltage/current 及 SCPI 模板", kGet},

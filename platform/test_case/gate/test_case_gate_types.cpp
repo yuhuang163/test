@@ -1,6 +1,7 @@
 #include "test_case_gate_accessors.h"
 
 #include "fixture_uart_types.h"
+#include "led_inspect_analyzer.h"
 #include "qprotocol_types.h"
 #include "screen_inspect_analyzer.h"
 
@@ -328,6 +329,16 @@ static void registerDeviceInfoGates() {
         using D = ProtocolSnData;
         GateType<D>("ProtocolSnData", "序列号")
             .text("value", &D::value, "序列号文本")
+            .textWithReader(
+                "prefix4", "SN前四位（产品型号）", GateCompareMode::Default,
+                [](const D& d, QString* out) -> bool {
+                    const QString v = d.value.trimmed();
+                    if (v.size() < 4 || !out)
+                        return false;
+                    *out = v.left(4);
+                    return true;
+                })
+            .alias("snPrefix4")
             .commit();
     }
     {
@@ -463,6 +474,83 @@ static void registerRootGates() {
         using S = ProtocolPumpStallCurrentData;
         GateType<S>("ProtocolPumpStallCurrentData", "泵堵电流")
             .number("adcValue", &S::adcValue, "堵转ADC", "")
+            .commit();
+    }
+    {
+        using S = ProtocolRoot2BowlCalibCapData;
+        GateType<S>("ProtocolRoot2BowlEmptyCapData", "空碗校准电容")
+            .number("emptyCh0", &S::emptyCh0, "空碗顶电极F0", "")
+            .alias("ch0")
+            .number("emptyCh1", &S::emptyCh1, "空碗底电极F1", "")
+            .alias("ch1")
+            .number("emptyCh2", &S::emptyCh2, "空碗中电极F2", "")
+            .alias("ch2")
+            .commit();
+        GateType<S>("ProtocolRoot2BowlFullCapData", "满碗校准电容")
+            .number("fullCh0", &S::fullCh0, "满碗顶电极F0", "")
+            .alias("ch0")
+            .number("fullCh1", &S::fullCh1, "满碗底电极F1", "")
+            .alias("ch1")
+            .number("fullCh2", &S::fullCh2, "满碗中电极F2", "")
+            .alias("ch2")
+            .commit();
+    }
+    {
+        using D = ProtocolRoot2BowlCapDiffData;
+        GateType<D>("ProtocolRoot2BowlCapDiffData", "空满碗电容差值")
+            .number("topDiff", &D::topDiff, "TOP差值(F0满-空)", "")
+            .alias("top")
+            .number("midDiff", &D::midDiff, "MID差值(F2满-空)", "")
+            .alias("mid")
+            .number("botDiff", &D::botDiff, "BOT差值(F1满-空)", "")
+            .alias("bot")
+            .commit();
+    }
+    {
+        using D = ProtocolRoot2PoseAngleData;
+        // 协议内部 pitch01deg/roll01deg 为 0.1°；卡控读写统一换成度（Low=40 即 40°）
+        const auto fmtDeg = [](double deg) { return QString::number(deg, 'f', 1); };
+        GateType<D>("ProtocolRoot2PoseAngleData", "姿态角")
+            .numberWithReader("pitch01deg", "俯仰角", "°",
+                              [](const D& d, double* out) {
+                                  if (!out)
+                                      return false;
+                                  *out = d.pitch01deg / 10.0;
+                                  return true;
+                              })
+            .alias("pitch")
+            .formatValue(fmtDeg)
+            .numberWithReader("roll01deg", "翻滚角", "°",
+                              [](const D& d, double* out) {
+                                  if (!out)
+                                      return false;
+                                  *out = d.roll01deg / 10.0;
+                                  return true;
+                              })
+            .alias("roll")
+            .formatValue(fmtDeg)
+            .numberWithReader("absPitch01deg", "俯仰角绝对值", "°",
+                              [](const D& d, double* out) {
+                                  if (!out)
+                                      return false;
+                                  *out = qAbs(d.pitch01deg) / 10.0;
+                                  return true;
+                              })
+            .formatValue(fmtDeg)
+            .numberWithReader("absRoll01deg", "翻滚角绝对值", "°",
+                              [](const D& d, double* out) {
+                                  if (!out)
+                                      return false;
+                                  *out = qAbs(d.roll01deg) / 10.0;
+                                  return true;
+                              })
+            .formatValue(fmtDeg)
+            .summary([](const D& d) {
+                return QStringLiteral("俯仰=%1° 翻滚=%2°%3")
+                    .arg(d.pitch01deg / 10.0, 0, 'f', 1)
+                    .arg(d.roll01deg / 10.0, 0, 'f', 1)
+                    .arg(d.fromAbnormalNotify ? QStringLiteral("（异常停机上报）") : QString());
+            })
             .commit();
     }
     {
@@ -608,6 +696,78 @@ static void registerPeriphAndScreenGates() {
             })
             .number("ssim", &D::ssim, "与参考图相似度（0~1）", "0~1").textFormat('f', 3).alias("similarity")
             .number("muraStd", &D::muraStd, "亮度起伏σ（灰阶勿勾）", "σ").textFormat('f', 1)
+            .commit();
+    }
+    {
+        using D = ProtocolLedInspectData;
+        auto ledPassFmt = [](double v) {
+            return qAbs(v - 1.0) < 0.0001 ? QStringLiteral("通过") : QStringLiteral("失败");
+        };
+        auto ledText = [](int judgeMode, int ledOn, int onFr, int offFr) {
+            if (judgeMode == 1) {
+                return QStringLiteral("%1(亮%2灭%3)")
+                    .arg(ledOn ? QStringLiteral("闪烁") : QStringLiteral("未闪烁"))
+                    .arg(onFr)
+                    .arg(offFr);
+            }
+            return QStringLiteral("%1(亮%2灭%3)")
+                .arg(ledOn ? QStringLiteral("常亮") : QStringLiteral("非常亮"))
+                .arg(onFr)
+                .arg(offFr);
+        };
+        GateType<D>("ProtocolLedInspectData", "LED亮灭")
+            .number("led1On", &D::led1On, "灯1", "")
+            .screenColor()
+            .formatValue(ledPassFmt)
+            .overrideText([ledText](const D& d, QString* out) {
+                if (!out)
+                    return false;
+                *out = ledText(d.judgeMode1, d.led1On, d.onFrames1, d.offFrames1);
+                return true;
+            })
+            .number("led2On", &D::led2On, "灯2", "")
+            .screenColor()
+            .formatValue(ledPassFmt)
+            .overrideText([ledText](const D& d, QString* out) {
+                if (!out)
+                    return false;
+                *out = ledText(d.judgeMode2, d.led2On, d.onFrames2, d.offFrames2);
+                return true;
+            })
+            .number("led3On", &D::led3On, "灯3", "")
+            .screenColor()
+            .formatValue(ledPassFmt)
+            .overrideText([ledText](const D& d, QString* out) {
+                if (!out)
+                    return false;
+                *out = ledText(d.judgeMode3, d.led3On, d.onFrames3, d.offFrames3);
+                return true;
+            })
+            .number("led4On", &D::led4On, "灯4", "")
+            .screenColor()
+            .formatValue(ledPassFmt)
+            .overrideText([ledText](const D& d, QString* out) {
+                if (!out)
+                    return false;
+                *out = ledText(d.judgeMode4, d.led4On, d.onFrames4, d.offFrames4);
+                return true;
+            })
+            .number("allOn", &D::allOn, "全部通过", "")
+            .screenColor()
+            .formatValue(ledPassFmt)
+            .overrideText([](const D& d, QString* out) {
+                if (!out)
+                    return false;
+                *out = d.allOn == 1 ? QStringLiteral("全部通过") : QStringLiteral("未全部通过");
+                return true;
+            })
+            .number("luma1", &D::luma1, "灯1亮度", "").textFormat('f', 1)
+            .number("luma2", &D::luma2, "灯2亮度", "").textFormat('f', 1)
+            .number("luma3", &D::luma3, "灯3亮度", "").textFormat('f', 1)
+            .number("luma4", &D::luma4, "灯4亮度", "").textFormat('f', 1)
+            .number("onCount", &D::onCount, "通过灯数", "")
+            .number("configuredCount", &D::configuredCount, "已划灯框数", "")
+            .number("ledCount", &D::ledCount, "配置检测灯数", "")
             .commit();
     }
     // 气压采样：逐点卡控由 AIR_PRESSURE_SAMPLE Hook 执行；此处登记字段供步骤编辑器表格

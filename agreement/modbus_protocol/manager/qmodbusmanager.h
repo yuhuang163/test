@@ -17,6 +17,10 @@
 #include "gc_series_tcp_types.h"
 #include "lx_ammeter_rtu.h"
 #include "lx_ammeter_rtu_types.h"
+#include "aa55_ammeter_rtu.h"
+#include "aa55_ammeter_rtu_types.h"
+#include "fafb_float_ammeter_rtu.h"
+#include "fafb_float_ammeter_rtu_types.h"
 #include "multi_temp_logger_rtu.h"
 #include "multi_temp_logger_rtu_types.h"
 #include "xinjie_plc_rtu_device.h"
@@ -114,11 +118,16 @@ class QModbusManager : public QObject {
 
     bool exec(HqAmmeterRtuCmd cmd, QString* errorMessage = nullptr);
     bool exec(LxAmmeterRtuCmd cmd, QString* errorMessage = nullptr);
+    bool exec(Aa55AmmeterRtuCmd cmd, QString* errorMessage = nullptr);
+    bool exec(FaFbFloatAmmeterRtuCmd cmd, const QVariant& param = {}, QString* errorMessage = nullptr);
     bool exec(MultiTempLoggerRtuCmd cmd, const QVariant& param = {}, QString* errorMessage = nullptr);
 
     bool feedRtuRx(const QByteArray& chunk);
 
     void resetRtuRxState();
+
+    /** 最近一次 RTU 读是否为电压（FAFB 万用表 ReadVoltageCentivolt），供上报 Unit=V。 */
+    bool lastRtuReadingIsVoltage() const { return lastRtuReadingIsVoltage_; }
 
   signals:
     void rtuAmmeterReadingReceived(const QString& valueText);
@@ -133,6 +142,8 @@ class QModbusManager : public QObject {
     GcSeriesTcpDevice gcDevice_;
     HqAmmeterModbusRtu hqAmmeterRtu_;
     LxAmmeterModbusRtu lxAmmeterRtu_;
+    Aa55AmmeterRtu aa55AmmeterRtu_;
+    FaFbFloatAmmeterRtu faFbFloatAmmeterRtu_;
     MultiTempLoggerModbusRtu multiTempLoggerRtu_;
     XinjePlcRtuDevice xinjiePlcDevice_;
     LogFn log_;
@@ -141,6 +152,7 @@ class QModbusManager : public QObject {
     ModbusDeviceRoute deviceRoute_ = ModbusDeviceRoute::None;
     int luxshareMachineId_ = 1;
     SerialChannel* serialChannel_ = nullptr;
+    bool lastRtuReadingIsVoltage_ = false;
 };
 
 #endif // QMODBUSMANAGER_H

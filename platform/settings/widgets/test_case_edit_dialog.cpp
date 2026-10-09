@@ -61,6 +61,7 @@ QVariantMap sendParamAsJsonMap(const QVariant& param) {
         QVariantMap map;
         map.insert(QStringLiteral("which_sn"), static_cast<int>(payload.which_sn));
         map.insert(QStringLiteral("sn"), QString::fromUtf8(payload.sn));
+        map.insert(QStringLiteral("length"), payload.snLength > 0 ? payload.snLength : 35);
         return map;
     }
     if (param.type() == QVariant::Map || param.type() == QVariant::Hash)
@@ -115,6 +116,16 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("seconds"), QStringLiteral("倒计时等待秒数（COUNTDOWN_WAIT）")},
         {QStringLiteral("waitSeconds"), QStringLiteral("倒计时等待秒数（同 seconds）")},
         {QStringLiteral("prompt"), QStringLiteral("倒计时弹窗提示文字（可选）")},
+        {QStringLiteral("spare"), QStringLiteral("整机SN备用4位（默认0000）")},
+        {QStringLiteral("expected"), QStringLiteral("期望SN前四位")},
+        {QStringLiteral("sku"), QStringLiteral("整机SN SKU 3位（附表二/MES）")},
+        {QStringLiteral("reserved"), QStringLiteral("整机SN预留F：Air1 1左/2右/3单撑")},
+        {QStringLiteral("version"), QStringLiteral("整机SN生产版本N（附表三）")},
+        {QStringLiteral("serial"), QStringLiteral("整机SN当日流水4位")},
+        {QStringLiteral("pcbaType"), QStringLiteral("期望PCBA类型（主板MB）")},
+        {QStringLiteral("date"), QStringLiteral("整机SN日期3位（空则用PCBA日期）")},
+        {QStringLiteral("factory"), QStringLiteral("工厂代码2位（空则用PCBA工厂）")},
+        {QStringLiteral("pcbaSn"), QStringLiteral("PCBA主板SN（空则用界面SN栏）")},
         {QStringLiteral("brightness"), QStringLiteral("亮度（0~255）")},
         {QStringLiteral("index"), QStringLiteral("光感校准写入下标（0~19）")},
         {QStringLiteral("golden"), QStringLiteral("本点金样光感值")},
@@ -136,6 +147,7 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("channelLock"), QStringLiteral("锁定通道号（不按工位改）")},
         {QStringLiteral("slaveAddr"), QStringLiteral("Modbus 从站地址")},
         {QStringLiteral("addr"), QStringLiteral("Modbus 从站地址")},
+        {QStringLiteral("registerAddress"), QStringLiteral("保持寄存器地址（Air1电压常用1/4）")},
         {QStringLiteral("tempDeviceIndex"), QStringLiteral("温度仪设备序号（从 0）")},
         {QStringLiteral("tempDeviceIndexLock"), QStringLiteral("锁定温度仪设备序号")},
         {QStringLiteral("tempBaudRate"), QStringLiteral("温度仪串口波特率")},
@@ -145,7 +157,7 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("sharedComName"), QStringLiteral("共享串口名（运行时解析）")},
         {QStringLiteral("txHex"), QStringLiteral("发送十六进制报文")},
         {QStringLiteral("string"), QStringLiteral("原文/字符串参数")},
-        {QStringLiteral("line"), QStringLiteral("SCPI 原始行")},
+        {QStringLiteral("line"), QStringLiteral("整机SN产线P（附表二；SCPI步骤则为原始行）")},
         {QStringLiteral("mLeft"), QStringLiteral("PLC 左工位线圈")},
         {QStringLiteral("mRight"), QStringLiteral("PLC 右工位线圈")},
         {QStringLiteral("address"), QStringLiteral("地址（如 M20、D100、X0）")},
@@ -178,6 +190,62 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("referencePath"), QStringLiteral("参考图路径（双击选择，自动存入 screen_inspect/参考图）")},
         {QStringLiteral("saveCapture"), QStringLiteral("保存拍摄图（1开/0关）")},
         {QStringLiteral("roi"), QStringLiteral("检测范围 x,y,w,h（空=调试页划定/自动）")},
+        {QStringLiteral("ledCount"), QStringLiteral("检测灯数 1~4（同一步分项）")},
+        {QStringLiteral("minLuma"), QStringLiteral("亮灭亮度阈值 0~255")},
+        {QStringLiteral("mode"), QStringLiteral("模式（RSSI：0=BLE，1=经典BT；吸奶：1~7；灯检：on/blink）")},
+        {QStringLiteral("modes"), QStringLiteral("每灯模式 CSV，如 on,blink,on,on")},
+        {QStringLiteral("mode1"), QStringLiteral("灯1：on常亮 / blink闪烁")},
+        {QStringLiteral("mode2"), QStringLiteral("灯2：on常亮 / blink闪烁")},
+        {QStringLiteral("mode3"), QStringLiteral("灯3：on常亮 / blink闪烁")},
+        {QStringLiteral("mode4"), QStringLiteral("灯4：on常亮 / blink闪烁")},
+        {QStringLiteral("sampleDurationMs"), QStringLiteral("有闪烁灯时采样窗口 ms")},
+        {QStringLiteral("sampleIntervalMs"), QStringLiteral("采样间隔 ms")},
+        {QStringLiteral("status"), QStringLiteral("泵开关（0停止/1运行）")},
+        {QStringLiteral("level"), QStringLiteral("档位（1~15）")},
+        {QStringLiteral("switch"), QStringLiteral("开关（0关/1开）")},
+        {QStringLiteral("enter"), QStringLiteral("进入/退出（1进/0退）")},
+        {QStringLiteral("customMode"), QStringLiteral("自定义模式")},
+        {QStringLiteral("customLevel"), QStringLiteral("自定义档位")},
+        {QStringLiteral("customFreq"), QStringLiteral("自定义频率（1低/2中/3高）")},
+        {QStringLiteral("controlType"), QStringLiteral("控制侧（0左/1右/2双边）")},
+        {QStringLiteral("pumpFreq"), QStringLiteral("泵频率（0低/1中/2高）")},
+        {QStringLiteral("on"), QStringLiteral("开关（1开/0关）")},
+        {QStringLiteral("state"), QStringLiteral("状态（1运行/0暂停）")},
+        {QStringLiteral("which_sn"), QStringLiteral("SN 类型（整机SN / deviceName / productKey）")},
+        {QStringLiteral("length"), QStringLiteral("写入SN长度（仅Qroot2：35=M5；39=Air1补0）")},
+        {QStringLiteral("snLength"), QStringLiteral("写入SN长度（同 length）")},
+        {QStringLiteral("sn"), QStringLiteral("SN 内容（写时填；读时可空）")},
+        {QStringLiteral("done"), QStringLiteral("产测结果（1=完成，0=未完成）")},
+        {QStringLiteral("color"), QStringLiteral("LCD/灯光颜色（0红1白2绿等）")},
+        {QStringLiteral("side"), QStringLiteral("设备侧（0左/1右/2独立，Qaiot 常用）")},
+        {QStringLiteral("field"), QStringLiteral("读取字段（如 soft_version/percent）")},
+        {QStringLiteral("start"), QStringLiteral("上报开关（1开/0关）")},
+        {QStringLiteral("type"), QStringLiteral("类型/子类型（按指令 hint）")},
+        {QStringLiteral("dataType"), QStringLiteral("三元组数据类型（2/3/4）")},
+        {QStringLiteral("data"), QStringLiteral("附加数据（hex，可选）")},
+        {QStringLiteral("name"), QStringLiteral("名称（WiFi SSID / 广播名等）")},
+        {QStringLiteral("rssi"), QStringLiteral("RSSI 阈值 (dBm)")},
+        {QStringLiteral("currentMa"), QStringLiteral("电流 (mA)")},
+        {QStringLiteral("percent"), QStringLiteral("电量百分比 (0~100)")},
+        {QStringLiteral("command"), QStringLiteral("系统控制命令（1关机2重启3OTA4复位）")},
+        {QStringLiteral("circleNum"), QStringLiteral("泵循环次数")},
+        {QStringLiteral("durationTime"), QStringLiteral("时长")},
+        {QStringLiteral("intervalTime"), QStringLiteral("间隔时间 (ms)")},
+        {QStringLiteral("pumpPwm"), QStringLiteral("泵 PWM（0~100）")},
+        {QStringLiteral("valveEnableTime"), QStringLiteral("阀开启时间")},
+        {QStringLiteral("valveDisableTime"), QStringLiteral("阀关闭时间")},
+        {QStringLiteral("valvePwm"), QStringLiteral("阀 PWM（0~100）")},
+        {QStringLiteral("driveStrength"), QStringLiteral("驱动强度/PWM")},
+        {QStringLiteral("freq"), QStringLiteral("频率")},
+        {QStringLiteral("types"), QStringLiteral("多类型 CSV（如 0,1,8）")},
+        {QStringLiteral("intervals"), QStringLiteral("多周期 CSV（ms，与 types 对齐）")},
+        {QStringLiteral("low"), QStringLiteral("下限")},
+        {QStringLiteral("high"), QStringLiteral("上限")},
+        {QStringLiteral("deviceName"), QStringLiteral("广播设备名")},
+        {QStringLiteral("connectionInterval"), QStringLiteral("连接间隔")},
+        {QStringLiteral("mac"), QStringLiteral("MAC（可用 $MAC）")},
+        {QStringLiteral("position"), QStringLiteral("左右位置（1左/2右/3单只/F未指定）")},
+        {QStringLiteral("sku"), QStringLiteral("SKU")},
     };
     if (kMap.contains(k))
         return kMap.value(k);
@@ -203,6 +271,7 @@ bool hookUsesSendParamUi(const QString& hookId) {
     return hookId == QLatin1String("COUNTDOWN_WAIT") || hookId == QLatin1String("LIGHT_SENSOR_GOLDEN_CALIB")
         || hookId == QLatin1String("LIGHT_SENSOR_CALIB_WRITE") || hookId == QLatin1String("LIGHT_SENSOR_CALIB_READ")
         || hookId == QLatin1String("VES_CH1_SET_BRIGHTNESS") || hookId == QLatin1String("AIR_PRESSURE_SAMPLE")
+        || hookId == QLatin1String("GENERATE_WHOLE_MACHINE_SN") || hookId == QLatin1String("SN_PREFIX4_CHECK")
         || hookId.startsWith(QLatin1String("PLC_SYNC_"));
 }
 
@@ -211,6 +280,22 @@ QVariantMap hookSendParamDefaultMap(const QString& hookId) {
         QVariantMap map;
         map.insert(QStringLiteral("seconds"), QStringLiteral("5"));
         map.insert(QStringLiteral("prompt"), QStringLiteral("请等待"));
+        return map;
+    }
+    if (hookId == QLatin1String("SN_PREFIX4_CHECK")) {
+        QVariantMap map;
+        map.insert(QStringLiteral("expected"), QString());
+        return map;
+    }
+    if (hookId == QLatin1String("GENERATE_WHOLE_MACHINE_SN")) {
+        QVariantMap map;
+        map.insert(QStringLiteral("spare"), QStringLiteral("0000"));
+        map.insert(QStringLiteral("sku"), QString());
+        map.insert(QStringLiteral("reserved"), QString());
+        map.insert(QStringLiteral("version"), QString());
+        map.insert(QStringLiteral("line"), QString());
+        map.insert(QStringLiteral("serial"), QString());
+        map.insert(QStringLiteral("pcbaType"), QStringLiteral("MB"));
         return map;
     }
     if (hookId == QLatin1String("LIGHT_SENSOR_GOLDEN_CALIB")) {
@@ -405,7 +490,8 @@ void configureSendParamTable(QTableWidget* table) {
 }
 
 /** 三元组云端登录等指令的参数字段固定显示顺序（账号在密码上方）。 */
-QStringList sendParamPreferredOrder(TestCaseSendChannel channel, const QString& cmdName) {
+QStringList sendParamPreferredOrder(TestCaseSendChannel channel, const QString& cmdName,
+                                    TestCaseSendAction action = TestCaseSendAction::Set) {
     if (channel == TestCaseSendChannel::Cloud && cmdName == QLatin1String("Login"))
         return {QStringLiteral("baseUrl"), QStringLiteral("userName"), QStringLiteral("password")};
     if (channel == TestCaseSendChannel::Dongle && cmdName == QLatin1String("SampleSuctionDual")) {
@@ -436,6 +522,51 @@ QStringList sendParamPreferredOrder(TestCaseSendChannel channel, const QString& 
             || cmdName == QLatin1String("ScreenCameraCalibration"))
             keys.append(QStringLiteral("referencePath"));
         return keys;
+    }
+    if (channel == TestCaseSendChannel::Fixture && cmdName == QLatin1String("LedOnOffCheck")) {
+        return {QStringLiteral("cameraSource"), QStringLiteral("cameraIp"), QStringLiteral("cameraSerial"),
+                QStringLiteral("cameraIndex"), QStringLiteral("cameraName"), QStringLiteral("warmupMs"),
+                QStringLiteral("saveCapture"), QStringLiteral("ledCount"), QStringLiteral("minLuma"),
+                QStringLiteral("mode1"), QStringLiteral("mode2"), QStringLiteral("mode3"), QStringLiteral("mode4"),
+                QStringLiteral("modes"), QStringLiteral("mode"), QStringLiteral("sampleDurationMs"),
+                QStringLiteral("sampleIntervalMs")};
+    }
+    if ((channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial)
+        && (cmdName == QLatin1String("RootPumpControl") || cmdName == QLatin1String("RootSuctionTest"))) {
+        return {QStringLiteral("status"), QStringLiteral("switch"), QStringLiteral("mode"), QStringLiteral("level"),
+                QStringLiteral("customMode"), QStringLiteral("customLevel"), QStringLiteral("customFreq"),
+                QStringLiteral("controlType"), QStringLiteral("pumpFreq")};
+    }
+    if ((channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial)
+        && cmdName == QLatin1String("Root2ModeSet")) {
+        return {QStringLiteral("mode")};
+    }
+    if ((channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial)
+        && cmdName == QLatin1String("Root2LevelSet")) {
+        return {QStringLiteral("level")};
+    }
+    if ((channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial)
+        && cmdName == QLatin1String("Root2PumpState")) {
+        return {QStringLiteral("on"), QStringLiteral("state"), QStringLiteral("value")};
+    }
+    if ((channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial)
+        && cmdName == QLatin1String("Sn")) {
+        // 读 SN 只需类型；写才要内容/长度
+        if (action == TestCaseSendAction::Get)
+            return {QStringLiteral("which_sn")};
+        return {QStringLiteral("sn"), QStringLiteral("which_sn"), QStringLiteral("length")};
+    }
+    if ((channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial)
+        && cmdName == QLatin1String("RssiRead")) {
+        return {QStringLiteral("mode")};
+    }
+    if ((channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial)
+        && cmdName == QLatin1String("FacResult")) {
+        return {QStringLiteral("done")};
+    }
+    if ((channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial)
+        && cmdName == QLatin1String("FacMode")) {
+        return {QStringLiteral("on"), QStringLiteral("mode")};
     }
     return {};
 }
@@ -596,7 +727,8 @@ QVariantMap defaultVisaReadCurrentParamMap(ScpiDeviceRoute route) {
     return map;
 }
 
-QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString& device, const QString& cmdName) {
+QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString& device, const QString& cmdName,
+                                      TestCaseSendAction action = TestCaseSendAction::Set) {
     if (channel == TestCaseSendChannel::Scpi) {
         const ScpiDeviceRoute route = ScpiPeriphCmdCatalog::deviceFromIni(device);
         if (isVisaProgrammablePowerRoute(route)) {
@@ -668,10 +800,111 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
         return {};
     }
     if (channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial) {
+        if (cmdName == QLatin1String("RootPumpControl")) {
+            // 0xC0：status/mode/level 必填；其余可按需改（吸乳模式常见 mode=1）
+            return QVariantMap{{QStringLiteral("status"), QStringLiteral("1")},
+                               {QStringLiteral("mode"), QStringLiteral("1")},
+                               {QStringLiteral("level"), QStringLiteral("15")},
+                               {QStringLiteral("customMode"), QStringLiteral("1")},
+                               {QStringLiteral("customLevel"), QStringLiteral("1")},
+                               {QStringLiteral("customFreq"), QStringLiteral("2")},
+                               {QStringLiteral("controlType"), QStringLiteral("2")},
+                               {QStringLiteral("pumpFreq"), QStringLiteral("1")}};
+        }
         if (cmdName == QLatin1String("RootSuctionTest")) {
             return QVariantMap{{QStringLiteral("switch"), QStringLiteral("1")},
                                {QStringLiteral("mode"), QStringLiteral("1")},
                                {QStringLiteral("level"), QStringLiteral("8")}};
+        }
+        if (cmdName == QLatin1String("Root2ModeSet")) {
+            return QVariantMap{{QStringLiteral("mode"), QStringLiteral("2")}};
+        }
+        if (cmdName == QLatin1String("Root2LevelSet")) {
+            return QVariantMap{{QStringLiteral("level"), QStringLiteral("15")}};
+        }
+        if (cmdName == QLatin1String("Root2PumpState")) {
+            return QVariantMap{{QStringLiteral("on"), QStringLiteral("1")}};
+        }
+        if (cmdName == QLatin1String("RssiRead")) {
+            // 0=BLE，1=经典 BT
+            return QVariantMap{{QStringLiteral("mode"), QStringLiteral("0")}};
+        }
+        if (cmdName == QLatin1String("FacResult")) {
+            // 1=产测完成，0=未完成（兼容旧 Param_int）
+            return QVariantMap{{QStringLiteral("done"), QStringLiteral("1")}};
+        }
+        if (cmdName == QLatin1String("FacMode")) {
+            return QVariantMap{{QStringLiteral("on"), QStringLiteral("1")},
+                               {QStringLiteral("mode"), QStringLiteral("1")}};
+        }
+        if (cmdName == QLatin1String("Sleep")) {
+            return QVariantMap{{QStringLiteral("switch"), QStringLiteral("1")}};
+        }
+        if (cmdName == QLatin1String("ForbidSleep")) {
+            return QVariantMap{{QStringLiteral("value"), QStringLiteral("1")}};
+        }
+        if (cmdName == QLatin1String("LedTest") || cmdName == QLatin1String("LcdBacklight")) {
+            return QVariantMap{{QStringLiteral("on"), QStringLiteral("1")}};
+        }
+        if (cmdName == QLatin1String("LcdColorTestMode")) {
+            return QVariantMap{{QStringLiteral("enter"), QStringLiteral("1")}};
+        }
+        if (cmdName == QLatin1String("SetLcdColor")) {
+            return QVariantMap{{QStringLiteral("color"), QStringLiteral("0")}};
+        }
+        if (cmdName == QLatin1String("CompensationSet")) {
+            return QVariantMap{{QStringLiteral("enable"), QStringLiteral("1")}};
+        }
+        if (cmdName == QLatin1String("BtSignalMode") || cmdName == QLatin1String("BtNoSignalMode")
+            || cmdName == QLatin1String("BtFreqMode")) {
+            return QVariantMap{{QStringLiteral("enter"), QStringLiteral("1")}};
+        }
+        if (cmdName == QLatin1String("ChargeCurrentSet")) {
+            return QVariantMap{{QStringLiteral("currentMa"), QStringLiteral("2000")}};
+        }
+        if (cmdName == QLatin1String("SetBattery")) {
+            return QVariantMap{{QStringLiteral("percent"), QStringLiteral("50")}};
+        }
+        if (cmdName == QLatin1String("RootHeatLevelControl")) {
+            return QVariantMap{{QStringLiteral("switch"), QStringLiteral("1")},
+                               {QStringLiteral("level"), QStringLiteral("1")}};
+        }
+        if (cmdName == QLatin1String("RootVibration")) {
+            return QVariantMap{{QStringLiteral("value"), QStringLiteral("1")}};
+        }
+        if (cmdName == QLatin1String("RootSystemControl")) {
+            return QVariantMap{{QStringLiteral("command"), QStringLiteral("1")}};
+        }
+        if (cmdName == QLatin1String("PressSampleIntervalSet")) {
+            return QVariantMap{{QStringLiteral("intervalMs"), QStringLiteral("50")}};
+        }
+        if (cmdName == QLatin1String("LightCalibWrite")) {
+            return QVariantMap{{QStringLiteral("index"), QStringLiteral("0")},
+                               {QStringLiteral("value"), QStringLiteral("1")}};
+        }
+        if (cmdName == QLatin1String("LightCalibRead")) {
+            return QVariantMap{{QStringLiteral("index"), QStringLiteral("0")}};
+        }
+        if (cmdName == QLatin1String("KeySignalRead")) {
+            return QVariantMap{{QStringLiteral("key"), QStringLiteral("0")}};
+        }
+        if (cmdName == QLatin1String("AgingStatusRead")) {
+            return QVariantMap{{QStringLiteral("mode"), QStringLiteral("2")}};
+        }
+        if (cmdName == QLatin1String("WifiConnect")) {
+            return QVariantMap{{QStringLiteral("name"), QStringLiteral("TestAP")},
+                               {QStringLiteral("password"), QStringLiteral("12345678")}};
+        }
+        if (cmdName == QLatin1String("Sn")) {
+            // Get：只读类型（1=整机SN）；Set：内容 + 类型（+ Qroot2 length）
+            if (action == TestCaseSendAction::Get)
+                return QVariantMap{{QStringLiteral("which_sn"), QStringLiteral("1")}};
+            QVariantMap m{{QStringLiteral("sn"), QStringLiteral("$WHOLE_MACHINE_SN")},
+                          {QStringLiteral("which_sn"), QStringLiteral("1")}};
+            if (device.contains(QLatin1String("Qroot2"), Qt::CaseInsensitive)
+                || device.contains(QLatin1String("root2"), Qt::CaseInsensitive))
+                m.insert(QStringLiteral("length"), QStringLiteral("35"));
+            return m;
         }
         if (cmdName == QLatin1String("SuctionMode")) {
             return QVariantMap{{QStringLiteral("enter"), QStringLiteral("1")}};
@@ -682,9 +915,89 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
         if (cmdName == QLatin1String("Root2BowlCalib")) {
             return QVariantMap{{QStringLiteral("value"), QStringLiteral("0")}};
         }
+        if (cmdName == QLatin1String("SoftVersionRead")) {
+            return QVariantMap{{QStringLiteral("field"), QStringLiteral("soft_version")}};
+        }
+        if (cmdName == QLatin1String("GetBattery")) {
+            return QVariantMap{{QStringLiteral("field"), QStringLiteral("percent")}};
+        }
+        if (cmdName == QLatin1String("MacWrite")) {
+            return QVariantMap{{QStringLiteral("value"), QStringLiteral("$MAC")},
+                               {QStringLiteral("side"), QStringLiteral("2")}};
+        }
+        if (cmdName == QLatin1String("WriteKey")) {
+            return QVariantMap{{QStringLiteral("value"), QStringLiteral("$TUPLE_DEVICE_SECRET")},
+                               {QStringLiteral("side"), QStringLiteral("2")}};
+        }
+        if (cmdName == QLatin1String("MacRead") || cmdName == QLatin1String("TupleRead")
+            || cmdName == QLatin1String("FactoryReset") || cmdName == QLatin1String("ShipMode")
+            || cmdName == QLatin1String("DevReset") || cmdName == QLatin1String("TravelLock")) {
+            // Qaiot 常用 side；FCTP/Qroot 无参也可忽略该键
+            return QVariantMap{{QStringLiteral("side"), QStringLiteral("2")}};
+        }
+        if (cmdName == QLatin1String("PeriphState")) {
+            return QVariantMap{{QStringLiteral("type"), QStringLiteral("0")}};
+        }
+        if (cmdName == QLatin1String("PressCollect")) {
+            return QVariantMap{{QStringLiteral("on"), QStringLiteral("1")}};
+        }
+        if (cmdName == QLatin1String("LightReportControl")) {
+            return QVariantMap{{QStringLiteral("start"), QStringLiteral("1")}};
+        }
+        if (cmdName == QLatin1String("Root2PoseSwitch")) {
+            return QVariantMap{{QStringLiteral("on"), QStringLiteral("1")}};
+        }
+        if (cmdName == QLatin1String("Root2LedControl")) {
+            return QVariantMap{{QStringLiteral("color"), QStringLiteral("0")},
+                               {QStringLiteral("on"), QStringLiteral("1")}};
+        }
+        if (cmdName == QLatin1String("ExceptionThresholdRead")) {
+            return QVariantMap{{QStringLiteral("type"), QStringLiteral("1")}};
+        }
+        if (cmdName == QLatin1String("ExceptionThresholdWrite")) {
+            return QVariantMap{{QStringLiteral("type"), QStringLiteral("1")},
+                               {QStringLiteral("value"), QStringLiteral("20")}};
+        }
+        if (cmdName == QLatin1String("PumpParamWrite")) {
+            return QVariantMap{{QStringLiteral("circleNum"), QStringLiteral("1")},
+                               {QStringLiteral("durationTime"), QStringLiteral("1000")},
+                               {QStringLiteral("intervalTime"), QStringLiteral("100")},
+                               {QStringLiteral("pumpPwm"), QStringLiteral("50")}};
+        }
+        if (cmdName == QLatin1String("ValveParamWrite")) {
+            return QVariantMap{{QStringLiteral("valveEnableTime"), QStringLiteral("100")},
+                               {QStringLiteral("valveDisableTime"), QStringLiteral("100")},
+                               {QStringLiteral("valvePwm"), QStringLiteral("50")}};
+        }
+        if (cmdName == QLatin1String("HeatTestWrite")) {
+            return QVariantMap{{QStringLiteral("enable"), QStringLiteral("1")},
+                               {QStringLiteral("driveStrength"), QStringLiteral("50")},
+                               {QStringLiteral("durationTime"), QStringLiteral("1000")}};
+        }
+        if (cmdName == QLatin1String("VibrationTestWrite")) {
+            return QVariantMap{{QStringLiteral("enable"), QStringLiteral("1")},
+                               {QStringLiteral("driveStrength"), QStringLiteral("50")},
+                               {QStringLiteral("freq"), QStringLiteral("100")},
+                               {QStringLiteral("durationTime"), QStringLiteral("1000")}};
+        }
+        if (cmdName == QLatin1String("CycleReportWrite")) {
+            return QVariantMap{{QStringLiteral("enable"), QStringLiteral("1")},
+                               {QStringLiteral("type"), QStringLiteral("0")},
+                               {QStringLiteral("intervalTime"), QStringLiteral("100")}};
+        }
         return {};
     }
     if (channel == TestCaseSendChannel::Dongle) {
+        if (cmdName == QLatin1String("BleScanConnectByName")) {
+            return QVariantMap{{QStringLiteral("name"), QStringLiteral("M5 Ultra")},
+                               {QStringLiteral("rssi"), QStringLiteral("-70")}};
+        }
+        if (cmdName == QLatin1String("Bomb")) {
+            return QVariantMap{{QStringLiteral("deviceName"), QStringLiteral("Device")},
+                               {QStringLiteral("rssi"), QStringLiteral("-50")},
+                               {QStringLiteral("connectionInterval"), QStringLiteral("0")},
+                               {QStringLiteral("command"), QStringLiteral("0")}};
+        }
         if (cmdName == QLatin1String("SampleSuctionSingle")) {
             return QVariantMap{{QStringLiteral("sampleDurationMs"), QStringLiteral("10000")},
                                {QStringLiteral("sampleIntervalMs"), QStringLiteral("20")},
@@ -738,6 +1051,24 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
         }
         return {};
     }
+    if (channel == TestCaseSendChannel::Modbus
+        && device.compare(QLatin1String("FaFbFloatAmmeterRtu"), Qt::CaseInsensitive) == 0) {
+        if (cmdName == QLatin1String("ReadVoltageCentivolt")) {
+            return QVariantMap{{QStringLiteral("slaveAddr"), QStringLiteral("1")},
+                               {QStringLiteral("registerAddress"), QStringLiteral("1")},
+                               {QStringLiteral("sampleDurationMs"), QStringLiteral("3000")},
+                               {QStringLiteral("sampleIntervalMs"), QStringLiteral("200")}};
+        }
+        if (cmdName == QLatin1String("ReadMeasurement")) {
+            return QVariantMap{{QStringLiteral("sampleDurationMs"), QStringLiteral("3000")},
+                               {QStringLiteral("sampleIntervalMs"), QStringLiteral("200")}};
+        }
+        return {};
+    }
+    if (channel == TestCaseSendChannel::Fixture
+        && FixturePcbaCmdCatalog::fixtureProtocolFromIni(device) == TestCaseFixtureProtocol::Xwd) {
+        return {};
+    }
     if (channel == TestCaseSendChannel::Fixture
         && FixturePcbaCmdCatalog::fixtureProtocolFromIni(device) == TestCaseFixtureProtocol::UsbCamera) {
         if (cmdName == QLatin1String("ScreenDeadPixelCheck")
@@ -765,6 +1096,23 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
             }
             return map;
         }
+        if (cmdName == QLatin1String("LedOnOffCheck")) {
+            return QVariantMap{{QStringLiteral("cameraSource"), QString()},
+                               {QStringLiteral("cameraIp"), QStringLiteral("169.254.64.10")},
+                               {QStringLiteral("cameraSerial"), QString()},
+                               {QStringLiteral("cameraIndex"), QStringLiteral("0")},
+                               {QStringLiteral("cameraName"), QString()},
+                               {QStringLiteral("warmupMs"), QStringLiteral("450")},
+                               {QStringLiteral("saveCapture"), QStringLiteral("1")},
+                               {QStringLiteral("ledCount"), QStringLiteral("4")},
+                               {QStringLiteral("minLuma"), QStringLiteral("80")},
+                               {QStringLiteral("mode1"), QStringLiteral("on")},
+                               {QStringLiteral("mode2"), QStringLiteral("on")},
+                               {QStringLiteral("mode3"), QStringLiteral("blink")},
+                               {QStringLiteral("mode4"), QStringLiteral("blink")},
+                               {QStringLiteral("sampleDurationMs"), QStringLiteral("1500")},
+                               {QStringLiteral("sampleIntervalMs"), QStringLiteral("80")}};
+        }
         return {};
     }
     if (channel == TestCaseSendChannel::Fixture
@@ -778,6 +1126,31 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
         return QVariantMap{{QStringLiteral("baseUrl"), QString()},
                            {QStringLiteral("userName"), QString()},
                            {QStringLiteral("password"), QString()}};
+    }
+    if (channel == TestCaseSendChannel::Cloud && cmdName == QLatin1String("ApplyTupleByMac")) {
+        return QVariantMap{{QStringLiteral("mac"), QStringLiteral("$MAC")},
+                           {QStringLiteral("sku"), QString()},
+                           {QStringLiteral("position"), QStringLiteral("F")}};
+    }
+    if (channel == TestCaseSendChannel::Cloud && cmdName == QLatin1String("DebugUpdateMacStatus")) {
+        return QVariantMap{{QStringLiteral("mac"), QStringLiteral("$MAC")},
+                           {QStringLiteral("status"), QStringLiteral("2")},
+                           {QStringLiteral("sn"), QStringLiteral("$SN")}};
+    }
+    if (channel == TestCaseSendChannel::Cloud && cmdName == QLatin1String("ResetStatus")) {
+        return QVariantMap{{QStringLiteral("mac"), QStringLiteral("$MAC")},
+                           {QStringLiteral("status"), QStringLiteral("1")}};
+    }
+    return {};
+}
+
+/** 字符串型指令默认值（切换指令时填入参数表）。 */
+QString sendParamDefaultStringForCmd(TestCaseSendChannel channel, const QString& cmdName) {
+    if (channel == TestCaseSendChannel::Dongle) {
+        if (cmdName == QLatin1String("BleScanConnect") || cmdName == QLatin1String("BleDirectConnect")
+            || cmdName == QLatin1String("BleOtaConnect") || cmdName == QLatin1String("BleAppConnect")
+            || cmdName == QLatin1String("BleMainConnect"))
+            return QStringLiteral("$MAC");
     }
     return {};
 }
@@ -845,17 +1218,113 @@ void installScreenInspectExpectedColorCombo(QTableWidget* table) {
     }
 }
 
-void applySendParamTableWithTemplate(QTableWidget* table, TestCaseSendChannel channel, const QString& device,
-                                     const QString& cmdName, const QVariantMap& userMap) {
+void fillWhichSnCombo(QComboBox* combo, const QString& currentText) {
+    if (!combo)
+        return;
+    combo->clear();
+    // 产线实际用到的 FacDevInfoType（板级SN=2 未用，不下发）
+    combo->addItem(QStringLiteral("整机SN"), QStringLiteral("1"));
+    combo->addItem(QStringLiteral("deviceName（deviceID）"), QStringLiteral("6"));
+    combo->addItem(QStringLiteral("productKey（productID）"), QStringLiteral("7"));
+    const QString want = currentText.trimmed().isEmpty() ? QStringLiteral("1") : currentText.trimmed();
+    int comboIdx = combo->findData(want, Qt::UserRole, Qt::MatchExactly);
+    if (comboIdx < 0) {
+        for (int i = 0; i < combo->count(); ++i) {
+            const QString text = combo->itemText(i);
+            if (combo->itemData(i).toString() == want || text == want
+                || (want == QLatin1String("deviceName") && text.startsWith(QLatin1String("deviceName")))
+                || (want == QLatin1String("productKey") && text.startsWith(QLatin1String("productKey")))
+                || want == QLatin1String("整机SN")) {
+                comboIdx = i;
+                break;
+            }
+        }
+    }
+    // 旧步骤若仍是板级SN=2，保留数字显示在首项旁不可选——落到整机以免静默改错；仅选已知三项
+    combo->setCurrentIndex(comboIdx >= 0 ? comboIdx : 0);
+}
+
+/** SN 类型：中文/英文名下拉，保存仍为 1/2/6/7。 */
+void installWhichSnCombo(QTableWidget* table) {
     if (!table)
         return;
-    const QStringList preferred = sendParamPreferredOrder(channel, cmdName);
-    const QVariantMap tmpl = sendParamDefaultMapForCmd(channel, device, cmdName);
-    if (!tmpl.isEmpty())
-        setSendParamTableFromMapWithTemplate(table, userMap, tmpl, preferred);
-    else
-        setSendParamTableFromMap(table, userMap, preferred);
+    for (int r = 0; r < table->rowCount(); ++r) {
+        QTableWidgetItem* nameItem = table->item(r, 0);
+        if (!nameItem)
+            continue;
+        const QString key = nameItem->data(SendParamKeyRole).toString().trimmed();
+        if (key != QLatin1String("which_sn"))
+            continue;
+        QTableWidgetItem* valItem = table->item(r, 1);
+        const QString cur = valItem ? valItem->text().trimmed() : QString();
+        auto* combo = new QComboBox(table);
+        fillWhichSnCombo(combo, cur);
+        combo->setToolTip(QStringLiteral("整机SN / deviceName / productKey；保存仍为 1/6/7。"));
+        QObject::connect(combo, QOverload<int>::of(&QComboBox::currentIndexChanged), table, [table, r](int) {
+            QComboBox* cb = qobject_cast<QComboBox*>(table->cellWidget(r, 1));
+            QTableWidgetItem* item = table->item(r, 1);
+            if (!cb || !item)
+                return;
+            item->setText(cb->currentData().toString());
+            item->setData(SendParamTouchedRole, true);
+            item->setData(SendParamPlaceholderRole, false);
+        });
+        table->setCellWidget(r, 1, combo);
+        if (valItem) {
+            valItem->setText(combo->currentData().toString());
+            valItem->setFlags(valItem->flags() & ~Qt::ItemIsEditable);
+            valItem->setData(SendParamTouchedRole, true);
+            valItem->setData(SendParamPlaceholderRole, false);
+        }
+    }
+}
+
+void installSendParamValueCombos(QTableWidget* table) {
     installScreenInspectExpectedColorCombo(table);
+    installWhichSnCombo(table);
+}
+
+void applySendParamTableWithTemplate(QTableWidget* table, TestCaseSendChannel channel, const QString& device,
+                                     const QString& cmdName, const QVariantMap& userMap,
+                                     TestCaseSendAction action = TestCaseSendAction::Set) {
+    if (!table)
+        return;
+    QVariantMap normalizedUser = userMap;
+    // Sn：sn / value 等价，只保留 sn，避免参数表出现两行内容
+    if (cmdName == QLatin1String("Sn")) {
+        if (normalizedUser.contains(QStringLiteral("sn")) && normalizedUser.contains(QStringLiteral("value")))
+            normalizedUser.remove(QStringLiteral("value"));
+        else if (!normalizedUser.contains(QStringLiteral("sn")) && normalizedUser.contains(QStringLiteral("value"))) {
+            normalizedUser.insert(QStringLiteral("sn"), normalizedUser.value(QStringLiteral("value")));
+            normalizedUser.remove(QStringLiteral("value"));
+        }
+        // 读 SN：界面不展示写专用字段（即便旧 ini 里残留）
+        if (action == TestCaseSendAction::Get) {
+            normalizedUser.remove(QStringLiteral("sn"));
+            normalizedUser.remove(QStringLiteral("value"));
+            normalizedUser.remove(QStringLiteral("length"));
+            normalizedUser.remove(QStringLiteral("snLength"));
+        }
+    }
+    // FacResult：旧 Param_int / Param_value 归一到 done，避免空表或双行
+    if (cmdName == QLatin1String("FacResult")) {
+        if (!normalizedUser.contains(QStringLiteral("done"))) {
+            if (normalizedUser.contains(QStringLiteral("int")))
+                normalizedUser.insert(QStringLiteral("done"), normalizedUser.take(QStringLiteral("int")));
+            else if (normalizedUser.contains(QStringLiteral("value")))
+                normalizedUser.insert(QStringLiteral("done"), normalizedUser.take(QStringLiteral("value")));
+        } else {
+            normalizedUser.remove(QStringLiteral("int"));
+            normalizedUser.remove(QStringLiteral("value"));
+        }
+    }
+    const QStringList preferred = sendParamPreferredOrder(channel, cmdName, action);
+    const QVariantMap tmpl = sendParamDefaultMapForCmd(channel, device, cmdName, action);
+    if (!tmpl.isEmpty())
+        setSendParamTableFromMapWithTemplate(table, normalizedUser, tmpl, preferred);
+    else
+        setSendParamTableFromMap(table, normalizedUser, preferred);
+    installSendParamValueCombos(table);
 }
 
 void setSendParamTableFromString(QTableWidget* table, const QString& value) {
@@ -914,12 +1383,19 @@ QVariantMap readSendParamMapFromTable(const QTableWidget* table) {
 
         QString val = valItem ? valItem->text().trimmed() : QString();
         if (QComboBox* combo = qobject_cast<QComboBox*>(table->cellWidget(r, 1))) {
-            bool ok = false;
-            int colorIdx = ScreenInspectAnalyzer::parseColorIndex(combo->currentData().toString(), &ok);
-            if (!ok)
-                colorIdx = ScreenInspectAnalyzer::parseColorIndex(combo->currentText(), &ok);
-            // 写入数字，避免中文 ini 编码或 findData(-1) 导致重开变回 -1
-            val = QString::number(ok ? colorIdx : -1);
+            if (name == QLatin1String("expectedColor")) {
+                bool ok = false;
+                int colorIdx = ScreenInspectAnalyzer::parseColorIndex(combo->currentData().toString(), &ok);
+                if (!ok)
+                    colorIdx = ScreenInspectAnalyzer::parseColorIndex(combo->currentText(), &ok);
+                // 写入数字，避免中文 ini 编码或 findData(-1) 导致重开变回 -1
+                val = QString::number(ok ? colorIdx : -1);
+            } else {
+                // which_sn 等：界面显示名称，ini 仍写 userData 数字串
+                val = combo->currentData().toString();
+                if (val.isEmpty())
+                    val = combo->currentText().trimmed();
+            }
             map.insert(name, val);
             continue;
         }
@@ -1020,6 +1496,8 @@ void fillFixtureProtocolCombo(QComboBox* box) {
                  FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::UsbCamera));
     box->addItem(FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol::VesLight),
                  FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::VesLight));
+    box->addItem(FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol::Universal),
+                 FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::Universal));
 }
 
 void fillProtocolComboForChannel(QComboBox* box, TestCaseSendChannel channel) {
@@ -1074,6 +1552,11 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
             items.reserve(names.size());
             for (const QString& name : names)
                 items.append({XwdRawFixtureCmdCatalog::catalog().cmdUiLabel(name), name});
+        } else if (proto == TestCaseFixtureProtocol::Universal) {
+            const QStringList names = UniversalFixtureCmdCatalog::catalog().allCmdNames(action);
+            items.reserve(names.size());
+            for (const QString& name : names)
+                items.append({UniversalFixtureCmdCatalog::catalog().cmdUiLabel(name), name});
         } else if (proto == TestCaseFixtureProtocol::JieliBtBox) {
             const QStringList names = JieliBtBoxCmdCatalog::catalog().allCmdNames(action);
             items.reserve(names.size());
@@ -1109,8 +1592,15 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
         for (const QString& name : names) {
             items.append({ScpiPeriphCmdCatalog::cmdUiLabel(devRoute, name), name});
         }
+    } else if (channel == TestCaseSendChannel::ProductSerial) {
+        const QStringList names = ProductSerialCmdCatalog::catalog().allCmdNames(action);
+        items.reserve(names.size());
+        for (const QString& name : names)
+            items.append({ProductSerialCmdCatalog::catalog().cmdUiLabel(name), name});
     } else {
-        const QStringList names = DeviceCmdCatalog::catalog().allCmdNames(action);
+        // 产品通道：按下拉当前产品协议过滤，避免 Qroot2 工站看到整表 FCTP/Root 指令
+        const TestCaseProductProtocol productProto = DeviceCmdCatalog::productProtocolFromIni(device);
+        const QStringList names = DeviceCmdCatalog::allCmdNames(action, productProto);
         items.reserve(names.size());
         for (const QString& name : names)
             items.append({DeviceCmdCatalog::catalog().cmdUiLabel(name), name});
@@ -1128,12 +1618,20 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
             }
         }
         if (!found) {
-            const QString label = DeviceCmdCatalog::catalog().cmdUiLabel(keepCmdIfMissing) + QStringLiteral("（未登记）");
+            QString label;
+            if (channel == TestCaseSendChannel::ProductSerial)
+                label = ProductSerialCmdCatalog::catalog().cmdUiLabel(keepCmdIfMissing);
+            else
+                label = DeviceCmdCatalog::catalog().cmdUiLabel(keepCmdIfMissing);
+            label += QStringLiteral("（未登记/非当前协议）");
             items.prepend({label, keepCmdIfMissing});
         }
     }
     for (const auto& item : items)
         box->addItem(item.first, item.second);
+    // 产品通道首项留空：PromptOnly 等上报时 DeviceCmd 为空可选中，避免误存成下拉第一项
+    if (channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial)
+        box->insertItem(0, QStringLiteral("（不发送）"), QString());
 }
 
 TestCaseSendChannel sendChannelFromComboData(const QString& data) {
@@ -1250,6 +1748,18 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
                 if (XwdRawFixtureCmdCatalog::catalog().paramSchemaFor(static_cast<int>(xwdCmd), schema)) {
                     out.valid = true;
                     out.hint = XwdRawFixtureCmdCatalog::catalog().paramUiHint(name);
+                    out.kind = sendParamUiKindFromSchema(schema.kind);
+                }
+            }
+            return out;
+        }
+        if (proto == TestCaseFixtureProtocol::Universal) {
+            UniversalFixtureCmd uniCmd;
+            if (cmdEnumFromName(UniversalFixtureCmdCatalog::catalog(), name, uniCmd)) {
+                DeviceCmdParamSchema schema;
+                if (UniversalFixtureCmdCatalog::catalog().paramSchemaFor(static_cast<int>(uniCmd), schema)) {
+                    out.valid = true;
+                    out.hint = UniversalFixtureCmdCatalog::catalog().paramUiHint(name);
                     out.kind = sendParamUiKindFromSchema(schema.kind);
                 }
             }
@@ -1449,6 +1959,9 @@ void applyHookSendParamUi(Ui::TestCaseEditDialog* ui, const QString& hookId, con
     uiSchema.kind = SendCmdParamKind::JsonMap;
     if (hookId == QLatin1String("COUNTDOWN_WAIT")) {
         uiSchema.hint = QStringLiteral("seconds：倒计时秒数（必填，>0）；prompt：弹窗提示文字（可选）");
+    } else if (hookId == QLatin1String("SN_PREFIX4_CHECK")) {
+        uiSchema.hint = QStringLiteral(
+            "期望SN前四位：必填，如 V300/M5SM；比对本轮产品 SN（支持 URL 的 sn= 参数；BYD 过程码不可用）");
     } else if (hookId == QLatin1String("LIGHT_SENSOR_GOLDEN_CALIB")) {
         uiSchema.hint = QStringLiteral(
             "产品协议单点：index 写入下标；golden 金样光感（仅日志）；waitMs/minSamples 采光感取平均并写回读；"
@@ -1799,9 +2312,12 @@ const QHash<QString, QString>& hookDisplayNameMap() {
         {QStringLiteral("DONGLE_SUCTION_SAMPLE_SINGLE"), QStringLiteral("采集单通道吸力(旧Hook，请改用Dongle指令)")},
         {QStringLiteral("SN_WRITE_TAIL"), QStringLiteral("写入 SN 码")},
         {QStringLiteral("MAC_WRITE_ROOT"), QStringLiteral("写入 MAC 地址（Qroot）")},
+        {QStringLiteral("GENERATE_WHOLE_MACHINE_SN"), QStringLiteral("由PCBA主板SN生成整机SN并回填界面")},
+        {QStringLiteral("BOWL_CAP_DIFF_CHECK"), QStringLiteral("空满碗电容差值卡控（取前序空/满读值）")},
         {QStringLiteral("PRINT_WHOLE_MACHINE_SN"), QStringLiteral("打印整机 SN 二维码")},
         {QStringLiteral("QR_SN_CONSISTENCY_CHECK"), QStringLiteral("二维码一致性校验（与开局SN比对）")},
-        {QStringLiteral("COUNTDOWN_WAIT"), QStringLiteral("倒计时等待弹窗（到点自动下一步）")},
+        {QStringLiteral("SN_PREFIX4_CHECK"), QStringLiteral("产品型号卡控（PCBA SN前四位，不通讯产品）")},
+        {QStringLiteral("COUNTDOWN_WAIT"), QStringLiteral("倒计时等待（结果表倒计时，到点自动下一步）")},
         {QStringLiteral("LIGHT_SENSOR_GOLDEN_CALIB"), QStringLiteral("光感单点校准（设亮度→采光感→写+回读，旧）")},
         {QStringLiteral("LIGHT_SENSOR_CALIB_WRITE"), QStringLiteral("光感写入校准值（采光感→写）")},
         {QStringLiteral("LIGHT_SENSOR_CALIB_READ"), QStringLiteral("光感读取校准值（回读+五点终判）")},
@@ -1927,8 +2443,16 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
         else
             updateGateFieldsEnabled();
     });
-    connect(ui->checkBox_promptEnabled, &QCheckBox::toggled, this, &TestCaseEditDialog::updatePromptFieldsEnabled);
-    connect(ui->checkBox_promptOnly, &QCheckBox::toggled, this, &TestCaseEditDialog::updatePromptFieldsEnabled);
+    connect(ui->checkBox_promptEnabled, &QCheckBox::toggled, this, [this](bool) {
+        updatePromptFieldsEnabled();
+        if (!loadingDefinition_)
+            syncGateToSendCommand(comboData(ui->comboBox_gateReportType), comboData(ui->comboBox_gateField));
+    });
+    connect(ui->checkBox_promptOnly, &QCheckBox::toggled, this, [this](bool) {
+        updatePromptFieldsEnabled();
+        if (!loadingDefinition_)
+            syncGateToSendCommand(comboData(ui->comboBox_gateReportType), comboData(ui->comboBox_gateField));
+    });
     connect(ui->checkBox_hookEnabled, &QCheckBox::toggled, this, &TestCaseEditDialog::updateHookFieldsEnabled);
     connect(ui->comboBox_hookId, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
             &TestCaseEditDialog::onHookIdChanged);
@@ -1990,8 +2514,9 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
             const TestCaseSendChannel channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
             const QString device = comboData(ui->comboBox_productProtocol);
             const QString cmdName = comboData(ui->comboBox_deviceCmd);
-            tmpl = sendParamDefaultMapForCmd(channel, device, cmdName);
-            preferred = sendParamPreferredOrder(channel, cmdName);
+            const TestCaseSendAction action = sendActionFromComboData(comboData(ui->comboBox_action));
+            tmpl = sendParamDefaultMapForCmd(channel, device, cmdName, action);
+            preferred = sendParamPreferredOrder(channel, cmdName, action);
         }
         if (tmpl.isEmpty()) {
             QMessageBox::information(this, QStringLiteral("恢复默认参数表"),
@@ -2000,6 +2525,7 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
         }
         const QVariantMap current = readSendParamMapFromTable(ui->tableWidget_sendParam);
         setSendParamTableFromMapWithTemplate(ui->tableWidget_sendParam, current, tmpl, preferred);
+        installSendParamValueCombos(ui->tableWidget_sendParam);
     });
     // 双击参数名列改英文键；双击「参考图路径」的值列选图片
     connect(ui->tableWidget_sendParam, &QTableWidget::cellDoubleClicked, this, [this](int row, int column) {
@@ -2447,7 +2973,12 @@ void TestCaseEditDialog::syncGateToSendCommand(const QString& preferredReportTyp
     const TestCaseSendChannel channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
     const QString protocolOrDevice = comboData(ui->comboBox_productProtocol);
     const QString cmdName = comboData(ui->comboBox_deviceCmd);
-    GateSendBinding binding = GateRegistry::bindingForSend(channel, protocolOrDevice, cmdName);
+    // PromptOnly 只等主动上报，不发指令：卡控类型勿跟 DeviceCmd 走（否则 KeySignalRead 等会冲掉 keyButtonId）
+    const bool promptOnlyGate =
+        ui->checkBox_promptEnabled->isChecked() && ui->checkBox_promptOnly->isChecked();
+    GateSendBinding binding;
+    if (!promptOnlyGate)
+        binding = GateRegistry::bindingForSend(channel, protocolOrDevice, cmdName);
     if (ui->checkBox_hookEnabled->isChecked()) {
         const GateSendBinding hookBinding = GateRegistry::bindingForHook(comboData(ui->comboBox_hookId));
         if (!hookBinding.reportTypes.isEmpty())
@@ -2458,6 +2989,11 @@ void TestCaseEditDialog::syncGateToSendCommand(const QString& preferredReportTyp
     const QString preferredType = preferredReportType.trimmed();
     if (allowedTypes.isEmpty() && !preferredType.isEmpty())
         allowedTypes << preferredType;
+    // 仅提示等按键上报：默认允许 ProtocolButtonStateData
+    if (allowedTypes.isEmpty() && promptOnlyGate)
+        allowedTypes << QStringLiteral("ProtocolButtonStateData");
+    if (promptOnlyGate && binding.defaultField.isEmpty())
+        binding.defaultField = QStringLiteral("keyButtonId");
 
     gateReportTypeLocked_ = (allowedTypes.size() == 1);
     if (allowedTypes.isEmpty())
@@ -2546,7 +3082,14 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     ui->comboBox_productProtocol->blockSignals(false);
     updateProductProtocolRowVisible();
 
-    fillDeviceCmdCombo(ui->comboBox_deviceCmd, channel, action, def.send.device, def.send.deviceCmd);
+    // 产品/治具/外设：指令表按「协议或目标设备」下拉过滤，统一传 protoIni（勿用空的 send.device）
+    const QString cmdListDevice =
+        (channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial
+         || channel == TestCaseSendChannel::Fixture || channel == TestCaseSendChannel::Modbus
+         || channel == TestCaseSendChannel::Scpi)
+            ? protoIni
+            : def.send.device;
+    fillDeviceCmdCombo(ui->comboBox_deviceCmd, channel, action, cmdListDevice, def.send.deviceCmd);
     const int cmdIdx = comboIndexByData(ui->comboBox_deviceCmd, def.send.deviceCmd);
     if (cmdIdx >= 0)
         ui->comboBox_deviceCmd->setCurrentIndex(cmdIdx);
@@ -2563,18 +3106,22 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
                        ui->stackedWidget_param, ui->spinBox_intParam, ui->tableWidget_sendParam);
     if (uiSchema.kind == SendCmdParamKind::JsonMap) {
         applySendParamTableWithTemplate(ui->tableWidget_sendParam, channel, comboData(ui->comboBox_productProtocol),
-                                        def.send.deviceCmd, sendParamAsJsonMap(paramForUi));
+                                        def.send.deviceCmd, sendParamAsJsonMap(paramForUi), action);
     }
     const bool hasParamTemplate =
-        !sendParamDefaultMapForCmd(channel, comboData(ui->comboBox_productProtocol), def.send.deviceCmd).isEmpty();
+        !sendParamDefaultMapForCmd(channel, comboData(ui->comboBox_productProtocol), def.send.deviceCmd, action)
+             .isEmpty();
     applySendParamHintToUi(uiSchema, uiSchema.valid && uiSchema.kind != SendCmdParamKind::None,
                            ui->label_sendParamHint, ui->tableWidget_sendParam, ui->spinBox_intParam,
                            ui->pushButton_addParamRow, ui->pushButton_removeParamRow,
                            ui->pushButton_restoreParamDefaults, hasParamTemplate);
     if (def.hook.enabled && hookUsesSendParamUi(def.hook.hookId))
         applyHookSendParamUi(ui, def.hook.hookId, sendParamAsJsonMap(paramForUi));
+    // 须与 onDeviceCmdChanged 的 cmdKey 格式一致（含 |Get/|Set），否则 updateHookFieldsEnabled
+    // 再进 onDeviceCmdChanged 会误判指令变更，用空表刷掉已回读的 Param（如 FacResult done=0）
     lastSendParamCmdKey_ = sendChannelComboData(channel) + QLatin1Char('|')
-        + comboData(ui->comboBox_productProtocol) + QLatin1Char('|') + def.send.deviceCmd;
+        + comboData(ui->comboBox_productProtocol) + QLatin1Char('|') + def.send.deviceCmd
+        + QLatin1Char('|') + (action == TestCaseSendAction::Get ? QLatin1String("Get") : QLatin1String("Set"));
 
     ui->spinBox_delayBefore->setValue(def.timing.delayBeforeMs);
     ui->spinBox_delayAfter->setValue(def.timing.delayAfterMs);
@@ -2648,6 +3195,9 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
         def.send.productProtocol = productProtocolFromComboData(comboData(ui->comboBox_productProtocol));
     }
     def.send.deviceCmd = comboData(ui->comboBox_deviceCmd);
+    // 仅提示等上报：不写死指令名，避免空选中被保存成下拉第一项（曾冲掉加减/模式按键卡控）
+    if (def.meta.promptOnly)
+        def.send.deviceCmd.clear();
     def.hook.enabled = ui->checkBox_hookEnabled->isChecked();
     def.hook.hookId = comboData(ui->comboBox_hookId);
     if (def.hook.enabled && hookUsesSendParamUi(def.hook.hookId)) {
@@ -2746,6 +3296,7 @@ void TestCaseEditDialog::onDeviceCmdChanged(int) {
     const TestCaseSendChannel channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
     const QString cmdName = comboData(ui->comboBox_deviceCmd);
     const QString device = comboData(ui->comboBox_productProtocol);
+    const TestCaseSendAction action = sendActionFromComboData(comboData(ui->comboBox_action));
     if (!loadingDefinition_)
         syncGateToSendCommand(QString());
     const SendCmdParamUi uiSchema = sendCmdParamUiForName(cmdName, channel, device);
@@ -2787,18 +3338,21 @@ void TestCaseEditDialog::onDeviceCmdChanged(int) {
     }
     ui->stackedWidget_param->setCurrentWidget(ui->page_paramJson);
     const QString cmdKey =
-        sendChannelComboData(channel) + QLatin1Char('|') + device + QLatin1Char('|') + cmdName;
+        sendChannelComboData(channel) + QLatin1Char('|') + device + QLatin1Char('|') + cmdName
+        + QLatin1Char('|') + (action == TestCaseSendAction::Get ? QLatin1String("Get") : QLatin1String("Set"));
     const bool cmdChanged = (cmdKey != lastSendParamCmdKey_);
     lastSendParamCmdKey_ = cmdKey;
     const int expectCols = 2;
-    // 指令切换时重置表格；同指令重复进入（如 setDefinition 后再调）则保留已填内容
-    if (cmdChanged || ui->tableWidget_sendParam->columnCount() != expectCols) {
+    // 指令切换时重置表格；同指令重复进入（如 setDefinition 后再调）则保留已填内容。
+    // 加载定义中途勿用空 userMap 刷表，否则会盖掉随后回填的 ini 值（灰度一直停在模板默认）。
+    if (!loadingDefinition_ && (cmdChanged || ui->tableWidget_sendParam->columnCount() != expectCols)) {
         if (uiSchema.kind == SendCmdParamKind::String)
-            setSendParamTableFromString(ui->tableWidget_sendParam, QString());
+            setSendParamTableFromString(ui->tableWidget_sendParam,
+                                        sendParamDefaultStringForCmd(channel, cmdName));
         else
-            applySendParamTableWithTemplate(ui->tableWidget_sendParam, channel, device, cmdName, {});
+            applySendParamTableWithTemplate(ui->tableWidget_sendParam, channel, device, cmdName, {}, action);
     }
-    const bool hasParamTemplate = !sendParamDefaultMapForCmd(channel, device, cmdName).isEmpty();
+    const bool hasParamTemplate = !sendParamDefaultMapForCmd(channel, device, cmdName, action).isEmpty();
     applySendParamHintToUi(uiSchema, hasParam, ui->label_sendParamHint, ui->tableWidget_sendParam, ui->spinBox_intParam,
                            ui->pushButton_addParamRow, ui->pushButton_removeParamRow,
                            ui->pushButton_restoreParamDefaults, hasParamTemplate);

@@ -98,6 +98,7 @@ class test_base : public QWidget {
      * 低 CPU 占用等待：同样泵事件（不丢串口/协议回调），但空闲时阻塞在事件循环上。
      * waitWork 是忙等 processEvents，长采样窗口会把一个核占满并放大卡顿，
      * 吸力这类持续几秒到十几秒的采样循环用本函数。
+     * 一拖多时会顺带推进其它工位 startTask，避免本工位长等待卡住邻工位开测。
      */
     void waitWorkIdle(int ms);
     void updateMainStyle(QString style);
@@ -216,6 +217,8 @@ class test_base : public QWidget {
     bool isTestContinue = false;
     bool bindingResult = false;
     int m_index = 0;
+    /** startTask 重入保护：一拖多 waitWork 内推进兄弟工位时，勿再次进入本工位 startTask */
+    bool inStartTask_ = false;
 
   public slots:
     QString getValueBySN(const QString& sn);
@@ -322,6 +325,9 @@ class test_base : public QWidget {
     virtual void refreshLightCalibData(ProtocolLightCalibData) {}
     virtual void refreshFlangeStatus(ProtocolTypeData) {}
     virtual void refreshPumpStallCurrent(ProtocolPumpStallCurrentData) {}
+    virtual void refreshRoot2BowlCalibCap(const QString& , ProtocolRoot2BowlCalibCapData) {}
+    virtual void refreshRoot2BowlCapDiff(ProtocolRoot2BowlCapDiffData) {}
+    virtual void refreshRoot2PoseAngle(ProtocolRoot2PoseAngleData) {}
     virtual void refreshRootAgingHistory(ProtocolRootAgingHistoryData) {}
     virtual void refreshTypeStatus(ProtocolTypeData) {}
     virtual void refreshAmmeterData(QString) {}
@@ -359,6 +365,8 @@ class test_base : public QWidget {
     virtual void prepareAbortUploadPack(MesPacketData* pack);
     void abortTestSessionAndUpload();
     void flushPendingTestCsv();
+    /** 一拖多：本工位 waitWork 阻塞时推进其它工位 startTask（跳过已在 startTask 内的工位防重入） */
+    void pumpSiblingStartTasksWhileWaiting();
     void closeEvent(QCloseEvent* event) override;
     void showEvent(QShowEvent* event) override;
     bool eventFilter(QObject* watched, QEvent* event) override;

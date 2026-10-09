@@ -95,8 +95,11 @@ class Qlog {
     /**
      * 吸力采样等高频段：日志只进内存，关闭时再一次性落盘。
      * 缓冲超过约 1MB 仍会中途写盘，避免异常退出时内存无上限。
+     * 多工位同时采样用引用计数；开测/initData 请用 clearBufferedLogFlushDeferred。
      */
     static void setBufferedLogFlushDeferred(bool deferred);
+    /** 强制结束推迟落盘并刷盘（开测/中止用，不受引用计数残留影响） */
+    static void clearBufferedLogFlushDeferred();
     static void saveBlackboxLog(const QByteArray& data);
     static void saveOtaStressLog(const QString& msg);
     /**
@@ -135,6 +138,11 @@ class Qlog {
     /** 吸力采样序列按工位暂存；测中落盘拿不到 PASS/NG，故留到测完导出 */
     static void setSuctionSamples(int slot, const QVector<double>& timeSec, const QVector<double>& ch1,
                                   const QVector<double>& ch2, const QVector<double>& ch3);
+    /**
+     * 测完收尾立刻调用：把本工位吸力采样/曲线钉到「待上传」区，避免下一轮 initData 清空后
+     * 异步 LogUpload 取不到，平台会话包缺吸力 CSV/曲线。
+     */
+    static void pinSessionUploadArtifacts(int slot);
     /** 导出本轮吸力采样 CSV（列同主窗口吸力页），无采样数据时返回空且不置 error */
     static QString exportSuctionSamplesCsv(const QlogSessionInfo& info, QString* error);
 

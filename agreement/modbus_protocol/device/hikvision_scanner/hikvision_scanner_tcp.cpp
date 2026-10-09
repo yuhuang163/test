@@ -1,4 +1,4 @@
-﻿#include "hikvision_scanner_tcp.h"
+#include "hikvision_scanner_tcp.h"
 #include <QElapsedTimer>
 #include <QThread>
 #include <QCoreApplication>
@@ -40,7 +40,7 @@ bool HikvisionScannerTcp::sendStartAndRead(QString* outResult, int timeoutMs, QS
         if (errorMessage) *errorMessage = QStringLiteral("扫码枪未连接");
         return false;
     }
-    
+
     // 清空可能的残余数据
     socket_.readAll();
 
@@ -71,7 +71,7 @@ bool HikvisionScannerTcp::sendStartAndRead(QString* outResult, int timeoutMs, QS
         }
         QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents, 10);
     }
-    
+
     if (errorMessage) *errorMessage = QStringLiteral("读取条码超时，可能未扫到");
     return false;
 }

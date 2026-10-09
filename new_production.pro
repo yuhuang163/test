@@ -135,6 +135,7 @@ INCLUDEPATH += platform/cloud/ota
 INCLUDEPATH += platform/cloud/test_data
 INCLUDEPATH += platform/instrument
 INCLUDEPATH += platform/debug/screen_inspect
+INCLUDEPATH += platform/debug/led_inspect
 INCLUDEPATH += $$PWD/third_party/mvs/include
 LIBS += -L$$PWD/third_party/mvs/lib/win64 -lMvCameraControl
 INCLUDEPATH += agreement/factory_protocol/protocol/qpb/ble_protocol
@@ -152,6 +153,8 @@ INCLUDEPATH += agreement/fixture_protocol/uart_fixture/device/imu_fixture_device
 INCLUDEPATH += agreement/fixture_protocol/hz_fixture/access
 INCLUDEPATH += agreement/fixture_protocol/hz_fixture/codec
 INCLUDEPATH += agreement/fixture_protocol/hz_fixture/device/hz_pcba_fixture_device
+INCLUDEPATH += agreement/fixture_protocol/universal_fixture/access
+INCLUDEPATH += agreement/fixture_protocol/universal_fixture/codec
 INCLUDEPATH += agreement/fixture_protocol/xwd_fixture/access
 INCLUDEPATH += agreement/fixture_protocol/xwd_fixture/codec
 INCLUDEPATH += agreement/fixture_protocol/xwd_fixture/device/xwd_fixture_device
@@ -171,6 +174,8 @@ INCLUDEPATH += agreement/modbus_protocol/device/hikvision_scanner
 INCLUDEPATH += agreement/modbus_protocol/device/gc_series_tcp
 INCLUDEPATH += agreement/modbus_protocol/device/hq_ammeter_rtu
 INCLUDEPATH += agreement/modbus_protocol/device/lx_ammeter_rtu
+INCLUDEPATH += agreement/modbus_protocol/device/aa55_ammeter_rtu
+INCLUDEPATH += agreement/modbus_protocol/device/fafb_float_ammeter_rtu
 INCLUDEPATH += agreement/modbus_protocol/device/multi_temp_logger_rtu
 INCLUDEPATH += agreement/modbus_protocol/device/xinjie_plc_rtu
 INCLUDEPATH += agreement/scpi_protocol/codec
@@ -216,6 +221,7 @@ SOURCES += \
     platform/debug/screen_inspect/screen_inspect_analyzer.cpp \
     platform/debug/screen_inspect/screen_inspect_capture.cpp \
     platform/debug/screen_inspect/screen_inspect_gige_capture.cpp \
+    platform/debug/led_inspect/led_inspect_analyzer.cpp \
     platform/driver/serial/serial_channel.cpp \
     advance/demo/usmile_ring_buffer.cpp \
     advance/imagewindow/draggablecheckbox.cpp \
@@ -230,6 +236,8 @@ SOURCES += \
     agreement/modbus_protocol/codec/qmodbus_rtu_rx_buffer.cpp \
     agreement/modbus_protocol/device/hq_ammeter_rtu/hq_ammeter_rtu.cpp \
     agreement/modbus_protocol/device/lx_ammeter_rtu/lx_ammeter_rtu.cpp \
+    agreement/modbus_protocol/device/aa55_ammeter_rtu/aa55_ammeter_rtu.cpp \
+    agreement/modbus_protocol/device/fafb_float_ammeter_rtu/fafb_float_ammeter_rtu.cpp \
     agreement/modbus_protocol/device/multi_temp_logger_rtu/multi_temp_logger_rtu.cpp \
     agreement/modbus_protocol/device/inovance_h5u_tcp/inovance_h5u_tcp_device.cpp \
     agreement/modbus_protocol/device/gc_series_tcp/gc_series_tcp_device.cpp \
@@ -265,6 +273,7 @@ SOURCES += \
     agreement/fixture_protocol/uart_fixture/device/press_fixture_device/press_fixture_device.cpp \
     agreement/fixture_protocol/uart_fixture/device/camera_fixture_device/camera_fixture_device.cpp \
     agreement/fixture_protocol/uart_fixture/device/imu_fixture_device/imu_fixture_device.cpp \
+    agreement/fixture_protocol/universal_fixture/codec/universal_fixture_codec.cpp \
     agreement/fixture_protocol/asd9026a/codec/asd9026a_codec.cpp \
     agreement/fixture_protocol/asd9026a/device/asd9026a_device/asd9026a_device.cpp \
     agreement/fixture_protocol/xwd_fixture/codec/fixture_uart_codec.cpp \
@@ -304,6 +313,7 @@ SOURCES += \
     platform/test_case/manifest/usb_camera_cmd_manifest.cpp \
     platform/test_case/manifest/ves_light_cmd_manifest.cpp \
     platform/test_case/manifest/fixture_pcba_cmd_manifest.cpp \
+    platform/test_case/manifest/universal_fixture_cmd_manifest.cpp \
     platform/test_case/manifest/asd9026a_cmd_manifest.cpp \
     platform/test_case/manifest/xwd_fixture_cmd_manifest.cpp \
     platform/test_case/manifest/jieli_bt_box_cmd_manifest.cpp \
@@ -390,6 +400,7 @@ HEADERS += \
     platform/debug/screen_inspect/screen_inspect_analyzer.h \
     platform/debug/screen_inspect/screen_inspect_capture.h \
     platform/debug/screen_inspect/screen_inspect_gige_capture.h \
+    platform/debug/led_inspect/led_inspect_analyzer.h \
     platform/driver/serial/serial_channel.h \
     advance/demo/usmile_ring_buffer.h \
     advance/imagewindow/draggablecheckbox.h \
@@ -405,6 +416,10 @@ HEADERS += \
     agreement/modbus_protocol/device/hq_ammeter_rtu/hq_ammeter_rtu_types.h \
     agreement/modbus_protocol/device/lx_ammeter_rtu/lx_ammeter_rtu.h \
     agreement/modbus_protocol/device/lx_ammeter_rtu/lx_ammeter_rtu_types.h \
+    agreement/modbus_protocol/device/aa55_ammeter_rtu/aa55_ammeter_rtu.h \
+    agreement/modbus_protocol/device/aa55_ammeter_rtu/aa55_ammeter_rtu_types.h \
+    agreement/modbus_protocol/device/fafb_float_ammeter_rtu/fafb_float_ammeter_rtu.h \
+    agreement/modbus_protocol/device/fafb_float_ammeter_rtu/fafb_float_ammeter_rtu_types.h \
     agreement/modbus_protocol/device/multi_temp_logger_rtu/multi_temp_logger_rtu.h \
     agreement/modbus_protocol/device/multi_temp_logger_rtu/multi_temp_logger_rtu_types.h \
     agreement/modbus_protocol/device/xinjie_plc_rtu/xinjie_plc_address.h \
@@ -447,6 +462,8 @@ HEADERS += \
     agreement/fixture_protocol/uart_fixture/device/press_fixture_device/press_fixture_device.h \
     agreement/fixture_protocol/uart_fixture/device/camera_fixture_device/camera_fixture_device.h \
     agreement/fixture_protocol/uart_fixture/device/imu_fixture_device/imu_fixture_device.h \
+    agreement/fixture_protocol/universal_fixture/access/universal_fixture_types.h \
+    agreement/fixture_protocol/universal_fixture/codec/universal_fixture_codec.h \
     agreement/fixture_protocol/asd9026a/codec/asd9026a_codec.h \
     agreement/fixture_protocol/asd9026a/device/asd9026a_device/asd9026a_device.h \
     agreement/fixture_protocol/uart_fixture/access/fixture_uart_types.h \
@@ -491,6 +508,7 @@ HEADERS += \
     platform/test_case/manifest/usb_camera_cmd_manifest.h \
     platform/test_case/manifest/ves_light_cmd_manifest.h \
     platform/test_case/manifest/fixture_pcba_cmd_manifest.h \
+    platform/test_case/manifest/universal_fixture_cmd_manifest.h \
     platform/test_case/manifest/asd9026a_cmd_manifest.h \
     platform/test_case/manifest/xwd_fixture_cmd_manifest.h \
     platform/test_case/manifest/jieli_bt_box_cmd_manifest.h \

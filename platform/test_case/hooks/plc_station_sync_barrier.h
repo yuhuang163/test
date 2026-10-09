@@ -31,6 +31,28 @@ class PlcStationSyncBarrier {
     /** 一拖多同步监控读取线圈（如 M0/M1 按键信号卡控） */
     void executeSyncReadCoil(QFreeWork* ctx, const TestCaseDefinition& def, const QString& defaultAddr = QString());
 
+    /**
+     * XWD 一拖多控制板文本指令：走主页「连接PLC治具串口」共享口（115200 8N1）。
+     * 多工位到齐后由 Leader 统一下发一次；单工位直接执行。
+     * rawTextEscaped：如 DOWN?\\r\\n / SET_ALL_UP\\r\\n / RELAY_1_ON\\r\\n
+     * pollUntilMatch：true 时超时内轮询至期望（QueryDown→ALL_DOWN_OK）
+     * waitReply：false 时只下发不等待回包（继电器 Set）
+     */
+    void executeSyncXwdTextCmd(QFreeWork* ctx, const TestCaseDefinition& def, const QString& rawTextEscaped,
+                               bool pollUntilMatch, const QString& defaultExpect, bool waitReply = true);
+
+    /**
+     * XWD 继电器按工位号立即下发（不等待其它工站）。
+     * 工位 N → RELAY_N_ON / RELAY_N_OFF；流程里配「继电器1接通/断开」即可，2 号工站自动走继电器2。
+     */
+    void executeImmediateXwdRelayByStation(QFreeWork* ctx, const TestCaseDefinition& def, bool turnOn);
+
+    /** @deprecated 请用 executeSyncXwdTextCmd；保留兼容旧调用 */
+    void executeSyncXwdDownUp(QFreeWork* ctx, const TestCaseDefinition& def, bool isQueryDown);
+
+    /** 开测时：清近期完成缓存 + 丢掉无人等待的孤儿会话；不打断对端正在等的屏障。 */
+    void onStationTestStarting(QFreeWork* ctx);
+
   private:
     PlcStationSyncBarrier() = default;
     ~PlcStationSyncBarrier() = default;
@@ -47,14 +69,33 @@ class PlcStationSyncBarrier {
         QString errorString;
     };
 
+    /** 刚结束的同步结果：迟到工位开新会话前先查，避免对端已 2/2 放行后本侧又变 1/2 傻等 */
+    struct RecentSyncCompletion {
+        bool success = false;
+        QString resultData;
+        qint64 completedAtMs = 0;
+    };
+
     QMutex mutex_;
     QHash<QString, SyncSession*> activeSessions_;
+    QHash<QString, RecentSyncCompletion> recentCompletions_;
 
     QList<QFreeWork*> collectConfiguredStations(QFreeWork* ctx);
     QString resolveTargetCoilAddress(const TestCaseDefinition& def, const QString& defaultAddr);
     void scheduleSessionTimeout(const QString& sessionKey, SyncSession* session, int timeoutMs);
     void completeSession(const QString& sessionKey, SyncSession* session, bool success,
                          const QString& resultData, const QString& logText);
+    void rememberRecentCompletion(const QString& sessionKey, bool success, const QString& resultData);
+    /** 若对端刚完成同 key 同步，迟到工位直接沿用结果结案；返回 true 表示已处理。 */
+    bool tryAdoptRecentCompletion(QFreeWork* ctx, const QString& sessionKey, const QString& adoptLog);
+    /**
+     * 登记前清洗 arrived：去掉未在测、未挂本 sessionKey、或步骤已 done 的过期工位，
+     * 防止「工位1还在关电源，却已被算进 WRITE_M11」导致工位2假 2/2 结案。
+     * 调用前须已 ctx->setPlcSyncWaitKey(sessionKey)。须持 mutex_。
+     */
+    void pruneAndRegisterLocked(SyncSession* session, QFreeWork* ctx, const QString& sessionKey);
+    /** 去掉 arrived 已空、或无人仍挂本 key 的会话。须持 mutex_。 */
+    void dropOrphanSessionsLocked();
 };
 
 #endif // PLC_STATION_SYNC_BARRIER_H

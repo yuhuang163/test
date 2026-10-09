@@ -11,8 +11,6 @@ build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/bin/*
 !build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/bin/test_case/
 !build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/bin/test_case/**
 build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/bin/test_case/.backup
-# 远控 Agent 运行时（onedir：exe+_internal）不入库；发版包拷贝，Git 只留 remote_agent/ 源码
-build/Desktop_Qt_5_15_2_MSVC2019_64bit-Release/bin/remote_agent/
 
 new_production.pro.*
 # 仅共享工作区编码等团队约定，其余 VS Code 本地项仍忽略
@@ -31,3 +29,11 @@ __pycache__/
 路特上位机运行环境.zip
 
 **/上位机设置.local.ini
+
+.tmp_fu_patches/
+.tmp_blob_check.bin
+.tmp_*
+
+# 本机 Cursor 规则，仅本地保留不入库
+.cursor/rules/no-auto-compile-when-hung.mdc
+.cursor/rules/no-encoding-corruption.mdc

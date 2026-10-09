@@ -2,6 +2,7 @@
 
 #include "application_shutdown.h"
 #include "factory_cloud_client.h"
+#include "host_ota_service.h"
 #include "host_ota_ui.h"
 #include "host_ota_vbs.h"
 
@@ -570,7 +571,7 @@ static bool createOtaTransaction(const QList<OtaFileSpec>& changed,
     outTxn->stagingDir = stagingDir;
     outTxn->backupDir = backupDir;
     outTxn->txnId = txnId;
-    outTxn->logPath = QDir(appDir).filePath(QStringLiteral("ota_replace.log"));
+    outTxn->logPath = QDir(appDir).filePath(QStringLiteral("所有log/上位机log/ota_replace.log"));
     outTxn->vbsFileName = QDir(appDir).filePath(QStringLiteral("ota_replace.vbs"));
     outTxn->exeName = exeName;
     outTxn->toVersion = toVersion;
@@ -711,6 +712,8 @@ bool HostOtaApply::downloadAndApply(const HostOtaService::CheckResult& info,
     }
 
     HostOtaUi::showRestartCountdown(parent);
+    // 重启前落盘新版本更新说明，供升级后上报测试结果时附带
+    HostOtaService::saveLocalReleaseNotes(info.appVersion, info.releaseNotes);
     QString replaceErr;
     if (!startOtaReplaceVbs(txn, &replaceErr)) {
         if (message) {

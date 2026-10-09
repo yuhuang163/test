@@ -4,10 +4,14 @@
 #include "common_utils.h"
 #include "huiling_wfp60h_scpi_types.h"
 #include "qfreeworkbox.h"
+#include "led_inspect_analyzer.h"
 #include "screen_inspect_analyzer.h"
 #include "screen_inspect_capture.h"
 #include "screen_inspect_gige_capture.h"
+#include "serial_channel.h"
 #include "test_case.h"
+#include "test_case_store.h"
+#include "plc_station_sync_barrier.h"
 
 #include <QMessageBox>
 #include <QCloseEvent>
@@ -247,11 +251,10 @@ QString sanitizeMesValuePipes(QString v) {
     return v;
 }
 
-} // namespace
-
-void appendOneMesStep(QVector<QFreeWorkMesSegment>* out, const QString& name, const QString& value,
-                      const QString& maxValue, const QString& minValue, const QString& standardValue,
-                      const QString& unit, const QString& result, const QString& costTime) {
+static void appendOneMesStep(QVector<QFreeWorkMesSegment>* out, const QString& name,
+                              const QString& value, const QString& maxValue, const QString& minValue,
+                              const QString& standardValue, const QString& unit, const QString& result,
+                              const QString& costTime) {
     const QString n = name.trimmed();
     if (n.isEmpty())
         return;
@@ -260,8 +263,6 @@ void appendOneMesStep(QVector<QFreeWorkMesSegment>* out, const QString& name, co
                  TestRecordStore::escapeMesSegmentField(standardValue), TestRecordStore::escapeMesSegmentField(unit),
                  TestRecordStore::escapeMesSegmentField(result), TestRecordStore::escapeMesSegmentField(costTime)});
 }
-
-namespace {
 
 /** 每段格式 NAME:VALUE:MAX:MIN:STANDARD:UNIT:RESULT:COSTTIME，多段用 | 连接。 */
 QString joinFreeWorkMesItemvalue(const QVector<QFreeWorkMesSegment>& segments, const QString& overallResult,
@@ -720,9 +721,6 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     measure_wait_time = SETTINGS.value("Current/measure_wait_time").toInt();
 
     RssiTestTime = SETTINGS.value("BLE/RssiCount").toInt();
-    ui->wifiUserName->setText(SETTINGS.value(QString("WIFI/Name%1").arg(getIndex()), "请在配置文件中设置").toString());
-
-    ui->wifiPassword->setText(SETTINGS.value("WIFI/Password", "usmile123").toString());
 
     showlog("HighCurrent=" + QString::number(HighCurrent));
     showlog("LowCurrent=" + QString::number(LowCurrent));
@@ -893,7 +891,8 @@ void QFreeWork::updatePreStartMonitorState() {
 
     ui->autoStartCheckBox->blockSignals(true);
     ui->autoStartCheckBox->setChecked(settings.value("IsAutoStartChecked", false).toBool());
-    ui->autoStartCheckBox->setVisible(settings.value("Enabled", false).toBool());
+    ui->autoStartCheckBox->setVisible(settings.value("Enabled", false).toBool()
+                                      || settings.value(QStringLiteral("XwdDownScanEnabled"), false).toBool());
     ui->autoStartCheckBox->blockSignals(false);
     settings.endGroup();
 }
@@ -969,6 +968,103 @@ void QFreeWork::triggerScanner(const QString& scannerIp, int scannerPort, int sc
             return "ERROR:" + err;
         }
         return result;
+    });
+    watcher->setFuture(future);
+}
+
+void QFreeWork::triggerSerialScanner(const QString& comPort, int baudRate, const QString& hexCmd, int timeoutMs) {
+    const QString port = comPort.trimmed();
+    const int baud = baudRate > 0 ? baudRate : 9600;
+    const int targetTimeout = timeoutMs > 0 ? timeoutMs : 3000;
+    bool hexOk = false;
+    const QByteArray trigger = CommonUtils::fromHexString(hexCmd, &hexOk);
+    if (port.isEmpty()) {
+        showlog(QStringLiteral("[串口扫码枪] 未配置串口"));
+        updatePreStartMonitorState();
+        return;
+    }
+    if (!hexOk || trigger.isEmpty()) {
+        showlog(QStringLiteral("[串口扫码枪] 触发报文无效，请填写十六进制（例：16 54 0D）"));
+        updatePreStartMonitorState();
+        return;
+    }
+
+    showlog(QStringLiteral("[串口扫码枪] 触发扫码: %1 @ %2bps, hex=%3, 超时=%4ms...")
+                .arg(port)
+                .arg(baud)
+                .arg(QString::fromLatin1(trigger.toHex(' ')))
+                .arg(targetTimeout));
+
+    auto watcher = new QFutureWatcher<QString>(this);
+    connect(watcher, &QFutureWatcher<QString>::finished, this, [this, watcher]() {
+        QString res = watcher->result();
+        watcher->deleteLater();
+        if (res.startsWith(QLatin1String("ERROR:"))) {
+            showlog(QStringLiteral("串口扫码枪读取失败: ") + res.mid(6));
+            updatePreStartMonitorState();
+        } else {
+            showlog(QStringLiteral("串口扫码枪读取成功: ") + res);
+            ui->getMac->setText(res);
+            on_getMac_returnPressed();
+            updatePreStartMonitorState();
+        }
+    });
+
+    QFuture<QString> future = QtConcurrent::run([port, baud, trigger, targetTimeout]() -> QString {
+        SerialChannel channel;
+        SerialChannel::OpenParams params;
+        params.portName = port;
+        params.baudRate = baud;
+        params.readBufferSize = 4096;
+        params.readDebounceMs = 30;
+        params.rtsDtrMode = SerialChannel::RtsDtrMode::None;
+        if (!channel.open(params))
+            return QStringLiteral("ERROR:打开串口失败: ") + channel.errorString();
+
+        channel.clearReceiveBuffer();
+        if (channel.write(trigger) != trigger.size()) {
+            channel.close();
+            return QStringLiteral("ERROR:发送触发报文失败");
+        }
+        channel.port()->waitForBytesWritten(qMin(1000, targetTimeout));
+
+        QElapsedTimer timer;
+        timer.start();
+        QByteArray buffer;
+        while (!timer.hasExpired(targetTimeout)) {
+            QByteArray chunk;
+            const int remain = targetTimeout - static_cast<int>(timer.elapsed());
+            if (remain <= 0)
+                break;
+            if (channel.waitForFrame(&chunk, qMin(80, remain)))
+                buffer.append(chunk);
+            // 常见扫码枪以回车结束；够长也接受
+            const int cr = buffer.indexOf('\r');
+            const int lf = buffer.indexOf('\n');
+            int cut = -1;
+            if (cr >= 0 && lf >= 0)
+                cut = qMin(cr, lf);
+            else if (cr >= 0)
+                cut = cr;
+            else if (lf >= 0)
+                cut = lf;
+            if (cut >= 0) {
+                const QString code = QString::fromLatin1(buffer.left(cut)).trimmed();
+                channel.close();
+                if (code.isEmpty())
+                    return QStringLiteral("ERROR:读到空条码");
+                return code;
+            }
+            if (buffer.size() >= 8) {
+                const QString code = QString::fromLatin1(buffer).trimmed();
+                if (!code.isEmpty()) {
+                    channel.close();
+                    return code;
+                }
+            }
+        }
+        channel.close();
+        return QStringLiteral("ERROR:读取条码超时，可能未扫到");
     });
     watcher->setFuture(future);
 }
@@ -1072,9 +1168,6 @@ void QFreeWork::beginUiStartTest() {
         if (!usbSerialPort->isOpen())
             openUsbSerialPort();
     }
-    if (!macAddress.isEmpty() && macAddress != QStringLiteral("没有mac地址"))
-        ui->macLabel->setText("蓝牙mac: " + macAddress);
-
     // 开测即切 RUN，避免整轮流程期间一直停在「等待开始测试」
     ui->test_result->setText(QStringLiteral("RUN\n测试进行中"));
     applyStatusCardStyle(ui->test_result, QStringLiteral("busy"));
@@ -1226,6 +1319,9 @@ QString QFreeWork::resolvedExpectedTailSnText() const {
 }
 
 QByteArray QFreeWork::resolvedTailSnToWrite() const {
+    // 优先已生成/缓存的整机 SN；否则退回界面框（多为扫码/三元组回填）
+    if (!wholeMachineSn_.trimmed().isEmpty())
+        return wholeMachineSn_.trimmed().toUtf8();
     return resolvedPcbaSnText().toUtf8();
 }
 
@@ -1243,6 +1339,8 @@ void QFreeWork::runTestFlowBootstrap() {
         onTestSessionStarting(sn, mac);
     }
     showlog(QStringLiteral("开始测试"));
+    // 只清本工位 waitKey + 上一轮「近期完成」缓存；不打断对端已在等的同步会话
+    PlcStationSyncBarrier::instance().onStationTestStarting(this);
     // 清掉上一轮残留的指令重试定时器，避免本轮同步治具步骤被误判超时
     if (commandRetryTimer)
         finishCommandRetryWait(true, QString());
@@ -1421,7 +1519,9 @@ bool QFreeWork::tickOrderedTestStepLoop() {
             const bool fixtureOrSerialAsync =
                 caseDef.send.channel == TestCaseSendChannel::Fixture
                 || (caseDef.send.channel == TestCaseSendChannel::ProductSerial && !productSerialProtocolSet);
-            if (!caseDef.hook.enabled && !dongleBleConnect && !productGet && !fixtureOrSerialAsync) {
+            // Dongle 吸力采样等 needAsyncDone 步骤不可在此提前 done（异步窗尚未结案）
+            if (!caseDef.hook.enabled && !dongleBleConnect && !productGet && !fixtureOrSerialAsync
+                && !TestCaseRunner::needAsyncDone(caseDef)) {
                 if (!TestCaseRunner::stepWaitsForPromptAck(caseDef) || testCasePromptAcknowledged_) {
                     stepRuntime_.done = true;
                     stepRuntime_.pass = true;
@@ -1445,7 +1545,15 @@ bool QFreeWork::tickOrderedTestStepLoop() {
             } else if (dongleBleConnect && at->getConnected()) {
                 stepRuntime_.done = true;
                 stepRuntime_.pass = true;
-                    stepRuntime_.testData = QStringLiteral("已连接");
+                stepRuntime_.testData = QStringLiteral("已连接");
+            } else if (dongleBleConnect && lastCommandRetryCount > 0 && !at->getConnected()) {
+                // 指令等待已结束（如曾收到 CONNECT_SUCCESS）但此刻未连接：
+                // 重试定时器已停，若再等 getConnected 会永久卡在 needAsyncDone，界面不显示失败
+                stepRuntime_.done = true;
+                stepRuntime_.pass = false;
+                stepRuntime_.testData = QStringLiteral("蓝牙未保持连接");
+                TestResult = failValue;
+                showlog(QStringLiteral("步骤失败：%1（蓝牙应答后未保持连接）").arg(functionName));
             } else if (productGet && lastCommandRetryCount > 0) {
                 // 无 Gate 的 Product Get：协议层已应答即可过步（有 Gate 时由 evaluateActiveTestCaseGate 收尾）
                 stepRuntime_.done = true;
@@ -1467,8 +1575,7 @@ bool QFreeWork::tickOrderedTestStepLoop() {
                     stepRuntime_.pass = true;
                 }
             }
-            // 阻塞型 Hook（如 DONGLE_SUCTION_SAMPLE）在 waitWork/QEventLoop 内会重入 startTask，
-            // 不可凭 lastCommandRetryCount 提前 done，否则与采样循环并发导致第二次卡死。
+            // 吸力采样已改为 QTimer 异步窗口，不再在 waitWork 内堵死重入 startTask
         }
 
         if (needAsyncDone && !stepRuntime_.done) {
@@ -1613,6 +1720,8 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     }
 
     logCurrentUiMesConfig(QStringLiteral("收尾"));
+    // 一拖多：收尾前再写工位号，避免过程中被其它路径改成 1
+    pack.mechines = getIndex();
     finishTestRecord(pack, ui->isusemes->checkState());
 
     qDebug() << "测试结束";
@@ -1627,7 +1736,6 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     }
     ui->test_time->setText(CommonUtils::formatElapsedSeconds(TestTime));
     ui->macInput->clear();
-    ui->snInput->clear();
     ui->macInput->setDisabled(0);
     ui->getMac->setDisabled(0);
     // 先退出本工位测试态；最后一个工位结束时才能安全释放共享 ASD 串口。
@@ -1652,7 +1760,12 @@ void QFreeWork::closeEvent(QCloseEvent* event) {
 }
 
 void QFreeWork::startTask() {
+    if (inStartTask_)
+        return;
+    inStartTask_ = true;
+
     if (!isTestContinue) {
+        inStartTask_ = false;
         return;
     }
 
@@ -1689,6 +1802,7 @@ void QFreeWork::startTask() {
         }
     }
     finalizeTestFlowIfComplete();
+    inStartTask_ = false;
 }
 
 QFreeWork::~QFreeWork() {
@@ -1707,10 +1821,6 @@ void QFreeWork::refreshDongleWifi(QString data) {
     SETTINGS.setValue("WIFI/Password", "usmile123");
     // 保存名称，带有索引
     SETTINGS.setValue(QString("WIFI/Name%1").arg(getIndex()), data);
-
-    ui->wifiUserName->setText(SETTINGS.value(QString("WIFI/Name%1").arg(getIndex()), "请在配置文件中设置").toString());
-
-    ui->wifiPassword->setText(SETTINGS.value("WIFI/Password", "123445566").toString());
 }
 
 void QFreeWork::refreshBleState(int state) {
@@ -2015,18 +2125,16 @@ void QFreeWork::applyFreeWorkExtraTabsVisible(bool visible) {
     if (!bar)
         return;
 
-    const int expandIdx = ui->tabWidget->indexOf(ui->tab_2);
     const int chartIdx = ui->tabWidget->indexOf(ui->tab_chart);
     const int screenIdx = ui->tabWidget->indexOf(ui->tab_screenInspect);
     const int bleIdx = ui->tabWidget->indexOf(ui->tab_3);
-    bar->setTabVisible(expandIdx, visible);
     bar->setTabVisible(chartIdx, visible);
     bar->setTabVisible(screenIdx, visible);
     bar->setTabVisible(bleIdx, visible);
 
     if (!visible) {
         const int cur = ui->tabWidget->currentIndex();
-        if (cur == expandIdx || cur == chartIdx || cur == screenIdx || cur == bleIdx)
+        if (cur == chartIdx || cur == screenIdx || cur == bleIdx)
             ui->tabWidget->setCurrentIndex(kFreeWorkTabMain);
     }
 
@@ -2042,8 +2150,8 @@ void QFreeWork::on_toggleExtraTabsButton_clicked() {
     QTabBar* bar = ui->tabWidget->tabBar();
     if (!bar)
         return;
-    const int expandIdx = ui->tabWidget->indexOf(ui->tab_2);
-    applyFreeWorkExtraTabsVisible(!bar->isTabVisible(expandIdx));
+    const int chartIdx = ui->tabWidget->indexOf(ui->tab_chart);
+    applyFreeWorkExtraTabsVisible(!bar->isTabVisible(chartIdx));
 }
 
 void QFreeWork::loadSuctionGateSettings() {
@@ -2603,6 +2711,338 @@ bool QFreeWork::screenInspectAskHumanPassOnAutoFail(const QString& expectedColor
     return box.exec() == QMessageBox::Yes;
 }
 
+void QFreeWork::runLedInspectStep() {
+    if (activeTestCase_.send.deviceCmd != QStringLiteral("LedOnOffCheck")) {
+        TestResult = failValue;
+        markActiveTestCaseStepDone(false, QStringLiteral("未知LED检测指令"), QStringLiteral("失败"));
+        return;
+    }
+
+    QVariantMap map;
+    if (activeTestCase_.send.param.canConvert<QVariantMap>())
+        map = resolveTestCaseSendParamTree(activeTestCase_.send.param).toMap();
+
+    auto mapInt = [&](const QString& key, int defVal) {
+        if (!map.contains(key) || map.value(key).toString().trimmed().isEmpty())
+            return defVal;
+        bool ok = false;
+        const int v = map.value(key).toInt(&ok);
+        return ok ? v : defVal;
+    };
+    auto mapDouble = [&](const QString& key, double defVal) {
+        if (!map.contains(key) || map.value(key).toString().trimmed().isEmpty())
+            return defVal;
+        bool ok = false;
+        const double v = map.value(key).toDouble(&ok);
+        return ok ? v : defVal;
+    };
+
+    const int cameraIndex = mapInt(QStringLiteral("cameraIndex"), 0);
+    const QString cameraName = map.value(QStringLiteral("cameraName")).toString().trimmed();
+    // 自由工站默认 GigE；Param_cameraSource=usb 时仍走 USB 摄像头
+    const QString cameraSource = map.value(QStringLiteral("cameraSource")).toString().trimmed().toLower();
+    const bool useUsb = (cameraSource == QLatin1String("usb"));
+    QString cameraIp = map.value(QStringLiteral("cameraIp")).toString().trimmed();
+    if (cameraIp.isEmpty())
+        cameraIp = map.value(QStringLiteral("gigeIp")).toString().trimmed();
+    const QString cameraSerial = map.value(QStringLiteral("cameraSerial")).toString().trimmed();
+    const int warmupMs = qBound(0, mapInt(QStringLiteral("warmupMs"), 450), 8000);
+    const QString stationKey =
+        !activeFlowStationKey_.trimmed().isEmpty() ? activeFlowStationKey_ : TestCaseStore::resolveActiveFlowStationKey();
+    const TestCaseLedInspectConfig ledCfg = TestCaseStore::loadStationLedInspectConfig(stationKey);
+    const TestCaseScreenInspectConfig screenCfg = TestCaseStore::loadStationScreenInspectConfig(stationKey);
+    if (cameraIp.isEmpty())
+        cameraIp = screenCfg.gigEIp.trimmed();
+    if (cameraIp.isEmpty())
+        cameraIp = QStringLiteral("169.254.64.10");
+    const int ledCount = LedInspectAnalyzer::clampLedCount(mapInt(QStringLiteral("ledCount"), ledCfg.ledCount));
+    const double minLuma = mapDouble(QStringLiteral("minLuma"), ledCfg.minLuma);
+
+    // 每灯模式：优先 mode1~mode4 / modes=on,blink,...；否则工站/全局 mode 兜底
+    QVector<QString> ledModes;
+    ledModes.resize(ledCount);
+    const QString modesCsv = map.value(QStringLiteral("modes")).toString().trimmed();
+    QStringList modesParts;
+    if (!modesCsv.isEmpty())
+        modesParts = modesCsv.split(QLatin1Char(','), Qt::SkipEmptyParts);
+    const QString globalModeFallback = [&]() {
+        const QString fromMap = map.value(QStringLiteral("mode")).toString().trimmed();
+        if (!fromMap.isEmpty())
+            return fromMap;
+        if (!ledCfg.mode.isEmpty())
+            return ledCfg.mode;
+        return QStringLiteral("on");
+    }();
+    for (int i = 0; i < ledCount; ++i) {
+        QString m = map.value(QStringLiteral("mode%1").arg(i + 1)).toString().trimmed();
+        if (m.isEmpty()) {
+            if (i == 0)
+                m = ledCfg.mode1;
+            else if (i == 1)
+                m = ledCfg.mode2;
+            else if (i == 2)
+                m = ledCfg.mode3;
+            else if (i == 3)
+                m = ledCfg.mode4;
+        }
+        if (m.isEmpty() && i < modesParts.size())
+            m = modesParts.at(i).trimmed();
+        if (m.isEmpty())
+            m = globalModeFallback;
+        ledModes[i] = LedInspectAnalyzer::normalizeLedMode(m);
+    }
+    bool needMultiFrame = false;
+    QStringList modeDesc;
+    for (int i = 0; i < ledCount; ++i) {
+        const bool blink = LedInspectAnalyzer::isBlinkMode(ledModes.at(i));
+        if (blink)
+            needMultiFrame = true;
+        modeDesc << QStringLiteral("L%1=%2").arg(i + 1).arg(blink ? QStringLiteral("闪烁") : QStringLiteral("常亮"));
+    }
+    const int sampleDurationMs =
+        qBound(200, mapInt(QStringLiteral("sampleDurationMs"), needMultiFrame ? 1500 : 0), 10000);
+    const int sampleIntervalMs = qBound(30, mapInt(QStringLiteral("sampleIntervalMs"), 80), 2000);
+
+    if (useUsb) {
+        showlog(QStringLiteral("本步 USB 摄像头 LED 检测：灯数=%1 index=%2%3 预热%4ms 阈值=%5；%6%7")
+                    .arg(ledCount)
+                    .arg(cameraIndex)
+                    .arg(cameraName.isEmpty() ? QString() : QStringLiteral(" name=%1").arg(cameraName))
+                    .arg(warmupMs)
+                    .arg(minLuma, 0, 'f', 1)
+                    .arg(modeDesc.join(QLatin1Char(' ')))
+                    .arg(needMultiFrame
+                             ? QStringLiteral(" 窗口%1ms/间隔%2ms").arg(sampleDurationMs).arg(sampleIntervalMs)
+                             : QString()));
+    } else {
+        showlog(QStringLiteral("本步 GigE 相机 LED 检测：灯数=%1 IP=%2%3 预热%4ms 阈值=%5；%6%7")
+                    .arg(ledCount)
+                    .arg(cameraIp.isEmpty() ? QStringLiteral("(自动第一台)") : cameraIp)
+                    .arg(cameraSerial.isEmpty() ? QString() : QStringLiteral(" SN=%1").arg(cameraSerial))
+                    .arg(warmupMs)
+                    .arg(minLuma, 0, 'f', 1)
+                    .arg(modeDesc.join(QLatin1Char(' ')))
+                    .arg(needMultiFrame
+                             ? QStringLiteral(" 窗口%1ms/间隔%2ms").arg(sampleDurationMs).arg(sampleIntervalMs)
+                             : QString()));
+    }
+
+    LedInspectAnalyzer::Params ap;
+    ap.ledCount = ledCount;
+    ap.minLuma = minLuma;
+    ap.modes = ledModes;
+    ap.rois.resize(ledCount);
+    QStringList missing;
+    // 灯框优先本工站 flow.ini [LedInspect] Roi1~N；同一步多灯，每灯用 mode1~N 单独卡控
+    const QStringList stationRois = {ledCfg.roi1, ledCfg.roi2, ledCfg.roi3, ledCfg.roi4};
+    for (int i = 0; i < ledCount; ++i) {
+        ap.rois[i] = LedInspectAnalyzer::parseRoi(i < stationRois.size() ? stationRois.at(i) : QString());
+        if (ap.rois[i].width() < 4 || ap.rois[i].height() < 4)
+            missing << QString::number(i + 1);
+    }
+    if (!missing.isEmpty()) {
+        TestResult = failValue;
+        const QString msg = QStringLiteral("未划灯框：灯%1").arg(missing.join(QLatin1Char(',')));
+        showlog(QStringLiteral("LED检测：请先在调试页勾「划灯框」并划齐前%1个灯框（写入本工站 flow.ini；缺灯%2）")
+                    .arg(ledCount)
+                    .arg(missing.join(QLatin1Char(','))));
+        markActiveTestCaseStepDone(false, msg, QStringLiteral("失败"));
+        return;
+    }
+
+    QImage curr;
+    QString captureErr;
+    QElapsedTimer phaseT;
+    phaseT.start();
+    LedInspectAnalyzer::Report report;
+    qint64 msGrab = 0;
+    qint64 msAnalyze = 0;
+
+    auto grabOne = [&](int warmMs) -> bool {
+        return useUsb ? ScreenInspectCapture::grabStill(cameraIndex, cameraName, warmMs, &curr, &captureErr)
+                      : ScreenInspectGigECapture::grabStill(cameraIp, cameraSerial, warmMs, &curr, &captureErr,
+                                                            nullptr, true);
+    };
+
+    // 任一只灯要闪烁 → 连拍；常亮灯在同窗口内要求全程亮
+    if (needMultiFrame) {
+        QVector<LedInspectAnalyzer::LedResult> tracks;
+        tracks.resize(ledCount);
+        int frameWarmup = warmupMs;
+        int frames = 0;
+        QElapsedTimer windowT;
+        windowT.start();
+        phaseT.restart();
+        do {
+            if (!grabOne(frameWarmup)) {
+                TestResult = failValue;
+                showlog(QStringLiteral("LED拍照失败(第%1帧)：%2").arg(frames + 1).arg(captureErr));
+                markActiveTestCaseStepDone(false, captureErr, QStringLiteral("失败"));
+                return;
+            }
+            frameWarmup = 0;
+            const LedInspectAnalyzer::Report frame = LedInspectAnalyzer::analyze(curr, ap);
+            LedInspectAnalyzer::accumulateFrame(tracks, frame);
+            ++frames;
+            if (windowT.elapsed() >= sampleDurationMs)
+                break;
+            if (sampleIntervalMs > 0) {
+                QElapsedTimer waitT;
+                waitT.start();
+                while (waitT.elapsed() < sampleIntervalMs)
+                    QCoreApplication::processEvents(QEventLoop::AllEvents, 20);
+            }
+        } while (windowT.elapsed() < sampleDurationMs);
+        msGrab = phaseT.elapsed();
+        phaseT.restart();
+        report = LedInspectAnalyzer::finalizeByModes(tracks, ap, curr);
+        msAnalyze = phaseT.elapsed();
+        showlog(QStringLiteral("LED混合采样：共%1帧 窗口%2ms").arg(frames).arg(windowT.elapsed()));
+    } else {
+        if (!grabOne(warmupMs)) {
+            TestResult = failValue;
+            showlog(QStringLiteral("LED拍照失败：%1").arg(captureErr));
+            markActiveTestCaseStepDone(false, captureErr, QStringLiteral("失败"));
+            return;
+        }
+        msGrab = phaseT.elapsed();
+        phaseT.restart();
+        // 全常亮：单帧即可；也走 finalize 统一字段
+        QVector<LedInspectAnalyzer::LedResult> tracks;
+        const LedInspectAnalyzer::Report frame = LedInspectAnalyzer::analyze(curr, ap);
+        LedInspectAnalyzer::accumulateFrame(tracks, frame);
+        report = LedInspectAnalyzer::finalizeByModes(tracks, ap, curr);
+        msAnalyze = phaseT.elapsed();
+    }
+
+    const QString dir = LedInspectAnalyzer::storageRootDir();
+    CommonUtils::ensureDirectory(dir);
+    QStringList uploadImagePaths;
+    auto forSave = [](const QImage& src) -> QImage {
+        constexpr int kSaveMaxSide = 1600;
+        if (src.isNull() || qMax(src.width(), src.height()) <= kSaveMaxSide)
+            return src;
+        return src.scaled(kSaveMaxSide, kSaveMaxSide, Qt::KeepAspectRatio, Qt::FastTransformation);
+    };
+    phaseT.restart();
+    // 与屏幕检测一致：证据图始终落盘并登记进会话包，测完随 UploadIncludeScreenInspect 上传云平台
+    {
+        const QString stamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss"));
+        const QImage capSave = forSave(curr);
+        const QString capPath = dir + QLatin1Char('/') + stamp + QStringLiteral("_led_capture.jpg");
+        if (capSave.save(capPath, "JPG", 85))
+            uploadImagePaths << capPath;
+        if (!report.annotated.isNull()) {
+            const QImage markSave = forSave(report.annotated);
+            const QString markPath = dir + QLatin1Char('/') + stamp + QStringLiteral("_led_mark.jpg");
+            if (markSave.save(markPath, "JPG", 85))
+                uploadImagePaths << markPath;
+        }
+    }
+    forSave(curr).save(dir + QStringLiteral("/last_capture.jpg"), "JPG", 85);
+    if (!report.annotated.isNull())
+        forSave(report.annotated).save(dir + QStringLiteral("/last_mark.jpg"), "JPG", 85);
+    const qint64 msSave = phaseT.elapsed();
+    if (!uploadImagePaths.isEmpty()) {
+        Qlog::addScreenInspectImageFiles(getIndex(), uploadImagePaths);
+        showlog(QStringLiteral("灯显图片已登记上传（%1张，随会话包进云平台屏幕检测目录）")
+                    .arg(uploadImagePaths.size()));
+    } else {
+        showlog(QStringLiteral("灯显图片登记失败：存盘未成功，本轮不会上传证据图"));
+    }
+    // 只缓存图供调试页查看，不自动切到图像页，避免打断连续测下一台
+    rememberScreenInspectImages(curr, report.annotated, QImage(), dir, false);
+
+    ProtocolLedInspectData data;
+    data.ledCount = report.ledCount;
+    data.onCount = report.onCount;
+    data.configuredCount = report.configuredCount;
+    data.allOn = report.allConfiguredOn ? 1 : 0;
+    auto modeFlag = [&](int i) -> int {
+        return (i < ledModes.size() && LedInspectAnalyzer::isBlinkMode(ledModes.at(i))) ? 1 : 0;
+    };
+    data.judgeMode1 = modeFlag(0);
+    data.judgeMode2 = modeFlag(1);
+    data.judgeMode3 = modeFlag(2);
+    data.judgeMode4 = modeFlag(3);
+    auto fillLed = [&](int i, int* onOut, double* lumaOut, int* onFr, int* offFr) {
+        if (!onOut || !lumaOut)
+            return;
+        if (i < report.leds.size() && report.leds.at(i).valid) {
+            *onOut = report.leds.at(i).on ? 1 : 0;
+            *lumaOut = report.leds.at(i).luma;
+            if (onFr)
+                *onFr = report.leds.at(i).onFrames;
+            if (offFr)
+                *offFr = report.leds.at(i).offFrames;
+        } else {
+            *onOut = 0;
+            *lumaOut = 0;
+            if (onFr)
+                *onFr = 0;
+            if (offFr)
+                *offFr = 0;
+        }
+    };
+    fillLed(0, &data.led1On, &data.luma1, &data.onFrames1, &data.offFrames1);
+    fillLed(1, &data.led2On, &data.luma2, &data.onFrames2, &data.offFrames2);
+    fillLed(2, &data.led3On, &data.luma3, &data.onFrames3, &data.offFrames3);
+    fillLed(3, &data.led4On, &data.luma4, &data.onFrames4, &data.offFrames4);
+
+    QStringList ledParts;
+    for (int i = 0; i < report.leds.size(); ++i) {
+        const LedInspectAnalyzer::LedResult& L = report.leds.at(i);
+        if (!L.valid)
+            continue;
+        if (L.blinkMode) {
+            ledParts << QStringLiteral("L%1=%2(亮%3灭%4)")
+                            .arg(i + 1)
+                            .arg(L.on ? QStringLiteral("闪烁OK") : QStringLiteral("未闪烁"))
+                            .arg(L.onFrames)
+                            .arg(L.offFrames);
+        } else {
+            ledParts << QStringLiteral("L%1=%2(亮%3灭%4)")
+                            .arg(i + 1)
+                            .arg(L.on ? QStringLiteral("常亮OK") : QStringLiteral("非常亮"))
+                            .arg(L.onFrames)
+                            .arg(L.offFrames);
+        }
+    }
+    showlog(QStringLiteral("LED检测耗时：拍照%1ms 分析%2ms 存图%3ms；灯数=%4 通过=%5/%6 all=%7；%8")
+                .arg(msGrab)
+                .arg(msAnalyze)
+                .arg(msSave)
+                .arg(report.ledCount)
+                .arg(report.onCount)
+                .arg(report.configuredCount)
+                .arg(data.allOn)
+                .arg(ledParts.join(QLatin1Char(' '))));
+
+    const QVariant payload = QVariant::fromValue(data);
+    // 按实际灯数展开分项：结果表一行一灯；每灯卡控逻辑由 mode1~N 决定
+    {
+        static const char* const kLedOnFields[] = {"led1On", "led2On", "led3On", "led4On"};
+        QVector<TestCaseGate> perLed;
+        perLed.reserve(ledCount);
+        for (int i = 0; i < ledCount; ++i) {
+            TestCaseGate g;
+            g.enabled = true;
+            g.reportType = QStringLiteral("ProtocolLedInspectData");
+            g.field = QString::fromLatin1(kLedOnFields[i]);
+            g.op = TestCaseGateOp::Eq;
+            g.expected = QStringLiteral("1");
+            g.low = 1;
+            g.high = 1;
+            perLed.append(g);
+        }
+        activeTestCase_.gates = perLed;
+        activeTestCase_.gate.field = QStringLiteral("multi");
+        activeTestCase_.gate.reportType = QStringLiteral("ProtocolLedInspectData");
+        activeTestCase_.gate.enabled = true;
+    }
+    evaluateActiveTestCaseGate(QStringLiteral("ProtocolLedInspectData"), payload);
+}
+
 void QFreeWork::runScreenInspectStep() {
     const bool deadMode = activeTestCase_.send.deviceCmd == QStringLiteral("ScreenDeadPixelCheck");
     const bool anomalyMode = activeTestCase_.send.deviceCmd == QStringLiteral("ScreenDisplayAnomalyCheck");
@@ -2641,6 +3081,11 @@ void QFreeWork::runScreenInspectStep() {
     QString cameraIp = map.value(QStringLiteral("cameraIp")).toString().trimmed();
     if (cameraIp.isEmpty())
         cameraIp = map.value(QStringLiteral("gigeIp")).toString().trimmed();
+    const QString stationKey =
+        !activeFlowStationKey_.trimmed().isEmpty() ? activeFlowStationKey_ : TestCaseStore::resolveActiveFlowStationKey();
+    const TestCaseScreenInspectConfig screenCfg = TestCaseStore::loadStationScreenInspectConfig(stationKey);
+    if (cameraIp.isEmpty())
+        cameraIp = screenCfg.gigEIp.trimmed();
     if (cameraIp.isEmpty())
         cameraIp = QStringLiteral("169.254.64.10");
     const QString cameraSerial = map.value(QStringLiteral("cameraSerial")).toString().trimmed();
@@ -2811,37 +3256,21 @@ void QFreeWork::runScreenInspectStep() {
                              needSsim ? QStringLiteral("开") : QStringLiteral("跳过")));
         }
     }
-    const int reuseCircleRoi = mapInt(QStringLiteral("reuseCircleRoi"), 0);
+    const int reuseCircleRoi = mapInt(QStringLiteral("reuseCircleRoi"), screenCfg.reuseCircle ? 1 : 0);
     if (reuseCircleRoi && cachedScreenCircleR_ > 0) {
         ap.cachedCircleCx = cachedScreenCircleCx_;
         ap.cachedCircleCy = cachedScreenCircleCy_;
         ap.cachedCircleR = cachedScreenCircleR_;
-    } else if (reuseCircleRoi) {
-        const int fallbackR = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleR"), -1).toInt();
-        if (fallbackR > 0) {
-            ap.cachedCircleCx = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCx"), -1).toInt();
-            ap.cachedCircleCy = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCy"), -1).toInt();
-            ap.cachedCircleR = fallbackR;
-        }
+    } else if (reuseCircleRoi && screenCfg.refCircleR > 0) {
+        ap.cachedCircleCx = screenCfg.refCircleCx;
+        ap.cachedCircleCy = screenCfg.refCircleCy;
+        ap.cachedCircleR = screenCfg.refCircleR;
     }
-    auto readIniCircle = [](const QString& key) -> int {
-        const QVariant v = SETTINGS.value(key);
-        if (v.isValid() && !v.isNull()) {
-            bool ok = false;
-            const int val = v.toInt(&ok);
-            if (ok && val > 0)
-                return val;
-        }
-        return -1;
-    };
-    int rCx = readIniCircle(QStringLiteral("ScreenInspect/RefCircleCx"));
-    if (rCx <= 0) rCx = readIniCircle(QStringLiteral("ScreenInspect/refCircleCx"));
-    int rCy = readIniCircle(QStringLiteral("ScreenInspect/RefCircleCy"));
-    if (rCy <= 0) rCy = readIniCircle(QStringLiteral("ScreenInspect/refCircleCy"));
-    int rR = readIniCircle(QStringLiteral("ScreenInspect/RefCircleR"));
-    if (rR <= 0) rR = readIniCircle(QStringLiteral("ScreenInspect/refCircleR"));
+    int rCx = screenCfg.refCircleCx;
+    int rCy = screenCfg.refCircleCy;
+    int rR = screenCfg.refCircleR;
 
-    // 若未在 ini 中显式配置，但已有缓存/历史标定圆，也作为基准圆参数传给分析器
+    // 若未在工站 flow 中显式配置，但已有缓存/历史标定圆，也作为基准圆参数传给分析器
     if (rR <= 0 && cachedScreenCircleR_ > 0) {
         rCx = cachedScreenCircleCx_;
         rCy = cachedScreenCircleCy_;
@@ -3093,7 +3522,6 @@ void QFreeWork::runScreenInspectStep() {
 }
 
 void QFreeWork::initData(bool deferDongleAtForVisa) {
-    ui->product_sn->setText("芯片存储的整机sn:");
     ui->bleStatusLabel->setText("蓝牙连接：");
     rssitestcount = 0;
 
@@ -3106,6 +3534,11 @@ void QFreeWork::initData(bool deferDongleAtForVisa) {
     suppressProductBleAutoReconnect_ = false;
     isovertime = 0;
     dongleSuctionSampleActive_ = false;
+    if (dongleSuctionSamplePollTimer_)
+        dongleSuctionSamplePollTimer_->stop();
+    if (countdownWaitActive_)
+        abortCountdownWait(false);
+    Qlog::clearBufferedLogFlushDeferred();
     dongleSuctionCh1Samples_.clear();
     dongleSuctionCh2Samples_.clear();
     dongleSuctionSampleTimeSec_.clear();
@@ -3154,14 +3587,15 @@ void QFreeWork::initData(bool deferDongleAtForVisa) {
     TestResult = passValue;
     wifiresult = "未测";
     bleresult = "未测";
-    ui->battary_state->setText("充电状态为:");
-    ui->battary_value->setText("电量为:");
-    ui->battary_voltage->setText("电压为:");
     deviceTailSnFromDevice = "";
     wholeMachineSn_.clear();
     transitionCode_.clear();
     newSfc_.clear();
     mesProcessCode_.clear();
+    hasBowlEmptyCapCache_ = false;
+    hasBowlFullCapCache_ = false;
+    bowlEmptyCapCh0_ = bowlEmptyCapCh1_ = bowlEmptyCapCh2_ = 0;
+    bowlFullCapCh0_ = bowlFullCapCh1_ = bowlFullCapCh2_ = 0;
     pack.sku.clear();
     tupleData_ = TupleApplyResult{};
     QTupleService::clearSharedSession();
@@ -3258,31 +3692,6 @@ CmwGprfRunResult QFreeWork::runCmwGprf(CmwGprfCommand command, const QString& sc
     return cmwFacade_.run(command, params);
 }
 
-void QFreeWork::on_disconnectwifi_clicked() {
-    if (at->getConnected()) {
-        protocolManager.set(DeviceCmd::WifiDisconnect);
-        showlog("已发送断开wifi");
-    } else {
-        showlog("请等待连接设备后再试");
-    }
-}
-void QFreeWork::on_connectwifi_clicked() {
-    QString wifiName = SETTINGS.value(QString("WIFI/Name%1").arg(getIndex())).toString();
-    QString wifiPassword = SETTINGS.value("WIFI/Password").toString();
-
-    // QString wifiName = SETTINGS.value("WIFI/Name").toString();
-
-    QByteArray wifiNameBytes = wifiName.toUtf8();
-    QByteArray wifiPasswordBytes = wifiPassword.toUtf8();
-
-    if (at->getConnected()) {
-        protocolManager.set(DeviceCmd::WifiConnect, QVariant::fromValue(WifiConnectPayload{wifiNameBytes, wifiPasswordBytes}));
-        showlog("已发送连接wifi");
-    } else {
-        showlog("请等待连接设备后再试");
-    }
-}
-
 void QFreeWork::on_macInput_returnPressed() {
     if (!dongleSerialPort->isOpen()) {
         on_connectButton_clicked();
@@ -3318,10 +3727,6 @@ void QFreeWork::on_macInput_returnPressed() {
 
 void QFreeWork::on_pushButton_clicked() {
     runPlcModbusConnectTest();
-}
-
-void QFreeWork::on_pushButton_2_clicked() {
-    at->set(DongleCmd::BleLog, 1); // 日志开
 }
 
 void QFreeWork::on_getMac_returnPressed() {

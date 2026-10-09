@@ -5,6 +5,7 @@
 #include <QFile>
 #include <QProcess>
 #include <QStringList>
+#include <QTextCodec>
 #include <QTextStream>
 #include <QTimer>
 
@@ -94,51 +95,41 @@ static void appendTryFileOps(QTextStream& vbs) {
 }
 
 static void appendKillHostProcesses(QTextStream& vbs) {
-    // taskkill 第三参 True=同步等待，避免旧进程未死就再 Launch 叠开多个上位机
     vbs << "Sub KillHostProcesses\r\n";
-    vbs << "  Dim pidArr, p, nKilled\r\n";
-    vbs << "  nKilled = 0\r\n";
+    vbs << "  Dim pidArr, p\r\n";
     vbs << "  pidArr = Split(killPids, \",\")\r\n";
     vbs << "  On Error Resume Next\r\n";
     vbs << "  For Each p In pidArr\r\n";
     vbs << "    p = Trim(p)\r\n";
     vbs << "    If Len(p) > 0 Then\r\n";
-    vbs << "      sh.Run \"cmd /c taskkill /F /PID \" & p & \" /T >nul 2>&1\", 0, True\r\n";
-    vbs << "      nKilled = nKilled + 1\r\n";
+    vbs << "      sh.Run \"cmd /c taskkill /F /PID \" & p & \" /T >nul 2>&1\", 0, False\r\n";
     vbs << "    End If\r\n";
     vbs << "  Next\r\n";
-    vbs << "  sh.Run \"cmd /c taskkill /F /IM \"\"\" & exeName & \"\"\" /T >nul 2>&1\", 0, True\r\n";
+    // 同时按镜像名杀：仅 PID 列表时会漏掉重启后的新实例，导致文件锁/健康检查误判
+    vbs << "  sh.Run \"cmd /c taskkill /F /IM \"\"\" & exeName & \"\"\" /T >nul 2>&1\", 0, False\r\n";
     vbs << "  On Error GoTo 0\r\n";
-    vbs << "End Sub\r\n";
-    vbs << "Sub WaitHostProcessesDead\r\n";
-    vbs << "  Dim t\r\n";
-    vbs << "  For t = 1 To 40\r\n";
-    vbs << "    If Len(GetHostPidCsv()) = 0 Then Exit Sub\r\n";
-    vbs << "    KillHostProcesses\r\n";
-    vbs << "    WScript.Sleep 250\r\n";
-    vbs << "  Next\r\n";
     vbs << "End Sub\r\n";
 }
 
 static void appendGetHostPidCsv(QTextStream& vbs) {
+    // 必须用 /FO CSV：默认 TABLE 会把镜像名截成 25 字符，长文件名健康检查会误判失败
     vbs << "Function GetHostPidCsv\r\n";
-    vbs << "  Dim f, tmp, line, parts, pids\r\n";
+    vbs << "  Dim f, tmp, line, parts, img, pids\r\n";
     vbs << "  GetHostPidCsv = \"\"\r\n";
     vbs << "  pids = \"\"\r\n";
     vbs << "  On Error Resume Next\r\n";
     vbs << "  tmp = fso.BuildPath(fso.GetSpecialFolder(2), \"ota_pids_\" & pid & \"_\" & Replace(CStr(Timer), \".\", \"\") & \".txt\")\r\n";
-    vbs << "  sh.Run \"cmd /c tasklist /NH /FI \"\"IMAGENAME eq \" & exeName & \"\"\" > \"\"\" & tmp & \"\"\" 2>nul\", 0, True\r\n";
+    vbs << "  sh.Run \"cmd /c tasklist /NH /FO CSV /FI \"\"IMAGENAME eq \" & exeName & \"\"\" > \"\"\" & tmp & \"\"\" 2>nul\", 0, True\r\n";
     vbs << "  If fso.FileExists(tmp) Then\r\n";
     vbs << "    Set f = fso.OpenTextFile(tmp, 1, False)\r\n";
     vbs << "    Do While Not f.AtEndOfStream\r\n";
     vbs << "      line = Trim(f.ReadLine)\r\n";
-    vbs << "      If Len(line) > 0 Then\r\n";
-    vbs << "        If InStr(1, line, exeName, vbTextCompare) = 1 Then\r\n";
-    vbs << "          Do While InStr(line, \"  \") > 0\r\n";
-    vbs << "            line = Replace(line, \"  \", \" \")\r\n";
-    vbs << "          Loop\r\n";
-    vbs << "          parts = Split(line, \" \")\r\n";
-    vbs << "          If UBound(parts) >= 1 Then\r\n";
+    vbs << "      If Len(line) > 0 And Left(line, 1) = \"\"\"\" Then\r\n";
+    vbs << "        parts = Split(line, \"\"\",\"\"\")\r\n";
+    vbs << "        If UBound(parts) >= 1 Then\r\n";
+    vbs << "          img = parts(0)\r\n";
+    vbs << "          If Left(img, 1) = \"\"\"\" Then img = Mid(img, 2)\r\n";
+    vbs << "          If StrComp(img, exeName, vbTextCompare) = 0 Then\r\n";
     vbs << "            If IsNumeric(parts(1)) Then\r\n";
     vbs << "              If Len(pids) > 0 Then pids = pids & \",\"\r\n";
     vbs << "              pids = pids & parts(1)\r\n";
@@ -186,31 +177,33 @@ static void appendGetHostPidCsv(QTextStream& vbs) {
 }
 
 static void appendLaunchHostExe(QTextStream& vbs) {
-    // 已有同名进程则不再启动，防止升级脚本重复 Launch / 失败弹窗再 Launch 叠开多实例
     vbs << "Function LaunchHostExe\r\n";
-    vbs << "  Dim cur\r\n";
-    vbs << "  cur = GetHostPidCsv()\r\n";
-    vbs << "  If Len(cur) > 0 Then\r\n";
-    vbs << "    LogStep \"LaunchHostExe skip already running pids=\" & cur\r\n";
-    vbs << "    LaunchHostExe = True\r\n";
-    vbs << "    Exit Function\r\n";
-    vbs << "  End If\r\n";
-    vbs << "  LogStep \"LaunchHostExe run exe=\" & exeName\r\n";
     vbs << "  On Error Resume Next\r\n";
     vbs << "  Err.Clear\r\n";
     vbs << "  sh.Run \"\"\"\" & sh.CurrentDirectory & \"\\\" & exeName & \"\"\"\", 1, False\r\n";
     vbs << "  lastErr = Err.Number\r\n";
     vbs << "  On Error GoTo 0\r\n";
     vbs << "  LaunchHostExe = (lastErr = 0)\r\n";
-    vbs << "  LogStep \"LaunchHostExe after Run err=\" & lastErr & \" pids=\" & GetHostPidCsv()\r\n";
     vbs << "End Function\r\n";
+}
+
+static void appendWaitHostProcessesGone(QTextStream& vbs) {
+    // 异步 taskkill 后等进程真正退出，避免 excludePids 仍含旧 PID、健康检查永远 False
+    vbs << "Sub WaitHostProcessesGone\r\n";
+    vbs << "  Dim wg\r\n";
+    vbs << "  For wg = 1 To 40\r\n";
+    vbs << "    If Not IsProcessAlive Then Exit Sub\r\n";
+    vbs << "    KillHostProcesses\r\n";
+    vbs << "    WScript.Sleep 200\r\n";
+    vbs << "  Next\r\n";
+    vbs << "End Sub\r\n";
 }
 
 static void appendWaitProcessAlive(QTextStream& vbs) {
     vbs << "Function WaitProcessAlive\r\n";
     vbs << "  Dim hc\r\n";
     vbs << "  WaitProcessAlive = False\r\n";
-    vbs << "  For hc = 1 To 12\r\n";
+    vbs << "  For hc = 1 To 20\r\n";
     vbs << "    WScript.Sleep 300\r\n";
     vbs << "    If HasLaunchedHostProcess Then\r\n";
     vbs << "      WaitProcessAlive = True\r\n";
@@ -223,12 +216,9 @@ static void appendWaitProcessAlive(QTextStream& vbs) {
 static void appendShowOtaFail(QTextStream& vbs) {
     vbs << "Sub ShowOtaFail(msg)\r\n";
     vbs << "  LogStep \"fail popup: \" & msg\r\n";
-    vbs << "  LogStep \"ShowOtaFail alive=\" & IsProcessAlive & \" pids=\" & GetHostPidCsv()\r\n";
     vbs << "  If Not IsProcessAlive Then\r\n";
-    vbs << "    LogStep \"ShowOtaFail calling LaunchHostExe\"\r\n";
     vbs << "    LaunchHostExe\r\n";
     vbs << "    WScript.Sleep 800\r\n";
-    vbs << "    LogStep \"ShowOtaFail after launch pids=\" & GetHostPidCsv()\r\n";
     vbs << "  End If\r\n";
     vbs << QStringLiteral("  MsgBox msg & vbCrLf & vbCrLf & \"日志：\" & logPath, 16, \"上位机升级失败\"\r\n");
     vbs << "End Sub\r\n";
@@ -246,10 +236,10 @@ static void appendLogStep(QTextStream& vbs) {
 }
 
 static void appendCommonHelpers(QTextStream& vbs) {
-    // Kill/WaitDead 内调用 GetHostPidCsv，顺序：GetHost → Kill(+WaitDead) → Launch → WaitAlive → Fail
-    appendGetHostPidCsv(vbs);
-    appendKillHostProcesses(vbs);
     appendLaunchHostExe(vbs);
+    appendKillHostProcesses(vbs);
+    appendGetHostPidCsv(vbs);
+    appendWaitHostProcessesGone(vbs);
     appendWaitProcessAlive(vbs);
     appendShowOtaFail(vbs);
 }
@@ -291,12 +281,10 @@ static void appendReplaceBody(QTextStream& vbs) {
     appendCommonHelpers(vbs);
     vbs << "LogStep \"taskkill begin pids=\" & killPids\r\n";
     vbs << "KillHostProcesses\r\n";
-    vbs << "WaitHostProcessesDead\r\n";
+    vbs << "WaitHostProcessesGone\r\n";
+    vbs << "LogStep \"taskkill done, leftover check\"\r\n";
     vbs << "excludePids = GetHostPidCsv()\r\n";
-    vbs << "LogStep \"after kill leftover pids=\" & excludePids\r\n";
-    vbs << "If Len(excludePids) > 0 Then\r\n";
-    vbs << "  LogStep \"WARN host still alive after kill wait, will not stack-launch\"\r\n";
-    vbs << "End If\r\n";
+    vbs << "LogStep \"exclude leftover pids=\" & excludePids\r\n";
     vbs << "Dim i, okMove, retry, alive, rollbackFail, quitCode\r\n";
     vbs << "rollbackFail = False\r\n";
     vbs << "quitCode = 0\r\n";
@@ -381,9 +369,6 @@ static void appendReplaceBody(QTextStream& vbs) {
     vbs << "Next\r\n";
     vbs << "If quitCode = 0 Then\r\n";
     vbs << "  LogStep \"all files replaced, launching exe\"\r\n";
-    vbs << "  KillHostProcesses\r\n";
-    vbs << "  WaitHostProcessesDead\r\n";
-    vbs << "  excludePids = GetHostPidCsv()\r\n";
     vbs << "  If Not LaunchHostExe Then\r\n";
     vbs << "    LogStep \"exe launch failed err=\" & lastErr\r\n";
     vbs << "  Else\r\n";
@@ -391,17 +376,12 @@ static void appendReplaceBody(QTextStream& vbs) {
     vbs << "  End If\r\n";
     vbs << "  alive = WaitProcessAlive\r\n";
     vbs << "  If alive Then\r\n";
-    vbs << "    LogStep \"health check ok, keep backup for manual rollback pids=\" & GetHostPidCsv()\r\n";
+    vbs << "    LogStep \"health check ok, keep backup for manual rollback\"\r\n";
     vbs << "  Else\r\n";
     vbs << "    LogStep \"health check failed, rolling back\"\r\n";
-    vbs << "    KillHostProcesses\r\n";
-    vbs << "    WaitHostProcessesDead\r\n";
     vbs << "    RollbackAll\r\n";
-    vbs << "    excludePids = GetHostPidCsv()\r\n";
-    vbs << "    LogStep \"rollback relaunch excludePids=\" & excludePids\r\n";
     vbs << "    LaunchHostExe\r\n";
     vbs << "    alive = WaitProcessAlive\r\n";
-    vbs << "    LogStep \"rollback relaunch alive=\" & alive & \" pids=\" & GetHostPidCsv()\r\n";
     vbs << "    If alive And Not rollbackFail Then\r\n";
     vbs << QStringLiteral("      ShowOtaFail \"新版本无法启动，已回退到上一版本。\"\r\n");
     vbs << "      quitCode = 4\r\n";
@@ -411,7 +391,7 @@ static void appendReplaceBody(QTextStream& vbs) {
     vbs << "    End If\r\n";
     vbs << "  End If\r\n";
     vbs << "End If\r\n";
-    vbs << "LogStep \"vbs finished quit=\" & quitCode & \" finalPids=\" & GetHostPidCsv()\r\n";
+    vbs << "LogStep \"vbs finished quit=\" & quitCode\r\n";
     vbs << "If Not (logf Is Nothing) Then logf.Close\r\n";
     vbs << "If fso.FileExists(vbsPath) Then TryDeleteFile vbsPath\r\n";
     vbs << "WScript.Quit quitCode\r\n";
@@ -430,7 +410,16 @@ static void appendRestoreBackupFiles(QTextStream& vbs) {
     vbs << "        Else\r\n";
     vbs << "          canMove = True\r\n";
     vbs << "          If fso.FileExists(target(i)) Then\r\n";
-    vbs << "            If Not TryDeleteFile(target(i)) Then\r\n";
+    vbs << "            okMove = False\r\n";
+    vbs << "            For retry = 1 To 40\r\n";
+    vbs << "              If TryDeleteFile(target(i)) Then\r\n";
+    vbs << "                okMove = True\r\n";
+    vbs << "                Exit For\r\n";
+    vbs << "              End If\r\n";
+    vbs << "              KillHostProcesses\r\n";
+    vbs << "              WScript.Sleep 150\r\n";
+    vbs << "            Next\r\n";
+    vbs << "            If Not okMove Then\r\n";
     vbs << "              restoreFail = True\r\n";
     vbs << "              canMove = False\r\n";
     vbs << "              logf.WriteLine \"restore delete failed: \" & target(i) & \" err=\" & lastErr\r\n";
@@ -490,6 +479,7 @@ bool HostOtaVbs::writeReplaceScript(const QString& vbsFileName,
     const QString killPidsCsv = collectMatchingProcessPidsCsv(exeName);
     const int n = files.size();
     QTextStream vbs(&vbsFile);
+    vbs.setCodec(QTextCodec::codecForLocale());
     vbs << "Set sh = CreateObject(\"WScript.Shell\")\r\n";
     vbs << "Set fso = CreateObject(\"Scripting.FileSystemObject\")\r\n";
     vbs << "sh.CurrentDirectory = \"" << vbsQuote(appDir) << "\"\r\n";
@@ -553,6 +543,7 @@ bool HostOtaVbs::writeRollbackScript(const QString& vbsFileName,
     const QString killPidsCsv = collectMatchingProcessPidsCsv(exeName);
     const int n = files.size();
     QTextStream vbs(&vbsFile);
+    vbs.setCodec(QTextCodec::codecForLocale());
     vbs << "Set sh = CreateObject(\"WScript.Shell\")\r\n";
     vbs << "Set fso = CreateObject(\"Scripting.FileSystemObject\")\r\n";
     vbs << "sh.CurrentDirectory = \"" << vbsQuote(appDir) << "\"\r\n";
@@ -593,21 +584,30 @@ bool HostOtaVbs::writeRollbackScript(const QString& vbsFileName,
     appendCommonHelpers(vbs);
     appendRestoreBackupFiles(vbs);
     vbs << "KillHostProcesses\r\n";
-    vbs << "WaitHostProcessesDead\r\n";
+    vbs << "WaitHostProcessesGone\r\n";
     vbs << "excludePids = GetHostPidCsv()\r\n";
+    vbs << "logf.WriteLine \"exclude leftover pids=\" & excludePids\r\n";
     vbs << "Dim restoreFail, alive, quitCode\r\n";
     vbs << "quitCode = 0\r\n";
     vbs << "RestoreBackupFiles\r\n";
+    // 还原后再清残留并刷新 exclude，避免旧 PID 仍在排除列表导致健康检查永远失败
     vbs << "KillHostProcesses\r\n";
-    vbs << "WaitHostProcessesDead\r\n";
+    vbs << "WaitHostProcessesGone\r\n";
     vbs << "excludePids = GetHostPidCsv()\r\n";
+    vbs << "logf.WriteLine \"pre-launch excludePids=\" & excludePids\r\n";
     vbs << "If Not LaunchHostExe Then\r\n";
     vbs << "  logf.WriteLine \"launch exe failed err=\" & lastErr\r\n";
+    vbs << "Else\r\n";
+    vbs << "  logf.WriteLine \"exe launch requested\"\r\n";
     vbs << "End If\r\n";
     vbs << "alive = WaitProcessAlive\r\n";
     vbs << "If restoreFail Or Not alive Then\r\n";
+    vbs << "  logf.WriteLine \"health fail restoreFail=\" & restoreFail & \" alive=\" & alive"
+           " & \" pids=\" & GetHostPidCsv() & \" exclude=\" & excludePids\r\n";
     vbs << QStringLiteral("  ShowOtaFail \"回退失败或上位机无法打开，请查看日志后手动启动。\"\r\n");
     vbs << "  quitCode = 2\r\n";
+    vbs << "Else\r\n";
+    vbs << "  logf.WriteLine \"health check ok\"\r\n";
     vbs << "End If\r\n";
     vbs << "logf.WriteLine \"rollback finished quit=\" & quitCode\r\n";
     vbs << "If Not (logf Is Nothing) Then logf.Close\r\n";

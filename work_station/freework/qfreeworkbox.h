@@ -47,6 +47,10 @@ class QFreeWorkBox : public box_base {
     Asd9026aDevice* sharedAsd9026aDevice() const {
         return asd9026aDevice_;
     }
+    /** ASD9026A 共享串口互斥（一拖多同时读电流/配置时串行化收发）。 */
+    QMutex* sharedAsd9026aMutex() {
+        return &sharedAsd9026aMutex_;
+    }
     /** 所有子工位均已停止时释放共享 ASD9026A 串口。 */
     void releaseSharedAsd9026aIfIdle();
     /** 两工位共用一台多路温度记录仪时的共享串口（按步骤 Param 设备序号）。 */
@@ -56,11 +60,25 @@ class QFreeWorkBox : public box_base {
     QMutex* sharedTempLoggerMutex(int deviceIndex0Based);
     void releaseSharedTempLoggerIfIdle();
 
-    /** 共享 PLC 按键监控与一拖多扫码枪联动 */
+    /** 共享 PLC 按键 / XWD 到位监控与一拖多扫码枪联动 */
     void updatePlcMonitorState();
     void triggerAllStationScanners();
+    void triggerAllStationSerialScanners();
     bool isAnyStationTesting() const;
     void releaseSharedPlcIfIdle();
+    /**
+     * 信捷 RTU：自动扫码监控与测试步骤共用同一 SerialChannel / QModbusManager，
+     * 避免同 COM 二次打开报占用。一拖多工位并发时须先锁 sharedXinjePlcMutex()。
+     */
+    QMutex* sharedXinjePlcMutex();
+    QModbusManager& sharedXinjePlcManager();
+    /** 按自动扫码配置 + 步骤 Param 确保串口已打开（已打开且同 COM 则复用）。 */
+    bool ensureSharedXinjePlcConnected(const QVariant& param = {}, QString* errorMessage = nullptr);
+    QString sharedXinjePlcComPort() const;
+    /** PLC 治具串口一拖多互斥（流程 UP/DOWN）。 */
+    QMutex* sharedPlcFixtureMutex();
+    /** 自动扫码监控口互斥（XWD DOWN?，与流程治具口配置独立）。 */
+    QMutex* sharedXwdMonitorMutex();
     /** 按当前选中工站 flow.ini [SerialUi] 刷新顶部治具/PLC 治具串口菜单文案与波特率。 */
     void applyFixtureMenuLabel();
 
@@ -78,26 +96,40 @@ class QFreeWorkBox : public box_base {
     void ensureFixtureUartWindow(bool show = true);
     /** PLC 治具串口独立窗口；show=false 时仅创建不弹窗。 */
     void ensurePlcFixtureUartWindow(bool show = true);
+    /** 自动扫码监控口：与 PLC 治具同设备时复用共享通道；不同 COM 才另开。 */
+    Fixture_uart* ensureXwdMonitorUartConnected(QString* detailOut = nullptr);
+    void releaseXwdMonitorUart();
 
     Fixture_uart* Fixture_uart_ui = nullptr;
     Fixture_uart* plcFixtureUartUi_ = nullptr;
+    Fixture_uart* xwdMonitorUartUi_ = nullptr;
+    /** 到位监控当前是否走 PLC 治具共享串口（同一台 XWD）。 */
+    bool xwdMonitorUsesSharedPlcUart_ = false;
     QAction* fixtureConnectAct_ = nullptr;
     QAction* plcFixtureConnectAct_ = nullptr;
     Fixture_uart* preStartMonitorUi_ = nullptr;
     Asd9026aDevice* asd9026aDevice_ = nullptr;
+    QMutex sharedAsd9026aMutex_;
     QHash<int, SerialChannel*> sharedTempLoggerChannels_;
     QHash<int, QMutex*> sharedTempLoggerMutexes_;
     QHash<int, SerialChannel::OpenParams> sharedTempLoggerOpenParams_;
 
-    // 全局共享 PLC 按键监控
+    // 全局共享 PLC 按键 / XWD 到位监控
     QModbusManager sharedPlcModbusManager_;
+    /** 信捷 RTU 自动扫码监控专用串口通道（与工位万用表口独立） */
+    SerialChannel* sharedPlcSerialChannel_ = nullptr;
     QTimer* plcMonitorTimer_ = nullptr;
     bool plcMonitorRunning_ = false;
     PreStartMonitorConfig sharedPlcConfig_;
+    QMutex sharedPlcFixtureMutex_;
+    QMutex sharedXwdMonitorMutex_;
+    QMutex sharedXinjePlcMutex_;
 
   private slots:
     void startTest();
     void onPlcMonitorTimeout();
+    /** 轮询 XWD DOWN?，OK 则触发串口扫码；返回 true 表示已触发。 */
+    bool pollXwdDownAndTriggerScan();
 };
 
 #endif // QFREEWORKBOX_H

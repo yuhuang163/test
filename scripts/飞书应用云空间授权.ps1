@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
 .SYNOPSIS
     为指定邮箱批量授予飞书「应用云空间」文件的可管理权限。

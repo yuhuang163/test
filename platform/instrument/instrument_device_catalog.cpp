@@ -40,6 +40,8 @@ constexpr PurposeRow kPurposeRows[] = {
      static_cast<int>(ModbusDeviceRoute::HqAmmeterRtu), "Current/ProtocolType=hq"},
     {"lx", InstrumentPurposeId::AmmeterCom, u8"COM电流表", RowProtocol::Modbus,
      static_cast<int>(ModbusDeviceRoute::LxAmmeterRtu), "Current/ProtocolType=lx"},
+    {"*", InstrumentPurposeId::AmmeterCom, u8"AA55 串口电流表", RowProtocol::Modbus,
+     static_cast<int>(ModbusDeviceRoute::Aa55AmmeterRtu), "Current/ProtocolType=aa55"},
     {"*", InstrumentPurposeId::AmmeterCom, u8"COM电流表", RowProtocol::Scpi,
      static_cast<int>(ScpiDeviceRoute::HuilingWfp60h), "Current/ProtocolType=scpi|auto"},
 

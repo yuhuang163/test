@@ -259,13 +259,17 @@ void workerDiscard(const QString& address, QStringList* logs) {
             sharedInstruments().erase(it);
         return;
     }
-    if (it->refCount > 0)
-        addLog(logs, QStringLiteral("VisaChannel: discard 时仍有引用 ref= %1 \"%2\"").arg(it->refCount).arg(address));
+    // 一拖多：其它工位仍占用时禁止踢会话，否则工位2配置会把工位1正在用的句柄关掉，随后重开+GPIB间隔卡几秒
+    if (it->refCount > 0) {
+        addLog(logs,
+               QStringLiteral("VisaChannel: discard 跳过（仍有引用 ref= %1）\"%2\"").arg(it->refCount).arg(address));
+        return;
+    }
     if (!isGpiBResource(address))
         flushSessionBuffers(it->session);
     viClose(it->session);
     sharedInstruments().erase(it);
-    addLog(logs, QStringLiteral("VisaChannel: 配置步作废会话 \"%1\"").arg(address));
+    addLog(logs, QStringLiteral("VisaChannel: 配置步作废空闲会话 \"%1\"").arg(address));
 }
 
 qint64 workerLastIoAtMs(const QString& address) {

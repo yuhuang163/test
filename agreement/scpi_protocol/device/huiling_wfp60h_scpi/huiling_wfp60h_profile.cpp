@@ -69,6 +69,8 @@ void HuilingWfp60hScpiProfile::applyParamMap(const QVariantMap& map) {
     applyCmd("scpiChannelSelectCmd", &HuilingWfp60hScpiProfile::scpiChannelSelectCmd);
     if (map.contains(QStringLiteral("powerChannel")))
         powerChannel = qBound(0, map.value(QStringLiteral("powerChannel")).toInt(), 8);
+    if (map.contains(QStringLiteral("stationsPerDevice")))
+        stationsPerDevice = qBound(1, map.value(QStringLiteral("stationsPerDevice")).toInt(), 8);
 }
 
 HuilingWfp60hScpiProfile HuilingWfp60hScpiProfile::fromParamMap(const QVariantMap& map) {

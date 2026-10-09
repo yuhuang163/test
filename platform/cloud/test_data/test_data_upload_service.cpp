@@ -2,15 +2,19 @@
 
 #include "auth_service.h"
 #include "factory_cloud_client.h"
+#include "host_ota_service.h"
 #include "log_upload_service.h"
+#include "qlog.h"
 #include "test_case.h"
 #include "test_record_store.h"
 
 #include <QCoreApplication>
 #include <QDateTime>
+#include <QFile>
 #include <QJsonArray>
 #include <QJsonObject>
 #include <QMutex>
+#include <QMutexLocker>
 #include <QSysInfo>
 #include <QThread>
 #include <QtConcurrent>
@@ -28,6 +32,22 @@ constexpr int kMaxRetryCount = 100;
 QMutex& flushMutex() {
     static QMutex m;
     return m;
+}
+
+/** 一拖多两工位几乎同时 finish 时串行上报，避免 SQLite/临时 zip 互踩 */
+QMutex& uploadSessionMutex() {
+    static QMutex m;
+    return m;
+}
+
+/** SQLite 仅主线程可用；HTTP 必须留在工作线程。 */
+void runDbOnMainThread(const std::function<void()>& fn) {
+    QCoreApplication* app = QCoreApplication::instance();
+    if (!app || QThread::currentThread() == app->thread()) {
+        fn();
+        return;
+    }
+    QMetaObject::invokeMethod(app, fn, Qt::BlockingQueuedConnection);
 }
 
 bool isTestDataUploadEnabled() {
@@ -91,8 +111,14 @@ bool buildUploadBody(const MesPacketData& pack, QJsonObject* body, QString* mess
     body->insert(QStringLiteral("machineNo"), pack.machineNo.trimmed());
     body->insert(QStringLiteral("product"), pack.product.trimmed());
     body->insert(QStringLiteral("lotName"), pack.lotName.trimmed());
-    body->insert(QStringLiteral("userNo"), pack.userNo.trimmed());
+    // 云端「操作员」用工厂云登录用户名；MES 过站仍用 pack.userNo / Employee_ID
+    const QString cloudUser = SETTINGS.value(QStringLiteral("FactoryCloud/AuthUser")).toString().trimmed();
+    body->insert(QStringLiteral("userNo"), cloudUser.isEmpty() ? pack.userNo.trimmed() : cloudUser);
     body->insert(QStringLiteral("clientVersion"), FactoryCloudClient::appVersion());
+    const QString releaseNotes = HostOtaService::localReleaseNotesForCurrentVersion();
+    if (!releaseNotes.isEmpty()) {
+        body->insert(QStringLiteral("releaseNotes"), releaseNotes);
+    }
     // 云端：本机北京墙钟 + timeBase 标志（旧上位机无此字段，服务端按 UTC）
     body->insert(QStringLiteral("testedAt"),
                  QDateTime::currentDateTime().toString(QStringLiteral("yyyy-MM-ddTHH:mm:ss.zzz")));
@@ -164,15 +190,19 @@ int uploadBodyOnce(const QJsonObject& body, QString* message) {
 /**
  * 先入队再认领上报：成功删除队列；可重试失败回 pending；不可重试则 failed。
  * 返回 recordId（成功）或 0。
+ * SQLite 必须回主线程：一拖多两工位同秒 finishTestRecord 时 QtConcurrent 并发写库会丢上报。
  */
 int enqueueThenUpload(const QJsonObject& body, QString* message) {
-    const qint64 queueId = TestRecordStore::instance().enqueueCloudUpload(body);
+    qint64 queueId = 0;
+    runDbOnMainThread([&]() { queueId = TestRecordStore::instance().enqueueCloudUpload(body); });
     if (queueId <= 0) {
         // 入队失败仍尝试直传，避免本地库异常时完全丢上报
         return uploadBodyOnce(body, message);
     }
 
-    if (!TestRecordStore::instance().claimCloudUpload(queueId)) {
+    bool claimed = false;
+    runDbOnMainThread([&]() { claimed = TestRecordStore::instance().claimCloudUpload(queueId); });
+    if (!claimed) {
         // 已被补传线程认领，交给 flush
         if (message) {
             *message = QStringLiteral("测试数据已入队待补传 queue_id=%1").arg(queueId);
@@ -188,7 +218,7 @@ int enqueueThenUpload(const QJsonObject& body, QString* message) {
         FactoryCloudClient::post(QStringLiteral("/test-records"), body);
     if (api.ok) {
         const int recordId = api.data.value(QStringLiteral("recordId")).toInt(0);
-        TestRecordStore::instance().markCloudUploadDone(queueId, recordId);
+        runDbOnMainThread([&]() { TestRecordStore::instance().markCloudUploadDone(queueId, recordId); });
         if (message) {
             *message = recordId > 0 ? QStringLiteral("测试数据上报成功（recordId=%1）").arg(recordId)
                                     : QStringLiteral("测试数据上报成功");
@@ -198,12 +228,12 @@ int enqueueThenUpload(const QJsonObject& body, QString* message) {
 
     const QString err = api.message.isEmpty() ? QStringLiteral("测试数据上报失败") : api.message;
     if (shouldEnqueueForRetry(api)) {
-        TestRecordStore::instance().markCloudUploadRetry(queueId, err);
+        runDbOnMainThread([&]() { TestRecordStore::instance().markCloudUploadRetry(queueId, err); });
         if (message) {
             *message = QStringLiteral("%1（已入队待补传 queue_id=%2）").arg(err).arg(queueId);
         }
     } else {
-        TestRecordStore::instance().markCloudUploadFailed(queueId, err);
+        runDbOnMainThread([&]() { TestRecordStore::instance().markCloudUploadFailed(queueId, err); });
         if (message) {
             *message = err;
         }
@@ -263,29 +293,74 @@ void TestDataUploadService::tryUploadAsync(const MesPacketData& pack) {
 }
 
 void TestDataUploadService::tryUploadTestAndLogAsync(const MesPacketData& pack, int slot) {
+    // 主线程：先刷盘 + 钉住吸力附件 + 同步打 zip，避免异步排队期间
+    // 下一轮 initData / 同工位再次 endSession 冲掉 lastSessionInfo 或附件。
+    Qlog::flushLogBuffers();
+    Qlog::pinSessionUploadArtifacts(slot);
+
+    QString zipPath;
+    QString zipError;
+    QString zipWarning;
+    LogUploadService::UploadConfig logCfg;
+    QString logCfgError;
+    const bool wantLogUpload = LogUploadService::isUploadOnTestCompleteEnabled()
+                               && !AuthService::isOfflineSession();
+    if (wantLogUpload) {
+        const QlogSessionInfo info = Qlog::lastSessionInfo(slot);
+        if (!info.valid) {
+            qDebug().noquote() << QStringLiteral("[LogUpload] slot=%1 无有效会话信息，跳过同步打包").arg(slot);
+        } else {
+            zipPath = LogUploadService::compressSessionArchive(info, &zipError, &zipWarning);
+            if (zipPath.isEmpty()) {
+                qDebug().noquote() << QStringLiteral("[LogUpload] slot=%1 同步打包失败: %2").arg(slot).arg(zipError);
+            } else if (!zipWarning.isEmpty()) {
+                qDebug().noquote() << QStringLiteral("[LogUpload] slot=%1 打包警告: %2").arg(slot).arg(zipWarning);
+            }
+            if (!LogUploadService::configFromPack(pack, &logCfg, &logCfgError)) {
+                qDebug().noquote() << QStringLiteral("[LogUpload] slot=%1 配置失败: %2").arg(slot).arg(logCfgError);
+                if (!zipPath.isEmpty()) {
+                    QFile::remove(zipPath);
+                    zipPath.clear();
+                }
+            }
+        }
+    }
+
     const MesPacketData copy = pack;
-    QtConcurrent::run([copy, slot]() {
+    QtConcurrent::run([copy, slot, zipPath, logCfg, wantLogUpload]() {
+        // 同步屏障放行后两工位常在同一秒内 finish，串行化避免并发写库/撞临时 zip
+        QMutexLocker locker(&uploadSessionMutex());
         QString message;
         const int recordId = uploadFromPack(copy, &message);
         if (!message.isEmpty()) {
             qDebug() << QStringLiteral("[TestDataUpload]") << message;
         }
-        // 上报失败时 recordId=0，日志仍尝试上传（与原逻辑一致）
+
+        if (!wantLogUpload)
+            return;
+
+        if (!zipPath.isEmpty()) {
+            LogUploadService::UploadConfig cfg = logCfg;
+            cfg.testRecordId = recordId;
+            QString uploadMessage;
+            const bool ok = LogUploadService::uploadLogArchive(zipPath, cfg, &uploadMessage);
+            QFile::remove(zipPath);
+            if (!uploadMessage.isEmpty())
+                qDebug() << QStringLiteral("[LogUpload]") << uploadMessage;
+            if (!ok) {
+                qDebug().noquote() << QStringLiteral("[LogUpload] slot=%1 预打包上传失败，回退现场再打").arg(slot);
+                LogUploadService::uploadSessionFromPack(copy, slot, recordId, &uploadMessage);
+                if (!uploadMessage.isEmpty())
+                    qDebug() << QStringLiteral("[LogUpload]") << uploadMessage;
+            }
+            return;
+        }
+
         LogUploadService::uploadSessionFromPack(copy, slot, recordId, &message);
         if (!message.isEmpty()) {
             qDebug() << QStringLiteral("[LogUpload]") << message;
         }
     });
-}
-
-/** SQLite 仅主线程可用；HTTP 必须留在工作线程，禁止整段补传丢回 GUI。 */
-static void runDbOnMainThread(const std::function<void()>& fn) {
-    QCoreApplication* app = QCoreApplication::instance();
-    if (!app || QThread::currentThread() == app->thread()) {
-        fn();
-        return;
-    }
-    QMetaObject::invokeMethod(app, fn, Qt::BlockingQueuedConnection);
 }
 
 void TestDataUploadService::flushPendingUploads() {

@@ -272,6 +272,7 @@ QString Qroot::formatKeyNotifyLabel(quint8 keyId) {
 void Qroot::emitKeyNotifyReport(quint8 keyId) {
     ProtocolButtonStateData btn;
     btn.keyButtonId = keyId;
+    btn.isKeyNotify = true;
     qDebug().noquote() << "[Qroot] KeyNotify:" << formatKeyNotifyLabel(keyId);
     emitReport(QStringLiteral("ProtocolButtonStateData"), QVariant::fromValue(btn));
 }
@@ -279,6 +280,7 @@ void Qroot::emitKeyNotifyReport(quint8 keyId) {
 void Qroot::emitToggleKeyNotifyReport(quint8 state) {
     ProtocolButtonStateData btn;
     btn.modeButtonState = state;
+    btn.isKeyNotify = true;
     qDebug().noquote() << "[Qroot] ToggleKeyNotify: state=0x"
                        << QString::number(state, 16).rightJustified(2, QLatin1Char('0')).toUpper();
     emitReport(QStringLiteral("ProtocolButtonStateData"), QVariant::fromValue(btn));

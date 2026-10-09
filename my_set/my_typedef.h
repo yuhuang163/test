@@ -46,7 +46,7 @@ inline QString settingsIniPath(const char* fileName) {
  *    Window/ConsoleNavId、Window/ConsoleTab*、Window/ConsoleLogTab）
  * 3. 当前测试流程工站（TestOrderMeta/SelectedStation*，仅存 local.ini）
  * 4. WiFi 名称（WIFI/Name、WIFI/Name0…WIFI/Name9 等，各工位/路号）
- * 5. 云平台本机项（FactoryCloud：环境、BaseUrl、登录态等，见 factoryCloudUsesLocalFile）
+ * 5. 云平台本机项（FactoryCloud：环境、BaseUrl、登录态、本机版本更新说明等，见 factoryCloudUsesLocalFile）
  * 6. MES 勾选默认（SYSTEM/MesDefaultUnchecked：true 时启动默认不勾选过站/从MES取MAC）
  * 7. 协议类型与 MES 工厂（SYSTEM/ProtocolType、Mes/FACTORY，各机位/开发环境常改）
  */
@@ -61,6 +61,9 @@ inline bool factoryCloudUsesLocalFile(const QString& fullKey) {
         QStringLiteral("FactoryCloud/AuthPassword"),
         QStringLiteral("FactoryCloud/RememberPassword"),
         QStringLiteral("FactoryCloud/AuthRoles"),
+        QStringLiteral("FactoryCloud/HostReleaseNotes"),
+        QStringLiteral("FactoryCloud/HostReleaseNotesVersion"),
+        QStringLiteral("FactoryCloud/HostAppVersion"),
     };
     for (const QString& k : kFactoryCloudLocalKeys) {
         if (fullKey.compare(k, Qt::CaseInsensitive) == 0)
@@ -304,6 +307,9 @@ class SettingsManager {
             QStringLiteral("AuthPassword"),
             QStringLiteral("RememberPassword"),
             QStringLiteral("AuthRoles"),
+            QStringLiteral("HostReleaseNotes"),
+            QStringLiteral("HostReleaseNotesVersion"),
+            QStringLiteral("HostAppVersion"),
         };
         QSettings& base = baseIni();
         QSettings& loc = localIni();

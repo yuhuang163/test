@@ -24,7 +24,7 @@ class AuthService {
     static bool isLoggedIn();
     /** 本地 token 已过期（仍存有云端 Token，非离线会话） */
     static bool isSessionExpired();
-    /** 会话过期时尝试记住密码自动登录，失败则弹窗要求重新登录 */
+    /** 会话过期时尝试记住密码自动登录；失败则强制登录框，取消则退出程序 */
     static bool promptReLoginIfExpired(QWidget* parent);
     static QStringList currentRoles();
     /** 当前会话是否含 admin 角色 */

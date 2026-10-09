@@ -15,6 +15,8 @@ class DeviceCmdCatalog {
     static TestCaseProductProtocol productProtocolFromIni(const QString& text);
     static QString productProtocolToIni(TestCaseProductProtocol protocol);
     static QString productProtocolUiLabel(TestCaseProductProtocol protocol);
+    /** 产品通道指令名：在 Set/Get 过滤基础上再按产品协议收窄。 */
+    static QStringList allCmdNames(TestCaseSendAction action, TestCaseProductProtocol protocol);
 };
 
 class DongleCmdCatalog {
@@ -61,9 +63,46 @@ class Asd9026aCmdCatalog {
 /** 欣旺达 XWD raw 治具（与气缸 XwdFixtureCmd 区分；Protocol=XWD，兼容 XWD_BLE/XWD_SUCTION）。 */
 enum class XwdRawFixtureCmd {
     SendRaw,
+    QueryDown, // 检测下到位：发 DOWN?，到位回 ALL_DOWN_OK
+    Up,        // 原本单台上升：发 UP，回 OK
+    SetUp,     // 上升：发 SET_UP，回 OK
+    MoveUp,    // 一拖多上升：发 SET_ALL_UP，回 OK
+    Relay1On,  // 继电器1接通 RELAY_1_ON
+    Relay1Off, // 继电器1断开 RELAY_1_OFF
+    Relay2On,  // 继电器2接通 RELAY_2_ON
+    Relay2Off, // 继电器2断开 RELAY_2_OFF
+    LoadOn,    // 负载总开 LOAD_ON（控制板 UART 文本）
+    LoadOff,   // 负载总关 LOAD_OFF
+    AddLoad1,  // 加负载1：Modbus 写帧（工位治具口）
+    AddLoad2,  // 加负载2
+    CloseLoad1,// 关闭负载1
+    CloseLoad2,// 关闭负载2
 };
 
 class XwdRawFixtureCmdCatalog {
+  public:
+    static CmdManifestCatalog& catalog();
+};
+
+/** 通用治具串口协议 V1.2（Send/Channel=Fixture 且 Protocol=Universal）。 */
+enum class UniversalFixtureCmd {
+    CylinderDown,
+    CylinderUp,
+    BroadcastCylinderDown,
+    BroadcastCylinderUp,
+    Relay1On,
+    Relay1Off,
+    Relay2On,
+    Relay2Off,
+    Relay3On,
+    Relay3Off,
+    Relay4On,
+    Relay4Off,
+    ReadCurrent,
+    SendRaw,
+};
+
+class UniversalFixtureCmdCatalog {
   public:
     static CmdManifestCatalog& catalog();
 };

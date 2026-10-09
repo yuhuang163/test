@@ -356,67 +356,39 @@ QString CommonUtils::normalizeMac(QString mac) {
 }
 
 /**
- * 产品目录：Mes 产品名 / 协议 / 设置页是否展示。
- * Dongle 广播匹配见 kDongleBroadcastTable（唯一维护）。
+ * 产品目录唯一表：Mes 产品名 / 协议 / 设置页是否展示 / Dongle 广播匹配。
+ * donglePattern 为空表示仅目录项无广播映射；containsMatch=true 为大写 contains，false 为精确相等。
+ * 顺序敏感：更具体的 contains 规则须靠前（如 V3 PRO 先于 V3）。
  */
 struct ProductEntry {
-    const char* productName; // 产品名字
-    const char* protocol;    // 产品协议
-    bool inMesCombo;         // 是否要在mes产品列表中展示
-};
-
-/**
- * Dongle 广播配置（匹配 + 扫描过滤合一）。
- * productName 非空：连接后映射到该产品并切协议；为空：仅进扫描过滤下拉。
- * containsMatch=true 为大写 contains，false 为精确相等；顺序敏感（V3 Pro 须先于 V3）。
- */
-struct DongleBroadcastEntry {
-    const char* pattern;
-    const char* productName;
-    bool containsMatch;
+    const char* productName;//产品名字
+    const char* protocol;//产品协议
+    bool inMesCombo;//是否要在mes产品列表中展示
+    const char* donglePattern; // 蓝牙广播名字（比如M5 Ultra）
+    bool containsMatch;//是否要进行蓝牙广播名字的contains匹配
 };
 
 // clang-format off
 static const ProductEntry kProductTable[] = {
-    {"Air2",          "qaiot",  true},
-    {"V3Pro",         "qfctp",  true},
-    {"V3",            "qfctp",  true},
-    {"M8",            "qroot",  true},
-    {"M9",            "qroot",  true},
-    {"Wellness Warm", "qroot",  true},
-    {"M8P",           "qaiot",  false},
-    {"W1 Lite",       "qroot",  true},
-    {"W1",            "qroot",  true},
-    {"Air1",          "qroot2", true},
+    {"Air2",     "qaiot", true, "Air2",      true},
+    {"V3Pro",    "qfctp", true,  "V3 Pro",   true},
+    {"V3",       "qfctp", true,  "V3",       true},
+    {"M8",       "qroot", true,  "M5 Ultra",   false},
+    {"M9",       "qroot", true,  "MobileFlow", true},
+    {"Wellness Warm",  "qroot", true, "Wellness Warm",  true},
+    {"M8P",      "qaiot", false, "M8P",      false},
+    {"W1 Lite",  "qroot", true, "W1 Lite",  true},
+    {"W1",       "qroot", true, "W1",       true}, 
+    {"Air1",       "qroot2", true, "Air1",       true},
+    {"M5 Smart",       "qroot2", true, "M5 Smart",       true},
 };
 
-static const DongleBroadcastEntry kDongleBroadcastTable[] = {
-    {"Air2",          "Air2",          true},
-    {"V3 Pro",        "V3Pro",         true},
-    {"V3",            "V3",            true},
-    {"M5 Ultra",      "M8",            false},
-    {"Pump-E",        "M8",            false},
-    {"MobileFlow",    "M9",            true},
-    {"Wellness Warm", "Wellness Warm", true},
-    {"M8P",           "M8P",           false},
-    {"W1 Lite",       "W1 Lite",       true},
-    {"W1",            "W1",            true},
-    {"Air1",          "Air1",          true},
-    {"W2",            "",              false},
-};
+/** 主窗口 BLE 扫描过滤名补充项（无产品映射，仅作筛选提示）。 */
+static const char* kDongleFilterExtras[] = {"W1", "W2", "Pump-E","MobileFlow"};
 // clang-format on
 
-static bool hasDongleProductMapping(const DongleBroadcastEntry& entry) {
-    return entry.productName && entry.productName[0] != '\0';
-}
-
-static bool matchDonglePattern(const QString& dongleName, const QString& upper, const char* pattern, bool containsMatch) {
-    if (!pattern || pattern[0] == '\0')
-        return false;
-    const QString pat = QString::fromLatin1(pattern).trimmed();
-    if (pat.isEmpty())
-        return false;
-    return containsMatch ? upper.contains(pat.toUpper()) : (dongleName == pat);
+static bool hasDonglePattern(const ProductEntry& entry) {
+    return entry.donglePattern && entry.donglePattern[0] != '\0';
 }
 
 static const ProductEntry* findProductEntry(const QString& productName) {
@@ -458,12 +430,14 @@ QStringList CommonUtils::mesProductNames() {
 
 QStringList CommonUtils::dongleBroadcastFilterNames() {
     QStringList names;
-    for (const DongleBroadcastEntry& entry : kDongleBroadcastTable) {
-        if (!entry.pattern || entry.pattern[0] == '\0')
+    for (const ProductEntry& entry : kProductTable) {
+        if (!hasDonglePattern(entry))
             continue;
         // 下拉筛选项须与 Dongle 实际上报广播名一致（如 V3 Pro，不能写 V3Pro）
-        names.append(QString::fromUtf8(entry.pattern));
+        names.append(QString::fromUtf8(entry.donglePattern));
     }
+    for (const char* extra : kDongleFilterExtras)
+        names.append(QString::fromUtf8(extra));
     names.removeDuplicates();
     return names;
 }
@@ -505,13 +479,15 @@ QString CommonUtils::dongleBroadcastFilterForStation(const QString& stationDispl
     if (station.isEmpty())
         return {};
 
-    for (const DongleBroadcastEntry& entry : kDongleBroadcastTable) {
-        if (!hasDongleProductMapping(entry))
+    for (const ProductEntry& entry : kProductTable) {
+        if (!hasDonglePattern(entry))
             continue;
         const QString productName = QString::fromUtf8(entry.productName);
         if (!stationBelongsToProduct(station, productName))
             continue;
-        return QString::fromUtf8(entry.pattern);
+        if (entry.containsMatch)
+            return QString::fromUtf8(entry.donglePattern);
+        return QString::fromUtf8(entry.donglePattern);
     }
     return {};
 }
@@ -521,18 +497,26 @@ bool CommonUtils::resolveDongleDeviceMapping(const QString& dongleName, QString*
         return false;
 
     const QString upper = dongleName.toUpper();
-    for (const DongleBroadcastEntry& row : kDongleBroadcastTable) {
-        if (!hasDongleProductMapping(row))
+    for (const ProductEntry& entry : kProductTable) {
+        if (!hasDonglePattern(entry))
             continue;
-        if (!matchDonglePattern(dongleName, upper, row.pattern, row.containsMatch))
-            continue;
-        const ProductEntry* entry = findProductEntry(QString::fromUtf8(row.productName));
-        if (!entry)
+        const QString patternUpper = QString::fromLatin1(entry.donglePattern).trimmed().toUpper();
+        const bool hit = entry.containsMatch ? upper.contains(patternUpper)
+                                             : (dongleName == QString::fromLatin1(entry.donglePattern));
+        if (!hit)
             continue;
         if (productOut)
-            *productOut = QString::fromUtf8(entry->productName);
+            *productOut = QString::fromUtf8(entry.productName);
         if (protocolOut)
-            *protocolOut = QString::fromUtf8(entry->protocol);
+            *protocolOut = QString::fromUtf8(entry.protocol);
+        return true;
+    }
+    // 与产品主广播名不同的别名（表内一行一产品，额外映射放这里）
+    if (dongleName == QLatin1String("Pump-E")) {
+        if (productOut)
+            *productOut = QStringLiteral("M8");
+        if (protocolOut)
+            *protocolOut = QStringLiteral("qroot");
         return true;
     }
     return false;

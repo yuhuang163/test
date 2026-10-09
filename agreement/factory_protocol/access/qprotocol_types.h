@@ -70,6 +70,8 @@ struct DeviceSnPayload {
     QByteArray sn;
     /** Qaiot device_side_id：-1 未指定；0 Left / 1 Right / 2 Independent */
     int sideId = -1;
+    /** Qroot2 写 0xA1 目标长度：35=原样（M5）；39=不足则末尾补 '0'（Air1） */
+    int snLength = 35;
 };
 
 enum class ProtocolSnType {
@@ -148,6 +150,8 @@ struct ProtocolButtonStateData {
     int modeButtonState = 0;
     int powerButtonState = 0;
     int keyButtonId = 0;
+    /** true=按键主动上报；false=运行状态快照(0xA6)。空闲按键上报(ID=0)对所有卡控忽略 */
+    bool isKeyNotify = false;
 };
 
 struct ProtocolBrushControlData {
@@ -389,6 +393,32 @@ struct ProtocolChargeCurrentData {
 /** qroot 0x82 泵堵电流：堵转 ADC（last_adc_value，大端）。 */
 struct ProtocolPumpStallCurrentData {
     int adcValue = 0;
+};
+
+/** Qroot2 0xAD 读已存空/满碗校准电容；各通道 uint16 大端。未校准一般为 0。 */
+struct ProtocolRoot2BowlCalibCapData {
+    int result = 0;   // payload[0]，固定 00
+    int emptyCh0 = 0; // 空碗顶电极 F0
+    int emptyCh1 = 0; // 空碗底电极 F1
+    int emptyCh2 = 0; // 空碗中电极 F2
+    int fullCh0 = 0;  // 满碗顶电极 F0
+    int fullCh1 = 0;  // 满碗底电极 F1
+    int fullCh2 = 0;  // 满碗中电极 F2
+};
+
+/** Qroot2 0xAD 满−空差值：TOP=F0(ch0) MID=F2(ch2) BOT=F1(ch1) */
+struct ProtocolRoot2BowlCapDiffData {
+    double topDiff = 0; // fullCh0 - emptyCh0
+    double midDiff = 0; // fullCh2 - emptyCh2
+    double botDiff = 0; // fullCh1 - emptyCh1
+};
+
+/** Qroot2 姿态角：0xDA 读应答 / 0xD3 角度异常停机 Notify；pitch/roll 单位 0.1°、有符号大端。 */
+struct ProtocolRoot2PoseAngleData {
+    int pitch01deg = 0; // 俯仰，÷10 为度
+    int roll01deg = 0;  // 翻滚，÷10 为度
+    /** true=Notify 0xD3 异常停机上报；false=Req 0xDA 产测读取 */
+    bool fromAbnormalNotify = false;
 };
 
 /**
@@ -640,21 +670,35 @@ enum class DeviceCmd {
     RootSystemControl,    // 【已拆分/兼容】旧「系统控制」聚合命令；新步骤请用 ShipMode/DevReset/RootEnterOta/FactoryReset
 
     // 【Qroot2/Air1】AA55 帧结构同 Qroot，CID 表独立
-    Root2PoseSwitch,   // Req 0xDB body 0关1开
-    Root2PoseCalib,    // Req 0xDD body 0x01
-    Root2BowlCalib,    // Req 0xAE body 0空碗 1满碗（固件当场采样，不下发电容）
+    Root2PoseAngleRead,  // Req 0xDA 空 body，读姿态角 pitch/roll（0.1° 有符号大端）；上位机自判 ±10°
+    Root2PoseAbnormalWait, // 等 Notify 0xD3 角度异常停机上报（不发令）；Gate 卡 pitch/roll 或 abs*
+    Root2PoseSwitch,     // Req 0xDB body 0关1开（角度检测写，会停泵；勿与 App 0xCB 混淆）
+    Root2PoseSwitchRead, // Req 0xDC 空 body，读角度检测开关；Ack 1B 00关/01开
+    Root2PoseCalib,      // Req 0xDD body 0x01
+    Root2BowlCalib,         // Req 0xAE body 0空碗 1满碗（固件当场采样，不下发电容）
+    Root2BowlEmptyCapRead,  // Req 0xAD 读已存校准电容（步骤侧重空碗三通道卡控）
+    Root2BowlFullCapRead,   // Req 0xAD 读已存校准电容（步骤侧重满碗三通道卡控）
+    Root2BowlCapDiffRead,   // 不发令：清单绑定 Gate；步骤配 Hook BOWL_CAP_DIFF_CHECK（取前序空/满缓存）
     Root2ModeSet,      // Req 0xA2 body 01刺激 02吸乳 03混合
     Root2LevelSet,     // Req 0xA3 body 档位1-15
     Root2PumpState,    // Req 0xA4 body 0暂停 1运行 (控制泵启动/暂停)
     Root2KeyTest,      // Req 0xA6 按键测试读
     Root2StateRead,    // Req 0xA6 读回泵状态/模式/档位
     Root2LedControl,   // Req 0x90 body 02+color+state
+    // 【Qroot2/M5 Smart】步骤里显式选用，不按产品名自动切换
+    Root2M5DeviceInfo,    // Get 0xF0 获取设备信息（含软硬件版本）
+    Root2M5SnRead,        // Get 0xF1 获取设备 SN
+    Root2M5PumpStatus,    // Get 0xB0 获取吸奶器状态（CAL=0x2D）
+    Root2M5Shutdown,      // Set 0xFC+0x01 关机
+    Root2M5Reboot,        // Set 0xFC+0x02 重启
+    Root2M5EnterOta,      // Set 0xFC+0x03 OTA
+    Root2M5FactoryReset,  // Set 0xFC+0x04 复位（抹除用户设置）
 
     // get commands
     NowMusicInfo,       // 【Qpb】当前播放音乐信息（无参/可空 param，get_now_music_info）
     SdCardInfo,         // 【Qpb】SD 卡信息（无参，get_sd_card_info）
     LightSensorInfo,    // 【主入口】传感类读取入口；Qpb 读光感，Qfctp 兼容映射充电电流
-    GetBattery,         // 【Qpb】读电量（无参，get_battery）；【Qfctp】电量 TLV；【Qroot】Notify 0xE0 查询
+    GetBattery,         // 【Qpb】读电量；【Qfctp】电量 TLV；【Qroot】Notify 0xE0；【Qroot2】Req 0xB0 百分比+状态
     SetBattery,         // 【Qpb】电池类型；【Qaiot】CID=0x13 模拟电量(百分比/电压/电流/温度，0=真实)
     ButtonState,        // 【主入口】按键状态/上报开关；Qpb 读按键，Qroot 9A 开关（param 0|1）
     GetPressCaliResult, // 【Qpb】读压力标定结果（无参，get_press_cali_result）
@@ -670,7 +714,7 @@ enum class DeviceCmd {
     BurshBacklog,        // 【Qpb】使用积压/日志类（param.toInt()，get_bursh_backlog）
     TrimRead,            // 【Qfctp】读 trim（无参，getCaseTrimRead）
     MacRead,             // 【Qfctp】读 MAC（无参，getCaseMacRead）
-    RssiRead,            // 【Qfctp】读 RSSI（param 为 QVariantMap，含 mode，getCaseRssiRead）
+    RssiRead,            // 【Qfctp】读 RSSI（param map：mode=0 BLE / 1 BT，getCaseRssiRead）
     KeySignalRead,       // 【Qfctp】读按键电容（param 为 QVariantMap，含 key，getCaseKeySignalRead）
     LightCalibRead,      // 【Qfctp】读光感校准（param 为 QVariantMap，含 index，getCaseLightCalibRead）
     ChargeCurrentRead,   // 【Qfctp】读充电电流 TLV 0x0020（无参，应答 uint32 mA，getCaseChargeCurrentRead）
@@ -744,6 +788,9 @@ Q_DECLARE_METATYPE(ProtocolDeviceExceptionData)
 Q_DECLARE_METATYPE(ProtocolKeyCapData)
 Q_DECLARE_METATYPE(ProtocolChargeCurrentData)
 Q_DECLARE_METATYPE(ProtocolPumpStallCurrentData)
+Q_DECLARE_METATYPE(ProtocolRoot2BowlCalibCapData)
+Q_DECLARE_METATYPE(ProtocolRoot2BowlCapDiffData)
+Q_DECLARE_METATYPE(ProtocolRoot2PoseAngleData)
 Q_DECLARE_METATYPE(ProtocolRootAgingHistoryData)
 Q_DECLARE_METATYPE(ProtocolTrimData)
 Q_DECLARE_METATYPE(ProtocolLightCalibData)

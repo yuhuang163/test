@@ -15,7 +15,8 @@
  *   stationsPerDevice=2
  *   visaAddress0=GPIB0::7::INSTR
  *   visaAddress1=GPIB0::8::INSTR
- *   scpiChannelSelectCmd=INST OUT%1   ; Agilent 双通道；会凌 SOURceN 可省略
+ *   Agilent 66319D 双通道：主路 VOLT/CURR，辅路自动改写为 VOLT2/CURR2/OUTP2
+ *   （勿用 INST OUT；会凌仍用 SOURceN / OUTPn）
  *
  * 单工位/单通道（关闭二拖二）：
  *   只填 visaAddress=GPIB0::7::INSTR，不要 sharedPair/visaAddress0/1；

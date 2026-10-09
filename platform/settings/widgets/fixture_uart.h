@@ -37,6 +37,8 @@ class Fixture_uart : public QWidget {
     bool isFixtureSerialOpen() const;
     bool tryOpenSerialPort(const QString& portName, bool autoConnect = false);
     void closeSerialPort();
+    /** 当前连接/选中的治具 COM 口名称（日志用）。 */
+    QString currentFixtureComName() const;
     void sendPcbaFrame(const QByteArray& frame);
     QFixtureManager* fixtureManager() const {
         return fixtureManager_;
@@ -76,6 +78,7 @@ class Fixture_uart : public QWidget {
     void updateWindowTitleWithStation();
     void applyRolePageVisibility();
     void applyPreStartMonitorFormEnabled(bool enabled);
+    void applyXwdDownScanFormEnabled(bool enabled);
 
     void updateDeviceFieldsVisibility();
 
@@ -116,6 +119,14 @@ class Fixture_uart : public QWidget {
     void on_scannerIpLineEdit_editingFinished();
     void on_scannerPortSpinBox_valueChanged(int value);
     void on_preStartMonitorEnabledCheckBox_toggled(bool checked);
+    void on_xwdDownScanEnabledCheckBox_toggled(bool checked);
+    void on_xwdPlcFixtureComCombo_currentTextChanged(const QString& text);
+    void on_xwdPlcFixtureBaudCombo_currentTextChanged(const QString& text);
+    void on_serialScannerComCombo_currentTextChanged(const QString& text);
+    void on_serialScannerBaudCombo_currentTextChanged(const QString& text);
+    void on_serialScannerHexEdit_textChanged(const QString& text);
+    void on_serialScannerHexEdit_editingFinished();
+    void on_serialScannerTimeoutSpin_valueChanged(int value);
 };
 
 #if _MSC_VER >= 1600

@@ -210,6 +210,10 @@ class MainWindow : public QMainWindow {
     void bindDongleSuctionPlotXRangeFollow(QCustomPlot* plot);
     void bindDongleSuctionPlotHover(QCustomPlot* plot);
     void applyDongleSuctionPlotXRange(QCustomPlot* plot, double tSec);
+    /** 按当前 X 视口灌点：视口内点少则原样，过多则按像素 min-max LOD */
+    void syncDongleSuctionPlotGraphsToXRange(QCustomPlot* plot);
+    /** 用户滚轮/拖拽改范围后合并刷新视口曲线 */
+    void scheduleDongleSuctionPlotLod(QCustomPlot* plot);
     void setDongleSuctionChartFollowLatest(bool follow);
     void syncDongleSuctionFollowStateFromUserRange(const QCPRange& range);
     double dongleSuctionXWindowSec() const;
@@ -556,6 +560,9 @@ class MainWindow : public QMainWindow {
     void refreshRootHeatTemp(quint8 temp);
     void refreshFlangeStatus(ProtocolTypeData data);
     void refreshPumpStallCurrent(ProtocolPumpStallCurrentData data);
+    void refreshRoot2BowlCalibCap(const QString& reportType, ProtocolRoot2BowlCalibCapData data);
+    void refreshRoot2BowlCapDiff(ProtocolRoot2BowlCapDiffData data);
+    void refreshRoot2PoseAngle(ProtocolRoot2PoseAngleData data);
     void refreshTupleData(ProtocolTupleData data);
     void refreshDongleDeviceName(const QString& name);
     /** 模式/工厂下拉：填充 itemData；通信走设置页当前协议 */

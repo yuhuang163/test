@@ -614,31 +614,150 @@ void QFreeWork::refreshWifiState(int state) {
 
 void QFreeWork::refreshSn(ProtocolSnData data) {
     deviceTailSnFromDevice = data.value.trimmed();
-    const QString expectedWholeMachineSn = resolvedPcbaSnText();
+    const QString expectedWholeMachineSn = resolvedExpectedTailSnText();
     qDebug() << getIndex() << "dev_info" << data.value;
     qDebug() << getIndex() << "deviceTailSnFromDevice" << deviceTailSnFromDevice;
-    ui->product_sn->setText("芯片存储的整机sn:" + deviceTailSnFromDevice);
 
-    // “获取整机SN码”步骤采用异步判定：设备返回 SN 必须与 UI 输入一致才通过。
+    // Gate 启用时走通用卡控（Expected 空则用界面/整机 SN 期望）
     if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolSnData"), QVariant::fromValue(data)))
         return;
 
+    // 无 Gate 时：「获取整机SN码」仍须设备回读与期望比对（与 Air1 等工站一致）
     if (!isCurrentStep("获取整机SN码")) {
         return;
     }
     QVector<TestItem> snItems;
     snItems.reserve(1);
-    bool snPass = !expectedWholeMachineSn.isEmpty();
-    appendPeriphItem(snItems, snPass, "整机SN码", deviceTailSnFromDevice, expectedWholeMachineSn, true);
+    bool snPass = true;
+    if (expectedWholeMachineSn.isEmpty()) {
+        snPass = false;
+        showlog(QStringLiteral("整机SN校验失败：期望SN为空（请先扫码/获取三元组）"));
+    } else if (deviceTailSnFromDevice.isEmpty()) {
+        snPass = false;
+        showlog(QStringLiteral("整机SN校验失败：设备回读SN为空"));
+    } else {
+        appendPeriphItem(snItems, snPass, "整机SN码", deviceTailSnFromDevice, expectedWholeMachineSn, true);
+    }
+    if (!snItems.isEmpty())
+        testResultTableUpdate(snItems);
     stepRuntime_.done = true;
     stepRuntime_.pass = snPass;
     stepRuntime_.testData = deviceTailSnFromDevice;
     if (!snPass) {
         TestResult = failValue;
-        showlog("整机SN校验失败，设备SN=" + deviceTailSnFromDevice + "，期望整机SN=" + expectedWholeMachineSn);
+        if (!expectedWholeMachineSn.isEmpty() && !deviceTailSnFromDevice.isEmpty())
+            showlog("整机SN校验失败，设备SN=" + deviceTailSnFromDevice + "，期望整机SN=" + expectedWholeMachineSn);
     } else {
         showlog("整机SN校验通过");
     }
+}
+
+void QFreeWork::refreshRoot2BowlCalibCap(const QString& reportType, ProtocolRoot2BowlCalibCapData data) {
+    // 先缓存本步对应通道：空碗步只记 empty*，满碗步只记 full*（供后续差值卡控，勿用同一次回包）
+    if (testCaseStepActive_) {
+        const QString cmd = activeTestCase_.send.deviceCmd;
+        if (cmd == QStringLiteral("Root2BowlEmptyCapRead")
+            || reportType == QLatin1String("ProtocolRoot2BowlEmptyCapData")) {
+            bowlEmptyCapCh0_ = data.emptyCh0;
+            bowlEmptyCapCh1_ = data.emptyCh1;
+            bowlEmptyCapCh2_ = data.emptyCh2;
+            hasBowlEmptyCapCache_ = true;
+        }
+        if (cmd == QStringLiteral("Root2BowlFullCapRead")
+            || reportType == QLatin1String("ProtocolRoot2BowlFullCapData")) {
+            bowlFullCapCh0_ = data.fullCh0;
+            bowlFullCapCh1_ = data.fullCh1;
+            bowlFullCapCh2_ = data.fullCh2;
+            hasBowlFullCapCache_ = true;
+        }
+    }
+
+    if (evaluateActiveTestCaseGate(reportType, QVariant::fromValue(data)))
+        return;
+
+    if (!testCaseStepActive_)
+        return;
+    const QString cmd = activeTestCase_.send.deviceCmd;
+    const bool emptyStep = cmd == QStringLiteral("Root2BowlEmptyCapRead");
+    const bool fullStep = cmd == QStringLiteral("Root2BowlFullCapRead");
+    if (!emptyStep && !fullStep)
+        return;
+
+    QString testData;
+    if (emptyStep) {
+        testData = QStringLiteral("F0=%1 F1=%2 F2=%3").arg(data.emptyCh0).arg(data.emptyCh1).arg(data.emptyCh2);
+        showlog(QStringLiteral("空碗校准电容：%1").arg(testData));
+    } else {
+        testData = QStringLiteral("F0=%1 F1=%2 F2=%3").arg(data.fullCh0).arg(data.fullCh1).arg(data.fullCh2);
+        showlog(QStringLiteral("满碗校准电容：%1").arg(testData));
+    }
+    markActiveTestCaseStepDone(true, testData, QStringLiteral("通过"));
+}
+
+void QFreeWork::refreshRoot2BowlCapDiff(ProtocolRoot2BowlCapDiffData data) {
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolRoot2BowlCapDiffData"), QVariant::fromValue(data)))
+        return;
+
+    if (!testCaseStepActive_)
+        return;
+
+    const QString testData = QStringLiteral("TOP=%1 MID=%2 BOT=%3")
+                                 .arg(data.topDiff, 0, 'f', 2)
+                                 .arg(data.midDiff, 0, 'f', 2)
+                                 .arg(data.botDiff, 0, 'f', 2);
+    showlog(QStringLiteral("空满碗电容差值：%1").arg(testData));
+    markActiveTestCaseStepDone(true, testData, QStringLiteral("通过"));
+}
+
+void QFreeWork::refreshRoot2PoseAngle(ProtocolRoot2PoseAngleData data) {
+    const QString summary = QStringLiteral("俯仰=%1° 翻滚=%2°%3")
+                                .arg(data.pitch01deg / 10.0, 0, 'f', 1)
+                                .arg(data.roll01deg / 10.0, 0, 'f', 1)
+                                .arg(data.fromAbnormalNotify ? QStringLiteral("（异常停机上报）") : QString());
+    showlog(data.fromAbnormalNotify ? QStringLiteral("角度异常停机：%1").arg(summary)
+                                    : QStringLiteral("姿态角：%1").arg(summary));
+
+    // 等 0xD3：未匹配则继续等（与按键卡控相同），勿走 evaluate 一判失败就结案
+    if (testCaseStepActive_ && activeTestCase_.gate.enabled
+        && activeTestCase_.gate.reportType == QStringLiteral("ProtocolRoot2PoseAngleData")
+        && activeTestCase_.send.deviceCmd == QStringLiteral("Root2PoseAbnormalWait")) {
+        if (!data.fromAbnormalNotify)
+            return;
+        QVector<TestCaseGate> gates = TestCaseStore::activeGatesForEvaluation(activeTestCase_);
+        if (gates.isEmpty())
+            return;
+        bool pass = false;
+        QString detail;
+        if (gates.size() > 1)
+            GateRegistry::evaluateAll(gates, QStringLiteral("ProtocolRoot2PoseAngleData"), QVariant::fromValue(data),
+                                     pass, detail);
+        else
+            GateRegistry::evaluate(gates.first(), QStringLiteral("ProtocolRoot2PoseAngleData"),
+                                   QVariant::fromValue(data), pass, detail);
+        const bool onceOnly = activeTestCase_.timing.commandTimeoutMs <= 0;
+        if (!pass && !onceOnly) {
+            showlog(QStringLiteral("角度异常上报未匹配期望，继续等待：%1").arg(detail));
+            return;
+        }
+        const GateStepDisplay display =
+            GateRegistry::formatStepDisplay(gates.first(), gates, QStringLiteral("ProtocolRoot2PoseAngleData"),
+                                            QVariant::fromValue(data), gates.size() > 1);
+        markActiveTestCaseStepDone(pass, display.testData.isEmpty() ? detail : display.testData, display.ask);
+        if (commandRetryTimer)
+            finishCommandRetryWait(pass, pass ? QStringLiteral("角度异常停机卡控通过")
+                                              : QStringLiteral("角度异常停机卡控失败：%1").arg(detail));
+        showlog(pass ? QStringLiteral("角度异常停机卡控通过：%1").arg(detail)
+                     : QStringLiteral("角度异常停机卡控失败：%1").arg(detail));
+        return;
+    }
+
+    if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolRoot2PoseAngleData"), QVariant::fromValue(data)))
+        return;
+
+    if (!testCaseStepActive_ || activeTestCase_.send.deviceCmd != QStringLiteral("Root2PoseAngleRead"))
+        return;
+
+    markActiveTestCaseStepDone(true, summary, QString());
 }
 
 void QFreeWork::refreshMacData(ProtocolMacData data) {
@@ -647,8 +766,6 @@ void QFreeWork::refreshMacData(ProtocolMacData data) {
         return;
 
     macAddress = mac;
-    if (ui && ui->macLabel)
-        ui->macLabel->setText(QStringLiteral("蓝牙mac: ") + mac);
 
     if (evaluateActiveTestCaseGate(QStringLiteral("ProtocolMacData"), QVariant::fromValue(data)))
         return;
@@ -932,7 +1049,6 @@ void QFreeWork::refreshPeriphData(ProtocolPeriphStateData data) {
 
 void QFreeWork::refreshBleRssi(QString data) {
     // qDebug() << data;
-    ui->BLE_RSSI->setText("BLE的RSSI:" + data);
     // showlog("zzzzz"+data);
     BLE_RSSI = data;
     bool ok;
@@ -956,11 +1072,9 @@ void QFreeWork::refreshRssiRead(ProtocolRssiData data) {
         const bool isBtCase = caseName == QStringLiteral("获取BT RSSI") || mesTag == QStringLiteral("BT_RSSI");
         const bool isBleCase = caseName == QStringLiteral("获取BLE RSSI") || mesTag == QStringLiteral("BLE_RSSI");
         if (isBtCase) {
-            ui->WIFI_RSSI->setText(QStringLiteral("BT的RSSI：") + value);
             BT_RSSI = value;
             intblerssi = rssi;
         } else if (isBleCase) {
-            ui->BLE_RSSI->setText(QStringLiteral("BLE的RSSI:") + value);
             BLE_RSSI = value;
             intblerssi = rssi;
         }
@@ -983,10 +1097,8 @@ void QFreeWork::refreshRssiRead(ProtocolRssiData data) {
     const bool pass = (rssi > BleLowRssi && rssi < BleHighRssi);
 
     if (isBtStep) {
-        ui->WIFI_RSSI->setText(QStringLiteral("BT的RSSI：") + value);
         BT_RSSI = value;
     } else {
-        ui->BLE_RSSI->setText(QStringLiteral("BLE的RSSI:") + value);
         BLE_RSSI = value;
     }
 
@@ -1288,14 +1400,7 @@ void QFreeWork::applyTupleByMac() {
                                 .arg(wholeSn, tupleData_.productKey, tupleData_.deviceName, tupleData_.deviceSecret);
     showlog(QStringLiteral("三元组获取成功：sn=%1 productKey=%2 deviceName=%3 deviceSecret=%4 mac=%5")
                 .arg(wholeSn, tupleData_.productKey, tupleData_.deviceName, tupleData_.deviceSecret, tupleData_.mac));
-    {
-        const int skuLen = sku.trimmed().size();
-        const int start1 = 11 - skuLen + 1;
-        showlog(QStringLiteral("整机SN SKU位校验通过：第%1-%2位=%3")
-                    .arg(start1)
-                    .arg(11)
-                    .arg(wholeSn.mid(start1 - 1, skuLen)));
-    }
+    showlog(QStringLiteral("整机SN SKU位校验通过：第9-11位=%1").arg(wholeSn.mid(8, 3)));
     setWholeMachineSn(wholeSn);
     showlog(QStringLiteral("已替换界面SN：%1").arg(resolvedPcbaSnText()));
     // 蓝牙测试关键物料：与 MES「蓝牙测试」工站 SFC 生命周期表一致，各发一条 AddSfcKey（QTY=1）
@@ -1690,9 +1795,18 @@ void QFreeWork::refreshAmmeterData(QString data) {
             return;
         }
         ++currentSampleCount_;
+        currentSampleSum_ += measure_ammeter;
+        currentSampleLastUnit_ = QStringLiteral("ma");
         currentSampleLastValueText_ = formattedValue + QStringLiteral("ma");
         const QString ask =
             QStringLiteral("[%1,%2]ma").arg(QString::number(LowCurrent), QString::number(HighCurrent));
+        if (currentSampleJudgeByAverage_) {
+            showlog(QStringLiteral("治具电流采样#%1：%2（累计均值=%3ma）")
+                        .arg(currentSampleCount_)
+                        .arg(currentSampleLastValueText_)
+                        .arg(currentSampleSum_ / static_cast<double>(currentSampleCount_), 0, 'f', 4));
+            return;
+        }
         const bool pass = (measure_ammeter >= LowCurrent && measure_ammeter <= HighCurrent);
         showlog(QStringLiteral("治具电流采样#%1：%2 → %3")
                     .arg(currentSampleCount_)
@@ -1752,7 +1866,6 @@ void QFreeWork::refreshWifiMsg(QString data) {
         // qDebug() << getIndex() << "RSSI:" << rssi;
         // qDebug() << getIndex() << " 设备的wifiMac:" << wifiMac;
         if (macAddress == wifiMac) {
-            ui->WIFI_RSSI->setText("WIFI的RSSI：" + rssi);
             // qDebug() << getIndex()<< getIndex() << " 比对成功";
             refreshWifiState(1);
             WIFI_RSSI = rssi;
@@ -1932,12 +2045,13 @@ void QFreeWork::refreshTypeStatus(ProtocolTypeData data) {
 }
 
 void QFreeWork::refreshButton(ProtocolButtonStateData data) {
-    // 步骤 Gate 等待 qroot 0x9A 按键上报：按 keyButtonId 与 Gate/Expected 比对（错键继续等，不结束步骤）
+    // CommandTimeoutMs=0：只判本包；>0：未匹配则继续等，到期失败
     if (testCaseStepActive_ && !activeTestCase_.hook.enabled && activeTestCase_.gate.enabled
         && activeTestCase_.gate.reportType == QStringLiteral("ProtocolButtonStateData")) {
-        const QString field = activeTestCase_.gate.field.trimmed();
-        // Qroot 0x9A 空闲上报 keyButtonId=0 可忽略；Qroot2 0xA6 用 pump_state/mode/level，0 也是有效快照
-        if (data.keyButtonId == 0 && field.compare(QStringLiteral("keyButtonId"), Qt::CaseInsensitive) == 0)
+        // 空闲按键上报：isKeyNotify 且各键态均为 0 才丢（勿误丢 ToggleKeyNotify 的 modeButtonState）
+        // 0xA6 状态快照 isKeyNotify=false，档位 0 仍有效
+        if (data.isKeyNotify && data.keyButtonId == 0 && data.modeButtonState == 0
+            && data.powerButtonState == 0)
             return;
         QVector<TestCaseGate> gates = TestCaseStore::activeGatesForEvaluation(activeTestCase_);
         if (gates.isEmpty())
@@ -1950,17 +2064,20 @@ void QFreeWork::refreshButton(ProtocolButtonStateData data) {
         else
             GateRegistry::evaluate(gates.first(), QStringLiteral("ProtocolButtonStateData"), QVariant::fromValue(data),
                                    pass, detail);
-        if (!pass) {
-            showlog(QStringLiteral("按键上报未匹配期望，继续等待：%1").arg(detail));
+        const bool onceOnly = activeTestCase_.timing.commandTimeoutMs <= 0;
+        if (!pass && !onceOnly) {
+            showlog(QStringLiteral("状态未匹配期望，继续等待：%1").arg(detail));
             return;
         }
         const GateStepDisplay display =
             GateRegistry::formatStepDisplay(gates.first(), gates, QStringLiteral("ProtocolButtonStateData"),
                                             QVariant::fromValue(data), gates.size() > 1);
-        markActiveTestCaseStepDone(true, display.testData.isEmpty() ? detail : display.testData, display.ask);
+        markActiveTestCaseStepDone(pass, display.testData.isEmpty() ? detail : display.testData, display.ask);
         if (commandRetryTimer)
-            finishCommandRetryWait(true, QStringLiteral("按键卡控通过"));
-        showlog(QStringLiteral("按键卡控通过：%1").arg(detail));
+            finishCommandRetryWait(pass, pass ? QStringLiteral("状态卡控通过")
+                                              : QStringLiteral("状态卡控失败：%1").arg(detail));
+        showlog(pass ? QStringLiteral("状态卡控通过：%1").arg(detail)
+                     : QStringLiteral("状态卡控失败：%1").arg(detail));
         return;
     }
 
@@ -2062,28 +2179,39 @@ void QFreeWork::onUsbInstrumentReport(const ProtocolReport& report) {
                             .arg(data.unit.isEmpty() ? QStringLiteral("V") : data.unit));
             }
 
-            // 连续采样读电流：不合格不立刻结束，仅合格时收尾
-            if (currentSampleAnyMatchActive_ && data.type == QLatin1String("Current") && testCaseStepActive_
+            // 连续采样：电流/电压任一合格即结案（FAFB 万用表同设备两种读数）
+            // 已结案后不再进 any-match，避免后续低电流样本走默认卡控覆盖通过结果
+            if (currentSampleAnyMatchActive_
+                && !isActiveTestCaseStepDone()
+                && (data.type == QLatin1String("Current") || data.type == QLatin1String("Voltage"))
+                && testCaseStepActive_
                 && activeTestCase_.gate.enabled
                 && activeTestCase_.gate.reportType == QLatin1String("ProtocolMeasureData")) {
                 if (!data.isOk) {
                     showlog(QStringLiteral("读电流采样：本次无效，继续"));
-                    test_base::onUsbInstrumentReport(
-                        ProtocolReport(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(data)));
                     return;
                 }
                 ++currentSampleCount_;
+                currentSampleSum_ += data.value;
+                currentSampleLastUnit_ = data.unit.isEmpty() ? QStringLiteral("mA") : data.unit;
                 currentSampleLastValueText_ = QStringLiteral("%1 %2")
                                                   .arg(data.value, 0, 'f', 4)
-                                                  .arg(data.unit.isEmpty() ? QStringLiteral("mA") : data.unit);
+                                                  .arg(currentSampleLastUnit_);
+
+                if (currentSampleJudgeByAverage_) {
+                    showlog(QStringLiteral("读电流采样#%1：%2（累计均值=%3 %4）")
+                                .arg(currentSampleCount_)
+                                .arg(currentSampleLastValueText_)
+                                .arg(currentSampleSum_ / static_cast<double>(currentSampleCount_), 0, 'f', 4)
+                                .arg(currentSampleLastUnit_));
+                    return;
+                }
 
                 QVector<TestCaseGate> gatesForEval = TestCaseStore::activeGatesForEvaluation(activeTestCase_);
                 if (gatesForEval.isEmpty()) {
                     currentSampleAnyMatchActive_ = false;
                     markActiveTestCaseStepDone(false, QStringLiteral("-"), QStringLiteral("失败"));
                     showlog(QStringLiteral("卡控失败：未启用任何判定项"));
-                    test_base::onUsbInstrumentReport(
-                        ProtocolReport(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(data)));
                     return;
                 }
                 bool pass = false;
@@ -2100,6 +2228,8 @@ void QFreeWork::onUsbInstrumentReport(const ProtocolReport& report) {
                             .arg(pass ? QStringLiteral("卡控通过") : QStringLiteral("未达标(继续)")));
                 if (pass) {
                     currentSampleAnyMatchActive_ = false;
+                    if (currentSamplePollTimer_)
+                        currentSamplePollTimer_->stop();
                     GateStepDisplay display = GateRegistry::formatStepDisplay(
                         gatesForEval.first(), gatesForEval, QStringLiteral("ProtocolMeasureData"),
                         QVariant::fromValue(data), gatesForEval.size() > 1);
@@ -2107,19 +2237,22 @@ void QFreeWork::onUsbInstrumentReport(const ProtocolReport& report) {
                         display.testData = detail;
                     markActiveTestCaseStepDone(true, display.testData, display.ask);
                     showlog(QStringLiteral("卡控通过（连续采样任一合格）：%1").arg(detail));
+                    // 任一合格即结案：勿再走 test_base / evaluateActiveTestCaseGate，防止后续样本覆盖
+                    return;
                 }
-                test_base::onUsbInstrumentReport(
-                    ProtocolReport(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(data)));
+                // 未达标继续采样：直接返回，勿落入下方默认卡控
                 return;
             }
 
-            if (!data.isOk && testCaseStepActive_ && activeTestCase_.gate.enabled &&
-                activeTestCase_.gate.reportType == QLatin1String("ProtocolMeasureData")) {
-                markActiveTestCaseStepDone(false, QStringLiteral("读取失败"), QStringLiteral("失败"));
-                if (commandRetryTimer)
-                    finishCommandRetryWait(false, QStringLiteral("读取失败"));
-            } else {
-                evaluateActiveTestCaseGate(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(data));
+            if (!isActiveTestCaseStepDone()) {
+                if (!data.isOk && testCaseStepActive_ && activeTestCase_.gate.enabled &&
+                    activeTestCase_.gate.reportType == QLatin1String("ProtocolMeasureData")) {
+                    markActiveTestCaseStepDone(false, QStringLiteral("读取失败"), QStringLiteral("失败"));
+                    if (commandRetryTimer)
+                        finishCommandRetryWait(false, QStringLiteral("读取失败"));
+                } else {
+                    evaluateActiveTestCaseGate(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(data));
+                }
             }
             test_base::onUsbInstrumentReport(
                 ProtocolReport(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(data)));

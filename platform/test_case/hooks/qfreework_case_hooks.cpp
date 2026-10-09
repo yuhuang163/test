@@ -2,6 +2,7 @@
 
 #include "qfreework.h"
 #include "bydmes.h"
+#include "common_utils.h"
 
 #include "test_case.h"
 
@@ -96,14 +97,40 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
             fw->showlog(QStringLiteral("写入整机SN失败：界面SN为空，请先获取三元组或扫入整机SN"));
             return;
         }
+        // Param_length：35=M5 原样；39=Air1 末尾补 0（默认 35）
+        int snLength = 35;
+        const TestCaseDefinition& snDef = fw->activeTestCase();
+        QVariantMap snMap;
+        if (snDef.send.param.canConvert<DeviceSnPayload>()) {
+            snLength = snDef.send.param.value<DeviceSnPayload>().snLength;
+        } else if (snDef.send.param.canConvert<QVariantMap>()) {
+            snMap = fw->resolveTestCaseSendParamTree(snDef.send.param).toMap();
+            if (snMap.contains(QStringLiteral("length")))
+                snLength = snMap.value(QStringLiteral("length")).toInt();
+            else if (snMap.contains(QStringLiteral("snLength")))
+                snLength = snMap.value(QStringLiteral("snLength")).toInt();
+        }
+        if (snLength != 39)
+            snLength = 35;
         fw->stepRuntime_.testData = QString::fromUtf8(tailSn);
         fw->setCommandWaitSource(CommandWaitSource::ProductProtocol);
         // Hook 单独发指令，须带上本步 Timing/CommandTimeoutMs，不能走 sendCommandWithRetry 默认 300ms
         const int snTimeoutMs = TestCaseRunner::commandTimeoutMs(fw->activeTestCase());
-        fw->sendCommandWithRetry([fw, tailSn]() {
-            fw->protocolManager.set(DeviceCmd::Sn,
-                                    QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, tailSn}));
+        fw->sendCommandWithRetry([fw, tailSn, snLength]() {
+            DeviceSnPayload payload;
+            payload.which_sn = FacDevInfoType_TAIL_SN;
+            payload.sn = tailSn;
+            payload.snLength = snLength;
+            fw->protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(payload));
         }, snTimeoutMs);
+        return;
+    }
+    if (hookId == QStringLiteral("GENERATE_WHOLE_MACHINE_SN")) {
+        fw->runGenerateWholeMachineSnStep();
+        return;
+    }
+    if (hookId == QStringLiteral("BOWL_CAP_DIFF_CHECK")) {
+        fw->runBowlCapDiffCheckStep();
         return;
     }
     if (hookId == QStringLiteral("PRINT_WHOLE_MACHINE_SN")) {
@@ -157,6 +184,58 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         fw->markActiveTestCaseStepDone(pass, scanned, expectedSn);
         fw->showlog(pass ? QStringLiteral("二维码一致性校验通过：扫描=%1，开局SN=%2").arg(scanned, expectedSn)
                          : QStringLiteral("二维码一致性校验失败：扫描=%1，开局SN=%2").arg(scanned, expectedSn));
+        return;
+    }
+    if (hookId == QStringLiteral("SN_PREFIX4_CHECK")) {
+        // 读界面 SN；再抽 URL 的 sn=，避免 http 前缀误卡（无独立 pcbaSn_ 成员）
+        const QString rawSn = fw->resolvedPcbaSnText().trimmed();
+        QString sn = CommonUtils::extractSnFromUrlOrText(rawSn).trimmed();
+        if (sn.isEmpty())
+            sn = rawSn;
+        if (fw->isBydFactory() && rawSn.isEmpty()) {
+            // BYD：界面可能是过程码；若是 URL/28/35 位整机或 PCBA，仍可用于前四位
+            const QString fromUi = CommonUtils::extractSnFromUrlOrText(
+                                       (fw->ui && fw->ui->getMac) ? fw->ui->getMac->text() : QString())
+                                       .trimmed();
+            const QString mac = fw->parseMacFromSn(fromUi);
+            const bool macOk = (mac.length() == 17 && mac.count(QLatin1Char(':')) == 5);
+            if (macOk || fromUi.length() == 28 || fromUi.length() == 35) {
+                sn = fromUi;
+            } else {
+                fw->markActiveTestCaseStepDone(false, QStringLiteral("(无PCBA SN)"), QStringLiteral("失败"));
+                fw->showlog(QStringLiteral("产品型号卡控失败：BYD 尚未拿到产品 SN（过程码不可用；URL 请含 sn=）"));
+                return;
+            }
+        } else if (fw->isBydFactory()) {
+            sn = CommonUtils::extractSnFromUrlOrText(rawSn).trimmed();
+        }
+        QString expected;
+        if (fw->activeTestCase().send.param.canConvert<QVariantMap>()) {
+            const QVariantMap map = fw->resolveTestCaseSendParamTree(fw->activeTestCase().send.param).toMap();
+            expected = map.value(QStringLiteral("expected")).toString().trimmed();
+        }
+        if (expected.isEmpty())
+            expected = fw->activeTestCase().gate.expected.trimmed();
+        if (expected.isEmpty() && !fw->activeTestCase().gate.expectedSettingsKey.isEmpty())
+            expected = SETTINGS.value(fw->activeTestCase().gate.expectedSettingsKey).toString().trimmed();
+        if (expected.isEmpty()) {
+            fw->markActiveTestCaseStepDone(false, QStringLiteral("期望前缀未配置"), QStringLiteral("失败"));
+            fw->showlog(QStringLiteral("产品型号卡控失败：请在 Hook 参数「期望SN前四位」填写"));
+            return;
+        }
+        if (sn.isEmpty()) {
+            fw->productModelMismatch_ = true;
+            fw->markActiveTestCaseStepDone(false, QStringLiteral("(空)"), expected);
+            fw->showlog(QStringLiteral("产品型号不对：当前SN=(空)，期望=%1").arg(expected));
+            return;
+        }
+        const QString prefix4 = sn.left(4);
+        const bool pass = fw->compareVersions(expected, prefix4);
+        if (!pass)
+            fw->productModelMismatch_ = true;
+        fw->markActiveTestCaseStepDone(pass, prefix4, expected);
+        fw->showlog(pass ? QStringLiteral("产品型号卡控通过：SN前四位=%1，期望=%2（SN=%3）").arg(prefix4, expected, sn)
+                         : QStringLiteral("产品型号不对：当前SN前四位=%1，期望=%2（SN=%3）").arg(prefix4, expected, sn));
         return;
     }
     if (hookId == QStringLiteral("MES_GET_ROOT_SKU")) {
@@ -250,87 +329,7 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         return;
     }
     if (hookId == QStringLiteral("COUNTDOWN_WAIT")) {
-        // Param_seconds（或 Param_waitSeconds）配置等待秒数；可选 Param_prompt / Meta PromptText 作提示文案
-        const TestCaseDefinition& def = fw->activeTestCase();
-        QVariantMap map;
-        if (def.send.param.canConvert<QVariantMap>())
-            map = fw->resolveTestCaseSendParamTree(def.send.param).toMap();
-        int seconds = 0;
-        if (map.contains(QStringLiteral("seconds")))
-            seconds = map.value(QStringLiteral("seconds")).toInt();
-        else if (map.contains(QStringLiteral("waitSeconds")))
-            seconds = map.value(QStringLiteral("waitSeconds")).toInt();
-        if (seconds <= 0) {
-            fw->markActiveTestCaseStepDone(false, QStringLiteral("未配置等待秒数"), QStringLiteral("失败"));
-            fw->showlog(QStringLiteral("倒计时等待失败：请在步骤 Param_seconds 填写大于 0 的秒数"));
-            return;
-        }
-        QString prompt = map.value(QStringLiteral("prompt")).toString().trimmed();
-        if (prompt.isEmpty())
-            prompt = def.meta.promptText.trimmed();
-        if (prompt.isEmpty())
-            prompt = QStringLiteral("请等待");
-
-        QDialog dlg(fw);
-        dlg.setWindowTitle(def.meta.name.trimmed().isEmpty() ? QStringLiteral("倒计时等待") : def.meta.name.trimmed());
-        dlg.setModal(true);
-        auto* layout = new QVBoxLayout(&dlg);
-        layout->setContentsMargins(24, 24, 24, 24);
-        layout->setSpacing(16);
-        auto* promptLabel = new QLabel(prompt, &dlg);
-        promptLabel->setAlignment(Qt::AlignCenter);
-        promptLabel->setWordWrap(true);
-        QFont promptFont = promptLabel->font();
-        promptFont.setPointSize(18);
-        promptLabel->setFont(promptFont);
-        layout->addWidget(promptLabel);
-        auto* countLabel = new QLabel(&dlg);
-        countLabel->setAlignment(Qt::AlignCenter);
-        QFont countFont = countLabel->font();
-        countFont.setPointSize(36);
-        countFont.setBold(true);
-        countLabel->setFont(countFont);
-        layout->addWidget(countLabel);
-        dlg.resize(420, 220);
-
-        // 允许标题栏关闭：提前结束等待并进入下一步（产线加热等到位可手动关窗）
-        int finishResult = -1;
-        QObject::connect(&dlg, &QDialog::finished, &dlg, [&](int result) { finishResult = result; });
-
-        dlg.show();
-        dlg.raise();
-        dlg.activateWindow();
-
-        const qint64 totalMs = static_cast<qint64>(seconds) * 1000;
-        QElapsedTimer timer;
-        timer.start();
-        int lastShown = -1;
-        fw->showlog(QStringLiteral("倒计时等待开始：%1 秒（%2）").arg(seconds).arg(prompt));
-        while (timer.elapsed() < totalMs && finishResult < 0) {
-            if (!fw->isTestContinue) {
-                dlg.hide();
-                fw->markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
-                fw->showlog(QStringLiteral("倒计时等待已中止"));
-                return;
-            }
-            const int leftSec = qMax(0, static_cast<int>((totalMs - timer.elapsed() + 999) / 1000));
-            if (leftSec != lastShown) {
-                lastShown = leftSec;
-                countLabel->setText(QStringLiteral("%1").arg(leftSec));
-            }
-            fw->waitWork(100);
-        }
-        dlg.hide();
-        if (finishResult == QDialog::Rejected) {
-            const int elapsedSec = qMax(1, static_cast<int>((timer.elapsed() + 999) / 1000));
-            const QString data = QStringLiteral("提前结束(%1/%2秒)").arg(elapsedSec).arg(seconds);
-            fw->markActiveTestCaseStepDone(true, data, QStringLiteral("通过"));
-            fw->showlog(QStringLiteral("倒计时等待已手动关闭：%1").arg(data));
-            return;
-        }
-        const QString data = QStringLiteral("%1秒").arg(seconds);
-        fw->markActiveTestCaseStepDone(true, data, QStringLiteral("通过"));
-        fw->showlog(QStringLiteral("倒计时等待完成：%1").arg(data));
+        fw->runCountdownWaitStep();
         return;
     }
 
@@ -351,8 +350,6 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         fw->macAddress = macText;
         if (fw->ui && fw->ui->macInput)
             fw->ui->macInput->setText(macText);
-        if (fw->ui && fw->ui->macLabel)
-            fw->ui->macLabel->setText(QStringLiteral("蓝牙mac: ") + macText);
         fw->stepRuntime_.testData = macText;
         fw->setCommandWaitSource(CommandWaitSource::ProductProtocol);
         const int macTimeoutMs = TestCaseRunner::commandTimeoutMs(fw->activeTestCase());
@@ -493,8 +490,11 @@ void QFreeWorkTestCaseHookRegistrar::registerAll() {
     registerDispatchHook(QStringLiteral("DONGLE_SUCTION_SAMPLE"));
     registerDispatchHook(QStringLiteral("DONGLE_SUCTION_SAMPLE_SINGLE"));
     registerDispatchHook(QStringLiteral("SN_WRITE_TAIL"));
+    registerDispatchHook(QStringLiteral("GENERATE_WHOLE_MACHINE_SN"));
+    registerDispatchHook(QStringLiteral("BOWL_CAP_DIFF_CHECK"));
     registerDispatchHook(QStringLiteral("PRINT_WHOLE_MACHINE_SN"));
     registerDispatchHook(QStringLiteral("QR_SN_CONSISTENCY_CHECK"));
+    registerDispatchHook(QStringLiteral("SN_PREFIX4_CHECK"));
     registerDispatchHook(QStringLiteral("COUNTDOWN_WAIT"));
     registerDispatchHook(QStringLiteral("AIR_PRESSURE_SAMPLE"));
     registerDispatchHook(QStringLiteral("LIGHT_SENSOR_GOLDEN_CALIB"));

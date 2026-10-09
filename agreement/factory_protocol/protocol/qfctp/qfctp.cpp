@@ -768,6 +768,7 @@ void Qfctp::handleNotifyService(uint16_t serviceId, const uint8_t* tlvs, uint16_
             ProtocolButtonStateData buttonData;
             buttonData.modeButtonState = static_cast<int>(event);
             buttonData.keyButtonId = static_cast<int>(keyId);
+            buttonData.isKeyNotify = true;
             // if (keyId == 1u) {
             //     buttonData.modeButtonState = static_cast<int>(event);
             //     buttonData.keyButtonId = static_cast<int>(keyId);
@@ -789,6 +790,7 @@ void Qfctp::handleNotifyService(uint16_t serviceId, const uint8_t* tlvs, uint16_
             buttonData.modeButtonState = static_cast<int>(dir);
             buttonData.powerButtonState = static_cast<int>(encoderId);
             buttonData.keyButtonId = static_cast<int>(encoderId);
+            buttonData.isKeyNotify = true;
             emitReport(QStringLiteral("ProtocolButtonStateData"), QVariant::fromValue(buttonData));
         } else if (serviceId == kAlgoService && type == kAlgoTlvSampleDataNum && len == 2) {
             algoSampleCount = static_cast<int>(qfctpReadLe16(value));
@@ -1304,7 +1306,7 @@ bool Qfctp::setCaseSetLcdColor(const QVariantMap& map) {
 }
 
 bool Qfctp::getCaseRssiRead(const QVariantMap& map) {
-    const uint8_t v = static_cast<uint8_t>(map.value("mode").toUInt() & 0xFF);
+    const uint8_t v = static_cast<uint8_t>(map.value(QStringLiteral("mode")).toUInt() & 0xFF);
     return sendTestsServiceTlv(kTlvRssiRead, QByteArray(1, static_cast<char>(v)), "读取RSSI");
 }
 
