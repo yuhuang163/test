@@ -839,6 +839,35 @@ QGroupBox#aiotStatusBox::title {
 	subcontrol-origin: margin;
 	left: 2px;
 	padding: 0 2px;
+	color: #111827;
+	font-size: 14px;
+	font-weight: 700;
+}
+
+/* app业务控制：作用侧/开关键等分区标题加深加大，避免小字发虚 */
+QWidget#tab_aiot_app QGroupBox#aiotSideBox,
+QWidget#tab_aiot_app QGroupBox#aiotPowerBox,
+QWidget#tab_aiot_app QGroupBox#aiotModeBox,
+QWidget#tab_aiot_app QGroupBox#aiotLevelBox,
+QWidget#tab_aiot_app QGroupBox#aiotHeatBox,
+QWidget#tab_aiot_app QGroupBox#aiotLightBox {
+	font-size: 14px;
+	font-weight: 700;
+	color: #111827;
+}
+QWidget#tab_aiot_app QGroupBox#aiotSideBox::title,
+QWidget#tab_aiot_app QGroupBox#aiotPowerBox::title,
+QWidget#tab_aiot_app QGroupBox#aiotModeBox::title,
+QWidget#tab_aiot_app QGroupBox#aiotLevelBox::title,
+QWidget#tab_aiot_app QGroupBox#aiotHeatBox::title,
+QWidget#tab_aiot_app QGroupBox#aiotLightBox::title {
+	subcontrol-origin: margin;
+	left: 10px;
+	padding: 0 6px;
+	color: #111827;
+	font-size: 14px;
+	font-weight: 700;
+	background-color: transparent;
 }
 
 QWidget#consoleWorkPage QGroupBox#aiotStatusBox QFrame[aiotStatusCard="1"],
