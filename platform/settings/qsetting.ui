@@ -745,6 +745,16 @@
           </widget>
          </item>
          <item>
+          <widget class="QPushButton" name="pushButton_testFlowStationBindings">
+           <property name="toolTip">
+            <string>绑定本工站产品协议、治具与测试设备（程控电源/PLC 等）。步骤配置时只显示已绑定能力的指令。不影响自动扫码与共享串口。</string>
+           </property>
+           <property name="text">
+            <string>设备能力绑定</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <spacer name="horizontalSpacer">
            <property name="orientation">
             <enum>Qt::Horizontal</enum>

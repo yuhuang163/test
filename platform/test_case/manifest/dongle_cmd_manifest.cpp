@@ -24,7 +24,7 @@ static const Row kRows[] = {
     {DongleCmd::BleMainConnect, "BleMainConnect", u8"主通道蓝牙连接", DeviceCmdParamKind::String, kHintBleScan, kSet},
     {DongleCmd::OtaDataPassthrough, "OtaDataPassthrough", u8"OTA 数据透传", DeviceCmdParamKind::Int, u8"0=关 1=开", kSet},
     {DongleCmd::OtaPktSize, "OtaPktSize", u8"OTA 切包大小", DeviceCmdParamKind::Int, u8"AT+OTAPKTSIZE，字节如 200", kSet},
-    {DongleCmd::BleMtu, "BleMtu", u8"BLE MTU", DeviceCmdParamKind::Int, u8"AT+BLEMTU，字节如 247", kSet},
+    {DongleCmd::BleMtu, "BleMtu", u8"蓝牙MTU", DeviceCmdParamKind::Int, u8"AT+BLEMTU，字节如 247", kSet},
     {DongleCmd::MainDataPassthrough, "MainDataPassthrough", u8"主通道数据透传", DeviceCmdParamKind::Int, u8"0=关 1=开", kSet},
     {DongleCmd::BleLog, "BleLog", u8"连接后 RSSI 上报开关", DeviceCmdParamKind::Int,
      u8"0=关 1=开（AT+BLERSSILOG，旧指令 AT+BLELOG）", kSet},
@@ -48,7 +48,7 @@ static const Row kRows[] = {
     {DongleCmd::LowRangeAdcSwitch, "LowRangeAdcSwitch", u8"低量程采样开关", DeviceCmdParamKind::Int,
      u8"0=关 1=开（AT+LSADC）", kSet},
     {DongleCmd::Bomb, "Bomb", u8"广播注入", DeviceCmdParamKind::JsonMap, kHintBomb, kSet},
-    {DongleCmd::GetGmac, "GetGmac", u8"GMAC", DeviceCmdParamKind::None, u8"无需参数", kGet},
+    {DongleCmd::GetGmac, "GetGmac", u8"读取GMAC", DeviceCmdParamKind::None, u8"无需参数", kGet},
 };
 
 // 旧 ini 兼容：DongleBleScanConnect 等

@@ -1258,10 +1258,13 @@ void QFreeWork::runTestFlowBootstrap() {
 
     const QString sn = ui->getMac->text().trimmed();
     const QString mac = ui->macInput->text().trimmed();
-    // initData 会清成员；开局过程码须跨 init 保留，供 BYD Complete/SFC 使用
+    // initData 会清成员；开局过程码 / MES 主板 SN 须跨 init 保留
     const QString processCode = !mesProcessCode_.isEmpty() ? mesProcessCode_ : sn;
-    if (!sn.isEmpty() || !mac.isEmpty()) {
-        onTestSessionStarting(sn, mac);
+    const QString boardSnKeep = mesBoardSn_.trimmed();
+    // 会话日志 sn= 优先主板 SN（界面框仍是过程码，供 BYD 过站）
+    const QString snForSession = !boardSnKeep.isEmpty() ? boardSnKeep : sn;
+    if (!snForSession.isEmpty() || !mac.isEmpty()) {
+        onTestSessionStarting(snForSession, mac);
     }
     showlog(QStringLiteral("开始测试"));
     // 只清本工位 waitKey + 上一轮「近期完成」缓存；不打断对端已在等的同步会话
@@ -1275,9 +1278,13 @@ void QFreeWork::runTestFlowBootstrap() {
     refreshOrderedTestIndexes();
     initData();
     mesProcessCode_ = processCode.trimmed();
+    mesBoardSn_ = boardSnKeep;
     if (!mesProcessCode_.isEmpty()) {
         pack.sn = mesProcessCode_;
         showlog(QStringLiteral("MES 过站过程码已锁定：%1").arg(mesProcessCode_));
+    }
+    if (!mesBoardSn_.isEmpty()) {
+        showlog(QStringLiteral("MES 主板 SN（会话日志）：%1").arg(mesBoardSn_));
     }
     singleStepDebugRun_ = false;
     suppressProductBleAutoReconnect_ = false;
@@ -2671,9 +2678,13 @@ void QFreeWork::runLedInspectStep() {
 
     const int cameraIndex = mapInt(QStringLiteral("cameraIndex"), 0);
     const QString cameraName = map.value(QStringLiteral("cameraName")).toString().trimmed();
-    // 自由工站默认 GigE；Param_cameraSource=usb 时仍走 USB 摄像头
+    // 以治具协议为准：USB摄像头 / GigE工业摄像头；旧 Param_cameraSource 仅作覆盖
     const QString cameraSource = map.value(QStringLiteral("cameraSource")).toString().trimmed().toLower();
-    const bool useUsb = (cameraSource == QLatin1String("usb"));
+    bool useUsb = (activeTestCase_.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera);
+    if (cameraSource == QLatin1String("usb"))
+        useUsb = true;
+    else if (cameraSource == QLatin1String("gige"))
+        useUsb = false;
     QString cameraIp = map.value(QStringLiteral("cameraIp")).toString().trimmed();
     if (cameraIp.isEmpty())
         cameraIp = map.value(QStringLiteral("gigeIp")).toString().trimmed();
@@ -3007,9 +3018,13 @@ void QFreeWork::runScreenInspectStep() {
 
     const int cameraIndex = mapInt(QStringLiteral("cameraIndex"), 0);
     const QString cameraName = map.value(QStringLiteral("cameraName")).toString().trimmed();
-    // 自由工站默认 GigE；Param_cameraSource=usb 时仍走 USB 摄像头
+    // 以治具协议为准；旧 Param_cameraSource 仅作覆盖
     const QString cameraSource = map.value(QStringLiteral("cameraSource")).toString().trimmed().toLower();
-    const bool useUsb = (cameraSource == QLatin1String("usb"));
+    bool useUsb = (activeTestCase_.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera);
+    if (cameraSource == QLatin1String("usb"))
+        useUsb = true;
+    else if (cameraSource == QLatin1String("gige"))
+        useUsb = false;
     QString cameraIp = map.value(QStringLiteral("cameraIp")).toString().trimmed();
     if (cameraIp.isEmpty())
         cameraIp = map.value(QStringLiteral("gigeIp")).toString().trimmed();
@@ -3524,6 +3539,7 @@ void QFreeWork::initData(bool deferDongleAtForVisa) {
     transitionCode_.clear();
     newSfc_.clear();
     mesProcessCode_.clear();
+    mesBoardSn_.clear();
     hasBowlEmptyCapCache_ = false;
     hasBowlFullCapCache_ = false;
     bowlEmptyCapCh0_ = bowlEmptyCapCh1_ = bowlEmptyCapCh2_ = 0;
@@ -4014,7 +4030,7 @@ void QFreeWork::getTestValue(const int mechines, const QString value) {
         showlog(QStringLiteral("MES SN 解析 MAC 成功: ") + mesmacAddress);
         // on_macInput_returnPressed();
     } else if (pack.factory.trimmed().compare(QStringLiteral("byd"), Qt::CaseInsensitive) == 0) {
-        // BYD：过程码换主板 SN 仅用于解析 MAC；界面 SN 框保持过程码，过站 SFC 用 mesProcessCode_
+        // BYD：过程码换主板 SN 仅用于解析 MAC + 会话日志；界面 SN 框保持过程码，过站 SFC 用 mesProcessCode_
         // （三元组整机 SN 仍由 setWholeMachineSn 回填界面，不在此处理）
         if (mechines != getIndex()) {
             return;
@@ -4026,8 +4042,10 @@ void QFreeWork::getTestValue(const int mechines, const QString value) {
             showlog(value);
             return;
         }
+        mesBoardSn_ = snFromMes;
         ui->macInput->setText(mesmacAddress);
-        showlog(QStringLiteral("MES 主板 SN 已解析 MAC（不回填界面 SN）：%1").arg(mesmacAddress));
+        showlog(QStringLiteral("MES 主板 SN=%1，已解析 MAC=%2（界面 SN 仍为过程码）")
+                    .arg(mesBoardSn_, mesmacAddress));
         on_macInput_returnPressed();
     } else {
         if (mechines == getIndex()) {
@@ -4169,6 +4187,7 @@ void QFreeWork::on_stopTest_clicked() {
     ui->macInput->clear();
     ui->getMac->clear();
     mesProcessCode_.clear();
+    mesBoardSn_.clear();
     if (ui->isformmes->isChecked()) {
         ui->getMac->setFocus();
     } else {

@@ -438,6 +438,10 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
                 dialogParent_->findChild<QPushButton*>(QStringLiteral("pushButton_testFlowSerialUi"))) {
             connect(btnSerialUi, &QPushButton::clicked, this, &TestFlowEditor::promptSerialUiConfig);
         }
+        if (auto* btnBindings =
+                dialogParent_->findChild<QPushButton*>(QStringLiteral("pushButton_testFlowStationBindings"))) {
+            connect(btnBindings, &QPushButton::clicked, this, &TestFlowEditor::promptStationBindingsConfig);
+        }
     }
     connect(btnSave, &QPushButton::clicked, this, [this]() { saveCurrentFlow(); });
     connect(btnClear, &QPushButton::clicked, this, [this]() {
@@ -1091,6 +1095,217 @@ void TestFlowEditor::promptSerialUiConfig() {
     persistSelectedStation(key);
     QMessageBox::information(dialogParent_, QStringLiteral("已保存"),
                              QStringLiteral("串口显示配置已写入当前工站 flow.ini，已打开的自由工站会立即生效。"));
+}
+
+void TestFlowEditor::promptStationBindingsConfig() {
+    if (!dialogParent_)
+        return;
+    const QString key = currentStationKey();
+    if (key.isEmpty()) {
+        QMessageBox::warning(dialogParent_, QStringLiteral("无法配置"), QStringLiteral("请先选择工站"));
+        return;
+    }
+
+    TestCaseStationBindings cfg = TestCaseStore::loadStationBindings(key);
+
+    QDialog dlg(dialogParent_);
+    dlg.setWindowTitle(QStringLiteral("工站设备能力绑定"));
+    dlg.resize(520, 580);
+    auto* root = new QVBoxLayout(&dlg);
+
+    root->addWidget(new QLabel(
+        QStringLiteral(
+            "当前工站：%1\n"
+            "勾选本站会用到的产品协议、治具与测试设备；步骤配置时只显示这些能力的指令。\n"
+            "未手工保存过绑定时，会按本站现有步骤自动扫描并写入（存量工站无需逐站重配）。")
+            .arg(TestCaseStore::flowStationDisplayName(key)),
+        &dlg));
+
+    auto fillCheckList = [](QListWidget* list, const QStringList& keys, const QStringList& labels,
+                            const QStringList& selected) {
+        list->clear();
+        for (int i = 0; i < keys.size(); ++i) {
+            auto* item = new QListWidgetItem(i < labels.size() ? labels.at(i) : keys.at(i), list);
+            item->setData(Qt::UserRole, keys.at(i));
+            item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+            item->setCheckState(selected.contains(keys.at(i)) ? Qt::Checked : Qt::Unchecked);
+        }
+    };
+
+    auto* scanBtn = new QPushButton(QStringLiteral("按现有步骤重新扫描"), &dlg);
+    scanBtn->setToolTip(QStringLiteral("扫描本站主流程与失败区步骤里的通道/协议/外设，勾选结果覆盖当前对话框（需再点确定才保存）"));
+    root->addWidget(scanBtn);
+
+    auto* productGroup = new QGroupBox(QStringLiteral("产品协议（可多选）"), &dlg);
+    auto* productList = new QListWidget(productGroup);
+    productList->setMinimumHeight(110);
+    {
+        QStringList keys;
+        QStringList labels;
+        for (TestCaseProductProtocol p :
+             {TestCaseProductProtocol::Qfctp, TestCaseProductProtocol::Qpb, TestCaseProductProtocol::Qroot,
+              TestCaseProductProtocol::Qroot2, TestCaseProductProtocol::Qaiot, TestCaseProductProtocol::QaiotV2}) {
+            keys << DeviceCmdCatalog::productProtocolToIni(p);
+            labels << DeviceCmdCatalog::productProtocolUiLabel(p);
+        }
+        fillCheckList(productList, keys, labels, cfg.productProtocols);
+    }
+    auto* productLay = new QVBoxLayout(productGroup);
+    productLay->addWidget(productList);
+    auto* enableProduct = new QCheckBox(QStringLiteral("启用产品通道指令"), productGroup);
+    enableProduct->setChecked(cfg.enableProduct);
+    productLay->addWidget(enableProduct);
+    auto* enableProductSerial = new QCheckBox(QStringLiteral("启用产品串口指令"), productGroup);
+    enableProductSerial->setChecked(cfg.enableProductSerial);
+    productLay->addWidget(enableProductSerial);
+    root->addWidget(productGroup);
+
+    auto* channelGroup = new QGroupBox(QStringLiteral("其它通道"), &dlg);
+    auto* channelLay = new QVBoxLayout(channelGroup);
+    auto* enableDongle = new QCheckBox(QStringLiteral("Dongle"), channelGroup);
+    enableDongle->setChecked(cfg.enableDongle);
+    channelLay->addWidget(enableDongle);
+    auto* enableCloud = new QCheckBox(QStringLiteral("云端（三元组等）"), channelGroup);
+    enableCloud->setChecked(cfg.enableCloud);
+    channelLay->addWidget(enableCloud);
+    root->addWidget(channelGroup);
+
+    auto* fixtureGroup = new QGroupBox(QStringLiteral("治具（可多选）"), &dlg);
+    auto* fixtureList = new QListWidget(fixtureGroup);
+    fixtureList->setMinimumHeight(120);
+    {
+        QStringList keys;
+        QStringList labels;
+        for (TestCaseFixtureProtocol p :
+             {TestCaseFixtureProtocol::Xwd, TestCaseFixtureProtocol::UsbCamera,
+              TestCaseFixtureProtocol::GigECamera, TestCaseFixtureProtocol::Pcba,
+              TestCaseFixtureProtocol::Asd9026a, TestCaseFixtureProtocol::JieliBtBox,
+              TestCaseFixtureProtocol::VesLight}) {
+            keys << FixturePcbaCmdCatalog::fixtureProtocolToIni(p);
+            labels << FixturePcbaCmdCatalog::fixtureProtocolUiLabel(p);
+        }
+        fillCheckList(fixtureList, keys, labels, cfg.fixtures);
+    }
+    auto* fixtureLay = new QVBoxLayout(fixtureGroup);
+    fixtureLay->addWidget(fixtureList);
+    root->addWidget(fixtureGroup);
+
+    auto* modbusGroup = new QGroupBox(QStringLiteral("Modbus 外设 / PLC（可多选）"), &dlg);
+    auto* modbusList = new QListWidget(modbusGroup);
+    modbusList->setMinimumHeight(120);
+    {
+        const QStringList keys = ModbusPeriphCmdCatalog::allDeviceKeys();
+        QStringList labels;
+        for (const QString& k : keys)
+            labels << ModbusDeviceCatalog::deviceRouteUiLabel(ModbusDeviceCatalog::deviceRouteFromIni(k));
+        fillCheckList(modbusList, keys, labels, cfg.modbusDevices);
+    }
+    auto* modbusLay = new QVBoxLayout(modbusGroup);
+    modbusLay->addWidget(modbusList);
+    root->addWidget(modbusGroup);
+
+    auto* scpiGroup = new QGroupBox(QStringLiteral("程控电源 / SCPI（可多选）"), &dlg);
+    auto* scpiList = new QListWidget(scpiGroup);
+    scpiList->setMinimumHeight(100);
+    {
+        const QStringList keys = ScpiPeriphCmdCatalog::allDeviceKeys();
+        QStringList labels;
+        for (const QString& k : keys)
+            labels << ScpiPeriphCmdCatalog::deviceUiLabel(ScpiPeriphCmdCatalog::deviceFromIni(k));
+        fillCheckList(scpiList, keys, labels, cfg.scpiDevices);
+    }
+    auto* scpiLay = new QVBoxLayout(scpiGroup);
+    scpiLay->addWidget(scpiList);
+    root->addWidget(scpiGroup);
+
+    auto applyCfgToUi = [=](const TestCaseStationBindings& b) {
+        QStringList protoKeys;
+        QStringList protoLabels;
+        for (TestCaseProductProtocol p :
+             {TestCaseProductProtocol::Qfctp, TestCaseProductProtocol::Qpb, TestCaseProductProtocol::Qroot,
+              TestCaseProductProtocol::Qroot2, TestCaseProductProtocol::Qaiot, TestCaseProductProtocol::QaiotV2}) {
+            protoKeys << DeviceCmdCatalog::productProtocolToIni(p);
+            protoLabels << DeviceCmdCatalog::productProtocolUiLabel(p);
+        }
+        fillCheckList(productList, protoKeys, protoLabels, b.productProtocols);
+        enableProduct->setChecked(b.enableProduct);
+        enableProductSerial->setChecked(b.enableProductSerial);
+        enableDongle->setChecked(b.enableDongle);
+        enableCloud->setChecked(b.enableCloud);
+        QStringList fixKeys;
+        QStringList fixLabels;
+        for (TestCaseFixtureProtocol p :
+             {TestCaseFixtureProtocol::Xwd, TestCaseFixtureProtocol::UsbCamera,
+              TestCaseFixtureProtocol::GigECamera, TestCaseFixtureProtocol::Pcba,
+              TestCaseFixtureProtocol::Asd9026a, TestCaseFixtureProtocol::JieliBtBox,
+              TestCaseFixtureProtocol::VesLight}) {
+            fixKeys << FixturePcbaCmdCatalog::fixtureProtocolToIni(p);
+            fixLabels << FixturePcbaCmdCatalog::fixtureProtocolUiLabel(p);
+        }
+        fillCheckList(fixtureList, fixKeys, fixLabels, b.fixtures);
+        {
+            const QStringList keys = ModbusPeriphCmdCatalog::allDeviceKeys();
+            QStringList labels;
+            for (const QString& k : keys)
+                labels << ModbusDeviceCatalog::deviceRouteUiLabel(ModbusDeviceCatalog::deviceRouteFromIni(k));
+            fillCheckList(modbusList, keys, labels, b.modbusDevices);
+        }
+        {
+            const QStringList keys = ScpiPeriphCmdCatalog::allDeviceKeys();
+            QStringList labels;
+            for (const QString& k : keys)
+                labels << ScpiPeriphCmdCatalog::deviceUiLabel(ScpiPeriphCmdCatalog::deviceFromIni(k));
+            fillCheckList(scpiList, keys, labels, b.scpiDevices);
+        }
+    };
+
+    connect(scanBtn, &QPushButton::clicked, &dlg, [&, key]() {
+        const TestCaseStationBindings scanned = TestCaseStore::inferStationBindingsFromFlowSteps(key);
+        applyCfgToUi(scanned);
+        QMessageBox::information(
+            &dlg, QStringLiteral("扫描完成"),
+            QStringLiteral("已按本站现有步骤勾选能力，请确认后点「确定」保存到 flow.ini。"));
+    });
+
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
+    root->addWidget(buttons);
+    connect(buttons, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+
+    if (dlg.exec() != QDialog::Accepted)
+        return;
+
+    auto collectChecked = [](QListWidget* list) -> QStringList {
+        QStringList out;
+        for (int i = 0; i < list->count(); ++i) {
+            QListWidgetItem* item = list->item(i);
+            if (item && item->checkState() == Qt::Checked)
+                out << item->data(Qt::UserRole).toString();
+        }
+        return out;
+    };
+
+    TestCaseStationBindings next;
+    next.configured = true;
+    next.productProtocols = collectChecked(productList);
+    next.enableProduct = enableProduct->isChecked();
+    next.enableProductSerial = enableProductSerial->isChecked();
+    next.enableDongle = enableDongle->isChecked();
+    next.enableCloud = enableCloud->isChecked();
+    next.fixtures = collectChecked(fixtureList);
+    next.modbusDevices = collectChecked(modbusList);
+    next.scpiDevices = collectChecked(scpiList);
+
+    if (!TestCaseStore::saveStationBindings(key, next)) {
+        QMessageBox::warning(dialogParent_, QStringLiteral("保存失败"), QStringLiteral("无法写入工站 flow.ini"));
+        return;
+    }
+    persistSelectedStation(key);
+    QMessageBox::information(
+        dialogParent_, QStringLiteral("已保存"),
+        QStringLiteral("设备能力绑定已写入当前工站 flow.ini [StationBindings]。\n"
+                       "之后编辑步骤时，请用「目标设备」选择本站已绑定的能力。\n"
+                       "不影响自动扫码 [PreStart_Monitor] 与 PLC/XWD 共享串口。"));
 }
 
 void TestFlowEditor::promptRenameCurrentFlowStation() {

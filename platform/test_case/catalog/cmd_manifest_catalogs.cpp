@@ -545,9 +545,15 @@ TestCaseFixtureProtocol FixturePcbaCmdCatalog::fixtureProtocolFromIni(const QStr
     if (text.compare(QStringLiteral("JIELI_BT_BOX"), Qt::CaseInsensitive) == 0
         || text.compare(QStringLiteral("JieliBtBox"), Qt::CaseInsensitive) == 0)
         return TestCaseFixtureProtocol::JieliBtBox;
-    if (text.compare(QStringLiteral("USB_CAMERA"), Qt::CaseInsensitive) == 0
-        || text.compare(QStringLiteral("UsbCamera"), Qt::CaseInsensitive) == 0)
+    // 新 USB 专用键；旧 USB_CAMERA 曾表示「USB/GigE 合一、默认 GigE」，读成 GigE
+    if (text.compare(QStringLiteral("USB_WEBCAM"), Qt::CaseInsensitive) == 0
+        || text.compare(QStringLiteral("UsbWebcam"), Qt::CaseInsensitive) == 0)
         return TestCaseFixtureProtocol::UsbCamera;
+    if (text.compare(QStringLiteral("GIGE_CAMERA"), Qt::CaseInsensitive) == 0
+        || text.compare(QStringLiteral("GigECamera"), Qt::CaseInsensitive) == 0
+        || text.compare(QStringLiteral("USB_CAMERA"), Qt::CaseInsensitive) == 0
+        || text.compare(QStringLiteral("UsbCamera"), Qt::CaseInsensitive) == 0)
+        return TestCaseFixtureProtocol::GigECamera;
     if (text.compare(QStringLiteral("VES"), Qt::CaseInsensitive) == 0
         || text.compare(QStringLiteral("VES_LIGHT"), Qt::CaseInsensitive) == 0
         || text.compare(QStringLiteral("VesLight"), Qt::CaseInsensitive) == 0)
@@ -566,7 +572,9 @@ QString FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol prot
     case TestCaseFixtureProtocol::JieliBtBox:
         return QStringLiteral("JIELI_BT_BOX");
     case TestCaseFixtureProtocol::UsbCamera:
-        return QStringLiteral("USB_CAMERA");
+        return QStringLiteral("USB_WEBCAM");
+    case TestCaseFixtureProtocol::GigECamera:
+        return QStringLiteral("GIGE_CAMERA");
     case TestCaseFixtureProtocol::VesLight:
         return QStringLiteral("VES");
     case TestCaseFixtureProtocol::Pcba:
@@ -578,15 +586,17 @@ QString FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol prot
 QString FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol protocol) {
     switch (protocol) {
     case TestCaseFixtureProtocol::Asd9026a:
-        return QStringLiteral("ASD9026A模拟电池");
+        return QStringLiteral("M8组装电流工站程控电源ASD9026A");
     case TestCaseFixtureProtocol::Xwd:
         return QStringLiteral("XWD治具");
     case TestCaseFixtureProtocol::JieliBtBox:
         return QStringLiteral("杰理蓝牙盒子");
     case TestCaseFixtureProtocol::UsbCamera:
         return QStringLiteral("USB摄像头");
+    case TestCaseFixtureProtocol::GigECamera:
+        return QStringLiteral("GigE工业摄像头");
     case TestCaseFixtureProtocol::VesLight:
-        return QStringLiteral("VES光源");
+        return QStringLiteral("V3系列光感工站VES光源");
     case TestCaseFixtureProtocol::Pcba:
     default:
         return QStringLiteral("PCBA测试协议");
@@ -651,13 +661,13 @@ QStringList ScpiPeriphCmdCatalog::allDeviceKeys() {
 QString ScpiPeriphCmdCatalog::deviceUiLabel(ScpiDeviceRoute device) {
     switch (device) {
     case ScpiDeviceRoute::HuilingWfp60h:
-        return QStringLiteral("WFP60H 程控电源");
+        return QStringLiteral("WFP60H程控电源");
     case ScpiDeviceRoute::Agilent66319d:
         return QStringLiteral("66319D程控电源");
     case ScpiDeviceRoute::GenericVisaPower:
-        return QStringLiteral("通用VISA程控电源");
+        return QStringLiteral("通用类SCPI程控电源");
     case ScpiDeviceRoute::RsCmw100:
-        return QStringLiteral("罗德与施瓦茨 CMW100");
+        return QStringLiteral("蓝牙综测仪CMW100");
     default:
         return QStringLiteral("未知设备");
     }

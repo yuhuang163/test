@@ -204,7 +204,7 @@ GateSendBinding GateRegistry::bindingForSend(TestCaseSendChannel channel, const 
         } else if (proto == TestCaseFixtureProtocol::Pcba) {
             if (const FixturePcbaCmdManifest::Row* row = FixturePcbaCmdManifest::findByEnumName(cmd))
                 applyRow(row->gateReportType, row->gateDefaultField);
-        } else if (proto == TestCaseFixtureProtocol::UsbCamera) {
+        } else if (FixturePcbaCmdCatalog::isScreenCameraFixture(proto)) {
             if (const UsbCameraCmdManifest::Row* row = UsbCameraCmdManifest::findByEnumName(cmd))
                 applyRow(row->gateReportType, row->gateDefaultField);
         } else if (proto == TestCaseFixtureProtocol::VesLight) {

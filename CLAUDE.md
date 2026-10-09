@@ -4,7 +4,7 @@
 
 ## 环境注意事项（Claude Code 专用）
 
-- **`python` 是 Windows Store 占位符**（`python -c ...` 退出码 49、无输出），跑不了 `scripts/convert_to_crlf.py`；需要转 CRLF 时改用 `perl -pi -e 's/\r?\n/\r\n/g' <文件>`。
+- **换行/编码安全**：只用 `py -3 scripts/convert_to_crlf.py <单文件路径>`（或可用的 `python`）。**禁止** `perl -pi` / `perl -i`；**禁止** PowerShell/`[IO.File]::ReadAllText`+`WriteAllText`（及 `Get-Content`/`Set-Content`）整文件重写——在本仓 Windows/EFS 环境下已多次把 UTF-8 源文件弄成乱码（见 `.cursor/rules/utf8-crlf-safety.mdc`）。python 不可用时**跳过**换行转换，不要找 Shell 替代方案。
 
 ## 技术栈
 

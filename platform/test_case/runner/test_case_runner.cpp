@@ -1,5 +1,6 @@
 #include "test_case_runner.h"
 
+#include "test_case_catalog.h"
 #include "test_case_store.h"
 
 #if _MSC_VER >= 1600
@@ -95,7 +96,7 @@ int TestCaseRunner::commandTimeoutMs(const TestCaseDefinition& def) {
             || def.send.deviceCmd == QStringLiteral("SampleSuctionSingle")))
         return 10000;
     if (def.send.channel == TestCaseSendChannel::Fixture
-        && def.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera)
+        && FixturePcbaCmdCatalog::isScreenCameraFixture(def.send.fixtureProtocol))
         return 15000;
     if (def.send.channel == TestCaseSendChannel::Fixture)
         return def.gate.enabled ? 8000 : 5000;

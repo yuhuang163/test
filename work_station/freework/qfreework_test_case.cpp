@@ -2258,7 +2258,7 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
     }
 
     if (def.send.channel == TestCaseSendChannel::Fixture) {
-        if (def.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera) {
+        if (FixturePcbaCmdCatalog::isScreenCameraFixture(def.send.fixtureProtocol)) {
             ctx->runScreenInspectStep();
             return;
         }

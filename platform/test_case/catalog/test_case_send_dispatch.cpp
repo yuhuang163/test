@@ -96,9 +96,9 @@ const CatalogBinding* catalogBinding(TestCaseSendChannel channel, TestCaseFixtur
                                         u8"杰理蓝牙盒子指令与操作方式不匹配",
                                         u8"该杰理蓝牙盒子指令尚未配置参数模板，请联系工程师"};
     static const CatalogBinding kUsbCamera = {usbCameraCatalogFn,
-                                            u8"USB 摄像头测试指令无效",
-                                            u8"USB 摄像头指令与操作方式不匹配（请选「读取」）",
-                                            u8"该 USB 摄像头指令尚未配置参数模板，请联系工程师"};
+                                            u8"摄像头测试指令无效",
+                                            u8"摄像头指令与操作方式不匹配（请选「读取」）",
+                                            u8"该摄像头指令尚未配置参数模板，请联系工程师"};
     static const CatalogBinding kVesLight = {vesLightCatalogFn,
                                            u8"VES 光源测试指令无效",
                                            u8"VES 光源指令与操作方式不匹配（请选「设置」）",
@@ -126,6 +126,7 @@ const CatalogBinding* catalogBinding(TestCaseSendChannel channel, TestCaseFixtur
         case TestCaseFixtureProtocol::JieliBtBox:
             return &kJieli;
         case TestCaseFixtureProtocol::UsbCamera:
+        case TestCaseFixtureProtocol::GigECamera:
             return &kUsbCamera;
         case TestCaseFixtureProtocol::VesLight:
             return &kVesLight;
@@ -248,7 +249,7 @@ bool inferChannelFromDeviceCmd(const QString& deviceCmd, TestCaseSendChannel& ch
                             TestCaseFixtureProtocol::Pcba, channel, fixtureProtocol))
         return true;
     if (tryInferFromCatalog(UsbCameraCmdCatalog::catalog(), deviceCmd, TestCaseSendChannel::Fixture,
-                            TestCaseFixtureProtocol::UsbCamera, channel, fixtureProtocol))
+                            TestCaseFixtureProtocol::GigECamera, channel, fixtureProtocol))
         return true;
     if (tryInferFromCatalog(VesLightCmdCatalog::catalog(), deviceCmd, TestCaseSendChannel::Fixture,
                             TestCaseFixtureProtocol::VesLight, channel, fixtureProtocol))
@@ -264,7 +265,8 @@ void normalizeLegacyUsbCameraSend(TestCaseSend& send) {
     if (UsbCameraCmdCatalog::catalog().cmdFromName(send.deviceCmd, cmd)
         && send.channel != TestCaseSendChannel::Fixture) {
         send.channel = TestCaseSendChannel::Fixture;
-        send.fixtureProtocol = TestCaseFixtureProtocol::UsbCamera;
+        // 旧 Channel=UsbCamera / 无协议步骤：默认按 GigE（与历史「默认网口」一致）
+        send.fixtureProtocol = TestCaseFixtureProtocol::GigECamera;
     }
 }
 

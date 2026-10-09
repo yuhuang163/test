@@ -8,7 +8,7 @@ namespace {
 
 constexpr ModbusDeviceBinding kBindings[] = {
     {ModbusDeviceRoute::InovanceH5uTcp, ModbusLinkKind::Tcp, "inovance_h5u_tcp", "PlcCmd", u8"汇川 H5U PLC"},
-    {ModbusDeviceRoute::GcSeriesTcp, ModbusLinkKind::Tcp, "gc_series_tcp", "GcPlcCmd", u8"GC系列 PLC"},
+    {ModbusDeviceRoute::GcSeriesTcp, ModbusLinkKind::Tcp, "gc_series_tcp", "GcPlcCmd", u8"M8吸力工站旧治具 PLC气缸"},
     {ModbusDeviceRoute::HqAmmeterRtu, ModbusLinkKind::Rtu, "hq_ammeter_rtu", "HqAmmeterRtuCmd", u8"华勤 RTU 电流表"},
     {ModbusDeviceRoute::LxAmmeterRtu, ModbusLinkKind::Rtu, "lx_ammeter_rtu", "LxAmmeterRtuCmd", u8"立讯 RTU 电流表"},
     {ModbusDeviceRoute::Aa55AmmeterRtu, ModbusLinkKind::Rtu, "aa55_ammeter_rtu", "Aa55AmmeterRtuCmd", u8"AA55 串口电流表"},
@@ -16,7 +16,7 @@ constexpr ModbusDeviceBinding kBindings[] = {
      u8"FAFB 串口万用表"},
     {ModbusDeviceRoute::MultiTempLoggerRtu, ModbusLinkKind::Rtu, "multi_temp_logger_rtu", "MultiTempLoggerRtuCmd",
      u8"多路温度记录仪 RTU"},
-    {ModbusDeviceRoute::XinjiePlcRtu, ModbusLinkKind::Rtu, "xinjie_plc_rtu", "XinjePlcCmd", u8"信捷 PLC RTU"},
+    {ModbusDeviceRoute::XinjiePlcRtu, ModbusLinkKind::Rtu, "xinjie_plc_rtu", "XinjePlcCmd", u8"比亚迪信捷 PLC"},
 };
 
 } // namespace
