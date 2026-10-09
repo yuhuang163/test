@@ -47,6 +47,10 @@ CmdManifestCatalog& xwdCatalogFn() {
     return XwdRawFixtureCmdCatalog::catalog();
 }
 
+CmdManifestCatalog& universalCatalogFn() {
+    return UniversalFixtureCmdCatalog::catalog();
+}
+
 CmdManifestCatalog& jieliCatalogFn() {
     return JieliBtBoxCmdCatalog::catalog();
 }
@@ -91,6 +95,10 @@ const CatalogBinding* catalogBinding(TestCaseSendChannel channel, TestCaseFixtur
                                         u8"XWD治具指令无效",
                                         u8"XWD治具指令与操作方式不匹配",
                                         u8"该 XWD治具指令尚未配置参数模板，请联系工程师"};
+    static const CatalogBinding kUniversal = {universalCatalogFn,
+                                            u8"通用治具指令无效",
+                                            u8"通用治具指令与操作方式不匹配",
+                                            u8"该通用治具指令尚未配置参数模板，请联系工程师"};
     static const CatalogBinding kJieli = {jieliCatalogFn,
                                         u8"杰理蓝牙盒子指令无效",
                                         u8"杰理蓝牙盒子指令与操作方式不匹配",
@@ -123,6 +131,8 @@ const CatalogBinding* catalogBinding(TestCaseSendChannel channel, TestCaseFixtur
             return &kAsd9026a;
         case TestCaseFixtureProtocol::Xwd:
             return &kXwd;
+        case TestCaseFixtureProtocol::Universal:
+            return &kUniversal;
         case TestCaseFixtureProtocol::JieliBtBox:
             return &kJieli;
         case TestCaseFixtureProtocol::UsbCamera:
@@ -231,6 +241,9 @@ bool inferChannelFromDeviceCmd(const QString& deviceCmd, TestCaseSendChannel& ch
         return true;
     if (tryInferFromCatalog(XwdRawFixtureCmdCatalog::catalog(), deviceCmd, TestCaseSendChannel::Fixture,
                             TestCaseFixtureProtocol::Xwd, channel, fixtureProtocol))
+        return true;
+    if (tryInferFromCatalog(UniversalFixtureCmdCatalog::catalog(), deviceCmd, TestCaseSendChannel::Fixture,
+                            TestCaseFixtureProtocol::Universal, channel, fixtureProtocol))
         return true;
     if (tryInferFromCatalog(JieliBtBoxCmdCatalog::catalog(), deviceCmd, TestCaseSendChannel::Fixture,
                             TestCaseFixtureProtocol::JieliBtBox, channel, fixtureProtocol))

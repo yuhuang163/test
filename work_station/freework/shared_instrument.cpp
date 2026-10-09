@@ -35,6 +35,50 @@ QString rewriteHuilingChannelDigit(QString cmd, int channel) {
     return out;
 }
 
+/** Agilent 66319D 辅路：VOLT2/CURR2/OUTP2/MEAS:CURR2?（手册示例，非 INST OUT）。 */
+QString rewriteAgilentAuxChannelCmd(QString cmd, int channel) {
+    if (cmd.isEmpty() || channel < 1)
+        return cmd;
+    const QString trimmed = cmd.trimmed();
+    static const QRegularExpression already(
+        QStringLiteral(R"(^(?:VOLT|CURR|OUTP)\d+\b|MEAS:(?:VOLT|CURR)\d+)"),
+        QRegularExpression::CaseInsensitiveOption);
+    if (already.match(trimmed).hasMatch())
+        return cmd;
+
+    // 通道1：OUTP ON/OFF → OUTP1，避免默认 INST:COUP ALL 时裸 OUTP 两路一起开关
+    if (channel == 1) {
+        static const QRegularExpression reOutp1(QStringLiteral(R"(^(\s*)(OUTP)(\b))"),
+                                                QRegularExpression::CaseInsensitiveOption);
+        const QRegularExpressionMatch m = reOutp1.match(cmd);
+        if (!m.hasMatch())
+            return cmd;
+        QString out = cmd;
+        out.insert(m.capturedEnd(2), QLatin1Char('1'));
+        return out;
+    }
+
+    const QString n = QString::number(channel);
+    // 手册：MEAS:CURR2? / MEAS:VOLT2?（[:DC] 可省略；勿写成 MEAS:CURR2:DC? 当唯一形式）
+    static const QRegularExpression reMeasVolt(QStringLiteral(R"(MEAS:VOLT(?::DC)?\?)"),
+                                               QRegularExpression::CaseInsensitiveOption);
+    static const QRegularExpression reMeasCurr(QStringLiteral(R"(MEAS:CURR(?::DC)?\?)"),
+                                               QRegularExpression::CaseInsensitiveOption);
+    if (reMeasVolt.match(cmd).hasMatch())
+        return QString(cmd).replace(reMeasVolt, QStringLiteral("MEAS:VOLT%1?").arg(n));
+    if (reMeasCurr.match(cmd).hasMatch())
+        return QString(cmd).replace(reMeasCurr, QStringLiteral("MEAS:CURR%1?").arg(n));
+
+    static const QRegularExpression reRoot(QStringLiteral(R"(^(\s*)(VOLT|CURR|OUTP)(\b))"),
+                                           QRegularExpression::CaseInsensitiveOption);
+    const QRegularExpressionMatch m = reRoot.match(cmd);
+    if (!m.hasMatch())
+        return cmd;
+    QString out = cmd;
+    out.insert(m.capturedEnd(2), n);
+    return out;
+}
+
 void rewriteScpiCmdsInMap(QVariantMap* map, int channel) {
     if (!map || channel < 1)
         return;
@@ -53,10 +97,14 @@ void rewriteScpiCmdsInMap(QVariantMap* map, int channel) {
         map->insert(k, rewriteHuilingChannelDigit(raw, channel));
     }
     if (!anyHuiling) {
-        QString selectCmd = map->value(QStringLiteral("scpiChannelSelectCmd")).toString().trimmed();
-        if (selectCmd.isEmpty())
-            selectCmd = QStringLiteral("INST OUT%1");
-        map->insert(QStringLiteral("scpiChannelSelectCmd"), selectCmd);
+        // Agilent：按通道改写 VOLT2/CURR2…；勿再默认塞 INST OUT（辅路不是选通写法）
+        for (const char* key : kKeys) {
+            const QString k = QString::fromLatin1(key);
+            if (!map->contains(k))
+                continue;
+            map->insert(k, rewriteAgilentAuxChannelCmd(map->value(k).toString(), channel));
+        }
+        map->remove(QStringLiteral("scpiChannelSelectCmd"));
     } else {
         map->remove(QStringLiteral("scpiChannelSelectCmd"));
     }
@@ -232,8 +280,12 @@ bool applyVisaParamsForStation(int stationIndex1Based, QVariantMap* paramMap, QS
     }
 
     const QString tableAddr = visaAddressFromParam(*paramMap, deviceIndex);
-    if (!tableAddr.isEmpty())
+    if (!tableAddr.isEmpty()) {
         paramMap->insert(QStringLiteral("visaAddress"), tableAddr);
+    } else if (enabled) {
+        // 缺 visaAddressN 时禁止沿用步骤单地址（常与工位1相同），避免工位3/4误读工位1
+        paramMap->remove(QStringLiteral("visaAddress"));
+    }
 
     paramMap->insert(QStringLiteral("sharedPair"), true);
     paramMap->insert(QStringLiteral("stationsPerDevice"), per);
@@ -243,11 +295,18 @@ bool applyVisaParamsForStation(int stationIndex1Based, QVariantMap* paramMap, QS
 
     if (detailOut) {
         const QString addr = paramMap->value(QStringLiteral("visaAddress")).toString().trimmed();
-        *detailOut = QStringLiteral("工位%1→VISA设备%2 通道%3%4")
-                         .arg(stationIndex1Based)
-                         .arg(deviceIndex)
-                         .arg(channel)
-                         .arg(addr.isEmpty() ? QString() : QStringLiteral(" 地址=%1").arg(addr));
+        if (addr.isEmpty() && enabled) {
+            *detailOut = QStringLiteral("工位%1→VISA设备%2 通道%3（缺 visaAddress%2，请在配置步骤补齐）")
+                             .arg(stationIndex1Based)
+                             .arg(deviceIndex)
+                             .arg(channel);
+        } else {
+            *detailOut = QStringLiteral("工位%1→VISA设备%2 通道%3%4")
+                             .arg(stationIndex1Based)
+                             .arg(deviceIndex)
+                             .arg(channel)
+                             .arg(addr.isEmpty() ? QString() : QStringLiteral(" 地址=%1").arg(addr));
+        }
     }
     return true;
 }

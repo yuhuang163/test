@@ -46,6 +46,14 @@ class XwdRawFixtureCmdManifestCatalog : public CmdManifestCatalog {
     static CmdManifestRegistry::Policy xwdPolicy();
 };
 
+class UniversalFixtureCmdManifestCatalog : public CmdManifestCatalog {
+  public:
+    UniversalFixtureCmdManifestCatalog();
+
+  private:
+    static CmdManifestRegistry::Policy universalPolicy();
+};
+
 class JieliBtBoxCmdManifestCatalog : public CmdManifestCatalog {
   public:
     JieliBtBoxCmdManifestCatalog();

@@ -2,7 +2,10 @@
 
 #include "test_case_ini_param.h"
 
+#include <QSet>
 #include <QVariantMap>
+
+#include <initializer_list>
 
 namespace {
 
@@ -287,7 +290,9 @@ constexpr const char kHintBtRfMode[] =
     u8"Qfctp：TLV 单字节；Qaiot：CID 射频测试 enable 字节";
 constexpr const char kHintWifiConnect[] =
     u8"WiFi：name=SSID，password=密码\r\n示例：name=TestAP\r\npassword=12345678";
-constexpr const char kHintRssiRead[] = u8"RSSI：mode=0 读 BLE，mode=1 读 BT\r\n示例：{\"mode\":0}";
+constexpr const char kHintRssiRead[] =
+    u8"Param_mode：0=BLE（低功耗蓝牙），1=经典 BT\r\n"
+    u8"示例：Param_mode=0";
 constexpr const char kHintMacWrite[] =
     u8"写 MAC：value=MAC 或 $MAC\r\n"
     u8"Qaiot：CID=0x04 device_data_type=0x05；Param_side=0/1/2（Left/Right/Independent，默认2）\r\n"
@@ -326,7 +331,7 @@ const Row kRows[] = {
     {DeviceCmd::TravelLock, "TravelLock", u8"旅行锁", DeviceCmdParamKind::JsonMap, kHintTravelLock, kSet},
     {DeviceCmd::WifiDisconnect, "WifiDisconnect", u8"断开无线网络", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::WifiConnect, "WifiConnect", u8"连接无线网络", DeviceCmdParamKind::JsonMap, kHintWifiConnect, kSet},
-    {DeviceCmd::RssiRead, "RssiRead", u8"信号强度", DeviceCmdParamKind::JsonMap, kHintRssiRead, kGet, "ProtocolRssiData",
+    {DeviceCmd::RssiRead, "RssiRead", u8"蓝牙信号强度", DeviceCmdParamKind::JsonMap, kHintRssiRead, kGet, "ProtocolRssiData",
      "dbm"},
     {DeviceCmd::ChargeCurrentRead, "ChargeCurrentRead", u8"读取充电电流", DeviceCmdParamKind::None,
      u8"FCTP TLV 0x0020，应答电流单位 mA；无电池节点或查询失败时为 0", kGet, "ProtocolChargeCurrentData", "currentMa"},
@@ -552,6 +557,49 @@ const Row* findByEnumName(const QString& enumName) {
             return &row;
     }
     return nullptr;
+}
+
+// 与各协议 set()/get() 中 case DeviceCmd:: 保持一致，勿用前缀猜测。
+// 名单来源：build/_device_cmd_by_protocol.json 各协议 all 数组。
+static QSet<QString> makeProtocolCmdNameSet(std::initializer_list<const char*> names)
+{
+    QSet<QString> set;
+    for (const char* n : names)
+        set.insert(QString::fromLatin1(n));
+    return set;
+}
+
+static const QSet<QString> kQfctp = makeProtocolCmdNameSet({"FacMode", "BurningMode", "SuctionMode", "BtSignalMode", "BtNoSignalMode", "BtFreqMode", "Sleep", "WriteKey", "Sn", "FacResult", "TrimSet", "MacWrite", "NightLightSet", "LedTest", "FactoryReset", "ShipMode", "LcdBacklight", "LightReportControl", "LightCalibWrite", "ChargeCurrentSet", "CompensationSet", "PressCollect", "PressSampleIntervalSet", "LcdColorTestMode", "SetLcdColor", "BaseInfo", "SoftVersionRead", "DeviceInfo", "TrimRead", "MacRead", "TupleRead", "LightSensorInfo", "RssiRead", "KeySignalRead", "LightCalibRead", "ChargeCurrentRead", "AgingStatusRead", "FactoryDoneRead", "DeviceExceptionRead", "PeriphState", "GetBattery", "PressSampleOnoffGet", "PressSampleIntervalGet"});
+static const QSet<QString> kQpb = makeProtocolCmdNameSet({"MotorCali", "WifiConnect", "CameraState", "PressCollect", "ImuCollect", "PressCaliResult", "ImuCaliResult", "NewImuCaliResult", "BaseInfo", "LocalOta", "StartOtaApp", "StartMultiBleOtaApp", "ConfigNetworkApp", "MotorDampingState", "RgbColor", "LedColor", "LedTest", "MotorTestState", "MotorCaliState", "FacResult", "ScreenColor", "ShipMode", "MotorAdcSwitch", "SetBattery", "MotorState", "MotorParam", "MotorCaliResultParam", "Music", "BurningMode", "BrushRecord", "BrushTime", "Sleep", "ForbidSleep", "ScreenCameraState", "CameraLightState", "CameraSupportState", "CameraExposureTime", "DevReset", "BrushReset", "DeviceMode", "BrushControl", "FacMode", "CameraPictureState", "Sn", "IAmApp", "WifiDisconnect", "ServoMotorInfo", "MicControl", "UploadRecordData", "SevorMotorParam", "NewWifiConnect", "GetBattery", "GetImuCaliResult", "GetPressCaliResult", "DeviceInfo", "PeriphState", "ConnectInfo", "WifiInfo", "GetServoMotorInfo", "NowMusicInfo", "SdCardInfo", "LightSensorInfo", "ButtonState", "BurshBacklog"});
+static const QSet<QString> kQroot = makeProtocolCmdNameSet({"FacMode", "LedTest", "LedColor", "MotorTestState", "RootVibration", "MacWrite", "RootPumpTestEnter", "RootPumpTestExit", "RootSuctionTest", "RootHeatLevelControl", "RootPumpControl", "Sn", "WriteKey", "BurningMode", "ShipMode", "DevReset", "RootEnterOta", "FactoryReset", "RootSystemControl", "SoftVersionRead", "BaseInfo", "MacRead", "GetBattery", "RootBatteryTempQuery", "RootFlangeQuery", "RootPumpStallCurrentQuery", "RootAgingHistoryQuery", "RootNtcQuery", "RootHeatTempQuery", "RootVibStatusQuery", "TupleRead", "ButtonState"});
+static const QSet<QString> kQroot2 = makeProtocolCmdNameSet({"Root2PoseSwitch", "Root2PoseCalib", "Root2BowlCalib", "BurningMode", "Root2ModeSet", "Root2LevelSet", "Root2PumpState", "RootPumpControl", "Root2LedControl", "LedColor", "LedTest", "RootVibration", "MotorTestState", "MacWrite", "Sn", "WriteKey", "RootSuctionTest", "ShipMode", "Root2M5Shutdown", "Root2M5Reboot", "Root2M5EnterOta", "FactoryReset", "Root2M5FactoryReset", "DevReset", "SoftVersionRead", "BaseInfo", "DeviceInfo", "Root2M5DeviceInfo", "MacRead", "Root2KeyTest", "Root2StateRead", "ButtonState", "Root2M5PumpStatus", "GetBattery", "RootPumpStallCurrentQuery", "Root2PoseAngleRead", "Root2PoseAbnormalWait", "Root2PoseSwitchRead", "Root2BowlEmptyCapRead", "Root2BowlFullCapRead", "Root2M5SnRead", "TupleRead"});
+static const QSet<QString> kQaiot = makeProtocolCmdNameSet({"FacMode", "BurningMode", "SuctionMode", "CompensationSet", "FacResult", "BtSignalMode", "BtNoSignalMode", "BtFreqMode", "TrimSet", "Sn", "WriteKey", "MacWrite", "ButtonState", "SetBattery", "LightCalibWrite", "ExceptionThresholdWrite", "PumpParamWrite", "ValveParamWrite", "HeatTestWrite", "VibrationTestWrite", "CycleReportWrite", "ShipMode", "FactoryReset", "TravelLock", "DevReset", "SoftVersionRead", "BaseInfo", "DeviceInfo", "MacRead", "GetBattery", "FactoryDoneRead", "TupleRead", "RssiRead", "TrimRead", "PeriphState", "LightSensorInfo", "GetImuCaliResult", "ExceptionThresholdRead", "PumpParamRead", "ValveParamRead", "AgingStatusRead"});
+
+static const QSet<QString>& protocolCmdNameSet(TestCaseProductProtocol protocol)
+{
+    switch (protocol) {
+    case TestCaseProductProtocol::Qfctp:
+        return kQfctp;
+    case TestCaseProductProtocol::Qpb:
+        return kQpb;
+    case TestCaseProductProtocol::Qroot:
+        return kQroot;
+    case TestCaseProductProtocol::Qroot2:
+        return kQroot2;
+    case TestCaseProductProtocol::Qaiot:
+        return kQaiot;
+    case TestCaseProductProtocol::QaiotV2:
+        return kQaiot;
+    }
+    return kQfctp;
+}
+
+bool matchesProductProtocol(const QString& enumName, TestCaseProductProtocol protocol)
+{
+    const QString name = enumName.trimmed();
+    if (name.isEmpty())
+        return true;
+    return protocolCmdNameSet(protocol).contains(name);
 }
 
 QVariant normalizeSendParam(DeviceCmd cmd, const QVariant& param) {

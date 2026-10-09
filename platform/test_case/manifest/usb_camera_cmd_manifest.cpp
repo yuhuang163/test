@@ -11,7 +11,7 @@ constexpr uint8_t kGet = TestCaseCmdManifest::kSendActionGet;
 constexpr const char kHintScreenDeadPixel[] =
     u8"本步对屏幕拍照后在主机侧分析对比（坏点扫描）\r\n"
     u8"通道请选「治具通信」，治具协议选「USB摄像头」\r\n"
-    u8"自由工站默认 GigE：Param_cameraIp（如 169.254.64.10）或设置 ScreenInspect/GigEIp\r\n"
+    u8"自由工站默认 GigE：Param_cameraIp（如 169.254.64.10）或本工站 flow.ini [ScreenInspect] GigEIp\r\n"
     u8"Param_cameraSerial 可选按序列号；Param_cameraSource=usb 时改用 USB 摄像头\r\n"
     u8"Param_cameraIndex / cameraName 仅 USB 时有效；Param_warmupMs 预热毫秒（默认 450）\r\n"
     u8"Param_expectedColor 期望纯色：下拉选「蓝/绿/红/白/黑/灰」，或「不判断」；也兼容数字 0~5/-1\r\n"
@@ -25,7 +25,7 @@ constexpr const char kHintScreenDisplayAnomaly[] =
     u8"本步对屏幕拍照后与参考图做相似度对比\r\n"
     u8"通道请选「治具通信」，治具协议选「USB摄像头」\r\n"
     u8"Param_referencePath 标准参考图：双击选择后自动复制到 screen_inspect/参考图/（与测试抓拍分开，清理不删）\r\n"
-    u8"自由工站默认 GigE：Param_cameraIp / ScreenInspect/GigEIp；Param_cameraSource=usb 用 USB\r\n"
+    u8"自由工站默认 GigE：Param_cameraIp / 本工站 flow.ini [ScreenInspect] GigEIp；Param_cameraSource=usb 用 USB\r\n"
     u8"Param_cameraIndex / cameraName / warmupMs 同坏点步骤\r\n"
     u8"Param_saveCapture=1 存图\r\n"
     u8"Param_roi 同坏点步骤（调试页拖拽划定后写入设置，步骤可不填）\r\n"
@@ -35,11 +35,11 @@ constexpr const char kHintScreenCameraCalibration[] =
     u8"测试前摄像头位置校准：拍一张当前图，与参考图并排显示，两侧叠加同一套校准框/圆屏线\r\n"
     u8"通道请选「治具通信」，治具协议选「USB摄像头」；默认 GigE\r\n"
     u8"Param_referencePath 标准参考图（双击选择后自动存入 screen_inspect/参考图/）\r\n"
-    u8"Param_cameraIp / ScreenInspect/GigEIp；Param_cameraSource=usb 用 USB\r\n"
+    u8"Param_cameraIp / 本工站 flow.ini [ScreenInspect] GigEIp；Param_cameraSource=usb 用 USB\r\n"
     u8"Param_roi 检测范围（建议先在调试页拖拽划定）；Param_warmupMs 预热\r\n"
     u8"弹窗请操作员目视对照：是=位置OK继续，否=未对准失败。本步不做坏点/相似度卡控";
 constexpr const char kHintLedOnOffCheck[] =
-    u8"离散 LED：调试页划 Roi1~N；同一步 1~4 灯，每灯单独卡控\r\n"
+    u8"离散 LED：调试页划 Roi1~N（写入当前工站 flow.ini [LedInspect]）；同一步 1~4 灯，每灯单独卡控\r\n"
     u8"Param_mode1~mode4=on常亮 / blink闪烁（也可用 modes=on,blink,on,on）\r\n"
     u8"有任一只灯为 blink 则连拍；常亮灯要求窗口内全程亮，闪烁灯要求既亮又灭\r\n"
     u8"Param_ledCount / sampleDurationMs / sampleIntervalMs / minLuma / cameraIp 等";

@@ -32,7 +32,8 @@ enum class TestCaseFixtureProtocol {
     Xwd, // 原 XWD_BLE / XWD_SUCTION 同一治具串口物理层
     JieliBtBox,
     UsbCamera,
-    VesLight // VES 四通道光源，协议固定走通道 1
+    VesLight, // VES 四通道光源，协议固定走通道 1
+    Universal // 通用治具串口协议 V1.2（气缸/继电器/电流 + SLOT）
 };
 // clang-format on
 
@@ -147,6 +148,30 @@ struct TestCaseDeviceSideConfig {
     QString position;
     /** Qaiot device_side_id：0 Left / 1 Right / 2 Independent；-1 表示未配置 */
     int sideId = -1;
+};
+
+/** 工站 flow.ini [LedInspect]：离散 LED 灯框与阈值（调试页按当前工站读写） */
+struct TestCaseLedInspectConfig {
+    int ledCount = 4;
+    int minLuma = 80;
+    QString mode; // 全局兜底 on/blink
+    QString mode1;
+    QString mode2;
+    QString mode3;
+    QString mode4;
+    QString roi1; // x,y,w,h
+    QString roi2;
+    QString roi3;
+    QString roi4;
+};
+
+/** 工站 flow.ini [ScreenInspect]：参考圆与 GigE（调试页按当前工站读写） */
+struct TestCaseScreenInspectConfig {
+    int refCircleCx = -1;
+    int refCircleCy = -1;
+    int refCircleR = -1;
+    bool reuseCircle = false;
+    QString gigEIp = QStringLiteral("169.254.64.10");
 };
 
 #endif // PLATFORM_TEST_CASE_TYPES_H

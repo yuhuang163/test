@@ -3,6 +3,7 @@
 #include "scpi_transport.h"
 
 #include <QDebug>
+#include <QRegularExpression>
 #include <QStringList>
 
 #if _MSC_VER >= 1600
@@ -20,10 +21,12 @@ void HuilingWfp60hScpiDevice::setTransport(ScpiTransport* transport) {
 
 void HuilingWfp60hScpiDevice::setProfilePatch(const HuilingWfp60hScpiProfile& patch) {
     profilePatch_ = patch;
+    lastProgCurrentRangeSent_.clear();
 }
 
 void HuilingWfp60hScpiDevice::clearProfilePatch() {
     profilePatch_.reset();
+    lastProgCurrentRangeSent_.clear();
 }
 
 HuilingWfp60hScpiProfile HuilingWfp60hScpiDevice::activeProfile() const {
@@ -80,17 +83,25 @@ void HuilingWfp60hScpiDevice::CONFigureFUNCtion(const QString& p) {
 
 bool HuilingWfp60hScpiDevice::writeCurrentRangeIfConfigured(const HuilingWfp60hScpiProfile& profile,
                                                             const QVariant& data) {
-    QString range = profile.scpiRange;
-    if (data.canConvert<QVariantMap>()) {
-        const QString stepRange = data.toMap().value(QStringLiteral("currentRange")).toString().trimmed();
-        if (!stepRange.isEmpty())
-            range = stepRange;
-    }
+    // 与配置步一致：仅步骤显式带 currentRange 才发；勿用 profile 默认量程在每次读电流时刷总线
+    if (!data.canConvert<QVariantMap>())
+        return true;
+    const QVariantMap m = data.toMap();
+    if (!m.contains(QStringLiteral("currentRange")))
+        return true;
+    const QString range = m.value(QStringLiteral("currentRange")).toString().trimmed();
+    if (range.isEmpty())
+        return true;
+    if (range == lastProgCurrentRangeSent_)
+        return true;
     const QString line = profile.buildSetCurrentRangeLine(range);
     if (line.isEmpty())
         return true;
     qDebug().noquote() << "[Scpi] TX range:" << line;
-    return transport_->writeLine(line);
+    if (!transport_->writeLine(line))
+        return false;
+    lastProgCurrentRangeSent_ = range;
+    return true;
 }
 
 bool HuilingWfp60hScpiDevice::writePowerChannelSelectIfConfigured(const HuilingWfp60hScpiProfile& profile) {
@@ -121,42 +132,101 @@ bool HuilingWfp60hScpiDevice::set(HuilingScpiCmd cmd, const QVariant& data) {
         return transport_->writeLine(QStringLiteral("*RST"));
     case HuilingScpiCmd::ConfigureProgrammablePower: {
         const QVariantMap m = data.toMap();
-        if (!writePowerChannelSelectIfConfigured(profile))
-            return false;
         // 仅步骤显式带 currentRange 时才发量程，避免配置电压电流时多塞 SENS/RANG
-        if (m.contains(QStringLiteral("currentRange")) && !writeCurrentRangeIfConfigured(profile, data))
-            return false;
+        const bool setRange = m.contains(QStringLiteral("currentRange"));
         const double voltageV = m.value(QStringLiteral("voltage"), profile.scpiPowerVoltageV).toDouble();
         const double currentA = m.value(QStringLiteral("current"), profile.scpiPowerCurrentA).toDouble();
         // 模板须含 %1；勿把 *IDN? 等查询填进设压/设流
         const QString voltTmpl = profile.scpiSetVoltageCmd.trimmed();
         const QString currTmpl = profile.scpiSetCurrentCmd.trimmed();
-        QStringList lines;
-        if (!voltTmpl.isEmpty()) {
-            if (!voltTmpl.contains(QLatin1String("%1")) || voltTmpl.contains(QLatin1Char('?'))) {
-                qDebug().noquote() << "[Scpi] 设电压模板非法（须含 %1 且非查询）:" << voltTmpl;
-                return false;
-            }
-            lines.append(voltTmpl.arg(QString::number(voltageV, 'f', 3)));
+        if (!voltTmpl.isEmpty()
+            && (!voltTmpl.contains(QLatin1String("%1")) || voltTmpl.contains(QLatin1Char('?')))) {
+            qDebug().noquote() << "[Scpi] 设电压模板非法（须含 %1 且非查询）:" << voltTmpl;
+            return false;
         }
-        if (!currTmpl.isEmpty()) {
-            if (!currTmpl.contains(QLatin1String("%1")) || currTmpl.contains(QLatin1Char('?'))) {
-                qDebug().noquote() << "[Scpi] 设电流模板非法（须含 %1 且非查询）:" << currTmpl;
-                return false;
-            }
-            lines.append(currTmpl.arg(QString::number(currentA, 'f', 3)));
+        if (!currTmpl.isEmpty()
+            && (!currTmpl.contains(QLatin1String("%1")) || currTmpl.contains(QLatin1Char('?')))) {
+            qDebug().noquote() << "[Scpi] 设电流模板非法（须含 %1 且非查询）:" << currTmpl;
+            return false;
         }
-        if (lines.isEmpty())
+        // Agilent 66319D：主路 VOLT/CURR，辅路 VOLT2/CURR2（手册 [SOURce:]VOLTage2）
+        const QRegularExpression agilentBareVolt(QStringLiteral(R"(^VOLT(\s|%|$))"),
+                                                 QRegularExpression::CaseInsensitiveOption);
+        const bool pairAgilent =
+            profile.stationsPerDevice > 1 && !voltTmpl.isEmpty() && agilentBareVolt.match(voltTmpl).hasMatch();
+        auto agilentTmplForChannel = [](QString tmpl, int ch) -> QString {
+            if (ch <= 1 || tmpl.isEmpty())
+                return tmpl;
+            static const QRegularExpression re(QStringLiteral(R"(^(\s*)(VOLT|CURR)(\b))"),
+                                               QRegularExpression::CaseInsensitiveOption);
+            const QRegularExpressionMatch m = re.match(tmpl);
+            if (!m.hasMatch())
+                return tmpl;
+            tmpl.insert(m.capturedEnd(2), QString::number(ch));
+            return tmpl;
+        };
+        auto writeVoltCurr = [&](const QString& vTmpl, const QString& cTmpl) -> bool {
+            QStringList lines;
+            if (!vTmpl.isEmpty())
+                lines.append(vTmpl.arg(QString::number(voltageV, 'f', 3)));
+            if (!cTmpl.isEmpty())
+                lines.append(cTmpl.arg(QString::number(currentA, 'f', 3)));
+            if (lines.isEmpty())
+                return true;
+            if (visaSync && lines.size() == 2) {
+                const QString combined = lines.at(0) + QLatin1Char(';') + lines.at(1);
+                qDebug().noquote() << "[Scpi] TX volt+curr:" << combined;
+                return transport_->writeLine(combined);
+            }
+            for (const QString& line : lines) {
+                qDebug().noquote() << "[Scpi] TX:" << line;
+                if (!transport_->writeLine(line))
+                    return false;
+            }
             return true;
-        // VISA/GPIB：两笔连续写易第二笔 ABORT；SCPI 分号合并为一次总线事务
-        if (visaSync && lines.size() == 2) {
-            const QString combined = lines.at(0) + QLatin1Char(';') + lines.at(1);
-            qDebug().noquote() << "[Scpi] TX volt+curr:" << combined;
-            return transport_->writeLine(combined);
+        };
+        // 配置后确保本通道输出打开（避免上轮关输出后本轮只设压未开出）
+        auto ensureOutputOn = [&](int ch) -> bool {
+            QString onCmd = profile.scpiOutputOnCmd.trimmed();
+            if (pairAgilent) {
+                // Agilent 分路：勿发裸 OUTP ON（默认耦合时会双路一起动）
+                onCmd = (ch >= 2) ? QStringLiteral("OUTP2 ON") : QStringLiteral("OUTP1 ON");
+            } else if (onCmd.isEmpty() || onCmd.contains(QLatin1Char('?'))) {
+                onCmd = QStringLiteral("OUTP ON");
+            }
+            qDebug().noquote() << "[Scpi] TX output after configure:" << onCmd;
+            return transport_->writeLine(onCmd);
+        };
+        if (pairAgilent) {
+            // 解耦只需发一次；本工位只写本通道 V/I
+            const int ch = profile.powerChannel > 0 ? profile.powerChannel : 1;
+            if (ch <= 1) {
+                qDebug().noquote() << "[Scpi] TX uncouple outputs: INST:COUP:OUTP:STAT NONE";
+                if (!transport_->writeLine(QStringLiteral("INST:COUP:OUTP:STAT NONE")))
+                    return false;
+            }
+            // 量程指令仅主路有效，但工位1/2步进需一致：任一通道配置步都发同一 currentRange（去重）
+            if (setRange && !writeCurrentRangeIfConfigured(profile, data))
+                return false;
+            if (!writeVoltCurr(agilentTmplForChannel(voltTmpl, ch), agilentTmplForChannel(currTmpl, ch)))
+                return false;
+            if (!ensureOutputOn(ch))
+                return false;
+            qDebug().noquote() << QStringLiteral("[Scpi] 已配置通道%1：%2 V / %3 A")
+                                      .arg(ch)
+                                      .arg(voltageV, 0, 'f', 3)
+                                      .arg(currentA, 0, 'f', 3);
+            return true;
         }
-        for (const QString& line : lines) {
-            qDebug().noquote() << "[Scpi] TX:" << line;
-            if (!transport_->writeLine(line))
+        if (!writePowerChannelSelectIfConfigured(profile))
+            return false;
+        if (setRange && !writeCurrentRangeIfConfigured(profile, data))
+            return false;
+        if (!writeVoltCurr(voltTmpl, currTmpl))
+            return false;
+        {
+            const int ch = profile.powerChannel > 0 ? profile.powerChannel : 1;
+            if (!ensureOutputOn(ch))
                 return false;
         }
         return true;
@@ -184,9 +254,9 @@ bool HuilingWfp60hScpiDevice::set(HuilingScpiCmd cmd, const QVariant& data) {
     case HuilingScpiCmd::ReadProgrammableCurrent:
         if (!writePowerChannelSelectIfConfigured(profile))
             return false;
-        if (!writeCurrentRangeIfConfigured(profile, data)) {
+        // 工位1/2 读电流都按步骤 currentRange 切量程（SENS 仅主路；同台去重，首包一次）
+        if (!writeCurrentRangeIfConfigured(profile, data))
             return false;
-        }
         if (visaSync) {
             return queryProgrammablePower(profile.scpiReadCurrentCmd, ProgrammablePowerReadPending::Current);
         }

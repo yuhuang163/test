@@ -6,6 +6,7 @@
 #include "screen_inspect_analyzer.h"
 #include "screen_inspect_gige_capture.h"
 #include "mainwindow.h"
+#include "test_case_store.h"
 
 #include <QCamera>
 #include <QCameraImageCapture>
@@ -237,20 +238,18 @@ void ScreenInspectWidget::bindDesignerUi() {
         ledRow->addStretch(1);
         actionLay->addLayout(ledRow);
 
-        const int ledCount = LedInspectAnalyzer::clampLedCount(
-            SETTINGS.value(QStringLiteral("LedInspect/LedCount"), 4).toInt());
-        spinBox_ledCount_->setValue(ledCount);
-        spinBox_ledMinLuma_->setValue(
-            SETTINGS.value(QStringLiteral("LedInspect/MinLuma"), 80).toInt());
+        const TestCaseLedInspectConfig ledInit = TestCaseStore::loadStationLedInspectConfig();
+        spinBox_ledCount_->setValue(LedInspectAnalyzer::clampLedCount(ledInit.ledCount));
+        spinBox_ledMinLuma_->setValue(ledInit.minLuma);
         rebuildLedIndexCombo();
         loadLedRoisFromSettings();
-        connect(spinBox_ledCount_, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int v) {
-            SETTINGS.setValue(QStringLiteral("LedInspect/LedCount"), LedInspectAnalyzer::clampLedCount(v));
+        connect(spinBox_ledCount_, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int) {
+            persistStationLedInspectConfig();
             rebuildLedIndexCombo();
             refreshImageLabels();
         });
-        connect(spinBox_ledMinLuma_, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int v) {
-            SETTINGS.setValue(QStringLiteral("LedInspect/MinLuma"), v);
+        connect(spinBox_ledMinLuma_, QOverload<int>::of(&QSpinBox::valueChanged), this, [this](int) {
+            persistStationLedInspectConfig();
         });
         connect(checkBox_drawLedRoi_, &QCheckBox::toggled, this, [this](bool) { refreshImageLabels(); });
         connect(btnClearLedRois_, &QPushButton::clicked, this, &ScreenInspectWidget::on_btnClearLedRois_clicked);
@@ -315,16 +314,17 @@ void ScreenInspectWidget::showEvent(QShowEvent* event) {
     QWidget::showEvent(event);
     if (!uiBound_ || !ui)
         return;
+    const QString key = boundStationKey();
+    const bool stationChanged = (key != loadedStationKey_);
     loadThresholdsFromSettings();
     updateCameraSourceUi();
-    if (spinBox_ledCount_) {
-        spinBox_ledCount_->setValue(LedInspectAnalyzer::clampLedCount(
-            SETTINGS.value(QStringLiteral("LedInspect/LedCount"), 4).toInt()));
-    }
-    if (spinBox_ledMinLuma_)
-        spinBox_ledMinLuma_->setValue(SETTINGS.value(QStringLiteral("LedInspect/MinLuma"), 80).toInt());
     loadLedRoisFromSettings();
     rebuildLedIndexCombo();
+    // 换工站后进调试页：重新加载该站 Roi/参考圆，并提示写入目标
+    if (stationChanged) {
+        appendLog(QStringLiteral("调试页已绑定工站：%1（灯框/参考圆读写该站 flow.ini）")
+                      .arg(TestCaseStore::flowStationDisplayName(key)));
+    }
 }
 
 void ScreenInspectWidget::resizeEvent(QResizeEvent* event) {
@@ -333,18 +333,51 @@ void ScreenInspectWidget::resizeEvent(QResizeEvent* event) {
         refreshImageLabels();
 }
 
+QString ScreenInspectWidget::boundStationKey() const {
+    return TestCaseStore::resolveActiveFlowStationKey();
+}
+
+void ScreenInspectWidget::persistStationLedInspectConfig() {
+    TestCaseLedInspectConfig cfg = TestCaseStore::loadStationLedInspectConfig(boundStationKey());
+    if (spinBox_ledCount_)
+        cfg.ledCount = LedInspectAnalyzer::clampLedCount(spinBox_ledCount_->value());
+    if (spinBox_ledMinLuma_)
+        cfg.minLuma = spinBox_ledMinLuma_->value();
+    cfg.roi1 = LedInspectAnalyzer::formatRoi(ledRois_[0]);
+    cfg.roi2 = LedInspectAnalyzer::formatRoi(ledRois_[1]);
+    cfg.roi3 = LedInspectAnalyzer::formatRoi(ledRois_[2]);
+    cfg.roi4 = LedInspectAnalyzer::formatRoi(ledRois_[3]);
+    TestCaseStore::saveStationLedInspectConfig(boundStationKey(), cfg);
+}
+
+void ScreenInspectWidget::persistStationScreenInspectConfig() {
+    TestCaseScreenInspectConfig cfg = TestCaseStore::loadStationScreenInspectConfig(boundStationKey());
+    cfg.refCircleCx = refCircle_.cx;
+    cfg.refCircleCy = refCircle_.cy;
+    cfg.refCircleR = refCircle_.r;
+    if (ui && ui->checkBox_reuseCircle)
+        cfg.reuseCircle = ui->checkBox_reuseCircle->isChecked();
+    if (ui && ui->lineEdit_gigeIp)
+        cfg.gigEIp = ui->lineEdit_gigeIp->text().trimmed();
+    TestCaseStore::saveStationScreenInspectConfig(boundStationKey(), cfg);
+}
+
 void ScreenInspectWidget::loadThresholdsFromSettings() {
     if (!uiBound_ || !ui)
         return;
+    loadedStationKey_ = boundStationKey();
+    // 相似度等阈值仍用全局设置页；参考圆/GigE/复用圆按当前工站 flow.ini
     ui->doubleSpinBox_minSsim->setValue(SETTINGS.value("ScreenInspect/MinSimilarity", 0.90).toDouble());
     ui->spinBox_deadDiff->setValue(SETTINGS.value("ScreenInspect/DeadPixelDiff", 35).toInt());
     ui->spinBox_maxDead->setValue(SETTINGS.value("ScreenInspect/MaxDeadPixels", 8).toInt());
     ui->doubleSpinBox_mura->setValue(SETTINGS.value("ScreenInspect/MuraStdMax", 22.0).toDouble());
+
+    const TestCaseScreenInspectConfig sc = TestCaseStore::loadStationScreenInspectConfig(loadedStationKey_);
     if (ui->checkBox_reuseCircle)
-        ui->checkBox_reuseCircle->setChecked(SETTINGS.value(QStringLiteral("ScreenInspect/ReuseCircle"), false).toBool());
-    refCircle_.cx = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCx"), -1).toInt();
-    refCircle_.cy = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCy"), -1).toInt();
-    refCircle_.r = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleR"), -1).toInt();
+        ui->checkBox_reuseCircle->setChecked(sc.reuseCircle);
+    refCircle_.cx = sc.refCircleCx;
+    refCircle_.cy = sc.refCircleCy;
+    refCircle_.r = sc.refCircleR;
     updateCircleStatusUi();
     const QString src = SETTINGS.value(QStringLiteral("ScreenInspect/CameraSource"), QStringLiteral("usb"))
                             .toString()
@@ -352,13 +385,17 @@ void ScreenInspectWidget::loadThresholdsFromSettings() {
                             .toLower();
     if (ui->comboBox_cameraSource)
         ui->comboBox_cameraSource->setCurrentIndex(src == QLatin1String("gige") ? 1 : 0);
-    if (ui->lineEdit_gigeIp) {
-        ui->lineEdit_gigeIp->setText(
-            SETTINGS.value(QStringLiteral("ScreenInspect/GigEIp"), QStringLiteral("169.254.64.10")).toString());
-    }
+    if (ui->lineEdit_gigeIp)
+        ui->lineEdit_gigeIp->setText(sc.gigEIp.isEmpty() ? QStringLiteral("169.254.64.10") : sc.gigEIp);
     const int camIdx = SETTINGS.value("ScreenInspect/CameraIndex", 0).toInt();
     if (camIdx >= 0 && camIdx < ui->comboBox_camera->count())
         ui->comboBox_camera->setCurrentIndex(camIdx);
+
+    const TestCaseLedInspectConfig led = TestCaseStore::loadStationLedInspectConfig(loadedStationKey_);
+    if (spinBox_ledCount_)
+        spinBox_ledCount_->setValue(LedInspectAnalyzer::clampLedCount(led.ledCount));
+    if (spinBox_ledMinLuma_)
+        spinBox_ledMinLuma_->setValue(led.minLuma);
 }
 
 void ScreenInspectWidget::saveThresholdsToSettings() {
@@ -368,14 +405,11 @@ void ScreenInspectWidget::saveThresholdsToSettings() {
     SETTINGS.setValue("ScreenInspect/DeadPixelDiff", ui->spinBox_deadDiff->value());
     SETTINGS.setValue("ScreenInspect/MaxDeadPixels", ui->spinBox_maxDead->value());
     SETTINGS.setValue("ScreenInspect/MuraStdMax", ui->doubleSpinBox_mura->value());
-    if (ui->checkBox_reuseCircle)
-        SETTINGS.setValue(QStringLiteral("ScreenInspect/ReuseCircle"), ui->checkBox_reuseCircle->isChecked());
     SETTINGS.setValue("ScreenInspect/CameraIndex", ui->comboBox_camera->currentIndex());
     SETTINGS.setValue(QStringLiteral("ScreenInspect/CameraSource"),
                       isGigESource() ? QStringLiteral("gige") : QStringLiteral("usb"));
-    if (ui->lineEdit_gigeIp)
-        SETTINGS.setValue(QStringLiteral("ScreenInspect/GigEIp"), ui->lineEdit_gigeIp->text().trimmed());
     SETTINGS.sync();
+    persistStationScreenInspectConfig();
 }
 
 bool ScreenInspectWidget::isGigESource() const {
@@ -631,10 +665,7 @@ void ScreenInspectWidget::onStillImage(int, const QImage& image) {
     if (autoCircle.r > 0) {
         refCircle_ = autoCircle;
         lastDetectedCircle_ = autoCircle;
-        SETTINGS.setValue(QStringLiteral("ScreenInspect/RefCircleCx"), refCircle_.cx);
-        SETTINGS.setValue(QStringLiteral("ScreenInspect/RefCircleCy"), refCircle_.cy);
-        SETTINGS.setValue(QStringLiteral("ScreenInspect/RefCircleR"), refCircle_.r);
-        SETTINGS.sync();
+        persistStationScreenInspectConfig();
         updateCircleStatusUi();
     }
 
@@ -681,9 +712,12 @@ void ScreenInspectWidget::on_btnLoadRef_clicked() {
         return;
     }
     applyReferenceImage(img, path);
-    refCircle_.cx = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCx"), -1).toInt();
-    refCircle_.cy = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCy"), -1).toInt();
-    refCircle_.r = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleR"), -1).toInt();
+    {
+        const TestCaseScreenInspectConfig sc = TestCaseStore::loadStationScreenInspectConfig(boundStationKey());
+        refCircle_.cx = sc.refCircleCx;
+        refCircle_.cy = sc.refCircleCy;
+        refCircle_.r = sc.refCircleR;
+    }
     updateCircleStatusUi();
     refreshImageLabels();
     ui->plainTextEdit_screenInspectLog->setPlainText(QStringLiteral("已加载参考图：") + path);
@@ -731,14 +765,12 @@ void ScreenInspectWidget::on_btnClearLedRois_clicked() {
     const int n = currentLedCount();
     for (int i = 0; i < LedInspectAnalyzer::kMaxLedCount; ++i) {
         ledRois_[i] = QRect();
-        if (i < n)
-            SETTINGS.setValue(LedInspectAnalyzer::settingsRoiKey(i + 1), QString());
     }
-    SETTINGS.sync();
+    persistStationLedInspectConfig();
     refreshImageLabels();
     if (ui && ui->plainTextEdit_screenInspectLog)
         ui->plainTextEdit_screenInspectLog->setPlainText(
-            QStringLiteral("已清除前%1个灯框（LedInspect/Roi1~%1）").arg(n));
+            QStringLiteral("已清除前%1个灯框（写入本工站 flow.ini [LedInspect] Roi1~%1）").arg(n));
 }
 
 void ScreenInspectWidget::on_btnLedOnOffInspect_clicked() {
@@ -750,7 +782,7 @@ void ScreenInspectWidget::on_btnLedOnOffInspect_clicked() {
     LedInspectAnalyzer::Params ap;
     ap.ledCount = currentLedCount();
     ap.minLuma = spinBox_ledMinLuma_ ? spinBox_ledMinLuma_->value()
-                                     : SETTINGS.value(QStringLiteral("LedInspect/MinLuma"), 80).toDouble();
+                                     : TestCaseStore::loadStationLedInspectConfig(boundStationKey()).minLuma;
     ap.rois.resize(ap.ledCount);
     QStringList missing;
     for (int i = 0; i < ap.ledCount; ++i) {
@@ -792,7 +824,7 @@ int ScreenInspectWidget::currentLedCount() const {
     if (spinBox_ledCount_)
         return LedInspectAnalyzer::clampLedCount(spinBox_ledCount_->value());
     return LedInspectAnalyzer::clampLedCount(
-        SETTINGS.value(QStringLiteral("LedInspect/LedCount"), 4).toInt());
+        TestCaseStore::loadStationLedInspectConfig(boundStationKey()).ledCount);
 }
 
 bool ScreenInspectWidget::ledRoiModeActive() const {
@@ -814,10 +846,11 @@ void ScreenInspectWidget::rebuildLedIndexCombo() {
 }
 
 void ScreenInspectWidget::loadLedRoisFromSettings() {
-    for (int i = 0; i < LedInspectAnalyzer::kMaxLedCount; ++i) {
-        ledRois_[i] = LedInspectAnalyzer::parseRoi(
-            SETTINGS.value(LedInspectAnalyzer::settingsRoiKey(i + 1)).toString());
-    }
+    const TestCaseLedInspectConfig led = TestCaseStore::loadStationLedInspectConfig(boundStationKey());
+    ledRois_[0] = LedInspectAnalyzer::parseRoi(led.roi1);
+    ledRois_[1] = LedInspectAnalyzer::parseRoi(led.roi2);
+    ledRois_[2] = LedInspectAnalyzer::parseRoi(led.roi3);
+    ledRois_[3] = LedInspectAnalyzer::parseRoi(led.roi4);
 }
 
 void ScreenInspectWidget::saveLedRoi(int index0, const QRect& r) {
@@ -830,15 +863,14 @@ void ScreenInspectWidget::saveLedRoi(int index0, const QRect& r) {
         return;
     }
     ledRois_[index0] = clipped;
-    SETTINGS.setValue(LedInspectAnalyzer::settingsRoiKey(index0 + 1), LedInspectAnalyzer::formatRoi(clipped));
-    SETTINGS.sync();
+    persistStationLedInspectConfig();
     refreshImageLabels();
     if (ui && ui->plainTextEdit_screenInspectLog) {
         ui->plainTextEdit_screenInspectLog->setPlainText(
-            QStringLiteral("已划灯%1框：%2（写入 %3）")
+            QStringLiteral("已划灯%1框：%2（写入工站 %3 flow.ini [LedInspect]/Roi%1）")
                 .arg(index0 + 1)
                 .arg(LedInspectAnalyzer::formatRoi(clipped))
-                .arg(LedInspectAnalyzer::settingsRoiKey(index0 + 1)));
+                .arg(TestCaseStore::flowStationDisplayName(boundStationKey())));
     }
 }
 
@@ -996,31 +1028,30 @@ void ScreenInspectWidget::calibrateReferenceCircle() {
     }
     refCircle_ = circle;
     lastDetectedCircle_ = circle;
-    SETTINGS.setValue(QStringLiteral("ScreenInspect/RefCircleCx"), refCircle_.cx);
-    SETTINGS.setValue(QStringLiteral("ScreenInspect/RefCircleCy"), refCircle_.cy);
-    SETTINGS.setValue(QStringLiteral("ScreenInspect/RefCircleR"), refCircle_.r);
-    SETTINGS.sync();
+    persistStationScreenInspectConfig();
     updateCircleStatusUi();
     refreshImageLabels();
-    appendLog(QStringLiteral("已完成参考圆标定：圆心(%1, %2)，半径 %3 (来源：%4)")
+    appendLog(QStringLiteral("已完成参考圆标定：圆心(%1, %2)，半径 %3 (工站 %4 flow.ini)")
                   .arg(refCircle_.cx)
                   .arg(refCircle_.cy)
                   .arg(refCircle_.r)
-                  .arg(!currImage_.isNull() ? QStringLiteral("当前实拍图") : QStringLiteral("参考图")));
+                  .arg(TestCaseStore::flowStationDisplayName(boundStationKey())));
 }
 
 void ScreenInspectWidget::updateCircleStatusUi() {
     if (!ui || !ui->label_circleStatus)
         return;
+    const QString station = TestCaseStore::flowStationDisplayName(boundStationKey());
     if (refCircle_.r > 0) {
         ui->label_circleStatus->setText(
-            QStringLiteral("● 参考圆: R=%1 (%2,%3)")
+            QStringLiteral("● [%1] 参考圆: R=%2 (%3,%4)")
+                .arg(station)
                 .arg(refCircle_.r)
                 .arg(refCircle_.cx)
                 .arg(refCircle_.cy));
         ui->label_circleStatus->setStyleSheet(QStringLiteral("color: #2e7d32; font-weight: bold;"));
     } else {
-        ui->label_circleStatus->setText(QStringLiteral("○ 参考圆: 未标定"));
+        ui->label_circleStatus->setText(QStringLiteral("○ [%1] 参考圆: 未标定").arg(station));
         ui->label_circleStatus->setStyleSheet(QStringLiteral("color: #d32f2f; font-weight: normal;"));
     }
 }
@@ -1474,9 +1505,12 @@ void ScreenInspectWidget::loadSavedReferenceIfAny() {
     if (img.isNull())
         return;
     applyReferenceImage(img, path);
-    refCircle_.cx = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCx"), -1).toInt();
-    refCircle_.cy = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleCy"), -1).toInt();
-    refCircle_.r = SETTINGS.value(QStringLiteral("ScreenInspect/RefCircleR"), -1).toInt();
+    {
+        const TestCaseScreenInspectConfig sc = TestCaseStore::loadStationScreenInspectConfig(boundStationKey());
+        refCircle_.cx = sc.refCircleCx;
+        refCircle_.cy = sc.refCircleCy;
+        refCircle_.r = sc.refCircleR;
+    }
     updateCircleStatusUi();
     refreshImageLabels();
     ui->plainTextEdit_screenInspectLog->setPlainText(QStringLiteral("已载入上次参考图：") + path);

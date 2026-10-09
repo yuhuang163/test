@@ -329,87 +329,7 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         return;
     }
     if (hookId == QStringLiteral("COUNTDOWN_WAIT")) {
-        // Param_seconds（或 Param_waitSeconds）配置等待秒数；可选 Param_prompt / Meta PromptText 作提示文案
-        const TestCaseDefinition& def = fw->activeTestCase();
-        QVariantMap map;
-        if (def.send.param.canConvert<QVariantMap>())
-            map = fw->resolveTestCaseSendParamTree(def.send.param).toMap();
-        int seconds = 0;
-        if (map.contains(QStringLiteral("seconds")))
-            seconds = map.value(QStringLiteral("seconds")).toInt();
-        else if (map.contains(QStringLiteral("waitSeconds")))
-            seconds = map.value(QStringLiteral("waitSeconds")).toInt();
-        if (seconds <= 0) {
-            fw->markActiveTestCaseStepDone(false, QStringLiteral("未配置等待秒数"), QStringLiteral("失败"));
-            fw->showlog(QStringLiteral("倒计时等待失败：请在步骤 Param_seconds 填写大于 0 的秒数"));
-            return;
-        }
-        QString prompt = map.value(QStringLiteral("prompt")).toString().trimmed();
-        if (prompt.isEmpty())
-            prompt = def.meta.promptText.trimmed();
-        if (prompt.isEmpty())
-            prompt = QStringLiteral("请等待");
-
-        QDialog dlg(fw);
-        dlg.setWindowTitle(def.meta.name.trimmed().isEmpty() ? QStringLiteral("倒计时等待") : def.meta.name.trimmed());
-        dlg.setModal(true);
-        auto* layout = new QVBoxLayout(&dlg);
-        layout->setContentsMargins(24, 24, 24, 24);
-        layout->setSpacing(16);
-        auto* promptLabel = new QLabel(prompt, &dlg);
-        promptLabel->setAlignment(Qt::AlignCenter);
-        promptLabel->setWordWrap(true);
-        QFont promptFont = promptLabel->font();
-        promptFont.setPointSize(18);
-        promptLabel->setFont(promptFont);
-        layout->addWidget(promptLabel);
-        auto* countLabel = new QLabel(&dlg);
-        countLabel->setAlignment(Qt::AlignCenter);
-        QFont countFont = countLabel->font();
-        countFont.setPointSize(36);
-        countFont.setBold(true);
-        countLabel->setFont(countFont);
-        layout->addWidget(countLabel);
-        dlg.resize(420, 220);
-
-        // 允许标题栏关闭：提前结束等待并进入下一步（产线加热等到位可手动关窗）
-        int finishResult = -1;
-        QObject::connect(&dlg, &QDialog::finished, &dlg, [&](int result) { finishResult = result; });
-
-        dlg.show();
-        dlg.raise();
-        dlg.activateWindow();
-
-        const qint64 totalMs = static_cast<qint64>(seconds) * 1000;
-        QElapsedTimer timer;
-        timer.start();
-        int lastShown = -1;
-        fw->showlog(QStringLiteral("倒计时等待开始：%1 秒（%2）").arg(seconds).arg(prompt));
-        while (timer.elapsed() < totalMs && finishResult < 0) {
-            if (!fw->isTestContinue) {
-                dlg.hide();
-                fw->markActiveTestCaseStepDone(false, QStringLiteral("测试中止"), QStringLiteral("失败"));
-                fw->showlog(QStringLiteral("倒计时等待已中止"));
-                return;
-            }
-            const int leftSec = qMax(0, static_cast<int>((totalMs - timer.elapsed() + 999) / 1000));
-            if (leftSec != lastShown) {
-                lastShown = leftSec;
-                countLabel->setText(QStringLiteral("%1").arg(leftSec));
-            }
-            fw->waitWork(100);
-        }
-        dlg.hide();
-        if (finishResult == QDialog::Rejected) {
-            const int elapsedSec = qMax(1, static_cast<int>((timer.elapsed() + 999) / 1000));
-            const QString data = QStringLiteral("提前结束(%1/%2秒)").arg(elapsedSec).arg(seconds);
-            fw->markActiveTestCaseStepDone(true, data, QStringLiteral("通过"));
-            fw->showlog(QStringLiteral("倒计时等待已手动关闭：%1").arg(data));
-            return;
-        }
-        const QString data = QStringLiteral("%1秒").arg(seconds);
-        fw->markActiveTestCaseStepDone(true, data, QStringLiteral("通过"));
-        fw->showlog(QStringLiteral("倒计时等待完成：%1").arg(data));
+        fw->runCountdownWaitStep();
         return;
     }
 
@@ -430,8 +350,6 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         fw->macAddress = macText;
         if (fw->ui && fw->ui->macInput)
             fw->ui->macInput->setText(macText);
-        if (fw->ui && fw->ui->macLabel)
-            fw->ui->macLabel->setText(QStringLiteral("蓝牙mac: ") + macText);
         fw->stepRuntime_.testData = macText;
         fw->setCommandWaitSource(CommandWaitSource::ProductProtocol);
         const int macTimeoutMs = TestCaseRunner::commandTimeoutMs(fw->activeTestCase());

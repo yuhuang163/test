@@ -78,6 +78,8 @@ XinjePlcAddress parseXinjePlcAddress(const QString& text, bool accessCoil) {
             out.error = QStringLiteral("M 地址超出 0-7999: %1").arg(raw);
             return out;
         }
+        // 信捷 RTU：M0→0x0000（与历史 WriteCoil M20→0x0014 一致）。
+        // 勿与 M8 治具 PLC 的 0x0800+index 混淆（见 plc_station_sync_barrier）。
         out.modbusAddress = quint16(out.index);
         out.isCoil = true;
         out.ok = true;

@@ -1306,7 +1306,7 @@ bool Qfctp::setCaseSetLcdColor(const QVariantMap& map) {
 }
 
 bool Qfctp::getCaseRssiRead(const QVariantMap& map) {
-    const uint8_t v = static_cast<uint8_t>(map.value("mode").toUInt() & 0xFF);
+    const uint8_t v = static_cast<uint8_t>(map.value(QStringLiteral("mode")).toUInt() & 0xFF);
     return sendTestsServiceTlv(kTlvRssiRead, QByteArray(1, static_cast<char>(v)), "读取RSSI");
 }
 

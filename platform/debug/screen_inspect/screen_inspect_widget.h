@@ -131,9 +131,15 @@ class ScreenInspectWidget : public QWidget {
     void calibrateReferenceCircle();
     void updateCircleStatusUi();
     void appendLog(const QString& text);
+    /** 写当前工站 flow.ini [LedInspect]（Roi/灯数/阈值） */
+    void persistStationLedInspectConfig();
+    /** 写当前工站 flow.ini [ScreenInspect]（参考圆/GigE/复用圆） */
+    void persistStationScreenInspectConfig();
+    QString boundStationKey() const;
 
     ScreenInspectUi* ui = nullptr;
     bool uiBound_ = false;
+    QString loadedStationKey_;
     QCamera* camera_ = nullptr;
     QCameraImageCapture* capture_ = nullptr;
     QCameraViewfinder* viewfinder_ = nullptr;

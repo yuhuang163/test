@@ -15,6 +15,8 @@ class DeviceCmdCatalog {
     static TestCaseProductProtocol productProtocolFromIni(const QString& text);
     static QString productProtocolToIni(TestCaseProductProtocol protocol);
     static QString productProtocolUiLabel(TestCaseProductProtocol protocol);
+    /** 产品通道指令名：在 Set/Get 过滤基础上再按产品协议收窄。 */
+    static QStringList allCmdNames(TestCaseSendAction action, TestCaseProductProtocol protocol);
 };
 
 class DongleCmdCatalog {
@@ -78,6 +80,29 @@ enum class XwdRawFixtureCmd {
 };
 
 class XwdRawFixtureCmdCatalog {
+  public:
+    static CmdManifestCatalog& catalog();
+};
+
+/** 通用治具串口协议 V1.2（Send/Channel=Fixture 且 Protocol=Universal）。 */
+enum class UniversalFixtureCmd {
+    CylinderDown,
+    CylinderUp,
+    BroadcastCylinderDown,
+    BroadcastCylinderUp,
+    Relay1On,
+    Relay1Off,
+    Relay2On,
+    Relay2Off,
+    Relay3On,
+    Relay3Off,
+    Relay4On,
+    Relay4Off,
+    ReadCurrent,
+    SendRaw,
+};
+
+class UniversalFixtureCmdCatalog {
   public:
     static CmdManifestCatalog& catalog();
 };
