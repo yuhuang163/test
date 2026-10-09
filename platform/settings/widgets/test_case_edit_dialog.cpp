@@ -2078,7 +2078,7 @@ void applyHookSendParamUi(Ui::TestCaseEditDialog* ui, const QString& hookId, con
         uiSchema.hint = QStringLiteral("seconds：倒计时秒数（必填，>0）；prompt：弹窗提示文字（可选）");
     } else if (hookId == QLatin1String("SN_PREFIX4_CHECK")) {
         uiSchema.hint = QStringLiteral(
-            "期望SN前四位：必填，如 V300/M5SM；比对主板/产品 SN（BYD 用过程码换回的主板 SN，不用界面过程码）");
+            "期望SN前四位：必填，如 V300/M5SM；比对界面 SN 栏（BYD 须先经 MES 换 SN 并回填）");
     } else if (hookId == QLatin1String("LIGHT_SENSOR_GOLDEN_CALIB")) {
         uiSchema.hint = QStringLiteral(
             "产品协议单点：index 写入下标；golden 金样光感（仅日志）；waitMs/minSamples 采光感取平均并写回读；"

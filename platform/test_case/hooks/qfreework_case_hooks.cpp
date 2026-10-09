@@ -187,28 +187,11 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         return;
     }
     if (hookId == QStringLiteral("SN_PREFIX4_CHECK")) {
-        // BYD：界面框保持过程码；型号前四位必须用过程码换回的主板 SN（mesBoardSn_）
-        QString sn;
-        if (fw->isBydFactory() && !fw->mesBoardSn_.trimmed().isEmpty()) {
-            sn = CommonUtils::extractSnFromUrlOrText(fw->mesBoardSn_).trimmed();
-            if (sn.isEmpty())
-                sn = fw->mesBoardSn_.trimmed();
-        } else {
-            const QString rawSn = fw->resolvedPcbaSnText().trimmed();
-            sn = CommonUtils::extractSnFromUrlOrText(rawSn).trimmed();
-            if (sn.isEmpty())
-                sn = rawSn;
-            if (fw->isBydFactory()) {
-                // 尚未换到主板 SN：界面过程码不可作前四位；仅当框内已是产品 SN 才用
-                const QString mac = fw->parseMacFromSn(sn);
-                const bool macOk = (mac.length() == 17 && mac.count(QLatin1Char(':')) == 5);
-                if (!(macOk || sn.length() == 28 || sn.length() == 35)) {
-                    fw->markActiveTestCaseStepDone(false, QStringLiteral("(无PCBA SN)"), QStringLiteral("失败"));
-                    fw->showlog(QStringLiteral("产品型号卡控失败：BYD 尚未拿到主板 SN（过程码不可用）"));
-                    return;
-                }
-            }
-        }
+        // 统一读界面 SN 栏（BYD：MES 换到的主板 SN 会回填；其它厂：扫码/手输 SN）
+        const QString rawSn = fw->resolvedPcbaSnText().trimmed();
+        QString sn = CommonUtils::extractSnFromUrlOrText(rawSn).trimmed();
+        if (sn.isEmpty())
+            sn = rawSn;
         QString expected;
         if (fw->activeTestCase().send.param.canConvert<QVariantMap>()) {
             const QVariantMap map = fw->resolveTestCaseSendParamTree(fw->activeTestCase().send.param).toMap();

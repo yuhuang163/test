@@ -1261,7 +1261,7 @@ void QFreeWork::runTestFlowBootstrap() {
     // initData 会清成员；开局过程码 / MES 主板 SN 须跨 init 保留
     const QString processCode = !mesProcessCode_.isEmpty() ? mesProcessCode_ : sn;
     const QString boardSnKeep = mesBoardSn_.trimmed();
-    // 会话日志 sn= 优先主板 SN（界面框仍是过程码，供 BYD 过站）
+    // 会话日志 sn= 优先主板 SN（过站 SFC 仍用 mesProcessCode_）
     const QString snForSession = !boardSnKeep.isEmpty() ? boardSnKeep : sn;
     if (!snForSession.isEmpty() || !mac.isEmpty()) {
         onTestSessionStarting(snForSession, mac);
@@ -3702,7 +3702,7 @@ void QFreeWork::on_getMac_returnPressed() {
         ui->getMac->clear();
         return;
     }
-    // 开局扫码即 MES 过程码（过站 SFC），后续 MES 主板 SN / 三元组整机 SN 不得覆盖此字段
+    // 开局扫码锁定过站 SFC（过程码）；后续 MES/三元组可改界面 SN 栏，但不得改 mesProcessCode_
     mesProcessCode_ = ui->getMac->text().trimmed();
     pack.sn = mesProcessCode_;
     logCurrentUiMesConfig(QStringLiteral("扫码"));
@@ -4030,8 +4030,7 @@ void QFreeWork::getTestValue(const int mechines, const QString value) {
         showlog(QStringLiteral("MES SN 解析 MAC 成功: ") + mesmacAddress);
         // on_macInput_returnPressed();
     } else if (pack.factory.trimmed().compare(QStringLiteral("byd"), Qt::CaseInsensitive) == 0) {
-        // BYD：过程码换主板 SN 仅用于解析 MAC + 会话日志；界面 SN 框保持过程码，过站 SFC 用 mesProcessCode_
-        // （三元组整机 SN 仍由 setWholeMachineSn 回填界面，不在此处理）
+        // BYD：过程码换主板 SN → 回填界面（型号卡控/写 SN 等统一读 SN 栏）；过站 SFC 仍用 mesProcessCode_
         if (mechines != getIndex()) {
             return;
         }
@@ -4043,8 +4042,10 @@ void QFreeWork::getTestValue(const int mechines, const QString value) {
             return;
         }
         mesBoardSn_ = snFromMes;
+        if (ui && ui->getMac)
+            ui->getMac->setText(snFromMes);
         ui->macInput->setText(mesmacAddress);
-        showlog(QStringLiteral("MES 主板 SN=%1，已解析 MAC=%2（界面 SN 仍为过程码）")
+        showlog(QStringLiteral("MES 主板 SN=%1，已解析 MAC=%2（已回填界面 SN；过站仍用过程码）")
                     .arg(mesBoardSn_, mesmacAddress));
         on_macInput_returnPressed();
     } else {
