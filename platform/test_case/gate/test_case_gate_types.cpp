@@ -1,5 +1,6 @@
 #include "test_case_gate_accessors.h"
 
+#include "audio_expert_tcp.h"
 #include "fixture_uart_types.h"
 #include "led_inspect_analyzer.h"
 #include "qprotocol_types.h"
@@ -453,6 +454,32 @@ static void registerFixtureAndRfGates() {
             .number("rssi", &D::rssi, "RSSI(dBm)", "dBm")
             .number("freqOffset", &D::freqOffset, "频偏(kHz)", "kHz")
             .mac("mac", &D::mac, "MAC地址")
+            .commit();
+    }
+    {
+        using D = ProtocolAudioExpertData;
+        GateType<D>("ProtocolAudioExpertData", "AudioExpert TCP测试")
+            .number("pass", &D::pass, "是否通过(1/0)", "")
+            .number("itemCount", &D::itemCount, "解析项个数", "")
+            .number("value", &D::value, "测量值1", "").textFormat('f', 6)
+            .number("value2", &D::value2, "测量值2", "").textFormat('f', 6)
+            .number("value3", &D::value3, "测量值3", "").textFormat('f', 6)
+            .number("value4", &D::value4, "测量值4", "").textFormat('f', 6)
+            .text("unit", &D::unit, "单位1")
+            .text("unit2", &D::unit2, "单位2")
+            .text("unit3", &D::unit3, "单位3")
+            .text("unit4", &D::unit4, "单位4")
+            .text("metricName", &D::metricName, "量名1")
+            .text("metricName2", &D::metricName2, "量名2")
+            .text("metricName3", &D::metricName3, "量名3")
+            .text("metricName4", &D::metricName4, "量名4")
+            .text("transmitId", &D::transmitId, "传输标识")
+            .text("itemsSummary", &D::itemsSummary, "解析摘要")
+            .text("result", &D::result, "Result字段")
+            .text("status", &D::status, "Status字段")
+            .text("ackLine", &D::ackLine, "应答行")
+            .text("testOverLine", &D::testOverLine, "test_over行")
+            .text("dataText", &D::dataText, "测试数据原文")
             .commit();
     }
     {

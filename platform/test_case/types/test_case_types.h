@@ -17,7 +17,16 @@ struct DeviceCmdParamSchema {
 };
 
 // clang-format off
-enum class TestCaseSendChannel { Product, ProductSerial, Dongle, Cloud, Fixture, Modbus, Scpi };
+enum class TestCaseSendChannel {
+    Product,
+    ProductSerial,
+    Dongle,
+    Cloud,
+    Fixture,
+    Modbus,
+    Scpi,
+    Software // 上位机与桌面/远端软件 TCP 等（如 AudioExpert Remote），非治具串口
+};
 enum class UsbCameraCmd {
     ScreenCameraCalibration,
     ScreenDeadPixelCheck,
@@ -25,6 +34,8 @@ enum class UsbCameraCmd {
     LedOnOffCheck
 };
 enum class VesLightCmd { SetBrightness };
+/** AudioExpert Remote：TCP 发指令控制测试并取 $test_over / data（非串口）。 */
+enum class AudioExpertCmd { RunTest };
 enum class TestCaseProductProtocol { Qfctp, Qpb, Qroot, Qroot2, Qaiot, QaiotV2 };
 enum class TestCaseFixtureProtocol {
     Pcba,
@@ -33,7 +44,8 @@ enum class TestCaseFixtureProtocol {
     JieliBtBox,
     UsbCamera,
     VesLight, // VES 四通道光源，协议固定走通道 1
-    Universal // 通用治具串口协议 V1.2（气缸/继电器/电流 + SLOT）
+    Universal, // 通用治具串口协议 V1.2（气缸/继电器/电流 + SLOT）
+    AudioExpert // AudioExpert Remote TCP（IP+端口发指令取测试数据）
 };
 // clang-format on
 

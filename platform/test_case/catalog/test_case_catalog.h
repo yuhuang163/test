@@ -34,6 +34,11 @@ class VesLightCmdCatalog {
     static CmdManifestCatalog& catalog();
 };
 
+class AudioExpertCmdCatalog {
+  public:
+    static CmdManifestCatalog& catalog();
+};
+
 enum class ProductSerialCmd {
     InstrumentReset,
     StartRx2402Ble1M,

@@ -878,6 +878,7 @@ bool isMultiFieldGateReportType(const QString& reportType) {
         || reportType == QLatin1String("ProtocolJieliBtBoxData")
         || reportType == QLatin1String("ProtocolScreenInspectData")
         || reportType == QLatin1String("ProtocolLedInspectData")
+        || reportType == QLatin1String("ProtocolAudioExpertData")
         || reportType == QLatin1String("ProtocolPeriphStateData");
 }
 
@@ -947,6 +948,10 @@ void applySendChannelIniText(const QString& channelIni, TestCaseDefinition& def)
         def.send.channel = TestCaseSendChannel::Product;
     } else if (channelIni.compare(QStringLiteral("Fixture"), Qt::CaseInsensitive) == 0) {
         def.send.channel = TestCaseSendChannel::Fixture;
+    } else if (channelIni.compare(QStringLiteral("Software"), Qt::CaseInsensitive) == 0
+               || channelIni.compare(QStringLiteral("软件通信"), Qt::CaseInsensitive) == 0) {
+        def.send.channel = TestCaseSendChannel::Software;
+        def.send.fixtureProtocol = TestCaseFixtureProtocol::AudioExpert;
     } else if (channelIni.compare(QStringLiteral("Modbus"), Qt::CaseInsensitive) == 0) {
         def.send.channel = TestCaseSendChannel::Modbus;
     } else if (channelIni.compare(QStringLiteral("Scpi"), Qt::CaseInsensitive) == 0) {
@@ -959,7 +964,7 @@ void applySendChannelIniText(const QString& channelIni, TestCaseDefinition& def)
 }
 
 void applySendProtocolIniText(const QString& protocolIni, TestCaseDefinition& def) {
-    if (def.send.channel == TestCaseSendChannel::Fixture)
+    if (def.send.channel == TestCaseSendChannel::Fixture || def.send.channel == TestCaseSendChannel::Software)
         def.send.fixtureProtocol = FixturePcbaCmdCatalog::fixtureProtocolFromIni(protocolIni);
     else
         def.send.productProtocol = DeviceCmdCatalog::productProtocolFromIni(protocolIni);
@@ -1085,6 +1090,10 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
         out.send.channel = TestCaseSendChannel::Product;
     } else if (channelIni.compare(QStringLiteral("Fixture"), Qt::CaseInsensitive) == 0) {
         out.send.channel = TestCaseSendChannel::Fixture;
+    } else if (channelIni.compare(QStringLiteral("Software"), Qt::CaseInsensitive) == 0
+               || channelIni.compare(QStringLiteral("软件通信"), Qt::CaseInsensitive) == 0) {
+        out.send.channel = TestCaseSendChannel::Software;
+        out.send.fixtureProtocol = TestCaseFixtureProtocol::AudioExpert;
     } else if (channelIni.compare(QStringLiteral("Modbus"), Qt::CaseInsensitive) == 0) {
         out.send.channel = TestCaseSendChannel::Modbus;
     } else if (channelIni.compare(QStringLiteral("Scpi"), Qt::CaseInsensitive) == 0) {
@@ -1094,6 +1103,11 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
         out.send.fixtureProtocol = TestCaseFixtureProtocol::UsbCamera;
     } else {
         TestCaseSendDispatch::inferChannelFromDeviceCmd(out.send.deviceCmd, out.send.channel, out.send.fixtureProtocol);
+    }
+    // 旧：治具+AudioExpert → 软件通信
+    if (out.send.channel == TestCaseSendChannel::Fixture
+        && out.send.fixtureProtocol == TestCaseFixtureProtocol::AudioExpert) {
+        out.send.channel = TestCaseSendChannel::Software;
     }
     TestCaseSendDispatch::normalizeLegacyUsbCameraSend(out.send);
     TestCaseSendDispatch::loadSendParamFromIni(ini, out.send, true);
@@ -1796,6 +1810,8 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
         channelStr = QStringLiteral("ProductSerial");
     else if (def.send.channel == TestCaseSendChannel::Fixture)
         channelStr = QStringLiteral("Fixture");
+    else if (def.send.channel == TestCaseSendChannel::Software)
+        channelStr = QStringLiteral("Software");
     else if (def.send.channel == TestCaseSendChannel::Modbus)
         channelStr = QStringLiteral("Modbus");
     else if (def.send.channel == TestCaseSendChannel::Scpi)
@@ -1803,7 +1819,12 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
     ini.setValue(QStringLiteral("Send/Channel"), channelStr);
     if (def.send.channel == TestCaseSendChannel::Product || def.send.channel == TestCaseSendChannel::ProductSerial)
         ini.setValue(QStringLiteral("Send/Protocol"), DeviceCmdCatalog::productProtocolToIni(def.send.productProtocol));
-    else if (def.send.channel == TestCaseSendChannel::Fixture) {
+    else if (def.send.channel == TestCaseSendChannel::Software) {
+        ini.setValue(QStringLiteral("Send/Protocol"),
+                     FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::AudioExpert));
+        ini.setValue(QStringLiteral("Send/Device"),
+                     def.send.device.isEmpty() ? QStringLiteral("AUDIO_EXPERT") : def.send.device);
+    } else if (def.send.channel == TestCaseSendChannel::Fixture) {
         ini.setValue(QStringLiteral("Send/Protocol"), FixturePcbaCmdCatalog::fixtureProtocolToIni(def.send.fixtureProtocol));
         if (def.send.fixtureProtocol == TestCaseFixtureProtocol::Asd9026a) {
             ini.setValue(QStringLiteral("Send/Device"),

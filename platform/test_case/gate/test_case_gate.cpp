@@ -10,6 +10,7 @@
 #include "modbus_cmd_manifest.h"
 #include "scpi_cmd_manifest.h"
 #include "test_case_gate_accessors.h"
+#include "audio_expert_cmd_manifest.h"
 #include "usb_camera_cmd_manifest.h"
 #include "ves_light_cmd_manifest.h"
 #include "xwd_fixture_cmd_manifest.h"
@@ -193,6 +194,10 @@ GateSendBinding GateRegistry::bindingForSend(TestCaseSendChannel channel, const 
         if (const DongleCmdManifest::Row* row = DongleCmdManifest::findByEnumName(cmd))
             applyRow(row->gateReportType, row->gateDefaultField);
         break;
+    case TestCaseSendChannel::Software:
+        if (const AudioExpertCmdManifest::Row* row = AudioExpertCmdManifest::findByEnumName(cmd))
+            applyRow(row->gateReportType, row->gateDefaultField);
+        break;
     case TestCaseSendChannel::Fixture: {
         const TestCaseFixtureProtocol proto = FixturePcbaCmdCatalog::fixtureProtocolFromIni(protocolOrDevice);
         if (proto == TestCaseFixtureProtocol::JieliBtBox) {
@@ -209,6 +214,9 @@ GateSendBinding GateRegistry::bindingForSend(TestCaseSendChannel channel, const 
                 applyRow(row->gateReportType, row->gateDefaultField);
         } else if (proto == TestCaseFixtureProtocol::VesLight) {
             if (const VesLightCmdManifest::Row* row = VesLightCmdManifest::findByEnumName(cmd))
+                applyRow(row->gateReportType, row->gateDefaultField);
+        } else if (proto == TestCaseFixtureProtocol::AudioExpert) {
+            if (const AudioExpertCmdManifest::Row* row = AudioExpertCmdManifest::findByEnumName(cmd))
                 applyRow(row->gateReportType, row->gateDefaultField);
         } else if (proto == TestCaseFixtureProtocol::Xwd) {
             if (const XwdRawFixtureCmdManifest::Row* row = XwdRawFixtureCmdManifest::findByEnumName(cmd))

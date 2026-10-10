@@ -141,6 +141,7 @@ class QFreeWork : public test_base {
     void executeFixtureUniversalCase(const TestCaseDefinition& def);
     void executeFixtureJieliBtBoxCase(const TestCaseDefinition& def);
     void executeFixtureVesLightCase(const TestCaseDefinition& def);
+    void executeFixtureAudioExpertCase(const TestCaseDefinition& def);
     /** VES 单通道指令固定 CH1，brightness 0~255。失败时 failReason 非空。 */
     bool sendVesCh1BrightnessOnFixture(int brightness, QString* failReason = nullptr);
     int resolveFixtureMachineIndex(const QVariant& param) const;
@@ -390,6 +391,9 @@ class QFreeWork : public test_base {
     void resetTupleStatus(const TestCaseDefinition& def);
     void emitFixtureMultiGateTableRows(const QVector<TestCaseGate>& gates, const QString& reportType,
                                        const QVariant& payload, bool& allPass, QString& detailOut);
+    /** AudioExpert：结果表测试项名=Data Info，实测=数值+单位 */
+    void emitAudioExpertMeasureTableRows(const QVariant& payload, const QVector<TestCaseGate>& gates, bool& allPass,
+                                         QString& detailOut);
     void applyRuntimeSnGateExpected(QVector<TestCaseGate>& gates);
     /** Gate/Expected 中的 $MAC/$SN 等占位符展开为运行时值（$MAC=界面 MAC 框） */
     void applyRuntimePlaceholderGateExpected(QVector<TestCaseGate>& gates);

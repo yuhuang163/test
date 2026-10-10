@@ -115,6 +115,12 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("tempPassMode"), QStringLiteral("多路温度卡控：all=同轮全部达标（默认）；any=任一路达标即过")},
         {QStringLiteral("seconds"), QStringLiteral("倒计时等待秒数（COUNTDOWN_WAIT）")},
         {QStringLiteral("waitSeconds"), QStringLiteral("倒计时等待秒数（同 seconds）")},
+        {QStringLiteral("host"), QStringLiteral("AudioExpert TCP 主机（默认127.0.0.1）")},
+        {QStringLiteral("port"), QStringLiteral("AudioExpert Remote 端口号")},
+        {QStringLiteral("command"), QStringLiteral("发送指令（默认$test#）")},
+        {QStringLiteral("connectTimeoutMs"), QStringLiteral("TCP连接超时ms")},
+        {QStringLiteral("readTimeoutMs"), QStringLiteral("等待$test_over超时ms（0=用步骤超时）")},
+        {QStringLiteral("requireOk"), QStringLiteral("要求Result/Status为OK（1/0）")},
         {QStringLiteral("prompt"), QStringLiteral("倒计时弹窗提示文字（可选）")},
         {QStringLiteral("spare"), QStringLiteral("整机SN备用4位（默认0000）")},
         {QStringLiteral("expected"), QStringLiteral("期望SN前四位")},
@@ -1121,6 +1127,19 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
             return QVariantMap{{QStringLiteral("brightness"), QStringLiteral("22")}};
         return {};
     }
+    if (channel == TestCaseSendChannel::Software
+        || (channel == TestCaseSendChannel::Fixture
+            && FixturePcbaCmdCatalog::fixtureProtocolFromIni(device) == TestCaseFixtureProtocol::AudioExpert)) {
+        if (cmdName == QLatin1String("RunTest")) {
+            return QVariantMap{{QStringLiteral("host"), QStringLiteral("127.0.0.1")},
+                               {QStringLiteral("port"), QString()},
+                               {QStringLiteral("command"), QStringLiteral("$test#")},
+                               {QStringLiteral("connectTimeoutMs"), QStringLiteral("3000")},
+                               {QStringLiteral("readTimeoutMs"), QStringLiteral("120000")},
+                               {QStringLiteral("requireOk"), QStringLiteral("1")}};
+        }
+        return {};
+    }
     if (channel == TestCaseSendChannel::Cloud && cmdName == QLatin1String("Login")) {
         // 三元组云端登录：提供 baseUrl/userName/password 字段；显示顺序见 sendParamPreferredOrder（账号在密码上方）
         return QVariantMap{{QStringLiteral("baseUrl"), QString()},
@@ -1462,6 +1481,7 @@ void fillSendChannelCombo(QComboBox* box) {
     box->addItem(QStringLiteral("Dongle通信"), QStringLiteral("Dongle"));
     box->addItem(QStringLiteral("云端交互"), QStringLiteral("Cloud"));
     box->addItem(QStringLiteral("治具通信"), QStringLiteral("Fixture"));
+    box->addItem(QStringLiteral("软件通信"), QStringLiteral("Software"));
     box->addItem(QStringLiteral("Modbus通信"), QStringLiteral("Modbus"));
     box->addItem(QStringLiteral("SCPI通信"), QStringLiteral("Scpi"));
 }
@@ -1500,10 +1520,18 @@ void fillFixtureProtocolCombo(QComboBox* box) {
                  FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::Universal));
 }
 
+void fillSoftwareProtocolCombo(QComboBox* box) {
+    box->clear();
+    box->addItem(FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol::AudioExpert),
+                 FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::AudioExpert));
+}
+
 void fillProtocolComboForChannel(QComboBox* box, TestCaseSendChannel channel) {
     box->clear();
     if (channel == TestCaseSendChannel::Fixture) {
         fillFixtureProtocolCombo(box);
+    } else if (channel == TestCaseSendChannel::Software) {
+        fillSoftwareProtocolCombo(box);
     } else if (channel == TestCaseSendChannel::Modbus) {
         for (const QString& dev : ModbusPeriphCmdCatalog::allDeviceKeys()) {
             box->addItem(ModbusDeviceCatalog::deviceRouteUiLabel(ModbusDeviceCatalog::deviceRouteFromIni(dev)), dev);
@@ -1578,6 +1606,11 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
             for (const QString& name : names)
                 items.append({FixturePcbaCmdCatalog::catalog().cmdUiLabel(name), name});
         }
+    } else if (channel == TestCaseSendChannel::Software) {
+        const QStringList names = AudioExpertCmdCatalog::catalog().allCmdNames(action);
+        items.reserve(names.size());
+        for (const QString& name : names)
+            items.append({AudioExpertCmdCatalog::catalog().cmdUiLabel(name), name});
     } else if (channel == TestCaseSendChannel::Modbus) {
         ModbusDeviceRoute devRoute = ModbusDeviceCatalog::deviceRouteFromIni(device);
         const QStringList names = ModbusPeriphCmdCatalog::allCmdNames(devRoute, action);
@@ -1643,6 +1676,8 @@ TestCaseSendChannel sendChannelFromComboData(const QString& data) {
         return TestCaseSendChannel::ProductSerial;
     if (data.compare(QStringLiteral("Fixture"), Qt::CaseInsensitive) == 0)
         return TestCaseSendChannel::Fixture;
+    if (data.compare(QStringLiteral("Software"), Qt::CaseInsensitive) == 0)
+        return TestCaseSendChannel::Software;
     if (data.compare(QStringLiteral("Modbus"), Qt::CaseInsensitive) == 0)
         return TestCaseSendChannel::Modbus;
     if (data.compare(QStringLiteral("Scpi"), Qt::CaseInsensitive) == 0)
@@ -1659,6 +1694,8 @@ QString sendChannelComboData(TestCaseSendChannel channel) {
         return QStringLiteral("ProductSerial");
     if (channel == TestCaseSendChannel::Fixture)
         return QStringLiteral("Fixture");
+    if (channel == TestCaseSendChannel::Software)
+        return QStringLiteral("Software");
     if (channel == TestCaseSendChannel::Modbus)
         return QStringLiteral("Modbus");
     if (channel == TestCaseSendChannel::Scpi)
@@ -1695,8 +1732,8 @@ SendCmdParamKind sendParamUiKindFromSchema(DeviceCmdParamKind kind) {
 }
 
 QString sendParamProtocolContext(TestCaseSendChannel channel, const QString& protocolComboData) {
-    if (channel == TestCaseSendChannel::Fixture || channel == TestCaseSendChannel::Modbus
-        || channel == TestCaseSendChannel::Scpi)
+    if (channel == TestCaseSendChannel::Fixture || channel == TestCaseSendChannel::Software
+        || channel == TestCaseSendChannel::Modbus || channel == TestCaseSendChannel::Scpi)
         return protocolComboData;
     return QString();
 }
@@ -1722,6 +1759,18 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
             if (TupleCmdCatalog::catalog().paramSchemaFor(static_cast<int>(tupleCmd), schema)) {
                 out.valid = true;
                 out.hint = TupleCmdCatalog::catalog().paramUiHint(name);
+                out.kind = sendParamUiKindFromSchema(schema.kind);
+            }
+        }
+        return out;
+    }
+    if (channel == TestCaseSendChannel::Software) {
+        AudioExpertCmd aeCmd;
+        if (cmdEnumFromName(AudioExpertCmdCatalog::catalog(), name, aeCmd)) {
+            DeviceCmdParamSchema schema;
+            if (AudioExpertCmdCatalog::catalog().paramSchemaFor(static_cast<int>(aeCmd), schema)) {
+                out.valid = true;
+                out.hint = AudioExpertCmdCatalog::catalog().paramUiHint(name);
                 out.kind = sendParamUiKindFromSchema(schema.kind);
             }
         }
@@ -1796,6 +1845,18 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
                 if (VesLightCmdCatalog::catalog().paramSchemaFor(static_cast<int>(vesCmd), schema)) {
                     out.valid = true;
                     out.hint = VesLightCmdCatalog::catalog().paramUiHint(name);
+                    out.kind = sendParamUiKindFromSchema(schema.kind);
+                }
+            }
+            return out;
+        }
+        if (proto == TestCaseFixtureProtocol::AudioExpert) {
+            AudioExpertCmd aeCmd;
+            if (cmdEnumFromName(AudioExpertCmdCatalog::catalog(), name, aeCmd)) {
+                DeviceCmdParamSchema schema;
+                if (AudioExpertCmdCatalog::catalog().paramSchemaFor(static_cast<int>(aeCmd), schema)) {
+                    out.valid = true;
+                    out.hint = AudioExpertCmdCatalog::catalog().paramUiHint(name);
                     out.kind = sendParamUiKindFromSchema(schema.kind);
                 }
             }
@@ -3070,8 +3131,10 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     ui->comboBox_productProtocol->blockSignals(true);
     fillProtocolComboForChannel(ui->comboBox_productProtocol, channel);
     QString protoIni;
-    if (channel == TestCaseSendChannel::Fixture)
-        protoIni = FixturePcbaCmdCatalog::fixtureProtocolToIni(def.send.fixtureProtocol);
+    if (channel == TestCaseSendChannel::Fixture || channel == TestCaseSendChannel::Software)
+        protoIni = FixturePcbaCmdCatalog::fixtureProtocolToIni(
+            channel == TestCaseSendChannel::Software ? TestCaseFixtureProtocol::AudioExpert
+                                                    : def.send.fixtureProtocol);
     else if (channel == TestCaseSendChannel::Modbus || channel == TestCaseSendChannel::Scpi)
         protoIni = def.send.device;
     else
@@ -3082,11 +3145,11 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     ui->comboBox_productProtocol->blockSignals(false);
     updateProductProtocolRowVisible();
 
-    // 产品/治具/外设：指令表按「协议或目标设备」下拉过滤，统一传 protoIni（勿用空的 send.device）
+    // 产品/治具/软件/外设：指令表按「协议或目标设备」下拉过滤，统一传 protoIni（勿用空的 send.device）
     const QString cmdListDevice =
         (channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial
-         || channel == TestCaseSendChannel::Fixture || channel == TestCaseSendChannel::Modbus
-         || channel == TestCaseSendChannel::Scpi)
+         || channel == TestCaseSendChannel::Fixture || channel == TestCaseSendChannel::Software
+         || channel == TestCaseSendChannel::Modbus || channel == TestCaseSendChannel::Scpi)
             ? protoIni
             : def.send.device;
     fillDeviceCmdCombo(ui->comboBox_deviceCmd, channel, action, cmdListDevice, def.send.deviceCmd);
@@ -3189,6 +3252,9 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
     if (def.send.channel == TestCaseSendChannel::Fixture) {
         def.send.fixtureProtocol =
             FixturePcbaCmdCatalog::fixtureProtocolFromIni(comboData(ui->comboBox_productProtocol));
+    } else if (def.send.channel == TestCaseSendChannel::Software) {
+        def.send.fixtureProtocol = TestCaseFixtureProtocol::AudioExpert;
+        def.send.device = QStringLiteral("AUDIO_EXPERT");
     } else if (def.send.channel == TestCaseSendChannel::Modbus || def.send.channel == TestCaseSendChannel::Scpi) {
         def.send.device = comboData(ui->comboBox_productProtocol);
     } else {
@@ -3249,13 +3315,15 @@ void TestCaseEditDialog::updateProductProtocolRowVisible() {
     const TestCaseSendChannel channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
     const bool showProtocol =
         channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial
-        || channel == TestCaseSendChannel::Fixture || channel == TestCaseSendChannel::Modbus
-        || channel == TestCaseSendChannel::Scpi;
+        || channel == TestCaseSendChannel::Fixture || channel == TestCaseSendChannel::Software
+        || channel == TestCaseSendChannel::Modbus || channel == TestCaseSendChannel::Scpi;
     ui->label_productProtocol->setVisible(showProtocol);
     ui->comboBox_productProtocol->setVisible(showProtocol);
     if (showProtocol) {
         if (channel == TestCaseSendChannel::Fixture)
             ui->label_productProtocol->setText(QStringLiteral("治具协议"));
+        else if (channel == TestCaseSendChannel::Software)
+            ui->label_productProtocol->setText(QStringLiteral("软件协议"));
         else if (channel == TestCaseSendChannel::Modbus || channel == TestCaseSendChannel::Scpi)
             ui->label_productProtocol->setText(QStringLiteral("目标外设"));
         else
