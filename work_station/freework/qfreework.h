@@ -163,7 +163,7 @@ class QFreeWork : public test_base {
     QString wholeMachineSn_;
     QString transitionCode_;
     QString newSfc_;
-    /** BYD 开局扫码过程码：MES Start/Complete/AddSfcKey 的 SFC；勿被 MES 主板 SN / 三元组整机 SN 冲掉 */
+    /** BYD 开局扫码过程码：MES Start/Complete/AddSfcKey 的 SFC；界面可被 MES 主板 SN 回填，此字段不被冲掉 */
     QString mesProcessCode_;
     QString macAddress = "没有mac地址";
     /** SN 前四位/型号卡控失败标记（Hook SN_PREFIX4_CHECK 与 Gate prefix4 共用） */
