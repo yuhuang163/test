@@ -97,8 +97,29 @@ QFreeWorkBox::QFreeWorkBox(QWidget* parent) : box_base(parent), ui(new Ui::QFree
         ScreenInspectAnalyzer::cleanupStoredImages(inspectRoot);
     }
     // 右下角：整包 OTA 版本 + 本文件编译时刻（与工站 FREE_VER 窗口标题无关）
-    ui->statusbar->addPermanentWidget(new QLabel(FactoryCloudClient::appVersion() + QStringLiteral(" ") +
-                                                 QString(__DATE__) + QStringLiteral(" ") + QString(__TIME__)));
+    QString zhBuildDate = QString::fromLatin1(__DATE__).simplified();
+    {
+        static const char* kEnMon[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                       "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+        const QStringList parts = zhBuildDate.split(QLatin1Char(' '), QString::SkipEmptyParts);
+        if (parts.size() >= 3) {
+            int mon = -1;
+            for (int i = 0; i < 12; ++i) {
+                if (parts.at(0) == QLatin1String(kEnMon[i])) {
+                    mon = i + 1;
+                    break;
+                }
+            }
+            if (mon > 0)
+                zhBuildDate = QStringLiteral("%1年%2月%3日")
+                                  .arg(parts.at(2))
+                                  .arg(mon)
+                                  .arg(parts.at(1).toInt());
+        }
+    }
+    ui->statusbar->addPermanentWidget(
+        new QLabel(FactoryCloudClient::appVersion() + QStringLiteral(" ") + zhBuildDate + QStringLiteral(" ")
+                   + QString::fromLatin1(__TIME__)));
 
     fixtureConnectAct_ = ui->menubar->addAction(QStringLiteral("连接治具串口"));
     connect(fixtureConnectAct_, &QAction::triggered, this, [this]() { ensureFixtureUartWindow(true); });

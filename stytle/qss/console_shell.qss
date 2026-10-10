@@ -8,6 +8,15 @@ QWidget#qsetting {
 	color: #243654;
 }
 
+/* Windows 常忽略 QToolTip 背景；配白字适配系统黑底，并靠 palette 尽量拉明白底 */
+QToolTip {
+	color: #ffffff;
+	background-color: #1e293b;
+	border: 1px solid #334155;
+	padding: 6px 10px;
+	opacity: 255;
+}
+
 QWidget#centralwidget,
 QWidget#consoleShell,
 QWidget#consoleConnectPage,
@@ -1441,7 +1450,7 @@ QPlainTextEdit#msgEdit {
 	border-radius: 10px;
 	padding: 8px 12px;
 	font-family: Consolas, "Cascadia Mono", monospace;
-	font-size: 11px;
+	font-size: 14px;
 	color: #334155;
 }
 
@@ -1927,8 +1936,22 @@ QMainWindow QStatusBar {
 
 
 /* Free workstation reference layout; scoped to avoid changing other stations. */
-QWidget#QFreeWork { background: #eaf5ff; color: #14295c; }
-QWidget#QFreeWork QWidget#tab { background: white; border-radius: 12px; }
+QWidget#QFreeWork { background: #eaf5ff; color: #14295c; min-width: 0; }
+QWidget#QFreeWork QWidget#tab { background: white; border-radius: 12px; min-width: 0; }
+QWidget#QFreeWork QTabWidget,
+QWidget#QFreeWork QSplitter,
+QWidget#QFreeWork QTableWidget#testResultTable,
+QWidget#QFreeWork QLineEdit,
+QWidget#QFreeWork QComboBox,
+QWidget#QFreeWork QPushButton,
+QWidget#QFreeWork QCheckBox,
+QWidget#QFreeWork QLabel {
+	min-width: 0;
+}
+QWidget#QFreeWork QLabel#test_time {
+	min-width: 0;
+	max-width: 72px;
+}
 QWidget#QFreeWork QTabBar::tab {
     min-height: 32px; margin: 0 6px 8px 0; border-radius: 10px;
     color: #465e89; background: #fbfdff; border: 1px solid #d5e5ff;
@@ -2017,7 +2040,10 @@ QWidget#QFreeWork QTableWidget, QWidget#QFreeWork QHeaderView::section {
 }
 QWidget#QFreeWork QLabel#test_time { font-size: 13px; font-weight: 700; min-height: 26px; max-height: 26px; }
 QWidget#QFreeWork QLabel#test_time_caption { font-size: 13px; min-height: 26px; max-height: 26px; }
-QWidget#QFreeWork QLabel#bleStatusLabel { font-size: 13px; min-height: 26px; max-height: 26px; }
+QWidget#QFreeWork QLabel#bleStatusLabel {
+	min-width: 24px; max-width: 28px; min-height: 26px; max-height: 26px;
+	padding: 0; border: 0; background: transparent;
+}
 QWidget#QFreeWork QPushButton#toggleExtraTabsButton { font-size: 12px; padding: 4px 8px; }
 QWidget#QFreeWork QLabel#label_tuplePosLeft,
 QWidget#QFreeWork QLabel#label_tuplePosRight,

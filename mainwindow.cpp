@@ -2078,7 +2078,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
                 mac = item->text().trimmed();
             if (ui->macInput && !mac.isEmpty())
                 ui->macInput->setText(mac);
-            on_pick_device_textActivated(mac);
+            connectPickDeviceMac(mac);
         });
     }
     if (auto* btn = uiFind<QPushButton>(this, "connectPickMacButton")) {
@@ -2093,7 +2093,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
                 mac = item->text().trimmed();
             if (ui->macInput && !mac.isEmpty())
                 ui->macInput->setText(mac);
-            on_pick_device_textActivated(mac);
+            connectPickDeviceMac(mac);
         });
     }
 
@@ -4932,7 +4932,7 @@ void MainWindow::on_start_search_clicked() {
     updateConsoleConnectFlow();
 }
 
-void MainWindow::on_pick_device_textActivated(const QString& arg1) {
+void MainWindow::connectPickDeviceMac(const QString& arg1) {
     ui->log->clear();
     ui->msgEdit->clear();
     if (!dongleSerialPort->isOpen()) {

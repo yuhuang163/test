@@ -1,6 +1,8 @@
 #ifndef MY_TYPEDEF_H
 #define MY_TYPEDEF_H
 
+#include <QApplication>
+#include <QColor>
 #include <QCoreApplication>
 #include <QDebug>
 #include <QDir>
@@ -8,6 +10,7 @@
 #include <QFileInfo>
 #include <QHash>
 #include <QHostInfo>
+#include <QPalette>
 #include <QTextStream>
 #include <QWidget>
 #include <QJsonArray>
@@ -485,6 +488,13 @@ inline bool applyWidgetStyleSheet(QWidget* widget, const QString& style = QStrin
         QTextStream filetext(&qss);
         widget->setStyleSheet(filetext.readAll());
         qss.close();
+        // Windows 上仅靠 QSS 改 QToolTip 背景常不生效，同步 palette 避免深色字压黑底
+        if (auto* app = qobject_cast<QApplication*>(QCoreApplication::instance())) {
+            QPalette pal = app->palette();
+            pal.setColor(QPalette::ToolTipBase, QColor(0x1e293b));
+            pal.setColor(QPalette::ToolTipText, QColor(0xffffff));
+            app->setPalette(pal);
+        }
         qDebug() << "qss load" << path;
         return true;
     }

@@ -484,6 +484,7 @@ class MainWindow : public QMainWindow {
     void installPhysicalDevicePads();
     void syncConsoleConnectSeg();
     void updateConsoleConnectFlow();
+    void connectPickDeviceMac(const QString& macOrLabel);
     void selectConsoleNav(int id);
     void playConsolePageEnter(QWidget* page);
     void applyDebugOtaTabVisibility();
@@ -652,7 +653,6 @@ class MainWindow : public QMainWindow {
     void on_light_test_clicked();
     void on_clear_picture_clicked();
     void on_start_search_clicked();
-    void on_pick_device_textActivated(const QString& arg1);
     void on_open_motor_cali_clicked();
     void on_close_motor_cali_clicked();
     void on_R1_valueChanged(int value);

@@ -417,7 +417,7 @@ void fitScreenInspectThumb(QLabel* label, const QImage& img, const QString& empt
     label->setPixmap(QPixmap::fromImage(scaled));
 }
 
-/** 按当前标签文字重算 min-width，覆盖全局 QSS 对 Tab 的裁切。 */
+/** 按当前标签文字重算 Tab 样式；一拖多时禁止按完整工站名撑死 min-width。 */
 void setupFreeWorkTabBar(QTabWidget* tabWidget) {
     if (!tabWidget)
         return;
@@ -427,8 +427,13 @@ void setupFreeWorkTabBar(QTabWidget* tabWidget) {
     if (!bar)
         return;
 
-    bar->setExpanding(false);
-    bar->setElideMode(Qt::ElideNone);
+    const int stationSlots = qMax(1, SETTINGS.value(QStringLiteral("User/formColumn"), 1).toInt()
+                                         * SETTINGS.value(QStringLiteral("User/formRow"), 1).toInt());
+    const bool multiStation = stationSlots > 1;
+
+    // 一拖多：允许省略，否则「M8组装按键测试工站 v10」会把每列撑得很宽，窗口缩不回去
+    bar->setExpanding(multiStation);
+    bar->setElideMode(multiStation ? Qt::ElideRight : Qt::ElideNone);
     bar->setUsesScrollButtons(true);
     // 图标与字号接近，避免「字大图标小」
     constexpr int kTabIconPx = 20;
@@ -448,33 +453,46 @@ void setupFreeWorkTabBar(QTabWidget* tabWidget) {
             tabWidget->setTabIcon(i, docIcon);
         else
             tabWidget->setTabIcon(i, flaskIcon);
+        bar->setTabToolTip(i, text);
     }
 
     QFont font = bar->font();
-    font.setPixelSize(14);
+    font.setPixelSize(multiStation ? 13 : 14);
     bar->setFont(font);
 
-    const QFontMetrics fm(font);
-    int maxTextWidth = 0;
-    for (int i = 0; i < bar->count(); ++i) {
-        if (!bar->isTabVisible(i))
-            continue;
-        maxTextWidth = qMax(maxTextWidth, fm.horizontalAdvance(bar->tabText(i)));
+    if (multiStation) {
+        bar->setStyleSheet(QStringLiteral(
+            "QTabWidget QTabBar::tab {"
+            "  min-width: 64px;"
+            "  max-width: 200px;"
+            "  padding: 5px 8px;"
+            "  font-size: 13px;"
+            "}"
+            "QTabWidget QTabBar::tab:selected {"
+            "  font-weight: bold;"
+            "}"));
+    } else {
+        const QFontMetrics fm(font);
+        int maxTextWidth = 0;
+        for (int i = 0; i < bar->count(); ++i) {
+            if (!bar->isTabVisible(i))
+                continue;
+            maxTextWidth = qMax(maxTextWidth, fm.horizontalAdvance(bar->tabText(i)));
+        }
+        constexpr int hPad = 36;
+        const int minTabWidth = maxTextWidth + kTabIconPx + hPad;
+        // 单工位：覆盖全局 QSS，完整显示工站名
+        bar->setStyleSheet(QStringLiteral(
+                               "QTabWidget QTabBar::tab {"
+                               "  min-width: %1px;"
+                               "  padding: 5px 12px;"
+                               "  font-size: 14px;"
+                               "}"
+                               "QTabWidget QTabBar::tab:selected {"
+                               "  font-weight: bold;"
+                               "}")
+                               .arg(minTabWidth));
     }
-
-    constexpr int hPad = 36;
-    const int minTabWidth = maxTextWidth + kTabIconPx + hPad;
-    // updateMainStyle 之后覆盖全局 QTabBar 规则
-    bar->setStyleSheet(QStringLiteral(
-                           "QTabWidget QTabBar::tab {"
-                           "  min-width: %1px;"
-                           "  padding: 5px 12px;"
-                           "  font-size: 14px;"
-                           "}"
-                           "QTabWidget QTabBar::tab:selected {"
-                           "  font-weight: bold;"
-                           "}")
-                           .arg(minTabWidth));
     bar->updateGeometry();
 }
 
@@ -655,7 +673,7 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
         ui->toggleExtraTabsButton->setIconSize(QSize(16, 16));
     }
     ui->test_result->setText(QStringLiteral("WAIT\n等待开始测试"));
-    applyStatusCardStyle(ui->test_result, QStringLiteral("wait"));
+    applyStatusCardStyle(ui->test_result, QStringLiteral("idle"));
 
     ui->mes_state->setText(QStringLiteral("MES\n未连接 / 待获取MAC"));
     applyStatusCardStyle(ui->mes_state, QStringLiteral("idle"));
@@ -817,8 +835,15 @@ void QFreeWork::refreshOrderedTestIndexes() {
     const int profileVersion = TestCaseStore::loadStationProfileVersion(stationKey);
     if (profileVersion > 0)
         tabName += QStringLiteral(" v%1").arg(profileVersion);
-    ui->tabWidget->setTabText(0, tabName);
+    const int stationSlots = qMax(1, SETTINGS.value(QStringLiteral("User/formColumn"), 1).toInt()
+                                         * SETTINGS.value(QStringLiteral("User/formRow"), 1).toInt());
+    // 一拖多：Tab 显示短名，完整名放 tooltip，避免文字 sizeHint 再撑宽
+    QString tabShow = tabName;
+    if (stationSlots > 1 && tabShow.size() > 8)
+        tabShow = tabShow.left(6) + QStringLiteral("…");
+    ui->tabWidget->setTabText(0, tabShow);
     setupFreeWorkTabBar(ui->tabWidget);
+    ui->tabWidget->setTabToolTip(0, tabName);
     qDebug() << "[FreeWork] refresh tab, SelectedStationName =" << stationName << ", tabName =" << tabName;
 
     if (!QFile::exists(TestCasePaths::flowIniPath())) {
@@ -1824,15 +1849,7 @@ void QFreeWork::refreshDongleWifi(QString data) {
 }
 
 void QFreeWork::refreshBleState(int state) {
-    if (state) {
-        ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
-        //   showlog("蓝牙连接成功");
-        // protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
-        // showlog("已发送禁止休眠");
-    } else {
-        ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
-        // showlog("蓝牙连接断开");
-    }
+    FreeWorkPresentation::applyBleStatusIcon(ui->bleStatusLabel, state != 0);
 }
 
 void QFreeWork::refreshDongleUartState(int state) {
@@ -2138,8 +2155,17 @@ void QFreeWork::applyFreeWorkExtraTabsVisible(bool visible) {
             ui->tabWidget->setCurrentIndex(kFreeWorkTabMain);
     }
 
-    if (ui->toggleExtraTabsButton)
-        ui->toggleExtraTabsButton->setText(visible ? QStringLiteral("隐藏扩展页") : QStringLiteral("显示扩展页"));
+    if (ui->toggleExtraTabsButton) {
+        const bool multi = FreeWorkPresentation::freeWorkMultiStation();
+        if (multi) {
+            ui->toggleExtraTabsButton->setText(visible ? QStringLiteral("收起") : QStringLiteral("扩展"));
+            ui->toggleExtraTabsButton->setToolTip(visible ? QStringLiteral("隐藏扩展页")
+                                                          : QStringLiteral("显示扩展页"));
+        } else {
+            ui->toggleExtraTabsButton->setText(visible ? QStringLiteral("隐藏扩展页")
+                                                       : QStringLiteral("显示扩展页"));
+        }
+    }
 
     if (visible)
         initSuctionChart();
@@ -3522,7 +3548,7 @@ void QFreeWork::runScreenInspectStep() {
 }
 
 void QFreeWork::initData(bool deferDongleAtForVisa) {
-    ui->bleStatusLabel->setText("蓝牙连接：");
+    FreeWorkPresentation::applyBleStatusIcon(ui->bleStatusLabel, false);
     rssitestcount = 0;
 
     rssitestfailcount = 0;
@@ -3737,7 +3763,7 @@ void QFreeWork::on_getMac_returnPressed() {
     ui->mes_state->setText(QStringLiteral("MES\n未连接 / 待获取MAC"));
     applyStatusCardStyle(ui->mes_state, QStringLiteral("idle"));
     ui->test_result->setText(QStringLiteral("WAIT\n等待开始测试"));
-    applyStatusCardStyle(ui->test_result, QStringLiteral("wait"));
+    applyStatusCardStyle(ui->test_result, QStringLiteral("idle"));
     const QString cleanedSn = CommonUtils::extractSnFromUrlOrText(ui->getMac->text());
     if (!cleanedSn.isEmpty()) {
         ui->getMac->setText(cleanedSn);
@@ -4230,7 +4256,7 @@ void QFreeWork::on_stopTest_clicked() {
     ui->getMac->clear();
     mesProcessCode_.clear();
     ui->test_result->setText(QStringLiteral("WAIT\n等待开始测试"));
-    applyStatusCardStyle(ui->test_result, QStringLiteral("wait"));
+    applyStatusCardStyle(ui->test_result, QStringLiteral("idle"));
     if (ui->isformmes->isChecked()) {
         ui->getMac->setFocus();
     } else {
