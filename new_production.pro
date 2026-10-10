@@ -344,6 +344,7 @@ SOURCES += \
     platform/cloud/auth/auth_service.cpp \
     platform/cloud/auth/login_dialog.cpp \
     platform/cloud/sync/test_case_sync_service.cpp \
+    platform/cloud/sync/test_case_policy_service.cpp \
     platform/cloud/ota/host_ota_service.cpp \
     platform/cloud/ota/host_ota_vbs.cpp \
     platform/cloud/ota/host_ota_apply.cpp \
@@ -537,6 +538,7 @@ HEADERS += \
     platform/cloud/auth/auth_service.h \
     platform/cloud/auth/login_dialog.h \
     platform/cloud/sync/test_case_sync_service.h \
+    platform/cloud/sync/test_case_policy_service.h \
     platform/cloud/ota/host_ota_service.h \
     platform/cloud/ota/host_ota_vbs.h \
     platform/cloud/ota/host_ota_types.h \
