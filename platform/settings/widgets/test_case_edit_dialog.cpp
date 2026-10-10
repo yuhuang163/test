@@ -2541,6 +2541,8 @@ const QHash<QString, QString>& hookDisplayNameMap() {
         {QStringLiteral("BYD_MES_GET_TRANSITION_CODE"), QStringLiteral("BYD MES 通过整机SN获取过渡码")},
         {QStringLiteral("BYD_MES_GET_NEW_SFC"), QStringLiteral("BYD MES 通过过渡码获取 newSfc")},
         {QStringLiteral("BYD_MES_START_BY_NEW_SFC"), QStringLiteral("BYD MES 使用 newSfc 进行站前检查")},
+        {QStringLiteral("BYD_MES_SERIALIZABLE_COMPLETE"),
+         QStringLiteral("BYD MES 序列化过站（PASS 收尾 OSFC↔NSFC，替代普通 Complete）")},
         {QStringLiteral("PLC_SYNC_WRITE_COIL"), QStringLiteral("[一拖多同步] 统一写线圈(自定义线圈)")},
         {QStringLiteral("PLC_SYNC_READ_COIL"), QStringLiteral("[一拖多同步] 统一监控线圈(自定义线圈)")},
         {QStringLiteral("PLC_SYNC_WRITE_M10"), QStringLiteral("[一拖多同步] 统一写M10脉冲复位(默认M10/可改)")},

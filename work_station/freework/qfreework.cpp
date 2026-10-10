@@ -1207,6 +1207,26 @@ bool QFreeWork::isBydFactory() const {
     return pack.factory.trimmed().compare(QStringLiteral("byd"), Qt::CaseInsensitive) == 0;
 }
 
+bool QFreeWork::stationFlowUsesBydSerializableComplete() const {
+    QString stationKey = activeFlowStationKey_.trimmed();
+    if (stationKey.isEmpty())
+        stationKey = TestCaseStore::resolveActiveFlowStationKey();
+    if (stationKey.isEmpty())
+        return false;
+    const QVector<TestFlowItemEntry> items = TestCaseStore::loadStationFlowItems(stationKey);
+    for (const TestFlowItemEntry& item : items) {
+        if (!item.enabled)
+            continue;
+        TestCaseDefinition def;
+        if (!TestCaseStore::loadCaseForStation(stationKey, item.caseName, def))
+            continue;
+        if (def.hook.enabled
+            && def.hook.hookId.compare(QStringLiteral("BYD_MES_SERIALIZABLE_COMPLETE"), Qt::CaseInsensitive) == 0)
+            return true;
+    }
+    return false;
+}
+
 namespace {
 
 QString formatMacFrom12Hex(const QString& macRawUpper) {
@@ -1685,6 +1705,10 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     pack.mac = ui->macInput->text().trimmed();
     pack.product = SETTINGS.value("Mes/Product_Name").toString();
     pack.instruct_num = QStringLiteral("079");
+    // 流程含 BYD_MES_SERIALIZABLE_COMPLETE 时，PASS 收尾走 OSFC↔NSFC 序列化过站
+    pack.useBydSerializableComplete = stationFlowUsesBydSerializableComplete();
+    if (pack.useBydSerializableComplete)
+        showlog(QStringLiteral("MES：本工站已配置序列化过站（SerializableStartCollectComplete）"));
     // 测试总时长（毫秒）随云端上报，供网页详情顶部展示
     pack.totalTimeMs = static_cast<double>(TestTime.elapsed());
     if (TestResult == failValue) {

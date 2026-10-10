@@ -388,52 +388,10 @@ QJsonArray bydmes::buildBydTestDataList(const MesPacketData& pack, const QString
     return list;
 }
 
-namespace {
-
-bool isUsableBydWholeMachineSnValue(const QString& value) {
+static bool isUsableBydWholeMachineSnValue(const QString& value) {
     const QString v = value.trimmed();
     return !v.isEmpty() && v != QStringLiteral("整机SN为空");
 }
-
-/** pack.product 优先；空则回退界面 Mes/Product_Name（与设置页产品型号下拉一致） */
-QString resolvedMesUiProductModel(const MesPacketData& pack) {
-    QString product = pack.product.trimmed();
-    if (product.isEmpty())
-        product = SETTINGS.value(QStringLiteral("Mes/Product_Name")).toString().trimmed();
-    if (product.isEmpty())
-        product = SETTINGS.value(QStringLiteral("MES/Product_Name")).toString().trimmed();
-    return product;
-}
-
-/** W1 / W1 Lite / Wellness Warm 等需走 SerializableStartCollectComplete 的界面产品型号 */
-bool isSerializableCompleteUiProductModel(const QString& product) {
-    const QString p = product.trimmed();
-    if (p.isEmpty())
-        return false;
-    if (p.compare(QStringLiteral("W1"), Qt::CaseInsensitive) == 0)
-        return true;
-    if (p.contains(QStringLiteral("W1 Lite"), Qt::CaseInsensitive)
-        || p.compare(QStringLiteral("W1Lite"), Qt::CaseInsensitive) == 0)
-        return true;
-    // W1 Lite 后续改名为 Wellness Warm，与旧名并行兼容
-    return p.contains(QStringLiteral("Wellness Warm"), Qt::CaseInsensitive);
-}
-
-/** 组装蓝牙测试工站（W1 / W1 Lite / Wellness Warm 工站键或显示名） */
-bool isSerializableCompleteBluetoothTestStation() {
-    const QString stationKey =
-        SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString().trimmed();
-    if (stationKey == QStringLiteral("FLOW_ST_0019") || stationKey == QStringLiteral("FLOW_ST_0032")
-        || stationKey == QStringLiteral("FLOW_ST_0036"))
-        return true;
-    const QString stationName =
-        SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStationName")).toString().trimmed();
-    return stationName.contains(QStringLiteral("W1组装蓝牙测试"))
-           || stationName.contains(QStringLiteral("W1 Lite组装蓝牙测试"))
-           || stationName.contains(QStringLiteral("Wellness Warm组装蓝牙测试"));
-}
-
-} // namespace
 
 /** NcComplete 不良码：忽略初始化占位 "NULL"，与 TestDataCollect ERROR_CODE 一致。 */
 static QString bydNcCodeFromPack(const MesPacketData& pack) {
@@ -445,12 +403,10 @@ static QString bydNcCodeFromPack(const MesPacketData& pack) {
 }
 
 bool bydmes::shouldUseBydSerializableComplete(const MesPacketData& pack, bool isPassResult) const {
+    // 由自由工站流程 Hook BYD_MES_SERIALIZABLE_COMPLETE 配置，不再写死产品/工站名单
     if (!isPassResult || pack.factory.trimmed().compare(QLatin1String("byd"), Qt::CaseInsensitive) != 0)
         return false;
-    const QString product = resolvedMesUiProductModel(pack);
-    if (!isSerializableCompleteUiProductModel(product))
-        return false;
-    return isSerializableCompleteBluetoothTestStation();
+    return pack.useBydSerializableComplete;
 }
 
 QJsonObject bydmes::buildBydSerializableStartCollectCompleteParam(const MesPacketData& pack) const {
