@@ -12,8 +12,10 @@
 #include "cmd_manifest_catalogs.h"
 #include "test_case_ini_param.h"
 #include "tuple_cmd_manifest.h"
+#include "audio_expert_cmd_manifest.h"
 #include "usb_camera_cmd_manifest.h"
 #include "ves_light_cmd_manifest.h"
+#include "universal_fixture_cmd_manifest.h"
 #include "xwd_fixture_cmd_manifest.h"
 
 #include <QMetaType>
@@ -97,6 +99,17 @@ static CmdManifestRegistry makeXwdRawFixtureCmdRegistry(const CmdManifestRegistr
     return reg;
 }
 
+static CmdManifestRegistry makeUniversalFixtureCmdRegistry(const CmdManifestRegistry::Policy& policy) {
+    CmdManifestRegistry reg;
+    reg.policy = policy;
+    reg.rows.reserve(UniversalFixtureCmdManifest::rowCount());
+    for (int i = 0; i < UniversalFixtureCmdManifest::rowCount(); ++i) {
+        const UniversalFixtureCmdManifest::Row& r = UniversalFixtureCmdManifest::rows()[i];
+        reg.rows.append({static_cast<int>(r.cmd), r.enumName, r.uiLabel, r.paramKind, r.paramHint, r.sendActions});
+    }
+    return reg;
+}
+
 static CmdManifestRegistry makeJieliBtBoxCmdRegistry(const CmdManifestRegistry::Policy& policy) {
     CmdManifestRegistry reg;
     reg.policy = policy;
@@ -125,6 +138,17 @@ static CmdManifestRegistry makeVesLightCmdRegistry(const CmdManifestRegistry::Po
     reg.rows.reserve(VesLightCmdManifest::rowCount());
     for (int i = 0; i < VesLightCmdManifest::rowCount(); ++i) {
         const VesLightCmdManifest::Row& r = VesLightCmdManifest::rows()[i];
+        reg.rows.append({static_cast<int>(r.cmd), r.enumName, r.uiLabel, r.paramKind, r.paramHint, r.sendActions});
+    }
+    return reg;
+}
+
+static CmdManifestRegistry makeAudioExpertCmdRegistry(const CmdManifestRegistry::Policy& policy) {
+    CmdManifestRegistry reg;
+    reg.policy = policy;
+    reg.rows.reserve(AudioExpertCmdManifest::rowCount());
+    for (int i = 0; i < AudioExpertCmdManifest::rowCount(); ++i) {
+        const AudioExpertCmdManifest::Row& r = AudioExpertCmdManifest::rows()[i];
         reg.rows.append({static_cast<int>(r.cmd), r.enumName, r.uiLabel, r.paramKind, r.paramHint, r.sendActions});
     }
     return reg;
@@ -260,6 +284,19 @@ CmdManifestRegistry::Policy XwdRawFixtureCmdManifestCatalog::xwdPolicy() {
 XwdRawFixtureCmdManifestCatalog::XwdRawFixtureCmdManifestCatalog()
     : CmdManifestCatalog(makeXwdRawFixtureCmdRegistry(xwdPolicy())) {}
 
+// ---------- UniversalFixtureCmdManifestCatalog ----------
+
+CmdManifestRegistry::Policy UniversalFixtureCmdManifestCatalog::universalPolicy() {
+    CmdManifestRegistry::Policy p;
+    p.uiLabelMode = CmdCatalogUiLabelMode::Raw;
+    p.cmdToNameFallback = CmdCatalogCmdToNameFallback::Empty;
+    p.paramHintStyle = CmdCatalogParamHintStyle::HintOnly;
+    return p;
+}
+
+UniversalFixtureCmdManifestCatalog::UniversalFixtureCmdManifestCatalog()
+    : CmdManifestCatalog(makeUniversalFixtureCmdRegistry(universalPolicy())) {}
+
 // ---------- JieliBtBoxCmdManifestCatalog ----------
 
 CmdManifestRegistry::Policy JieliBtBoxCmdManifestCatalog::jieliPolicy() {
@@ -336,6 +373,20 @@ CmdManifestRegistry::Policy VesLightCmdManifestCatalog::vesLightPolicy() {
 
 VesLightCmdManifestCatalog::VesLightCmdManifestCatalog()
     : CmdManifestCatalog(makeVesLightCmdRegistry(vesLightPolicy())) {}
+
+// ---------- AudioExpertCmdManifestCatalog ----------
+
+CmdManifestRegistry::Policy AudioExpertCmdManifestCatalog::audioExpertPolicy() {
+    CmdManifestRegistry::Policy p;
+    p.unknownCmdLabel = QStringLiteral("未登记 AudioExpert 指令");
+    p.unknownNameParamHint = QStringLiteral("未知 AudioExpert 指令");
+    p.paramHintStyle = CmdCatalogParamHintStyle::HintOnly;
+    p.missingCmdDefaultAction = TestCaseSendAction::Get;
+    return p;
+}
+
+AudioExpertCmdManifestCatalog::AudioExpertCmdManifestCatalog()
+    : CmdManifestCatalog(makeAudioExpertCmdRegistry(audioExpertPolicy())) {}
 
 // ---------- FixturePcbaCmdManifestCatalog ----------
 
@@ -512,6 +563,11 @@ CmdManifestCatalog& XwdRawFixtureCmdCatalog::catalog() {
     return catalog;
 }
 
+CmdManifestCatalog& UniversalFixtureCmdCatalog::catalog() {
+    static UniversalFixtureCmdManifestCatalog catalog;
+    return catalog;
+}
+
 CmdManifestCatalog& JieliBtBoxCmdCatalog::catalog() {
     static JieliBtBoxCmdManifestCatalog catalog;
     return catalog;
@@ -524,6 +580,11 @@ CmdManifestCatalog& UsbCameraCmdCatalog::catalog() {
 
 CmdManifestCatalog& VesLightCmdCatalog::catalog() {
     static VesLightCmdManifestCatalog catalog;
+    return catalog;
+}
+
+CmdManifestCatalog& AudioExpertCmdCatalog::catalog() {
+    static AudioExpertCmdManifestCatalog catalog;
     return catalog;
 }
 
@@ -558,6 +619,13 @@ TestCaseFixtureProtocol FixturePcbaCmdCatalog::fixtureProtocolFromIni(const QStr
         || text.compare(QStringLiteral("VES_LIGHT"), Qt::CaseInsensitive) == 0
         || text.compare(QStringLiteral("VesLight"), Qt::CaseInsensitive) == 0)
         return TestCaseFixtureProtocol::VesLight;
+    if (text.compare(QStringLiteral("AUDIO_EXPERT"), Qt::CaseInsensitive) == 0
+        || text.compare(QStringLiteral("AudioExpert"), Qt::CaseInsensitive) == 0)
+        return TestCaseFixtureProtocol::AudioExpert;
+    if (text.compare(QStringLiteral("Universal"), Qt::CaseInsensitive) == 0
+        || text.compare(QStringLiteral("UNIVERSAL"), Qt::CaseInsensitive) == 0
+        || text.compare(QStringLiteral("通用治具"), Qt::CaseInsensitive) == 0)
+        return TestCaseFixtureProtocol::Universal;
     if (text.compare(QStringLiteral("Pcba"), Qt::CaseInsensitive) == 0 || text.compare(QStringLiteral("PCBA"), Qt::CaseInsensitive) == 0)
         return TestCaseFixtureProtocol::Pcba;
     return TestCaseFixtureProtocol::Pcba;
@@ -577,6 +645,10 @@ QString FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol prot
         return QStringLiteral("GIGE_CAMERA");
     case TestCaseFixtureProtocol::VesLight:
         return QStringLiteral("VES");
+    case TestCaseFixtureProtocol::AudioExpert:
+        return QStringLiteral("AUDIO_EXPERT");
+    case TestCaseFixtureProtocol::Universal:
+        return QStringLiteral("Universal");
     case TestCaseFixtureProtocol::Pcba:
     default:
         return QStringLiteral("Pcba");
@@ -597,6 +669,10 @@ QString FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol pr
         return QStringLiteral("GigE工业摄像头");
     case TestCaseFixtureProtocol::VesLight:
         return QStringLiteral("V3系列光感工站VES光源");
+    case TestCaseFixtureProtocol::AudioExpert:
+        return QStringLiteral("AudioExpert(TCP)");
+    case TestCaseFixtureProtocol::Universal:
+        return QStringLiteral("通用治具");
     case TestCaseFixtureProtocol::Pcba:
     default:
         return QStringLiteral("PCBA测试协议");

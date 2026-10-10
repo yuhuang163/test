@@ -47,6 +47,10 @@ CmdManifestCatalog& xwdCatalogFn() {
     return XwdRawFixtureCmdCatalog::catalog();
 }
 
+CmdManifestCatalog& universalCatalogFn() {
+    return UniversalFixtureCmdCatalog::catalog();
+}
+
 CmdManifestCatalog& jieliCatalogFn() {
     return JieliBtBoxCmdCatalog::catalog();
 }
@@ -57,6 +61,10 @@ CmdManifestCatalog& usbCameraCatalogFn() {
 
 CmdManifestCatalog& vesLightCatalogFn() {
     return VesLightCmdCatalog::catalog();
+}
+
+CmdManifestCatalog& audioExpertCatalogFn() {
+    return AudioExpertCmdCatalog::catalog();
 }
 
 CmdManifestCatalog& fixturePcbaCatalogFn() {
@@ -91,6 +99,10 @@ const CatalogBinding* catalogBinding(TestCaseSendChannel channel, TestCaseFixtur
                                         u8"XWD治具指令无效",
                                         u8"XWD治具指令与操作方式不匹配",
                                         u8"该 XWD治具指令尚未配置参数模板，请联系工程师"};
+    static const CatalogBinding kUniversal = {universalCatalogFn,
+                                            u8"通用治具指令无效",
+                                            u8"通用治具指令与操作方式不匹配",
+                                            u8"该通用治具指令尚未配置参数模板，请联系工程师"};
     static const CatalogBinding kJieli = {jieliCatalogFn,
                                         u8"杰理蓝牙盒子指令无效",
                                         u8"杰理蓝牙盒子指令与操作方式不匹配",
@@ -103,6 +115,10 @@ const CatalogBinding* catalogBinding(TestCaseSendChannel channel, TestCaseFixtur
                                            u8"VES 光源测试指令无效",
                                            u8"VES 光源指令与操作方式不匹配（请选「设置」）",
                                            u8"该 VES 光源指令尚未配置参数模板，请联系工程师"};
+    static const CatalogBinding kAudioExpert = {audioExpertCatalogFn,
+                                              u8"AudioExpert TCP 指令无效",
+                                              u8"AudioExpert 指令与操作方式不匹配（请选「读取」）",
+                                              u8"该 AudioExpert 指令尚未配置参数模板，请联系工程师"};
     static const CatalogBinding kFixturePcba = {fixturePcbaCatalogFn,
                                               u8"治具 PCBA 测试指令无效",
                                               u8"治具指令与操作方式不匹配",
@@ -117,12 +133,16 @@ const CatalogBinding* catalogBinding(TestCaseSendChannel channel, TestCaseFixtur
         return &kCloud;
     case TestCaseSendChannel::ProductSerial:
         return &kDevice;
+    case TestCaseSendChannel::Software:
+        return &kAudioExpert;
     case TestCaseSendChannel::Fixture:
         switch (fixtureProtocol) {
         case TestCaseFixtureProtocol::Asd9026a:
             return &kAsd9026a;
         case TestCaseFixtureProtocol::Xwd:
             return &kXwd;
+        case TestCaseFixtureProtocol::Universal:
+            return &kUniversal;
         case TestCaseFixtureProtocol::JieliBtBox:
             return &kJieli;
         case TestCaseFixtureProtocol::UsbCamera:
@@ -130,6 +150,9 @@ const CatalogBinding* catalogBinding(TestCaseSendChannel channel, TestCaseFixtur
             return &kUsbCamera;
         case TestCaseFixtureProtocol::VesLight:
             return &kVesLight;
+        case TestCaseFixtureProtocol::AudioExpert:
+            // 兼容旧 ini：治具+AudioExpert → 与软件通信同一清单
+            return &kAudioExpert;
         case TestCaseFixtureProtocol::Pcba:
             return &kFixturePcba;
         default:
@@ -233,6 +256,9 @@ bool inferChannelFromDeviceCmd(const QString& deviceCmd, TestCaseSendChannel& ch
     if (tryInferFromCatalog(XwdRawFixtureCmdCatalog::catalog(), deviceCmd, TestCaseSendChannel::Fixture,
                             TestCaseFixtureProtocol::Xwd, channel, fixtureProtocol))
         return true;
+    if (tryInferFromCatalog(UniversalFixtureCmdCatalog::catalog(), deviceCmd, TestCaseSendChannel::Fixture,
+                            TestCaseFixtureProtocol::Universal, channel, fixtureProtocol))
+        return true;
     if (tryInferFromCatalog(JieliBtBoxCmdCatalog::catalog(), deviceCmd, TestCaseSendChannel::Fixture,
                             TestCaseFixtureProtocol::JieliBtBox, channel, fixtureProtocol))
         return true;
@@ -253,6 +279,9 @@ bool inferChannelFromDeviceCmd(const QString& deviceCmd, TestCaseSendChannel& ch
         return true;
     if (tryInferFromCatalog(VesLightCmdCatalog::catalog(), deviceCmd, TestCaseSendChannel::Fixture,
                             TestCaseFixtureProtocol::VesLight, channel, fixtureProtocol))
+        return true;
+    if (tryInferFromCatalog(AudioExpertCmdCatalog::catalog(), deviceCmd, TestCaseSendChannel::Software,
+                            TestCaseFixtureProtocol::AudioExpert, channel, fixtureProtocol))
         return true;
     channel = TestCaseSendChannel::Product;
     fixtureProtocol = TestCaseFixtureProtocol::Pcba;

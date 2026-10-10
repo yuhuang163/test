@@ -2,6 +2,7 @@
 
 #include "test_case.h"
 
+#include "audio_expert_tcp.h"
 #include "device_cmd_manifest.h"
 #include "screen_inspect_analyzer.h"
 
@@ -12,6 +13,7 @@
 #include "asd9026a_codec.h"
 #include "asd9026a_device.h"
 #include "xwd_raw_fixture_device.h"
+#include "universal_fixture_codec.h"
 #include "xwd_raw_uart_codec.h"
 #include "jieli_bt_box_device.h"
 #include "qfixturemanager.h"
@@ -1113,6 +1115,97 @@ void QFreeWork::applyRuntimePlaceholderGateExpected(QVector<TestCaseGate>& gates
     }
 }
 
+void QFreeWork::emitAudioExpertMeasureTableRows(const QVariant& payload, const QVector<TestCaseGate>& gates,
+                                                bool& allPass, QString& detailOut) {
+    allPass = true;
+    detailOut.clear();
+    if (!payload.canConvert<ProtocolAudioExpertData>())
+        return;
+    const ProtocolAudioExpertData data = payload.value<ProtocolAudioExpertData>();
+    const QString reportType = QStringLiteral("ProtocolAudioExpertData");
+
+    const TestCaseGate* passGate = nullptr;
+    for (const TestCaseGate& g : gates) {
+        if (g.enabled && g.field.trimmed() == QLatin1String("pass")) {
+            passGate = &g;
+            break;
+        }
+    }
+    bool passGateOk = true;
+    if (passGate) {
+        QString ignoreDetail;
+        GateRegistry::evaluate(*passGate, reportType, payload, passGateOk, ignoreDetail);
+        if (!passGateOk)
+            allPass = false;
+    }
+
+    auto valueGateAt = [&](int index) -> const TestCaseGate* {
+        static const char* kFields[] = {"value", "value2", "value3", "value4"};
+        if (index < 0 || index >= 4)
+            return nullptr;
+        const QString want = QString::fromLatin1(kFields[index]);
+        for (const TestCaseGate& g : gates) {
+            if (g.enabled && g.field.trimmed() == want)
+                return &g;
+        }
+        return nullptr;
+    };
+
+    QVector<TestItem> rows;
+    rows.reserve(qMax(1, data.measures.size()));
+    QStringList detailParts;
+
+    for (int i = 0; i < data.measures.size(); ++i) {
+        const AudioExpertTcp::MeasureItem& m = data.measures.at(i);
+        TestItem item;
+        item.testItem = m.dataInfo.trimmed().isEmpty()
+                            ? (m.metricName.trimmed().isEmpty() ? QStringLiteral("AudioExpert") : m.metricName.trimmed())
+                            : m.dataInfo.trimmed();
+        if (m.hasValue) {
+            const QString num = QString::number(m.value, 'g', 12);
+            item.testData = m.unit.trimmed().isEmpty() ? num : QStringLiteral("%1 %2").arg(num, m.unit.trimmed());
+        } else {
+            item.testData = QStringLiteral("-");
+        }
+
+        bool subPass = true;
+        QString ask = QStringLiteral("-");
+        if (const TestCaseGate* vg = valueGateAt(i)) {
+            QString subDetail;
+            GateRegistry::evaluate(*vg, reportType, payload, subPass, subDetail);
+            const GateStepDisplay disp =
+                GateRegistry::formatStepDisplay(*vg, QVector<TestCaseGate>{*vg}, reportType, payload, false);
+            ask = disp.ask.isEmpty() ? QStringLiteral("-") : disp.ask;
+            if (!subPass)
+                allPass = false;
+        } else if (passGate) {
+            subPass = passGateOk;
+        }
+        item.ask = ask;
+        item.testResult = subPass ? passValue : failValue;
+        rows.append(item);
+        detailParts.append(QStringLiteral("%1=%2").arg(item.testItem, item.testData));
+    }
+
+    if (rows.isEmpty()) {
+        TestItem item;
+        item.testItem = activeTestCase_.meta.displayName.trimmed().isEmpty()
+                            ? QStringLiteral("AudioExpert")
+                            : activeTestCase_.meta.displayName.trimmed();
+        item.testData = data.itemsSummary.isEmpty() ? QStringLiteral("-") : data.itemsSummary;
+        item.ask = QStringLiteral("-");
+        item.testResult = (passGate ? passGateOk : true) ? passValue : failValue;
+        if (passGate && !passGateOk)
+            allPass = false;
+        rows.append(item);
+        detailParts.append(item.testData);
+    }
+
+    detailOut = detailParts.join(QStringLiteral("; "));
+    testResultTableUpdate(rows);
+    testCaseMultiGateTableEmitted_ = true;
+}
+
 void QFreeWork::emitFixtureMultiGateTableRows(const QVector<TestCaseGate>& gates, const QString& reportType,
                                               const QVariant& payload, bool& allPass, QString& detailOut) {
     allPass = true;
@@ -1219,8 +1312,11 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
     bool pass = true;
     QString detail;
     const bool multiFieldMode = gatesForEval.size() > 1;
-    // 凡启用多项判定：一律写分项结果表 + 分项 MES；步骤收尾靠 testCaseMultiGateTableEmitted_ 跳过汇总，避免重复
-    if (multiFieldMode) {
+    // AudioExpert：分项名用 Data Info，实测=数值+单位（不走通用「测量值1」字段名）
+    if (reportType == QStringLiteral("ProtocolAudioExpertData")) {
+        emitAudioExpertMeasureTableRows(payload, gatesForEval, pass, detail);
+    } else if (multiFieldMode) {
+        // 凡启用多项判定：一律写分项结果表 + 分项 MES；步骤收尾靠 testCaseMultiGateTableEmitted_ 跳过汇总，避免重复
         emitFixtureMultiGateTableRows(gatesForEval, reportType, payload, pass, detail);
     } else {
         GateRegistry::evaluate(gatesForEval.first(), reportType, payload, pass, detail);
@@ -1229,6 +1325,9 @@ bool QFreeWork::evaluateActiveTestCaseGate(const QString& reportType, const QVar
     GateStepDisplay display =
         GateRegistry::formatStepDisplay(gatesForEval.first(), gatesForEval, reportType, payload, multiFieldMode);
     if (display.testData.isEmpty())
+        display.testData = detail;
+    // AudioExpert 步骤汇总用 Data Info=数值+单位 摘要
+    if (reportType == QStringLiteral("ProtocolAudioExpertData") && !detail.isEmpty())
         display.testData = detail;
 
     // 屏幕图像识别：自动卡控失败时弹窗确认是否显示对应颜色（是=通过，否=不通过）
@@ -2257,6 +2356,13 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
         return;
     }
 
+    if (def.send.channel == TestCaseSendChannel::Software
+        || (def.send.channel == TestCaseSendChannel::Fixture
+            && def.send.fixtureProtocol == TestCaseFixtureProtocol::AudioExpert)) {
+        ctx->executeFixtureAudioExpertCase(def);
+        return;
+    }
+
     if (def.send.channel == TestCaseSendChannel::Fixture) {
         if (FixturePcbaCmdCatalog::isScreenCameraFixture(def.send.fixtureProtocol)) {
             ctx->runScreenInspectStep();
@@ -2270,6 +2376,8 @@ void TestCaseRunner::beginStep(QFreeWork* ctx, const TestCaseDefinition& def) {
             ctx->executeFixtureAsd9026aCase(def);
         else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::Xwd)
             ctx->executeFixtureXwdCase(def);
+        else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::Universal)
+            ctx->executeFixtureUniversalCase(def);
         else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::JieliBtBox)
             ctx->executeFixtureJieliBtBoxCase(def);
         else
@@ -3871,6 +3979,314 @@ void QFreeWork::executeFixtureXwdCase(const TestCaseDefinition& def) {
     markActiveTestCaseStepDone(true, replyText, QStringLiteral("通过"));
 }
 
+void QFreeWork::executeFixtureUniversalCase(const TestCaseDefinition& def) {
+    if (def.send.fixtureProtocol != TestCaseFixtureProtocol::Universal) {
+        showlog(QStringLiteral("通用治具协议类型不匹配，请检查 Send/Protocol"));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+
+    UniversalFixtureCmd cmd;
+    if (!cmdEnumFromName(UniversalFixtureCmdCatalog::catalog(), def.send.deviceCmd, cmd)) {
+        showlog(QStringLiteral("未知通用治具指令：%1").arg(def.send.deviceCmd));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+    if (!UniversalFixtureCmdCatalog::catalog().isCmdForAction(static_cast<int>(cmd), def.send.action)) {
+        showlog(QStringLiteral("通用治具指令与操作方式不匹配：%1").arg(def.send.deviceCmd));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+
+    auto* box = qobject_cast<QFreeWorkBox*>(window());
+    QString fixtureConnectDetail;
+    bool fixtureAutoConnected = false;
+    Fixture_uart* uart =
+        box ? box->ensureFixtureUartConnected(getIndex(), &fixtureConnectDetail, &fixtureAutoConnected) : nullptr;
+    if (!uart || !uart->isFixtureSerialOpen()) {
+        const QString msg = fixtureConnectDetail.isEmpty()
+                                ? QStringLiteral("治具串口未连接，请检查菜单「连接治具串口」")
+                                : fixtureConnectDetail;
+        showlog(msg);
+        markActiveTestCaseStepDone(false, QStringLiteral("治具未连接"), QStringLiteral("失败"));
+        return;
+    }
+    if (fixtureAutoConnected)
+        showlog(QStringLiteral("已自动连接治具串口：%1").arg(fixtureConnectDetail));
+
+    const QVariant resolvedParam = resolveTestCaseSendParamTree(def.send.param);
+    const QVariantMap cmdMap = resolvedParam.canConvert<QVariantMap>() ? resolvedParam.toMap() : QVariantMap{};
+
+    auto resolveSlot = [this, &cmdMap, &resolvedParam](bool broadcastCmd) -> quint8 {
+        if (broadcastCmd)
+            return UniversalFixture::kSlotBroadcast;
+        if (cmdMap.contains(QStringLiteral("slot"))) {
+            const int s = cmdMap.value(QStringLiteral("slot")).toInt();
+            return static_cast<quint8>(qBound(1, s, 15));
+        }
+        return static_cast<quint8>(resolveFixtureMachineIndex(resolvedParam));
+    };
+
+    auto defaultTimeoutMs = [](UniversalFixtureCmd c) -> int {
+        switch (c) {
+        case UniversalFixtureCmd::CylinderDown:
+        case UniversalFixtureCmd::CylinderUp:
+        case UniversalFixtureCmd::BroadcastCylinderDown:
+        case UniversalFixtureCmd::BroadcastCylinderUp:
+            return 2500;
+        case UniversalFixtureCmd::ReadCurrent:
+            return 1000;
+        default:
+            return 500;
+        }
+    };
+    int timeoutMs = TestCaseRunner::commandTimeoutMs(def);
+    if (timeoutMs <= 0)
+        timeoutMs = defaultTimeoutMs(cmd);
+    else
+        timeoutMs = qMax(timeoutMs, defaultTimeoutMs(cmd));
+
+    if (cmd == UniversalFixtureCmd::SendRaw) {
+        const QString rawText = sendParamAsRawText(resolvedParam).trimmed();
+        if (rawText.isEmpty()) {
+            showlog(QStringLiteral("通用治具 SendRaw 内容为空，请配置 Param_string"));
+            markActiveTestCaseStepDone(false, QStringLiteral("参数为空"), QStringLiteral("失败"));
+            return;
+        }
+        bool parsedAsHex = false;
+        const QByteArray request = XwdRawUartCodec::encodeRawText(rawText, &parsedAsHex);
+        if (request.isEmpty()) {
+            showlog(QStringLiteral("通用治具 SendRaw 编码为空"));
+            markActiveTestCaseStepDone(false, QStringLiteral("参数为空"), QStringLiteral("失败"));
+            return;
+        }
+        QString errStr;
+        if (def.send.action != TestCaseSendAction::Get) {
+            if (!uart->sendRawFrame(request, &errStr)) {
+                showlog(QStringLiteral("通用治具发送失败：%1").arg(errStr));
+                markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
+                return;
+            }
+            const QString txHex = QString::fromLatin1(request.toHex(' ').toUpper());
+            showlog(QStringLiteral("通用治具已发送：%1").arg(txHex));
+            if (!def.gate.enabled)
+                markActiveTestCaseStepDone(true, txHex, QStringLiteral("通过"));
+            return;
+        }
+        QByteArray response;
+        if (!uart->exchangeRawFrame(request, &response, timeoutMs, &errStr)) {
+            showlog(QStringLiteral("通用治具收发失败：%1").arg(errStr));
+            markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
+            return;
+        }
+        const QString rxHex = QString::fromLatin1(response.toHex(' ').toUpper());
+        showlog(QStringLiteral("通用治具回包：%1").arg(rxHex));
+        ProtocolMeasureData measureData;
+        measureData.deviceName = QStringLiteral("UniversalFixture");
+        measureData.type = QStringLiteral("Reply");
+        measureData.valueText = rxHex;
+        measureData.isOk = true;
+        if (def.gate.enabled
+            && evaluateActiveTestCaseGate(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(measureData)))
+            return;
+        markActiveTestCaseStepDone(true, rxHex, QStringLiteral("通过"));
+        return;
+    }
+
+    quint8 ch = 0;
+    quint8 st = UniversalFixture::kStOn;
+    bool isMeasure = false;
+    bool broadcast = false;
+    switch (cmd) {
+    case UniversalFixtureCmd::CylinderDown:
+        ch = UniversalFixture::kChCylinder;
+        st = UniversalFixture::kStOn;
+        break;
+    case UniversalFixtureCmd::CylinderUp:
+        ch = UniversalFixture::kChCylinder;
+        st = UniversalFixture::kStOff;
+        break;
+    case UniversalFixtureCmd::BroadcastCylinderDown:
+        ch = UniversalFixture::kChCylinder;
+        st = UniversalFixture::kStOn;
+        broadcast = true;
+        break;
+    case UniversalFixtureCmd::BroadcastCylinderUp:
+        ch = UniversalFixture::kChCylinder;
+        st = UniversalFixture::kStOff;
+        broadcast = true;
+        break;
+    case UniversalFixtureCmd::Relay1On:
+        ch = UniversalFixture::kChRelay1;
+        st = UniversalFixture::kStOn;
+        break;
+    case UniversalFixtureCmd::Relay1Off:
+        ch = UniversalFixture::kChRelay1;
+        st = UniversalFixture::kStOff;
+        break;
+    case UniversalFixtureCmd::Relay2On:
+        ch = UniversalFixture::kChRelay2;
+        st = UniversalFixture::kStOn;
+        break;
+    case UniversalFixtureCmd::Relay2Off:
+        ch = UniversalFixture::kChRelay2;
+        st = UniversalFixture::kStOff;
+        break;
+    case UniversalFixtureCmd::Relay3On:
+        ch = UniversalFixture::kChRelay3;
+        st = UniversalFixture::kStOn;
+        break;
+    case UniversalFixtureCmd::Relay3Off:
+        ch = UniversalFixture::kChRelay3;
+        st = UniversalFixture::kStOff;
+        break;
+    case UniversalFixtureCmd::Relay4On:
+        ch = UniversalFixture::kChRelay4;
+        st = UniversalFixture::kStOn;
+        break;
+    case UniversalFixtureCmd::Relay4Off:
+        ch = UniversalFixture::kChRelay4;
+        st = UniversalFixture::kStOff;
+        break;
+    case UniversalFixtureCmd::ReadCurrent:
+        isMeasure = true;
+        ch = static_cast<quint8>(cmdMap.value(QStringLiteral("ch"), 1).toInt());
+        if (ch > 2)
+            ch = 1;
+        break;
+    case UniversalFixtureCmd::SendRaw:
+        break;
+    default:
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+
+    const quint8 slot = resolveSlot(broadcast);
+    const QByteArray request = isMeasure ? UniversalFixtureCodec::buildMeasureFrame(slot, ch)
+                                         : UniversalFixtureCodec::buildControlFrame(slot, ch, st);
+    showlog(QStringLiteral("通用治具发送：%1").arg(QString::fromLatin1(request.toHex(' ').toUpper())));
+
+    QString errStr;
+    QByteArray response;
+    if (!uart->exchangeRawFrame(request, &response, timeoutMs, &errStr)) {
+        showlog(QStringLiteral("通用治具等待应答失败：%1").arg(errStr));
+        markActiveTestCaseStepDone(false, errStr, QStringLiteral("失败"));
+        return;
+    }
+    showlog(QStringLiteral("通用治具原始回包：%1").arg(QString::fromLatin1(response.toHex(' ').toUpper())));
+
+    if (isMeasure) {
+        QByteArray parseBuf = response;
+        const QVector<UniversalFixture::MeasureRsp> frames =
+            UniversalFixtureCodec::takeAllMeasureRsp(&parseBuf, slot);
+        if (frames.isEmpty()) {
+            showlog(QStringLiteral("通用治具未解析到电流应答帧"));
+            markActiveTestCaseStepDone(false, QStringLiteral("无测量应答"), QStringLiteral("失败"));
+            return;
+        }
+        bool allOk = true;
+        QString detail;
+        for (const UniversalFixture::MeasureRsp& one : frames) {
+            if (one.status != 0x00) {
+                allOk = false;
+                showlog(QStringLiteral("通用治具电流失败 SLOT=%1 CH=%2 STATUS=%3(%4)")
+                            .arg(one.slot)
+                            .arg(one.ch)
+                            .arg(one.status)
+                            .arg(UniversalFixtureCodec::measureStatusText(one.status)));
+                continue;
+            }
+            const double ma = one.currentMa();
+            showlog(QStringLiteral("通用治具电流 SLOT=%1 CH=%2 = %3 mA")
+                        .arg(one.slot)
+                        .arg(one.ch)
+                        .arg(ma, 0, 'f', 2));
+            ProtocolMeasureData measureData;
+            measureData.deviceName = QStringLiteral("UniversalFixture");
+            measureData.channel = QStringLiteral("SLOT%1/CH%2").arg(one.slot).arg(one.ch);
+            measureData.type = QStringLiteral("Current");
+            measureData.value = ma;
+            measureData.valueText = QString::number(ma, 'f', 2);
+            measureData.unit = QStringLiteral("mA");
+            measureData.isOk = true;
+            onUsbInstrumentReport(
+                ProtocolReport(QStringLiteral("ProtocolMeasureData"), QVariant::fromValue(measureData)));
+            if (!detail.isEmpty())
+                detail.append(QLatin1Char(' '));
+            detail.append(QStringLiteral("CH%1=%2mA").arg(one.ch).arg(ma, 0, 'f', 2));
+            if (def.gate.enabled
+                && evaluateActiveTestCaseGate(QStringLiteral("ProtocolMeasureData"),
+                                              QVariant::fromValue(measureData)))
+                return;
+        }
+        if (!allOk) {
+            markActiveTestCaseStepDone(false, detail.isEmpty() ? QStringLiteral("测量失败") : detail,
+                                       QStringLiteral("失败"));
+            return;
+        }
+        if (!def.gate.enabled)
+            markActiveTestCaseStepDone(true, detail, QStringLiteral("通过"));
+        return;
+    }
+
+    QByteArray buf = response;
+    if (broadcast) {
+        int okCount = 0;
+        int failCount = 0;
+        QString detail;
+        while (true) {
+            UniversalFixture::ControlAck ack;
+            QString parseErr;
+            if (!UniversalFixtureCodec::takeControlAck(&buf, UniversalFixture::kSlotBroadcast, ch, st, &ack,
+                                                       &parseErr))
+                break;
+            if (ack.status == 0x00) {
+                ++okCount;
+                showlog(QStringLiteral("通用治具到位成功 SLOT=%1 CH=%2 ST=%3")
+                            .arg(ack.slot)
+                            .arg(ack.ch)
+                            .arg(ack.st));
+            } else {
+                ++failCount;
+                showlog(QStringLiteral("通用治具到位失败 SLOT=%1 STATUS=%2(%3)")
+                            .arg(ack.slot)
+                            .arg(ack.status)
+                            .arg(UniversalFixtureCodec::controlStatusText(ack.status)));
+            }
+            if (!detail.isEmpty())
+                detail.append(QLatin1Char(','));
+            detail.append(QStringLiteral("S%1=%2").arg(ack.slot).arg(ack.status, 2, 16, QChar('0')));
+        }
+        if (okCount <= 0 || failCount > 0) {
+            markActiveTestCaseStepDone(false, detail.isEmpty() ? QStringLiteral("无到位应答") : detail,
+                                       QStringLiteral("失败"));
+            return;
+        }
+        if (!def.gate.enabled)
+            markActiveTestCaseStepDone(true, detail, QStringLiteral("通过"));
+        return;
+    }
+
+    UniversalFixture::ControlAck ack;
+    QString parseErr;
+    if (!UniversalFixtureCodec::takeControlAck(&buf, slot, ch, st, &ack, &parseErr)) {
+        showlog(QStringLiteral("通用治具到位应答解析失败：%1").arg(parseErr));
+        markActiveTestCaseStepDone(false, parseErr, QStringLiteral("失败"));
+        return;
+    }
+    if (ack.status != 0x00) {
+        const QString msg = QStringLiteral("到位失败 STATUS=%1(%2)")
+                                .arg(ack.status)
+                                .arg(UniversalFixtureCodec::controlStatusText(ack.status));
+        showlog(QStringLiteral("通用治具%1").arg(msg));
+        markActiveTestCaseStepDone(false, msg, QStringLiteral("失败"));
+        return;
+    }
+    showlog(QStringLiteral("通用治具到位成功 SLOT=%1 CH=%2 ST=%3").arg(ack.slot).arg(ack.ch).arg(ack.st));
+    if (!def.gate.enabled)
+        markActiveTestCaseStepDone(true, QStringLiteral("SLOT=%1").arg(ack.slot), QStringLiteral("通过"));
+}
+
 void QFreeWork::executeFixtureJieliBtBoxCase(const TestCaseDefinition& def) {
     if (def.send.fixtureProtocol != TestCaseFixtureProtocol::JieliBtBox) {
         showlog(QStringLiteral("杰理蓝牙盒子协议类型不匹配，请检查 Send/Protocol"));
@@ -4026,6 +4442,141 @@ void QFreeWork::executeFixtureVesLightCase(const TestCaseDefinition& def) {
     }
     const QString data = QStringLiteral("CH1=%1").arg(brightness);
     markActiveTestCaseStepDone(true, data, QStringLiteral("通过"));
+}
+
+void QFreeWork::executeFixtureAudioExpertCase(const TestCaseDefinition& def) {
+    const bool softwareOk = def.send.channel == TestCaseSendChannel::Software;
+    const bool legacyFixtureOk = def.send.channel == TestCaseSendChannel::Fixture
+        && def.send.fixtureProtocol == TestCaseFixtureProtocol::AudioExpert;
+    if (!softwareOk && !legacyFixtureOk) {
+        showlog(QStringLiteral("AudioExpert 请选通道「软件通信」"));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+    AudioExpertCmd cmd;
+    if (!cmdEnumFromName(AudioExpertCmdCatalog::catalog(), def.send.deviceCmd, cmd)) {
+        showlog(QStringLiteral("未知 AudioExpert 指令：%1").arg(def.send.deviceCmd));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+    if (!AudioExpertCmdCatalog::catalog().isCmdForAction(static_cast<int>(cmd), def.send.action)) {
+        showlog(QStringLiteral("AudioExpert 指令与操作方式不匹配（请选「读取」）：%1").arg(def.send.deviceCmd));
+        markActiveTestCaseStepDone(false, def.send.deviceCmd, QStringLiteral("失败"));
+        return;
+    }
+
+    QVariantMap map;
+    if (def.send.param.canConvert<QVariantMap>())
+        map = resolveTestCaseSendParamTree(def.send.param).toMap();
+    const QString host = map.value(QStringLiteral("host"), QStringLiteral("127.0.0.1")).toString().trimmed();
+    const int port = map.value(QStringLiteral("port"), 0).toInt();
+    const QString command = map.value(QStringLiteral("command"), QStringLiteral("$test#")).toString().trimmed();
+    const int connectTimeoutMs = qBound(200, map.value(QStringLiteral("connectTimeoutMs"), 3000).toInt(), 60000);
+    int readTimeoutMs = map.value(QStringLiteral("readTimeoutMs"), 0).toInt();
+    if (readTimeoutMs <= 0)
+        readTimeoutMs = TestCaseRunner::commandTimeoutMs(def);
+    if (readTimeoutMs < 1000)
+        readTimeoutMs = 120000;
+    const QString requireOkText = map.value(QStringLiteral("requireOk"), QStringLiteral("1")).toString().trimmed();
+    const bool requireOk =
+        !(requireOkText == QLatin1String("0") || requireOkText.compare(QLatin1String("false"), Qt::CaseInsensitive) == 0);
+    if (port <= 0) {
+        showlog(QStringLiteral("AudioExpert TCP：请在参数填写 port（Remote 通讯端口号）"));
+        markActiveTestCaseStepDone(false, QStringLiteral("未配置端口"), QStringLiteral("失败"));
+        return;
+    }
+
+    showlog(QStringLiteral("AudioExpert TCP：连接 %1:%2，指令=%3，读超时=%4ms")
+                .arg(host)
+                .arg(port)
+                .arg(command.isEmpty() ? QStringLiteral("$test#") : command)
+                .arg(readTimeoutMs));
+
+    AudioExpertTcp::RunResult result;
+    QString err;
+    const bool ok =
+        AudioExpertTcp::runTest(host, port, command, connectTimeoutMs, readTimeoutMs, requireOk, &result, &err);
+
+    ProtocolAudioExpertData data;
+    data.pass = (ok && result.pass) ? 1 : 0;
+    data.result = result.result;
+    data.status = result.status;
+    data.ackLine = result.ackLine;
+    data.testOverLine = result.testOverLine;
+    data.dataText = result.dataChunks.join(QLatin1Char('\n'));
+    data.measures = result.measures.isEmpty() ? AudioExpertTcp::parseMeasureItems(result.dataChunks) : result.measures;
+    data.itemCount = data.measures.size();
+    if (!data.measures.isEmpty())
+        data.transmitId = data.measures.first().transmitId;
+
+    QStringList summaryParts;
+    for (int i = 0; i < data.measures.size(); ++i) {
+        const AudioExpertTcp::MeasureItem& m = data.measures.at(i);
+        const QString numText = m.hasValue ? QString::number(m.value, 'g', 12) : QStringLiteral("-");
+        summaryParts.append(QStringLiteral("%1=%2").arg(m.metricName.isEmpty() ? QStringLiteral("?") : m.metricName, numText));
+        if (i == 0) {
+            data.value = m.value;
+            data.unit = m.unit;
+            data.metricName = m.metricName;
+        } else if (i == 1) {
+            data.value2 = m.value;
+            data.unit2 = m.unit;
+            data.metricName2 = m.metricName;
+        } else if (i == 2) {
+            data.value3 = m.value;
+            data.unit3 = m.unit;
+            data.metricName3 = m.metricName;
+        } else if (i == 3) {
+            data.value4 = m.value;
+            data.unit4 = m.unit;
+            data.metricName4 = m.metricName;
+        }
+    }
+    data.itemsSummary = summaryParts.join(QStringLiteral("; "));
+
+    if (!ok) {
+        TestResult = failValue;
+        const QString failMsg = err.isEmpty() ? result.failReason : err;
+        showlog(QStringLiteral("AudioExpert TCP 失败：%1").arg(failMsg));
+        const QVariant failPayload = QVariant::fromValue(data);
+        if (activeTestCase_.gate.enabled) {
+            evaluateActiveTestCaseGate(QStringLiteral("ProtocolAudioExpertData"), failPayload);
+            return;
+        }
+        if (!data.measures.isEmpty()) {
+            bool uiPass = false;
+            QString uiDetail;
+            emitAudioExpertMeasureTableRows(failPayload, {}, uiPass, uiDetail);
+        }
+        markActiveTestCaseStepDone(false, failMsg, QStringLiteral("失败"));
+        return;
+    }
+
+    if (!result.ackLine.isEmpty())
+        showlog(QStringLiteral("AudioExpert 应答：%1").arg(result.ackLine));
+    const QString summary = result.testOverLine.isEmpty() ? QStringLiteral("OK") : result.testOverLine;
+    showlog(QStringLiteral("AudioExpert TCP 完成：%1").arg(summary));
+    if (!data.itemsSummary.isEmpty())
+        showlog(QStringLiteral("AudioExpert 解析：%1").arg(data.itemsSummary));
+    for (const AudioExpertTcp::MeasureItem& m : data.measures) {
+        showlog(QStringLiteral("AudioExpert 项：id=%1 info=%2 量=%3 值=%4 单位=%5 结果=%6")
+                    .arg(m.transmitId, m.dataInfo, m.metricName,
+                         m.hasValue ? QString::number(m.value, 'g', 12) : QStringLiteral("-"), m.unit, m.testResult));
+    }
+    if (!data.dataText.isEmpty())
+        showlog(QStringLiteral("AudioExpert 测试数据原文：%1").arg(data.dataText));
+
+    const QVariant payload = QVariant::fromValue(data);
+    if (activeTestCase_.gate.enabled) {
+        evaluateActiveTestCaseGate(QStringLiteral("ProtocolAudioExpertData"), payload);
+        return;
+    }
+    // 无卡控：结果表仍按 Data Info / 数值+单位 分行显示
+    bool uiPass = true;
+    QString uiDetail;
+    emitAudioExpertMeasureTableRows(payload, {}, uiPass, uiDetail);
+    const QString display = uiDetail.isEmpty() ? (data.itemsSummary.isEmpty() ? summary : data.itemsSummary) : uiDetail;
+    markActiveTestCaseStepDone(true, display, QStringLiteral("通过"));
 }
 
 void QFreeWork::executeProductSerialCase(const TestCaseDefinition& def) {

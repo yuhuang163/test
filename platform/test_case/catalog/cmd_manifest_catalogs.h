@@ -30,6 +30,14 @@ class VesLightCmdManifestCatalog : public CmdManifestCatalog {
     static CmdManifestRegistry::Policy vesLightPolicy();
 };
 
+class AudioExpertCmdManifestCatalog : public CmdManifestCatalog {
+  public:
+    AudioExpertCmdManifestCatalog();
+
+  private:
+    static CmdManifestRegistry::Policy audioExpertPolicy();
+};
+
 class Asd9026aCmdManifestCatalog : public CmdManifestCatalog {
   public:
     Asd9026aCmdManifestCatalog();
@@ -44,6 +52,14 @@ class XwdRawFixtureCmdManifestCatalog : public CmdManifestCatalog {
 
   private:
     static CmdManifestRegistry::Policy xwdPolicy();
+};
+
+class UniversalFixtureCmdManifestCatalog : public CmdManifestCatalog {
+  public:
+    UniversalFixtureCmdManifestCatalog();
+
+  private:
+    static CmdManifestRegistry::Policy universalPolicy();
 };
 
 class JieliBtBoxCmdManifestCatalog : public CmdManifestCatalog {

@@ -183,9 +183,11 @@ void writeGenericHookSendParamMap(QSettings& ini, const TestCaseDefinition& def)
         DeviceCmd cmd;
         if (!cmdEnumFromName(DeviceCmdCatalog::catalog(), def.send.deviceCmd, cmd))
             writeSendParamMap(ini, map);
-    } else if (def.send.channel == TestCaseSendChannel::Fixture
-               && (FixturePcbaCmdCatalog::isScreenCameraFixture(def.send.fixtureProtocol)
-                   || def.send.fixtureProtocol == TestCaseFixtureProtocol::VesLight)) {
+    } else if (def.send.channel == TestCaseSendChannel::Software
+               || (def.send.channel == TestCaseSendChannel::Fixture
+                   && (def.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera
+                       || def.send.fixtureProtocol == TestCaseFixtureProtocol::VesLight
+                       || def.send.fixtureProtocol == TestCaseFixtureProtocol::AudioExpert))) {
         writeSendParamMap(ini, map);
     }
 }

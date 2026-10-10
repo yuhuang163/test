@@ -1,4 +1,4 @@
-﻿#Requires -Version 5.1
+#Requires -Version 5.1
 <#
 .SYNOPSIS
     从协议 Markdown 发布到飞书（native 转换 + 表格列宽 + 高亮块），并自动授权。
