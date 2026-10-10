@@ -420,9 +420,11 @@ QJsonObject bydmes::buildBydSerializableStartCollectCompleteParam(const MesPacke
     // OSFC：pack.sn 在 BYD 自由工站收尾时已锁定为开局 PCBA 过程码
     param[QStringLiteral("OSFC")] = pack.sn.trimmed();
     QJsonArray nsfc;
-    // NSFC：复用 itemvalue 中「写入SN码/获取整机SN码」步骤上报的分项值
-    static const QStringList kWholeSnMesNames = {QStringLiteral("SN_WRITE_TAIL"), QStringLiteral("TAIL_SN_READ"),
-                                                 QStringLiteral("整机SN码")};
+    // NSFC：原认 MesTag（SN_WRITE_TAIL/TAIL_SN_READ）与结果表「整机SN码」；
+    // 自由工站 appendTestCaseMes 现多用中文 DisplayName，故一并兼容「写入SN码/获取整机SN码」
+    static const QStringList kWholeSnMesNames = {
+        QStringLiteral("SN_WRITE_TAIL"), QStringLiteral("TAIL_SN_READ"), QStringLiteral("整机SN码"),
+        QStringLiteral("写入SN码"),       QStringLiteral("获取整机SN码")};
     QString wholeSn;
     const QVector<TestDataItem> testDataItems = parseTestDataItems(pack);
     for (const QString& preferName : kWholeSnMesNames) {
