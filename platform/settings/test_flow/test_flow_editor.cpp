@@ -3,6 +3,7 @@
 #include "test_case.h"
 #include "test_case_edit_dialog.h"
 #include "test_case_sync_service.h"
+#include "test_case_policy_service.h"
 #include "box_base.h"
 
 #include "Abini.h"
@@ -1510,6 +1511,8 @@ bool TestFlowEditor::saveStationFlow(const QString& stationKey) {
     persistSelectedStation(key);
     lastLoadedStationKey_ = key;
     updateSavedSnapshot();
+    // UI 改流程后清「已同步洁净」缓存，量产开测须重新对齐正式版
+    TestCasePolicyService::markDirtyAfterUiEdit(key);
     return true;
 }
 
