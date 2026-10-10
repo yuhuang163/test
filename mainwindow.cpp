@@ -1213,16 +1213,16 @@ void MainWindow::logExtraProtocolReport(const QString& reportType, const QVarian
         else
             head = QStringLiteral("次数=%1 ").arg(d.agingCount);
         showlog(QStringLiteral("老化历史：%1电池最高温=%2℃ 法兰最高温=%3℃ 堵转次数=%4 阈值=%5 电流=[%6,%7,%8,%9,%10]")
-                    .arg(head)
-                    .arg(d.batteryMaxTempC)
-                    .arg(d.flangeMaxTempC)
-                    .arg(d.stallCount)
-                    .arg(d.stallThreshold)
-                    .arg(d.stallCurrents[0])
-                    .arg(d.stallCurrents[1])
-                    .arg(d.stallCurrents[2])
-                    .arg(d.stallCurrents[3])
-                    .arg(d.stallCurrents[4]));
+                .arg(head)
+                .arg(d.batteryMaxTempC)
+                .arg(d.flangeMaxTempC)
+                .arg(d.stallCount)
+                .arg(d.stallThreshold)
+                .arg(d.stallCurrents[0])
+                .arg(d.stallCurrents[1])
+                .arg(d.stallCurrents[2])
+                .arg(d.stallCurrents[3])
+                .arg(d.stallCurrents[4]));
         return;
     }
     if (reportType == QLatin1String("ProtocolAiotCycleReportData")

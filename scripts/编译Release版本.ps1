@@ -37,7 +37,11 @@ function Find-QtDir {
         "E:\Qt\5.15.2\msvc2019_64"
     )
     foreach ($c in $candidates) {
-        if (Test-Path (Join-Path $c "bin\qmake.exe")) { return $c }
+        try {
+            if (Test-Path -LiteralPath (Join-Path $c "bin\qmake.exe")) { return $c }
+        } catch {
+            continue
+        }
     }
     return "D:\Qt\5.15.2\msvc2019_64"
 }

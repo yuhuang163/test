@@ -77,11 +77,12 @@ FactoryCloudClient::ApiResult parseEnvelope(const QByteArray& body, int httpStat
     return result;
 }
 
-QByteArray waitReply(QNetworkReply* reply, QString* qtError, int* httpStatus) {
+QByteArray waitReply(QNetworkReply* reply, QString* qtError, int* httpStatus, int timeoutMs = -1) {
+    const int waitMs = timeoutMs > 0 ? timeoutMs : kHttpTimeoutMs;
     QEventLoop loop;
     QTimer timer;
     timer.setSingleShot(true);
-    timer.setInterval(kHttpTimeoutMs);
+    timer.setInterval(waitMs);
     QObject::connect(&timer, &QTimer::timeout, &loop, &QEventLoop::quit);
     QObject::connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
     QObject::connect(reply, QOverload<const QList<QSslError>&>::of(&QNetworkReply::sslErrors), reply,
@@ -225,7 +226,9 @@ void FactoryCloudClient::applyFactoryHeaders(QNetworkRequest& request, bool json
     }
 }
 
-FactoryCloudClient::ApiResult FactoryCloudClient::get(const QString& path, const QUrlQuery& query) {
+FactoryCloudClient::ApiResult FactoryCloudClient::get(const QString& path, const QUrlQuery& query,
+                                                      int timeoutMs) {
+    const int waitMs = timeoutMs > 0 ? timeoutMs : kHttpTimeoutMs;
     QUrl url(apiRoot() + path);
     if (!query.isEmpty()) {
         url.setQuery(query);
@@ -234,12 +237,12 @@ FactoryCloudClient::ApiResult FactoryCloudClient::get(const QString& path, const
     QNetworkRequest request(url);
     applyFactoryHeaders(request, false);
 #if QT_VERSION >= QT_VERSION_CHECK(5, 15, 0)
-    request.setTransferTimeout(kHttpTimeoutMs);
+    request.setTransferTimeout(waitMs);
 #endif
     QNetworkReply* reply = manager.get(request);
     QString qtError;
     int httpStatus = 0;
-    const QByteArray body = waitReply(reply, &qtError, &httpStatus);
+    const QByteArray body = waitReply(reply, &qtError, &httpStatus, waitMs);
     const bool netOk = reply->error() == QNetworkReply::NoError;
     reply->deleteLater();
     if (!netOk && body.isEmpty()) {

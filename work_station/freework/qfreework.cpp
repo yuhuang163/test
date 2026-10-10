@@ -10,10 +10,13 @@
 #include "screen_inspect_gige_capture.h"
 #include "serial_channel.h"
 #include "test_case.h"
+#include "test_case_policy_service.h"
 #include "test_case_store.h"
 #include "plc_station_sync_barrier.h"
 
 #include <QMessageBox>
+#include <QInputDialog>
+#include <QLineEdit>
 #include <QCloseEvent>
 #include <QPushButton>
 #include <QAbstractButton>
@@ -1087,6 +1090,60 @@ void QFreeWork::logCurrentUiMesConfig(const QString& phase) {
 }
 
 void QFreeWork::beginUiStartTest() {
+    if (isTestContinue)
+        return;
+    // 扫 SN→解析 MAC→回车走本函数，不经 startTest；卡控必须放在这里
+    {
+        // 嵌套事件循环期间仍可再按回车；禁止重入，避免策略请求堆死 API
+        static bool s_startGateBusy = false;
+        if (s_startGateBusy)
+            return;
+        s_startGateBusy = true;
+        const QString stationKey = activeFlowStationKey_.isEmpty()
+                                       ? TestCaseStore::loadSelectedFlowStationKey()
+                                       : activeFlowStationKey_;
+        const QString stationName = TestCaseStore::flowStationDisplayName(stationKey);
+        TestCasePolicyService::GateResult gate =
+            TestCasePolicyService::evaluateStartGate(stationKey, stationName);
+        if (!gate.allowed) {
+            showlog(gate.message);
+            QMessageBox box(QMessageBox::Warning, QStringLiteral("量产用例卡控"), gate.message,
+                            QMessageBox::NoButton, this);
+            QPushButton* exemptBtn =
+                box.addButton(QStringLiteral("输入豁免码"), QMessageBox::AcceptRole);
+            QPushButton* cancelBtn = box.addButton(QStringLiteral("取消"), QMessageBox::RejectRole);
+            box.setDefaultButton(cancelBtn);
+            box.exec();
+            if (box.clickedButton() != exemptBtn) {
+                s_startGateBusy = false;
+                return;
+            }
+            bool ok = false;
+            QString code =
+                QInputDialog::getText(this, QStringLiteral("临时豁免"),
+                                      QStringLiteral("请输入网页生成的豁免码："), QLineEdit::Normal,
+                                      QString(), &ok)
+                    .trimmed();
+            if (!ok || code.isEmpty()) {
+                s_startGateBusy = false;
+                return;
+            }
+            gate = TestCasePolicyService::evaluateStartGate(stationKey, stationName, &code);
+            if (!gate.allowed) {
+                QMessageBox::warning(this, QStringLiteral("量产用例卡控"), gate.message);
+                showlog(gate.message);
+                s_startGateBusy = false;
+                return;
+            }
+        }
+        s_startGateBusy = false;
+        if (gate.warningOnly && !gate.message.isEmpty()) {
+            QMessageBox::information(this, QStringLiteral("试产用例提示"), gate.message);
+            showlog(gate.message);
+        } else if (!gate.message.isEmpty()) {
+            showlog(gate.message);
+        }
+    }
     if (!dongleSerialPort->isOpen())
         on_connectButton_clicked();
     if (pack.factory == "lx" || pack.factory == "jj") {
