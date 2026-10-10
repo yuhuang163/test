@@ -1,4 +1,5 @@
 #include "test_base.h"
+#include "application_shutdown.h"
 #include "box_base.h"
 #include "qprotocol_types.h"
 #include "modbus_types.h"
@@ -782,14 +783,14 @@ void test_base::pumpSiblingStartTasksWhileWaiting() {
 void test_base::waitWork(int ms) {
     QTime t;
     t.start();
-    while (t.elapsed() < ms && isTestContinue) {
+    while (t.elapsed() < ms && isTestContinue && !ApplicationShutdown::isExiting()) {
         pumpSiblingStartTasksWhileWaiting();
         QCoreApplication::processEvents();
     }
 }
 
 void test_base::waitWorkIdle(int ms) {
-    if (ms <= 0 || !isTestContinue) {
+    if (ms <= 0 || !isTestContinue || ApplicationShutdown::isExiting()) {
         pumpSiblingStartTasksWhileWaiting();
         QCoreApplication::processEvents();
         return;
@@ -806,7 +807,8 @@ void test_base::waitWorkIdle(int ms) {
     poll.setInterval(pollMs);
     QObject::connect(&poll, &QTimer::timeout, &loop, [this, &loop]() {
         pumpSiblingStartTasksWhileWaiting();
-        if (!isTestContinue)
+        // 叉窗后立刻跳出，避免嵌套 loop.exec 把进程留在后台
+        if (!isTestContinue || ApplicationShutdown::isExiting())
             loop.quit();
     });
     done.start(ms);
