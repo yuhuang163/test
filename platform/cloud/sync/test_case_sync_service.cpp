@@ -4,6 +4,7 @@
 
 #include "auth_service.h"
 #include "factory_cloud_client.h"
+#include "test_case_policy_service.h"
 #include "test_data_upload_service.h"
 #include "qlog.h"
 
@@ -28,6 +29,7 @@
 #include <QMetaObject>
 #include <QSet>
 #include <QSettings>
+#include <QVariantMap>
 #include <QSysInfo>
 #include <QThread>
 #include <QTimer>
@@ -338,6 +340,13 @@ int bumpProfileVersion(const QString& profileIniPath) {
     return next;
 }
 
+static void writeProfileVersion(const QString& profileIniPath, int version) {
+    QSettings meta(profileIniPath, QSettings::IniFormat);
+    meta.setIniCodec("UTF-8");
+    meta.setValue(QStringLiteral("Profile/ProfileVersion"), qMax(1, version));
+    meta.sync();
+}
+
 bool ensureCloudReady(QString* message) {
     if (AuthService::isOfflineSession()) {
         if (message) {
@@ -442,14 +451,19 @@ TestCaseSyncService::SyncResult TestCaseSyncService::uploadStationProfile(const 
     }
 
     const QString profileIni = TestCasePaths::profileMetaPath(uploadKey);
-    // 主动上传时本地草稿号 +1（仅作草稿痕迹）；正式号在网页合入时由服务器重写
-    const int profileVersion =
-        isPull ? readProfileVersion(profileIni) : bumpProfileVersion(profileIni);
+    // 主动上传：成功后再保留草稿号 +1；失败回滚，不得改 ProfileVersion
+    const int previousVersion = readProfileVersion(profileIni);
+    const int profileVersion = isPull ? previousVersion : bumpProfileVersion(profileIni);
 
+    // 上传 zip 不含本机 [Policy]（豁免码/脏标记等），打包后再写回
+    const QVariantMap detachedPolicy = TestCasePolicyService::detachPolicyForUpload(uploadKey);
     QString zipError;
     const QString zipPath =
         compressDirectoryContents(profileDir, QStringLiteral("profile_%1").arg(uploadKey), &zipError);
+    TestCasePolicyService::reattachPolicyAfterUpload(uploadKey, detachedPolicy);
     if (zipPath.isEmpty()) {
+        if (!isPull)
+            writeProfileVersion(profileIni, previousVersion);
         result.message = zipError.isEmpty() ? QStringLiteral("打包工站 Profile 失败") : zipError;
         return result;
     }
@@ -469,6 +483,8 @@ TestCaseSyncService::SyncResult TestCaseSyncService::uploadStationProfile(const 
     QFile::remove(zipPath);
 
     if (!api.ok) {
+        if (!isPull)
+            writeProfileVersion(profileIni, previousVersion);
         result.message = api.message.isEmpty() ? QStringLiteral("上传失败") : api.message;
         return result;
     }
@@ -496,6 +512,7 @@ TestCaseSyncService::SyncResult TestCaseSyncService::uploadStationProfile(const 
     }
     result.message +=
         QStringLiteral("（本地草稿号 %1；网页合入后会由服务器分配正式 ProfileVersion）").arg(result.profileVersion);
+    TestCasePolicyService::markPendingAfterUpload(uploadKey);
     return result;
 }
 
@@ -860,6 +877,8 @@ TestCaseSyncService::SyncResult TestCaseSyncService::syncStationFromCloud(const 
     if (!alignDetail.isEmpty()) {
         result.message += QStringLiteral("；%1").arg(alignDetail);
     }
+    TestCasePolicyService::markSyncedClean(
+        key, manifest.data.value(QStringLiteral("contentFingerprint")).toString(), bundleVersion);
     return result;
 }
 
