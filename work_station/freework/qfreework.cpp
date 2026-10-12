@@ -1137,12 +1137,9 @@ void QFreeWork::beginUiStartTest() {
             }
         }
         s_startGateBusy = false;
-        if (gate.warningOnly && !gate.message.isEmpty()) {
-            QMessageBox::information(this, QStringLiteral("试产用例提示"), gate.message);
+        // 试产告警只打本地日志，不弹窗打断开测
+        if (!gate.message.isEmpty())
             showlog(gate.message);
-        } else if (!gate.message.isEmpty()) {
-            showlog(gate.message);
-        }
     }
     if (!dongleSerialPort->isOpen())
         on_connectButton_clicked();
