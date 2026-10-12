@@ -1137,12 +1137,9 @@ void QFreeWork::beginUiStartTest() {
             }
         }
         s_startGateBusy = false;
-        if (gate.warningOnly && !gate.message.isEmpty()) {
-            QMessageBox::information(this, QStringLiteral("试产用例提示"), gate.message);
+        // 试产告警只打本地日志，不弹窗打断开测
+        if (!gate.message.isEmpty())
             showlog(gate.message);
-        } else if (!gate.message.isEmpty()) {
-            showlog(gate.message);
-        }
     }
     if (!dongleSerialPort->isOpen())
         on_connectButton_clicked();
@@ -2480,9 +2477,8 @@ void QFreeWork::saveSuctionCurveImageForUpload() {
 
     const QString dir = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("suction_chart"));
     QDir().mkpath(dir);
-    const QString stamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss_zzz"));
-    const QString curvePath = dir + QLatin1Char('/') + stamp + QStringLiteral("_s") + QString::number(getIndex())
-                              + QStringLiteral("_suction_curve.jpg");
+    const QString stamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss"));
+    const QString curvePath = dir + QLatin1Char('/') + stamp + QStringLiteral("_suction_curve.jpg");
 
     // 生成高清晰度（1000x450）吸力曲线并存为 JPEG，注册到云端上报清单
     QPixmap pix = suctionPlot_->toPixmap(1000, 450, 1.0);
