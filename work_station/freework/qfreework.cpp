@@ -2480,8 +2480,9 @@ void QFreeWork::saveSuctionCurveImageForUpload() {
 
     const QString dir = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("suction_chart"));
     QDir().mkpath(dir);
-    const QString stamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss"));
-    const QString curvePath = dir + QLatin1Char('/') + stamp + QStringLiteral("_suction_curve.jpg");
+    const QString stamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss_zzz"));
+    const QString curvePath = dir + QLatin1Char('/') + stamp + QStringLiteral("_s") + QString::number(getIndex())
+                              + QStringLiteral("_suction_curve.jpg");
 
     // 生成高清晰度（1000x450）吸力曲线并存为 JPEG，注册到云端上报清单
     QPixmap pix = suctionPlot_->toPixmap(1000, 450, 1.0);

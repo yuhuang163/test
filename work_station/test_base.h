@@ -279,6 +279,7 @@ class test_base : public QWidget {
     virtual void refreshLedControlState(ProtocolLedControlData) {}
     virtual void refreshPressSensorData(ProtocolPressSampleData) {}
     virtual void refreshAirPressureSampleData(ProtocolAirPressureSampleData) {}
+    virtual void refreshAlgoFusionResult(ProtocolAlgoFusionResultData) {}
     virtual void refreshAmplitudeData(QString) {}
     virtual void refreshButton(ProtocolButtonStateData) {}
     virtual void refreshBrushControlState(ProtocolBrushControlData) {}

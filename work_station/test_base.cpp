@@ -892,6 +892,9 @@ void test_base::onProtocolReport(const ProtocolReport& report) {
         refreshPressSensorData(payload.value<ProtocolPressSampleData>());
     } else if (reportType == "ProtocolAirPressureSampleData" && payload.canConvert<ProtocolAirPressureSampleData>()) {
         refreshAirPressureSampleDataAndLegacy(payload.value<ProtocolAirPressureSampleData>());
+    } else if (reportType == QLatin1String("ProtocolAlgoFusionResultData")
+               && payload.canConvert<ProtocolAlgoFusionResultData>()) {
+        refreshAlgoFusionResult(payload.value<ProtocolAlgoFusionResultData>());
     } else if (reportType == "ProtocolBrushControlData" && payload.canConvert<ProtocolBrushControlData>()) {
         refreshBrushControlState(payload.value<ProtocolBrushControlData>());
     } else if (reportType == "ProtocolLedControlData" && payload.canConvert<ProtocolLedControlData>()) {

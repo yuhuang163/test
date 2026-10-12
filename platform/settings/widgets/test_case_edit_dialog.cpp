@@ -855,6 +855,9 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
         if (cmdName == QLatin1String("CompensationSet")) {
             return QVariantMap{{QStringLiteral("enable"), QStringLiteral("1")}};
         }
+        if (cmdName == QLatin1String("AlgoResultReportSet")) {
+            return QVariantMap{{QStringLiteral("enable"), QStringLiteral("1")}};
+        }
         if (cmdName == QLatin1String("BtSignalMode") || cmdName == QLatin1String("BtNoSignalMode")
             || cmdName == QLatin1String("BtFreqMode")) {
             return QVariantMap{{QStringLiteral("enter"), QStringLiteral("1")}};

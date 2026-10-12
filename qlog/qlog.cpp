@@ -88,6 +88,7 @@ QHash<int, QStringList> g_suctionExtraFiles;
 QHash<int, QStringList> g_screenInspectFiles;
 QHash<int, QStringList> g_suctionCurveFiles;
 QHash<int, QStringList> g_pinnedSuctionCurveFiles;
+QHash<int, QStringList> g_pinnedScreenInspectFiles;
 
 bool sessionLogEnabled() {
     return SETTINGS.value(QStringLiteral("FactoryCloud/Log/SessionLogEnabled"), true).toBool();
@@ -992,13 +993,99 @@ void Qlog::setSuctionSamples(int slot, const QVector<double>& timeSec, const QVe
     buf.ch3 = ch3;
 }
 
+static QString ensureLogResolveUniqueFilePath(const QString& dirPath, const QString& fileName) {
+    const QString first = CommonUtils::joinPath(dirPath, fileName);
+    if (!QFile::exists(first)) {
+        return first;
+    }
+    const int dot = fileName.lastIndexOf(QLatin1Char('.'));
+    const QString stem = dot > 0 ? fileName.left(dot) : fileName;
+    const QString ext = dot > 0 ? fileName.mid(dot) : QString();
+    for (int n = 1; n < 1000; ++n) {
+        const QString candidateName = stem + QLatin1Char('_') + QString::number(n) + ext;
+        const QString candidate = CommonUtils::joinPath(dirPath, candidateName);
+        if (!QFile::exists(candidate)) {
+            return candidate;
+        }
+    }
+    return first;
+}
+
+static QStringList ensureLogArtifactDurableCopies(int slot, const QStringList& srcPaths, const QString& subDir) {
+    if (srcPaths.isEmpty()) {
+        return srcPaths;
+    }
+    const QString outDirRel = QStringLiteral("所有log/") + subDir;
+    if (!CommonUtils::ensureLogDirectory(outDirRel)) {
+        return srcPaths;
+    }
+    const QString outDirAbs = QDir(QCoreApplication::applicationDirPath()).filePath(outDirRel);
+    const QString outDirNorm = QDir::fromNativeSeparators(QFileInfo(outDirAbs).absoluteFilePath());
+    const QString stamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss_zzz"));
+    QStringList durable;
+    int index = 0;
+    for (const QString& rawPath : srcPaths) {
+        const QString trimmed = rawPath.trimmed();
+        if (trimmed.isEmpty() || !QFile::exists(trimmed)) {
+            continue;
+        }
+        const QString srcAbs = QDir::fromNativeSeparators(QFileInfo(trimmed).absoluteFilePath());
+        if (srcAbs.startsWith(outDirNorm, Qt::CaseInsensitive)) {
+            if (!durable.contains(srcAbs)) {
+                durable.append(srcAbs);
+            }
+            continue;
+        }
+        ++index;
+        const QString baseName = QFileInfo(trimmed).fileName();
+        const QString outName =
+            QStringLiteral("pin_s%1_%2_%3_%4").arg(slot).arg(stamp).arg(index).arg(baseName);
+        const QString outAbs = ensureLogResolveUniqueFilePath(outDirAbs, outName);
+        if (QFile::exists(outAbs)) {
+            QFile::remove(outAbs);
+        }
+        if (!QFile::copy(trimmed, outAbs)) {
+            if (!durable.contains(srcAbs)) {
+                durable.append(srcAbs);
+            }
+            continue;
+        }
+        const QString copiedAbs = QDir::fromNativeSeparators(QFileInfo(outAbs).absoluteFilePath());
+        if (!durable.contains(copiedAbs)) {
+            durable.append(copiedAbs);
+        }
+    }
+    return durable.isEmpty() ? srcPaths : durable;
+}
+
+static void mergePinnedLogArtifactList(QHash<int, QStringList>& pinned, int slot, const QStringList& paths) {
+    if (paths.isEmpty()) {
+        return;
+    }
+    QStringList& dst = pinned[slot];
+    for (const QString& path : paths) {
+        const QString trimmed = path.trimmed();
+        if (!trimmed.isEmpty() && !dst.contains(trimmed)) {
+            dst.append(trimmed);
+        }
+    }
+}
+
 void Qlog::pinSessionUploadArtifacts(int slot) {
     QMutexLocker lock(&g_sessionMutex);
     // 活缓冲 → 钉住区；上传 take 钉住区，下一轮 initData 清活缓冲不影响
     if (g_suctionSamples.contains(slot))
         g_pinnedSuctionSamples.insert(slot, g_suctionSamples.take(slot));
-    if (g_suctionCurveFiles.contains(slot))
-        g_pinnedSuctionCurveFiles.insert(slot, g_suctionCurveFiles.take(slot));
+    if (g_suctionCurveFiles.contains(slot)) {
+        const QStringList durable =
+            ensureLogArtifactDurableCopies(slot, g_suctionCurveFiles.take(slot), QStringLiteral("吸力曲线"));
+        mergePinnedLogArtifactList(g_pinnedSuctionCurveFiles, slot, durable);
+    }
+    if (g_screenInspectFiles.contains(slot)) {
+        const QStringList durable =
+            ensureLogArtifactDurableCopies(slot, g_screenInspectFiles.take(slot), QStringLiteral("屏幕检测"));
+        mergePinnedLogArtifactList(g_pinnedScreenInspectFiles, slot, durable);
+    }
 }
 
 QString Qlog::exportSuctionSamplesCsv(const QlogSessionInfo& info, QString* error) {
@@ -1129,8 +1216,10 @@ void Qlog::addSuctionCurveImageFiles(int slot, const QStringList& absolutePaths)
         g_suctionCurveFiles.remove(slot);
         return;
     }
+    const QStringList durable =
+        ensureLogArtifactDurableCopies(slot, absolutePaths, QStringLiteral("吸力曲线"));
     QStringList& list = g_suctionCurveFiles[slot];
-    for (const QString& path : absolutePaths) {
+    for (const QString& path : durable) {
         const QString trimmed = path.trimmed();
         if (trimmed.isEmpty() || !QFile::exists(trimmed) || list.contains(trimmed)) {
             continue;
@@ -1201,8 +1290,10 @@ void Qlog::addScreenInspectImageFiles(int slot, const QStringList& absolutePaths
         g_screenInspectFiles.remove(slot);
         return;
     }
+    const QStringList durable =
+        ensureLogArtifactDurableCopies(slot, absolutePaths, QStringLiteral("屏幕检测"));
     QStringList& list = g_screenInspectFiles[slot];
-    for (const QString& path : absolutePaths) {
+    for (const QString& path : durable) {
         const QString trimmed = path.trimmed();
         if (trimmed.isEmpty() || !QFile::exists(trimmed) || list.contains(trimmed)) {
             continue;
@@ -1218,11 +1309,12 @@ QStringList Qlog::exportScreenInspectImageFiles(const QlogSessionInfo& info, QSt
     QStringList srcPaths;
     {
         QMutexLocker lock(&g_sessionMutex);
-        if (!g_screenInspectFiles.contains(info.slot)) {
+        if (g_pinnedScreenInspectFiles.contains(info.slot))
+            srcPaths = g_pinnedScreenInspectFiles.take(info.slot);
+        else if (g_screenInspectFiles.contains(info.slot))
+            srcPaths = g_screenInspectFiles.take(info.slot);
+        else
             return {};
-        }
-        // take：本轮取走，避免下一轮无拍摄时又把上一轮图传一遍
-        srcPaths = g_screenInspectFiles.take(info.slot);
     }
     if (srcPaths.isEmpty()) {
         return {};

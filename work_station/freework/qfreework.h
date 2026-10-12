@@ -645,6 +645,7 @@ class QFreeWork : public test_base {
     void refreshResultCode(ProtocolResultData data) override;
     void refreshPhotosensitiveData(ProtocolPhotosensitiveData data) override;
     void refreshAirPressureSampleData(ProtocolAirPressureSampleData data) override;
+    void refreshAlgoFusionResult(ProtocolAlgoFusionResultData data) override;
     void refreshLightCalibData(ProtocolLightCalibData data) override;
     void refreshFlangeStatus(ProtocolTypeData data) override;
     void refreshPumpStallCurrent(ProtocolPumpStallCurrentData data) override;

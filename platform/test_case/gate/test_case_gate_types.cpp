@@ -770,6 +770,14 @@ static void registerPeriphAndScreenGates() {
             .number("ledCount", &D::ledCount, "配置检测灯数", "")
             .commit();
     }
+    {
+        // 漏气状态码：0无效 1正常无漏 2微小漏 3强漏；界面/MES 分项 VALUE 只报纯数字
+        using D = ProtocolAlgoFusionResultData;
+        GateType<D>("ProtocolAlgoFusionResultData", "算法漏气")
+            .number("leakageLeft", &D::leakageLeft, "左", "")
+            .number("leakageRight", &D::leakageRight, "右", "")
+            .commit();
+    }
     // 气压采样：逐点卡控由 AIR_PRESSURE_SAMPLE Hook 执行；此处登记字段供步骤编辑器表格
     GateTypeRaw("ProtocolAirPressureSampleData", "气压采样")
         .numberWithReader("airPressureLeft", "左气压(kPa)", "kPa",
