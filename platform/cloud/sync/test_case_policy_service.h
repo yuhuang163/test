@@ -18,7 +18,7 @@ class TestCasePolicyService {
 
     struct GateResult {
         bool allowed = true;
-        /** 试产告警：允许继续，调用方弹一次提示即可 */
+        /** 试产告警：允许继续，调用方仅本地打印即可 */
         bool warningOnly = false;
         Phase phase = Phase::Trial;
         QString message;
