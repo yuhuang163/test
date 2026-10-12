@@ -479,8 +479,9 @@ GateStepDisplay GateRegistry::formatStepDisplay(const TestCaseGate& primaryGate,
                                                 bool multiFieldMode) {
     GateStepDisplay out;
     const QString unit = unitFor(reportType, primaryGate.field, payload);
-    // summary 仅用于同一步多字段卡控的步骤级展示；分项表格各行应显示当前 field 实测值
-    if (multiFieldMode && allGates.size() > 1) {
+    // summary：多字段步骤级展示；算法漏气也用左/右汇总
+    if ((multiFieldMode && allGates.size() > 1)
+        || reportType == QLatin1String("ProtocolAlgoFusionResultData")) {
         if (const GateTypeEntry* typeEntry = GateAccessorRegistry::findType(reportType)) {
             if (typeEntry->summary)
                 out.testData = typeEntry->summary(payload);

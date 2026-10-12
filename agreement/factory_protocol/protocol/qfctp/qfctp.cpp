@@ -148,7 +148,10 @@ static constexpr uint16_t kAlgoTlvSampleIntervalGet = 0x0003;
 static constexpr uint16_t kAlgoTlvSampleDataNum = 0x0004;
 static constexpr uint16_t kAlgoTlvSampleAirPressureData = 0x0005;
 static constexpr uint16_t kAlgoTlvSampleLightSensorData = 0x0006;
+static constexpr uint16_t kAlgoTlvResultReportOnoffSet = 0x0007; // RESULT_REPORT_ONOFF_SET 算法结果上报开关
+static constexpr uint16_t kAlgoTlvResultReport = 0x0008;         // RESULT_REPORT 算法结果上报 NOTIFY
 static constexpr int kAlgoAirPressureSampleSize = 24;
+static constexpr int kAlgoFusionResultSize = 48; // algo_fusion_result_t
 static uint32_t qfctpMakeResponseKey(uint16_t serviceId, uint16_t tlvType) {
     return (static_cast<uint32_t>(serviceId) << 16) | static_cast<uint32_t>(tlvType);
 }
@@ -878,6 +881,54 @@ void Qfctp::handleNotifyService(uint16_t serviceId, const uint8_t* tlvs, uint16_
                 qInfo() << "FCTP 光感上报(短包) raw=" << rawHex;
                 emitReport(QStringLiteral("ProtocolPbDate"), QString("FCTP 光感上报 raw=%1").arg(rawHex));
             }
+        } else if (serviceId == kAlgoService && type == kAlgoTlvResultReport && len >= 1) {
+            // 协议：RESULT_REPORT NOTIFY，Value[0]=组数 N，其后 N 组 algo_fusion_result_t(48B)
+            const QByteArray raw(reinterpret_cast<const char*>(value), static_cast<int>(len));
+            const QString rawHex = raw.toHex(' ').toUpper();
+            const int groupCount = static_cast<int>(value[0]);
+            ProtocolAlgoFusionResultData out;
+            out.groupCount = groupCount;
+            int left = 0;
+            int right = 0;
+            for (int i = 0; i < groupCount; ++i) {
+                const int base = 1 + i * kAlgoFusionResultSize;
+                if (base + 2 > len)
+                    break;
+                const int l = static_cast<int>(value[base]);
+                const int r = static_cast<int>(value[base + 1]);
+                // 多组取各通道最严重漏气状态，便于等到强漏
+                if (l > left)
+                    left = l;
+                if (r > right)
+                    right = r;
+            }
+            out.leakageLeft = left;
+            out.leakageRight = right;
+            const auto leakText = [](int v) -> QString {
+                switch (v) {
+                case 1:
+                    return QStringLiteral("正常无漏");
+                case 2:
+                    return QStringLiteral("微小漏");
+                case 3:
+                    return QStringLiteral("强漏");
+                default:
+                    return QStringLiteral("无效");
+                }
+            };
+            qInfo() << "FCTP 算法结果上报"
+                    << "groups=" << groupCount
+                    << "left=" << left << "(" << leakText(left) << ")"
+                    << "right=" << right << "(" << leakText(right) << ")"
+                    << "raw=" << rawHex;
+            emitReport(QStringLiteral("ProtocolPbDate"),
+                       QStringLiteral("FCTP 算法结果上报 groups=%1 left=%2(%3) right=%4(%5)")
+                           .arg(groupCount)
+                           .arg(left)
+                           .arg(leakText(left))
+                           .arg(right)
+                           .arg(leakText(right)));
+            emitReport(QStringLiteral("ProtocolAlgoFusionResultData"), QVariant::fromValue(out));
         } else {
             qDebug() << "FCTP NOTIFY" << "service=" << serviceId << "type=" << type << "len=" << len;
         }
@@ -1253,6 +1304,12 @@ bool Qfctp::getCaseAirPressureSampleInterval() {
     return sendAlgoServiceTlv(kAlgoTlvSampleIntervalGet, {}, "读取气压采样间隔");
 }
 
+bool Qfctp::setCaseAlgoResultReportOnoff(const QVariantMap& map) {
+    const uint8_t v = fctpEnterOnFlag(map);
+    return sendAlgoServiceTlv(kAlgoTlvResultReportOnoffSet, QByteArray(1, static_cast<char>(v)),
+                              v ? "开启算法结果上报" : "关闭算法结果上报");
+}
+
 bool Qfctp::setCaseChargeCurrentSet(const QVariantMap& map) {
     // 优先 currentMa；兼容 value。协议 TLV 0x0022 为 uint16 小端，单位 mA
     uint currentMa = map.value(QStringLiteral("currentMa")).toUInt();
@@ -1519,6 +1576,10 @@ void Qfctp::set(DeviceCmd cmd, const QVariant& data) {
         if (setCaseAirPressureSampleInterval(data.toMap()))
             return;
         break;
+    case DeviceCmd::AlgoResultReportSet:
+        if (setCaseAlgoResultReportOnoff(data.toMap()))
+            return;
+        break;
     case DeviceCmd::LcdColorTestMode:
         if (setCaseLcdColorTestMode(data.toMap()))
             return;
@@ -1622,6 +1683,9 @@ void Qfctp::get(DeviceCmd cmd, const QVariant& param) {
         if (getCaseAirPressureSampleInterval())
             return;
         break;
+    case DeviceCmd::AlgoResultReportWait:
+        qDebug() << "Qfctp 等待算法结果上报 NOTIFY TLV 0x0008";
+        return;
     default:
         emitReport(QStringLiteral("ProtocolPbDate"), QString("Qfctp 暂未实现/参数非法 get 命令，cmd=%1 param=%2").arg(static_cast<int>(cmd)).arg(param.toString()));
         break;

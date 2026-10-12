@@ -984,7 +984,7 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
         if (cmdName == QLatin1String("SetLcdColor")) {
             return QVariantMap{{QStringLiteral("color"), QStringLiteral("0")}};
         }
-        if (cmdName == QLatin1String("CompensationSet")) {
+        if (cmdName == QLatin1String("CompensationSet") || cmdName == QLatin1String("AlgoResultReportSet")) {
             return QVariantMap{{QStringLiteral("enable"), QStringLiteral("1")}};
         }
         if (cmdName == QLatin1String("BtSignalMode") || cmdName == QLatin1String("BtNoSignalMode")

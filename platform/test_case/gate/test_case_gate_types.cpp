@@ -820,6 +820,48 @@ static void registerPeriphAndScreenGates() {
                               return true;
                           })
         .commit();
+    {
+        using D = ProtocolAlgoFusionResultData;
+        const auto leakStatusText = [](int v) -> QString {
+            switch (v) {
+            case 1:
+                return QStringLiteral("正常无漏");
+            case 2:
+                return QStringLiteral("微小漏");
+            case 3:
+                return QStringLiteral("强漏");
+            default:
+                return QStringLiteral("无效");
+            }
+        };
+        const auto leakFmt = [leakStatusText](double v) { return leakStatusText(qRound(v)); };
+        // 卡控只暴露左/右漏气状态，最大与组数不参与分项
+        GateType<D>("ProtocolAlgoFusionResultData", "算法结果上报(漏气)")
+            .number("leakageLeft", &D::leakageLeft, "左漏气状态", "")
+            .formatValue(leakFmt)
+            .overrideText([leakStatusText](const D& d, QString* out) -> bool {
+                if (!out)
+                    return false;
+                *out = leakStatusText(d.leakageLeft);
+                return true;
+            })
+            .number("leakageRight", &D::leakageRight, "右漏气状态", "")
+            .formatValue(leakFmt)
+            .overrideText([leakStatusText](const D& d, QString* out) -> bool {
+                if (!out)
+                    return false;
+                *out = leakStatusText(d.leakageRight);
+                return true;
+            })
+            .summary([leakStatusText](const D& d) {
+                return QStringLiteral("左=%1(%2) 右=%3(%4)")
+                    .arg(d.leakageLeft)
+                    .arg(leakStatusText(d.leakageLeft))
+                    .arg(d.leakageRight)
+                    .arg(leakStatusText(d.leakageRight));
+            })
+            .commit();
+    }
 }
 
 void registerAllGateAccessorTypes() {

@@ -122,6 +122,17 @@ constexpr const char kHintPressCollect[] =
 constexpr const char kHintPressSampleIntervalSet[] =
     u8"Qfctp ALGO TLV 0x0001：Param_intervalMs 或 Param_value，单位 ms\r\n"
     u8"示例：Param_intervalMs=50 / 100 / 200 / 500 / 1000";
+constexpr const char kHintAlgoResultReportSet[] =
+    u8"Qfctp ALGO TLV 0x0007 RESULT_REPORT_ONOFF_SET：算法结果上报开关\r\n"
+    u8"Param_enable/on/enter/value=1 开启上报，0 关闭\r\n"
+    u8"示例：Param_enable=1\r\n"
+    u8"应答：业务值 1 成功 / 0 失败，错误码 0 成功";
+constexpr const char kHintAlgoResultReportWait[] =
+    u8"Qfctp ALGO NOTIFY TLV 0x0008 RESULT_REPORT：等待算法结果上报（不发令）\r\n"
+    u8"须先 AlgoResultReportSet 开启；固件缓冲多组后上报\r\n"
+    u8"漏气状态：无效 / 正常无漏 / 微小漏 / 强漏\r\n"
+    u8"分项卡控：Field=multi，Item1=leakageLeft、Item2=leakageRight\r\n"
+    u8"示例：Expected=强漏（左右都监控到强漏即通过）；无效上报忽略并继续等待";
 constexpr const char kHintPressSampleOnoffGet[] =
     u8"Qfctp ALGO TLV 0x0002：应答 1 字节 0=关 1=开\r\n"
     u8"卡控：ReportType=ProtocolAckData Field=ack";
@@ -459,6 +470,10 @@ const Row kRows[] = {
      "ProtocolAirPressureSampleData", "airPressureLeft"},
     {DeviceCmd::PressSampleIntervalSet, "PressSampleIntervalSet", u8"气压采样间隔", DeviceCmdParamKind::JsonMap,
      kHintPressSampleIntervalSet, kSet},
+    {DeviceCmd::AlgoResultReportSet, "AlgoResultReportSet", u8"算法结果上报(开/关)", DeviceCmdParamKind::JsonMap,
+     kHintAlgoResultReportSet, kSet},
+    {DeviceCmd::AlgoResultReportWait, "AlgoResultReportWait", u8"等待算法结果上报", DeviceCmdParamKind::None,
+     kHintAlgoResultReportWait, kGet, "ProtocolAlgoFusionResultData", "leakageLeft"},
     {DeviceCmd::ImuCollect, "ImuCollect", u8"惯性传感器采集", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::CameraFaultDataPacket, "CameraFaultDataPacket", u8"摄像头故障数据", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::ServoMotorInfo, "ServoMotorInfo", u8"舵机信息", DeviceCmdParamKind::None, nullptr, kSet},
@@ -571,7 +586,7 @@ static QSet<QString> makeProtocolCmdNameSet(std::initializer_list<const char*> n
     return set;
 }
 
-static const QSet<QString> kQfctp = makeProtocolCmdNameSet({"FacMode", "BurningMode", "SuctionMode", "BtSignalMode", "BtNoSignalMode", "BtFreqMode", "Sleep", "WriteKey", "Sn", "FacResult", "TrimSet", "MacWrite", "NightLightSet", "LedTest", "FactoryReset", "ShipMode", "LcdBacklight", "LightReportControl", "LightCalibWrite", "ChargeCurrentSet", "CompensationSet", "PressCollect", "PressSampleIntervalSet", "LcdColorTestMode", "SetLcdColor", "BaseInfo", "SoftVersionRead", "DeviceInfo", "TrimRead", "MacRead", "TupleRead", "LightSensorInfo", "RssiRead", "KeySignalRead", "LightCalibRead", "ChargeCurrentRead", "AgingStatusRead", "FactoryDoneRead", "DeviceExceptionRead", "PeriphState", "GetBattery", "PressSampleOnoffGet", "PressSampleIntervalGet"});
+static const QSet<QString> kQfctp = makeProtocolCmdNameSet({"FacMode", "BurningMode", "SuctionMode", "BtSignalMode", "BtNoSignalMode", "BtFreqMode", "Sleep", "WriteKey", "Sn", "FacResult", "TrimSet", "MacWrite", "NightLightSet", "LedTest", "FactoryReset", "ShipMode", "LcdBacklight", "LightReportControl", "LightCalibWrite", "ChargeCurrentSet", "CompensationSet", "PressCollect", "PressSampleIntervalSet", "AlgoResultReportSet", "AlgoResultReportWait", "LcdColorTestMode", "SetLcdColor", "BaseInfo", "SoftVersionRead", "DeviceInfo", "TrimRead", "MacRead", "TupleRead", "LightSensorInfo", "RssiRead", "KeySignalRead", "LightCalibRead", "ChargeCurrentRead", "AgingStatusRead", "FactoryDoneRead", "DeviceExceptionRead", "PeriphState", "GetBattery", "PressSampleOnoffGet", "PressSampleIntervalGet"});
 static const QSet<QString> kQpb = makeProtocolCmdNameSet({"MotorCali", "WifiConnect", "CameraState", "PressCollect", "ImuCollect", "PressCaliResult", "ImuCaliResult", "NewImuCaliResult", "BaseInfo", "LocalOta", "StartOtaApp", "StartMultiBleOtaApp", "ConfigNetworkApp", "MotorDampingState", "RgbColor", "LedColor", "LedTest", "MotorTestState", "MotorCaliState", "FacResult", "ScreenColor", "ShipMode", "MotorAdcSwitch", "SetBattery", "MotorState", "MotorParam", "MotorCaliResultParam", "Music", "BurningMode", "BrushRecord", "BrushTime", "Sleep", "ForbidSleep", "ScreenCameraState", "CameraLightState", "CameraSupportState", "CameraExposureTime", "DevReset", "BrushReset", "DeviceMode", "BrushControl", "FacMode", "CameraPictureState", "Sn", "IAmApp", "WifiDisconnect", "ServoMotorInfo", "MicControl", "UploadRecordData", "SevorMotorParam", "NewWifiConnect", "GetBattery", "GetImuCaliResult", "GetPressCaliResult", "DeviceInfo", "PeriphState", "ConnectInfo", "WifiInfo", "GetServoMotorInfo", "NowMusicInfo", "SdCardInfo", "LightSensorInfo", "ButtonState", "BurshBacklog"});
 static const QSet<QString> kQroot = makeProtocolCmdNameSet({"FacMode", "LedTest", "LedColor", "MotorTestState", "RootVibration", "MacWrite", "RootPumpTestEnter", "RootPumpTestExit", "RootSuctionTest", "RootHeatLevelControl", "RootPumpControl", "Sn", "WriteKey", "BurningMode", "ShipMode", "DevReset", "RootEnterOta", "FactoryReset", "RootSystemControl", "SoftVersionRead", "BaseInfo", "MacRead", "GetBattery", "RootBatteryTempQuery", "RootFlangeQuery", "RootPumpStallCurrentQuery", "RootAgingHistoryQuery", "RootNtcQuery", "RootHeatTempQuery", "RootVibStatusQuery", "TupleRead", "ButtonState"});
 static const QSet<QString> kQroot2 = makeProtocolCmdNameSet({"Root2PoseSwitch", "Root2PoseCalib", "Root2BowlCalib", "BurningMode", "Root2ModeSet", "Root2LevelSet", "Root2PumpState", "RootPumpControl", "Root2LedControl", "LedColor", "LedTest", "RootVibration", "MotorTestState", "MacWrite", "Sn", "WriteKey", "RootSuctionTest", "ShipMode", "Root2M5Shutdown", "Root2M5Reboot", "Root2M5EnterOta", "FactoryReset", "Root2M5FactoryReset", "DevReset", "SoftVersionRead", "BaseInfo", "DeviceInfo", "Root2M5DeviceInfo", "MacRead", "Root2KeyTest", "Root2StateRead", "ButtonState", "Root2M5PumpStatus", "GetBattery", "RootPumpStallCurrentQuery", "Root2PoseAngleRead", "Root2PoseAbnormalWait", "Root2PoseSwitchRead", "Root2BowlEmptyCapRead", "Root2BowlFullCapRead", "Root2M5SnRead", "TupleRead"});

@@ -2511,8 +2511,10 @@ void QFreeWork::saveSuctionCurveImageForUpload() {
 
     const QString dir = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("suction_chart"));
     QDir().mkpath(dir);
-    const QString stamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss"));
-    const QString curvePath = dir + QLatin1Char('/') + stamp + QStringLiteral("_suction_curve.jpg");
+    // 文件名带工位号：一拖多四工位同秒收尾时避免互相覆盖同一张 jpg
+    const QString stamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss_zzz"));
+    const QString curvePath = dir + QLatin1Char('/') + stamp + QStringLiteral("_s") + QString::number(getIndex())
+                              + QStringLiteral("_suction_curve.jpg");
 
     // 生成高清晰度（1000x450）吸力曲线并存为 JPEG，注册到云端上报清单
     QPixmap pix = suctionPlot_->toPixmap(1000, 450, 1.0);
@@ -3389,7 +3391,8 @@ void QFreeWork::runScreenInspectStep() {
         forSave(report.annotated).save(dir + QStringLiteral("/last_mark.jpg"), "JPG", 85);
     if (!refMarked.isNull())
         forSave(refMarked).save(dir + QStringLiteral("/last_reference.jpg"), "JPG", 85);
-    // 步内不清理：同一次多色的 capture/mark 要留到收尾上传；整轮结束/停止测试时再 cleanupStoredImages
+    // 步内不清理：同一次多色的 capture/mark 要留到收尾；收尾 pinSessionUploadArtifacts 会先复制到
+    // 所有log/屏幕检测 再打包，避免失败人工确认弹窗后 cleanup 删源文件导致日志包缺图
     const qint64 msSave = phaseT.elapsed();
     if (!uploadImagePaths.isEmpty())
         Qlog::addScreenInspectImageFiles(getIndex(), uploadImagePaths);
