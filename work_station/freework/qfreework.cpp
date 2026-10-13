@@ -759,6 +759,12 @@ void QFreeWork::prepareAbortUploadPack(MesPacketData* abortPack) {
     } else if (ui && ui->getMac) {
         abortPack->sn = ui->getMac->text().trimmed();
     }
+    {
+        QString nsfcSn = resolvedWholeMachineSnText();
+        if (nsfcSn.isEmpty())
+            nsfcSn = resolvedExpectedTailSnText();
+        abortPack->wholeMachineSn = nsfcSn;
+    }
     if (ui && ui->macInput) {
         abortPack->mac = ui->macInput->text().trimmed();
     }
@@ -1671,6 +1677,17 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     } else {
         pack.sn = ui->getMac->text().trimmed();
         showlog(QStringLiteral("MES 过站 SFC 回退界面 SN=%1（未记录过程码）").arg(pack.sn));
+    }
+    // NSFC：与写整机 SN 同源——优先缓存 wholeMachineSn_，否则界面 SN 栏
+    {
+        QString nsfcSn = resolvedWholeMachineSnText();
+        if (nsfcSn.isEmpty())
+            nsfcSn = resolvedExpectedTailSnText();
+        pack.wholeMachineSn = nsfcSn;
+        if (!nsfcSn.isEmpty())
+            showlog(QStringLiteral("MES 序列化 NSFC（整机SN）=%1").arg(nsfcSn));
+        else
+            showlog(QStringLiteral("MES 序列化 NSFC（整机SN）为空：界面/缓存均无整机SN"));
     }
     pack.mac = ui->macInput->text().trimmed();
     pack.product = SETTINGS.value("Mes/Product_Name").toString();

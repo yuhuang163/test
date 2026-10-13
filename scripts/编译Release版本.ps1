@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     new_product_test Release build (Qt 5.15.2 MSVC2019 x64 + jom)
