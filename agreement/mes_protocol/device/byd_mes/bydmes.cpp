@@ -388,15 +388,8 @@ QJsonArray bydmes::buildBydTestDataList(const MesPacketData& pack, const QString
     return list;
 }
 
-namespace {
-
-bool isUsableBydWholeMachineSnValue(const QString& value) {
-    const QString v = value.trimmed();
-    return !v.isEmpty() && v != QStringLiteral("整机SN为空");
-}
-
 /** pack.product 优先；空则回退界面 Mes/Product_Name（与设置页产品型号下拉一致） */
-QString resolvedMesUiProductModel(const MesPacketData& pack) {
+static QString resolvedMesUiProductModel(const MesPacketData& pack) {
     QString product = pack.product.trimmed();
     if (product.isEmpty())
         product = SETTINGS.value(QStringLiteral("Mes/Product_Name")).toString().trimmed();
@@ -406,7 +399,7 @@ QString resolvedMesUiProductModel(const MesPacketData& pack) {
 }
 
 /** W1 / W1 Lite / Wellness Warm 等需走 SerializableStartCollectComplete 的界面产品型号 */
-bool isSerializableCompleteUiProductModel(const QString& product) {
+static bool isSerializableCompleteUiProductModel(const QString& product) {
     const QString p = product.trimmed();
     if (p.isEmpty())
         return false;
@@ -420,7 +413,7 @@ bool isSerializableCompleteUiProductModel(const QString& product) {
 }
 
 /** 组装蓝牙测试工站（W1 / W1 Lite / Wellness Warm 工站键或显示名） */
-bool isSerializableCompleteBluetoothTestStation() {
+static bool isSerializableCompleteBluetoothTestStation() {
     const QString stationKey =
         SETTINGS.value(QStringLiteral("TestOrderMeta/SelectedStation")).toString().trimmed();
     if (stationKey == QStringLiteral("FLOW_ST_0019") || stationKey == QStringLiteral("FLOW_ST_0032")
@@ -432,8 +425,6 @@ bool isSerializableCompleteBluetoothTestStation() {
            || stationName.contains(QStringLiteral("W1 Lite组装蓝牙测试"))
            || stationName.contains(QStringLiteral("Wellness Warm组装蓝牙测试"));
 }
-
-} // namespace
 
 /** NcComplete 不良码：忽略初始化占位 "NULL"，与 TestDataCollect ERROR_CODE 一致。 */
 static QString bydNcCodeFromPack(const MesPacketData& pack) {
@@ -462,27 +453,24 @@ QJsonObject bydmes::buildBydSerializableStartCollectCompleteParam(const MesPacke
     param[QStringLiteral("STATION")] = settingsValue(QStringLiteral("Operation"));
     param[QStringLiteral("SCHEDULING_ID")] = settingsValue(QStringLiteral("SchedulingID"));
     // OSFC：pack.sn 在 BYD 自由工站收尾时已锁定为开局 PCBA 过程码
-    param[QStringLiteral("OSFC")] = pack.sn.trimmed();
+    const QString osfc = pack.sn.trimmed();
+    param[QStringLiteral("OSFC")] = osfc;
     QJsonArray nsfc;
-    // NSFC：复用 itemvalue 中「写入SN码/获取整机SN码」步骤上报的分项值
-    static const QStringList kWholeSnMesNames = {QStringLiteral("SN_WRITE_TAIL"), QStringLiteral("TAIL_SN_READ"),
-                                                 QStringLiteral("整机SN码")};
-    QString wholeSn;
-    const QVector<TestDataItem> testDataItems = parseTestDataItems(pack);
-    for (const QString& preferName : kWholeSnMesNames) {
-        for (const TestDataItem& item : testDataItems) {
-            if (item.name.compare(preferName, Qt::CaseInsensitive) != 0)
-                continue;
-            if (!isUsableBydWholeMachineSnValue(item.value))
-                continue;
-            wholeSn = item.value.trimmed();
-            break;
-        }
-        if (!wholeSn.isEmpty())
-            break;
+    // NSFC：收尾写入的 pack.wholeMachineSn（自由工站：缓存整机 SN / 界面 SN 栏）
+    QString wholeSn = pack.wholeMachineSn.trimmed();
+    // 未换成整机 SN 时界面仍可能是过程码，与 OSFC 相同则不能当 NSFC
+    if (!wholeSn.isEmpty() && !osfc.isEmpty()
+        && wholeSn.compare(osfc, Qt::CaseInsensitive) == 0) {
+        qWarning().noquote() << QStringLiteral("BYD MES 序列化 NSFC 与 OSFC 相同（仍是过程码）=%1，视为未取到整机 SN")
+                                    .arg(wholeSn);
+        wholeSn.clear();
     }
-    if (!wholeSn.isEmpty())
+    if (!wholeSn.isEmpty()) {
         nsfc.append(wholeSn);
+        qInfo().noquote() << QStringLiteral("BYD MES 序列化 NSFC=%1 OSFC=%2").arg(wholeSn, osfc);
+    } else {
+        qWarning().noquote() << QStringLiteral("BYD MES 序列化 NSFC 未取到（pack.wholeMachineSn 空或与过程码相同）");
+    }
     param[QStringLiteral("NSFC")] = nsfc;
     return param;
 }
@@ -1137,14 +1125,19 @@ void bydmes::TestPass(MesPacketData pack) {
         const QString osfc = serialParam.value(QStringLiteral("OSFC")).toString().trimmed();
         const QJsonArray nsfcArr = serialParam.value(QStringLiteral("NSFC")).toArray();
         if (osfc.isEmpty()) {
+            qWarning().noquote() << QStringLiteral("BYD MES 序列化完成：OSFC（主板 PCBA 条码）为空");
             emit operateMesError(pack.mechines, QStringLiteral("BYD MES 序列化完成：OSFC（主板 PCBA 条码）为空"));
             return;
         }
         if (nsfcArr.isEmpty() || nsfcArr.at(0).toString().trimmed().isEmpty()) {
+            qWarning().noquote()
+                << QStringLiteral("BYD MES 序列化完成：NSFC（整机 SN）为空；请确认界面 SN 栏已有整机 SN");
             emit operateMesError(pack.mechines,
-                                 QStringLiteral("BYD MES 序列化完成：NSFC（整机 SN）为空，请确认三元组/写入整机 SN 步骤已成功"));
+                                 QStringLiteral("BYD MES 序列化完成：NSFC（整机 SN）为空，请确认界面 SN 栏已有整机 SN"));
             return;
         }
+        qInfo().noquote() << QStringLiteral("BYD MES 开始序列化完成 SerializableStartCollectComplete OSFC=%1 NSFC=%2")
+                                 .arg(osfc, nsfcArr.at(0).toString());
         if (emitIfMissingLoginClientOrNet(pack, serialParam, serialMethod)) {
             return;
         }

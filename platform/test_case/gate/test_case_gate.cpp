@@ -471,7 +471,7 @@ GateStepDisplay GateRegistry::formatStepDisplay(const TestCaseGate& primaryGate,
                                                 bool multiFieldMode) {
     GateStepDisplay out;
     const QString unit = unitFor(reportType, primaryGate.field, payload);
-    // summary 仅用于同一步多字段卡控的步骤级展示；分项表格各行应显示当前 field 实测值
+    // summary 仅多字段步骤级汇总；分项行用当前 field 实测值（漏气等上报平台要纯数字）
     if (multiFieldMode && allGates.size() > 1) {
         if (const GateTypeEntry* typeEntry = GateAccessorRegistry::findType(reportType)) {
             if (typeEntry->summary)

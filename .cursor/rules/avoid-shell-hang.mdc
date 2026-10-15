@@ -1,0 +1,28 @@
+---
+description: 避免 Agent 终端长期卡顿（僵尸进程 / 无输出空等 / 叠跑编译）
+alwaysApply: true
+---
+
+# 避免终端长期卡顿
+
+## 已踩过的坑（本仓库实测）
+
+- **无输出空等**：`git diff | head`、`py -3 scripts/convert_to_crlf.py …`、嵌套 `powershell -File 编译Release版本.ps1`、甚至 `echo hello` 都曾出现 **启动后数分钟无任何 stdout**，Shell 一直 `running`。
+- **僵尸终端堆积**：`terminals/` 里大量未结束会话会拖垮后续所有 Shell；再叠跑编译/脚本只会更卡。
+- **`python` / `py` 挂起**：Windows Store 占位或环境异常时，`convert_to_crlf.py` 可能既无输出也不退出；勿长时间干等。
+- **管道截断易挂**：`git diff … | head` 在部分环境下会卡住（pipe/缓冲）；优先用 `git diff --stat` / 限定路径、或读文件，避免 `| head`。
+
+## 必须遵守
+
+1. **先探活再重活**：同一会话若上一条 Shell **>30s 仍无任何输出**，视为卡死——**不要**再开编译/全仓 diff；先结束该任务或换短命令验证（`cmd /c echo ok`）。
+2. **禁止叠跑**：已有编译 / qmake / jom / convert 在跑时，**禁止**再开第二个同类命令。
+3. **`block_until_ms` 要匹配预期**：短命令 10–30s；Release 增量编译可 120–180s；超时无进展就停，读 `terminals/*.txt` 的 `pid`/`running_for_ms`，勿无限 Await。
+4. **CRLF 转换**：优先 `py -3 scripts/convert_to_crlf.py <路径>`；若 **15s 内无输出**，改用  
+   `perl -pi -e "s/\r?\n/\r\n/g" <文件>`（见 `CLAUDE.md`），**不要**空等 python。
+5. **编译**：日常只用 `scripts\编译Release版本.ps1 -SkipQmake`（或 `.bat`）；**一条链路跑完**再回报。勿用 `powershell -File` 再包一层导致双壳难杀。
+6. **git**：避免交互与长管道（`-i`、`| head`、巨大无路径 diff）。需要看改动时用路径限定或 `--stat`。
+7. **卡住时对用户**：一句话说清「终端无响应已中止」，列出未验证项（如未编过）；**不要**在卡死会话上继续堆命令假装在推进。
+
+## 用户侧（可选）
+
+- Agent 报终端卡死时：在任务管理器结束残留 `jom`/`cl`/`python`/`powershell`（本仓库相关），或重启 Cursor 终端会话，再让 Agent 重试**一条**编译命令。

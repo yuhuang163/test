@@ -32,7 +32,8 @@ class FactoryCloudClient {
 
     static void applyFactoryHeaders(QNetworkRequest& request, bool jsonContentType = true);
 
-    static ApiResult get(const QString& path, const QUrlQuery& query = QUrlQuery());
+    /** timeoutMs < 0 时用默认 120s；开测门禁等短交互请传较小值，避免嵌套事件循环假死 */
+    static ApiResult get(const QString& path, const QUrlQuery& query = QUrlQuery(), int timeoutMs = -1);
     static ApiResult post(const QString& path, const QJsonObject& body);
     static ApiResult uploadMultipart(const QString& path, const QString& zipPath,
                                      const QList<QPair<QString, QString>>& formFields = {});

@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     new_product_test Release build (Qt 5.15.2 MSVC2019 x64 + jom)
@@ -38,7 +38,7 @@ function Find-QtDir {
     )
     foreach ($c in $candidates) {
         try {
-            if (Test-Path -ErrorAction SilentlyContinue (Join-Path $c "bin\qmake.exe")) { return $c }
+            if (Test-Path -LiteralPath (Join-Path $c "bin\qmake.exe") -ErrorAction SilentlyContinue) { return $c }
         } catch {
             continue
         }

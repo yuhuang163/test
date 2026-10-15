@@ -431,7 +431,9 @@ typedef struct MesPacketData {
     QString action;         //动作
     int mechines;           //上位机机号
     QString line;           //线体
-    QString sn;             // sn
+    QString sn;             // sn（BYD 过站/OSFC：过程码）
+    /** 界面 SN 栏整机 SN；BYD 序列化 NSFC 用，与整机 SN 校验同源 */
+    QString wholeMachineSn;
     QString result;         //结果
     QString itemvalue;      //测试项
     QString maxValue;       // 上限

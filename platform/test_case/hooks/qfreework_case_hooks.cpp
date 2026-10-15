@@ -187,28 +187,11 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         return;
     }
     if (hookId == QStringLiteral("SN_PREFIX4_CHECK")) {
-        // 读界面 SN；再抽 URL 的 sn=，避免 http 前缀误卡（无独立 pcbaSn_ 成员）
+        // 统一读界面 SN 栏（BYD：MES 换到的主板 SN 会回填；其它厂：扫码/手输 SN）
         const QString rawSn = fw->resolvedPcbaSnText().trimmed();
         QString sn = CommonUtils::extractSnFromUrlOrText(rawSn).trimmed();
         if (sn.isEmpty())
             sn = rawSn;
-        if (fw->isBydFactory() && rawSn.isEmpty()) {
-            // BYD：界面可能是过程码；若是 URL/28/35 位整机或 PCBA，仍可用于前四位
-            const QString fromUi = CommonUtils::extractSnFromUrlOrText(
-                                       (fw->ui && fw->ui->getMac) ? fw->ui->getMac->text() : QString())
-                                       .trimmed();
-            const QString mac = fw->parseMacFromSn(fromUi);
-            const bool macOk = (mac.length() == 17 && mac.count(QLatin1Char(':')) == 5);
-            if (macOk || fromUi.length() == 28 || fromUi.length() == 35) {
-                sn = fromUi;
-            } else {
-                fw->markActiveTestCaseStepDone(false, QStringLiteral("(无PCBA SN)"), QStringLiteral("失败"));
-                fw->showlog(QStringLiteral("产品型号卡控失败：BYD 尚未拿到产品 SN（过程码不可用；URL 请含 sn=）"));
-                return;
-            }
-        } else if (fw->isBydFactory()) {
-            sn = CommonUtils::extractSnFromUrlOrText(rawSn).trimmed();
-        }
         QString expected;
         if (fw->activeTestCase().send.param.canConvert<QVariantMap>()) {
             const QVariantMap map = fw->resolveTestCaseSendParamTree(fw->activeTestCase().send.param).toMap();

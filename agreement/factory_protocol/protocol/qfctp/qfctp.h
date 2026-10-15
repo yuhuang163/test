@@ -87,6 +87,7 @@ class Qfctp : public qProtocol {
     bool setCaseChargeCurrentSet(const QVariantMap& map);
     bool setCaseAirPressureSampleOnoff(const QVariant& data);
     bool setCaseAirPressureSampleInterval(const QVariantMap& map);
+    bool setCaseAlgoResultReportOnoff(const QVariantMap& map);
     bool setCaseCompensationSet(const QVariantMap& map);
     bool setCaseLcdColorTestMode(const QVariantMap& map);
     bool setCaseSetLcdColor(const QVariantMap& map);

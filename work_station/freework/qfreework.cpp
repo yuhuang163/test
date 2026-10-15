@@ -10,10 +10,13 @@
 #include "screen_inspect_gige_capture.h"
 #include "serial_channel.h"
 #include "test_case.h"
+#include "test_case_policy_service.h"
 #include "test_case_store.h"
 #include "plc_station_sync_barrier.h"
 
 #include <QMessageBox>
+#include <QInputDialog>
+#include <QLineEdit>
 #include <QCloseEvent>
 #include <QPushButton>
 #include <QAbstractButton>
@@ -806,6 +809,12 @@ void QFreeWork::prepareAbortUploadPack(MesPacketData* abortPack) {
     } else if (ui && ui->getMac) {
         abortPack->sn = ui->getMac->text().trimmed();
     }
+    {
+        QString nsfcSn = resolvedWholeMachineSnText();
+        if (nsfcSn.isEmpty())
+            nsfcSn = resolvedExpectedTailSnText();
+        abortPack->wholeMachineSn = nsfcSn;
+    }
     if (ui && ui->macInput) {
         abortPack->mac = ui->macInput->text().trimmed();
     }
@@ -1187,6 +1196,56 @@ void QFreeWork::solveMesData(const int mechines, QString msg) {
 }
 
 void QFreeWork::beginUiStartTest() {
+    if (isTestContinue)
+        return;
+    // 扫 SN→解析 MAC→回车走本函数，不经 startTest；卡控必须放在这里
+    {
+        // 嵌套事件循环期间仍可再按回车；禁止重入，避免策略请求堆死 API
+        if (startGateBusy_)
+            return;
+        startGateBusy_ = true;
+        const QString stationKey = activeFlowStationKey_.isEmpty()
+                                       ? TestCaseStore::loadSelectedFlowStationKey()
+                                       : activeFlowStationKey_;
+        const QString stationName = TestCaseStore::flowStationDisplayName(stationKey);
+        TestCasePolicyService::GateResult gate =
+            TestCasePolicyService::evaluateStartGate(stationKey, stationName);
+        if (!gate.allowed) {
+            showlog(gate.message);
+            QMessageBox box(QMessageBox::Warning, QStringLiteral("量产用例卡控"), gate.message,
+                            QMessageBox::NoButton, this);
+            QPushButton* exemptBtn =
+                box.addButton(QStringLiteral("输入豁免码"), QMessageBox::AcceptRole);
+            QPushButton* cancelBtn = box.addButton(QStringLiteral("取消"), QMessageBox::RejectRole);
+            box.setDefaultButton(cancelBtn);
+            box.exec();
+            if (box.clickedButton() != exemptBtn) {
+                startGateBusy_ = false;
+                return;
+            }
+            bool ok = false;
+            QString code =
+                QInputDialog::getText(this, QStringLiteral("临时豁免"),
+                                      QStringLiteral("请输入网页生成的豁免码："), QLineEdit::Normal,
+                                      QString(), &ok)
+                    .trimmed();
+            if (!ok || code.isEmpty()) {
+                startGateBusy_ = false;
+                return;
+            }
+            gate = TestCasePolicyService::evaluateStartGate(stationKey, stationName, &code);
+            if (!gate.allowed) {
+                QMessageBox::warning(this, QStringLiteral("量产用例卡控"), gate.message);
+                showlog(gate.message);
+                startGateBusy_ = false;
+                return;
+            }
+        }
+        startGateBusy_ = false;
+        // 试产告警只打本地日志，不弹窗打断开测
+        if (!gate.message.isEmpty())
+            showlog(gate.message);
+    }
     if (!dongleSerialPort->isOpen())
         on_connectButton_clicked();
     if (pack.factory == "lx" || pack.factory == "jj") {
@@ -1221,7 +1280,8 @@ void QFreeWork::startTest() {
     ui->mes_state->setText(QStringLiteral("MES\n未连接 / 待获取MAC"));
     applyStatusCardStyle(ui->mes_state, QStringLiteral("idle"));
     const QString snText = ui->getMac->text().trimmed();
-    if (!snText.isEmpty()) {
+    // 扫码回车已锁定本轮过程码时不覆盖：BYD 的 SN 栏可能已被 MES 主板 SN 回填
+    if (!snText.isEmpty() && mesProcessCode_.isEmpty()) {
         mesProcessCode_ = snText;
         pack.sn = mesProcessCode_;
     }
@@ -1713,6 +1773,17 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     } else {
         pack.sn = ui->getMac->text().trimmed();
         showlog(QStringLiteral("MES 过站 SFC 回退界面 SN=%1（未记录过程码）").arg(pack.sn));
+    }
+    // NSFC：与写整机 SN 同源——优先缓存 wholeMachineSn_，否则界面 SN 栏
+    {
+        QString nsfcSn = resolvedWholeMachineSnText();
+        if (nsfcSn.isEmpty())
+            nsfcSn = resolvedExpectedTailSnText();
+        pack.wholeMachineSn = nsfcSn;
+        if (!nsfcSn.isEmpty())
+            showlog(QStringLiteral("MES 序列化 NSFC（整机SN）=%1").arg(nsfcSn));
+        else
+            showlog(QStringLiteral("MES 序列化 NSFC（整机SN）为空：界面/缓存均无整机SN"));
     }
     pack.mac = ui->macInput->text().trimmed();
     pack.product = SETTINGS.value("Mes/Product_Name").toString();
@@ -3776,7 +3847,7 @@ void QFreeWork::on_getMac_returnPressed() {
         ui->getMac->clear();
         return;
     }
-    // 开局扫码即 MES 过程码（过站 SFC），后续 MES 主板 SN / 三元组整机 SN 不得覆盖此字段
+    // 开局扫码锁定过站 SFC（过程码）；后续 MES/三元组可改界面 SN 栏，但不得改 mesProcessCode_
     mesProcessCode_ = ui->getMac->text().trimmed();
     pack.sn = mesProcessCode_;
     logCurrentUiMesConfig(QStringLiteral("扫码"));
@@ -4099,8 +4170,7 @@ void QFreeWork::getTestValue(const int mechines, const QString value) {
         showlog(QStringLiteral("MES SN 解析 MAC 成功: ") + mesmacAddress);
         // on_macInput_returnPressed();
     } else if (pack.factory.trimmed().compare(QStringLiteral("byd"), Qt::CaseInsensitive) == 0) {
-        // BYD：过程码换主板 SN 仅用于解析 MAC；界面 SN 框保持过程码，过站 SFC 用 mesProcessCode_
-        // （三元组整机 SN 仍由 setWholeMachineSn 回填界面，不在此处理）
+        // BYD：过程码换主板 SN → 回填界面（型号卡控/写 SN 等统一读 SN 栏）；过站 SFC 仍用 mesProcessCode_
         if (mechines != getIndex()) {
             return;
         }
@@ -4111,8 +4181,11 @@ void QFreeWork::getTestValue(const int mechines, const QString value) {
             showlog(value);
             return;
         }
+        if (ui && ui->getMac)
+            ui->getMac->setText(snFromMes);
         ui->macInput->setText(mesmacAddress);
-        showlog(QStringLiteral("MES 主板 SN 已解析 MAC（不回填界面 SN）：%1").arg(mesmacAddress));
+        showlog(QStringLiteral("MES 主板 SN=%1，已解析 MAC=%2（已回填界面 SN；过站仍用过程码）")
+                    .arg(snFromMes, mesmacAddress));
         on_macInput_returnPressed();
     } else {
         if (mechines == getIndex()) {

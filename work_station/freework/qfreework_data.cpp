@@ -1927,6 +1927,56 @@ void QFreeWork::refreshPhotosensitiveData(ProtocolPhotosensitiveData data) {
     evaluateActiveTestCaseGate(QStringLiteral("ProtocolPhotosensitiveData"), QVariant::fromValue(data));
 }
 
+void QFreeWork::refreshAlgoFusionResult(ProtocolAlgoFusionResultData data) {
+    if (!testCaseStepActive_ || activeTestCase_.send.deviceCmd != QStringLiteral("AlgoResultReportWait"))
+        return;
+    if (data.leakageLeft <= 0 && data.leakageRight <= 0)
+        return;
+    if (!activeTestCase_.gate.enabled
+        || activeTestCase_.gate.reportType != QStringLiteral("ProtocolAlgoFusionResultData"))
+        return;
+    if (isActiveTestCaseStepDone())
+        return;
+
+    QVector<TestCaseGate> gates = TestCaseStore::activeGatesForEvaluation(activeTestCase_);
+    if (gates.isEmpty())
+        return;
+
+    applyRuntimeSnGateExpected(gates);
+    applyRuntimePlaceholderGateExpected(gates);
+
+    bool pass = false;
+    QString detail;
+    const bool multiFieldMode = gates.size() > 1;
+    if (multiFieldMode)
+        GateRegistry::evaluateAll(gates, QStringLiteral("ProtocolAlgoFusionResultData"), QVariant::fromValue(data),
+                                  pass, detail);
+    else
+        GateRegistry::evaluate(gates.first(), QStringLiteral("ProtocolAlgoFusionResultData"), QVariant::fromValue(data),
+                               pass, detail);
+
+    // 未到「强漏」等期望前继续等；结案时再写分项表，避免中间态刷结果表
+    const bool onceOnly = activeTestCase_.timing.commandTimeoutMs <= 0;
+    if (!pass && !onceOnly) {
+        showlog(QStringLiteral("算法漏气上报未匹配期望，继续等待：%1").arg(detail));
+        return;
+    }
+
+    if (multiFieldMode)
+        emitFixtureMultiGateTableRows(gates, QStringLiteral("ProtocolAlgoFusionResultData"), QVariant::fromValue(data),
+                                      pass, detail);
+    const GateStepDisplay display =
+        GateRegistry::formatStepDisplay(gates.first(), gates, QStringLiteral("ProtocolAlgoFusionResultData"),
+                                        QVariant::fromValue(data), multiFieldMode);
+    markActiveTestCaseStepDone(pass, display.testData.isEmpty() ? detail : display.testData, display.ask);
+    if (commandRetryTimer) {
+        finishCommandRetryWait(pass, pass ? QStringLiteral("算法漏气卡控通过")
+                                          : QStringLiteral("算法漏气卡控失败：%1").arg(detail));
+    }
+    showlog(pass ? QStringLiteral("算法漏气卡控通过：%1").arg(detail)
+                 : QStringLiteral("算法漏气卡控失败：%1").arg(detail));
+}
+
 void QFreeWork::refreshAirPressureSampleData(ProtocolAirPressureSampleData data) {
     if (!airPressureCollecting_)
         return;

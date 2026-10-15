@@ -167,8 +167,10 @@ class QFreeWork : public test_base {
     QString wholeMachineSn_;
     QString transitionCode_;
     QString newSfc_;
-    /** BYD 开局扫码过程码：MES Start/Complete/AddSfcKey 的 SFC；勿被 MES 主板 SN / 三元组整机 SN 冲掉 */
+    /** BYD 开局扫码过程码：MES Start/Complete/AddSfcKey 的 SFC；界面可被 MES 主板 SN 回填，此字段不被冲掉 */
     QString mesProcessCode_;
+    /** 开测卡控嵌套事件循环期间防重入（按工位，勿用函数内 static 让多工位互相屏蔽） */
+    bool startGateBusy_ = false;
     QString macAddress = "没有mac地址";
     /** SN 前四位/型号卡控失败标记（Hook SN_PREFIX4_CHECK 与 Gate prefix4 共用） */
     bool productModelMismatch_ = false;
@@ -653,6 +655,7 @@ class QFreeWork : public test_base {
     void refreshResultCode(ProtocolResultData data) override;
     void refreshPhotosensitiveData(ProtocolPhotosensitiveData data) override;
     void refreshAirPressureSampleData(ProtocolAirPressureSampleData data) override;
+    void refreshAlgoFusionResult(ProtocolAlgoFusionResultData data) override;
     void refreshLightCalibData(ProtocolLightCalibData data) override;
     void refreshFlangeStatus(ProtocolTypeData data) override;
     void refreshPumpStallCurrent(ProtocolPumpStallCurrentData data) override;
