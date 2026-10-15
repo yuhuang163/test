@@ -771,11 +771,45 @@ static void registerPeriphAndScreenGates() {
             .commit();
     }
     {
-        // 漏气状态码：0无效 1正常无漏 2微小漏 3强漏；界面/MES 分项 VALUE 只报纯数字
+        // 漏气状态码：0无效 1正常无漏 2微小漏 3强漏
+        // 卡控/界面用中文状态；MES VALUE 在 appendMultiGate 仍取状态码数字
         using D = ProtocolAlgoFusionResultData;
+        const auto leakStatusText = [](double v) -> QString {
+            switch (qRound(v)) {
+            case 1:
+                return QStringLiteral("正常无漏");
+            case 2:
+                return QStringLiteral("微小漏");
+            case 3:
+                return QStringLiteral("强漏");
+            case 0:
+                return QStringLiteral("无效");
+            default:
+                return QString::number(qRound(v));
+            }
+        };
         GateType<D>("ProtocolAlgoFusionResultData", "算法漏气")
             .number("leakageLeft", &D::leakageLeft, "左", "")
+            .formatValue(leakStatusText)
+            .overrideText([leakStatusText](const D& d, QString* out) -> bool {
+                if (!out)
+                    return false;
+                *out = leakStatusText(static_cast<double>(d.leakageLeft));
+                return true;
+            })
             .number("leakageRight", &D::leakageRight, "右", "")
+            .formatValue(leakStatusText)
+            .overrideText([leakStatusText](const D& d, QString* out) -> bool {
+                if (!out)
+                    return false;
+                *out = leakStatusText(static_cast<double>(d.leakageRight));
+                return true;
+            })
+            .summary([leakStatusText](const D& d) {
+                return QStringLiteral("左=%1;右=%2")
+                    .arg(leakStatusText(static_cast<double>(d.leakageLeft)),
+                         leakStatusText(static_cast<double>(d.leakageRight)));
+            })
             .commit();
     }
     // 气压采样：逐点卡控由 AIR_PRESSURE_SAMPLE Hook 执行；此处登记字段供步骤编辑器表格

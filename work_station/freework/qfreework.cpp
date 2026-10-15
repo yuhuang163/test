@@ -10,6 +10,7 @@
 #include "screen_inspect_gige_capture.h"
 #include "serial_channel.h"
 #include "test_case.h"
+#include "test_case_gate_accessors.h"
 #include "test_case_policy_service.h"
 #include "test_case_store.h"
 #include "plc_station_sync_barrier.h"
@@ -549,9 +550,22 @@ void QFreeWork::appendMultiGateTestCaseMes(const QVector<TestCaseGate>& gates, c
             CommonUtils::splitMesValueAndUnit(disp.testData.trimmed(), GateRegistry::unitFor(reportType, ge.field, payload));
         QString value = mesParts.first;
         const QString unit = mesParts.second;
-        const QString cloudNum = CommonUtils::cloudUploadNumericValue(value);
-        if (!cloudNum.isEmpty())
-            value = cloudNum;
+        // 漏气等 formatValue 中文展示：MES VALUE 仍报状态码数字
+        double rawNum = 0;
+        if (GateAccessorRegistry::readNumber(reportType, ge.field, payload, &rawNum)) {
+            if (const GateFieldEntry* fe = GateAccessorRegistry::findField(reportType, ge.field);
+                fe && fe->formatValue) {
+                value = QString::number(qRound(rawNum));
+            } else {
+                const QString cloudNum = CommonUtils::cloudUploadNumericValue(value);
+                if (!cloudNum.isEmpty())
+                    value = cloudNum;
+            }
+        } else {
+            const QString cloudNum = CommonUtils::cloudUploadNumericValue(value);
+            if (!cloudNum.isEmpty())
+                value = cloudNum;
+        }
 
         QString maxVal, minVal, stdVal;
         switch (ge.op) {
