@@ -34,6 +34,9 @@ __pycache__/
 .tmp_blob_check.bin
 .tmp_*
 
+# 海康 MVS 已迁到 lib/mvs，禁止再入库旧目录
+/third_party/
+
 # 本机 Cursor 规则，仅本地保留不入库
 .cursor/rules/no-auto-compile-when-hung.mdc
 .cursor/rules/no-encoding-corruption.mdc

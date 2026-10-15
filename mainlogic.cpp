@@ -8,8 +8,11 @@
 #include "ui_mainwindow.h"
 #include <QBuffer>
 #include <QElapsedTimer>
+#include <QHeaderView>
+#include <QScrollArea>
 #include <QTimer>
 #include "dcrf32.h"
+#include <QMouseEvent>
 
 #ifdef Q_OS_WIN
 #include <windows.h>
@@ -501,8 +504,12 @@ void MainWindow::onDongleSerialFrame(const QByteArray& dataTemp) {
 
     at->parseCmd(dataTemp); // at回应用
     // 吸力/温度高频流已由 QAT 解析，跳过产测 phyRx_ 重复解包以免主线程卡顿
-    if (!shouldSkipDongleStreamUartLog(dataTemp))
+    if (!shouldSkipDongleStreamUartLog(dataTemp)) {
         protocolManager.parseCmd(dataTemp);
+        // 应用层页固定走 QaiotApp，不跟设置里的当前协议。通道 5/6/7 与产测通道分开收。
+        if (qaiotApp)
+            qaiotApp->parseCmd(dataTemp);
+    }
     getMacAddress(dataTemp); // 搜索设备用
 
     // 吸力/温度流式 AT 文本与 channel=4 二进制：协议已处理，勿刷主窗口串口 UI / 逐帧落盘
@@ -548,16 +555,17 @@ void MainWindow::enqueueDongleUiLog(const QString& line) {
 
 void MainWindow::flushDongleUiLog() {
     dongleUiLogFlushScheduled_ = false;
-    if (!ui || !ui->log)
+    if (!ui || !ui->msgEdit)
         return;
-    if (ui->log->maximumBlockCount() <= 0)
-        ui->log->setMaximumBlockCount(2000);
+    if (ui->msgEdit->maximumBlockCount() <= 0)
+        ui->msgEdit->setMaximumBlockCount(2000);
     if (dongleUiLogPending_.isEmpty())
         return;
     const QString batch = dongleUiLogPending_.join(QChar('\n'));
     dongleUiLogPending_.clear();
-    ui->log->appendPlainText(batch);
+    ui->msgEdit->appendPlainText(batch);
 }
+
 void MainWindow::solveNosiyData(QByteArray dataTemp) {
     // 假设你已经正确配置了串口并连接了 readyRead 信号到这个槽函数
     QByteArray receivedData = dataTemp; // 读取串口所有可用的数据
@@ -609,12 +617,16 @@ void MainWindow::refreshDongleUartState(int state) {
     if (state) {
         showlog("dongle串口连接成功");
         uartStatusLabel->setText("串口连接：<font color='green'>成功</font>");
+        syncConsoleConnectSeg();
+        updateConsoleConnectFlow();
 
     } else {
-        uartStatusLabel->setText("串口连接：<font color='red'>失败</font>");
+        uartStatusLabel->setText("串口连接：<font color='#d97706'>未连接</font>");
         ui->comNameCombo->setEnabled(true);
         ui->connectButton->setEnabled(true);
         showlog("dongle串口连接断开");
+        syncConsoleConnectSeg();
+        updateConsoleConnectFlow();
     }
 }
 void MainWindow::refreshImuCaliMsg(QString msg) {
@@ -1554,14 +1566,35 @@ void MainWindow::refreshWifiState(int state) {
 }
 void MainWindow::refreshBleState(int state) {
     if (state) {
+        // 兜底与 Dongle 置位顺序对齐，保证流程第 3 步立刻变「已连接」
+        if (at)
+            at->setConnected();
         bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
         showlog("蓝牙连接成功");
         protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
 
         showlog("已发送禁止休眠");
+        protocolManager.get(DeviceCmd::GetBattery);
+        protocolManager.get(DeviceCmd::RootBatteryTempQuery);
+        showlog(QStringLiteral("已请求电量与电池温度"));
+        updateConsoleConnectFlow();
     } else {
+        if (at)
+            at->resetConnected();
         bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
         qDebug() << "蓝牙连接断开";
+        if (ui && ui->consoleMetricBatteryValue)
+            ui->consoleMetricBatteryValue->setText(QStringLiteral("未读取"));
+        if (ui && ui->consoleMetricTempValue)
+            ui->consoleMetricTempValue->setText(QStringLiteral("未读取"));
+        updateConsoleConnectFlow();
+    }
+    // 右侧「设备连接」与顶栏蓝牙态同源，避免写死 Online 误导
+    if (ui && ui->consoleStatusDeviceState) {
+        ui->consoleStatusDeviceState->setText(state ? QStringLiteral("已连接") : QStringLiteral("未连接"));
+        ui->consoleStatusDeviceState->setProperty("kind", state ? QStringLiteral("on") : QStringLiteral("off"));
+        ui->consoleStatusDeviceState->style()->unpolish(ui->consoleStatusDeviceState);
+        ui->consoleStatusDeviceState->style()->polish(ui->consoleStatusDeviceState);
     }
 }
 
@@ -1632,6 +1665,10 @@ void MainWindow::refreshBattaryData(ProtocolBatteryData adc) {
     }
 
     saveBattaryDataToCsv(voltage, chargestate, charageresult, voltageresult);
+    if (ui && ui->consoleMetricBatteryValue)
+        ui->consoleMetricBatteryValue->setText(QString::number(adc.percent) + QStringLiteral("%"));
+    if (ui && ui->consoleMetricTempValue && adc.temperatureC > 0)
+        ui->consoleMetricTempValue->setText(QString::number(adc.temperatureC) + QStringLiteral(" ℃"));
 }
 
 void MainWindow::saveBattaryDataToCsv(double vol, QString charge_state, QString chares, QString volres) {
@@ -1696,22 +1733,26 @@ void MainWindow::refreshMusicState(ProtocolMusicStateData data) {
     showlog("当前曲目为：" + QString::number(data.musicState));
 }
 void MainWindow::refreshSn(ProtocolSnData data) {
+    auto fill = [this](QLineEdit* edit, const QString& value) {
+        if (edit)
+            edit->setText(value);
+    };
     switch (data.type) {
     case ProtocolSnType::BoardSn:
         qDebug() << "原始的board_sn：" << data.value;
-        board_sn->setText("板子sn:" + data.value);
+        fill(ui->sn_board, data.value);
         break;
     case ProtocolSnType::SubPid:
         qDebug() << "原始的sub_pid：" << data.value;
-        sub_pid->setText("sub_pid:" + data.value);
+        fill(ui->meta_subpid, data.value);
         break;
     case ProtocolSnType::TailSn:
         qDebug() << "原始的tail_sn：" << data.value;
-        product_sn->setText("整机sn:" + data.value);
+        fill(ui->sn_whole, data.value);
         break;
     case ProtocolSnType::SkuId:
         qDebug() << "原始的skuid：" << data.value;
-        sku_id->setText("sku:" + data.value);
+        fill(ui->meta_skuid, data.value);
         break;
     default:
         break;
@@ -1726,6 +1767,11 @@ void MainWindow::refreshMacData(ProtocolMacData data) {
     macAddress = mac;
     if (macLabel)
         macLabel->setText(QStringLiteral("蓝牙mac: ") + mac);
+    if (auto* e = findChild<QLineEdit*>(QStringLiteral("meta_mac")))
+        e->setText(mac);
+    if (ui && ui->macInput)
+        ui->macInput->setText(mac);
+    updateConsoleConnectFlow();
 }
 
 void MainWindow::refreshBleRssi(QString data) {
@@ -1786,7 +1832,8 @@ void MainWindow::refreshWifiStateData(ProtocolWifiStateData wifi) {
     showlog(wifi.wifiPassword);
 }
 void MainWindow::updateMainStyle(QString style) {
-    applyWidgetStyleSheet(this, style);
+    Q_UNUSED(style);
+    applyWidgetStyleSheet(this, QStringLiteral("console_shell.qss"));
 }
 
 void MainWindow::convertCsvToXls(const QString& csvFilename, const QString& xlsFilename) {
@@ -2457,18 +2504,21 @@ void MainWindow::refreshPbData(QString data) {
     showlog(data);
 }
 void MainWindow::refreshLogData(QString data) {
-    ui->log->appendPlainText(data);
+    if (ui && ui->msgEdit)
+        ui->msgEdit->appendPlainText(data);
 }
 
 void MainWindow::showlog(QString msg) {
-    if (!ui || !ui->msgEdit) {
-        qDebug() << "showlog: ui 或 msgEdit 未初始化";
+    if (!ui || !ui->log) {
+        qDebug() << "showlog: ui 或 log 未初始化";
         return;
     }
-    Qlog::showlog(msg, 0, ui->msgEdit);
+    Qlog::showlog(msg, 0, ui->log);
 }
 
 void MainWindow::updateComboBox() {
+    if (!ui || !ui->pick_device)
+        return;
     // 遍历设备信息，根据 rssi 的值进行过滤
     for (auto it = deviceMap.begin(); it != deviceMap.end(); ++it) {
         QString deviceAddress = it.key();
@@ -2478,12 +2528,33 @@ void MainWindow::updateComboBox() {
         // qDebug() << "设备地址：" << deviceName<<deviceAddress<<deviceRssi;
         if (deviceName.contains(ui->name_range->currentText(), Qt::CaseInsensitive)
             && deviceRssi.toInt() > ui->rssi_range->value() && deviceAddress.length() == 17) {
-            const int index = ui->pick_device->findText(deviceAddress);
-            if (index == -1) {
-                ui->pick_device->addItem(deviceAddress);
+            // 展示「名称  MAC」，UserRole 仍为纯 MAC 供连接使用
+            const QString label = deviceName.trimmed().isEmpty()
+                                     ? deviceAddress
+                                     : QStringLiteral("%1  %2").arg(deviceName.trimmed(), deviceAddress);
+            int index = -1;
+            for (int i = 0; i < ui->pick_device->count(); ++i) {
+                QListWidgetItem* row = ui->pick_device->item(i);
+                if (row && row->data(Qt::UserRole).toString() == deviceAddress) {
+                    index = i;
+                    break;
+                }
+            }
+            if (index < 0) {
+                auto* row = new QListWidgetItem(label);
+                row->setData(Qt::UserRole, deviceAddress);
+                ui->pick_device->addItem(row);
+            } else {
+                QString curText = ui->pick_device->item(index)->text();
+                const QString marker = QStringLiteral("  · 当前连接");
+                if (curText.endsWith(marker))
+                    curText.chop(marker.size());
+                if (curText != label)
+                    ui->pick_device->item(index)->setText(label);
             }
         }
     }
+    updateConsoleConnectFlow();
 }
 
 void MainWindow::scanIpPorts() {
@@ -2568,9 +2639,40 @@ void MainWindow::saveCustom() {
     SETTINGS.setValue(QString("%1/%2").arg(baseKey).arg("comName"), ui->comNameCombo->currentText());
     SETTINGS.setValue("Window/otaFilePath", ui->otaFilePath->text());
     SETTINGS.setValue("Window/otaFilePath_source", ui->otaFilePath_source->text());
+    if (ui->name_range)
+        SETTINGS.setValue(QStringLiteral("Window/DongleNameFilter"), ui->name_range->currentText().trimmed());
+    if (ui->rssi_range)
+        SETTINGS.setValue(QStringLiteral("Window/DongleRssiFilter"), ui->rssi_range->value());
 
     SETTINGS.setValue("WIFI/otaWifiName", ui->wifiUserName_2->text());
     SETTINGS.setValue("WIFI/otaWifiPassword", ui->wifiPassword_2->text());
+
+    // 关闭时再落盘导航/内层 Tab（本机 local.ini），避免未切页时丢状态
+    if (consoleNavGroup_) {
+        const int navId = consoleNavGroup_->checkedId();
+        if (navId >= 0)
+            SETTINGS.setValue(QStringLiteral("Window/ConsoleNavId"), navId);
+    }
+    auto tabName = [](QTabWidget* tw) -> QString {
+        if (!tw)
+            return {};
+        QWidget* w = tw->currentWidget();
+        if (auto* scroll = qobject_cast<QScrollArea*>(w))
+            w = scroll->widget();
+        return w ? w->objectName() : QString();
+    };
+    auto saveTab = [&](QTabWidget* tw, const QString& key) {
+        const QString name = tabName(tw);
+        if (!name.isEmpty())
+            SETTINGS.setValue(key, name);
+    };
+    saveTab(ui->tabWidget_debug_production, QStringLiteral("Window/ConsoleTabProduction"));
+    saveTab(ui->tabWidget_debug_peripheral, QStringLiteral("Window/ConsoleTabPeripheral"));
+    saveTab(ui->tabWidget_debug_dongle, QStringLiteral("Window/ConsoleTabDongle"));
+    saveTab(ui->tabWidget_ota, QStringLiteral("Window/ConsoleTabOta"));
+    saveTab(ui->tabWidget_debug_misc, QStringLiteral("Window/ConsoleTabMisc"));
+    saveTab(ui->consoleLogTabs, QStringLiteral("Window/ConsoleLogTab"));
+    SETTINGS.sync();
 
     qDebug() << "保存内容" << ui->comNameCombo->currentText();
 }
@@ -2609,7 +2711,41 @@ void MainWindow::recoverCustom() {
 
     ui->otaFilePath_source->setText(SETTINGS.value("Window/otaFilePath_source").toString());
 
+    // 名称筛选 / 最低信号：列表已在构造期填好后再恢复
+    if (ui->name_range) {
+        const QString savedName = SETTINGS.value(QStringLiteral("Window/DongleNameFilter")).toString().trimmed();
+        if (!savedName.isEmpty()) {
+            const bool blocked = ui->name_range->blockSignals(true);
+            const int idx = ui->name_range->findText(savedName, Qt::MatchFixedString);
+            if (idx >= 0)
+                ui->name_range->setCurrentIndex(idx);
+            else
+                ui->name_range->setCurrentText(savedName); // 可编辑下拉，保留自定义名
+            ui->name_range->blockSignals(blocked);
+        }
+    }
+    if (ui->rssi_range && SETTINGS.contains(QStringLiteral("Window/DongleRssiFilter"))) {
+        const int rssi = SETTINGS.value(QStringLiteral("Window/DongleRssiFilter"), -60).toInt();
+        const bool blocked = ui->rssi_range->blockSignals(true);
+        ui->rssi_range->setValue(rssi);
+        ui->rssi_range->blockSignals(blocked);
+        if (ui->rssi_range_value)
+            ui->rssi_range_value->setText(QStringLiteral("%1 dBm").arg(ui->rssi_range->value()));
+    }
+
     qDebug() << "配置内容" << comName;
+}
+
+// 基础信息表：未上报/默认 0 显示为空，避免界面上一片 0
+static QString basicInfoDisplayInt(int value) {
+    return value == 0 ? QString() : QString::number(value);
+}
+
+static QString basicInfoDisplayText(const QString& value) {
+    const QString text = value.trimmed();
+    if (text.isEmpty() || text == QLatin1String("0"))
+        return {};
+    return text;
 }
 
 void MainWindow::initBasicInfo() {
@@ -2683,7 +2819,11 @@ void MainWindow::initBasicInfo() {
 
     ui->baseView->setModel(basicInfoModel);
     ui->baseView->setColumnHidden(1, true);
+    // 调试台只看项名与实测值，不展示「测试结果」列
+    ui->baseView->setColumnHidden(3, true);
     ui->baseView->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    if (ui->baseView->horizontalHeader())
+        ui->baseView->horizontalHeader()->setStretchLastSection(true);
     ui->baseView->scrollToBottom();
 
     basicInfoModel->resetAllTestResult();
@@ -2696,20 +2836,26 @@ void MainWindow::initBasicInfo() {
                          const ProtocolBaseInfoData baseInfo = report.payload.value<ProtocolBaseInfoData>();
                          connectProductName = baseInfo.product_name;
 
-                         basicInfoModel->getTestItemByName("product_name")->setData(baseInfo.product_name, Qt::DisplayRole);
-                         basicInfoModel->getTestItemByName("algo_version")->setData(baseInfo.algo_version, Qt::DisplayRole);
+                         basicInfoModel->getTestItemByName("product_name")
+                             ->setData(basicInfoDisplayText(baseInfo.product_name), Qt::DisplayRole);
+                         basicInfoModel->getTestItemByName("algo_version")
+                             ->setData(basicInfoDisplayText(baseInfo.algo_version), Qt::DisplayRole);
                          basicInfoModel->getTestItemByName("pb_phone_ver")
-                             ->setData(QString("%1").arg(baseInfo.pb_phone_ver), Qt::DisplayRole);
+                             ->setData(basicInfoDisplayInt(baseInfo.pb_phone_ver), Qt::DisplayRole);
                          basicInfoModel->getTestItemByName("pb_factory_ver")
-                             ->setData(QString("%1").arg(baseInfo.pb_factory_ver), Qt::DisplayRole);
+                             ->setData(basicInfoDisplayInt(baseInfo.pb_factory_ver), Qt::DisplayRole);
                          basicInfoModel->getTestItemByName("camera_id")
-                             ->setData(QString("%1").arg(baseInfo.camera_version), Qt::DisplayRole);
-                         basicInfoModel->getTestItemByName("hw_version")->setData(baseInfo.hw_version, Qt::DisplayRole);
+                             ->setData(basicInfoDisplayText(baseInfo.camera_version), Qt::DisplayRole);
+                         basicInfoModel->getTestItemByName("hw_version")
+                             ->setData(basicInfoDisplayText(baseInfo.hw_version), Qt::DisplayRole);
                          basicInfoModel->getTestItemByName("soft_version")
-                             ->setData(QString("%1").arg(baseInfo.soft_version), Qt::DisplayRole);
-                         basicInfoModel->getTestItemByName("res_version")->setData(baseInfo.res_version, Qt::DisplayRole);
-                         basicInfoModel->getTestItemByName("presure_version")->setData(baseInfo.presure_version, Qt::DisplayRole);
-                         basicInfoModel->getTestItemByName("fsensor_version")->setData(baseInfo.fsensor_version, Qt::DisplayRole);
+                             ->setData(basicInfoDisplayText(baseInfo.soft_version), Qt::DisplayRole);
+                         basicInfoModel->getTestItemByName("res_version")
+                             ->setData(basicInfoDisplayText(baseInfo.res_version), Qt::DisplayRole);
+                         basicInfoModel->getTestItemByName("presure_version")
+                             ->setData(basicInfoDisplayText(baseInfo.presure_version), Qt::DisplayRole);
+                         basicInfoModel->getTestItemByName("fsensor_version")
+                             ->setData(basicInfoDisplayText(baseInfo.fsensor_version), Qt::DisplayRole);
 
                          QString mac;
 
@@ -2733,13 +2879,14 @@ void MainWindow::initBasicInfo() {
 
                          qDebug() << "wifimac结果" << mac;
                          basicInfoModel->getTestItemByName("wifi_mac")->setData(mac, Qt::DisplayRole);
-                         basicInfoModel->getTestItemByName("imu_id")->setData(QString("%1").arg(baseInfo.imu_id), Qt::DisplayRole);
+                         basicInfoModel->getTestItemByName("imu_id")
+                             ->setData(basicInfoDisplayInt(baseInfo.imu_id), Qt::DisplayRole);
                          basicInfoModel->getTestItemByName("age_state")
-                             ->setData(QString("%1").arg(baseInfo.ageing_state), Qt::DisplayRole);
+                             ->setData(basicInfoDisplayInt(baseInfo.ageing_state), Qt::DisplayRole);
                          basicInfoModel->getTestItemByName("motor_ver")
-                             ->setData(QString("%1").arg(baseInfo.motor_version), Qt::DisplayRole);
+                             ->setData(basicInfoDisplayText(baseInfo.motor_version), Qt::DisplayRole);
                          basicInfoModel->getTestItemByName("bleVersion")
-                             ->setData(QString("%1").arg(baseInfo.ble_version), Qt::DisplayRole);
+                             ->setData(basicInfoDisplayText(baseInfo.ble_version), Qt::DisplayRole);
 
                          writeDataToCSVFile();
                      });
@@ -2789,7 +2936,11 @@ void MainWindow::initPeriphState() {
     ui->peripheralView->scrollToBottom();
     ui->peripheralView->setModel(peripheralModel);
     ui->peripheralView->setColumnHidden(1, true);
+    // 调试台只看项名与实测值，不展示「测试结果」列
+    ui->peripheralView->setColumnHidden(3, true);
     ui->peripheralView->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    if (ui->peripheralView->horizontalHeader())
+        ui->peripheralView->horizontalHeader()->setStretchLastSection(true);
     peripheralModel->resetAllTestResult();
     QObject::connect(&protocolManager, &QProtocolManager::reportReceived, this,
                      [=](const ProtocolReport& report) {
@@ -2858,6 +3009,93 @@ bool renameFile(const QString& oldFilePath, const QString& newFilePath) {
     return false;
 }
 bool MainWindow::eventFilter(QObject* watched, QEvent* event) {
+    if (ui && consoleShell_ && watched == consoleShell_ && event->type() == QEvent::Resize) {
+        updateConsoleNarrowLayout();
+        return false;
+    }
+    if (ui && ui->consoleSidePhoto && watched == ui->consoleSidePhoto && event->type() == QEvent::Resize) {
+        updateConsoleSidePhotoFit();
+        return false;
+    }
+    if (ui && ui->consoleLogCard && watched == ui->consoleLogCard && event->type() == QEvent::Resize) {
+        updateConsoleLogPromoFit();
+        return false;
+    }
+    if (event->type() == QEvent::MouseButtonRelease) {
+        auto* me = static_cast<QMouseEvent*>(event);
+        if (me->button() == Qt::LeftButton) {
+            QWidget* hit = qobject_cast<QWidget*>(watched);
+            auto belongs = [&](QWidget* row) -> bool {
+                return row && hit && (hit == row || row->isAncestorOf(hit));
+            };
+            QWidget* row = nullptr;
+            int kind = 0;
+            if (belongs(consoleStatusMotor_)) {
+                row = consoleStatusMotor_;
+                kind = 1;
+            } else if (belongs(consoleStatusPump_)) {
+                row = consoleStatusPump_;
+                kind = 2;
+            } else if (belongs(consoleStatusValve_)) {
+                row = consoleStatusValve_;
+                kind = 3;
+            }
+            if (row) {
+                if (!at || !at->getConnected()) {
+                    showlog(QStringLiteral("请等待连接设备后再试"));
+                    return true;
+                }
+                const bool on = !row->property("consoleSwitchOn").toBool();
+                row->setProperty("consoleSwitchOn", on);
+                QLabel* lab = nullptr;
+                if (kind == 1)
+                    lab = ui->consoleStatusMotorState;
+                else if (kind == 2)
+                    lab = ui->consoleStatusPumpState;
+                else
+                    lab = ui->consoleStatusValveState;
+                if (lab) {
+                    if (kind == 1)
+                        lab->setText(on ? QStringLiteral("运行") : QStringLiteral("空闲"));
+                    else if (kind == 2)
+                        lab->setText(on ? QStringLiteral("运行") : QStringLiteral("停止"));
+                    else
+                        lab->setText(on ? QStringLiteral("打开") : QStringLiteral("关闭"));
+                    lab->setProperty("kind", on ? QStringLiteral("on") : QStringLiteral("off"));
+                    lab->style()->unpolish(lab);
+                    lab->style()->polish(lab);
+                }
+                if (kind == 1) {
+                    protocolManager.set(DeviceCmd::MotorState, on ? 1 : 0);
+                    showlog(on ? QStringLiteral("电机开") : QStringLiteral("电机关"));
+                } else if (kind == 2) {
+                    protocolManager.set(DeviceCmd::Root2PumpState, on ? 1 : 0);
+                    QVariantMap m;
+                    m.insert(QStringLiteral("circleNum"),
+                             on && ui->qaiot_pump_circle ? ui->qaiot_pump_circle->value() : 0);
+                    m.insert(QStringLiteral("durationTime"),
+                             on && ui->qaiot_pump_dur ? ui->qaiot_pump_dur->value() : 0);
+                    m.insert(QStringLiteral("intervalTime"),
+                             on && ui->qaiot_pump_int ? ui->qaiot_pump_int->value() : 0);
+                    m.insert(QStringLiteral("pumpPwm"),
+                             on && ui->qaiot_pump_pwm ? ui->qaiot_pump_pwm->value() : 0);
+                    protocolManager.set(DeviceCmd::PumpParamWrite, m);
+                    showlog(on ? QStringLiteral("泵开") : QStringLiteral("泵关"));
+                } else {
+                    QVariantMap m;
+                    m.insert(QStringLiteral("valveEnableTime"),
+                             on && ui->qaiot_valve_en ? ui->qaiot_valve_en->value() : 0);
+                    m.insert(QStringLiteral("valveDisableTime"),
+                             on && ui->qaiot_valve_dis ? ui->qaiot_valve_dis->value() : 0);
+                    m.insert(QStringLiteral("valvePwm"),
+                             on && ui->qaiot_valve_pwm ? ui->qaiot_valve_pwm->value() : 0);
+                    protocolManager.set(DeviceCmd::ValveParamWrite, m);
+                    showlog(on ? QStringLiteral("阀开") : QStringLiteral("阀关"));
+                }
+                return true;
+            }
+        }
+    }
     if (watched == ui->high_speed_tp || watched == ui->active_picture) {
         if (event->type() == QEvent::DragEnter) {
             // [[2]]: 当拖放时鼠标进入label时, label接受拖放的动作

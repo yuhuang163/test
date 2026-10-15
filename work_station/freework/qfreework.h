@@ -71,6 +71,10 @@ class QFreeWork : public test_base {
     /** 串口扫码枪：发十六进制触发报文，读条码回填 SN 并开测。 */
     void triggerSerialScanner(const QString& comPort, int baudRate, const QString& hexCmd, int timeoutMs);
 
+  public slots:
+    void solveMesSucess(const int mechines) override;
+    void solveMesData(const int mechines, QString msg) override;
+
   protected:
     bool shouldHoldCommandRetryUntilGatePass() const override;
 
@@ -168,6 +172,8 @@ class QFreeWork : public test_base {
     QString mesProcessCode_;
     /** BYD 过程码换回的主板 SN（回填界面 + 会话日志；过站 SFC 仍用 mesProcessCode_） */
     QString mesBoardSn_;
+    /** 开测卡控嵌套事件循环期间防重入（按工位，勿用函数内 static 让多工位互相屏蔽） */
+    bool startGateBusy_ = false;
     QString macAddress = "没有mac地址";
     /** SN 前四位/型号卡控失败标记（Hook SN_PREFIX4_CHECK 与 Gate prefix4 共用） */
     bool productModelMismatch_ = false;
@@ -389,6 +395,10 @@ class QFreeWork : public test_base {
     void fetchMesRootSku();
     /** BYD：日志页右侧显示 mes_config.ini 的 Resource（工单） */
     void refreshBydMesResourceDisplay();
+    /** 状态大卡样式走 QSS 动态属性 fwCard（idle/mes/wait/ok/fail/busy） */
+    void applyStatusCardStyle(QLabel* label, const QString& role);
+    /** 按 isTestContinue 切换「停止测试」/「测试已停止」外观 */
+    void refreshStopTestButton();
     bool failTupleWriteIfNoValidField(const QString& stepName, bool fieldOk, const QString& emptyReason);
     void reportTupleWriteRecord();
     void debugUpdateTupleMacStatus(const TestCaseDefinition& def);

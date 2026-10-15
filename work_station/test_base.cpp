@@ -1,4 +1,5 @@
 #include "test_base.h"
+#include "application_shutdown.h"
 #include "box_base.h"
 #include "qprotocol_types.h"
 #include "modbus_types.h"
@@ -125,7 +126,8 @@ test_base::test_base(QWidget* parent) : QWidget(parent),
 void test_base::applySystemProtocolFromSettings() {
     auto selectedType = QProtocolManager::protocolTypeFromString(
         SETTINGS.value(QStringLiteral("SYSTEM/ProtocolType"), QStringLiteral("qpb")).toString().toStdString());
-    if (selectedType == QProtocolManager::ProtocolType::Unknown)
+    if (selectedType == QProtocolManager::ProtocolType::Unknown
+        || selectedType == QProtocolManager::ProtocolType::QaiotApp)
         selectedType = QProtocolManager::ProtocolType::Qpb;
     if ((selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctp) ||
         ((selectedType == QProtocolManager::ProtocolType::Qaiot ||
@@ -155,6 +157,7 @@ QProtocolManager::ProtocolType productProtocolTypeFromCase(TestCaseProductProtoc
         return QProtocolManager::ProtocolType::Qaiot;
     case TestCaseProductProtocol::QaiotV2:
         return QProtocolManager::ProtocolType::QaiotV2;
+    case TestCaseProductProtocol::QaiotApp:
     case TestCaseProductProtocol::Qfctp:
     default:
         return QProtocolManager::ProtocolType::Qfctp;
@@ -176,11 +179,19 @@ void applyProductProtocolToManager(QProtocolManager& manager, TestCaseProductPro
 } // namespace
 
 void test_base::applyTestCaseProductProtocol(TestCaseProductProtocol protocol) {
+    if (protocol == TestCaseProductProtocol::QaiotApp) {
+        showlog(QStringLiteral("应用层协议只在主窗口「应用层」页使用，本步已按 qfctp 下发"));
+        protocol = TestCaseProductProtocol::Qfctp;
+    }
     applyTestCaseProductProtocol(protocol, TestCaseSendChannel::Product);
     applyProductProtocolToManager(productSerialProtocolManager, protocol, {});
 }
 
 void test_base::applyTestCaseProductProtocol(TestCaseProductProtocol protocol, TestCaseSendChannel channel) {
+    if (protocol == TestCaseProductProtocol::QaiotApp) {
+        showlog(QStringLiteral("应用层协议只在主窗口「应用层」页使用，本步已按 qfctp 下发"));
+        protocol = TestCaseProductProtocol::Qfctp;
+    }
     QProtocolManager::ProtocolType selectedType = productProtocolTypeFromCase(protocol);
     const bool productSerialChannel = channel == TestCaseSendChannel::ProductSerial;
     if (productSerialChannel) {
@@ -772,14 +783,14 @@ void test_base::pumpSiblingStartTasksWhileWaiting() {
 void test_base::waitWork(int ms) {
     QTime t;
     t.start();
-    while (t.elapsed() < ms && isTestContinue) {
+    while (t.elapsed() < ms && isTestContinue && !ApplicationShutdown::isExiting()) {
         pumpSiblingStartTasksWhileWaiting();
         QCoreApplication::processEvents();
     }
 }
 
 void test_base::waitWorkIdle(int ms) {
-    if (ms <= 0 || !isTestContinue) {
+    if (ms <= 0 || !isTestContinue || ApplicationShutdown::isExiting()) {
         pumpSiblingStartTasksWhileWaiting();
         QCoreApplication::processEvents();
         return;
@@ -796,7 +807,8 @@ void test_base::waitWorkIdle(int ms) {
     poll.setInterval(pollMs);
     QObject::connect(&poll, &QTimer::timeout, &loop, [this, &loop]() {
         pumpSiblingStartTasksWhileWaiting();
-        if (!isTestContinue)
+        // 叉窗后立刻跳出，避免嵌套 loop.exec 把进程留在后台
+        if (!isTestContinue || ApplicationShutdown::isExiting())
             loop.quit();
     });
     done.start(ms);
@@ -1159,15 +1171,16 @@ void test_base::finishTestRecord(const MesPacketData& packIn, bool useMes) {
     if (result.isEmpty()) {
         result = QStringLiteral("NG");
     }
+    // 先过站再关 session：否则 BYD 序列化 Complete 成败写不进本轮上位机 session 日志
+    if (useMes) {
+        emit send_end_test_pass(pack);
+    }
     if (Qlog::hasActiveSession(m_index)) {
         Qlog::endSession(m_index, result);
     }
     // 先于异步上传钉住吸力附件，避免下一轮开测 initData 清缓存导致平台缺 CSV/曲线
     Qlog::pinSessionUploadArtifacts(m_index);
     TestDataUploadService::tryUploadTestAndLogAsync(pack, m_index);
-    if (useMes) {
-        emit send_end_test_pass(pack);
-    }
 }
 
 void test_base::testResultTableUpdate(QVector<TestItem>& testItems) {

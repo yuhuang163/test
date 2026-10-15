@@ -37,7 +37,7 @@ enum class UsbCameraCmd {
 enum class VesLightCmd { SetBrightness };
 /** AudioExpert Remote：TCP 发指令控制测试并取 $test_over / data（非串口）。 */
 enum class AudioExpertCmd { RunTest };
-enum class TestCaseProductProtocol { Qfctp, Qpb, Qroot, Qroot2, Qaiot, QaiotV2 };
+enum class TestCaseProductProtocol { Qfctp, Qpb, Qroot, Qroot2, Qaiot, QaiotV2, QaiotApp };
 enum class TestCaseFixtureProtocol {
     Pcba,
     Asd9026a,

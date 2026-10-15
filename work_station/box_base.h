@@ -5,6 +5,7 @@
 #include <QLabel>
 #include <QNetworkReply>
 #include <QSettings>
+#include <QSizePolicy>
 #include <QVBoxLayout>
 
 #include "qmesmanager.h"
@@ -39,14 +40,20 @@ class box_base : public QMainWindow {
         for (int i = 0; i < formRow; i++) {
             // 勿把 QHBoxLayout 直接挂到 QMainWindow，否则与 centralWidget 布局冲突并可能闪退
             QHBoxLayout* hlayout = new QHBoxLayout();
+            hlayout->setSpacing(6);
             for (int j = 0; j < formColumn; j++) {
                 const int index = i * formColumn + j;
                 WidgetType* currentWidget = new WidgetType(index + 1, central);
-                hlayout->addWidget(currentWidget);
+                // 一拖多：允许列宽随窗口收缩，避免被子控件 min-width 撑死
+                currentWidget->setMinimumWidth(0);
+                currentWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+                hlayout->addWidget(currentWidget, 1);
                 testList.append(currentWidget);
             }
-            vlayout->addLayout(hlayout);
+            vlayout->addLayout(hlayout, 1);
         }
+        central->setMinimumWidth(0);
+        parent->setMinimumWidth(0);
         testList[0]->getMacLineEdit()->setFocus();
         qDebug() << "当前为1拖" << formColumn * formRow;
         qDebug() << "testList.size" << testList.size();

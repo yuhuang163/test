@@ -512,6 +512,14 @@ bool CommonUtils::resolveDongleDeviceMapping(const QString& dongleName, QString*
             *protocolOut = QString::fromUtf8(entry.protocol);
         return true;
     }
+    // 与产品主广播名不同的别名（表内一行一产品，额外映射放这里）
+    if (dongleName == QLatin1String("Pump-E")) {
+        if (productOut)
+            *productOut = QStringLiteral("M8");
+        if (protocolOut)
+            *protocolOut = QStringLiteral("qroot");
+        return true;
+    }
     return false;
 }
 

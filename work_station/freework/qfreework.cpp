@@ -10,6 +10,7 @@
 #include "screen_inspect_gige_capture.h"
 #include "serial_channel.h"
 #include "test_case.h"
+#include "test_case_gate_accessors.h"
 #include "test_case_policy_service.h"
 #include "test_case_store.h"
 #include "plc_station_sync_barrier.h"
@@ -21,6 +22,7 @@
 #include <QPushButton>
 #include <QAbstractButton>
 #include <QLabel>
+#include <QStyle>
 #include <QPainter>
 #include <QTableWidget>
 #include <QFont>
@@ -55,6 +57,7 @@
 #include "test_record_store.h"
 #include "agreement/mes_protocol/device/byd_mes/bydmes.h"
 #include "ui_qfreework.h"
+#include "freework_presentation.h"
 #include <QShowEvent>
 #include <QDesktopServices>
 #include <QUrl>
@@ -62,6 +65,8 @@
 #include <QDialogButtonBox>
 #include <QScrollArea>
 #include <QPixmap>
+#include <QIcon>
+#include <QTabBar>
 #include <QHBoxLayout>
 #include <QCursor>
 
@@ -416,7 +421,7 @@ void fitScreenInspectThumb(QLabel* label, const QImage& img, const QString& empt
     label->setPixmap(QPixmap::fromImage(scaled));
 }
 
-/** 按当前标签文字重算 min-width，覆盖全局 Ubuntu.qss 对 Tab 的裁切。 */
+/** 按当前标签文字重算 Tab 样式；一拖多时禁止按完整工站名撑死 min-width。 */
 void setupFreeWorkTabBar(QTabWidget* tabWidget) {
     if (!tabWidget)
         return;
@@ -426,35 +431,72 @@ void setupFreeWorkTabBar(QTabWidget* tabWidget) {
     if (!bar)
         return;
 
-    bar->setExpanding(false);
-    bar->setElideMode(Qt::ElideNone);
+    const int stationSlots = qMax(1, SETTINGS.value(QStringLiteral("User/formColumn"), 1).toInt()
+                                         * SETTINGS.value(QStringLiteral("User/formRow"), 1).toInt());
+    const bool multiStation = stationSlots > 1;
+
+    // 一拖多：允许省略，否则「M8组装按键测试工站 v10」会把每列撑得很宽，窗口缩不回去
+    bar->setExpanding(multiStation);
+    bar->setElideMode(multiStation ? Qt::ElideRight : Qt::ElideNone);
     bar->setUsesScrollButtons(true);
+    // 图标与字号接近，避免「字大图标小」
+    constexpr int kTabIconPx = 20;
+    bar->setIconSize(QSize(kTabIconPx, kTabIconPx));
 
-    QFont font = bar->font();
-    font.setPixelSize(14);
-    bar->setFont(font);
-
-    const QFontMetrics fm(font);
-    int maxTextWidth = 0;
+    const QIcon flaskIcon = [kTabIconPx]() {
+        QPixmap pm(QStringLiteral(":/stytle/picture/fw/icon-flask.png"));
+        return QIcon(pm.scaled(kTabIconPx, kTabIconPx, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    }();
+    const QIcon docIcon = [kTabIconPx]() {
+        QPixmap pm(QStringLiteral(":/stytle/picture/fw/icon-doc.png"));
+        return QIcon(pm.scaled(kTabIconPx, kTabIconPx, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    }();
     for (int i = 0; i < bar->count(); ++i) {
-        if (!bar->isTabVisible(i))
-            continue;
-        maxTextWidth = qMax(maxTextWidth, fm.horizontalAdvance(bar->tabText(i)));
+        const QString text = bar->tabText(i);
+        if (text.contains(QStringLiteral("日志")))
+            tabWidget->setTabIcon(i, docIcon);
+        else
+            tabWidget->setTabIcon(i, flaskIcon);
+        bar->setTabToolTip(i, text);
     }
 
-    constexpr int hPad = 32;
-    const int minTabWidth = maxTextWidth + hPad;
-    // updateMainStyle 之后覆盖全局 QTabBar 规则
-    bar->setStyleSheet(QStringLiteral(
-                           "QTabWidget QTabBar::tab {"
-                           "  min-width: %1px;"
-                           "  padding: 6px 16px;"
-                           "  font-size: 14px;"
-                           "}"
-                           "QTabWidget QTabBar::tab:selected {"
-                           "  font-weight: bold;"
-                           "}")
-                           .arg(minTabWidth));
+    QFont font = bar->font();
+    font.setPixelSize(multiStation ? 13 : 14);
+    bar->setFont(font);
+
+    if (multiStation) {
+        bar->setStyleSheet(QStringLiteral(
+            "QTabWidget QTabBar::tab {"
+            "  min-width: 64px;"
+            "  max-width: 200px;"
+            "  padding: 5px 8px;"
+            "  font-size: 13px;"
+            "}"
+            "QTabWidget QTabBar::tab:selected {"
+            "  font-weight: bold;"
+            "}"));
+    } else {
+        const QFontMetrics fm(font);
+        int maxTextWidth = 0;
+        for (int i = 0; i < bar->count(); ++i) {
+            if (!bar->isTabVisible(i))
+                continue;
+            maxTextWidth = qMax(maxTextWidth, fm.horizontalAdvance(bar->tabText(i)));
+        }
+        constexpr int hPad = 36;
+        const int minTabWidth = maxTextWidth + kTabIconPx + hPad;
+        // 单工位：覆盖全局 QSS，完整显示工站名
+        bar->setStyleSheet(QStringLiteral(
+                               "QTabWidget QTabBar::tab {"
+                               "  min-width: %1px;"
+                               "  padding: 5px 12px;"
+                               "  font-size: 14px;"
+                               "}"
+                               "QTabWidget QTabBar::tab:selected {"
+                               "  font-weight: bold;"
+                               "}")
+                               .arg(minTabWidth));
+    }
     bar->updateGeometry();
 }
 
@@ -549,9 +591,22 @@ void QFreeWork::appendMultiGateTestCaseMes(const QVector<TestCaseGate>& gates, c
             CommonUtils::splitMesValueAndUnit(disp.testData.trimmed(), GateRegistry::unitFor(reportType, ge.field, payload));
         QString value = mesParts.first;
         const QString unit = mesParts.second;
-        const QString cloudNum = CommonUtils::cloudUploadNumericValue(value);
-        if (!cloudNum.isEmpty())
-            value = cloudNum;
+        // 漏气等 formatValue 中文展示：MES VALUE 仍报状态码数字
+        double rawNum = 0;
+        if (GateAccessorRegistry::readNumber(reportType, ge.field, payload, &rawNum)) {
+            if (const GateFieldEntry* fe = GateAccessorRegistry::findField(reportType, ge.field);
+                fe && fe->formatValue) {
+                value = QString::number(qRound(rawNum));
+            } else {
+                const QString cloudNum = CommonUtils::cloudUploadNumericValue(value);
+                if (!cloudNum.isEmpty())
+                    value = cloudNum;
+            }
+        } else {
+            const QString cloudNum = CommonUtils::cloudUploadNumericValue(value);
+            if (!cloudNum.isEmpty())
+                value = cloudNum;
+        }
 
         QString maxVal, minVal, stdVal;
         switch (ge.op) {
@@ -618,23 +673,32 @@ QFreeWork::QFreeWork(int index, QWidget* parent) : test_base(parent), ui(new Ui:
     ui->jigDisconnectButton->setEnabled(false);
     ui->usbdisconnectButton->setEnabled(false);
     ui->productDisconnectButton->setEnabled(false);
-    updateMainStyle("Ubuntu.qss");
+    updateMainStyle(QStringLiteral("console_shell.qss"));
     applyFreeWorkExtraTabsVisible(false);
 
     setupFreeWorkTabBar(ui->tabWidget);
+    FreeWorkPresentation::setup(ui);
     scanSerialPorts(); // 要搜索一下一开始
-    ui->test_result->setText("WAIT");
-    ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
-                                   "padding: 10px; text-align: center; ");
+    if (ui->test_time)
+        ui->test_time->setStyleSheet(QString());
+    if (ui->test_time_caption)
+        ui->test_time_caption->setStyleSheet(QString());
+    if (ui->toggleExtraTabsButton) {
+        QPixmap expandPm(QStringLiteral(":/stytle/picture/fw/icon-expand.png"));
+        ui->toggleExtraTabsButton->setIcon(
+            QIcon(expandPm.scaled(16, 16, Qt::KeepAspectRatio, Qt::SmoothTransformation)));
+        ui->toggleExtraTabsButton->setIconSize(QSize(16, 16));
+    }
+    ui->test_result->setText(QStringLiteral("WAIT\n等待开始测试"));
+    applyStatusCardStyle(ui->test_result, QStringLiteral("idle"));
 
-    ui->mes_state->setText("MES");
-    ui->mes_state->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
-                                 "padding: 10px; text-align: center; ");
+    ui->mes_state->setText(QStringLiteral("MES\n未连接 / 待获取MAC"));
+    applyStatusCardStyle(ui->mes_state, QStringLiteral("idle"));
     refreshBydMesResourceDisplay();
+    refreshStopTestButton();
 
-    ui->banding_result->setText("绑定:WAIT");
-    ui->banding_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
-                                      "padding: 10px; text-align: center; ");
+    ui->banding_result->setText(QStringLiteral("绑定:WAIT"));
+    applyStatusCardStyle(ui->banding_result, QStringLiteral("wait"));
     resetTuplePositionHighlight();
     setupTuplePositionClickable();
     if (ui->label_screenInspectShot) {
@@ -759,6 +823,12 @@ void QFreeWork::prepareAbortUploadPack(MesPacketData* abortPack) {
     } else if (ui && ui->getMac) {
         abortPack->sn = ui->getMac->text().trimmed();
     }
+    {
+        QString nsfcSn = resolvedWholeMachineSnText();
+        if (nsfcSn.isEmpty())
+            nsfcSn = resolvedExpectedTailSnText();
+        abortPack->wholeMachineSn = nsfcSn;
+    }
     if (ui && ui->macInput) {
         abortPack->mac = ui->macInput->text().trimmed();
     }
@@ -788,8 +858,15 @@ void QFreeWork::refreshOrderedTestIndexes() {
     const int profileVersion = TestCaseStore::loadStationProfileVersion(stationKey);
     if (profileVersion > 0)
         tabName += QStringLiteral(" v%1").arg(profileVersion);
-    ui->tabWidget->setTabText(0, tabName);
+    const int stationSlots = qMax(1, SETTINGS.value(QStringLiteral("User/formColumn"), 1).toInt()
+                                         * SETTINGS.value(QStringLiteral("User/formRow"), 1).toInt());
+    // 一拖多：Tab 显示短名，完整名放 tooltip，避免文字 sizeHint 再撑宽
+    QString tabShow = tabName;
+    if (stationSlots > 1 && tabShow.size() > 8)
+        tabShow = tabShow.left(6) + QStringLiteral("…");
+    ui->tabWidget->setTabText(0, tabShow);
     setupFreeWorkTabBar(ui->tabWidget);
+    ui->tabWidget->setTabToolTip(0, tabName);
     qDebug() << "[FreeWork] refresh tab, SelectedStationName =" << stationName << ", tabName =" << tabName;
 
     if (!QFile::exists(TestCasePaths::flowIniPath())) {
@@ -1089,16 +1166,58 @@ void QFreeWork::logCurrentUiMesConfig(const QString& phase) {
     }
 }
 
+void QFreeWork::applyStatusCardStyle(QLabel* label, const QString& role) {
+    if (!label) {
+        return;
+    }
+    // 清掉内联样式，让 console_shell.qss 的 fwCard 动态属性生效
+    label->setStyleSheet(QString());
+    label->setProperty("fwCard", role);
+    label->setAlignment(Qt::AlignCenter);
+    label->setWordWrap(true);
+    FreeWorkPresentation::decorateCard(label, role);
+    label->style()->unpolish(label);
+    label->style()->polish(label);
+    label->update();
+}
+
+void QFreeWork::refreshStopTestButton() {
+    if (!ui || !ui->stopTest)
+        return;
+    const bool running = isTestContinue;
+    ui->stopTest->setText(running ? QStringLiteral("停止测试") : QStringLiteral("测试已停止"));
+    ui->stopTest->setEnabled(running);
+    ui->stopTest->setProperty("fwStop", running ? QStringLiteral("run") : QStringLiteral("idle"));
+    ui->stopTest->style()->unpolish(ui->stopTest);
+    ui->stopTest->style()->polish(ui->stopTest);
+    ui->stopTest->update();
+}
+
+void QFreeWork::solveMesSucess(const int mechines) {
+    test_base::solveMesSucess(mechines);
+    if (mechines == getIndex() && ui && ui->mes_state) {
+        ui->mes_state->setText(QStringLiteral("MES\n操作成功"));
+        applyStatusCardStyle(ui->mes_state, QStringLiteral("ok"));
+    }
+}
+
+void QFreeWork::solveMesData(const int mechines, QString msg) {
+    test_base::solveMesData(mechines, msg);
+    if (mechines == getIndex() && ui && ui->mes_state) {
+        ui->mes_state->setText(QStringLiteral("MES\n报错"));
+        applyStatusCardStyle(ui->mes_state, QStringLiteral("fail"));
+    }
+}
+
 void QFreeWork::beginUiStartTest() {
     if (isTestContinue)
         return;
     // 扫 SN→解析 MAC→回车走本函数，不经 startTest；卡控必须放在这里
     {
         // 嵌套事件循环期间仍可再按回车；禁止重入，避免策略请求堆死 API
-        static bool s_startGateBusy = false;
-        if (s_startGateBusy)
+        if (startGateBusy_)
             return;
-        s_startGateBusy = true;
+        startGateBusy_ = true;
         const QString stationKey = activeFlowStationKey_.isEmpty()
                                        ? TestCaseStore::loadSelectedFlowStationKey()
                                        : activeFlowStationKey_;
@@ -1115,7 +1234,7 @@ void QFreeWork::beginUiStartTest() {
             box.setDefaultButton(cancelBtn);
             box.exec();
             if (box.clickedButton() != exemptBtn) {
-                s_startGateBusy = false;
+                startGateBusy_ = false;
                 return;
             }
             bool ok = false;
@@ -1125,18 +1244,18 @@ void QFreeWork::beginUiStartTest() {
                                       QString(), &ok)
                     .trimmed();
             if (!ok || code.isEmpty()) {
-                s_startGateBusy = false;
+                startGateBusy_ = false;
                 return;
             }
             gate = TestCasePolicyService::evaluateStartGate(stationKey, stationName, &code);
             if (!gate.allowed) {
                 QMessageBox::warning(this, QStringLiteral("量产用例卡控"), gate.message);
                 showlog(gate.message);
-                s_startGateBusy = false;
+                startGateBusy_ = false;
                 return;
             }
         }
-        s_startGateBusy = false;
+        startGateBusy_ = false;
         // 试产告警只打本地日志，不弹窗打断开测
         if (!gate.message.isEmpty())
             showlog(gate.message);
@@ -1147,14 +1266,15 @@ void QFreeWork::beginUiStartTest() {
         if (!usbSerialPort->isOpen())
             openUsbSerialPort();
     }
-    ui->test_result->setText("WAIT");
-    ui->test_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: "
-                                   "10px; padding: 10px; text-align: center; ");
+    // 开测即切 RUN，避免整轮流程期间一直停在「等待开始测试」
+    ui->test_result->setText(QStringLiteral("RUN\n测试进行中"));
+    applyStatusCardStyle(ui->test_result, QStringLiteral("busy"));
 
     ApplicationShutdown::resetForNewSession();
     isTestContinue = true;
     teststate = -1;
     updatePreStartMonitorState();
+    refreshStopTestButton();
     ui->test_time->setText(QStringLiteral("0.0 s"));
     resetLightSensorFivePointState();
     pendingSuctionCurveRow_ = false;
@@ -1171,11 +1291,11 @@ void QFreeWork::startTest() {
     testResultTableInit();
     ui->log->clear();
     ui->msgEdit->clear();
-    ui->mes_state->setText("MES");
-    ui->mes_state->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
-                                 "padding: 10px; text-align: center; ");
+    ui->mes_state->setText(QStringLiteral("MES\n未连接 / 待获取MAC"));
+    applyStatusCardStyle(ui->mes_state, QStringLiteral("idle"));
     const QString snText = ui->getMac->text().trimmed();
-    if (!snText.isEmpty()) {
+    // 扫码回车已锁定本轮过程码时不覆盖：BYD 的 SN 栏可能已被 MES 主板 SN 回填
+    if (!snText.isEmpty() && mesProcessCode_.isEmpty()) {
         mesProcessCode_ = snText;
         pack.sn = mesProcessCode_;
     }
@@ -1410,10 +1530,8 @@ bool QFreeWork::runSingleTestCaseStep(const QString& stationKey, const QString& 
     resetLightSensorFivePointState();
     canGoNext = true;
     TestResult = passValue;
-    ui->test_result->setText(QStringLiteral("WAIT"));
-    ui->test_result->setStyleSheet(
-        "font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
-        "padding: 10px; text-align: center; ");
+    ui->test_result->setText(QStringLiteral("RUN\n测试进行中"));
+    applyStatusCardStyle(ui->test_result, QStringLiteral("busy"));
     TestTime.start();
     ui->test_time->setText(QStringLiteral("0.0 s"));
     cachedScreenCircleCx_ = -1;
@@ -1421,6 +1539,7 @@ bool QFreeWork::runSingleTestCaseStep(const QString& stationKey, const QString& 
     cachedScreenCircleR_ = -1;
     teststate = 0;
     isTestContinue = true;
+    refreshStopTestButton();
     return true;
 }
 
@@ -1659,15 +1778,11 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     if (singleStepDebugRun_) {
         singleStepDebugRun_ = false;
         if (TestResult == failValue) {
-            ui->test_result->setText(QStringLiteral("FAIL"));
-            ui->test_result->setStyleSheet(
-                "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
-                "border-radius: 10px; padding: 10px; text-align: center; ");
+            ui->test_result->setText(QStringLiteral("FAIL\n测试失败"));
+            applyStatusCardStyle(ui->test_result, QStringLiteral("fail"));
         } else {
-            ui->test_result->setText(QStringLiteral("PASS"));
-            ui->test_result->setStyleSheet(
-                "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
-                "border-radius: 10px; padding: 10px; text-align: center;");
+            ui->test_result->setText(QStringLiteral("PASS\n测试通过"));
+            applyStatusCardStyle(ui->test_result, QStringLiteral("ok"));
         }
         showlog(QStringLiteral("单步运行结束（不过站、保持连接）"));
         teststate = -1;
@@ -1683,6 +1798,7 @@ void QFreeWork::finalizeTestFlowIfComplete() {
         }
         ui->test_time->setText(CommonUtils::formatElapsedSeconds(TestTime));
         isTestContinue = false;
+        refreshStopTestButton();
         refreshOrderedTestIndexes();
         return;
     }
@@ -1699,6 +1815,17 @@ void QFreeWork::finalizeTestFlowIfComplete() {
         pack.sn = ui->getMac->text().trimmed();
         showlog(QStringLiteral("MES 过站 SFC 回退界面 SN=%1（未记录过程码）").arg(pack.sn));
     }
+    // NSFC：与写整机 SN 同源——优先缓存 wholeMachineSn_，否则界面 SN 栏
+    {
+        QString nsfcSn = resolvedWholeMachineSnText();
+        if (nsfcSn.isEmpty())
+            nsfcSn = resolvedExpectedTailSnText();
+        pack.wholeMachineSn = nsfcSn;
+        if (!nsfcSn.isEmpty())
+            showlog(QStringLiteral("MES 序列化 NSFC（整机SN）=%1").arg(nsfcSn));
+        else
+            showlog(QStringLiteral("MES 序列化 NSFC（整机SN）为空：界面/缓存均无整机SN"));
+    }
     pack.mac = ui->macInput->text().trimmed();
     pack.product = SETTINGS.value("Mes/Product_Name").toString();
     pack.instruct_num = QStringLiteral("079");
@@ -1709,10 +1836,8 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     // 测试总时长（毫秒）随云端上报，供网页详情顶部展示
     pack.totalTimeMs = static_cast<double>(TestTime.elapsed());
     if (TestResult == failValue) {
-        ui->test_result->setText(QStringLiteral("FAIL"));
-        ui->test_result->setStyleSheet(
-            "font-size: 33px; background-color: #FF0000; color: black; border: 2px solid #FF0000; "
-            "border-radius: 10px; padding: 10px; text-align: center; ");
+        ui->test_result->setText(QStringLiteral("FAIL\n测试失败"));
+        applyStatusCardStyle(ui->test_result, QStringLiteral("fail"));
         pack.result = QStringLiteral("NG");
         QString failMesKey;
         QString failVal;
@@ -1729,10 +1854,8 @@ void QFreeWork::finalizeTestFlowIfComplete() {
             showlog(QStringLiteral("MES 不良原因：%1").arg(pack.remark));
         }
     } else {
-        ui->test_result->setText(QStringLiteral("PASS"));
-        ui->test_result->setStyleSheet(
-            "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
-            "border-radius: 10px; padding: 10px; text-align: center;");
+        ui->test_result->setText(QStringLiteral("PASS\n测试通过"));
+        applyStatusCardStyle(ui->test_result, QStringLiteral("ok"));
         pack.result = QStringLiteral("PASS");
         pack.remark.clear(); // 避免上轮 NG 备注残留
     }
@@ -1758,6 +1881,7 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     ui->getMac->setDisabled(0);
     // 先退出本工位测试态；最后一个工位结束时才能安全释放共享 ASD 串口。
     isTestContinue = false;
+    refreshStopTestButton();
     updatePreStartMonitorState();
     on_disconnectButton_clicked();
     if (auto* box = qobject_cast<QFreeWorkBox*>(window())) {
@@ -1841,15 +1965,7 @@ void QFreeWork::refreshDongleWifi(QString data) {
 }
 
 void QFreeWork::refreshBleState(int state) {
-    if (state) {
-        ui->bleStatusLabel->setText("蓝牙连接：<font color='green'>成功</font>");
-        //   showlog("蓝牙连接成功");
-        // protocolManager.set(DeviceCmd::ForbidSleep, static_cast<int>(FacSwitch_OPEN));
-        // showlog("已发送禁止休眠");
-    } else {
-        ui->bleStatusLabel->setText("蓝牙连接：<font color='red'>失败</font>");
-        // showlog("蓝牙连接断开");
-    }
+    FreeWorkPresentation::applyBleStatusIcon(ui->bleStatusLabel, state != 0);
 }
 
 void QFreeWork::refreshDongleUartState(int state) {
@@ -2155,8 +2271,17 @@ void QFreeWork::applyFreeWorkExtraTabsVisible(bool visible) {
             ui->tabWidget->setCurrentIndex(kFreeWorkTabMain);
     }
 
-    if (ui->toggleExtraTabsButton)
-        ui->toggleExtraTabsButton->setText(visible ? QStringLiteral("隐藏扩展页") : QStringLiteral("显示扩展页"));
+    if (ui->toggleExtraTabsButton) {
+        const bool multi = FreeWorkPresentation::freeWorkMultiStation();
+        if (multi) {
+            ui->toggleExtraTabsButton->setText(visible ? QStringLiteral("收起") : QStringLiteral("扩展"));
+            ui->toggleExtraTabsButton->setToolTip(visible ? QStringLiteral("隐藏扩展页")
+                                                          : QStringLiteral("显示扩展页"));
+        } else {
+            ui->toggleExtraTabsButton->setText(visible ? QStringLiteral("隐藏扩展页")
+                                                       : QStringLiteral("显示扩展页"));
+        }
+    }
 
     if (visible)
         initSuctionChart();
@@ -3550,7 +3675,7 @@ void QFreeWork::runScreenInspectStep() {
 }
 
 void QFreeWork::initData(bool deferDongleAtForVisa) {
-    ui->bleStatusLabel->setText("蓝牙连接：");
+    FreeWorkPresentation::applyBleStatusIcon(ui->bleStatusLabel, false);
     rssitestcount = 0;
 
     rssitestfailcount = 0;
@@ -3742,10 +3867,8 @@ void QFreeWork::on_macInput_returnPressed() {
         macAddress = ui->macInput->text();
         if (ui->just_banding->checkState()) {
             bindingMacSn(macAddress, ui->getMac->text()); //获取测试数据不要绑定测试mac——sn
-            ui->test_result->setText("PASS");
-            ui->test_result->setStyleSheet(
-                "font-size: 33px; background-color: #00FF00; color: black; border: 2px solid #00FF00; "
-                "border-radius: 10px; padding: 10px; text-align: center;");
+            ui->test_result->setText(QStringLiteral("PASS\n测试通过"));
+            applyStatusCardStyle(ui->test_result, QStringLiteral("ok"));
             ui->getMac->clear();
             ui->getMac->setFocus();
 
@@ -3765,12 +3888,10 @@ void QFreeWork::on_getMac_returnPressed() {
 
     ui->log->clear();
     ui->msgEdit->clear();
-    ui->mes_state->setText("MES");
-    ui->mes_state->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
-                                 "padding: 10px; text-align: center; ");
-    ui->test_result->setText("WAIT");
-    ui->test_result->setStyleSheet("font-size: 40px; background-color: #808080; color: black;  "
-                                   "border-radius: 10px; padding: 10px; text-align: center; ");
+    ui->mes_state->setText(QStringLiteral("MES\n未连接 / 待获取MAC"));
+    applyStatusCardStyle(ui->mes_state, QStringLiteral("idle"));
+    ui->test_result->setText(QStringLiteral("WAIT\n等待开始测试"));
+    applyStatusCardStyle(ui->test_result, QStringLiteral("idle"));
     const QString cleanedSn = CommonUtils::extractSnFromUrlOrText(ui->getMac->text());
     if (!cleanedSn.isEmpty()) {
         ui->getMac->setText(cleanedSn);
@@ -3819,9 +3940,8 @@ void QFreeWork::processInspection(QString inputSnText) {
 
     if (!ui->isusemes->checkState()) // 离线
     {
-        ui->mes_state->setText("MES");
-        ui->mes_state->setStyleSheet("font-size: 33px; background-color: #FFFF00; color: black; border: 2px solid "
-                                     "#FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
+        ui->mes_state->setText(QStringLiteral("MES\n离线"));
+        applyStatusCardStyle(ui->mes_state, QStringLiteral("busy"));
     }
 }
 
@@ -3942,9 +4062,8 @@ void QFreeWork::updateComboBox() {
 void QFreeWork::on_mac_combo_textActivated(const QString& arg1) {
     ui->log->clear();
     ui->msgEdit->clear();
-    ui->mes_state->setText("MES");
-    ui->mes_state->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
-                                 "padding: 10px; text-align: center; ");
+    ui->mes_state->setText(QStringLiteral("MES\n未连接 / 待获取MAC"));
+    applyStatusCardStyle(ui->mes_state, QStringLiteral("idle"));
 
     // 检查是否是mac格式
     QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
@@ -4023,20 +4142,17 @@ void QFreeWork::bindingMacSnMes(QString bindingMac, QString bindingSn) {
     }
 
     if (bindingResult) {
-        ui->banding_result->setText("绑定:PASS");
-        ui->banding_result->setStyleSheet("font-size: 33px; background-color: #00FF00; color: black; border: 2px solid "
-                                          "#00FF00; border-radius: 10px; padding: 10px; text-align: center;");
+        ui->banding_result->setText(QStringLiteral("绑定:PASS"));
+        applyStatusCardStyle(ui->banding_result, QStringLiteral("ok"));
     } else {
-        ui->banding_result->setText("绑定:NG");
-        ui->banding_result->setStyleSheet("font-size: 33px; background-color: #FF0000; color: black; border: 2px solid "
-                                          "#FF0000; border-radius: 10px; padding: 10px; text-align: center; ");
+        ui->banding_result->setText(QStringLiteral("绑定:NG"));
+        applyStatusCardStyle(ui->banding_result, QStringLiteral("fail"));
     }
     ui->snbanding->setFocus();
 }
 void QFreeWork::on_snbanding_returnPressed() {
-    ui->banding_result->setText("绑定:WAIT");
-    ui->banding_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  border-radius: 10px; "
-                                      "padding: 10px; text-align: center; ");
+    ui->banding_result->setText(QStringLiteral("绑定:WAIT"));
+    applyStatusCardStyle(ui->banding_result, QStringLiteral("wait"));
 
     if (!dongleSerialPort->isOpen()) {
         on_connectButton_clicked();
@@ -4259,6 +4375,7 @@ void QFreeWork::on_stopTest_clicked() {
     resetVisaBackend();
     isTestContinue = false;
     updatePreStartMonitorState();
+    refreshStopTestButton();
     if (auto* box = qobject_cast<QFreeWorkBox*>(window())) {
         box->releaseSharedAsd9026aIfIdle();
         box->releaseSharedTempLoggerIfIdle();
@@ -4270,6 +4387,8 @@ void QFreeWork::on_stopTest_clicked() {
     ui->getMac->clear();
     mesProcessCode_.clear();
     mesBoardSn_.clear();
+    ui->test_result->setText(QStringLiteral("WAIT\n等待开始测试"));
+    applyStatusCardStyle(ui->test_result, QStringLiteral("idle"));
     if (ui->isformmes->isChecked()) {
         ui->getMac->setFocus();
     } else {

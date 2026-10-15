@@ -128,11 +128,11 @@ constexpr const char kHintAlgoResultReportSet[] =
     u8"示例：Param_enable=1\r\n"
     u8"应答：业务值 1 成功 / 0 失败，错误码 0 成功";
 constexpr const char kHintAlgoResultReportWait[] =
-    u8"Qfctp ALGO NOTIFY TLV 0x0008 RESULT_REPORT：等待算法结果上报（不发令）\r\n"
-    u8"须先 AlgoResultReportSet 开启；固件缓冲多组后上报\r\n"
-    u8"漏气状态：无效 / 正常无漏 / 微小漏 / 强漏\r\n"
-    u8"分项卡控：Field=multi，Item1=leakageLeft、Item2=leakageRight\r\n"
-    u8"示例：Expected=强漏（左右都监控到强漏即通过）；无效上报忽略并继续等待";
+    u8"Qfctp：等待 Algo Service NOTIFY TLV 0x0008（本命令不发令）\r\n"
+    u8"payload：1B 组数 N + N×48B；leakage_status 字节0=左、字节1=右（0无效 1正常无漏 2微小漏 3强漏）\r\n"
+    u8"分项卡控 Expected 填中文状态或状态码（强漏 或 3）；结果表/要求列显示中文\r\n"
+    u8"MES VALUE 仍报状态码数字（0~3）\r\n"
+    u8"卡控：ReportType=ProtocolAlgoFusionResultData，Field=leakageLeft|leakageRight 或 multi";
 constexpr const char kHintPressSampleOnoffGet[] =
     u8"Qfctp ALGO TLV 0x0002：应答 1 字节 0=关 1=开\r\n"
     u8"卡控：ReportType=ProtocolAckData Field=ack";
@@ -183,6 +183,24 @@ constexpr const char kHintCycleReportWrite[] =
     u8"      08温度 09湿度 0A接近 0B电流 0C霍尔 0D编码器\r\n"
     u8"被动上报 CID=0x19：ReportType=ProtocolAiotCycleReportData Field=dataType/accX/…\r\n"
     u8"卡控配置回包：ReportType=ProtocolAiotCycleReportConfigData Field=enable/dataType/intervalTime";
+constexpr const char kHintAppLinkNegotiate[] =
+    u8"应用层 5.1 Device Management Service 0x01 CID=0x01 连接参数协商（Dongle 通道 5 DEV_MGMT）\r\n"
+    u8"空参数默认 protocol_version=1\r\n"
+    u8"可选：protocol_version、max_frame_size、mtu、transmit_interval、cmd_timeout_ms、max_fsn_count、link_layer_version";
+constexpr const char kHintAppSetTime[] =
+    u8"应用层 Service 0x01 CID=0x0A 设置时间\r\n"
+    u8"time=UTC 秒（缺省当前时间）\r\n"
+    u8"time_offset=int16，高字节小时、低字节分钟，默认 0x0800（+8:00）";
+constexpr const char kHintAppPumpControl[] =
+    u8"应用层 5.10 Pump Service 0x10 CID=0x03（Dongle 通道 7 PUMP）\r\n"
+    u8"side=0 Left / 1 Right / 2 Sync / 3 Independence（可省略=全部）\r\n"
+    u8"enable=1 开 / 2 暂停 / 3 停\r\n"
+    u8"mode=1~7，type=0 模式 / 1 韵律（写 mode 时未填 type 则按模式）\r\n"
+    u8"level=1~15，freq=0 慢 / 1 中 / 2 快";
+constexpr const char kHintAppPumpStatus[] =
+    u8"Pump Service 0x10 CID=0x04 读吸乳状态；side 可省略";
+constexpr const char kHintAppCommonStatus[] =
+    u8"Pump Service 0x10 CID=0x02 读通用状态（连接/旅行锁）；side 可省略";
 constexpr const char kHintAgingStatusRead[] =
     u8"Qaiot CID=0x01 读工厂模式：Param_mode=0~6（默认 2 老化）\r\n"
     u8"0 idle / 1 factory / 2 aging / 3 suction / 4 compensate / 5 ate / 6 freeman\r\n"
@@ -545,6 +563,15 @@ const Row kRows[] = {
      kHintVibrationTestWrite, kSet, "ProtocolAiotVibrationTestData", "enable"},
     {DeviceCmd::CycleReportWrite, "CycleReportWrite", u8"设置数据采集上报", DeviceCmdParamKind::JsonMap,
      kHintCycleReportWrite, kSet, "ProtocolAiotCycleReportConfigData,ProtocolAiotCycleReportData", "enable"},
+    {DeviceCmd::AppLinkNegotiate, "AppLinkNegotiate", u8"应用层连接协商", DeviceCmdParamKind::JsonMap,
+     kHintAppLinkNegotiate, kSet},
+    {DeviceCmd::AppSetTime, "AppSetTime", u8"应用层设置时间", DeviceCmdParamKind::JsonMap, kHintAppSetTime, kSet},
+    {DeviceCmd::AppPumpControl, "AppPumpControl", u8"应用层吸乳控制", DeviceCmdParamKind::JsonMap, kHintAppPumpControl,
+     kSet},
+    {DeviceCmd::AppPumpStatus, "AppPumpStatus", u8"应用层吸乳状态", DeviceCmdParamKind::JsonMap, kHintAppPumpStatus,
+     kGet, "ProtocolPbDate", nullptr},
+    {DeviceCmd::AppCommonStatus, "AppCommonStatus", u8"应用层通用状态", DeviceCmdParamKind::JsonMap,
+     kHintAppCommonStatus, kGet, "ProtocolPbDate", nullptr},
 };
 
 } // namespace
@@ -591,6 +618,7 @@ static const QSet<QString> kQpb = makeProtocolCmdNameSet({"MotorCali", "WifiConn
 static const QSet<QString> kQroot = makeProtocolCmdNameSet({"FacMode", "LedTest", "LedColor", "MotorTestState", "RootVibration", "MacWrite", "RootPumpTestEnter", "RootPumpTestExit", "RootSuctionTest", "RootHeatLevelControl", "RootPumpControl", "Sn", "WriteKey", "BurningMode", "ShipMode", "DevReset", "RootEnterOta", "FactoryReset", "RootSystemControl", "SoftVersionRead", "BaseInfo", "MacRead", "GetBattery", "RootBatteryTempQuery", "RootFlangeQuery", "RootPumpStallCurrentQuery", "RootAgingHistoryQuery", "RootNtcQuery", "RootHeatTempQuery", "RootVibStatusQuery", "TupleRead", "ButtonState"});
 static const QSet<QString> kQroot2 = makeProtocolCmdNameSet({"Root2PoseSwitch", "Root2PoseCalib", "Root2BowlCalib", "BurningMode", "Root2ModeSet", "Root2LevelSet", "Root2PumpState", "RootPumpControl", "Root2LedControl", "LedColor", "LedTest", "RootVibration", "MotorTestState", "MacWrite", "Sn", "WriteKey", "RootSuctionTest", "ShipMode", "Root2M5Shutdown", "Root2M5Reboot", "Root2M5EnterOta", "FactoryReset", "Root2M5FactoryReset", "DevReset", "SoftVersionRead", "BaseInfo", "DeviceInfo", "Root2M5DeviceInfo", "MacRead", "Root2KeyTest", "Root2StateRead", "ButtonState", "Root2M5PumpStatus", "GetBattery", "RootPumpStallCurrentQuery", "Root2PoseAngleRead", "Root2PoseAbnormalWait", "Root2PoseSwitchRead", "Root2BowlEmptyCapRead", "Root2BowlFullCapRead", "Root2M5SnRead", "TupleRead"});
 static const QSet<QString> kQaiot = makeProtocolCmdNameSet({"FacMode", "BurningMode", "SuctionMode", "CompensationSet", "FacResult", "BtSignalMode", "BtNoSignalMode", "BtFreqMode", "TrimSet", "Sn", "WriteKey", "MacWrite", "ButtonState", "SetBattery", "LightCalibWrite", "ExceptionThresholdWrite", "PumpParamWrite", "ValveParamWrite", "HeatTestWrite", "VibrationTestWrite", "CycleReportWrite", "ShipMode", "FactoryReset", "TravelLock", "DevReset", "SoftVersionRead", "BaseInfo", "DeviceInfo", "MacRead", "GetBattery", "FactoryDoneRead", "TupleRead", "RssiRead", "TrimRead", "PeriphState", "LightSensorInfo", "GetImuCaliResult", "ExceptionThresholdRead", "PumpParamRead", "ValveParamRead", "AgingStatusRead"});
+static const QSet<QString> kQaiotApp = makeProtocolCmdNameSet({"AppLinkNegotiate", "AppSetTime", "AppPumpControl", "AppPumpStatus", "AppCommonStatus", "TravelLock", "SoftVersionRead", "BaseInfo", "DeviceInfo", "MacRead", "Sn", "GetBattery"});
 
 static const QSet<QString>& protocolCmdNameSet(TestCaseProductProtocol protocol)
 {
@@ -607,6 +635,8 @@ static const QSet<QString>& protocolCmdNameSet(TestCaseProductProtocol protocol)
         return kQaiot;
     case TestCaseProductProtocol::QaiotV2:
         return kQaiot;
+    case TestCaseProductProtocol::QaiotApp:
+        return kQaiotApp;
     }
     return kQfctp;
 }

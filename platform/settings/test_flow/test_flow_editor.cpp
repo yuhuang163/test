@@ -8,6 +8,7 @@
 
 #include "Abini.h"
 
+#include <QAbstractButton>
 #include <QAbstractItemView>
 #include <QApplication>
 #include <QCheckBox>
@@ -23,8 +24,10 @@
 #include <QDropEvent>
 #include <QFile>
 #include <QFontMetrics>
+#include <QFrame>
 #include <QFutureWatcher>
 #include <QHBoxLayout>
+#include <QIcon>
 #include <QInputDialog>
 #include <QLabel>
 #include <QLineEdit>
@@ -36,14 +39,15 @@
 #include <QMimeData>
 #include <QMouseEvent>
 #include <QPainter>
+#include <QPixmap>
 #include <QPushButton>
 #include <QScrollArea>
-#include <QSizePolicy>
-#include <QStyle>
-#include <QStyleOptionButton>
-#include <QToolButton>
-#include <QSet>
 #include <QSignalBlocker>
+#include <QSizePolicy>
+#include <QSplitter>
+#include <QStyle>
+#include <QTimer>
+#include <QToolButton>
 #include <QVBoxLayout>
 #include <QtConcurrent>
 
@@ -71,6 +75,34 @@ void applyFlowContextMenuStyle(QMenu* menu) {
         menu->setStyleSheet(testFlowEditorStyleSheet());
 }
 
+/** 确认框不挂带壳层 QSS 的父窗，避免继承后图标/文案/按钮栏比例错乱 */
+static QMessageBox::StandardButton askQuestion(QWidget* anchor, const QString& title, const QString& text,
+                                               QMessageBox::StandardButtons buttons = QMessageBox::Yes | QMessageBox::No,
+                                               QMessageBox::StandardButton defaultButton = QMessageBox::Yes)
+{
+    QMessageBox box(QMessageBox::Question, title, text, buttons, nullptr);
+    box.setWindowModality(Qt::ApplicationModal);
+    if (QAbstractButton* yesBtn = box.button(QMessageBox::Yes))
+        yesBtn->setText(QStringLiteral("是"));
+    if (QAbstractButton* noBtn = box.button(QMessageBox::No))
+        noBtn->setText(QStringLiteral("否"));
+    if (QAbstractButton* cancelBtn = box.button(QMessageBox::Cancel))
+        cancelBtn->setText(QStringLiteral("取消"));
+    box.setDefaultButton(defaultButton);
+    box.adjustSize();
+    if (anchor) {
+        const QRect ag = anchor->window() ? anchor->window()->frameGeometry() : anchor->frameGeometry();
+        box.move(ag.center() - QPoint(box.width() / 2, box.height() / 2));
+    }
+    return static_cast<QMessageBox::StandardButton>(box.exec());
+}
+
+static bool askYesNo(QWidget* anchor, const QString& title, const QString& text,
+                     QMessageBox::StandardButton defaultButton = QMessageBox::Yes)
+{
+    return askQuestion(anchor, title, text, QMessageBox::Yes | QMessageBox::No, defaultButton) == QMessageBox::Yes;
+}
+
 /** 新建/复制工站：优先向云端申请 StationKey；失败时可选择本机发号或取消。返回 false 表示用户取消。 */
 bool promptFlowStationKeyFromCloud(QWidget* parent, const QString& displayName, QString* preferredKeyOut,
                                    bool* usedCloudOut = nullptr) {
@@ -90,13 +122,8 @@ bool promptFlowStationKeyFromCloud(QWidget* parent, const QString& displayName, 
         alloc.message.isEmpty() ? QStringLiteral("无法从云端获取工站编号") : alloc.message;
     if (!parent)
         return false;
-    if (QMessageBox::question(parent, QStringLiteral("云端发号失败"),
-                              hint + QStringLiteral("\n\n是否改用本机自动发号继续？"),
-                              QMessageBox::Yes | QMessageBox::No, QMessageBox::No)
-        != QMessageBox::Yes) {
-        return false;
-    }
-    return true;
+    return askYesNo(parent, QStringLiteral("云端发号失败"),
+                    hint + QStringLiteral("\n\n是否改用本机自动发号继续？"), QMessageBox::No);
 }
 
 /** 弹出列表按最长工站名加宽，避免「Wellness Warm…」截断；闭合框仍用原宽度，悬停看 ToolTip */
@@ -156,6 +183,19 @@ void moveBlockInFlowLayout(QVBoxLayout* layout, TestCaseBlock* src, int insertIn
         src->setParent(destParent);
     insertIndex = qBound(0, insertIndex, layout->count());
     layout->insertWidget(insertIndex, src);
+    // 拖拽落点后立刻重排序号；源区若不同也要刷新
+    auto renumber = [](QVBoxLayout* lay) {
+        if (!lay)
+            return;
+        int index = 0;
+        for (int i = 0; i < lay->count(); ++i) {
+            if (auto* block = qobject_cast<TestCaseBlock*>(lay->itemAt(i)->widget()))
+                block->setFlowIndex(++index);
+        }
+    };
+    renumber(layout);
+    if (srcLayout && srcLayout != layout)
+        renumber(srcLayout);
 }
 
 bool acceptsTestCaseFlowMime(const QMimeData* mime) {
@@ -172,19 +212,160 @@ bool flowEntriesEqual(const QVector<TestFlowItemEntry>& a, const QVector<TestFlo
     return true;
 }
 
+/** 流程块行内小图标（避免 emoji 撑高行高） */
+QIcon flowLineIcon(const QString& kind) {
+    const int s = 16;
+    QPixmap pm(s, s);
+    pm.fill(Qt::transparent);
+    QPainter p(&pm);
+    p.setRenderHint(QPainter::Antialiasing, true);
+    const QColor stroke(0x4b, 0x55, 0x63);
+    QPen pen(stroke, 1.6, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+    p.setPen(pen);
+    p.setBrush(Qt::NoBrush);
+    if (kind == QLatin1String("copy")) {
+        p.drawRoundedRect(3, 5, 8, 8, 1.5, 1.5);
+        p.drawRoundedRect(6, 3, 8, 8, 1.5, 1.5);
+    } else if (kind == QLatin1String("edit")) {
+        p.drawEllipse(QPointF(8, 8), 5.2, 5.2);
+        static const qreal kCos[] = {1, 0.5, -0.5, -1, -0.5, 0.5};
+        static const qreal kSin[] = {0, 0.8660254, 0.8660254, 0, -0.8660254, -0.8660254};
+        for (int i = 0; i < 6; ++i) {
+            p.drawLine(QPointF(8 + 5.2 * kCos[i], 8 + 5.2 * kSin[i]),
+                       QPointF(8 + 7.2 * kCos[i], 8 + 7.2 * kSin[i]));
+        }
+        p.setBrush(stroke);
+        p.drawEllipse(QPointF(8, 8), 1.6, 1.6);
+    } else if (kind == QLatin1String("remove")) {
+        p.drawLine(5, 4, 11, 4);
+        p.drawLine(6.5, 4, 7, 3);
+        p.drawLine(9.5, 4, 9, 3);
+        p.drawRect(5, 5, 6, 8);
+        p.drawLine(7, 7, 7, 11);
+        p.drawLine(9, 7, 9, 11);
+    }
+    return QIcon(pm);
+}
+
+QIcon flowEnableIcon(bool checked) {
+    const int s = 16;
+    QPixmap pm(s, s);
+    pm.fill(Qt::transparent);
+    QPainter p(&pm);
+    p.setRenderHint(QPainter::Antialiasing, true);
+    if (checked) {
+        p.setPen(QPen(QColor(0x15, 0x80, 0x3d), 1));
+        p.setBrush(QColor(0x22, 0xc5, 0x5e));
+        p.drawRoundedRect(0.5, 0.5, 15, 15, 3.5, 3.5);
+        p.setPen(QPen(Qt::white, 1.8, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        p.setBrush(Qt::NoBrush);
+        p.drawLine(4, 8, 7, 11);
+        p.drawLine(7, 11, 12, 5);
+    } else {
+        p.setPen(QPen(QColor(0x9c, 0xa3, 0xaf), 1));
+        p.setBrush(Qt::white);
+        p.drawRoundedRect(0.5, 0.5, 15, 15, 3.5, 3.5);
+    }
+    return QIcon(pm);
+}
+
 } // namespace
 
 // ---------- TestCaseBlock ----------
 
+QToolButton* TestCaseBlock::makeActionButton(const QString& objectName, const QString& tip, const QIcon& icon) {
+    auto* btn = new QToolButton(this);
+    btn->setObjectName(objectName);
+    btn->setToolTip(tip);
+    btn->setIcon(icon);
+    btn->setIconSize(QSize(14, 14));
+    btn->setFixedSize(26, 26);
+    btn->setCursor(Qt::ArrowCursor);
+    btn->setFocusPolicy(Qt::NoFocus);
+    btn->setAutoRaise(false);
+    btn->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    return btn;
+}
+
 TestCaseBlock::TestCaseBlock(const QString& caseName, QWidget* parent)
-    : QCheckBox(parent), caseName_(caseName) {
+    : QFrame(parent), caseName_(caseName) {
     setAcceptDrops(true);
     setCursor(Qt::PointingHandCursor);
-    setCheckState(Qt::Checked);
+    setObjectName(QStringLiteral("TestCaseBlock"));
+    // 固定紧凑行高，避免 ScrollArea / emoji 把块撑得过高
+    setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    setFixedHeight(36);
     setStyleSheet(testFlowEditorStyleSheet());
+
+    enableCheck_ = new QToolButton(this);
+    enableCheck_->setObjectName(QStringLiteral("flowBlockEnable"));
+    enableCheck_->setCheckable(true);
+    enableCheck_->setChecked(true);
+    enableCheck_->setFixedSize(18, 18);
+    enableCheck_->setIconSize(QSize(16, 16));
+    enableCheck_->setIcon(flowEnableIcon(true));
+    enableCheck_->setCursor(Qt::ArrowCursor);
+    enableCheck_->setFocusPolicy(Qt::NoFocus);
+    enableCheck_->setAutoRaise(true);
+    enableCheck_->setToolButtonStyle(Qt::ToolButtonIconOnly);
+
+    indexLabel_ = new QLabel(QStringLiteral("01"), this);
+    indexLabel_->setObjectName(QStringLiteral("flowBlockIndex"));
+    indexLabel_->setAttribute(Qt::WA_TransparentForMouseEvents);
+    indexLabel_->setAutoFillBackground(false);
+
+    titleLabel_ = new QLabel(this);
+    titleLabel_->setObjectName(QStringLiteral("flowBlockTitle"));
+    titleLabel_->setAttribute(Qt::WA_TransparentForMouseEvents);
+    titleLabel_->setAutoFillBackground(false);
+    titleLabel_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+
+    btnCopy_ =
+        makeActionButton(QStringLiteral("flowBlockBtnCopy"), QStringLiteral("复制"), flowLineIcon(QStringLiteral("copy")));
+    auto* btnEdit =
+        makeActionButton(QStringLiteral("flowBlockBtnEdit"), QStringLiteral("打开设置"), flowLineIcon(QStringLiteral("edit")));
+    auto* btnRemove = makeActionButton(QStringLiteral("flowBlockBtnRemove"), QStringLiteral("从流程移除"),
+                                       flowLineIcon(QStringLiteral("remove")));
+
+    auto* actions = new QWidget(this);
+    actions->setObjectName(QStringLiteral("flowBlockActions"));
+    auto* actionsLay = new QHBoxLayout(actions);
+    actionsLay->setContentsMargins(0, 0, 0, 0);
+    actionsLay->setSpacing(4);
+    actionsLay->addWidget(btnCopy_);
+    actionsLay->addWidget(btnEdit);
+    actionsLay->addWidget(btnRemove);
+
+    auto* root = new QHBoxLayout(this);
+    root->setContentsMargins(10, 0, 8, 0);
+    root->setSpacing(8);
+    root->addWidget(enableCheck_, 0, Qt::AlignVCenter);
+    root->addWidget(indexLabel_, 0, Qt::AlignVCenter);
+    root->addWidget(titleLabel_, 1, Qt::AlignVCenter);
+    root->addWidget(actions, 0, Qt::AlignVCenter);
+
+    connect(enableCheck_, &QToolButton::toggled, this, [this](bool on) {
+        enableCheck_->setIcon(flowEnableIcon(on));
+        emit blockSelected(this);
+        updateBlockStyle();
+        updateActionEnabled();
+    });
+    connect(btnCopy_, &QToolButton::clicked, this, [this]() {
+        emit blockSelected(this);
+        emit copyRequested(this);
+    });
+    connect(btnEdit, &QToolButton::clicked, this, [this]() {
+        emit blockSelected(this);
+        emit editRequested(this);
+    });
+    connect(btnRemove, &QToolButton::clicked, this, [this]() {
+        emit blockSelected(this);
+        emit removeFromFlowRequested(this);
+    });
+
     setCaseName(caseName);
-    connect(this, &QCheckBox::stateChanged, this, [this](int) { updateBlockStyle(); });
     updateBlockStyle();
+    updateActionEnabled();
 }
 
 QString TestCaseBlock::caseName() const {
@@ -193,11 +374,34 @@ QString TestCaseBlock::caseName() const {
 
 void TestCaseBlock::setCaseName(const QString& name) {
     caseName_ = name.trimmed();
-    if (caseName_.isEmpty())
-        setText(QStringLiteral("(空白块)"));
-    else
-        setText(caseName_);
+    if (titleLabel_) {
+        titleLabel_->setText(caseName_.isEmpty() ? QStringLiteral("(空白块)") : caseName_);
+        QFont f = titleLabel_->font();
+        f.setItalic(caseName_.isEmpty());
+        titleLabel_->setFont(f);
+    }
     updateBlockStyle();
+    updateActionEnabled();
+}
+
+bool TestCaseBlock::isChecked() const {
+    return enableCheck_ && enableCheck_->isChecked();
+}
+
+void TestCaseBlock::setChecked(bool checked) {
+    if (!enableCheck_)
+        return;
+    QSignalBlocker blocker(enableCheck_);
+    enableCheck_->setChecked(checked);
+    enableCheck_->setIcon(flowEnableIcon(checked));
+    updateBlockStyle();
+    updateActionEnabled();
+}
+
+void TestCaseBlock::setFlowIndex(int index1Based) {
+    if (!indexLabel_)
+        return;
+    indexLabel_->setText(QStringLiteral("%1").arg(index1Based, 2, 10, QLatin1Char('0')));
 }
 
 void TestCaseBlock::setSelected(bool selected) {
@@ -209,6 +413,11 @@ void TestCaseBlock::setSelected(bool selected) {
 
 void TestCaseBlock::setRunMenuVisible(bool visible) {
     runMenuVisible_ = visible;
+}
+
+void TestCaseBlock::updateActionEnabled() {
+    if (btnCopy_)
+        btnCopy_->setEnabled(!isBlank());
 }
 
 void TestCaseBlock::updateBlockStyle() {
@@ -230,35 +439,12 @@ void TestCaseBlock::updateBlockStyle() {
     update();
 }
 
-void TestCaseBlock::paintEvent(QPaintEvent* event) {
-    Q_UNUSED(event);
-    // 样式表负责底色/勾选框；文字单独居中绘制（QCheckBox 默认无法 text-align:center）
-    QStyleOptionButton opt;
-    initStyleOption(&opt);
-    const QString label = opt.text;
-    opt.text.clear();
-
-    QPainter painter(this);
-    style()->drawControl(QStyle::CE_CheckBox, &opt, &painter, this);
-
-    QColor textColor = isChecked() ? QColor(0x14, 0x53, 0x2d) : QColor(0x4b, 0x55, 0x63);
-    if (isBlank())
-        textColor = QColor(0x6b, 0x72, 0x80);
-    QFont f = font();
-    f.setPointSize(13);
-    f.setBold(selected_);
-    f.setItalic(isBlank());
-    painter.setFont(f);
-    painter.setPen(textColor);
-    painter.drawText(rect(), Qt::AlignCenter, label);
-}
-
 void TestCaseBlock::mousePressEvent(QMouseEvent* event) {
     if (event->button() == Qt::LeftButton) {
         startPos_ = event->pos();
         emit blockSelected(this);
     }
-    QCheckBox::mousePressEvent(event);
+    QFrame::mousePressEvent(event);
 }
 
 void TestCaseBlock::mouseDoubleClickEvent(QMouseEvent* event) {
@@ -269,12 +455,14 @@ void TestCaseBlock::mouseDoubleClickEvent(QMouseEvent* event) {
         event->accept();
         return;
     }
-    QCheckBox::mouseDoubleClickEvent(event);
+    QFrame::mouseDoubleClickEvent(event);
 }
 
 void TestCaseBlock::mouseMoveEvent(QMouseEvent* event) {
-    if ((event->buttons() & Qt::LeftButton) && (event->pos() - startPos_).manhattanLength() >= QApplication::startDragDistance())
+    if ((event->buttons() & Qt::LeftButton)
+        && (event->pos() - startPos_).manhattanLength() >= QApplication::startDragDistance())
         performDrag();
+    QFrame::mouseMoveEvent(event);
 }
 
 void TestCaseBlock::performDrag() {
@@ -289,19 +477,19 @@ void TestCaseBlock::dragEnterEvent(QDragEnterEvent* event) {
     if (acceptsTestCaseFlowMime(event->mimeData()))
         event->acceptProposedAction();
     else
-        QCheckBox::dragEnterEvent(event);
+        QFrame::dragEnterEvent(event);
 }
 
 void TestCaseBlock::dragMoveEvent(QDragMoveEvent* event) {
     if (acceptsTestCaseFlowMime(event->mimeData()))
         event->acceptProposedAction();
     else
-        QCheckBox::dragMoveEvent(event);
+        QFrame::dragMoveEvent(event);
 }
 
 void TestCaseBlock::dropEvent(QDropEvent* event) {
     if (!acceptsTestCaseFlowMime(event->mimeData())) {
-        QCheckBox::dropEvent(event);
+        QFrame::dropEvent(event);
         return;
     }
     auto* src = qobject_cast<TestCaseBlock*>(event->source());
@@ -326,7 +514,7 @@ void TestCaseBlock::dropEvent(QDropEvent* event) {
 
 void TestCaseBlock::contextMenuEvent(QContextMenuEvent* event) {
     emit blockSelected(this);
-    // 勿以功能块为父：块上 QCheckBox { color: 灰/绿 } 会污染菜单文字
+    // 勿以功能块为父：块上 color 会污染菜单文字
     QMenu menu(window());
     applyFlowContextMenuStyle(&menu);
     menu.addAction(QStringLiteral("打开设置"), this, [this]() { emit editRequested(this); });
@@ -341,6 +529,8 @@ void TestCaseBlock::contextMenuEvent(QContextMenuEvent* event) {
     QAction* copyAct = menu.addAction(QStringLiteral("复制"), this, [this]() { emit copyRequested(this); });
     copyAct->setEnabled(!isBlank());
     menu.addAction(QStringLiteral("从流程移除"), this, [this]() { emit removeFromFlowRequested(this); });
+    menu.addSeparator();
+    menu.addAction(QStringLiteral("一键清空"), this, [this]() { emit clearRegionRequested(this); });
     menu.exec(event->globalPos());
 }
 
@@ -372,7 +562,9 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
     if (flowContainer_) {
         flowContainer_->setAcceptDrops(true);
         flowContainer_->installEventFilter(this);
+        flowContainer_->setAutoFillBackground(true);
         flowContainer_->setStyleSheet(QStringLiteral("background: #f8fafc;"));
+        flowContainer_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
     }
     if (scroll_) {
         scroll_->setStyleSheet(QStringLiteral(
@@ -382,17 +574,22 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
             "  background: #f8fafc;"
             "}"
             "QScrollArea > QWidget > QWidget { background: #f8fafc; }"));
-        if (scroll_->viewport())
-            scroll_->viewport()->installEventFilter(this);
+        if (QWidget* vp = scroll_->viewport()) {
+            vp->setAutoFillBackground(true);
+            vp->setStyleSheet(QStringLiteral("background: #f8fafc;"));
+            vp->installEventFilter(this);
+        }
     }
     if (flowLayout_) {
-        flowLayout_->setSpacing(6);
-        flowLayout_->setContentsMargins(10, 10, 10, 10);
+        flowLayout_->setSpacing(4);
+        flowLayout_->setContentsMargins(8, 8, 8, 8);
+        flowLayout_->setSizeConstraint(QLayout::SetMinimumSize);
     }
 
     setupFailFlowRegionUi(btnFailClear);
 
-    if (auto* toolbar = stationCombo_->parentWidget()->findChild<QHBoxLayout*>(QStringLiteral("horizontalLayout_testFlowToolbar"))) {
+    if (auto* toolbar =
+            stationCombo_->parentWidget()->findChild<QHBoxLayout*>(QStringLiteral("horizontalLayout_testFlowToolbar"))) {
         auto* btnUp = new QPushButton(QStringLiteral("上移"), stationCombo_->parentWidget());
         auto* btnDown = new QPushButton(QStringLiteral("下移"), stationCombo_->parentWidget());
         btnUp->setToolTip(QStringLiteral("将当前选中的功能块上移一步"));
@@ -429,11 +626,12 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
     if (dialogParent_) {
         if (auto* btnDownloadSteps =
                 dialogParent_->findChild<QPushButton*>(QStringLiteral("pushButton_testFlowDownloadSteps"))) {
-            connect(btnDownloadSteps, &QPushButton::clicked, this, &TestFlowEditor::startDownloadStepsLibrary);
+            // 下载/上传用例库改到工站右键菜单，工具栏按钮隐藏保留兼容
+            btnDownloadSteps->hide();
         }
         if (auto* btnUploadSteps =
                 dialogParent_->findChild<QPushButton*>(QStringLiteral("pushButton_testFlowUploadSteps"))) {
-            connect(btnUploadSteps, &QPushButton::clicked, this, &TestFlowEditor::startUploadStepsLibrary);
+            btnUploadSteps->hide();
         }
         if (auto* btnSerialUi =
                 dialogParent_->findChild<QPushButton*>(QStringLiteral("pushButton_testFlowSerialUi"))) {
@@ -445,12 +643,9 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
         }
     }
     connect(btnSave, &QPushButton::clicked, this, [this]() { saveCurrentFlow(); });
-    connect(btnClear, &QPushButton::clicked, this, [this]() {
-        if (QMessageBox::question(dialogParent_, QStringLiteral("确认"),
-                                  QStringLiteral("清空当前工站主流程编排区？不会删除磁盘 ini")) == QMessageBox::Yes) {
-            clearBlocks();
-        }
-    });
+    // 「一键清空」改到编排区/功能块右键菜单，工具栏按钮隐藏保留兼容
+    if (btnClear)
+        btnClear->hide();
 
     if (stopFlowOnTestFailCheck_) {
         stopFlowOnTestFailCheck_->setToolTip(
@@ -459,7 +654,7 @@ void TestFlowEditor::bindUi(QWidget* dialogParent, QComboBox* stationCombo, QScr
     }
     if (scroll_) {
         scroll_->setToolTip(QStringLiteral("主测试流程。拖拽功能块到目标位置：落在某块上半部=插到其前，下半部=插到其后；"
-                                           "也可选中块后点「上移」「下移」，或右键添加功能块。可拖到下方失败区。调整完须点「保存流程」。"));
+                                           "也可选中块后点工具栏「上移」「下移」，或右键添加/一键清空。可拖到下方失败区。调整完须点「保存流程」。"));
     }
 
     QString initialKey = TestCaseStore::resolveFlowStationKey(
@@ -480,37 +675,137 @@ void TestFlowEditor::setupFailFlowRegionUi(QPushButton* btnFailClear) {
     if (failContainer_) {
         failContainer_->setAcceptDrops(true);
         failContainer_->installEventFilter(this);
-        failContainer_->setStyleSheet(QStringLiteral("background: #fff7ed;"));
+        failContainer_->setAutoFillBackground(true);
+        failContainer_->setStyleSheet(QStringLiteral("background: #f8fafc;"));
+        failContainer_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
     }
     if (failScroll_) {
+        failScroll_->setMinimumHeight(56);
         failScroll_->setStyleSheet(QStringLiteral(
             "QScrollArea {"
-            "  border: 1px solid #fed7aa;"
+            "  border: 1px solid #e2e8f0;"
             "  border-radius: 8px;"
-            "  background: #fff7ed;"
-            "}"));
-        if (failScroll_->viewport())
-            failScroll_->viewport()->installEventFilter(this);
+            "  background: #f8fafc;"
+            "}"
+            "QScrollArea > QWidget > QWidget { background: #f8fafc; }"));
+        if (QWidget* vp = failScroll_->viewport()) {
+            vp->setAutoFillBackground(true);
+            vp->setStyleSheet(QStringLiteral("background: #f8fafc;"));
+            vp->installEventFilter(this);
+        }
     }
-    failLayout_->setSpacing(6);
-    failLayout_->setContentsMargins(10, 10, 10, 10);
+    failLayout_->setSpacing(4);
+    failLayout_->setContentsMargins(8, 8, 8, 8);
+    failLayout_->setSizeConstraint(QLayout::SetMinimumSize);
 
-    if (auto* pageLayout = qobject_cast<QVBoxLayout*>(scroll_->parentWidget() ? scroll_->parentWidget()->layout() : nullptr)) {
-        const int mainIdx = pageLayout->indexOf(scroll_);
-        const int failIdx = pageLayout->indexOf(failScroll_);
-        if (mainIdx >= 0)
-            pageLayout->setStretch(mainIdx, 3);
-        if (failIdx >= 0)
-            pageLayout->setStretch(failIdx, 1);
+    installFlowHeightSplitter();
+
+    if (dialogParent_) {
+        if (auto* failLabel = dialogParent_->findChild<QLabel*>(QStringLiteral("label_testFlowFailRegion"))) {
+            failLabel->setStyleSheet(QStringLiteral("font-weight: 600; color: #b45309;"));
+        }
     }
 
     if (btnFailClear) {
         connect(btnFailClear, &QPushButton::clicked, this, [this]() {
-            if (QMessageBox::question(dialogParent_, QStringLiteral("确认"),
-                                      QStringLiteral("清空测试失败执行区域？")) == QMessageBox::Yes) {
+            if (askYesNo(dialogParent_, QStringLiteral("确认"), QStringLiteral("清空测试失败执行区域？"))) {
                 clearFailBlocks();
+                refreshFlowScrollAreas();
             }
         });
+    }
+}
+
+void TestFlowEditor::installFlowHeightSplitter() {
+    if (!scroll_ || !failScroll_)
+        return;
+    QWidget* page = scroll_->parentWidget();
+    auto* pageLayout = qobject_cast<QVBoxLayout*>(page ? page->layout() : nullptr);
+    if (!page || !pageLayout)
+        return;
+    if (page->findChild<QSplitter*>(QStringLiteral("testFlowHeightSplitter")))
+        return;
+
+    const int mainIdx = pageLayout->indexOf(scroll_);
+    if (mainIdx < 0)
+        return;
+
+    auto* failPanel = new QWidget(page);
+    failPanel->setObjectName(QStringLiteral("testFlowFailPanel"));
+    auto* failPanelLay = new QVBoxLayout(failPanel);
+    failPanelLay->setContentsMargins(0, 0, 0, 0);
+    failPanelLay->setSpacing(4);
+
+    if (auto* failToolbarLay =
+            page->findChild<QHBoxLayout*>(QStringLiteral("horizontalLayout_testFlowFailToolbar"))) {
+        auto* failHeader = new QWidget(failPanel);
+        auto* newTb = new QHBoxLayout(failHeader);
+        newTb->setContentsMargins(0, 0, 0, 0);
+        while (QLayoutItem* it = failToolbarLay->takeAt(0)) {
+            if (QWidget* w = it->widget()) {
+                newTb->addWidget(w);
+            } else if (QSpacerItem* sp = it->spacerItem()) {
+                newTb->addItem(new QSpacerItem(sp->sizeHint().width(), sp->sizeHint().height(),
+                                               QSizePolicy::Expanding, QSizePolicy::Minimum));
+            }
+            delete it;
+        }
+        pageLayout->removeItem(failToolbarLay);
+        delete failToolbarLay;
+        failPanelLay->addWidget(failHeader);
+    }
+
+    pageLayout->removeWidget(scroll_);
+    pageLayout->removeWidget(failScroll_);
+    failPanelLay->addWidget(failScroll_, 1);
+
+    auto* splitter = new QSplitter(Qt::Vertical, page);
+    splitter->setObjectName(QStringLiteral("testFlowHeightSplitter"));
+    splitter->setChildrenCollapsible(false);
+    splitter->setHandleWidth(5);
+    splitter->setStyleSheet(QStringLiteral(
+        "QSplitter::handle:vertical {"
+        "  background: #e2e8f0;"
+        "  margin: 2px 24px;"
+        "  border-radius: 2px;"
+        "  height: 3px;"
+        "}"));
+    splitter->addWidget(scroll_);
+    splitter->addWidget(failPanel);
+    // 主流程占大头；失败区默认只留一条矮带，空着时不抢高度
+    failPanel->setMinimumHeight(72);
+    splitter->setStretchFactor(0, 8);
+    splitter->setStretchFactor(1, 1);
+    splitter->setSizes({720, 88});
+    pageLayout->insertWidget(mainIdx, splitter, 1);
+}
+
+void TestFlowEditor::refreshFlowScrollAreas() {
+    refreshBlockIndices(flowLayout_);
+    refreshBlockIndices(failLayout_);
+    auto refreshOne = [](QScrollArea* scroll, QVBoxLayout* layout) {
+        if (!scroll || !layout)
+            return;
+        QWidget* content = scroll->widget();
+        if (!content)
+            return;
+        layout->activate();
+        const int h = qMax(layout->sizeHint().height(), layout->minimumSize().height());
+        content->setMinimumHeight(h);
+    };
+    refreshOne(scroll_, flowLayout_);
+    refreshOne(failScroll_, failLayout_);
+}
+
+void TestFlowEditor::refreshBlockIndices(QVBoxLayout* layout) {
+    if (!layout)
+        return;
+    int index = 0;
+    for (int i = 0; i < layout->count(); ++i) {
+        auto* block = qobject_cast<TestCaseBlock*>(layout->itemAt(i)->widget());
+        if (!block)
+            continue;
+        block->setFlowIndex(++index);
     }
 }
 
@@ -531,6 +826,18 @@ void TestFlowEditor::showFlowRegionContextMenu(QVBoxLayout* layout, const QPoint
     });
     menu.addAction(QStringLiteral("添加已有块"), this, [this, toFailRegion, insertAfter]() {
         promptImportBlocks(toFailRegion, insertAfter);
+    });
+    menu.addSeparator();
+    menu.addAction(QStringLiteral("一键清空"), this, [this, toFailRegion]() {
+        const QString msg = toFailRegion ? QStringLiteral("清空测试失败执行区域？")
+                                         : QStringLiteral("清空当前工站主流程编排区？不会删除磁盘 ini");
+        if (!askYesNo(dialogParent_, QStringLiteral("确认"), msg))
+            return;
+        if (toFailRegion)
+            clearFailBlocks();
+        else
+            clearBlocks();
+        refreshFlowScrollAreas();
     });
     menu.exec(globalPos);
 }
@@ -584,10 +891,10 @@ void TestFlowEditor::promptImportBlocks(bool toFailRegion, TestCaseBlock* insert
 
                 const QString preview = names.count() > 5 ? names.mid(0, 5).join(QStringLiteral("、")) + QStringLiteral(" 等 %1 项").arg(names.count())
                                                           : names.join(QStringLiteral("、"));
-                if (QMessageBox::question(dialogParent_, QStringLiteral("确认删除"),
-                                          QStringLiteral("将永久删除 test_case 下以下功能块 ini：\r\n%1\r\n\r\n"
-                                                         "若当前编排区已引用，会同步移除对应块（须保存流程后生效）。")
-                                              .arg(preview)) != QMessageBox::Yes) {
+                if (!askYesNo(dialogParent_, QStringLiteral("确认删除"),
+                              QStringLiteral("将永久删除 test_case 下以下功能块 ini：\r\n%1\r\n\r\n"
+                                             "若当前编排区已引用，会同步移除对应块（须保存流程后生效）。")
+                                  .arg(preview))) {
                     return;
                 }
 
@@ -686,6 +993,7 @@ void TestFlowEditor::moveSelectedBlock(int delta) {
         return;
     layout->removeWidget(selectedBlock_);
     layout->insertWidget(to, selectedBlock_);
+    refreshFlowScrollAreas();
 }
 
 QVBoxLayout* TestFlowEditor::layoutOfSelectedBlock() const {
@@ -724,9 +1032,13 @@ bool TestFlowEditor::eventFilter(QObject* watched, QEvent* event) {
             if (src) {
                 moveBlockInFlowLayout(targetLayout, src, targetLayout->count());
                 e->acceptProposedAction();
+                refreshFlowScrollAreas();
             }
             return true;
         }
+        case QEvent::Resize:
+            refreshFlowScrollAreas();
+            break;
         case QEvent::ContextMenu: {
             auto* e = static_cast<QContextMenuEvent*>(event);
             if (e->reason() == QContextMenuEvent::Mouse && regionWidget) {
@@ -840,6 +1152,9 @@ QMenu* TestFlowEditor::createFlowStationMenu(QWidget* parent, int hitComboIndex)
     QAction* const actRename = menu->addAction(QStringLiteral("重命名工站"));
     QAction* const actCopy = menu->addAction(QStringLiteral("复制工站"));
     QAction* const actDel = menu->addAction(QStringLiteral("删除工站"));
+    menu->addSeparator();
+    QAction* const actDownloadSteps = menu->addAction(QStringLiteral("下载用例库"));
+    QAction* const actUploadSteps = menu->addAction(QStringLiteral("上传用例库"));
 
     const bool hasStation = stationCombo_ && stationCombo_->count() > 0;
     actRename->setEnabled(hasStation);
@@ -862,6 +1177,10 @@ QMenu* TestFlowEditor::createFlowStationMenu(QWidget* parent, int hitComboIndex)
             return;
         promptRemoveCurrentFlowStation();
     }, Qt::QueuedConnection);
+    connect(actDownloadSteps, &QAction::triggered, this, &TestFlowEditor::startDownloadStepsLibrary,
+            Qt::QueuedConnection);
+    connect(actUploadSteps, &QAction::triggered, this, &TestFlowEditor::startUploadStepsLibrary,
+            Qt::QueuedConnection);
     return menu;
 }
 
@@ -871,7 +1190,7 @@ void TestFlowEditor::setupStationComboContextMenu() {
 
     stationCombo_->setToolTip(
         QStringLiteral("选择要编辑的测试工站（随 Mes/Product_Name 产品型号过滤）；"
-                       "数据来自 test_case/总的测试流程.ini"));
+                       "数据来自 test_case/总的测试流程.ini；右键可管理工站与用例库同步"));
 
     if (auto* manageBtn =
             stationCombo_->parentWidget()->findChild<QToolButton*>(QStringLiteral("toolButton_testFlowStationMenu"))) {
@@ -882,11 +1201,18 @@ void TestFlowEditor::setupStationComboContextMenu() {
         QAction* const actRename = menu->addAction(QStringLiteral("重命名工站"));
         QAction* const actCopy = menu->addAction(QStringLiteral("复制工站"));
         QAction* const actDel = menu->addAction(QStringLiteral("删除工站"));
+        menu->addSeparator();
+        QAction* const actDownloadSteps = menu->addAction(QStringLiteral("下载用例库"));
+        QAction* const actUploadSteps = menu->addAction(QStringLiteral("上传用例库"));
         connect(actNew, &QAction::triggered, this, [this]() { promptAddFlowStation(); }, Qt::QueuedConnection);
         connect(actRename, &QAction::triggered, this, [this]() { promptRenameCurrentFlowStation(); },
                 Qt::QueuedConnection);
         connect(actCopy, &QAction::triggered, this, [this]() { promptCopyCurrentFlowStation(); }, Qt::QueuedConnection);
         connect(actDel, &QAction::triggered, this, [this]() { promptRemoveCurrentFlowStation(); }, Qt::QueuedConnection);
+        connect(actDownloadSteps, &QAction::triggered, this, &TestFlowEditor::startDownloadStepsLibrary,
+                Qt::QueuedConnection);
+        connect(actUploadSteps, &QAction::triggered, this, &TestFlowEditor::startUploadStepsLibrary,
+                Qt::QueuedConnection);
         connect(menu, &QMenu::aboutToShow, this, [this, actRename, actCopy, actDel]() {
             const bool hasStation = stationCombo_ && stationCombo_->count() > 0;
             actRename->setEnabled(hasStation);
@@ -1434,10 +1760,10 @@ void TestFlowEditor::promptRemoveCurrentFlowStation() {
         return;
     }
     const QString label = stationCombo_->currentText();
-    if (QMessageBox::question(dialogParent_, QStringLiteral("确认删除"),
-                              QStringLiteral("删除工站「%1」及其在 总的测试流程.ini 中的流程配置？\r\n"
-                                             "不会删除 test_case 下的功能块 ini。")
-                                  .arg(label)) != QMessageBox::Yes) {
+    if (!askYesNo(dialogParent_, QStringLiteral("确认删除"),
+                  QStringLiteral("删除工站「%1」及其在 总的测试流程.ini 中的流程配置？\r\n"
+                                 "不会删除 test_case 下的功能块 ini。")
+                      .arg(label))) {
         return;
     }
     QString err;
@@ -1497,12 +1823,26 @@ TestCaseBlock* TestFlowEditor::createBlock(QVBoxLayout* layout, QWidget* contain
     });
     connect(block, &TestCaseBlock::copyRequested, this, &TestFlowEditor::copyBlock);
     connect(block, &TestCaseBlock::runRequested, this, &TestFlowEditor::runBlock);
+    connect(block, &TestCaseBlock::clearRegionRequested, this, [this](TestCaseBlock* b) {
+        QVBoxLayout* lay = flowLayoutOfBlock(b);
+        const bool toFailRegion = lay == failLayout_;
+        const QString msg = toFailRegion ? QStringLiteral("清空测试失败执行区域？")
+                                         : QStringLiteral("清空当前工站主流程编排区？不会删除磁盘 ini");
+        if (!askYesNo(dialogParent_, QStringLiteral("确认"), msg))
+            return;
+        if (toFailRegion)
+            clearFailBlocks();
+        else
+            clearBlocks();
+        refreshFlowScrollAreas();
+    });
     connect(block, &TestCaseBlock::removeFromFlowRequested, this, [this](TestCaseBlock* b) {
         if (selectedBlock_ == b)
             setSelectedBlock(nullptr);
         if (QVBoxLayout* lay = flowLayoutOfBlock(b))
             lay->removeWidget(b);
         b->deleteLater();
+        QTimer::singleShot(0, this, [this]() { refreshFlowScrollAreas(); });
     });
     connect(block, &TestCaseBlock::blockSelected, this, [this](TestCaseBlock* b) { setSelectedBlock(b); });
     return block;
@@ -1514,6 +1854,7 @@ void TestFlowEditor::appendBlock(const QString& caseName, bool enabled) {
         return;
     flowLayout_->addWidget(block);
     setSelectedBlock(block);
+    refreshFlowScrollAreas();
 }
 
 void TestFlowEditor::appendFailBlock(const QString& caseName, bool enabled) {
@@ -1522,6 +1863,7 @@ void TestFlowEditor::appendFailBlock(const QString& caseName, bool enabled) {
         return;
     failLayout_->addWidget(block);
     setSelectedBlock(block);
+    refreshFlowScrollAreas();
 }
 
 void TestFlowEditor::insertBlockAfter(TestCaseBlock* after, const QString& caseName, bool enabled) {
@@ -1536,6 +1878,7 @@ void TestFlowEditor::insertBlockAfter(TestCaseBlock* after, const QString& caseN
     else
         layout->insertWidget(idx + 1, block);
     setSelectedBlock(block);
+    refreshFlowScrollAreas();
 }
 
 void TestFlowEditor::copyBlock(TestCaseBlock* src) {
@@ -1749,7 +2092,7 @@ void TestFlowEditor::startUploadCurrentStationCase() {
     }
 
     if (hasUnsavedChanges()) {
-        const auto saveAnswer = QMessageBox::question(
+        const auto saveAnswer = askQuestion(
             dialogParent_, QStringLiteral("上传本工站用例"),
             QStringLiteral("当前编排有未保存改动，是否先保存再上传？"),
             QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel, QMessageBox::Yes);
@@ -1782,12 +2125,10 @@ void TestFlowEditor::startUploadCurrentStationCase() {
         return;
     }
 
-    const auto answer = QMessageBox::question(
-        dialogParent_, QStringLiteral("上传本工站用例"),
-        QStringLiteral("上传当前工站「%1」到云端草稿（不影响其他工站）。\n"
-                       "说明：%2\n\n网页「合入 + 发布」后，其他电脑才能下载到。\n\n确认上传？")
-            .arg(label, remark));
-    if (answer != QMessageBox::Yes) {
+    if (!askYesNo(dialogParent_, QStringLiteral("上传本工站用例"),
+                  QStringLiteral("上传当前工站「%1」到云端草稿（不影响其他工站）。\n"
+                                 "说明：%2\n\n网页「合入 + 发布」后，其他电脑才能下载到。\n\n确认上传？")
+                      .arg(label, remark))) {
         return;
     }
 
@@ -1831,13 +2172,11 @@ void TestFlowEditor::startUploadStepsLibrary() {
         return;
     }
 
-    const auto answer = QMessageBox::question(
-        dialogParent_, QStringLiteral("上传用例库"),
-        QStringLiteral("上传本机共享用例库（test_case/steps）到云端草稿。\n"
-                       "说明：%1\n\n不会上传各工站 profiles；网页「合入 + 发布」后，"
-                       "其他电脑才能「下载用例库」。\n\n确认上传？")
-            .arg(remark));
-    if (answer != QMessageBox::Yes) {
+    if (!askYesNo(dialogParent_, QStringLiteral("上传用例库"),
+                  QStringLiteral("上传本机共享用例库（test_case/steps）到云端草稿。\n"
+                                 "说明：%1\n\n不会上传各工站 profiles；网页「合入 + 发布」后，"
+                                 "其他电脑才能「下载用例库」。\n\n确认上传？")
+                      .arg(remark))) {
         return;
     }
 
@@ -1855,11 +2194,9 @@ void TestFlowEditor::startUploadStepsLibrary() {
 }
 
 void TestFlowEditor::startDownloadStepsLibrary() {
-    const auto answer = QMessageBox::question(
-        dialogParent_, QStringLiteral("下载用例库"),
-        QStringLiteral("从云端下载已发布的共享用例库，仅覆盖本机 test_case/steps。\n"
-                       "不会动各工站 profiles；未发布的草稿也拉不到。\n\n确认下载？"));
-    if (answer != QMessageBox::Yes) {
+    if (!askYesNo(dialogParent_, QStringLiteral("下载用例库"),
+                  QStringLiteral("从云端下载已发布的共享用例库，仅覆盖本机 test_case/steps。\n"
+                                 "不会动各工站 profiles；未发布的草稿也拉不到。\n\n确认下载？"))) {
         return;
     }
 
@@ -1941,12 +2278,10 @@ void TestFlowEditor::startDownloadStationCase() {
                     return;
                 }
 
-                const auto answer = QMessageBox::question(
-                    dialogParent_, QStringLiteral("下载工站用例"),
-                    QStringLiteral("从云端下载已发布的正式用例，仅覆盖本机工站「%1」。\n"
-                                   "不会动其他工站；未发布的草稿也拉不到。\n\n确认下载？")
-                        .arg(label));
-                if (answer != QMessageBox::Yes) {
+                if (!askYesNo(dialogParent_, QStringLiteral("下载工站用例"),
+                              QStringLiteral("从云端下载已发布的正式用例，仅覆盖本机工站「%1」。\n"
+                                             "不会动其他工站；未发布的草稿也拉不到。\n\n确认下载？")
+                                  .arg(label))) {
                     return;
                 }
 
@@ -2006,13 +2341,19 @@ bool TestFlowEditor::confirmDiscardOrSaveOnLeave() {
     if (!hasUnsavedChanges())
         return true;
 
-    QMessageBox box(dialogParent_);
-    box.setWindowTitle(QStringLiteral("未保存的更改"));
-    box.setText(QStringLiteral("测试流程编排已修改，是否保存？"));
-    box.setIcon(QMessageBox::Question);
+    // 不挂 dialogParent_，避免继承壳层 QSS 导致布局比例异常
+    QMessageBox box(QMessageBox::Question, QStringLiteral("未保存的更改"),
+                    QStringLiteral("测试流程编排已修改，是否保存？"), QMessageBox::NoButton, nullptr);
+    box.setWindowModality(Qt::ApplicationModal);
     auto* btnSave = box.addButton(QStringLiteral("保存"), QMessageBox::AcceptRole);
     box.addButton(QStringLiteral("取消"), QMessageBox::RejectRole);
     box.setDefaultButton(btnSave);
+    box.adjustSize();
+    if (dialogParent_) {
+        const QRect ag = dialogParent_->window() ? dialogParent_->window()->frameGeometry()
+                                                 : dialogParent_->frameGeometry();
+        box.move(ag.center() - QPoint(box.width() / 2, box.height() / 2));
+    }
     box.exec();
 
     if (box.clickedButton() == btnSave) {
@@ -2047,6 +2388,7 @@ void TestFlowEditor::reloadCurrentStation() {
             setSelectedBlock(block);
     }
     updateSavedSnapshot();
+    QTimer::singleShot(0, this, [this]() { refreshFlowScrollAreas(); });
 }
 
 void TestFlowEditor::openEditDialog(TestCaseBlock* block) {

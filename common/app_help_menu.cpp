@@ -5,8 +5,10 @@
 #include <QMenu>
 #include <QMenuBar>
 #include <QMessageBox>
+#include <QMetaObject>
 #include <QObject>
 #include <QPair>
+#include <QProgressDialog>
 #include <QWidget>
 #include <QtConcurrent>
 
@@ -18,9 +20,7 @@
 #pragma execution_character_set(push, "utf-8")
 #endif
 
-namespace {
-
-void startLogUpload(QWidget* parent) {
+static void startLogUpload(QWidget* parent) {
     if (!LogUploadService::isUploadEnabled()) {
         QMessageBox::information(parent, QStringLiteral("日志上传"), QStringLiteral("当前不可上传日志"));
         return;
@@ -33,8 +33,22 @@ void startLogUpload(QWidget* parent) {
         return;
     }
 
+    auto* progress = new QProgressDialog(parent);
+    progress->setAttribute(Qt::WA_DeleteOnClose);
+    progress->setWindowTitle(QStringLiteral("日志上传"));
+    progress->setLabelText(QStringLiteral("正在打包日志，请稍候…"));
+    progress->setCancelButton(nullptr);
+    progress->setWindowModality(Qt::ApplicationModal);
+    progress->setMinimumDuration(0);
+    progress->setRange(0, 0);
+    progress->show();
+    progress->raise();
+
     auto* watcher = new QFutureWatcher<QPair<bool, QString>>(parent);
-    QObject::connect(watcher, &QFutureWatcher<QPair<bool, QString>>::finished, parent, [parent, watcher]() {
+    QObject::connect(watcher, &QFutureWatcher<QPair<bool, QString>>::finished, parent, [parent, watcher, progress]() {
+        if (progress) {
+            progress->close();
+        }
         const QPair<bool, QString> result = watcher->result();
         if (result.first) {
             QMessageBox::information(parent, QStringLiteral("日志上传"), result.second);
@@ -43,14 +57,44 @@ void startLogUpload(QWidget* parent) {
         }
         watcher->deleteLater();
     });
-    watcher->setFuture(QtConcurrent::run([cfg]() {
+
+    const auto reportProgress = [progress](const QString& phase, qint64 current, qint64 total) {
+        if (!progress) {
+            return;
+        }
+        // 工作线程回调，切回 UI 线程更新进度条
+        QMetaObject::invokeMethod(
+            progress,
+            [progress, phase, current, total]() {
+                if (phase == QStringLiteral("pack")) {
+                    progress->setRange(0, 0);
+                    progress->setLabelText(QStringLiteral("正在打包日志，请稍候…"));
+                    return;
+                }
+                if (total > 0) {
+                    int pct = static_cast<int>((current * 100) / total);
+                    if (pct < 0) {
+                        pct = 0;
+                    } else if (pct > 100) {
+                        pct = 100;
+                    }
+                    progress->setRange(0, 100);
+                    progress->setValue(pct);
+                    progress->setLabelText(QStringLiteral("正在上传日志… %1%").arg(pct));
+                } else {
+                    progress->setRange(0, 0);
+                    progress->setLabelText(QStringLiteral("正在上传日志…"));
+                }
+            },
+            Qt::QueuedConnection);
+    };
+
+    watcher->setFuture(QtConcurrent::run([cfg, reportProgress]() {
         QString message;
-        const bool ok = LogUploadService::packAndUpload(cfg, &message);
+        const bool ok = LogUploadService::packAndUpload(cfg, &message, reportProgress);
         return qMakePair(ok, message);
     }));
 }
-
-} // namespace
 
 QMenu* AppHelpMenu::install(QMenuBar* menuBar, QWidget* dialogParent, const HostCallbacks& callbacks) {
     if (!menuBar || !dialogParent) {

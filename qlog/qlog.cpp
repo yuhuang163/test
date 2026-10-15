@@ -603,6 +603,13 @@ QString Qlog::logRootAbsolute() {
 }
 
 void Qlog::beginSession(int slot, const QString& sn, const QString& mac, const QString& station) {
+    {
+        QMutexLocker lock(&g_sessionMutex);
+        // 上一轮钉住附件已在收尾时同步打包取走；离线/关日志上传时无人取，丢弃以免并入本轮
+        g_pinnedSuctionSamples.remove(slot);
+        g_pinnedSuctionCurveFiles.remove(slot);
+        g_pinnedScreenInspectFiles.remove(slot);
+    }
     if (!sessionLogEnabled()) {
         return;
     }

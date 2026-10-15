@@ -741,6 +741,17 @@ enum class DeviceCmd {
     CycleReportWrite,        // 【Qaiot】CID=0x18 设置数据采集上报
     PressSampleOnoffGet,     // 【Qfctp】ALGO TLV 0x0002 读气压采样开关
     PressSampleIntervalGet,  // 【Qfctp】ALGO TLV 0x0003 读气压采样间隔
+
+    // 【QaiotApp】应用层 v1.0.1。通道按服务：5.1→5 DEV_MGMT，5.7→6 DATA，5.10→7 PUMP
+    AppLinkNegotiate, // Service 0x01 CID=0x01 连接参数协商
+    AppSetTime,       // Service 0x01 CID=0x0A 设置日期时间
+    AppPumpControl,   // Pump 0x10 CID=0x03 设置吸乳工作参数
+    AppPumpStatus,    // Pump 0x10 CID=0x04 获取吸乳工作状态
+    AppCommonStatus,  // Pump 0x10 CID=0x02 获取通用状态
+    AppHeatControl,   // Pump 0x10 CID=0x09 设置加热
+    AppHeatStatus,    // Pump 0x10 CID=0x0A 获取加热状态
+    AppLightControl,  // Pump 0x10 CID=0x07 设置灯（红光）
+    AppLightStatus,   // Pump 0x10 CID=0x08 获取灯状态
 };
 
 class IDevice {

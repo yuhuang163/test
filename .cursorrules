@@ -1,3 +1,1 @@
-﻿Always use CRLF (
-) line endings when modifying or creating files, EXCEPT for 'new_production.pro' which MUST always use LF (
-) format. After every file modification, if you suspect the line endings were converted to LF (for files other than new_production.pro), run a powershell command to replace them back to CRLF.
+Always use CRLF line endings when modifying or creating files, EXCEPT for 'new_production.pro' which MUST always use LF. After every text-file modification, run: py -3 scripts/convert_to_crlf.py <path> (UTF-8 no BOM + CRLF; for new_production.pro the same command keeps LF). NEVER rewrite files with PowerShell [IO.File]::ReadAllText / WriteAllText without explicit UTF-8 — on Chinese Windows that GBK-misreads UTF-8 and corrupts Chinese. If convert_to_crlf.py is unavailable, use only: perl -pi -e "s/\r?\n/\r\n/g" <file> (line endings only).

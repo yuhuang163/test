@@ -9,15 +9,21 @@ constexpr quint8 kDonglePhyRxHeaderByte = 0xAA; // Dongle → 上位机
 constexpr quint8 kDonglePhyTxHeaderByte = 0xCC; // 上位机 → Dongle
 constexpr int kDonglePhyHeaderSize = 8;
 
-constexpr quint8 kDonglePhyChannelFac = 1;     // 产测 / qroot / qfctp 工厂
-constexpr quint8 kDonglePhyChannelApp = 2;     // qfctp App 透传
-constexpr quint8 kDonglePhyChannelMain = 3;    // qfctp Main 透传
-constexpr quint8 kDonglePhyChannelSuction = 4; // 三路吸力二进制上行（DonglePhyRxCodec）
+constexpr quint8 kDonglePhyChannelFac = 1;     // FAC：TONGYONG/FCT&ATE、V3 factory、usmile factory
+constexpr quint8 kDonglePhyChannelApp = 2;     // APP：OTA（qfctp App 透传同此通道）
+constexpr quint8 kDonglePhyChannelMain = 3;    // MAIN：旧 usmile main
+constexpr quint8 kDonglePhyChannelSuction = 4; // SUCTION：本地吸力，非 BLE
+constexpr quint8 kDonglePhyChannelDevMgmt = 5; // DEV_MGMT：应用层 5.1 Device Management（SID 0x01）
+constexpr quint8 kDonglePhyChannelData = 6;    // DATA：应用层 5.7 Data Service（SID 0x07）
+constexpr quint8 kDonglePhyChannelPump = 7;    // PUMP：应用层 5.10 Pump Service（SID 0x10）
 
 /** DonglePhyRxCodec 收包 channel 位掩码（bit N 表示允许 channel N） */
 constexpr quint8 kDonglePhyRxAcceptFacOnly = quint8(1u << kDonglePhyChannelFac);
+constexpr quint8 kDonglePhyRxAcceptAppOnly = quint8(1u << kDonglePhyChannelApp);
 constexpr quint8 kDonglePhyRxAcceptFacAppMain =
     quint8((1u << kDonglePhyChannelFac) | (1u << kDonglePhyChannelApp) | (1u << kDonglePhyChannelMain));
+constexpr quint8 kDonglePhyRxAcceptAiotApp =
+    quint8((1u << kDonglePhyChannelDevMgmt) | (1u << kDonglePhyChannelData) | (1u << kDonglePhyChannelPump));
 
 /** 吸力/温度高频流式数据：跳过串口 UI 与逐帧落盘（含 AT 文本与 PHY channel=4 二进制） */
 inline bool shouldSkipDongleStreamUartLog(const QByteArray& data) {

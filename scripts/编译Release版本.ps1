@@ -1,4 +1,4 @@
-#Requires -Version 5.1
+﻿#Requires -Version 5.1
 <#
 .SYNOPSIS
     new_product_test Release build (Qt 5.15.2 MSVC2019 x64 + jom)
@@ -38,7 +38,7 @@ function Find-QtDir {
     )
     foreach ($c in $candidates) {
         try {
-            if (Test-Path -LiteralPath (Join-Path $c "bin\qmake.exe")) { return $c }
+            if (Test-Path -LiteralPath (Join-Path $c "bin\qmake.exe") -ErrorAction SilentlyContinue) { return $c }
         } catch {
             continue
         }
@@ -57,7 +57,11 @@ function Find-Jom {
         "E:\Qt\Tools\QtCreator\bin\jom\jom.exe"
     )
     foreach ($c in $candidates) {
-        if (Test-Path $c) { return $c }
+        try {
+            if (Test-Path -ErrorAction SilentlyContinue $c) { return $c }
+        } catch {
+            continue
+        }
     }
     return "D:\Qt\Tools\QtCreator\bin\jom\jom.exe"
 }

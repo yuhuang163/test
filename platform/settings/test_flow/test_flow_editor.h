@@ -3,7 +3,7 @@
 
 #include "test_case_types.h"
 
-#include <QCheckBox>
+#include <QFrame>
 #include <QHash>
 #include <QObject>
 #include <QPointer>
@@ -11,20 +11,24 @@
 #include <QString>
 #include <QVector>
 
+class QCheckBox;
 class QComboBox;
 class QDragEnterEvent;
 class QDragMoveEvent;
 class QDropEvent;
+class QIcon;
+class QLabel;
 class QMenu;
 class QPushButton;
 class QScrollArea;
+class QToolButton;
 class QVBoxLayout;
 class QWidget;
 
 class TestCaseEditDialog;
 
-/** 流程编排区功能块（可拖拽）。 */
-class TestCaseBlock : public QCheckBox {
+/** 流程编排区功能块（可拖拽）：勾选 + 序号 + 标题 + 右侧操作钮。 */
+class TestCaseBlock : public QFrame {
     Q_OBJECT
 
   public:
@@ -35,6 +39,9 @@ class TestCaseBlock : public QCheckBox {
     bool isBlank() const {
         return caseName_.isEmpty();
     }
+    bool isChecked() const;
+    void setChecked(bool checked);
+    void setFlowIndex(int index1Based);
     void setSelected(bool selected);
     /** 自由工站设置页才允许单步：右键「运行」/双击功能块 */
     void setRunMenuVisible(bool visible);
@@ -49,13 +56,14 @@ class TestCaseBlock : public QCheckBox {
     void copyRequested(TestCaseBlock* block);
     void runRequested(TestCaseBlock* block);
     void removeFromFlowRequested(TestCaseBlock* block);
+    /** 清空本块所在编排区（主流程或失败区） */
+    void clearRegionRequested(TestCaseBlock* block);
     void blockSelected(TestCaseBlock* block);
 
   protected:
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void mouseDoubleClickEvent(QMouseEvent* event) override;
-    void paintEvent(QPaintEvent* event) override;
     void dragEnterEvent(QDragEnterEvent* event) override;
     void dragMoveEvent(QDragMoveEvent* event) override;
     void dropEvent(QDropEvent* event) override;
@@ -64,11 +72,17 @@ class TestCaseBlock : public QCheckBox {
   private:
     void performDrag();
     void updateBlockStyle();
+    void updateActionEnabled();
+    QToolButton* makeActionButton(const QString& objectName, const QString& tip, const QIcon& icon);
 
     QString caseName_;
     QPoint startPos_;
     bool selected_ = false;
     bool runMenuVisible_ = false;
+    QToolButton* enableCheck_ = nullptr;
+    QLabel* indexLabel_ = nullptr;
+    QLabel* titleLabel_ = nullptr;
+    QToolButton* btnCopy_ = nullptr;
 };
 
 class TestFlowEditor : public QObject {
@@ -113,6 +127,9 @@ class TestFlowEditor : public QObject {
     QMenu* createFlowStationMenu(QWidget* parent, int hitComboIndex);
     bool activateStationComboIndex(int index);
     void setupFailFlowRegionUi(QPushButton* btnFailClear);
+    void installFlowHeightSplitter();
+    void refreshFlowScrollAreas();
+    void refreshBlockIndices(QVBoxLayout* layout);
     void showFlowRegionContextMenu(QVBoxLayout* layout, const QPoint& globalPos, TestCaseBlock* insertAfter);
     void clearBlocksInLayout(QVBoxLayout* layout);
     void clearBlocks();

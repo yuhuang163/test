@@ -21,7 +21,7 @@
      </property>
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>1</number>
+       <number>0</number>
       </property>
       <property name="usesScrollButtons">
        <bool>true</bool>
@@ -41,7 +41,7 @@
             <item>
              <widget class="QCheckBox" name="isformmes">
               <property name="text">
-               <string>是否从mes获取mac</string>
+               <string>是否从MES获取MAC</string>
               </property>
               <property name="checked">
                <bool>true</bool>
@@ -278,7 +278,7 @@
               <item>
                <widget class="QLabel" name="label_5">
                 <property name="text">
-                 <string>输入SN获取mac：</string>
+                 <string>输入SN获取MAC：</string>
                 </property>
                </widget>
               </item>

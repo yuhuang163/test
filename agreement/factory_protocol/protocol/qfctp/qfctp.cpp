@@ -1453,7 +1453,10 @@ void Qfctp::set(DeviceCmd cmd, const QVariant& data) {
 
     switch (cmd) {
     case DeviceCmd::FacMode:
-        sendFactoryTestMode(data.toInt() != 0);
+        if (data.type() == QVariant::Map)
+            sendFactoryTestMode(fctpEnterOnFlag(data.toMap()) != 0);
+        else
+            sendFactoryTestMode(data.toInt() != 0);
         return;
     case DeviceCmd::BurningMode: {
         const QVariantMap map = toBurningMap(data);
