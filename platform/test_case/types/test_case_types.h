@@ -25,7 +25,7 @@ enum class UsbCameraCmd {
     LedOnOffCheck
 };
 enum class VesLightCmd { SetBrightness };
-enum class TestCaseProductProtocol { Qfctp, Qpb, Qroot, Qroot2, Qaiot, QaiotV2 };
+enum class TestCaseProductProtocol { Qfctp, Qpb, Qroot, Qroot2, Qaiot, QaiotV2, QaiotApp };
 enum class TestCaseFixtureProtocol {
     Pcba,
     Asd9026a,

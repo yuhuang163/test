@@ -13,7 +13,6 @@
 #include <QSysInfo>
 #include <QMessageBox>
 #include <QTextCodec>
-#include <QTextStream>
 #include <QTranslator>
 #include <QtDebug>
 #include <unordered_map>
@@ -25,6 +24,7 @@
 #include "login_dialog.h"
 #include "auth_service.h"
 #include "host_ota_service.h"
+#include "application_shutdown.h"
 #include "test_case_sync_service.h"
 #include "qfreeworkbox.h"
 #include "mainwindow.h"
@@ -335,5 +335,8 @@ int main(int argc, char* argv[]) {
         }
     } while (a.property("StationRestartRequested").toBool());
 
+    // 自由工站等 TotallyTask 工站不走 a.exec()，须在此收尾后台，否则心跳线程可能把进程留住
+    ApplicationShutdown::prepareForExit();
+    ApplicationShutdown::waitBackgroundTasks(3000);
     return exitCode;
 }

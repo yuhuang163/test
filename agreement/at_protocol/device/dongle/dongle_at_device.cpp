@@ -211,6 +211,7 @@ void DongleAtDevice::SEND_WIFI_IP(const QString& p) {
 
 void DongleAtDevice::WIFI_connected(const QString& p) {
     Q_UNUSED(p);
+    // 先置位再同步上报，避免槽里 getWifiConnected 仍读到旧值
     iswifiConnected = true;
     emitReport(QStringLiteral("ProtocolDongleWifiStateData"), QVariant::fromValue(ProtocolDongleWifiStateData{1}));
 }
@@ -224,15 +225,16 @@ void DongleAtDevice::WIFI_disconnected(const QString& p) {
 void DongleAtDevice::connected(const QString& p) {
     Q_UNUSED(p);
     qDebug() << "at蓝牙连接成功";
+    // 先置位再同步上报：同线程 Direct 下槽会立刻读 getConnected，否则流程第 3 步仍显示未完成
+    isConnected = true;
     emit sendGetProductResponse(1);
     emitReport(QStringLiteral("ProtocolDongleBleStateData"), QVariant::fromValue(ProtocolDongleBleStateData{1}));
-    isConnected = true;
 }
 
 void DongleAtDevice::disconnected(const QString& p) {
     Q_UNUSED(p);
-    emitReport(QStringLiteral("ProtocolDongleBleStateData"), QVariant::fromValue(ProtocolDongleBleStateData{0}));
     isConnected = false;
+    emitReport(QStringLiteral("ProtocolDongleBleStateData"), QVariant::fromValue(ProtocolDongleBleStateData{0}));
     qDebug() << "at蓝牙连接断开";
 }
 

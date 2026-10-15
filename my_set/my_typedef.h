@@ -1,12 +1,16 @@
 #ifndef MY_TYPEDEF_H
 #define MY_TYPEDEF_H
 
+#include <QApplication>
+#include <QColor>
 #include <QCoreApplication>
 #include <QDebug>
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QHash>
 #include <QHostInfo>
+#include <QPalette>
 #include <QTextStream>
 #include <QWidget>
 #include <QJsonArray>
@@ -41,7 +45,9 @@ inline QString settingsIniPath(const char* fileName) {
 /**
  * 仅下列项使用 上位机设置.local.ini，其余一律 上位机设置.ini：
  * 1. 串口与扫码框默认内容（[mechine]、键名含 comName；getMacDefault 仅手动写入 local.ini）
- * 2. 窗口大小与界面缩放（Window/SettingSize、Window/Size、Window/UiZoom）
+ * 2. 窗口大小与界面缩放、上次打开的调试页、Dongle 名称/信号筛选（Window/SettingSize、Window/Size、
+ *    Window/UiZoom、Window/ConsoleNavId、Window/ConsoleTab*、Window/ConsoleLogTab、
+ *    Window/DongleNameFilter、Window/DongleRssiFilter）
  * 3. 当前测试流程工站（TestOrderMeta/SelectedStation*，仅存 local.ini）
  * 4. WiFi 名称（WIFI/Name、WIFI/Name0…WIFI/Name9 等，各工位/路号）
  * 5. 云平台本机项（FactoryCloud：环境、BaseUrl、登录态、本机版本更新说明等，见 factoryCloudUsesLocalFile）
@@ -85,6 +91,15 @@ inline bool settingsUseLocalFile(const QString& fullKey) {
         QStringLiteral("Window/SettingSize"),
         QStringLiteral("Window/Size"),
         QStringLiteral("Window/UiZoom"),
+        QStringLiteral("Window/ConsoleNavId"),
+        QStringLiteral("Window/ConsoleTabProduction"),
+        QStringLiteral("Window/ConsoleTabPeripheral"),
+        QStringLiteral("Window/ConsoleTabDongle"),
+        QStringLiteral("Window/ConsoleTabOta"),
+        QStringLiteral("Window/ConsoleTabMisc"),
+        QStringLiteral("Window/ConsoleLogTab"),
+        QStringLiteral("Window/DongleNameFilter"),
+        QStringLiteral("Window/DongleRssiFilter"),
         QStringLiteral("SYSTEM/station"),
         QStringLiteral("SYSTEM/MesDefaultUnchecked"),
         QStringLiteral("SYSTEM/ProtocolType"),
@@ -111,8 +126,22 @@ inline bool settingsUseLocalGroup(const QString& groupPath) {
     return !groupPath.isEmpty() && settingsUseLocalFile(groupPath + QStringLiteral("/_"));
 }
 
+/** 原「测试详细配置」：优先读当前工站 profiles/{工站名}/flow.ini，否则回退上位机设置.ini */
+inline bool settingsUseStationFlowIni(const QString& fullKey)
+{
+    if (fullKey.startsWith(QStringLiteral("PLC/"), Qt::CaseInsensitive)
+        || fullKey.startsWith(QStringLiteral("KeyCap/"), Qt::CaseInsensitive)
+        || fullKey.startsWith(QStringLiteral("BrushInstrument/"), Qt::CaseInsensitive)
+        || fullKey.startsWith(QStringLiteral("BlePer/"), Qt::CaseInsensitive)
+        || fullKey.startsWith(QStringLiteral("FreeInstrument/"), Qt::CaseInsensitive)
+        || fullKey.startsWith(QStringLiteral("ProductInfo/KeyId"), Qt::CaseInsensitive))
+        return true;
+    return false;
+}
+
 /**
- * SETTINGS：常改项 → local.ini；其余 → 上位机设置.ini（与原单文件语义一致）。
+ * SETTINGS：常改项 → local.ini；其余 → 上位机设置.ini。
+ * 按键/PLC/射频等「测试详细配置」项：优先当前工站 flow.ini，再回退主 ini。
  */
 class SettingsManager {
   public:
@@ -127,6 +156,15 @@ class SettingsManager {
 
     bool contains(const QString& key) const {
         const QString full = fullKey(key);
+        if (settingsUseStationFlowIni(full)) {
+            if (QSettings* flow = stationFlowIni()) {
+                enter(*flow);
+                const bool has = flow->contains(key);
+                leave(*flow);
+                if (has)
+                    return true;
+            }
+        }
         if (!settingsUseLocalFile(full)) {
             QSettings& ini = baseIni();
             enter(ini);
@@ -139,6 +177,16 @@ class SettingsManager {
 
     QVariant value(const QString& key, const QVariant& defaultValue) const {
         const QString full = fullKey(key);
+        const QVariant miss(QStringLiteral("\x01__SETTINGS_MISS__"));
+        if (settingsUseStationFlowIni(full)) {
+            if (QSettings* flow = stationFlowIni()) {
+                enter(*flow);
+                const QVariant flowV = flow->value(key, miss);
+                leave(*flow);
+                if (flowV != miss)
+                    return flowV;
+            }
+        }
         if (!settingsUseLocalFile(full)) {
             QSettings& ini = baseIni();
             enter(ini);
@@ -150,7 +198,6 @@ class SettingsManager {
         enter(loc);
         // 不用 contains：Ini 嵌套键（mechine/0/comName）在部分环境下 contains 会漏，
         // 误回落到主 ini 旧串口；用哨兵判断本机文件是否已有该项。
-        const QVariant miss(QStringLiteral("\x01__SETTINGS_MISS__"));
         const QVariant localV = loc.value(key, miss);
         leave(loc);
         if (localV != miss)
@@ -163,6 +210,7 @@ class SettingsManager {
     }
 
     void setValue(const QString& key, const QVariant& val) {
+        // 工站 flow.ini 由人工/编排维护；运行时写入仍落主 ini / local.ini
         QSettings& store = settingsUseLocalFile(fullKey(key)) ? localIni() : baseIni();
         enter(store);
         store.setValue(key, val);
@@ -206,6 +254,14 @@ class SettingsManager {
             }
             leave(loc);
         }
+        if (here.isEmpty()) {
+            if (QSettings* flow = stationFlowIni()) {
+                for (const QString& g : flow->childGroups()) {
+                    if (!out.contains(g))
+                        out.append(g);
+                }
+            }
+        }
         return out;
     }
 
@@ -224,6 +280,14 @@ class SettingsManager {
                     out.append(k);
             }
             leave(loc);
+        }
+        if (QSettings* flow = stationFlowIni()) {
+            enter(*flow);
+            for (const QString& k : flow->childKeys()) {
+                if (!out.contains(k))
+                    out.append(k);
+            }
+            leave(*flow);
         }
         return out;
     }
@@ -332,6 +396,26 @@ class SettingsManager {
         return s;
     }
 
+    /** 当前选中工站的 profiles/{显示名}/flow.ini；无文件返回 nullptr */
+    static QSettings* stationFlowIni() {
+        // 直接读 local，避免经 SETTINGS.value 再进工站覆盖造成递归
+        const QString name =
+            localIni().value(QStringLiteral("TestOrderMeta/SelectedStationName")).toString().trimmed();
+        if (name.isEmpty())
+            return nullptr;
+        const QString path = QDir(QCoreApplication::applicationDirPath())
+                                 .filePath(QStringLiteral("test_case/profiles/%1/flow.ini").arg(name));
+        if (!QFile::exists(path))
+            return nullptr;
+        static QHash<QString, QSettings*> cache;
+        QSettings*& slot = cache[path];
+        if (!slot) {
+            slot = new QSettings(path, QSettings::IniFormat);
+            slot->setIniCodec(QTextCodec::codecForName("UTF-8"));
+        }
+        return slot;
+    }
+
     SettingsManager(const SettingsManager&) = delete;
     SettingsManager& operator=(const SettingsManager&) = delete;
 };
@@ -406,6 +490,13 @@ inline bool applyWidgetStyleSheet(QWidget* widget, const QString& style = QStrin
         QTextStream filetext(&qss);
         widget->setStyleSheet(filetext.readAll());
         qss.close();
+        // Windows 上仅靠 QSS 改 QToolTip 背景常不生效，同步 palette 避免深色字压黑底
+        if (auto* app = qobject_cast<QApplication*>(QCoreApplication::instance())) {
+            QPalette pal = app->palette();
+            pal.setColor(QPalette::ToolTipBase, QColor(0x1e293b));
+            pal.setColor(QPalette::ToolTipText, QColor(0xffffff));
+            app->setPalette(pal);
+        }
         qDebug() << "qss load" << path;
         return true;
     }

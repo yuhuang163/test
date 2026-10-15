@@ -6,6 +6,7 @@
 #include "qpb.h"
 #include "qfctp.h"
 #include "qaiot.h"
+#include "qaiot_app.h"
 #include "qroot.h"
 #include "qroot2.h"
 #if _MSC_VER >= 1600
@@ -44,6 +45,9 @@ QProtocolManager::ProtocolType QProtocolManager::protocolTypeFromString(const st
     if (lower == "qaiot2") {
         return ProtocolType::QaiotV2;
     }
+    if (lower == "qaiotapp") {
+        return ProtocolType::QaiotApp;
+    }
     if (lower == "qroot") {
         return ProtocolType::Qroot;
     }
@@ -63,6 +67,8 @@ std::string QProtocolManager::protocolTypeToString(QProtocolManager::ProtocolTyp
         return "qaiot";
     case ProtocolType::QaiotV2:
         return "qaiot2";
+    case ProtocolType::QaiotApp:
+        return "qaiotapp";
     case ProtocolType::Qroot:
         return "qroot";
     case ProtocolType::Qroot2:
@@ -110,6 +116,15 @@ void QProtocolManager::bindQaiot(Qaiot* aiot) {
         unbindProtocolUpstream(qaiot_);
         qaiot_ = aiot;
         bindProtocolUpstream(qaiot_);
+    }
+    syncActivePointer();
+}
+
+void QProtocolManager::bindQaiotApp(QaiotApp* app) {
+    if (qaiotApp_ != app) {
+        unbindProtocolUpstream(qaiotApp_);
+        qaiotApp_ = app;
+        bindProtocolUpstream(qaiotApp_);
     }
     syncActivePointer();
 }
@@ -325,6 +340,9 @@ void QProtocolManager::syncActivePointer() {
     case ProtocolType::Qaiot:
     case ProtocolType::QaiotV2:
         active_ = qaiot_ ? static_cast<qProtocol*>(qaiot_) : nullptr;
+        break;
+    case ProtocolType::QaiotApp:
+        active_ = qaiotApp_ ? static_cast<qProtocol*>(qaiotApp_) : nullptr;
         break;
     case ProtocolType::Qroot:
         active_ = qroot_ ? static_cast<qProtocol*>(qroot_) : nullptr;

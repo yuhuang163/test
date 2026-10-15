@@ -20,6 +20,95 @@ constexpr quint8 kKeyNotifySwitchAck = 0xFF;
 /** 内层 body 合理上限；串口噪声偶发伪帧头 + 超大 CAL 会卡住后续合法应答 */
 constexpr int kMaxFrameBodyLen = 64;
 
+QString qrootCommandTypeName(quint8 ct) {
+    switch (ct) {
+    case 0x00:
+        return QStringLiteral("请求");
+    case 0x01:
+        return QStringLiteral("应答");
+    case 0x02:
+        return QStringLiteral("否定应答");
+    case 0x03:
+        return QStringLiteral("通知");
+    default:
+        return QStringLiteral("类型0x%1").arg(ct, 2, 16, QLatin1Char('0'));
+    }
+}
+
+QString qrootCommandIdName(quint8 cid) {
+    switch (cid) {
+    case 0x80:
+        return QStringLiteral("电池温度");
+    case 0x81:
+        return QStringLiteral("吸力测试档位");
+    case 0x82:
+        return QStringLiteral("泵堵电流");
+    case 0x83:
+        return QStringLiteral("加热档位");
+    case 0x90:
+        return QStringLiteral("产测模式");
+    case 0x91:
+        return QStringLiteral("软件版本");
+    case 0x93:
+        return QStringLiteral("LED测试");
+    case 0x94:
+        return QStringLiteral("振子控制");
+    case 0x95:
+        return QStringLiteral("写MAC(PCBA)");
+    case 0x96:
+        return QStringLiteral("法兰状态");
+    case 0x97:
+        return QStringLiteral("加热NTC");
+    case 0x98:
+        return QStringLiteral("加热温度");
+    case 0x99:
+        return QStringLiteral("振子状态");
+    case 0x9A:
+        return QStringLiteral("按键上报");
+    case 0x9B:
+        return QStringLiteral("拨动按键");
+    case 0x9C:
+        return QStringLiteral("老化历史");
+    case 0x9D:
+        return QStringLiteral("泵测试进入");
+    case 0x9E:
+        return QStringLiteral("泵测试退出");
+    case 0xA0:
+        return QStringLiteral("读设备SN");
+    case 0xA1:
+        return QStringLiteral("写设备SN");
+    case 0xA2:
+        return QStringLiteral("读MAC");
+    case 0xA3:
+        return QStringLiteral("写MAC");
+    case 0xAF:
+        return QStringLiteral("老化进入");
+    case 0xC0:
+        return QStringLiteral("泵控制");
+    case 0xE0:
+        return QStringLiteral("电量");
+    case 0xF7:
+        return QStringLiteral("读三元组");
+    case 0xF8:
+        return QStringLiteral("写ProductID");
+    case 0xF9:
+        return QStringLiteral("写DeviceID");
+    case 0xFA:
+        return QStringLiteral("写密钥");
+    case 0xFC:
+        return QStringLiteral("系统控制");
+    default:
+        return QStringLiteral("命令0x%1").arg(cid, 2, 16, QLatin1Char('0'));
+    }
+}
+
+QString qrootFrameSummary(quint8 ct, quint8 cid, const QByteArray& body) {
+    Q_UNUSED(body);
+    return QStringLiteral("%1 %2(0x%3)")
+        .arg(qrootCommandTypeName(ct), qrootCommandIdName(cid))
+        .arg(cid, 2, 16, QLatin1Char('0'));
+}
+
 } // namespace
 
 QByteArray Qroot::wrapPhyPacket(const QByteArray& innerPacket) {
@@ -72,7 +161,8 @@ bool Qroot::sendPacket(quint8 ct, quint8 cid, const QByteArray& body) {
         qWarning() << "[Qroot] write failed";
         return false;
     }
-    qDebug().noquote() << "[Qroot] TX:" << frame.toHex(' ').toUpper();
+    qDebug().noquote() << "[Qroot] TX" << qrootFrameSummary(ct, cid, body) << "|"
+                       << frame.toHex(' ').toUpper();
     if (ct == Req)
         pendingCid_ = cid;
     hasPending_ = (ct == Req);
@@ -262,7 +352,8 @@ void Qroot::drainRxBuffer() {
         const quint8 ct = static_cast<quint8>(frame.at(2));
         const quint8 cid = static_cast<quint8>(frame.at(3));
         const QByteArray body = frame.mid(kHeaderSize, cal);
-        qDebug().noquote() << "[Qroot] RX:" << frame.toHex(' ').toUpper();
+        qDebug().noquote() << "[Qroot] RX" << qrootFrameSummary(ct, cid, body) << "|"
+                           << frame.toHex(' ').toUpper();
         handleFrame(ct, cid, body);
     }
 }
@@ -997,16 +1088,33 @@ void Qroot::get(DeviceCmd cmd, const QVariant& param) {
 }
 
 bool Qroot::sendCustomMessage(const QVariantMap& map) {
-    const QVariant ctVar = map.value(QStringLiteral("ct"));
     const QVariant cidVar = map.value(QStringLiteral("cid"));
     if (!cidVar.isValid())
         return false;
-    const quint8 ct = ctVar.isValid() ? static_cast<quint8>(ctVar.toUInt()) : Req;
+    const quint8 ct = map.contains(QStringLiteral("ct"))
+                          ? static_cast<quint8>(map.value(QStringLiteral("ct")).toUInt())
+                          : Req;
     const quint8 cid = static_cast<quint8>(cidVar.toUInt());
     QByteArray body;
-    if (map.contains(QStringLiteral("body")))
-        body = map.value(QStringLiteral("body")).toByteArray();
-    else if (map.contains(QStringLiteral("value")))
-        body = QByteArray(1, static_cast<char>(map.value(QStringLiteral("value")).toUInt()));
+    const QVariant raw = map.contains(QStringLiteral("body")) ? map.value(QStringLiteral("body"))
+                                                             : map.value(QStringLiteral("value"));
+    if (raw.isValid() && !raw.isNull()) {
+        if (raw.type() == QVariant::ByteArray) {
+            body = raw.toByteArray();
+        } else {
+            const QString s = raw.toString().trimmed();
+            if (!s.isEmpty()) {
+                bool okHex = false;
+                body = CommonUtils::fromHexString(s, &okHex);
+                if (!okHex) {
+                    bool okInt = false;
+                    const uint n = raw.toUInt(&okInt);
+                    if (!okInt || n > 0xFFu)
+                        return false;
+                    body = QByteArray(1, static_cast<char>(n));
+                }
+            }
+        }
+    }
     return sendPacket(ct, cid, body);
 }

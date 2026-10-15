@@ -1,0 +1,36 @@
+---
+description: 公司安全软件透明加密下读取本地文件的约束（避免误判乱码、浪费 token）
+alwaysApply: true
+---
+# 公司透明加密：读文件约束
+
+本机文件受公司安全工具透明加密。同一文件经不同进程读取，可能得到明文，也可能得到未解密的二进制。
+这**不是** UTF-8 / GBK / 代码页问题，`chcp 65001` 无效。不同工具看到的大小或内容不一致时，先判断为「进程级加密视图不同」，**不得**判定为文件损坏或编码错误。
+
+## 本机实测（Cursor）
+
+| 方式 | 结果 |
+|---|---|
+| Read 工具 | 明文 |
+| Shell 中 `rg`（Cursor 自带 rg.exe） | 明文 |
+| PowerShell `ReadAllText` / `Get-Content` / `Select-String` | 新生成文件（如 build 下 `ui_mainwindow.h`）为密文 |
+| Grep 工具 | 对新生成的加密文件可能返回「无匹配」 |
+
+## 标准读取方式（只用这两种，失败才换）
+
+1. 完整读取：**Read 工具**。
+2. 搜索：**Grep 工具**；结果为空或与预期不符时，在 Shell 用 `rg -n "模式" <路径>` 复核一次。
+3. 确需在 PowerShell 读文本时，必须用严格 UTF-8，拿到密文会直接抛异常，不会静默乱码：
+
+```powershell
+$utf8 = [System.Text.UTF8Encoding]::new($false, $true)
+$content = [System.IO.File]::ReadAllText($path, $utf8)
+```
+
+抛 `DecoderFallbackException` 即说明该进程看到的是密文 → 改用 Read / rg，**不要**换编码重试。
+
+## 禁止
+
+- 看到乱码或二进制后，轮流尝试 python、`type`、`Get-Content -Encoding xxx` 等多种方式。
+- 把读到的乱码写回文件，或据此转码、重新生成、删除文件。
+- 据此向用户报告「文件损坏」；应说明是加密视图差异，并给出用哪种方式读到了明文。

@@ -502,7 +502,7 @@ QString LogUploadService::compressLogDirectory(const QString& logRoot, QString* 
 }
 
 bool LogUploadService::uploadLogArchive(const QString& zipPath, const UploadConfig& cfg, QString* message,
-                                        QString* responseBody) {
+                                        QString* responseBody, const ProgressCallback& onProgress) {
     if (cfg.uploadUrl.trimmed().isEmpty()) {
         if (message) {
             *message = QStringLiteral("上传地址为空");
@@ -532,13 +532,12 @@ bool LogUploadService::uploadLogArchive(const QString& zipPath, const UploadConf
         return false;
     }
 
-    QFile* file = new QFile(zipPath);
-    if (!file->open(QIODevice::ReadOnly)) {
+    QFile file(zipPath);
+    if (!file.open(QIODevice::ReadOnly)) {
         if (message) {
             *message = QStringLiteral("无法打开压缩包：") + zipPath;
         }
-        qDebug() << "uploadLogArchive: cannot open zip file:" << zipPath << "error:" << file->errorString();
-        delete file;
+        qDebug() << "uploadLogArchive: cannot open zip file:" << zipPath << "error:" << file.errorString();
         return false;
     }
 
@@ -583,11 +582,11 @@ bool LogUploadService::uploadLogArchive(const QString& zipPath, const UploadConf
     filePart.setHeader(QNetworkRequest::ContentDispositionHeader,
                        QVariant(QStringLiteral("form-data; name=\"file\"; filename=\"%1\"").arg(fileName)));
     filePart.setHeader(QNetworkRequest::ContentTypeHeader, QVariant(QStringLiteral("application/zip")));
-    // filePart.setBodyDevice(file);
-    // file->setParent(multiPart);
-    QByteArray data = file->readAll(); // ✔ 正确（指针）
+    const QByteArray data = file.readAll();
+    file.close();
     filePart.setBody(data);
     multiPart->append(filePart);
+    const qint64 uploadBytes = data.size();
 
     QNetworkAccessManager manager;
     QNetworkRequest request((QUrl(cfg.uploadUrl.trimmed())));
@@ -600,10 +599,20 @@ bool LogUploadService::uploadLogArchive(const QString& zipPath, const UploadConf
         request.setRawHeader("Authorization", QByteArray("Bearer ") + token.toUtf8());
     }
 
+    if (onProgress) {
+        onProgress(QStringLiteral("upload"), 0, uploadBytes);
+    }
+
     QNetworkReply* reply = manager.post(request, multiPart);
     multiPart->setParent(reply);
     QObject::connect(reply, QOverload<const QList<QSslError>&>::of(&QNetworkReply::sslErrors), reply,
                      QOverload<>::of(&QNetworkReply::ignoreSslErrors));
+    if (onProgress) {
+        QObject::connect(reply, &QNetworkReply::uploadProgress, reply,
+                         [onProgress](qint64 bytesSent, qint64 bytesTotal) {
+                             onProgress(QStringLiteral("upload"), bytesSent, bytesTotal > 0 ? bytesTotal : 0);
+                         });
+    }
 
     QEventLoop loop;
     QTimer timer;
@@ -621,6 +630,9 @@ bool LogUploadService::uploadLogArchive(const QString& zipPath, const UploadConf
     reply->deleteLater();
 
     if (qtOk) {
+        if (onProgress && uploadBytes > 0) {
+            onProgress(QStringLiteral("upload"), uploadBytes, uploadBytes);
+        }
         if (responseBody) {
             *responseBody = body;
         }
@@ -630,10 +642,17 @@ bool LogUploadService::uploadLogArchive(const QString& zipPath, const UploadConf
     qDebug() << "uploadLogArchive: Qt upload failed, httpStatus=" << httpStatus << "qtError=" << qtErrorText
              << "body=" << decodeHttpBodyText(body).left(500) << "uploadUrl=" << cfg.uploadUrl.trimmed();
 
+    if (onProgress) {
+        onProgress(QStringLiteral("upload"), 0, 0);
+    }
+
     QByteArray curlBody;
     QString curlError;
     int curlStatus = 0;
     if (uploadByCurl(zipPath, cfg, &curlBody, &curlError, &curlStatus)) {
+        if (onProgress && uploadBytes > 0) {
+            onProgress(QStringLiteral("upload"), uploadBytes, uploadBytes);
+        }
         if (responseBody) {
             *responseBody = curlBody;
         }
@@ -652,9 +671,13 @@ bool LogUploadService::uploadLogArchive(const QString& zipPath, const UploadConf
     return false;
 }
 
-bool LogUploadService::packAndUpload(const UploadConfig& cfg, QString* message) {
+bool LogUploadService::packAndUpload(const UploadConfig& cfg, QString* message,
+                                     const ProgressCallback& onProgress) {
     QString zipError;
     QString zipWarning;
+    if (onProgress) {
+        onProgress(QStringLiteral("pack"), 0, 0);
+    }
     const QString logRoot = defaultLogRootPath();
     const QString zipPath = compressLogDirectory(logRoot, &zipError, &zipWarning);
     if (zipPath.isEmpty()) {
@@ -665,11 +688,12 @@ bool LogUploadService::packAndUpload(const UploadConfig& cfg, QString* message) 
     }
 
     const QFileInfo zipInfo(zipPath);
-    const QString sizeText = QString::number(zipInfo.size() / 1024.0, 'f', 1) + QStringLiteral(" KB");
+    const qint64 zipSize = zipInfo.size();
+    const QString sizeText = QString::number(zipSize / 1024.0, 'f', 1) + QStringLiteral(" KB");
     QString uploadMessage;
-    const bool ok = uploadLogArchive(zipPath, cfg, &uploadMessage);
+    const bool ok = uploadLogArchive(zipPath, cfg, &uploadMessage, nullptr, onProgress);
     QFile::remove(zipPath);
-    qDebug() << "zip size:" << QFileInfo(zipPath).size() << zipPath;
+    qDebug() << "zip size:" << zipSize << zipPath;
     if (message) {
         *message = (ok ? QStringLiteral("打包成功（%1），").arg(sizeText) : QString()) + uploadMessage;
         if (ok && zipWarning.startsWith(QStringLiteral("skipped:"))) {

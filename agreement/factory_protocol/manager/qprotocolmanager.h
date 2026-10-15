@@ -11,6 +11,7 @@
 class Qpb;
 class Qfctp;
 class Qaiot;
+class QaiotApp;
 class Qroot;
 class Qroot2;
 
@@ -25,6 +26,7 @@ class QProtocolManager : public QObject {
         Qfctp,
         Qaiot,
         QaiotV2,
+        QaiotApp,
         Qroot,
         Qroot2,
     };
@@ -38,6 +40,7 @@ class QProtocolManager : public QObject {
     void bindQpb(Qpb* pb);
     void bindQfctp(Qfctp* fctp);
     void bindQaiot(Qaiot* aiot);
+    void bindQaiotApp(QaiotApp* app);
     void bindQroot(Qroot* root);
     void bindQroot2(Qroot2* root2);
 
@@ -88,6 +91,7 @@ class QProtocolManager : public QObject {
     Qpb* qpb_ = nullptr;
     Qfctp* qfctp_ = nullptr;
     Qaiot* qaiot_ = nullptr;
+    QaiotApp* qaiotApp_ = nullptr;
     Qroot* qroot_ = nullptr;
     Qroot2* qroot2_ = nullptr;
     qProtocol* active_ = nullptr;

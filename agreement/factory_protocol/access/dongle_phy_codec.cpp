@@ -117,7 +117,8 @@ void DonglePhyRxCodec::feed(const QByteArray& chunk, QList<QByteArray>& outInner
                     outInnerPackets.append(payload_);
                     if (outChannels_)
                         outChannels_->append(channel_);
-                } else if (warnLogTag_) {
+                } else if (warnLogTag_ && (channel_ == 0 || channel_ >= 8)) {
+                    // 1～7 里不在本协议掩码内的通道属于其它解析器（应用层 5/6/7），共享串口时静默丢弃
                     qWarning() << warnLogTag_ << "dongle 通道异常 channel=" << channel_;
                 }
                 resetState();

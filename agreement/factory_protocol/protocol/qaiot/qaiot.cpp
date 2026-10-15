@@ -2347,6 +2347,12 @@ void Qaiot::get(DeviceCmd cmd, const QVariant& param) {
         break;
     }
     case DeviceCmd::BaseInfo:
+        // CID=0x01：一次查名称/固件/硬件/资源，填「测试基础信息」表
+        sendServiceCommand(AiotLink::kSvcFctAte, AiotLink::kFctCidGetFactoryStatus,
+                           {queryLeaf(AiotLink::kFctGetTlvDeviceName), queryLeaf(AiotLink::kFctGetTlvFwVersion),
+                            queryLeaf(AiotLink::kFctGetTlvHwVersion), queryLeaf(AiotLink::kFctGetTlvResVersion)},
+                           QStringLiteral("读基础信息"));
+        break;
     case DeviceCmd::DeviceInfo:
         // CID=0x01：只查设备名称 Type=0x01
         sendServiceCommand(AiotLink::kSvcFctAte, AiotLink::kFctCidGetFactoryStatus,

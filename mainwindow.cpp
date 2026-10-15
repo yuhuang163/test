@@ -2,6 +2,7 @@
 
 #include <QCheckBox>
 #include <QComboBox>
+#include <QGroupBox>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QSpinBox>
@@ -11,18 +12,50 @@
 #include <QLineEdit>
 #include <QMenu>
 #include <QPushButton>
+#include <QList>
+#include <QListWidget>
+#include <QListWidgetItem>
+#include <QVector>
 #include <QRandomGenerator>
 #include <QSlider>
+#include <QSplitter>
+#include <QStyle>
 #include <QFrame>
 #include <QScrollArea>
 #include <QSet>
 #include <QTabBar>
 #include <QTableView>
-#include <QTabWidget>
+#include <QStackedWidget>
+#include <QPair>
+#include <QFormLayout>
+#include <QVBoxLayout>
+#include <QGridLayout>
+#include <QLayout>
+#include <QLayoutItem>
+#include <QPixmap>
+#include <QImage>
+#include <QIcon>
+#include <QRegularExpression>
+#include <QAbstractButton>
+#include <QButtonGroup>
+#include <QFrame>
+#include <QToolButton>
+#include <QMenu>
+#include <QTimer>
+#include <QVariant>
+#include <QShowEvent>
+#include <QPropertyAnimation>
+#include <QEasingCurve>
+#include <QPainter>
+#include <QPainterPath>
+#include <QPlainTextEdit>
+#include <QTextFrame>
+#include <QLinearGradient>
 #include <QTableWidget>
 #include <QTableWidgetItem>
 #include <QTimer>
 #include <QVBoxLayout>
+#include <QBoxLayout>
 #include <QtConcurrent>
 #include <algorithm>
 
@@ -33,6 +66,10 @@
 #include "common_utils.h"
 #include <QDateTime>
 #include <QDir>
+#include <QFile>
+#include <QFileDialog>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QTextStream>
 #include "app_help_menu.h"
 #include "host_ota_service.h"
@@ -57,70 +94,840 @@ extern "C" // 由于是C版的dll文件，在C++中引入其头文件要加exter
 }
 QByteArray allPackets;
 
-namespace {
-
-const QSet<QString>& debugTabPagesWithoutScroll() {
-    static const QSet<QString> pages = {
-        QStringLiteral("tab_dongle_suction"),
-        QStringLiteral("tab_11"),
-    };
-    return pages;
-}
-
-void wrapDebugTabPageInScrollArea(QTabWidget* tabWidget) {
-    if (!tabWidget)
+/** .ui 已包好 QScrollArea；这里只刷画布属性与 Dongle/弹性页 sizePolicy。 */
+static void polishDebugTabScrollPage(QScrollArea* scroll, QWidget* page) {
+    if (!scroll || !page)
         return;
-    for (int i = 0; i < tabWidget->count(); ++i) {
-        QWidget* page = tabWidget->widget(i);
-        // 已是滚动区则跳过：属性打在内页上，二次调用时 widget(i) 是 QScrollArea，
-        // 若只查属性会把滚动区再包一层，内容被压成左上角一小块。
-        if (!page || qobject_cast<QScrollArea*>(page))
-            continue;
-        if (page->property("debugScrollWrapped").toBool())
-            continue;
-        if (debugTabPagesWithoutScroll().contains(page->objectName()))
-            continue;
-
-        const QString title = tabWidget->tabText(i);
-        tabWidget->removeTab(i);
-
-        auto* scroll = new QScrollArea(tabWidget);
-        scroll->setObjectName(QStringLiteral("debugTabScrollArea"));
-        scroll->setWidgetResizable(true);
-        scroll->setFrameShape(QFrame::NoFrame);
-        scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-        scroll->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
-        scroll->setWidget(page);
-        tabWidget->insertTab(i, scroll, title);
-        page->setProperty("debugScrollWrapped", true);
+    scroll->setWidgetResizable(true);
+    scroll->setAlignment(Qt::AlignTop | Qt::AlignLeft);
+    scroll->setAttribute(Qt::WA_StyledBackground, true);
+    if (QWidget* vp = scroll->viewport()) {
+        vp->setAttribute(Qt::WA_StyledBackground, true);
+        vp->setAutoFillBackground(true);
+        vp->setProperty("consoleCanvas", true);
+    }
+    page->setAttribute(Qt::WA_StyledBackground, true);
+    page->setAutoFillBackground(true);
+    page->setProperty("consoleCanvas", true);
+    page->setMinimumWidth(0);
+    const QString pageName = page->objectName();
+    const bool dongleFit = pageName.startsWith(QStringLiteral("tab_dongle"));
+    const bool elasticFill = (pageName == QStringLiteral("tab_12") || pageName == QStringLiteral("tab_16"));
+    if (auto* lay = page->layout())
+        lay->setSizeConstraint((dongleFit || elasticFill) ? QLayout::SetDefaultConstraint : QLayout::SetMinimumSize);
+    if (dongleFit) {
+        page->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Minimum);
+        scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    } else if (elasticFill) {
+        page->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Expanding);
+        scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    } else {
+        page->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+    }
+    for (QLineEdit* e : page->findChildren<QLineEdit*>()) {
+        if (e)
+            e->setMinimumWidth(0);
     }
 }
 
-/** 仅顶对齐滚动内容；不改 sizePolicy / SetMinAndMaxSize，尺寸以 .ui 为准。 */
-void pinDebugTabPageToTop(QTabWidget* tabWidget) {
+static void polishDebugTabScrollAreas(QTabWidget* tabWidget) {
     if (!tabWidget)
         return;
     for (int i = 0; i < tabWidget->count(); ++i) {
         auto* scroll = qobject_cast<QScrollArea*>(tabWidget->widget(i));
         if (!scroll)
             continue;
-        QWidget* inner = scroll->widget();
-        if (inner && debugTabPagesWithoutScroll().contains(inner->objectName()))
+        polishDebugTabScrollPage(scroll, scroll->widget());
+    }
+}
+static QLayout* periphFindOwningLayout(QLayout* lay, QWidget* w) {
+    if (!lay || !w)
+        return nullptr;
+    for (int i = 0; i < lay->count(); ++i) {
+        QLayoutItem* it = lay->itemAt(i);
+        if (!it)
             continue;
-        // 铺满视口宽度，避免左侧按 sizeHint 缩成一列、右侧大块空白
-        scroll->setWidgetResizable(true);
-        scroll->setAlignment(Qt::AlignTop);
+        if (it->widget() == w)
+            return lay;
+        if (QLayout* found = periphFindOwningLayout(it->layout(), w))
+            return found;
+    }
+    return nullptr;
+}
+
+template<typename T>
+static T* uiFind(QWidget* root, const char* name) {
+    return root ? root->findChild<T*>(QLatin1String(name)) : nullptr;
+}
+
+// Designer 可能拆掉「只包一层布局」的空壳；优先用 .ui 持久 QWidget，否则按 *Lay 补回。
+// 新增同类可点击行时：.ui 里用 QWidget 包住行布局（可跑 scripts/wrap_console_shell_widgets.py）。
+static QWidget* wrapNamedLayout(QLayout* owner, QLayout* inner, const QString& name) {
+    if (!inner)
+        return nullptr;
+    if (QWidget* pw = inner->parentWidget()) {
+        if (pw->objectName() == name)
+            return pw;
+        if (QWidget* found = pw->findChild<QWidget*>(name))
+            return found;
+    }
+    if (!owner)
+        return nullptr;
+    auto attach = [&](QWidget* host) {
+        inner->setParent(nullptr);
+        host->setObjectName(name);
+        host->setLayout(inner);
+        return host;
+    };
+    if (auto* grid = qobject_cast<QGridLayout*>(owner)) {
+        for (int i = 0; i < grid->count(); ++i) {
+            QLayoutItem* it = grid->itemAt(i);
+            if (!it || it->layout() != inner)
+                continue;
+            int row = 0, col = 0, rowSpan = 1, colSpan = 1;
+            grid->getItemPosition(i, &row, &col, &rowSpan, &colSpan);
+            grid->takeAt(i);
+            auto* host = new QWidget;
+            attach(host);
+            grid->addWidget(host, row, col, rowSpan, colSpan);
+            return host;
+        }
+        return nullptr;
+    }
+    auto* box = qobject_cast<QBoxLayout*>(owner);
+    if (!box)
+        return nullptr;
+    for (int i = 0; i < box->count(); ++i) {
+        QLayoutItem* it = box->itemAt(i);
+        if (!it || it->layout() != inner)
+            continue;
+        const int stretch = box->stretch(i);
+        box->takeAt(i);
+        auto* host = new QWidget;
+        attach(host);
+        box->insertWidget(i, host);
+        box->setStretch(i, stretch);
+        return host;
+    }
+    return nullptr;
+}
+
+static void consolePolishWidget(QWidget* w) {
+    if (!w)
+        return;
+    w->style()->unpolish(w);
+    w->style()->polish(w);
+    w->update();
+}
+
+static void consoleSetProp(QWidget* w, const char* key, const QString& val) {
+    if (!w)
+        return;
+    if (w->property(key).toString() == val)
+        return;
+    w->setProperty(key, val);
+    consolePolishWidget(w);
+    consolePolishWidget(w->parentWidget());
+}
+
+static void consoleSegPolish(QPushButton* onBtn, QPushButton* offBtn, bool onActive) {
+    if (!onBtn || !offBtn)
+        return;
+    onBtn->setProperty("segActive", onActive);
+    offBtn->setProperty("segActive", !onActive);
+    offBtn->setProperty("segDanger", !onActive);
+    onBtn->style()->unpolish(onBtn);
+    onBtn->style()->polish(onBtn);
+    offBtn->style()->unpolish(offBtn);
+    offBtn->style()->polish(offBtn);
+}
+
+/** 对齐 HTML SWITCH_PAIR_RULES：成对开/关类按钮 → 分段开关 */
+static bool resolveConsoleSwitchPair(QPushButton* a, QPushButton* b, QPushButton** onOut, QPushButton** offOut) {
+    if (!a || !b || !onOut || !offOut)
+        return false;
+    const QString ta = a->text().trimmed();
+    const QString tb = b->text().trimmed();
+    if (ta.isEmpty() || tb.isEmpty())
+        return false;
+    auto aIsOn = [&](const QString& on, const QString& off) -> bool {
+        if (on.startsWith(QStringLiteral("进入")) && off.startsWith(QStringLiteral("退出")))
+            return true;
+        if (on.startsWith(QStringLiteral("连接")) && !on.startsWith(QStringLiteral("连接后"))
+            && off.startsWith(QStringLiteral("断开")))
+            return true;
+        if (on.startsWith(QStringLiteral("开启")) && off.startsWith(QStringLiteral("关闭")))
+            return true;
+        if (on.startsWith(QStringLiteral("打开")) && off.startsWith(QStringLiteral("关闭")))
+            return true;
+        if ((on.startsWith(QStringLiteral("启动"))
+             || (on.startsWith(QStringLiteral("开始")) && !on.startsWith(QStringLiteral("开始搜索"))))
+            && (off.startsWith(QStringLiteral("停止")) || off.contains(QStringLiteral("停止"))))
+            return true;
+        if (on.startsWith(QStringLiteral("启用"))
+            && (off.startsWith(QStringLiteral("禁用")) || off.startsWith(QStringLiteral("禁止"))))
+            return true;
+        if (on.startsWith(QStringLiteral("进入休眠")) && off.startsWith(QStringLiteral("禁止休眠")))
+            return true;
+        if (on.endsWith(QStringLiteral("开启")) && off.endsWith(QStringLiteral("关闭"))
+            && on.left(on.size() - 2) == off.left(off.size() - 2))
+            return true;
+        if (on.endsWith(QStringLiteral("打开")) && off.endsWith(QStringLiteral("关闭"))
+            && on.left(on.size() - 2) == off.left(off.size() - 2))
+            return true;
+        if (on.size() > 1 && off.size() > 1 && on.left(on.size() - 1) == off.left(off.size() - 1)
+            && on.endsWith(QStringLiteral("开")) && off.endsWith(QStringLiteral("关")))
+            return true;
+        if (on == QStringLiteral("开") && off == QStringLiteral("关"))
+            return true;
+        if (on == QStringLiteral("连接") && off == QStringLiteral("断开"))
+            return true;
+        return false;
+    };
+    if (aIsOn(ta, tb)) {
+        *onOut = a;
+        *offOut = b;
+        return true;
+    }
+    if (aIsOn(tb, ta)) {
+        *onOut = b;
+        *offOut = a;
+        return true;
+    }
+    return false;
+}
+
+static bool isConsoleSegFrame(QWidget* w) {
+    if (!w)
+        return false;
+    const QString n = w->objectName();
+    return n == QStringLiteral("consoleSeg") || n == QStringLiteral("consoleSegReset");
+}
+
+static void bindConsoleSegPair(QPushButton* onBtn, QPushButton* offBtn, bool initialOnActive) {
+    if (!onBtn || !offBtn || onBtn->property("consoleSegBound").toBool())
+        return;
+    onBtn->setProperty("consoleSegBound", true);
+    offBtn->setProperty("consoleSegBound", true);
+    onBtn->setCursor(Qt::PointingHandCursor);
+    offBtn->setCursor(Qt::PointingHandCursor);
+    onBtn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    offBtn->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    onBtn->setFlat(true);
+    offBtn->setFlat(true);
+
+    QWidget* parent = onBtn->parentWidget();
+    if (!isConsoleSegFrame(parent) || offBtn->parentWidget() != parent) {
+        QWidget* host = parent ? parent : onBtn;
+        QLayout* owner = host->layout() ? periphFindOwningLayout(host->layout(), onBtn) : nullptr;
+        if (!owner && parent && parent->parentWidget() && parent->parentWidget()->layout())
+            owner = periphFindOwningLayout(parent->parentWidget()->layout(), onBtn);
+        if (owner) {
+            int insertAt = -1;
+            for (int i = 0; i < owner->count(); ++i) {
+                if (owner->itemAt(i) && owner->itemAt(i)->widget() == onBtn) {
+                    insertAt = i;
+                    break;
+                }
+                if (owner->itemAt(i) && owner->itemAt(i)->widget() == offBtn) {
+                    insertAt = i;
+                    break;
+                }
+            }
+            owner->removeWidget(onBtn);
+            owner->removeWidget(offBtn);
+            auto* seg = new QFrame(owner->parentWidget());
+            seg->setObjectName(QStringLiteral("consoleSeg"));
+            seg->setFixedHeight(36);
+            auto* segLay = new QHBoxLayout(seg);
+            segLay->setContentsMargins(3, 3, 3, 3);
+            segLay->setSpacing(2);
+            onBtn->setParent(seg);
+            offBtn->setParent(seg);
+            // 保持「开」在左、「关」在右
+            segLay->addWidget(onBtn);
+            segLay->addWidget(offBtn);
+            if (auto* box = qobject_cast<QBoxLayout*>(owner)) {
+                if (insertAt < 0 || insertAt > box->count())
+                    box->addWidget(seg);
+                else
+                    box->insertWidget(insertAt, seg);
+            } else {
+                owner->addWidget(seg);
+            }
+        }
+    } else if (auto* seg = qobject_cast<QFrame*>(parent)) {
+        seg->setFixedHeight(36);
+        if (auto* lay = qobject_cast<QHBoxLayout*>(seg->layout())) {
+            lay->setContentsMargins(3, 3, 3, 3);
+            lay->setSpacing(2);
+        }
+    }
+
+    // 串口连接/断开不是「当前选中哪边」，由 syncConsoleConnectSeg 按 isOpen 刷
+    const bool isConnectPair = (onBtn->objectName() == QLatin1String("connectButton")
+                                && offBtn->objectName() == QLatin1String("disconnectButton"));
+    if (isConnectPair)
+        return;
+    QObject::connect(onBtn, &QPushButton::clicked, onBtn, [onBtn, offBtn]() {
+        consoleSegPolish(onBtn, offBtn, true);
+    });
+    QObject::connect(offBtn, &QPushButton::clicked, offBtn, [onBtn, offBtn]() {
+        consoleSegPolish(onBtn, offBtn, false);
+    });
+    consoleSegPolish(onBtn, offBtn, initialOnActive);
+}
+
+static void installConsoleSegmentedInLayout(QLayout* lay) {
+    if (!lay)
+        return;
+    for (int i = 0; i < lay->count(); ++i) {
+        QLayoutItem* it = lay->itemAt(i);
+        if (!it)
+            continue;
+        if (QLayout* child = it->layout())
+            installConsoleSegmentedInLayout(child);
+        else if (QWidget* w = it->widget()) {
+            if (w->layout())
+                installConsoleSegmentedInLayout(w->layout());
+        }
+    }
+    auto* box = qobject_cast<QBoxLayout*>(lay);
+    if (!box)
+        return;
+    QList<QPair<QPushButton*, QPushButton*>> pairs;
+    for (int i = 0; i + 1 < box->count(); ++i) {
+        QLayoutItem* aItem = box->itemAt(i);
+        QLayoutItem* bItem = box->itemAt(i + 1);
+        if (!aItem || !bItem)
+            continue;
+        auto* a = qobject_cast<QPushButton*>(aItem->widget());
+        auto* b = qobject_cast<QPushButton*>(bItem->widget());
+        if (!a || !b)
+            continue;
+        if (a->property("consoleSegBound").toBool() || b->property("consoleSegBound").toBool())
+            continue;
+        QPushButton* onBtn = nullptr;
+        QPushButton* offBtn = nullptr;
+        if (!resolveConsoleSwitchPair(a, b, &onBtn, &offBtn))
+            continue;
+        pairs.append(qMakePair(onBtn, offBtn));
+        ++i; // 跳过已配对的下一个
+    }
+    for (const auto& p : pairs)
+        bindConsoleSegPair(p.first, p.second, true);
+}
+
+static QString consoleInferBtnRole(const QString& text) {
+    if (text.contains(QRegularExpression(QStringLiteral("停止|断开|关闭|退出|关机|重启|失败|复位|重置|删除|禁止|卸载|清除|出厂|关闭Dongle"))))
+        return QStringLiteral("danger");
+    if (text.contains(QRegularExpression(QStringLiteral("启动|开启|打开|启用|Enable"))))
+        return QStringLiteral("success");
+    if (text.contains(QRegularExpression(QStringLiteral("测试|刷新|读取参数"))))
+        return QStringLiteral("secondary");
+    if (text.contains(QRegularExpression(QStringLiteral("连接|开始|发送|读取|搜索|写入|设置|查询|升级|获取|保存|确定|执行|绑定|进入工厂|退出工厂|产测"))))
+        return QStringLiteral("primary");
+    return QStringLiteral("secondary");
+}
+
+// 父窗口 QSS 特异度更高时 [btnPressed] 无效；按下时直接写控件自身 stylesheet（只变色，不改尺寸）
+static QString consoleBtnPressedInlineStyle(QAbstractButton* btn) {
+    if (!btn)
+        return {};
+    const QString role = btn->property("btnRole").toString();
+    const QString name = btn->objectName();
+    const bool segActive = btn->property("segActive").toBool();
+    const bool segDanger = btn->property("segDanger").toBool();
+    const bool physPad = btn->property("physPad").toBool();
+    const bool nav = name.startsWith(QStringLiteral("consoleNav"));
+
+    QString bg = QStringLiteral("#2f4566");
+    QString border = QStringLiteral("#0a1c36");
+    QString color = QStringLiteral("#ffffff");
+    if (role == QLatin1String("primary") || name == QLatin1String("connectButton") ||
+        name == QLatin1String("start_search") || name == QLatin1String("connectPickMacButton") ||
+        name == QLatin1String("connectProductButton") || name == QLatin1String("getBasicInfoButton") ||
+        name == QLatin1String("getperipheralButton") || btn->property("segCta").toBool()) {
+        bg = QStringLiteral("qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #12368f, stop:1 #0a1f5c)");
+        border = QStringLiteral("#061437");
+    } else if (role == QLatin1String("success")) {
+        bg = QStringLiteral("#0b5f58");
+        border = QStringLiteral("#043d37");
+    } else if (role == QLatin1String("danger") || segDanger || name == QLatin1String("disconnectButton")) {
+        bg = QStringLiteral("#9f1239");
+        border = QStringLiteral("#7f1d1d");
+    } else if (nav && btn->isChecked()) {
+        bg = QStringLiteral("qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #163ea8, stop:1 #0f2d6b)");
+        border = QStringLiteral("#0b1f4a");
+    } else if (nav) {
+        bg = QStringLiteral("#7aa3df");
+        border = QStringLiteral("#1d4ed8");
+        color = QStringLiteral("#0f2d6b");
+    } else if (physPad) {
+        bg = QStringLiteral("#1d4ed8");
+        border = QStringLiteral("#1e3a8a");
+    } else if (segActive) {
+        bg = QStringLiteral("#312e81");
+        border = QStringLiteral("#1e1b4b");
+    }
+
+    // 不改 padding/min-size，避免单击时出现“放大/位移”
+    return QStringLiteral(
+               "QPushButton, QToolButton {"
+               " background: %1;"
+               " border: 2px solid %2;"
+               " color: %3;"
+               " }")
+        .arg(bg, border, color);
+}
+
+static void consoleClearBtnPressFlash(QAbstractButton* btn, int epoch) {
+    if (!btn || btn->property("_pressFlashEpoch").toInt() != epoch)
+        return;
+    if (btn->isDown())
+        return;
+    const QString saved = btn->property("_pressSavedSs").toString();
+    btn->setProperty("_pressSavedSs", QVariant());
+    btn->setProperty("btnPressed", QVariant());
+    btn->setStyleSheet(saved);
+    consolePolishWidget(btn);
+    consolePolishWidget(btn->parentWidget());
+    btn->update();
+}
+
+static void wireConsoleBtnPressFeedback(QAbstractButton* btn) {
+    if (!btn || btn->property("consolePressWired").toBool())
+        return;
+    btn->setProperty("consolePressWired", true);
+    btn->setAttribute(Qt::WA_Hover, true);
+    btn->setAttribute(Qt::WA_StyledBackground, true);
+    QObject::connect(btn, &QAbstractButton::pressed, btn, [btn]() {
+        const int epoch = btn->property("_pressFlashEpoch").toInt() + 1;
+        btn->setProperty("_pressFlashEpoch", epoch);
+        if (!btn->property("_pressSavedSs").isValid())
+            btn->setProperty("_pressSavedSs", btn->styleSheet());
+        btn->setProperty("btnPressed", QStringLiteral("true"));
+        btn->setStyleSheet(consoleBtnPressedInlineStyle(btn));
+        btn->update();
+        btn->repaint();
+    });
+    // 单击太快看不清：松开后短留暗色，再恢复
+    QObject::connect(btn, &QAbstractButton::released, btn, [btn]() {
+        if (!btn->property("_pressSavedSs").isValid() && !btn->property("btnPressed").isValid())
+            return;
+        const int epoch = btn->property("_pressFlashEpoch").toInt();
+        QTimer::singleShot(140, btn, [btn, epoch]() { consoleClearBtnPressFlash(btn, epoch); });
+    });
+}
+
+static void applyConsoleBtnRoles(QWidget* root) {
+    if (!root)
+        return;
+    const auto buttons = root->findChildren<QPushButton*>();
+    for (QPushButton* btn : buttons) {
+        if (!btn)
+            continue;
+        btn->setCursor(Qt::PointingHandCursor);
+        wireConsoleBtnPressFeedback(btn);
+        // 导航 / 分段开关 / 已显式指定角色的不覆盖
+        if (btn->objectName().startsWith(QStringLiteral("consoleNav")))
+            continue;
+        if (btn->property("consoleSegBound").toBool())
+            continue;
+        if (btn->property("btnRole").isValid() && !btn->property("btnRole").toString().isEmpty())
+            continue;
+        const QString role = consoleInferBtnRole(btn->text());
+        btn->setProperty("btnRole", role);
+        btn->style()->unpolish(btn);
+        btn->style()->polish(btn);
+    }
+    const auto tools = root->findChildren<QToolButton*>();
+    for (QToolButton* btn : tools) {
+        if (!btn)
+            continue;
+        btn->setCursor(Qt::PointingHandCursor);
+        wireConsoleBtnPressFeedback(btn);
     }
 }
 
-} // namespace
+static QPixmap consolePrepareNavIcon(const QString& resPath, bool forChecked) {
+    QImage img(resPath);
+    if (img.isNull())
+        return {};
+    img = img.convertToFormat(QImage::Format_ARGB32);
+    for (int y = 0; y < img.height(); ++y) {
+        QRgb* line = reinterpret_cast<QRgb*>(img.scanLine(y));
+        for (int x = 0; x < img.width(); ++x) {
+            const int a = qAlpha(line[x]);
+            // 已透明像素 RGB 常为 0：若当黑底重填，选中态会变成整块白底
+            if (a == 0)
+                continue;
+            if (forChecked) {
+                line[x] = qRgba(255, 255, 255, a);
+                continue;
+            }
+            const int r = qRed(line[x]);
+            const int g = qGreen(line[x]);
+            const int b = qBlue(line[x]);
+            if (r > 245 && g > 245 && b > 245)
+                line[x] = qRgba(0, 0, 0, 0);
+        }
+    }
+    return QPixmap::fromImage(img);
+}
+
+static void applyConsoleNavIcons(const QList<QPushButton*>& navBtns, const QStringList& bases) {
+    for (int i = 0; i < navBtns.size() && i < bases.size(); ++i) {
+        QPushButton* btn = navBtns[i];
+        if (!btn)
+            continue;
+        const QString offPath = QStringLiteral(":/stytle/picture/nav/%1.png").arg(bases[i]);
+        const QString onPath = QStringLiteral(":/stytle/picture/nav/%1-on.png").arg(bases[i]);
+        QPixmap offPm = consolePrepareNavIcon(offPath, false);
+        QPixmap onPm = QPixmap(onPath);
+        if (onPm.isNull())
+            onPm = consolePrepareNavIcon(offPath, true);
+        QIcon icon;
+        if (!offPm.isNull())
+            icon.addPixmap(offPm, QIcon::Normal, QIcon::Off);
+        if (!onPm.isNull()) {
+            icon.addPixmap(onPm, QIcon::Normal, QIcon::On);
+            icon.addPixmap(onPm, QIcon::Active, QIcon::On);
+            icon.addPixmap(onPm, QIcon::Selected, QIcon::On);
+        }
+        btn->setIcon(icon);
+        btn->setIconSize(QSize(18, 18));
+    }
+}
+
+// 按钮/状态胶囊随宽度换行，避免小窗里挤成一排溢出
+class ConsoleFlowLayout : public QLayout {
+public:
+    explicit ConsoleFlowLayout(QWidget* parent = nullptr, int margin = 0, int hSpacing = 8, int vSpacing = 8)
+        : QLayout(parent), hSpace_(hSpacing), vSpace_(vSpacing) {
+        setContentsMargins(margin, margin, margin, margin);
+    }
+    ~ConsoleFlowLayout() override {
+        while (QLayoutItem* item = takeAt(0))
+            delete item;
+    }
+    void addItem(QLayoutItem* item) override { items_.append(item); }
+    int count() const override { return items_.size(); }
+    QLayoutItem* itemAt(int index) const override { return items_.value(index); }
+    QLayoutItem* takeAt(int index) override {
+        if (index < 0 || index >= items_.size())
+            return nullptr;
+        return items_.takeAt(index);
+    }
+    Qt::Orientations expandingDirections() const override { return {}; }
+    bool hasHeightForWidth() const override { return true; }
+    int heightForWidth(int width) const override { return doLayout(QRect(0, 0, width, 0), true); }
+    void setGeometry(const QRect& rect) override {
+        QLayout::setGeometry(rect);
+        doLayout(rect, false);
+    }
+    QSize sizeHint() const override { return minimumSize(); }
+    QSize minimumSize() const override {
+        QSize size;
+        for (QLayoutItem* item : items_)
+            size = size.expandedTo(item->minimumSize());
+        const QMargins m = contentsMargins();
+        size += QSize(m.left() + m.right(), m.top() + m.bottom());
+        return size;
+    }
+
+private:
+    int doLayout(const QRect& rect, bool testOnly) const {
+        int left, top, right, bottom;
+        getContentsMargins(&left, &top, &right, &bottom);
+        QRect effective = rect.adjusted(+left, +top, -right, -bottom);
+        struct LineItem {
+            QLayoutItem* item = nullptr;
+            int x = 0;
+            int w = 0;
+            int h = 0;
+        };
+        QVector<QVector<LineItem>> lines;
+        QVector<LineItem> cur;
+        int x = effective.x();
+        for (QLayoutItem* item : items_) {
+            QWidget* wid = item->widget();
+            if (wid && wid->isHidden())
+                continue;
+            QSize hint = item->sizeHint();
+            const int itemW = qBound(1, hint.width(), qMax(1, effective.width()));
+            const int itemH = qMax(1, hint.height());
+            // 超出右缘就换行；过宽单项钳到行宽，避免画出中栏叠到右侧状态栏
+            if (!cur.isEmpty() && x + itemW > effective.right() + 1) {
+                lines.append(cur);
+                cur.clear();
+                x = effective.x();
+            }
+            cur.append(LineItem{item, x, itemW, itemH});
+            x += itemW + hSpace_;
+        }
+        if (!cur.isEmpty())
+            lines.append(cur);
+
+        int y = effective.y();
+        for (const QVector<LineItem>& line : lines) {
+            int rowH = 0;
+            for (const LineItem& li : line)
+                rowH = qMax(rowH, li.h);
+            if (!testOnly) {
+                for (const LineItem& li : line) {
+                    // 同行控件垂直居中，避免标签顶齐、下拉偏下
+                    const int iy = y + (rowH - li.h) / 2;
+                    li.item->setGeometry(QRect(QPoint(li.x, iy), QSize(li.w, li.h)));
+                }
+            }
+            y += rowH + vSpace_;
+        }
+        if (!lines.isEmpty())
+            y -= vSpace_;
+        return y - rect.y() + bottom;
+    }
+    QList<QLayoutItem*> items_;
+    int hSpace_;
+    int vSpace_;
+};
+
+static QString consoleMetaFieldText(QWidget* root, const QString& name, QLineEdit* fallback) {
+    if (root) {
+        if (auto* e = root->findChild<QLineEdit*>(name)) {
+            const QString t = e->text().trimmed();
+            if (!t.isEmpty())
+                return t;
+        }
+    }
+    return fallback ? fallback->text().trimmed() : QString();
+}
+
+static QList<QWidget*> consoleBusinessCardList(Ui::MainWindow* ui, QWidget* host) {
+    QList<QWidget*> cards;
+    auto add = [&](QWidget* w) {
+        if (w && w->isVisible())
+            cards.append(w);
+    };
+    add(ui->groupBox_11);
+    add(host->findChild<QWidget*>(QStringLiteral("groupBox_business_factory")));
+    add(host->findChild<QWidget*>(QStringLiteral("groupBox_business_power")));
+    add(host->findChild<QWidget*>(QStringLiteral("groupBox_business_mode")));
+    add(ui->groupBox_root_suction_test);
+    add(host->findChild<QWidget*>(QStringLiteral("groupBox_root2_min")));
+    add(ui->groupBox_6);
+    add(host->findChild<QWidget*>(QStringLiteral("groupBox_business_meta")));
+    add(ui->groupBox_qaiot_feature);
+    return cards;
+}
+
+static void placeConsoleBusinessCards(QGridLayout* grid, Ui::MainWindow* ui, QWidget* host, bool oneCol) {
+    if (!grid || !ui || !host)
+        return;
+    const QList<QWidget*> cards = consoleBusinessCardList(ui, host);
+    for (QWidget* w : cards)
+        grid->removeWidget(w);
+    grid->setColumnStretch(0, 1);
+    grid->setColumnStretch(1, oneCol ? 0 : 1);
+    int row = 0;
+    if (oneCol) {
+        for (QWidget* w : cards)
+            grid->addWidget(w, row++, 0);
+        return;
+    }
+    auto isSpan2 = [&](QWidget* w) {
+        if (!w)
+            return false;
+        return w == ui->groupBox_11 || w == ui->groupBox_qaiot_feature
+            || w->objectName() == QStringLiteral("groupBox_business_meta");
+    };
+    QList<QWidget*> rest = cards;
+    if (!rest.isEmpty() && isSpan2(rest.first()))
+        grid->addWidget(rest.takeFirst(), row++, 0, 1, 2);
+    while (rest.size() >= 2) {
+        QWidget* a = rest.takeFirst();
+        QWidget* b = rest.takeFirst();
+        if (isSpan2(a)) {
+            grid->addWidget(a, row++, 0, 1, 2);
+            rest.prepend(b);
+            continue;
+        }
+        if (isSpan2(b)) {
+            grid->addWidget(a, row++, 0);
+            grid->addWidget(b, row++, 0, 1, 2);
+            continue;
+        }
+        grid->addWidget(a, row, 0);
+        grid->addWidget(b, row, 1);
+        ++row;
+    }
+    if (!rest.isEmpty()) {
+        QWidget* last = rest.takeFirst();
+        grid->addWidget(last, row, 0, 1, isSpan2(last) ? 2 : 1);
+    }
+}
+
+static void bumpConsoleFlowHostHeights(QWidget* root) {
+    if (!root)
+        return;
+    const QList<QWidget*> hosts = root->findChildren<QWidget*>(QStringLiteral("consoleFlowHost"));
+    for (QWidget* host : hosts) {
+        auto* flow = host->layout();
+        if (!flow || !flow->hasHeightForWidth())
+            continue;
+        const int w = host->width();
+        if (w < 8)
+            continue;
+        const int h = qMax(flow->heightForWidth(w), flow->minimumSize().height());
+        if (h > 0 && host->minimumHeight() != h)
+            host->setMinimumHeight(h);
+    }
+}
+
+static void polishConsoleMetaIoRow(QHBoxLayout* h) {
+    if (!h)
+        return;
+    for (int i = 0; i < h->count(); ++i) {
+        QWidget* w = h->itemAt(i)->widget();
+        if (!w)
+            continue;
+        if (auto* le = qobject_cast<QLineEdit*>(w)) {
+            le->setMinimumWidth(0);
+            le->setMinimumHeight(32);
+            le->setMaximumHeight(32);
+            le->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+            h->setStretch(i, 1);
+        } else if (auto* btn = qobject_cast<QPushButton*>(w)) {
+            btn->setMinimumWidth(52);
+            btn->setMaximumWidth(68);
+            btn->setMinimumHeight(32);
+            btn->setMaximumHeight(32);
+            btn->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+            h->setStretch(i, 0);
+        } else if (auto* lab = qobject_cast<QLabel*>(w)) {
+            lab->setMinimumWidth(48);
+            lab->setMaximumWidth(64);
+            lab->setMinimumHeight(32);
+            lab->setMaximumHeight(32);
+            lab->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            lab->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+            h->setStretch(i, 0);
+        }
+    }
+}
+
+static void polishConsoleMetaIoLayout(QLayout* lay) {
+    if (!lay)
+        return;
+    if (auto* h = qobject_cast<QHBoxLayout*>(lay)) {
+        polishConsoleMetaIoRow(h);
+        return;
+    }
+    for (int i = 0; i < lay->count(); ++i) {
+        QLayoutItem* it = lay->itemAt(i);
+        if (!it)
+            continue;
+        if (QLayout* nested = it->layout())
+            polishConsoleMetaIoLayout(nested);
+    }
+}
+
+static void applyConsoleMetaGridColumns(QGroupBox* box, int midW) {
+    Q_UNUSED(midW);
+    if (!box)
+        return;
+    auto* grid = qobject_cast<QGridLayout*>(box->layout());
+    if (!grid)
+        return;
+    polishConsoleMetaIoLayout(grid);
+    box->setMinimumWidth(0);
+    box->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+    // 只排一次：旧逻辑宽屏把密钥塞进 1/3 列，与当前 .ui 整行布局冲突
+    if (box->property("metaLayout").toString() == QLatin1String("stack"))
+        return;
+    box->setProperty("metaLayout", QLatin1String("stack"));
+    QLayoutItem* snItem = nullptr;
+    QLayoutItem* keyItem = nullptr;
+    QLayoutItem* skuItem = nullptr;
+    QLayoutItem* subItem = nullptr;
+    QList<QLayoutItem*> leftovers;
+    while (grid->count() > 0) {
+        QLayoutItem* it = grid->takeAt(0);
+        if (!it)
+            continue;
+        QLayout* lay = it->layout();
+        const QString n = lay ? lay->objectName() : QString();
+        if (n == QStringLiteral("consoleMetaCol2") && !snItem)
+            snItem = it;
+        else if (n == QStringLiteral("consoleMetaIoLay_tuple") && !keyItem)
+            keyItem = it;
+        else if ((n == QStringLiteral("consoleMetaCol0") || n == QStringLiteral("consoleMetaIoLay_meta_skuid"))
+                 && !skuItem)
+            skuItem = it;
+        else if ((n == QStringLiteral("consoleMetaCol1") || n == QStringLiteral("consoleMetaIoLay_meta_subpid"))
+                 && !subItem)
+            subItem = it;
+        else
+            leftovers.append(it);
+    }
+    grid->setColumnStretch(0, 1);
+    grid->setColumnStretch(1, 0);
+    grid->setColumnStretch(2, 0);
+    int row = 0;
+    auto addFull = [&](QLayoutItem* it) {
+        if (it)
+            grid->addItem(it, row++, 0);
+    };
+    addFull(snItem);
+    addFull(keyItem);
+    addFull(skuItem);
+    addFull(subItem);
+    for (QLayoutItem* it : leftovers)
+        addFull(it);
+}
+
+/** ???/????????????????????????????????????????????*/
+static void applyConsoleBusinessGridColumns(Ui::MainWindow* ui, QWidget* consoleMid, QWidget* consoleShell) {
+    if (!ui || !consoleMid)
+        return;
+    const int midW = consoleMid->width();
+    auto* host = ui->tab_debug_group_production
+        ? ui->tab_debug_group_production->findChild<QWidget*>(QStringLiteral("consoleBusinessGridHost"))
+        : nullptr;
+    if (host) {
+        auto* grid = qobject_cast<QGridLayout*>(host->layout());
+        if (grid) {
+            if (midW >= 8) {
+                const bool oneCol = midW < 880;
+                const bool sameCol = host->property("oneCol").isValid() && host->property("oneCol").toBool() == oneCol;
+                if (!sameCol) {
+                    host->setProperty("oneCol", oneCol);
+                    placeConsoleBusinessCards(grid, ui, host, oneCol);
+                }
+            }
+        }
+    }
+    if (auto* meta = consoleMid->findChild<QGroupBox*>(QStringLiteral("groupBox_business_meta")))
+        applyConsoleMetaGridColumns(meta, midW);
+    // 折行高度随中栏宽度刷新，避免窄窗时控件叠进右侧栏
+    bumpConsoleFlowHostHeights(consoleMid);
+    if (consoleShell && consoleShell != consoleMid)
+        bumpConsoleFlowHostHeights(consoleShell);
+}
+
+// 业务页布局以 .ui 为准
+static void initBusinessCardGrid(QWidget* root, Ui::MainWindow* ui) {
+    Q_UNUSED(root);
+    if (!ui || !ui->tab_debug_group_production)
+        return;
+    ui->tab_debug_group_production->setProperty("consoleBizTabsReady", true);
+}
 
 void MainWindow::initDebugTabChrome() {
     if (!ui->tabWidget)
         return;
+    // objectName 给 QSS 用；与 ui-> 成员名刻意区分，勿改 .ui 的 name
     ui->tabWidget->setObjectName(QStringLiteral("tabWidget_debugOuter"));
-    ui->tabWidget->setUsesScrollButtons(true);
-    ui->tabWidget->setDocumentMode(true);
     QTabBar* outerBar = ui->tabWidget->tabBar();
     outerBar->setElideMode(Qt::ElideRight);
     outerBar->setDrawBase(false);
@@ -130,44 +937,930 @@ void MainWindow::initDebugTabChrome() {
         if (inner == ui->tabWidget)
             continue;
         inner->setObjectName(QStringLiteral("tabWidget_debugInner"));
-        inner->setDocumentMode(true);
-        inner->setUsesScrollButtons(true);
         QTabBar* bar = inner->tabBar();
-        bar->setElideMode(Qt::ElideRight);
+        bar->setElideMode(Qt::ElideNone);
         bar->setDrawBase(false);
         bar->setExpanding(false);
     }
 }
 
 void MainWindow::initDebugTabLayout() {
-    // 左右/上下 stretch、间距以 mainwindow.ui 为准；此处只保留 splitter 初始比例（.ui 不便表达）
-    if (ui->splitter_3) {
-        ui->splitter_3->setStretchFactor(0, 1);
-        ui->splitter_3->setStretchFactor(1, 4);
-        ui->splitter_3->setSizes({160, 640});
-    }
-    if (ui->splitter_2) {
-        ui->splitter_2->setStretchFactor(0, 3);
-        ui->splitter_2->setStretchFactor(1, 2);
-        ui->splitter_2->setSizes({360, 240});
-    }
-    if (ui->splitter) {
-        ui->splitter->setStretchFactor(0, 1);
-        ui->splitter->setStretchFactor(1, 1);
-    }
-
     if (!ui->tabWidget)
         return;
+    // 外设/业务子页结构已在 mainwindow.ui，不再运行时拆装
+    initBusinessCardGrid(this, ui);
+
+    // ScrollArea 已在 .ui；只刷画布 / Dongle·弹性页策略
+    polishDebugTabScrollAreas(ui->tabWidget);
     for (QTabWidget* inner : ui->tabWidget->findChildren<QTabWidget*>()) {
         if (inner == ui->tabWidget)
             continue;
-        wrapDebugTabPageInScrollArea(inner);
-        pinDebugTabPageToTop(inner);
+        polishDebugTabScrollAreas(inner);
         inner->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     }
     ui->tabWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    polishDebugTabScrollAreas(ui->tabWidget_ota);
+}
 
-    pinDebugTabPageToTop(ui->tabWidget_ota);
+enum ConsoleStatusIconKind {
+    ConsoleIconDevice,
+    ConsoleIconMotor,
+    ConsoleIconPump,
+    ConsoleIconValve,
+    ConsoleIconBattery,
+    ConsoleIconTemp,
+};
+
+// 线稿 PNG 进资源，圆底按 DPR 现场合成：QLabel 被 QSS 命中后就不画 pixmap，故圆底不能只靠 .ui 静态图
+static void applyConsoleStatusIcon(QLabel* lab, ConsoleStatusIconKind kind) {
+    if (!lab)
+        return;
+    lab->setText(QString());
+    lab->setMargin(0);
+    lab->setIndent(0);
+    lab->setScaledContents(false);
+    lab->setAlignment(Qt::AlignCenter);
+    lab->setStyleSheet(QStringLiteral("background:transparent;border:none;padding:0px;"));
+    static const char* kRes[] = {
+        "status-device", "status-motor", "status-pump", "status-valve", "status-battery", "status-temp",
+    };
+    const int idx = static_cast<int>(kind);
+    QPixmap icon;
+    if (idx >= 0 && idx < 6)
+        icon = QPixmap(QStringLiteral(":/stytle/picture/status/%1.png").arg(QLatin1String(kRes[idx])));
+    if (icon.isNull())
+        return;
+    const qreal dpr = qMax<qreal>(1.0, lab->devicePixelRatioF());
+    const int logical = 28;
+    QPixmap pm(qMax(1, qRound(logical * dpr)), qMax(1, qRound(logical * dpr)));
+    pm.setDevicePixelRatio(dpr);
+    pm.fill(Qt::transparent);
+    QPainter p(&pm);
+    p.setRenderHint(QPainter::Antialiasing, true);
+    p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+    p.setPen(Qt::NoPen);
+    p.setBrush(QColor(0xed, 0xf3, 0xfb));
+    p.drawEllipse(QRectF(0.5, 0.5, 27.0, 27.0));
+    const QPixmap scaled = icon.scaled(QSize(qRound(16 * dpr), qRound(16 * dpr)), Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    const qreal x = (logical * dpr - scaled.width()) / 2.0;
+    const qreal y = (logical * dpr - scaled.height()) / 2.0;
+    p.drawPixmap(QPointF(x, y), scaled);
+    lab->setPixmap(pm);
+}
+
+// 预览页 CSS 进场（nav-enter / pill-enter / card-enter），QSS 无法表达，用位移动画还原
+// 注意：父子同时挂 QGraphicsOpacityEffect 会抢同一块 paint device，只做位移
+static void consoleSlideFade(QWidget* w, const QPoint& fromOffset, int durationMs, int delayMs, QEasingCurve::Type ease) {
+    if (!w)
+        return;
+    QTimer::singleShot(delayMs, w, [w, fromOffset, durationMs, ease]() {
+        if (!w->isVisible())
+            return;
+        // QSplitter 子控件不能 move，否则会脱离分割条叠在一起
+        if (qobject_cast<QSplitter*>(w->parentWidget()) || fromOffset == QPoint())
+            return;
+        const QPoint end = w->pos();
+        w->move(end + fromOffset);
+        auto* slide = new QPropertyAnimation(w, "pos", w);
+        slide->setDuration(durationMs);
+        slide->setStartValue(end + fromOffset);
+        slide->setEndValue(end);
+        slide->setEasingCurve(ease);
+        slide->start(QAbstractAnimation::DeleteWhenStopped);
+    });
+}
+
+void MainWindow::bindConsoleShellWidgets() {
+    uartStatusLabel = uiFind<QLabel>(this, "uartStatusLabel");
+    bleStatusLabel = uiFind<QLabel>(this, "bleStatusLabel");
+    WifiStatusLabel = uiFind<QLabel>(this, "WifiStatusLabel");
+    macLabel = uiFind<QLabel>(this, "macLabel");
+    cloudLoginLabel = uiFind<QLabel>(this, "cloudLoginLabel");
+    board_sn = uiFind<QLabel>(this, "board_sn");
+    product_sn = uiFind<QLabel>(this, "product_sn");
+    sub_pid = uiFind<QLabel>(this, "sub_pid");
+    sku_id = uiFind<QLabel>(this, "sku_id");
+    consolePageTitle_ = uiFind<QLabel>(this, "consolePageTitle");
+    consolePageSub_ = uiFind<QLabel>(this, "consolePageSub");
+    consoleStack_ = uiFind<QStackedWidget>(this, "consoleStack");
+    // 优先用 .ui 里持久 QWidget；若 Designer 再次拆空壳则按 *Lay 运行时补回
+    consoleShell_ = uiFind<QWidget>(this, "consoleShell");
+    if (!consoleShell_)
+        consoleShell_ = wrapNamedLayout(uiFind<QLayout>(this, "gridLayout_3"), uiFind<QLayout>(this, "consoleShellLay"),
+                                        QStringLiteral("consoleShell"));
+    consoleSidebar_ = ui->consoleSidebar;
+    consoleMid_ = ui->consoleMid;
+    consoleRail_ = ui->consoleRail;
+    consoleConnectPage_ = ui->consoleConnectPage;
+    auto* statusCardLay = uiFind<QLayout>(this, "consoleStatusCardLay");
+    auto bindStatusRow = [&](const char* widgetName, const char* layName) -> QWidget* {
+        if (QWidget* fromUi = uiFind<QWidget>(this, widgetName))
+            return fromUi;
+        return wrapNamedLayout(statusCardLay, uiFind<QLayout>(this, layName), QString::fromUtf8(widgetName));
+    };
+    consoleStatusDevice_ = bindStatusRow("consoleStatusDevice", "consoleStatusDeviceLay");
+    consoleStatusMotor_ = bindStatusRow("consoleStatusMotor", "consoleStatusMotorLay");
+    consoleStatusPump_ = bindStatusRow("consoleStatusPump", "consoleStatusPumpLay");
+    consoleStatusValve_ = bindStatusRow("consoleStatusValve", "consoleStatusValveLay");
+    consoleMetricBattery_ = bindStatusRow("consoleMetricBattery", "consoleMetricBatteryLay");
+    consoleMetricTemp_ = bindStatusRow("consoleMetricTemp", "consoleMetricTempLay");
+    consoleFieldReset_ = uiFind<QWidget>(this, "consoleFieldReset");
+    if (!consoleFieldReset_)
+        consoleFieldReset_ = wrapNamedLayout(uiFind<QLayout>(this, "consoleCardStep1Lay"),
+                                             uiFind<QLayout>(this, "consoleFieldResetLay"),
+                                             QStringLiteral("consoleFieldReset"));
+    consoleHeader_ = uiFind<QWidget>(this, "consoleHeader");
+    if (!consoleHeader_)
+        consoleHeader_ = wrapNamedLayout(uiFind<QLayout>(this, "consoleMidLay"),
+                                         uiFind<QLayout>(this, "consoleHeaderLay"),
+                                         QStringLiteral("consoleHeader"));
+    consoleTitleBox_ = uiFind<QWidget>(this, "consoleTitleBox");
+    if (!consoleTitleBox_)
+        consoleTitleBox_ = wrapNamedLayout(uiFind<QLayout>(this, "consoleMidLay"),
+                                           uiFind<QLayout>(this, "consoleTitleLay"),
+                                           QStringLiteral("consoleTitleBox"));
+}
+
+// 滚动区包裹后 Tab 页是 QScrollArea，逻辑页名在内层 widget 上
+static QString consoleTabLogicalName(QTabWidget* tw) {
+    if (!tw)
+        return {};
+    QWidget* w = tw->currentWidget();
+    if (auto* scroll = qobject_cast<QScrollArea*>(w))
+        w = scroll->widget();
+    return w ? w->objectName() : QString();
+}
+
+static void consoleRestoreTabByName(QTabWidget* tw, const QString& name) {
+    if (!tw || name.isEmpty())
+        return;
+    for (int i = 0; i < tw->count(); ++i) {
+        QWidget* w = tw->widget(i);
+        QWidget* inner = w;
+        if (auto* scroll = qobject_cast<QScrollArea*>(w))
+            inner = scroll->widget();
+        if (inner && inner->objectName() == name) {
+            tw->setCurrentIndex(i);
+            return;
+        }
+    }
+}
+
+static bool consoleUiRestoring = false;
+
+void MainWindow::selectConsoleNav(int id) {
+    if (!consoleStack_ || !ui->tabWidget)
+        return;
+    const bool connectPage = (id == 0);
+    consoleStack_->setCurrentIndex(connectPage ? 0 : 1);
+    if (!connectPage) {
+        int tabIndex = id - 1;
+        if (id == 6) {
+            tabIndex = -1;
+            for (int i = 0; i < ui->tabWidget->count(); ++i) {
+                if (ui->tabWidget->tabText(i) == QStringLiteral("app业务控制")) {
+                    tabIndex = i;
+                    break;
+                }
+            }
+        }
+        if (tabIndex >= 0)
+            ui->tabWidget->setCurrentIndex(tabIndex);
+    }
+    static const char* titles[] = {"设备连接", "产品业务控制", "外设", "Dongle", "OTA/压测", "其它", "app业务控制"};
+    static const char* subs[] = {
+        "完成三步后即可进入业务控制",
+        "基础属性与产品业务控制",
+        "外设调试",
+        "吸力曲线、泵阀与 AT",
+        "本地 / 云端 / 蓝牙升级与压测",
+        "专用调试与其它工具",
+        "开关、档位、加热、红光"};
+    if (id >= 0 && id < 7) {
+        if (consolePageTitle_)
+            consolePageTitle_->setText(QString::fromUtf8(titles[id]));
+        if (consolePageSub_)
+            consolePageSub_->setText(QString::fromUtf8(subs[id]));
+    }
+    if (consoleEnterPlayed_)
+        playConsolePageEnter(connectPage ? static_cast<QWidget*>(ui->groupBox_5) : ui->consoleWorkPage);
+    // 本机记忆：下次启动回到当前导航页（写入 上位机设置.local.ini）
+    if (!consoleUiRestoring && id >= 0 && id < 7)
+        SETTINGS.setValue(QStringLiteral("Window/ConsoleNavId"), id);
+}
+
+void MainWindow::initConsoleShell() {
+    // Splitter / ScrollArea / 复位分段 / 卡片尺寸已在 .ui；这里只接信号、做运行时行为
+    // 状态图标：.ui 只占位，圆底+线稿按 DPR 合成（静态 badge 在高分屏发糊）
+    applyConsoleStatusIcon(ui->consoleStatusDeviceIcon, ConsoleIconDevice);
+    applyConsoleStatusIcon(ui->consoleStatusMotorIcon, ConsoleIconMotor);
+    applyConsoleStatusIcon(ui->consoleStatusPumpIcon, ConsoleIconPump);
+    applyConsoleStatusIcon(ui->consoleStatusValveIcon, ConsoleIconValve);
+    applyConsoleStatusIcon(ui->consoleMetricBatteryIcon, ConsoleIconBattery);
+    applyConsoleStatusIcon(ui->consoleMetricTempIcon, ConsoleIconTemp);
+    if (auto* split = ui->consoleShellSplit) {
+        split->setStretchFactor(0, 0);
+        split->setStretchFactor(1, 1);
+        split->setStretchFactor(2, 0);
+        split->setSizes({242, 1200, 320});
+        connect(split, &QSplitter::splitterMoved, this, [this]() {
+            consoleSidePhotoFitSize_ = QSize();
+            updateConsoleSidePhotoFit();
+            updateConsoleLogPromoFit();
+            applyConsoleBusinessGridColumns(ui, consoleMid_, consoleShell_);
+        });
+    }
+    if (consoleShell_)
+        consoleShell_->installEventFilter(this);
+
+    if (auto* railSplit = ui->consoleRailSplit) {
+        railSplit->setStretchFactor(0, 0);
+        railSplit->setStretchFactor(1, 1);
+        if (QWidget* vp = ui->consoleStatusScroll ? ui->consoleStatusScroll->viewport() : nullptr)
+            vp->setAutoFillBackground(false);
+        const QList<QWidget*> statusRows = {
+            consoleStatusDevice_,
+            consoleStatusMotor_,
+            consoleStatusPump_,
+            consoleStatusValve_,
+            consoleMetricBattery_,
+            consoleMetricTemp_,
+        };
+        for (QWidget* row : statusRows) {
+            if (!row)
+                continue;
+            row->setMinimumHeight(28);
+            row->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+        }
+        if (ui->verticalGroupBox) {
+            ui->verticalGroupBox->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
+            ui->verticalGroupBox->setMinimumHeight(0);
+        }
+        QTimer::singleShot(0, this, [this, railSplit]() {
+            if (!ui->consoleStatusCard || !railSplit || !consoleRail_)
+                return;
+            const int railH = consoleRail_->height();
+            const int handle = qMax(railSplit->handleWidth(), 10);
+            const int minStatus = 88;
+            const int minLog = 120;
+            const int contentH = qMax(minStatus, ui->consoleStatusCard->sizeHint().height());
+            int statusH = qBound(minStatus, contentH, qMax(minStatus, railH - minLog - handle));
+            railSplit->setSizes({statusH, qMax(minLog, railH - statusH - handle)});
+            updateConsoleLogPromoFit();
+        });
+        connect(railSplit, &QSplitter::splitterMoved, this, [this]() { updateConsoleLogPromoFit(); });
+    }
+    if (consoleConnectPage_) {
+        if (auto* lay = consoleConnectPage_->layout())
+            lay->setSizeConstraint(QLayout::SetMinimumSize);
+    }
+
+    if (ui->consoleBg) {
+        ui->consoleBg->setAttribute(Qt::WA_TransparentForMouseEvents);
+        ui->consoleBg->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+        ui->consoleBg->setMinimumSize(0, 0);
+    }
+    if (ui->consoleSidePhoto) {
+        ui->consoleSidePhoto->setAttribute(Qt::WA_TransparentForMouseEvents);
+        ui->consoleSidePhoto->setScaledContents(false);
+        ui->consoleSidePhoto->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+        ui->consoleSidePhoto->setMinimumSize(0, 0);
+        ui->consoleSidePhoto->installEventFilter(this);
+        updateConsoleSidePhotoFit();
+    }
+    if (ui->consoleSideFade)
+        ui->consoleSideFade->setAttribute(Qt::WA_TransparentForMouseEvents);
+    if (ui->consolePromo) {
+        ui->consolePromo->setAttribute(Qt::WA_TransparentForMouseEvents);
+        ui->consolePromo->setAttribute(Qt::WA_TranslucentBackground);
+        ui->consolePromo->setAutoFillBackground(false);
+        QPalette promoPal = ui->consolePromo->palette();
+        promoPal.setColor(QPalette::Window, Qt::transparent);
+        promoPal.setColor(QPalette::Base, Qt::transparent);
+        ui->consolePromo->setPalette(promoPal);
+        ui->consolePromo->setScaledContents(false);
+        ui->consolePromo->setAlignment(Qt::AlignBottom | Qt::AlignHCenter);
+        ui->consolePromo->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+        ui->consolePromo->setMinimumSize(0, 0);
+        ui->consolePromo->lower();
+    }
+    if (ui->consoleLogCard) {
+        ui->consoleLogCard->installEventFilter(this);
+        updateConsoleLogPromoFit();
+    }
+    if (ui->consoleBg)
+        ui->consoleBg->lower();
+    if (consoleShell_)
+        consoleShell_->raise();
+
+    consoleNavGroup_ = new QButtonGroup(this);
+    consoleNavGroup_->setExclusive(true);
+    consoleNavGroup_->addButton(ui->consoleNavConnect, 0);
+    consoleNavGroup_->addButton(ui->consoleNavBiz, 1);
+    consoleNavGroup_->addButton(ui->consoleNavPeriph, 2);
+    consoleNavGroup_->addButton(ui->consoleNavDongle, 3);
+    consoleNavGroup_->addButton(ui->consoleNavOta, 4);
+    consoleNavGroup_->addButton(ui->consoleNavMisc, 5);
+    consoleNavGroup_->addButton(ui->consoleNavAiot, 6);
+    connect(consoleNavGroup_, &QButtonGroup::idClicked, this, &MainWindow::selectConsoleNav);
+    // .ui 已带 icon；此处再处理白底透明，选中态用 *-on.png
+    applyConsoleNavIcons(
+        {ui->consoleNavConnect, ui->consoleNavBiz, ui->consoleNavPeriph, ui->consoleNavDongle, ui->consoleNavOta,
+         ui->consoleNavMisc, ui->consoleNavAiot},
+        {QStringLiteral("nav-connect"), QStringLiteral("nav-business"), QStringLiteral("nav-peripheral"),
+         QStringLiteral("nav-dongle"), QStringLiteral("nav-ota"), QStringLiteral("nav-misc"),
+         QStringLiteral("nav-app")});
+    if (ui->consoleLogClearBtn)
+        ui->consoleLogClearBtn->setIcon(QIcon(QStringLiteral(":/stytle/picture/status/icon-refresh.png")));
+
+    connect(ui->consoleSettingsBtn, &QToolButton::clicked, this, [this]() {
+        if (settingMenuAction)
+            settingMenuAction->trigger();
+    });
+    QMenu* helpMenu = nullptr;
+    if (ui->menubar) {
+        const auto acts = ui->menubar->actions();
+        for (QAction* act : acts) {
+            if (act && act->menu() && act->text().contains(QStringLiteral("帮助"))) {
+                helpMenu = act->menu();
+                break;
+            }
+        }
+    }
+    if (helpMenu) {
+        connect(ui->consoleHelpBtn, &QToolButton::clicked, this, [this, helpMenu]() {
+            helpMenu->popup(ui->consoleHelpBtn->mapToGlobal(QPoint(0, ui->consoleHelpBtn->height())));
+        });
+    }
+    connect(ui->consoleLogClearBtn, &QPushButton::clicked, this, [this]() {
+        if (ui->log)
+            ui->log->clear();
+        if (ui->msgEdit)
+            ui->msgEdit->clear();
+    });
+
+    // 复位分段：控件在 .ui（consoleSegReset），这里只绑逻辑
+    if (ui->is_reset_dongle && ui->resetOnBtn && ui->resetOffBtn) {
+        auto* onBtn = ui->resetOnBtn;
+        auto* offBtn = ui->resetOffBtn;
+        auto syncResetSeg = [this, onBtn, offBtn]() {
+            const bool on = ui->is_reset_dongle && ui->is_reset_dongle->isChecked();
+            onBtn->setProperty("segActive", on);
+            offBtn->setProperty("segActive", !on);
+            offBtn->setProperty("segDanger", !on);
+            onBtn->style()->unpolish(onBtn);
+            onBtn->style()->polish(onBtn);
+            offBtn->style()->unpolish(offBtn);
+            offBtn->style()->polish(offBtn);
+        };
+        connect(onBtn, &QPushButton::clicked, this, [this, syncResetSeg]() {
+            if (ui->is_reset_dongle)
+                ui->is_reset_dongle->setChecked(true);
+            syncResetSeg();
+        });
+        connect(offBtn, &QPushButton::clicked, this, [this, syncResetSeg]() {
+            if (ui->is_reset_dongle)
+                ui->is_reset_dongle->setChecked(false);
+            syncResetSeg();
+        });
+        connect(ui->is_reset_dongle, &QCheckBox::toggled, this, [syncResetSeg](bool) { syncResetSeg(); });
+        onBtn->setProperty("consoleSegBound", true);
+        offBtn->setProperty("consoleSegBound", true);
+        syncResetSeg();
+    }
+
+    if (ui->tabWidget)
+        ui->tabWidget->tabBar()->hide();
+    if (ui->consoleHeaderLay && ui->uartStatusLabel
+        && consoleHeader_ && !consoleHeader_->findChild<QWidget*>(QStringLiteral("consoleFlowHost"))) {
+        auto* headerLay = ui->consoleHeaderLay;
+        QWidget* pillHost = new QWidget(consoleHeader_);
+        pillHost->setObjectName(QStringLiteral("consoleFlowHost"));
+        auto* flow = new ConsoleFlowLayout(pillHost, 0, 6, 6);
+        const QList<QWidget*> pills = {
+            ui->uartStatusLabel, ui->bleStatusLabel, ui->cloudLoginLabel,
+            ui->consoleFactoryLabel, ui->consoleBuildLabel,
+        };
+        // 顶栏不再展示 wifi / 蓝牙 mac 胶囊
+        if (ui->WifiStatusLabel) {
+            headerLay->removeWidget(ui->WifiStatusLabel);
+            ui->WifiStatusLabel->hide();
+        }
+        if (ui->macLabel) {
+            headerLay->removeWidget(ui->macLabel);
+            ui->macLabel->hide();
+        }
+        for (QWidget* w : pills) {
+            if (!w)
+                continue;
+            headerLay->removeWidget(w);
+            w->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+            flow->addWidget(w);
+        }
+        pillHost->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+        headerLay->insertWidget(0, pillHost, 1);
+        consoleHeader_->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+    }
+    if (ui->macLabel)
+        ui->macLabel->setText(ui->macLabel->text().trimmed());
+    if (ui->statusbar)
+        ui->statusbar->hide();
+    if (ui->menubar)
+        ui->menubar->hide();
+    if (ui->consoleConnectGrid && ui->consoleCardStep3) {
+        ui->consoleConnectGrid->removeWidget(ui->consoleCardStep3);
+        ui->consoleCardStep3->hide();
+    }
+    static const char* kHideConnectLegacy[] = {
+        "consoleFlowNodePending4",
+        "consoleFlowLabel4",
+        "consoleFlowLine3",
+        "label_dongle_serial",
+        "label_pick_device",
+        "label_name_range",
+        "label_rssi_range",
+        "label_2",
+    };
+    for (const char* name : kHideConnectLegacy) {
+        if (QWidget* w = uiFind<QWidget>(this, name))
+            w->hide();
+    }
+    if (auto* flowGrid = qobject_cast<QGridLayout*>(uiFind<QLayout>(this, "consoleFlowTrackLay"))) {
+        flowGrid->setColumnStretch(1, 1);
+        flowGrid->setColumnStretch(3, 1);
+    }
+    if (ui->consoleConnectGrid && ui->consoleCardStep4)
+        ui->consoleConnectGrid->addWidget(ui->consoleCardStep4, 1, 0, 1, 2);
+    if (ui->consoleNavConnect)
+        ui->consoleNavConnect->setChecked(true);
+    consoleUiRestoring = true;
+    const int navId = qBound(0, SETTINGS.value(QStringLiteral("Window/ConsoleNavId"), 0).toInt(), 6);
+    if (consoleNavGroup_) {
+        if (QAbstractButton* btn = consoleNavGroup_->button(navId))
+            btn->setChecked(true);
+    }
+    selectConsoleNav(navId);
+    consoleRestoreTabByName(ui->tabWidget_debug_production,
+                            SETTINGS.value(QStringLiteral("Window/ConsoleTabProduction")).toString());
+    consoleRestoreTabByName(ui->tabWidget_debug_peripheral,
+                            SETTINGS.value(QStringLiteral("Window/ConsoleTabPeripheral")).toString());
+    consoleRestoreTabByName(ui->tabWidget_debug_dongle,
+                            SETTINGS.value(QStringLiteral("Window/ConsoleTabDongle")).toString());
+    consoleRestoreTabByName(ui->tabWidget_ota, SETTINGS.value(QStringLiteral("Window/ConsoleTabOta")).toString());
+    consoleRestoreTabByName(ui->tabWidget_debug_misc,
+                            SETTINGS.value(QStringLiteral("Window/ConsoleTabMisc")).toString());
+    consoleRestoreTabByName(ui->consoleLogTabs, SETTINGS.value(QStringLiteral("Window/ConsoleLogTab")).toString());
+    consoleUiRestoring = false;
+
+    auto bindPersistTab = [this](QTabWidget* tw, const QString& key) {
+        if (!tw || tw->property("consoleTabPersistBound").toBool())
+            return;
+        tw->setProperty("consoleTabPersistBound", true);
+        connect(tw, &QTabWidget::currentChanged, this, [this, tw, key](int) {
+            if (consoleUiRestoring)
+                return;
+            const QString name = consoleTabLogicalName(tw);
+            if (!name.isEmpty())
+                SETTINGS.setValue(key, name);
+        });
+    };
+    bindPersistTab(ui->tabWidget_debug_production, QStringLiteral("Window/ConsoleTabProduction"));
+    bindPersistTab(ui->tabWidget_debug_peripheral, QStringLiteral("Window/ConsoleTabPeripheral"));
+    bindPersistTab(ui->tabWidget_debug_dongle, QStringLiteral("Window/ConsoleTabDongle"));
+    bindPersistTab(ui->tabWidget_ota, QStringLiteral("Window/ConsoleTabOta"));
+    bindPersistTab(ui->tabWidget_debug_misc, QStringLiteral("Window/ConsoleTabMisc"));
+    bindPersistTab(ui->consoleLogTabs, QStringLiteral("Window/ConsoleLogTab"));
+
+    updateMainStyle(QStringLiteral("console_shell.qss"));
+    if (ui->consoleLogTabs) {
+        ui->consoleLogTabs->setDocumentMode(true);
+        if (QTabBar* bar = ui->consoleLogTabs->tabBar())
+            bar->setDrawBase(false);
+    }
+    QTimer::singleShot(0, this, [this]() { updateConsoleNarrowLayout(); });
+    const QList<QPlainTextEdit*> logEdits = {ui->log, ui->msgEdit};
+    for (QPlainTextEdit* edit : logEdits) {
+        if (!edit)
+            continue;
+        edit->setFrameShape(QFrame::NoFrame);
+        edit->setLineWidth(0);
+        edit->setAutoFillBackground(false);
+        if (QWidget* vp = edit->viewport())
+            vp->setAutoFillBackground(false);
+        if (QTextFrame* root = edit->document()->rootFrame()) {
+            QTextFrameFormat fmt = root->frameFormat();
+            fmt.setBottomMargin(120);
+            root->setFrameFormat(fmt);
+        }
+    }
+    installConsoleSegmentedSwitches();
+    applyConsoleBtnRoles(this);
+    {
+        const QList<QWidget*> switchRows = {consoleStatusMotor_, consoleStatusPump_, consoleStatusValve_};
+        for (QWidget* row : switchRows) {
+            if (!row)
+                continue;
+            row->setCursor(Qt::PointingHandCursor);
+            row->setProperty("consoleSwitchOn", false);
+            row->setToolTip(QStringLiteral("点击开关"));
+            row->installEventFilter(this);
+            const auto kids = row->findChildren<QWidget*>();
+            for (QWidget* w : kids)
+                w->installEventFilter(this);
+        }
+    }
+    syncConsoleConnectSeg();
+    updateConsoleConnectFlow();
+    QTimer::singleShot(0, this, [this]() {
+        syncConsoleConnectSeg();
+        updateConsoleConnectFlow();
+    });
+}
+
+void MainWindow::installConsoleSegmentedSwitches() {
+    if (!ui || !consoleShell_)
+        return;
+    if (consoleShell_->layout())
+        installConsoleSegmentedInLayout(consoleShell_->layout());
+    // 已在灰底框里的成对按钮（如连接/断开）也要绑选中态
+    const auto segs = consoleShell_->findChildren<QFrame*>(QStringLiteral("consoleSeg"));
+    for (QFrame* seg : segs) {
+        if (!seg || !seg->layout())
+            continue;
+        QList<QPushButton*> btns;
+        for (int i = 0; i < seg->layout()->count(); ++i) {
+            if (auto* b = qobject_cast<QPushButton*>(seg->layout()->itemAt(i)->widget()))
+                btns.append(b);
+        }
+        if (btns.size() != 2)
+            continue;
+        QPushButton* onBtn = nullptr;
+        QPushButton* offBtn = nullptr;
+        if (!resolveConsoleSwitchPair(btns[0], btns[1], &onBtn, &offBtn))
+            continue;
+        const bool connectPair = (onBtn == ui->connectButton && offBtn == ui->disconnectButton);
+        bindConsoleSegPair(onBtn, offBtn, true);
+        if (connectPair)
+            syncConsoleConnectSeg();
+    }
+    syncConsoleConnectSeg();
+    installPhysicalDevicePads();
+}
+
+// 加热/吸力档位用 SpinBox；此处只均分连接页卡片
+void MainWindow::installPhysicalDevicePads() {
+    if (!ui)
+        return;
+
+    // 连接页卡片尺寸 / 网格 stretch 已在 .ui；这里只补 stretch 占位，避免内容贴底
+    for (QFrame* card : {ui->consoleCardStep1, ui->consoleCardStep2, ui->consoleCardStep4}) {
+        if (!card)
+            continue;
+        if (auto* lay = qobject_cast<QVBoxLayout*>(card->layout())) {
+            if (!card->property("consoleCardSpaced").toBool()) {
+                lay->addStretch(1);
+                card->setProperty("consoleCardSpaced", true);
+            }
+        }
+    }
+    auto refreshPickByFilter = [this]() {
+        // 改筛选条件时未开串口则先自动连接（与「开始搜索」一致）
+        if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
+            showlog(QStringLiteral("串口未连接，正在自动连接…"));
+            on_connectButton_clicked();
+            if (!dongleSerialPort || !dongleSerialPort->isOpen())
+                return;
+        }
+        consoleStep2Touched_ = true;
+        if (!ui->pick_device) {
+            updateConsoleConnectFlow();
+            return;
+        }
+        // 列表项文案含设备名，用 UserRole 里的 MAC 保持选中
+        QString currentMac;
+        if (QListWidgetItem* cur = ui->pick_device->currentItem())
+            currentMac = cur->data(Qt::UserRole).toString();
+        ui->pick_device->clear();
+        updateComboBox();
+        if (!currentMac.isEmpty()) {
+            for (int i = 0; i < ui->pick_device->count(); ++i) {
+                QListWidgetItem* row = ui->pick_device->item(i);
+                if (row && row->data(Qt::UserRole).toString() == currentMac) {
+                    ui->pick_device->setCurrentRow(i);
+                    break;
+                }
+            }
+        }
+        updateConsoleConnectFlow();
+    };
+    if (ui->name_range)
+        connect(ui->name_range, &QComboBox::currentTextChanged, this, refreshPickByFilter);
+    if (ui->rssi_range)
+        connect(ui->rssi_range, &QSlider::valueChanged, this, refreshPickByFilter);
+    updateConsoleConnectFlow();
+    if (ui->groupBox_11) {
+        ui->groupBox_11->setMaximumHeight(QWIDGETSIZE_MAX);
+        ui->groupBox_11->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    }
+}
+
+void MainWindow::syncConsoleConnectSeg() {
+    if (!ui || !ui->connectButton || !ui->disconnectButton)
+        return;
+    const bool open = dongleSerialPort && dongleSerialPort->isOpen();
+    ui->connectButton->setEnabled(!open);
+    ui->disconnectButton->setEnabled(open);
+    if (ui->comNameCombo)
+        ui->comNameCombo->setEnabled(!open);
+    // 未连接：连接是操作按钮，不要刷成「已选中」；已连接：断开可点
+    ui->connectButton->setProperty("segActive", false);
+    ui->connectButton->setProperty("segCta", !open);
+    ui->disconnectButton->setProperty("segActive", false);
+    ui->disconnectButton->setProperty("segDanger", open);
+    consolePolishWidget(ui->connectButton);
+    consolePolishWidget(ui->disconnectButton);
+    consolePolishWidget(ui->connectButton->parentWidget());
+}
+
+void MainWindow::updateConsoleConnectFlow() {
+    if (!ui)
+        return;
+    const bool serialOpen = dongleSerialPort && dongleSerialPort->isOpen();
+    const bool bleOk = at && at->getConnected();
+    const int found = ui->pick_device ? ui->pick_device->count() : 0;
+    if (!serialOpen)
+        consoleStep2Touched_ = false;
+    int doneThrough = 0;
+    if (serialOpen)
+        doneThrough = 1;
+    if (serialOpen && consoleStep2Touched_)
+        doneThrough = 2;
+    if (bleOk)
+        doneThrough = 3;
+    const int active = (doneThrough >= 3) ? 3 : (doneThrough + 1);
+    auto flowOf = [&](int step) -> const char* {
+        if (step <= doneThrough)
+            return "done";
+        if (step == active)
+            return "active";
+        return "pending";
+    };
+    auto applyNode = [&](QLabel* node, QLabel* label, int step) {
+        const char* flow = flowOf(step);
+        consoleSetProp(node, "flow", QString::fromUtf8(flow));
+        consoleSetProp(label, "flow", QString::fromUtf8(flow));
+    };
+    applyNode(uiFind<QLabel>(this, "consoleFlowNodeDone"), uiFind<QLabel>(this, "consoleFlowLabel1"), 1);
+    applyNode(uiFind<QLabel>(this, "consoleFlowNodeActive"), uiFind<QLabel>(this, "consoleFlowLabel2"), 2);
+    applyNode(uiFind<QLabel>(this, "consoleFlowNodePending3"), uiFind<QLabel>(this, "consoleFlowLabel3"), 3);
+    consoleSetProp(uiFind<QWidget>(this, "consoleFlowLineActive"), "flow",
+                   QString::fromUtf8(doneThrough >= 1 ? (doneThrough >= 2 ? "done" : "active") : "pending"));
+    consoleSetProp(uiFind<QWidget>(this, "consoleFlowLine2"), "flow",
+                   QString::fromUtf8(doneThrough >= 2 ? (doneThrough >= 3 ? "done" : "active") : "pending"));
+    auto applyCard = [&](QFrame* card, int step) {
+        consoleSetProp(card, "flow", QString::fromUtf8(flowOf(step)));
+    };
+    applyCard(uiFind<QFrame>(this, "consoleCardStep1"), 1);
+    applyCard(uiFind<QFrame>(this, "consoleCardStep2"), 2);
+    applyCard(uiFind<QFrame>(this, "consoleCardStep4"), 3);
+    consoleSetProp(uiFind<QLabel>(this, "consoleStep1Badge"), "flow", QString::fromUtf8(flowOf(1)));
+    consoleSetProp(uiFind<QLabel>(this, "consoleStep2Badge"), "flow", QString::fromUtf8(flowOf(2)));
+    consoleSetProp(uiFind<QLabel>(this, "consoleStep4Badge"), "flow", QString::fromUtf8(flowOf(3)));
+    auto applyBadge = [&](QLabel* badge, const QString& text, const char* kind) {
+        if (!badge)
+            return;
+        badge->setText(text);
+        consoleSetProp(badge, "kind", QString::fromUtf8(kind));
+    };
+    applyBadge(uiFind<QLabel>(this, "consoleStepStatusOk"),
+               (doneThrough >= 1) ? QStringLiteral("已连接") : QStringLiteral("未连接"),
+               (doneThrough >= 1) ? "ok" : (active == 1 ? "active" : "pending"));
+    applyBadge(uiFind<QLabel>(this, "consoleStepStatusActive"),
+               (doneThrough >= 2) ? QStringLiteral("已设置")
+                                  : (active == 2 ? QStringLiteral("当前步骤") : QStringLiteral("待设置")),
+               (doneThrough >= 2) ? "ok" : (active == 2 ? "active" : "pending"));
+    const QString curMac = macAddress.trimmed();
+    const bool showCurMac = bleOk && curMac.contains(QLatin1Char(':'))
+                            && !curMac.contains(QStringLiteral("没有mac"));
+    QString pickText = QStringLiteral("待搜索");
+    const char* pickKind = "pending";
+    if (doneThrough >= 3) {
+        pickText = showCurMac ? QStringLiteral("已连接 %1").arg(curMac) : QStringLiteral("已连接");
+        pickKind = "ok";
+    } else if (found > 0) {
+        pickText = QStringLiteral("已发现 %1 台").arg(found);
+        pickKind = (active == 3) ? "active" : "ok";
+    } else if (active == 3) {
+        pickText = QStringLiteral("请选择");
+        pickKind = "active";
+    }
+    applyBadge(uiFind<QLabel>(this, "consoleStepStatusPick"), pickText, pickKind);
+    if (QLabel* hint = uiFind<QLabel>(this, "consoleFlowHint")) {
+        // 已连接时卡片角标/列表已标明 MAC，不再重复「当前连接」文案
+        if (doneThrough >= 3) {
+            hint->clear();
+            hint->setVisible(false);
+        } else {
+            hint->setVisible(true);
+            if (active == 1)
+                hint->setText(QStringLiteral("当前步骤 · 选择串口并点击「连接」，或直接改筛选条件自动连接"));
+            else if (active == 2)
+                hint->setText(QStringLiteral("当前步骤 · 按需调整名称与信号，再搜索设备"));
+            else if (found > 0)
+                hint->setText(QStringLiteral("当前步骤 · 点击列表中的设备连接，或点「连接MAC」"));
+            else
+                hint->setText(QStringLiteral("当前步骤 · 点「开始搜索」扫描附近设备"));
+        }
+    }
+    // 列表项标出当前连接的 MAC，避免多台同名时看不出连的是哪台
+    if (ui->pick_device) {
+        const QString marker = QStringLiteral("  · 当前连接");
+        const QString curMacLower = curMac.toLower();
+        for (int i = 0; i < ui->pick_device->count(); ++i) {
+            QListWidgetItem* row = ui->pick_device->item(i);
+            if (!row)
+                continue;
+            QString base = row->text();
+            if (base.endsWith(marker))
+                base.chop(marker.size());
+            const QString rowMac = row->data(Qt::UserRole).toString().trimmed().toLower();
+            if (showCurMac && !rowMac.isEmpty() && rowMac == curMacLower) {
+                row->setText(base + marker);
+                ui->pick_device->setCurrentItem(row);
+                ui->pick_device->scrollToItem(row);
+            } else {
+                row->setText(base);
+            }
+        }
+    }
+    // 未开串口也可改筛选、搜索、连接（点击时会先自动连串口）
+    if (QFrame* card2 = uiFind<QFrame>(this, "consoleCardStep2"))
+        card2->setEnabled(true);
+    if (QFrame* card4 = uiFind<QFrame>(this, "consoleCardStep4"))
+        card4->setEnabled(true);
+    if (ui->start_search)
+        ui->start_search->setEnabled(true);
+    if (ui->pick_device)
+        ui->pick_device->setEnabled(serialOpen && consoleStep2Touched_);
+    if (ui->connectPickMacButton)
+        ui->connectPickMacButton->setEnabled(true);
+    if (ui->connectProductButton)
+        ui->connectProductButton->setEnabled(true);
+    if (QWidget* page = uiFind<QWidget>(this, "groupBox_5"))
+        consolePolishWidget(page);
+}
+
+void MainWindow::updateConsoleSidePhotoFit() {
+    if (!ui || !ui->consoleSidePhoto)
+        return;
+    const QSize sz = ui->consoleSidePhoto->size();
+    if (sz.width() < 2 || sz.height() < 2 || sz == consoleSidePhotoFitSize_)
+        return;
+    if (consoleSidePhotoSrc_.isNull())
+        consoleSidePhotoSrc_ = QPixmap(QStringLiteral(":/stytle/picture/sidebar-mom-bg.jpg"));
+    if (consoleSidePhotoSrc_.isNull())
+        return;
+    // 等比铺满后裁切，焦点约在画面 72% 处，保住母婴主体、避免挤压
+    const QPixmap scaled =
+        consoleSidePhotoSrc_.scaled(sz, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
+    const int x = qMax(0, (scaled.width() - sz.width()) / 2);
+    const int extraH = scaled.height() - sz.height();
+    const int y = extraH > 0 ? qBound(0, qRound(0.72 * extraH), extraH) : 0;
+    ui->consoleSidePhoto->setPixmap(scaled.copy(x, y, sz.width(), sz.height()));
+    consoleSidePhotoFitSize_ = sz;
+}
+
+void MainWindow::updateConsoleNarrowLayout() {
+    if (!ui || !consoleShell_ || !consoleSidebar_ || !consoleRail_)
+        return;
+    if (!consoleShell_->isVisible())
+        return;
+    const int w = consoleShell_->width();
+    if (w < 8)
+        return;
+    applyConsoleBusinessGridColumns(ui, consoleMid_, consoleShell_);
+    auto* split = ui->consoleShellSplit;
+    if (!split)
+        return;
+    // 对齐 HTML @media (max-width: 1100px)：横向过窄时收起左右分栏
+    const bool narrow = w < 1100;
+    if (narrow == consoleShellNarrow_)
+        return;
+    if (narrow) {
+        consoleShellSplitSizes_ = split->sizes();
+        consoleSidebar_->setVisible(false);
+        consoleRail_->setVisible(false);
+    } else {
+        consoleSidebar_->setVisible(true);
+        consoleRail_->setVisible(true);
+        if (consoleShellSplitSizes_.size() == 3)
+            split->setSizes(consoleShellSplitSizes_);
+        QTimer::singleShot(0, this, [this]() {
+            consoleSidePhotoFitSize_ = QSize();
+            updateConsoleSidePhotoFit();
+            updateConsoleLogPromoFit();
+            applyConsoleBusinessGridColumns(ui, consoleMid_, consoleShell_);
+        });
+    }
+    consoleShellNarrow_ = narrow;
+}
+
+void MainWindow::updateConsoleLogPromoFit() {
+    if (!ui || !ui->consolePromo || !ui->consoleLogCard)
+        return;
+    const QSize card = ui->consoleLogCard->size();
+    if (card.width() < 8 || card.height() < 8)
+        return;
+    // 对齐 HTML .log-panel::before：贴底 202px + mask 渐隐，避免整块照片铺进日志框
+    const int promoH = qMin(202, card.height());
+    const int w = card.width();
+    ui->consolePromo->setGeometry(0, card.height() - promoH, w, promoH);
+    ui->consolePromo->lower();
+    static QPixmap src;
+    if (src.isNull())
+        src = QPixmap(QStringLiteral(":/stytle/picture/product-promo-card.png"));
+    if (src.isNull())
+        return;
+    const qreal dpr = qMax<qreal>(1.0, ui->consolePromo->devicePixelRatioF());
+    const int dw = qMax(1, qRound(w * dpr));
+    const int dh = qMax(1, qRound(promoH * dpr));
+    const QPixmap scaled = src.scaled(QSize(dw, dh), Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
+    const int cx = qMax(0, (scaled.width() - dw) / 2);
+    const int cy = qMax(0, scaled.height() - dh);
+    QPixmap out(dw, dh);
+    out.fill(Qt::transparent);
+    QPainter p(&out);
+    p.setRenderHint(QPainter::Antialiasing, true);
+    p.setRenderHint(QPainter::SmoothPixmapTransform, true);
+    p.drawPixmap(0, 0, scaled, cx, cy, dw, dh);
+    QLinearGradient mask(0, 0, 0, dh);
+    mask.setColorAt(0.00, QColor(0, 0, 0, 0));
+    mask.setColorAt(0.14, QColor(0, 0, 0, 46));
+    mask.setColorAt(0.38, QColor(0, 0, 0, 255));
+    mask.setColorAt(1.00, QColor(0, 0, 0, 255));
+    p.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+    p.fillRect(0, 0, dw, dh, mask);
+    p.setCompositionMode(QPainter::CompositionMode_SourceOver);
+    QLinearGradient haze(0, 0, 0, dh * 76.0 / 202.0);
+    haze.setColorAt(0.00, QColor(255, 255, 255, 163));
+    haze.setColorAt(0.50, QColor(225, 237, 253, 51));
+    haze.setColorAt(1.00, QColor(255, 255, 255, 0));
+    p.fillRect(QRectF(0, 0, dw, dh * 76.0 / 202.0), haze);
+    const qreal r = 16.0 * dpr;
+    QPainterPath roundBottom;
+    roundBottom.addRoundedRect(QRectF(0, -r, dw, dh + r), r, r);
+    p.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+    p.fillPath(roundBottom, Qt::white);
+    out.setDevicePixelRatio(dpr);
+    ui->consolePromo->setPixmap(out);
+}
+
+void MainWindow::playConsolePageEnter(QWidget* page) {
+    Q_UNUSED(page);
+    if (consolePageTitle_)
+        consoleSlideFade(consolePageTitle_, QPoint(0, 6), 350, 0, QEasingCurve::OutBack);
+    if (consolePageSub_)
+        consoleSlideFade(consolePageSub_, QPoint(0, 4), 350, 40, QEasingCurve::OutCubic);
+}
+
+void MainWindow::playConsoleEnterAnimations() {
+    const QEasingCurve::Type spring = QEasingCurve::OutBack;
+    // 只对叶子控件做位移；大容器/分割条子控件与透明度效果易触发 QPainter 冲突
+    const QList<QPushButton*> navs = {
+        ui->consoleNavConnect,
+        ui->consoleNavBiz,
+        ui->consoleNavPeriph,
+        ui->consoleNavDongle,
+        ui->consoleNavOta,
+        ui->consoleNavMisc,
+        ui->consoleNavAiot,
+    };
+    for (int i = 0; i < navs.size(); ++i)
+        consoleSlideFade(navs.at(i), QPoint(-10, 0), 320, 40 + i * 40, spring);
+    consoleSlideFade(ui->consoleBrandTitle, QPoint(-8, 0), 320, 20, spring);
+    const QList<QWidget*> pills = {
+        ui->uartStatusLabel,
+        ui->bleStatusLabel,
+        ui->cloudLoginLabel,
+        ui->consoleFactoryLabel,
+        ui->consoleBuildLabel,
+        ui->consoleSettingsBtn,
+        ui->consoleHelpBtn,
+    };
+    for (int i = 0; i < pills.size(); ++i)
+        consoleSlideFade(pills.at(i), QPoint(0, -6), 320, 80 + i * 40, spring);
+    consoleSlideFade(ui->consoleCardStep1, QPoint(0, 12), 420, 180, spring);
+    consoleSlideFade(ui->consoleCardStep2, QPoint(0, 12), 420, 220, spring);
+    consoleSlideFade(ui->consoleCardStep4, QPoint(0, 12), 420, 260, spring);
+}
+
+void MainWindow::showEvent(QShowEvent* event) {
+    QMainWindow::showEvent(event);
+    QTimer::singleShot(0, this, [this]() { updateConsoleNarrowLayout(); });
+    if (consoleEnterPlayed_)
+        return;
+    consoleEnterPlayed_ = true;
+    QTimer::singleShot(0, this, [this]() { playConsoleEnterAnimations(); });
 }
 
 void MainWindow::applyDebugOtaTabVisibility() {
@@ -252,6 +1945,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
                                           pb(new Qpb(dongleSerialPort)),
                                           qfctp(new Qfctp(dongleSerialPort)),
                                           qaiot(new Qaiot(dongleSerialPort)),
+                                          qaiotApp(new QaiotApp(dongleSerialPort)),
                                           qroot(new Qroot(dongleSerialPort)),
                                           qroot2(new Qroot2(dongleSerialPort)),
                                           at(new QatManager(dongleSerialPort, this)),
@@ -261,8 +1955,10 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
                                           peripheralModel(new TestModel),
                                           ui(new Ui::MainWindow) {
     ui->setupUi(this);
+    bindConsoleShellWidgets();
     initDongleSuctionChart();
     initQaiotFeatureButtons();
+    initAiotAppPage();
     initDebugTabChrome();
     if (ui->screenInspectPage)
         ui->screenInspectPage->bindDesignerUi();
@@ -275,12 +1971,15 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     protocolManager.bindQpb(pb);
     protocolManager.bindQfctp(qfctp);
     protocolManager.bindQaiot(qaiot);
+    protocolManager.bindQaiotApp(qaiotApp);
     protocolManager.bindQroot(qroot);
     protocolManager.bindQroot2(qroot2);
     const std::string protocolName =
         SETTINGS.value("SYSTEM/ProtocolType", "qpb").toString().toStdString();
     auto selectedType = QProtocolManager::protocolTypeFromString(protocolName);
-    if (selectedType == QProtocolManager::ProtocolType::Unknown) {
+    if (selectedType == QProtocolManager::ProtocolType::Unknown
+        || selectedType == QProtocolManager::ProtocolType::QaiotApp) {
+        // 应用层不作为全局协议，只在「应用层」页直接发 qaiotApp
         selectedType = QProtocolManager::ProtocolType::Qpb;
     }
     if (!pb) {
@@ -322,7 +2021,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     ui->local_ota_result->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  "
                                         "border-radius: 10px; padding: 10px; text-align: center; ");
     ui->bleotaresult->setText("WAIT");
-    ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  "
+    ui->bleotaresult->setStyleSheet("font-size: 14px; background-color: #808080; color: white;  "
                                     "border-radius: 10px; padding: 10px; text-align: center; ");
 
     scanSerialPorts();                 // 要搜索一下一开始
@@ -352,7 +2051,12 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
         }
     });
 
-    ui->name_range->addItems(CommonUtils::dongleBroadcastFilterNames());
+    // 填充时屏蔽信号，避免启动阶段触发「改筛选→自动连串口」
+    if (ui->name_range) {
+        const bool blocked = ui->name_range->blockSignals(true);
+        ui->name_range->addItems(CommonUtils::dongleBroadcastFilterNames());
+        ui->name_range->blockSignals(blocked);
+    }
     ui->rssi_range_value->setText(QString("%1 dBm").arg(ui->rssi_range->value()));
     connect(ui->rssi_range, &QSlider::valueChanged, this, [=](int value) {
         ui->rssi_range_value->setText(QString("%1 dBm").arg(value));
@@ -364,6 +2068,34 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
         ui->yedengslider_value->setText(QString("%1/100").arg(value));
     });
     connect(ui->connectProductButton, &QPushButton::clicked, this, &MainWindow::on_macInput_returnPressed);
+    // 点列表行即可连接；「连接MAC」用当前选中行
+    if (ui->pick_device) {
+        connect(ui->pick_device, &QListWidget::itemClicked, this, [this](QListWidgetItem* item) {
+            if (!item)
+                return;
+            QString mac = item->data(Qt::UserRole).toString().trimmed();
+            if (mac.isEmpty())
+                mac = item->text().trimmed();
+            if (ui->macInput && !mac.isEmpty())
+                ui->macInput->setText(mac);
+            connectPickDeviceMac(mac);
+        });
+    }
+    if (auto* btn = uiFind<QPushButton>(this, "connectPickMacButton")) {
+        connect(btn, &QPushButton::clicked, this, [this]() {
+            if (!ui || !ui->pick_device)
+                return;
+            QListWidgetItem* item = ui->pick_device->currentItem();
+            if (!item)
+                return;
+            QString mac = item->data(Qt::UserRole).toString().trimmed();
+            if (mac.isEmpty())
+                mac = item->text().trimmed();
+            if (ui->macInput && !mac.isEmpty())
+                ui->macInput->setText(mac);
+            connectPickDeviceMac(mac);
+        });
+    }
 
     initBasicInfo();
     initPeriphState();
@@ -373,46 +2105,47 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     OTAGroup->addButton(ui->america_ver, 3);
     OTAGroup->addButton(ui->america_product_ver, 4);
 
-    WifiStatusLabel = new QLabel("wifi连接：<font color='red'>失败</font>");
-    bleStatusLabel = new QLabel("蓝牙连接：<font color='red'>失败</font>");
-    uartStatusLabel = new QLabel("串口连接：<font color='red'>失败</font>");
-    macLabel = new QLabel("蓝牙mac:                        ");
-    board_sn = new QLabel("板子sn:                        ");
-    product_sn = new QLabel("整机sn:                        ");
-    sub_pid = new QLabel("sub_pid:        ");
-    sku_id = new QLabel("sku_id:        ");
-    cloudLoginLabel = new QLabel("云平台：<font color='gray'>检查中…</font>");
     ui->battery_type_combox->addItem(QStringLiteral("两节电池"), FacBatteryType_TWO_BATTERY);
     ui->battery_type_combox->addItem(QStringLiteral("单节电池"), FacBatteryType_ONE_BATTERY);
 
     otaSourceSet(1); // 一开机锁住
     otaFwSet(1);     // 一开机锁住
 
-    // 设置菜单栏样式
-    ui->menubar->setStyleSheet("QMenuBar { "
-                               "    background-color: white; " // 设置菜单栏背景颜色为白色
-                               "    color: black; "            // 设置菜单栏文字颜色为黑色
-                               "}"
-                               "QMenuBar::item { "
-                               "    background-color: white; " // 设置菜单项背景颜色为白色
-                               "    color: black; "            // 设置菜单项文字颜色为黑色
-                               "}"
-                               "QMenuBar::item:selected { "
-                               "    background-color: lightgray; " // 设置选中菜单项的背景颜色
-                               "    color: black; "                // 设置选中菜单项的文字颜色
-                               "}");
-
-    ui->statusbar->addPermanentWidget(board_sn);
-    ui->statusbar->addPermanentWidget(product_sn);
-    ui->statusbar->addPermanentWidget(sub_pid);
-    ui->statusbar->addPermanentWidget(sku_id);
-
-    ui->statusbar->addPermanentWidget(macLabel);
-    ui->statusbar->addPermanentWidget(bleStatusLabel);
-    ui->statusbar->addPermanentWidget(WifiStatusLabel);
-    ui->statusbar->addPermanentWidget(uartStatusLabel);
-    ui->statusbar->addPermanentWidget(new QLabel(DEBUG_VER + QString(__DATE__) + " " + QString(__TIME__)));
-    ui->statusbar->addPermanentWidget(cloudLoginLabel);
+    const QString debugVer = QString::fromUtf8(DEBUG_VER).simplified();
+    QString version = debugVer;
+    const int vPos = debugVer.lastIndexOf(QLatin1Char('V'));
+    if (vPos >= 0)
+        version = debugVer.mid(vPos).trimmed();
+    if (version.startsWith(QLatin1Char('V')))
+        version[0] = QLatin1Char('v');
+    if (QLabel* lab = uiFind<QLabel>(this, "consoleVersionLabel")) {
+        lab->setText(version);
+        lab->setToolTip(QStringLiteral("软件版本"));
+    }
+    if (ui->consoleBuildLabel) {
+        const QString rawDate = QString::fromLatin1(__DATE__).simplified();
+        const QString rawTime = QString::fromLatin1(__TIME__);
+        static const char* kEnMon[] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                                       "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+        QString zhDate = rawDate;
+        const QStringList parts = rawDate.split(QLatin1Char(' '), QString::SkipEmptyParts);
+        if (parts.size() >= 3) {
+            int mon = -1;
+            for (int i = 0; i < 12; ++i) {
+                if (parts.at(0) == QLatin1String(kEnMon[i])) {
+                    mon = i + 1;
+                    break;
+                }
+            }
+            if (mon > 0)
+                zhDate = QStringLiteral("%1年%2月%3日")
+                             .arg(parts.at(2))
+                             .arg(mon)
+                             .arg(parts.at(1).toInt());
+        }
+        ui->consoleBuildLabel->setText(zhDate + QLatin1Char(' ') + rawTime);
+        ui->consoleBuildLabel->setToolTip(QStringLiteral("编译时间"));
+    }
 
     refreshCloudLoginState();
     {
@@ -476,8 +2209,11 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     });
     connect(dongleSerialChannel_, &SerialChannel::frameReceived, this, &MainWindow::onDongleSerialFrame);
     connect(dongleSerialChannel_, &SerialChannel::errorOccurred, this, &MainWindow::handleDongleSerialPortError);
-    // 限制串口日志文档块数，避免长时间收包撑爆 QTextDocument
-    ui->log->setMaximumBlockCount(2000);
+    // 限制 Dongle 串口日志文档块数，避免长时间收包撑爆 QTextDocument
+    if (ui->msgEdit)
+        ui->msgEdit->setMaximumBlockCount(2000);
+    if (ui->log)
+        ui->log->setMaximumBlockCount(2000);
 
     // 连接信号和槽
     // QObject::connect(cameratimer, &QTimer::timeout, this,
@@ -492,7 +2228,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     ui->acc_x->setFont(font);
     ui->acc_y->setFont(font);
     ui->acc_z->setFont(font);
-    ui->getMac->setFocus();
+    ui->comNameCombo->setFocus();
 
     // U7
     ui->nfc_combo->addItem("U7P");
@@ -539,14 +2275,15 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     ui->active_picture->installEventFilter(this);
     ui->active_picture->setAcceptDrops(true);
 
+    QString factoryName = QStringLiteral("欣旺达");
     if (SETTINGS.value("Mes/FACTORY").toString() == "hq")
-        ui->statusbar->addPermanentWidget(new QLabel("华勤"));
+        factoryName = QStringLiteral("华勤");
     else if (SETTINGS.value("Mes/FACTORY").toString() == "lx")
-        ui->statusbar->addPermanentWidget(new QLabel("立讯"));
+        factoryName = QStringLiteral("立讯");
     else if (SETTINGS.value("Mes/FACTORY").toString() == "jj")
-        ui->statusbar->addPermanentWidget(new QLabel("金进"));
-    else
-        ui->statusbar->addPermanentWidget(new QLabel("欣旺达"));
+        factoryName = QStringLiteral("金进");
+    if (ui->consoleFactoryLabel)
+        ui->consoleFactoryLabel->setText(factoryName);
 
     viewercamrea = new ImageViewer("image.png", this);
     ui->verticalLayout_31->addWidget(viewercamrea); // 将 ImageViewer 添加到布局中
@@ -613,6 +2350,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent),
     QMenu* helpMenu = AppHelpMenu::install(ui->menubar, this, helpCb);
     AppHelpMenu::ensureRightmost(ui->menubar, helpMenu);
 
+    initConsoleShell();
+
     on_is_audio_mode_stateChanged(0);
 }
 
@@ -627,6 +2366,8 @@ void MainWindow::onProtocolReport(const ProtocolReport& report) {
         refreshPbInfo(payload.toString());
     } else if (reportType == QLatin1String("ProtocolOtaResult")) {
         refreshOtaResult(payload.toInt());
+    } else if (reportType == QLatin1String("ProtocolAiotAppPanel")) {
+        refreshAiotAppPanel(payload.toMap());
     } else if (reportType == QLatin1String("ProtocolPbDate")) {
         refreshPbData(payload.toString());
     } else if (reportType == QLatin1String("ProtocolPressCalibResultData") && payload.canConvert<ProtocolPressCalibResultData>()) {
@@ -684,6 +2425,19 @@ void MainWindow::onProtocolReport(const ProtocolReport& report) {
         refreshRoot2PoseAngle(payload.value<ProtocolRoot2PoseAngleData>());
     } else if (reportType == QLatin1String("ProtocolTupleData") && payload.canConvert<ProtocolTupleData>()) {
         refreshTupleData(payload.value<ProtocolTupleData>());
+    } else if (reportType == QLatin1String("ProtocolTypeData") && payload.canConvert<ProtocolTypeData>()
+               && rootTypeQueryPending_ != 0) {
+        const quint16 v = payload.value<ProtocolTypeData>().type;
+        if (rootTypeQueryPending_ == 1) {
+            if (ui->root_ntc_value)
+                ui->root_ntc_value->setText(QStringLiteral("加热 NTC：%1").arg(v));
+            showlog(QStringLiteral("加热 NTC：%1 (0x97)").arg(v));
+        } else if (rootTypeQueryPending_ == 2) {
+            if (ui->root_vib_status_value)
+                ui->root_vib_status_value->setText(QStringLiteral("振子状态：%1").arg(v));
+            showlog(QStringLiteral("振子状态：%1 (0x99)").arg(v));
+        }
+        rootTypeQueryPending_ = 0;
     } else {
         // Air2/Qaiot 等调试回包：无专用控件时至少打可读摘要
         logExtraProtocolReport(reportType, payload);
@@ -796,8 +2550,8 @@ void MainWindow::refreshOtaResult(int result) {
                                 QString("，wifiota耗时:%1 s").arg(totalwifiOtaTime.elapsed() / 1000));
         ui->wifiota_suc_times->setText(QString("成功升级次数:%1").arg(wifiotaSuctimes));
         ui->bleotaresult->setText("PASS");
-        ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #00FF00; color: "
-                                        "black; border: 2px solid #00FF00; border-radius: "
+        ui->bleotaresult->setStyleSheet("font-size: 14px; background-color: #10b981; color: "
+                                        "white; border: 1px solid #0d9668; border-radius: "
                                         "10px; padding: 10px; text-align: center;");
         on_disconnectButton_clicked();
         if (ui->is_bleota_press->checkState()) {
@@ -815,7 +2569,7 @@ void MainWindow::refreshOtaResult(int result) {
         on_stopBleOta_clicked();
         on_disconnectButton_clicked();
         ui->bleotaresult->setText("FAIL");
-        ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #FF0000; color: "
+        ui->bleotaresult->setStyleSheet("font-size: 14px; background-color: #FF0000; color: "
                                         "black; border: 2px solid #FF0000; border-radius: "
                                         "10px; padding: 10px; text-align: center; ");
         if (ui->is_bleota_press->checkState()) {
@@ -856,6 +2610,8 @@ void MainWindow::refreshButtonState(ProtocolButtonStateData data) {
 
 void MainWindow::refreshRootBatteryTemp(quint8 temp) {
     ui->root_battery_temp_value->setText(QStringLiteral("电池温度：%1°C").arg(temp));
+    if (QLabel* v = uiFind<QLabel>(this, "consoleMetricTempValue"))
+        v->setText(QStringLiteral("%1 ℃").arg(temp));
     showlog(QStringLiteral("电池温度：%1°C (0x80)").arg(temp));
 }
 
@@ -954,8 +2710,8 @@ void MainWindow::refreshTupleData(ProtocolTupleData data) {
 }
 
 void MainWindow::initQaiotFeatureButtons() {
-    // 专用测试页 groupBox_qaiot_feature：仅填充下拉 itemData（通信走设置页当前协议）
-    if (!ui->groupBox_qaiot_feature)
+    // 工厂/模式/外设下拉：仅填充 itemData（通信走设置页当前协议）
+    if (!uiFind<QGroupBox>(this, "groupBox_qaiot_feature"))
         return;
 
     auto fillCombo = [](QComboBox* cb, const QList<QPair<QString, int>>& items, int currentIndex = 0) {
@@ -968,7 +2724,7 @@ void MainWindow::initQaiotFeatureButtons() {
             cb->setCurrentIndex(currentIndex);
     };
 
-    fillCombo(ui->qaiot_fac_mode_type,
+    fillCombo(uiFind<QComboBox>(this, "qaiot_fac_mode_type"),
               {{QStringLiteral("工厂模式"), 1},
                {QStringLiteral("老化模式"), 2},
                {QStringLiteral("吸力模式"), 3},
@@ -976,7 +2732,7 @@ void MainWindow::initQaiotFeatureButtons() {
                {QStringLiteral("ATE模式"), 5},
                {QStringLiteral("单机模式"), 6},
                {QStringLiteral("空闲模式"), 0}});
-    fillCombo(ui->qaiot_sim_key,
+    fillCombo(uiFind<QComboBox>(this, "qaiot_sim_key"),
               {{QStringLiteral("电源"), 0x01},
                {QStringLiteral("开始"), 0x02},
                {QStringLiteral("模式"), 0x03},
@@ -988,16 +2744,7 @@ void MainWindow::initQaiotFeatureButtons() {
                {QStringLiteral("旅行锁键"), 0x09},
                {QStringLiteral("旋钮左转"), 0x0A},
                {QStringLiteral("旋钮右转"), 0x0B}});
-    fillCombo(ui->qaiot_aging_mode,
-              {{QStringLiteral("空闲(0)"), 0},
-               {QStringLiteral("工厂(1)"), 1},
-               {QStringLiteral("老化(2)"), 2},
-               {QStringLiteral("吸力(3)"), 3},
-               {QStringLiteral("补偿(4)"), 4},
-               {QStringLiteral("ATE(5)"), 5},
-               {QStringLiteral("单机(6)"), 6}},
-              2);
-    fillCombo(ui->qaiot_cycle_type,
+    fillCombo(uiFind<QComboBox>(this, "qaiot_cycle_type"),
               {{QStringLiteral("IMU(0)"), 0},
                {QStringLiteral("压力(1)"), 1},
                {QStringLiteral("气流(2)"), 2},
@@ -1011,7 +2758,7 @@ void MainWindow::initQaiotFeatureButtons() {
                {QStringLiteral("接近(10)"), 10},
                {QStringLiteral("霍尔(11)"), 11},
                {QStringLiteral("编码器(12)"), 12}});
-    fillCombo(ui->qaiot_ex_type,
+    fillCombo(uiFind<QComboBox>(this, "qaiot_ex_type"),
               {{QStringLiteral("低电告警(1)"), 1},
                {QStringLiteral("低电关机(2)"), 2},
                {QStringLiteral("充电过压(3)"), 3},
@@ -1022,20 +2769,524 @@ void MainWindow::initQaiotFeatureButtons() {
                {QStringLiteral("负压过高(34)"), 34}});
 }
 
-void MainWindow::on_qaiot_enter_fac_mode_clicked() {
+void MainWindow::initAiotAppPage() {
+    if (!ui->aiotRefreshBtn)
+        return;
+    if (ui->aiotSideCombo && ui->aiotSideCombo->count() == 0) {
+        ui->aiotSideCombo->addItem(QStringLiteral("左 Left"), 0);
+        ui->aiotSideCombo->addItem(QStringLiteral("右 Right"), 1);
+        ui->aiotSideCombo->addItem(QStringLiteral("同步 Sync"), 2);
+        ui->aiotSideCombo->addItem(QStringLiteral("单机 independence"), 3);
+        ui->aiotSideCombo->setCurrentIndex(2); // 默认同步
+    }
+    connect(ui->aiotRefreshBtn, &QPushButton::clicked, this, &MainWindow::aiotRefreshStatus);
+    if (ui->aiotExportJsonBtn)
+        connect(ui->aiotExportJsonBtn, &QPushButton::clicked, this, &MainWindow::aiotExportPageJson);
+    if (ui->aiotImportJsonBtn)
+        connect(ui->aiotImportJsonBtn, &QPushButton::clicked, this, &MainWindow::aiotImportPageJson);
+    connect(ui->aiotStartBtn, &QPushButton::clicked, this, [this] {
+        QVariantMap m;
+        m.insert(QStringLiteral("enable"), 1);
+        aiotSendPump(m);
+        showlog(QStringLiteral("app业务控制：开始（pump_enable=0x01）"));
+    });
+    connect(ui->aiotPauseBtn, &QPushButton::clicked, this, [this] {
+        QVariantMap m;
+        m.insert(QStringLiteral("enable"), QStringLiteral("pause"));
+        aiotSendPump(m);
+        showlog(QStringLiteral("app业务控制：暂停（pump_enable=0x02）"));
+    });
+    connect(ui->aiotStopBtn, &QPushButton::clicked, this, [this] {
+        // 协议 pump_enable=0x03 stop：结束流程关泵阀，区别于 0x02 暂停
+        QVariantMap m;
+        m.insert(QStringLiteral("enable"), QStringLiteral("stop"));
+        aiotSendPump(m);
+        showlog(QStringLiteral("app业务控制：结束流程（pump_enable=0x03）"));
+    });
+    connect(ui->aiotModeSuckBtn, &QPushButton::clicked, this, [this] {
+        QVariantMap m;
+        m.insert(QStringLiteral("mode"), 2);
+        m.insert(QStringLiteral("type"), 0);
+        aiotSendPump(m);
+        ui->aiotModeLabel->setText(QStringLiteral("吸乳"));
+        showlog(QStringLiteral("app业务控制：模式 吸乳"));
+    });
+    connect(ui->aiotModeMassageBtn, &QPushButton::clicked, this, [this] {
+        QVariantMap m;
+        m.insert(QStringLiteral("mode"), 1);
+        m.insert(QStringLiteral("type"), 0);
+        aiotSendPump(m);
+        ui->aiotModeLabel->setText(QStringLiteral("按摩"));
+        showlog(QStringLiteral("app业务控制：模式 按摩"));
+    });
+    connect(ui->aiotModeMixBtn, &QPushButton::clicked, this, [this] {
+        QVariantMap m;
+        m.insert(QStringLiteral("mode"), 3);
+        m.insert(QStringLiteral("type"), 0);
+        aiotSendPump(m);
+        ui->aiotModeLabel->setText(QStringLiteral("混合"));
+        showlog(QStringLiteral("app业务控制：模式 混合"));
+    });
+    connect(ui->aiotLevelDownBtn, &QPushButton::clicked, this, [this] {
+        aiotPumpLevel_ = qMax(1, aiotPumpLevel_ - 1);
+        if (ui->aiotLevelSpin)
+            ui->aiotLevelSpin->setValue(aiotPumpLevel_);
+        QVariantMap m;
+        m.insert(QStringLiteral("level"), aiotPumpLevel_);
+        aiotSendPump(m);
+        ui->aiotLevelLabel->setText(QStringLiteral("%1 / 15").arg(aiotPumpLevel_, 2, 10, QChar('0')));
+        showlog(QStringLiteral("app业务控制：档位 %1").arg(aiotPumpLevel_));
+    });
+    connect(ui->aiotLevelUpBtn, &QPushButton::clicked, this, [this] {
+        aiotPumpLevel_ = qMin(15, aiotPumpLevel_ + 1);
+        if (ui->aiotLevelSpin)
+            ui->aiotLevelSpin->setValue(aiotPumpLevel_);
+        QVariantMap m;
+        m.insert(QStringLiteral("level"), aiotPumpLevel_);
+        aiotSendPump(m);
+        ui->aiotLevelLabel->setText(QStringLiteral("%1 / 15").arg(aiotPumpLevel_, 2, 10, QChar('0')));
+        showlog(QStringLiteral("app业务控制：档位 %1").arg(aiotPumpLevel_));
+    });
+    connect(ui->aiotLevelSendBtn, &QPushButton::clicked, this, [this] {
+        if (!ui->aiotLevelSpin)
+            return;
+        aiotPumpLevel_ = ui->aiotLevelSpin->value();
+        QVariantMap m;
+        m.insert(QStringLiteral("level"), aiotPumpLevel_);
+        aiotSendPump(m);
+        ui->aiotLevelLabel->setText(QStringLiteral("%1 / 15").arg(aiotPumpLevel_, 2, 10, QChar('0')));
+        showlog(QStringLiteral("app业务控制：发送档位 %1").arg(aiotPumpLevel_));
+    });
+    connect(ui->aiotHeatOnBtn, &QPushButton::clicked, this, [this] {
+        if (ui->aiotHeatDurationSpin)
+            aiotHeatDuration_ = qBound(1, ui->aiotHeatDurationSpin->value(), 3600);
+        aiotHeatOn_ = true;
+        aiotSendHeat(1, aiotHeatLevel_);
+        ui->aiotHeatStateLabel->setText(QStringLiteral("开"));
+        if (ui->aiotHeatTempLabel) {
+            ui->aiotHeatTempLabel->setText(QStringLiteral("目标 %1°C · 时长 %2 秒")
+                                              .arg(35 + aiotHeatLevel_)
+                                              .arg(aiotHeatDuration_));
+        }
+        showlog(QStringLiteral("app业务控制：加热开 %1°C / %2秒")
+                    .arg(35 + aiotHeatLevel_)
+                    .arg(aiotHeatDuration_));
+    });
+    connect(ui->aiotHeatOffBtn, &QPushButton::clicked, this, [this] {
+        aiotHeatOn_ = false;
+        aiotSendHeat(0, aiotHeatLevel_);
+        ui->aiotHeatStateLabel->setText(QStringLiteral("关"));
+        showlog(QStringLiteral("app业务控制：加热关"));
+    });
+    connect(ui->aiotHeatDownBtn, &QPushButton::clicked, this, [this] {
+        aiotHeatLevel_ = qMax(1, aiotHeatLevel_ - 1);
+        if (ui->aiotHeatTempSpin)
+            ui->aiotHeatTempSpin->setValue(35 + aiotHeatLevel_);
+        if (ui->aiotHeatDurationSpin)
+            aiotHeatDuration_ = qBound(1, ui->aiotHeatDurationSpin->value(), 3600);
+        aiotSendHeat(aiotHeatOn_ ? 1 : 0, aiotHeatLevel_);
+        if (ui->aiotHeatTempLabel) {
+            ui->aiotHeatTempLabel->setText(QStringLiteral("目标 %1°C · 时长 %2 秒")
+                                              .arg(35 + aiotHeatLevel_)
+                                              .arg(aiotHeatDuration_));
+        }
+        showlog(QStringLiteral("app业务控制：加热 %1°C").arg(35 + aiotHeatLevel_));
+    });
+    connect(ui->aiotHeatUpBtn, &QPushButton::clicked, this, [this] {
+        aiotHeatLevel_ = qMin(6, aiotHeatLevel_ + 1);
+        if (ui->aiotHeatTempSpin)
+            ui->aiotHeatTempSpin->setValue(35 + aiotHeatLevel_);
+        if (ui->aiotHeatDurationSpin)
+            aiotHeatDuration_ = qBound(1, ui->aiotHeatDurationSpin->value(), 3600);
+        aiotSendHeat(aiotHeatOn_ ? 1 : 0, aiotHeatLevel_);
+        if (ui->aiotHeatTempLabel) {
+            ui->aiotHeatTempLabel->setText(QStringLiteral("目标 %1°C · 时长 %2 秒")
+                                              .arg(35 + aiotHeatLevel_)
+                                              .arg(aiotHeatDuration_));
+        }
+        showlog(QStringLiteral("app业务控制：加热 %1°C").arg(35 + aiotHeatLevel_));
+    });
+    connect(ui->aiotHeatSendBtn, &QPushButton::clicked, this, [this] {
+        if (!ui->aiotHeatTempSpin)
+            return;
+        // 协议 heat_level 1～6 对应 36～41°C；时长按秒下发
+        aiotHeatLevel_ = qBound(1, ui->aiotHeatTempSpin->value() - 35, 6);
+        ui->aiotHeatTempSpin->setValue(35 + aiotHeatLevel_);
+        if (ui->aiotHeatDurationSpin)
+            aiotHeatDuration_ = qBound(1, ui->aiotHeatDurationSpin->value(), 3600);
+        aiotSendHeat(aiotHeatOn_ ? 1 : 0, aiotHeatLevel_);
+        if (ui->aiotHeatTempLabel) {
+            ui->aiotHeatTempLabel->setText(QStringLiteral("目标 %1°C · 时长 %2 秒")
+                                              .arg(35 + aiotHeatLevel_)
+                                              .arg(aiotHeatDuration_));
+        }
+        showlog(QStringLiteral("app业务控制：发送加热 %1°C / %2秒")
+                    .arg(35 + aiotHeatLevel_)
+                    .arg(aiotHeatDuration_));
+    });
+    connect(ui->aiotLightOnBtn, &QPushButton::clicked, this, [this] {
+        aiotLightOn_ = true;
+        aiotSendLight(1, aiotLightType_);
+        ui->aiotLightStateLabel->setText(QStringLiteral("开"));
+        showlog(QStringLiteral("app业务控制：红光开 模式%1").arg(aiotLightType_ + 1));
+    });
+    connect(ui->aiotLightOffBtn, &QPushButton::clicked, this, [this] {
+        aiotLightOn_ = false;
+        aiotSendLight(0, aiotLightType_);
+        ui->aiotLightStateLabel->setText(QStringLiteral("关"));
+        showlog(QStringLiteral("app业务控制：红光关"));
+    });
+    connect(ui->aiotLightModeBtn, &QPushButton::clicked, this, [this] {
+        aiotLightType_ = (aiotLightType_ + 1) % 3;
+        aiotSendLight(aiotLightOn_ ? 1 : 0, aiotLightType_);
+        ui->aiotLightModeLabel->setText(QStringLiteral("模式 %1/3").arg(aiotLightType_ + 1));
+        showlog(QStringLiteral("app业务控制：红光模式%1").arg(aiotLightType_ + 1));
+    });
+    // 状态卡三列均分；窄屏时已是两行网格，避免单行撑出工作区
+    if (ui->aiotStatusCardsLay) {
+        for (int c = 0; c < 3; ++c)
+            ui->aiotStatusCardsLay->setColumnStretch(c, 1);
+    }
+    const QList<QLabel*> aiotValueLabs = {ui->aiotConnLabel, ui->aiotTimeLabel, ui->aiotLevelLabel,
+                                          ui->aiotModeLabel, ui->aiotHeatStateLabel, ui->aiotLightStateLabel};
+    for (QLabel* lab : aiotValueLabs) {
+        if (!lab)
+            continue;
+        lab->setWordWrap(true);
+        lab->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+    }
+}
+
+int MainWindow::aiotSelectedSide() const {
+    if (!ui || !ui->aiotSideCombo || ui->aiotSideCombo->currentIndex() < 0)
+        return 2;
+    const QVariant d = ui->aiotSideCombo->currentData();
+    const int side = d.isValid() ? d.toInt() : 2;
+    return qBound(0, side, 3);
+}
+
+void MainWindow::aiotSendPump(const QVariantMap& map) {
+    if (!qaiotApp)
+        return;
+    QVariantMap m = map;
+    m.insert(QStringLiteral("side"), aiotSelectedSide());
+    qaiotApp->set(DeviceCmd::AppPumpControl, m);
+}
+
+void MainWindow::aiotSendHeat(int enable, int level) {
+    if (!qaiotApp)
+        return;
     QVariantMap m;
-    m.insert(QStringLiteral("mode"), ui->qaiot_fac_mode_type->currentData().toInt());
-    m.insert(QStringLiteral("on"), 1);
-    protocolManager.set(DeviceCmd::FacMode, m);
-    showlog(QStringLiteral("进入%1（走设置页当前协议）").arg(ui->qaiot_fac_mode_type->currentText()));
+    m.insert(QStringLiteral("side"), aiotSelectedSide());
+    m.insert(QStringLiteral("enable"), enable);
+    m.insert(QStringLiteral("level"), level);
+    m.insert(QStringLiteral("duration"), aiotHeatDuration_);
+    qaiotApp->set(DeviceCmd::AppHeatControl, m);
+}
+
+void MainWindow::aiotSendLight(int enable, int type) {
+    if (!qaiotApp)
+        return;
+    QVariantMap m;
+    m.insert(QStringLiteral("side"), aiotSelectedSide());
+    m.insert(QStringLiteral("enable"), enable);
+    m.insert(QStringLiteral("type"), type);
+    qaiotApp->set(DeviceCmd::AppLightControl, m);
+}
+
+void MainWindow::aiotRefreshStatus() {
+    if (!qaiotApp)
+        return;
+    QVariantMap sideParam;
+    sideParam.insert(QStringLiteral("side"), aiotSelectedSide());
+    qaiotApp->get(DeviceCmd::AppCommonStatus, sideParam);
+    QTimer::singleShot(150, this, [this, sideParam] {
+        if (qaiotApp)
+            qaiotApp->get(DeviceCmd::AppPumpStatus, sideParam);
+    });
+    QTimer::singleShot(300, this, [this, sideParam] {
+        if (qaiotApp)
+            qaiotApp->get(DeviceCmd::AppHeatStatus, sideParam);
+    });
+    QTimer::singleShot(450, this, [this, sideParam] {
+        if (qaiotApp)
+            qaiotApp->get(DeviceCmd::AppLightStatus, sideParam);
+    });
+    showlog(QStringLiteral("app业务控制：刷新状态（side=%1）").arg(aiotSelectedSide()));
+}
+
+void MainWindow::aiotExportPageJson() {
+    auto labelText = [this](QLabel* lab) -> QString {
+        return lab ? lab->text().trimmed() : QString();
+    };
+    QJsonObject status;
+    status.insert(QStringLiteral("run"), labelText(ui->aiotConnLabel));
+    status.insert(QStringLiteral("runSub"), labelText(ui->aiotRunSubLabel));
+    status.insert(QStringLiteral("time"), labelText(ui->aiotTimeLabel));
+    status.insert(QStringLiteral("level"), labelText(ui->aiotLevelLabel));
+    status.insert(QStringLiteral("mode"), labelText(ui->aiotModeLabel));
+    status.insert(QStringLiteral("heat"), labelText(ui->aiotHeatStateLabel));
+    status.insert(QStringLiteral("heatSub"), labelText(ui->aiotHeatTempLabel));
+    status.insert(QStringLiteral("light"), labelText(ui->aiotLightStateLabel));
+    status.insert(QStringLiteral("lightMode"), labelText(ui->aiotLightModeLabel));
+
+    QJsonObject control;
+    control.insert(QStringLiteral("side"), aiotSelectedSide());
+    control.insert(QStringLiteral("pumpLevel"), aiotPumpLevel_);
+    control.insert(QStringLiteral("mode"), labelText(ui->aiotModeLabel));
+    control.insert(QStringLiteral("heatOn"), aiotHeatOn_);
+    control.insert(QStringLiteral("heatLevel"), aiotHeatLevel_);
+    control.insert(QStringLiteral("heatTempC"), 35 + aiotHeatLevel_);
+    control.insert(QStringLiteral("heatDurationSec"), aiotHeatDuration_);
+    control.insert(QStringLiteral("lightOn"), aiotLightOn_);
+    control.insert(QStringLiteral("lightMode"), aiotLightType_ + 1);
+
+    QJsonObject root;
+    root.insert(QStringLiteral("version"), 1);
+    root.insert(QStringLiteral("page"), QStringLiteral("app业务控制"));
+    root.insert(QStringLiteral("exportedAt"), QDateTime::currentDateTime().toString(Qt::ISODate));
+    root.insert(QStringLiteral("status"), status);
+    root.insert(QStringLiteral("control"), control);
+
+    const QString path = QFileDialog::getSaveFileName(
+        this,
+        QStringLiteral("导出 app业务控制 JSON"),
+        QDir::homePath() + QStringLiteral("/aiot_app_page.json"),
+        QStringLiteral("JSON (*.json)"));
+    if (path.isEmpty())
+        return;
+    QFile f(path);
+    if (!f.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+        showlog(QStringLiteral("app业务控制：导出失败，无法写入 %1").arg(path));
+        return;
+    }
+    f.write(QJsonDocument(root).toJson(QJsonDocument::Indented));
+    f.close();
+    showlog(QStringLiteral("app业务控制：已导出 JSON %1").arg(path));
+}
+
+void MainWindow::aiotImportPageJson() {
+    const QString path = QFileDialog::getOpenFileName(
+        this,
+        QStringLiteral("导入 app业务控制 JSON"),
+        QDir::homePath(),
+        QStringLiteral("JSON (*.json)"));
+    if (path.isEmpty())
+        return;
+    QFile f(path);
+    if (!f.open(QIODevice::ReadOnly)) {
+        showlog(QStringLiteral("app业务控制：导入失败，无法读取 %1").arg(path));
+        return;
+    }
+    QJsonParseError err;
+    const QJsonDocument doc = QJsonDocument::fromJson(f.readAll(), &err);
+    f.close();
+    if (err.error != QJsonParseError::NoError || !doc.isObject()) {
+        showlog(QStringLiteral("app业务控制：导入失败，JSON 无效：%1").arg(err.errorString()));
+        return;
+    }
+    const QJsonObject root = doc.object();
+    const QJsonObject status = root.value(QStringLiteral("status")).toObject();
+    const QJsonObject control = root.value(QStringLiteral("control")).toObject();
+
+    auto setLab = [](QLabel* lab, const QJsonObject& obj, const char* key) {
+        if (!lab || !obj.contains(QLatin1String(key)))
+            return;
+        const QString t = obj.value(QLatin1String(key)).toString().trimmed();
+        if (!t.isEmpty())
+            lab->setText(t);
+    };
+    setLab(ui->aiotConnLabel, status, "run");
+    setLab(ui->aiotRunSubLabel, status, "runSub");
+    setLab(ui->aiotTimeLabel, status, "time");
+    setLab(ui->aiotLevelLabel, status, "level");
+    setLab(ui->aiotModeLabel, status, "mode");
+    setLab(ui->aiotHeatStateLabel, status, "heat");
+    setLab(ui->aiotHeatTempLabel, status, "heatSub");
+    setLab(ui->aiotLightStateLabel, status, "light");
+    setLab(ui->aiotLightModeLabel, status, "lightMode");
+
+    if (control.contains(QStringLiteral("side")) && ui->aiotSideCombo) {
+        const int side = qBound(0, control.value(QStringLiteral("side")).toInt(), 3);
+        const int idx = ui->aiotSideCombo->findData(side);
+        if (idx >= 0)
+            ui->aiotSideCombo->setCurrentIndex(idx);
+    }
+    if (control.contains(QStringLiteral("pumpLevel"))) {
+        aiotPumpLevel_ = qBound(1, control.value(QStringLiteral("pumpLevel")).toInt(), 15);
+        if (ui->aiotLevelSpin)
+            ui->aiotLevelSpin->setValue(aiotPumpLevel_);
+    }
+    if (control.contains(QStringLiteral("heatLevel"))) {
+        aiotHeatLevel_ = qBound(1, control.value(QStringLiteral("heatLevel")).toInt(), 6);
+    } else if (control.contains(QStringLiteral("heatTempC"))) {
+        aiotHeatLevel_ = qBound(1, control.value(QStringLiteral("heatTempC")).toInt() - 35, 6);
+    }
+    if (ui->aiotHeatTempSpin)
+        ui->aiotHeatTempSpin->setValue(35 + aiotHeatLevel_);
+    if (control.contains(QStringLiteral("heatDurationSec"))) {
+        const int dur = control.value(QStringLiteral("heatDurationSec")).toInt();
+        if (dur > 0) {
+            aiotHeatDuration_ = dur;
+            if (ui->aiotHeatDurationSpin)
+                ui->aiotHeatDurationSpin->setValue(qBound(1, aiotHeatDuration_, 3600));
+        }
+    }
+    if (control.contains(QStringLiteral("heatOn")))
+        aiotHeatOn_ = control.value(QStringLiteral("heatOn")).toBool();
+    if (control.contains(QStringLiteral("lightOn")))
+        aiotLightOn_ = control.value(QStringLiteral("lightOn")).toBool();
+    if (control.contains(QStringLiteral("lightMode"))) {
+        const int mode1based = control.value(QStringLiteral("lightMode")).toInt();
+        if (mode1based >= 1 && mode1based <= 3)
+            aiotLightType_ = mode1based - 1;
+    }
+    if (ui->aiotLightModeLabel && !status.contains(QStringLiteral("lightMode")))
+        ui->aiotLightModeLabel->setText(QStringLiteral("模式 %1/3").arg(aiotLightType_ + 1));
+    if (ui->aiotHeatStateLabel && !status.contains(QStringLiteral("heat")))
+        ui->aiotHeatStateLabel->setText(aiotHeatOn_ ? QStringLiteral("开") : QStringLiteral("关"));
+    if (ui->aiotLightStateLabel && !status.contains(QStringLiteral("light")))
+        ui->aiotLightStateLabel->setText(aiotLightOn_ ? QStringLiteral("开") : QStringLiteral("关"));
+
+    // 有控制段则下发到设备（模式 / 档位 / 加热 / 红光）
+    if (!control.isEmpty()) {
+        const QString modeText = control.value(QStringLiteral("mode")).toString();
+        int modeId = 0;
+        if (modeText.contains(QStringLiteral("按摩")))
+            modeId = 1;
+        else if (modeText.contains(QStringLiteral("吸乳")))
+            modeId = 2;
+        else if (modeText.contains(QStringLiteral("混合")))
+            modeId = 3;
+        if (modeId > 0) {
+            QVariantMap m;
+            m.insert(QStringLiteral("mode"), modeId);
+            m.insert(QStringLiteral("type"), 0);
+            aiotSendPump(m);
+            if (ui->aiotModeLabel && !status.contains(QStringLiteral("mode")))
+                ui->aiotModeLabel->setText(modeText.contains(QStringLiteral(" / "))
+                                              ? modeText
+                                              : (modeId == 1   ? QStringLiteral("按摩")
+                                                 : modeId == 2 ? QStringLiteral("吸乳")
+                                                               : QStringLiteral("混合")));
+        }
+        {
+            QVariantMap m;
+            m.insert(QStringLiteral("level"), aiotPumpLevel_);
+            aiotSendPump(m);
+        }
+        aiotSendHeat(aiotHeatOn_ ? 1 : 0, aiotHeatLevel_);
+        aiotSendLight(aiotLightOn_ ? 1 : 0, aiotLightType_);
+    }
+    showlog(QStringLiteral("app业务控制：已导入 JSON %1").arg(path));
+}
+
+void MainWindow::refreshAiotAppPanel(const QVariantMap& panel) {
+    const QString kind = panel.value(QStringLiteral("kind")).toString();
+    if (kind == QLatin1String("common")) {
+        // 连接侧信息放小字徽标；大字留给吸乳运行状态
+        if (ui->aiotRunSubLabel) {
+            const QString st = panel.value(QStringLiteral("status")).toString();
+            ui->aiotRunSubLabel->setText(st.isEmpty() ? QStringLiteral("就绪") : st);
+        }
+    } else if (kind == QLatin1String("pump")) {
+        if (ui->aiotConnLabel && panel.contains(QStringLiteral("status")))
+            ui->aiotConnLabel->setText(panel.value(QStringLiteral("status")).toString());
+        if (ui->aiotTimeLabel && panel.contains(QStringLiteral("elapsedText")))
+            ui->aiotTimeLabel->setText(panel.value(QStringLiteral("elapsedText")).toString());
+        // 档位按左右两侧分别上报，大字用 levelText；加减档仍跟活跃侧 level 走
+        if (panel.contains(QStringLiteral("level"))) {
+            aiotPumpLevel_ = qBound(1, panel.value(QStringLiteral("level")).toInt(), 15);
+            if (ui->aiotLevelSpin)
+                ui->aiotLevelSpin->setValue(aiotPumpLevel_);
+        }
+        if (ui->aiotLevelLabel) {
+            if (panel.contains(QStringLiteral("levelText")))
+                ui->aiotLevelLabel->setText(panel.value(QStringLiteral("levelText")).toString());
+            else if (panel.contains(QStringLiteral("level")))
+                ui->aiotLevelLabel->setText(QStringLiteral("%1 / 15").arg(aiotPumpLevel_, 2, 10, QChar('0')));
+        }
+        if (ui->aiotModeLabel && panel.contains(QStringLiteral("mode")))
+            ui->aiotModeLabel->setText(panel.value(QStringLiteral("mode")).toString());
+    } else if (kind == QLatin1String("heat")) {
+        if (ui->aiotHeatStateLabel && panel.contains(QStringLiteral("status")))
+            ui->aiotHeatStateLabel->setText(panel.value(QStringLiteral("status")).toString());
+        if (panel.contains(QStringLiteral("on")))
+            aiotHeatOn_ = panel.value(QStringLiteral("on")).toInt() != 0;
+        if (panel.contains(QStringLiteral("level"))) {
+            const int lv = panel.value(QStringLiteral("level")).toInt();
+            if (lv >= 1 && lv <= 6) {
+                aiotHeatLevel_ = lv;
+                if (ui->aiotHeatTempSpin)
+                    ui->aiotHeatTempSpin->setValue(35 + aiotHeatLevel_);
+            }
+        }
+        if (panel.contains(QStringLiteral("duration")) && panel.value(QStringLiteral("duration")).toInt() > 0) {
+            aiotHeatDuration_ = panel.value(QStringLiteral("duration")).toInt();
+            if (ui->aiotHeatDurationSpin)
+                ui->aiotHeatDurationSpin->setValue(qBound(1, aiotHeatDuration_, 3600));
+        }
+        if (ui->aiotHeatTimeLabel && panel.contains(QStringLiteral("durationText")))
+            ui->aiotHeatTimeLabel->setText(panel.value(QStringLiteral("durationText")).toString());
+        if (ui->aiotHeatTempLabel) {
+            const QString temp = panel.value(QStringLiteral("tempText")).toString();
+            const QString dur = panel.value(QStringLiteral("durationText")).toString();
+            const QString tempPart = temp.isEmpty()
+                                        ? QStringLiteral("%1°C").arg(35 + aiotHeatLevel_)
+                                        : temp;
+            const QString durPart = dur.isEmpty() ? QStringLiteral("-") : dur;
+            ui->aiotHeatTempLabel->setText(QStringLiteral("目标 %1 · 时长 %2").arg(tempPart, durPart));
+        }
+    } else if (kind == QLatin1String("light")) {
+        if (ui->aiotLightStateLabel && panel.contains(QStringLiteral("status")))
+            ui->aiotLightStateLabel->setText(panel.value(QStringLiteral("status")).toString());
+        if (panel.contains(QStringLiteral("on")))
+            aiotLightOn_ = panel.value(QStringLiteral("on")).toInt() != 0;
+        if (panel.contains(QStringLiteral("type"))) {
+            const int t = panel.value(QStringLiteral("type")).toInt();
+            if (t >= 0 && t <= 2)
+                aiotLightType_ = t;
+        }
+        if (ui->aiotLightModeLabel) {
+            if (panel.contains(QStringLiteral("mode")))
+                ui->aiotLightModeLabel->setText(panel.value(QStringLiteral("mode")).toString());
+            else
+                ui->aiotLightModeLabel->setText(QStringLiteral("模式 %1/3").arg(aiotLightType_ + 1));
+        }
+    }
+}
+
+void MainWindow::sendUnifiedFacMode(bool enter) {
+    auto* facType = uiFind<QComboBox>(this, "qaiot_fac_mode_type");
+    const int mode = facType ? facType->currentData().toInt() : 1;
+    const QString name = facType ? facType->currentText() : QStringLiteral("工厂模式");
+    const int on = enter ? 1 : 0;
+    QVariantMap m;
+    m.insert(QStringLiteral("mode"), mode);
+    m.insert(QStringLiteral("on"), on);
+    m.insert(QStringLiteral("enter"), on);
+    m.insert(QStringLiteral("switch"), on);
+    m.insert(QStringLiteral("enable"), on);
+    DeviceCmd cmd = DeviceCmd::FacMode;
+    if (mode == 2) {
+        cmd = DeviceCmd::BurningMode;
+        m.insert(QStringLiteral("mode"), 1);
+        m.insert(QStringLiteral("seconds"), 3600);
+    } else if (mode == 3) {
+        cmd = DeviceCmd::SuctionMode;
+    } else if (mode == 4) {
+        cmd = DeviceCmd::CompensationSet;
+    }
+    protocolManager.set(cmd, m);
+    showlog(QStringLiteral("%1%2").arg(enter ? QStringLiteral("进入") : QStringLiteral("退出"), name));
+}
+
+void MainWindow::on_qaiot_enter_fac_mode_clicked() {
+    sendUnifiedFacMode(true);
 }
 
 void MainWindow::on_qaiot_exit_fac_mode_clicked() {
-    QVariantMap m;
-    m.insert(QStringLiteral("mode"), ui->qaiot_fac_mode_type->currentData().toInt());
-    m.insert(QStringLiteral("on"), 0);
-    protocolManager.set(DeviceCmd::FacMode, m);
-    showlog(QStringLiteral("退出%1（走设置页当前协议）").arg(ui->qaiot_fac_mode_type->currentText()));
+    sendUnifiedFacMode(false);
 }
 
 void MainWindow::on_qaiot_travel_lock_clicked() {
@@ -1043,16 +3294,32 @@ void MainWindow::on_qaiot_travel_lock_clicked() {
     showlog(QStringLiteral("已发送旅行锁"));
 }
 
-void MainWindow::on_qaiot_read_soft_ver_clicked() {
+void MainWindow::on_algo_report_on_clicked() {
     QVariantMap m;
-    m.insert(QStringLiteral("field"), QStringLiteral("soft_version"));
-    protocolManager.get(DeviceCmd::SoftVersionRead, m);
-    showlog(QStringLiteral("读取固件版本"));
+    m.insert(QStringLiteral("enable"), 1);
+    protocolManager.set(DeviceCmd::AlgoResultReportSet, m);
+    showlog(QStringLiteral("已发送开启算法结果上报"));
 }
 
-void MainWindow::on_qaiot_read_device_name_clicked() {
-    protocolManager.get(DeviceCmd::DeviceInfo);
-    showlog(QStringLiteral("读取设备名称"));
+void MainWindow::on_algo_report_off_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("enable"), 0);
+    protocolManager.set(DeviceCmd::AlgoResultReportSet, m);
+    showlog(QStringLiteral("已发送关闭算法结果上报"));
+}
+
+void MainWindow::on_compensation_on_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("enable"), 1);
+    protocolManager.set(DeviceCmd::CompensationSet, m);
+    showlog(QStringLiteral("已发送开启吸力补偿"));
+}
+
+void MainWindow::on_compensation_off_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("enable"), 0);
+    protocolManager.set(DeviceCmd::CompensationSet, m);
+    showlog(QStringLiteral("已发送关闭吸力补偿"));
 }
 
 void MainWindow::on_qaiot_send_sim_key_clicked() {
@@ -1064,9 +3331,11 @@ void MainWindow::on_qaiot_send_sim_key_clicked() {
 
 void MainWindow::on_qaiot_read_aging_status_clicked() {
     QVariantMap m;
-    m.insert(QStringLiteral("mode"), ui->qaiot_aging_mode->currentData().toInt());
+    const int mode = ui->qaiot_fac_mode_type ? ui->qaiot_fac_mode_type->currentData().toInt() : 2;
+    const QString name = ui->qaiot_fac_mode_type ? ui->qaiot_fac_mode_type->currentText() : QStringLiteral("老化模式");
+    m.insert(QStringLiteral("mode"), mode);
     protocolManager.get(DeviceCmd::AgingStatusRead, m);
-    showlog(QStringLiteral("读取%1状态").arg(ui->qaiot_aging_mode->currentText()));
+    showlog(QStringLiteral("读取%1状态").arg(name));
 }
 
 void MainWindow::on_qaiot_send_batt_percent_clicked() {
@@ -1213,16 +3482,16 @@ void MainWindow::logExtraProtocolReport(const QString& reportType, const QVarian
         else
             head = QStringLiteral("次数=%1 ").arg(d.agingCount);
         showlog(QStringLiteral("老化历史：%1电池最高温=%2℃ 法兰最高温=%3℃ 堵转次数=%4 阈值=%5 电流=[%6,%7,%8,%9,%10]")
-                .arg(head)
-                .arg(d.batteryMaxTempC)
-                .arg(d.flangeMaxTempC)
-                .arg(d.stallCount)
-                .arg(d.stallThreshold)
-                .arg(d.stallCurrents[0])
-                .arg(d.stallCurrents[1])
-                .arg(d.stallCurrents[2])
-                .arg(d.stallCurrents[3])
-                .arg(d.stallCurrents[4]));
+                    .arg(head)
+                    .arg(d.batteryMaxTempC)
+                    .arg(d.flangeMaxTempC)
+                    .arg(d.stallCount)
+                    .arg(d.stallThreshold)
+                    .arg(d.stallCurrents[0])
+                    .arg(d.stallCurrents[1])
+                    .arg(d.stallCurrents[2])
+                    .arg(d.stallCurrents[3])
+                    .arg(d.stallCurrents[4]));
         return;
     }
     if (reportType == QLatin1String("ProtocolAiotCycleReportData")
@@ -1320,8 +3589,18 @@ void MainWindow::refreshCloudLoginState() {
     if (AuthService::isLoggedIn()) {
         const QString user = SETTINGS.value(QStringLiteral("FactoryCloud/AuthUser")).toString();
         cloudLoginLabel->setText(QStringLiteral("云平台：<font color='green'>已登录(%1)</font>").arg(user));
+        // 侧栏品牌区显示当前登录用户名
+        if (ui->consoleUserChip) {
+            const QString name = user.isEmpty() ? QStringLiteral("已登录") : user;
+            ui->consoleUserChip->setText(QStringLiteral("●  %1").arg(name));
+            ui->consoleUserChip->setToolTip(QStringLiteral("当前登录用户：%1").arg(name));
+        }
     } else {
         cloudLoginLabel->setText(QStringLiteral("云平台：<font color='red'>未登录</font>"));
+        if (ui->consoleUserChip) {
+            ui->consoleUserChip->setText(QStringLiteral("●  未登录"));
+            ui->consoleUserChip->setToolTip(QStringLiteral("当前未登录"));
+        }
     }
     refreshSettingsMenuVisibility();
 }
@@ -1347,7 +3626,8 @@ void MainWindow::setting_ui() {
 void MainWindow::applySystemProtocolFromSettings() {
     auto selectedType = QProtocolManager::protocolTypeFromString(
         SETTINGS.value(QStringLiteral("SYSTEM/ProtocolType"), QStringLiteral("qpb")).toString().toStdString());
-    if (selectedType == QProtocolManager::ProtocolType::Unknown)
+    if (selectedType == QProtocolManager::ProtocolType::Unknown
+        || selectedType == QProtocolManager::ProtocolType::QaiotApp)
         selectedType = QProtocolManager::ProtocolType::Qpb;
     if ((selectedType == QProtocolManager::ProtocolType::Qfctp && !qfctp) ||
         ((selectedType == QProtocolManager::ProtocolType::Qaiot ||
@@ -1511,6 +3791,7 @@ void MainWindow::on_disconnectButton_clicked() {
     closeDongleSerialPort();
     ui->connectButton->setEnabled(true);
     refreshBleState(0);
+    syncConsoleConnectSeg();
 }
 
 void MainWindow::on_connectButton_clicked() {
@@ -1518,6 +3799,12 @@ void MainWindow::on_connectButton_clicked() {
     ui->connectButton->setEnabled(false);
     openDongleSerialPort();
     waitWork(500); //给时间让dongle开机
+    // 不自动搜：先停在「设置条件」，再手动点「开始搜索」
+    if (dongleSerialPort && dongleSerialPort->isOpen()) {
+        showlog(QStringLiteral("串口已连接，请先设置名称与信号条件，再点「开始搜索」"));
+    }
+    syncConsoleConnectSeg();
+    updateConsoleConnectFlow();
 }
 
 void MainWindow::on_getBasicInfoButton_clicked() {
@@ -1585,8 +3872,9 @@ void MainWindow::on_lcdTestButton_clicked() {
     if (state == 5)
         state = 0;
 
+    // Tab 页外包了 ScrollArea，不能对内页 setCurrentWidget
     if (ui->tabWidget && ui->tab_debug_group_peripheral)
-        ui->tabWidget->setCurrentWidget(ui->tab_debug_group_peripheral);
+        consoleRestoreTabByName(ui->tabWidget, QStringLiteral("tab_debug_group_peripheral"));
     if (ui->tabWidget_debug_peripheral && screenInspectPage_) {
         QTabWidget* tabs = ui->tabWidget_debug_peripheral;
         for (int i = 0; i < tabs->count(); ++i) {
@@ -1726,12 +4014,7 @@ void MainWindow::on_forbidsleep_clicked() {
 }
 
 void MainWindow::on_fac_mode_clicked() {
-    if (1) {
-        protocolManager.set(DeviceCmd::FacMode, 1);
-        showlog("设置进入工厂模式");
-    } else {
-        showlog("请等待连接设备后再试");
-    }
+    sendUnifiedFacMode(true);
 }
 
 void MainWindow::on_getwifi_clicked() {
@@ -1776,8 +4059,7 @@ void MainWindow::on_rebot_clicked() {
 }
 
 void MainWindow::on_exit_fac_mode_clicked() {
-    protocolManager.set(DeviceCmd::FacMode, 0);
-    showlog("设置退出工厂模式");
+    sendUnifiedFacMode(false);
 }
 
 void MainWindow::on_fre_returnPressed() {
@@ -2200,7 +4482,7 @@ void MainWindow::on_otaTestPushButton_clicked() {
             if (at->getConnected() == false && timeout.elapsed() > 10000) {
                 otaStressFinish_ = true;
             }
-            ui->lcdNumber->display(otaStressTotalTime_.elapsed() / 1000);
+            ui->lcdNumber->setText(QString::number(otaStressTotalTime_.elapsed() / 1000));
         }
 
         appendAndSaveWifiOtaLog(QString("升级次数:%1").arg(otaTesttimes++));
@@ -2296,7 +4578,7 @@ void MainWindow::on_otaTestPushButton_2_clicked() {
             break;
         }
 
-        ui->lcdNumber->display(totalwifiOtaTime.elapsed() / 1000);
+        ui->lcdNumber->setText(QString::number(totalwifiOtaTime.elapsed() / 1000));
         waitWork(200);
     }
 }
@@ -2658,32 +4940,65 @@ void MainWindow::on_light_test_clicked() {
 
 void MainWindow::on_start_search_clicked() {
     qDebug() << "on_start_search_clicked";
-    if (!dongleSerialPort->isOpen()) {
+    if (!dongleSerialPort || !dongleSerialPort->isOpen()) {
+        // 未开串口时先连上；连接槽不再自动搜，此处继续往下搜
+        showlog(QStringLiteral("串口未连接，正在自动连接…"));
         on_connectButton_clicked();
+        if (!dongleSerialPort || !dongleSerialPort->isOpen())
+            return;
     }
 
     ui->pick_device->clear();
     deviceMap.clear();
+    showlog(QStringLiteral("已清空设备列表，重新搜索附近设备…"));
     at->set(DongleCmd::BleScanConnect, "00:00:00:00:00:00"); // 发送mac地址
+    consoleStep2Touched_ = true;
+    updateConsoleConnectFlow();
 }
 
-void MainWindow::on_pick_device_textActivated(const QString& arg1) {
+void MainWindow::connectPickDeviceMac(const QString& arg1) {
     ui->log->clear();
     ui->msgEdit->clear();
     if (!dongleSerialPort->isOpen()) {
         on_connectButton_clicked();
     }
-    // 检查是否是mac格式
-    QRegularExpression macRegex("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$");
-    // 使用正则表达式匹配
-    if (!macRegex.match(arg1).hasMatch()) {
+    // 列表展示「名称  MAC」，优先 UserRole，否则从文案里抽 MAC
+    QString mac = arg1.trimmed();
+    if (ui->pick_device) {
+        for (int i = 0; i < ui->pick_device->count(); ++i) {
+            QListWidgetItem* row = ui->pick_device->item(i);
+            if (!row)
+                continue;
+            if (row->text() == arg1 || row->data(Qt::UserRole).toString() == arg1) {
+                const QString dataMac = row->data(Qt::UserRole).toString().trimmed();
+                if (!dataMac.isEmpty())
+                    mac = dataMac;
+                break;
+            }
+        }
+        if (QListWidgetItem* cur = ui->pick_device->currentItem()) {
+            if (cur->text() == arg1 || cur->data(Qt::UserRole).toString() == arg1) {
+                const QString dataMac = cur->data(Qt::UserRole).toString().trimmed();
+                if (!dataMac.isEmpty())
+                    mac = dataMac;
+            }
+        }
+    }
+    static const QRegularExpression kMacExact(QStringLiteral("^([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}$"));
+    static const QRegularExpression kMacInText(QStringLiteral("([0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2}"));
+    if (!kMacExact.match(mac).hasMatch()) {
+        const QRegularExpressionMatch m = kMacInText.match(mac);
+        if (m.hasMatch())
+            mac = m.captured(0);
+    }
+    if (!kMacExact.match(mac).hasMatch()) {
         QMessageBox::warning(nullptr, "Warning", "Mac地址错误");
         return;
-    } else {
-        protocolManager.setNeedAes(false);
-        macAddress = arg1;
-        at->set(DongleCmd::BleScanConnect, macAddress); // 发送mac地址
     }
+    protocolManager.setNeedAes(false);
+    macAddress = mac;
+    at->set(DongleCmd::BleScanConnect, macAddress);
+    updateConsoleConnectFlow();
 }
 
 void MainWindow::on_open_motor_cali_clicked() {
@@ -3454,25 +5769,32 @@ void MainWindow::on_get_board_sn_clicked() {
 }
 
 void MainWindow::on_write_device_sn_clicked() {
-    QByteArray devicesn = ui->snInput->text().toUtf8();
-    protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, devicesn}));
+    const QString text = consoleMetaFieldText(this, QStringLiteral("sn_whole"), ui->snInput);
+    if (text.isEmpty()) {
+        showlog(QStringLiteral("整机SN为空，无法写入"));
+        return;
+    }
+    protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_TAIL_SN, text.toUtf8()}));
     showlog("已绑定正sn到设备");
 }
 
 void MainWindow::on_write_board_sn_clicked() {
-    QByteArray boardsn = ui->snInput->text().toUtf8();
-    protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_BOARD_SN, boardsn}));
+    const QString text = consoleMetaFieldText(this, QStringLiteral("sn_board"), ui->snInput);
+    if (text.isEmpty()) {
+        showlog(QStringLiteral("板子SN为空，无法写入"));
+        return;
+    }
+    protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_BOARD_SN, text.toUtf8()}));
     showlog("已绑定板子sn到设备");
 }
 
 void MainWindow::on_write_device_subpid_clicked() {
-    // QByteArray subpid = getValueBySN(ui->snInput->text()).toUtf8();
-    // if ("SUBPID_ERRO" == subpid) {
-    //     QMessageBox::warning(nullptr, "Warning", "没匹配到subpid");
-    //     return;
-    // }
-    QByteArray subpid = ui->snInput->text().toUtf8();
-    protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SUB_PID, subpid}));
+    const QString text = consoleMetaFieldText(this, QStringLiteral("meta_subpid"), ui->snInput);
+    if (text.isEmpty()) {
+        showlog(QStringLiteral("设备ID为空，无法写入"));
+        return;
+    }
+    protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SUB_PID, text.toUtf8()}));
     showlog("已绑定subpid到设备");
 }
 // void MainWindow::on_clear_picture_clicked() {
@@ -3778,7 +6100,7 @@ void MainWindow::on_bleotamacInput_returnPressed() {
         clearDisplay();
     }
     ui->bleotaresult->setText("WAIT");
-    ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  "
+    ui->bleotaresult->setStyleSheet("font-size: 14px; background-color: #808080; color: white;  "
                                     "border-radius: 10px; padding: 10px; text-align: center; ");
 
     if (!dongleSerialPort->isOpen()) {
@@ -3967,7 +6289,7 @@ void MainWindow::startRootBleOta() {
         imageData, imageId, version, intervalMs, blockBusyWaitMs, fragmentSize,
         [this]() { return stopBleOta != 0; }, &errorText,
         [this, progressToSourceBar](int percent) {
-            ui->bleotalcdtime->display(bleOtaTestTime.elapsed() / 1000);
+            ui->bleotalcdtime->setText(QString::number(bleOtaTestTime.elapsed() / 1000));
             if (progressToSourceBar)
                 emit sendBelSourceOtaSpeed(percent);
             else
@@ -3992,15 +6314,15 @@ void MainWindow::startRootBleOta() {
 
     if (ok) {
         ui->bleotaresult->setText(QStringLiteral("PASS"));
-        ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #00FF00; color: "
-                                        "black; border-radius: 10px; padding: 10px; text-align: center; ");
+        ui->bleotaresult->setStyleSheet("font-size: 14px; background-color: #10b981; color: "
+                                        "white; border-radius: 10px; padding: 10px; text-align: center; ");
         showlog(QStringLiteral("路特 BLE OTA 成功，耗时 %1")
                     .arg(CommonUtils::formatElapsedMs(bleOtaTestTime.elapsed())));
         ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() +
                                        QStringLiteral(" OTA 成功"));
     } else {
         ui->bleotaresult->setText(QStringLiteral("FAIL"));
-        ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #FF0000; color: "
+        ui->bleotaresult->setStyleSheet("font-size: 14px; background-color: #FF0000; color: "
                                         "white; border-radius: 10px; padding: 10px; text-align: center; ");
         const QString msg = errorText.isEmpty() ? QStringLiteral("未知错误") : errorText;
         showlog(QStringLiteral("路特 BLE OTA 失败：") + msg);
@@ -4081,7 +6403,7 @@ void MainWindow::startRootBleOta2(const QByteArray& imageData, uint32_t imageId,
     const bool ok = rootBleOta2Client_.runTransfer(
         imageData, imageId, version, intervalMs, uartChunkSize, [this]() { return stopBleOta != 0; }, &errorText,
         [this, progressToSourceBar](int percent) {
-            ui->bleotalcdtime->display(bleOtaTestTime.elapsed() / 1000);
+            ui->bleotalcdtime->setText(QString::number(bleOtaTestTime.elapsed() / 1000));
             if (progressToSourceBar)
                 emit sendBelSourceOtaSpeed(percent);
             else
@@ -4106,13 +6428,13 @@ void MainWindow::startRootBleOta2(const QByteArray& imageData, uint32_t imageId,
 
     if (ok) {
         ui->bleotaresult->setText(QStringLiteral("PASS"));
-        ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #00FF00; color: "
-                                        "black; border-radius: 10px; padding: 10px; text-align: center; ");
+        ui->bleotaresult->setStyleSheet("font-size: 14px; background-color: #10b981; color: "
+                                        "white; border-radius: 10px; padding: 10px; text-align: center; ");
         showlog(QStringLiteral("图片资源 OTA v2 成功，耗时 %1").arg(CommonUtils::formatElapsedMs(bleOtaTestTime.elapsed())));
         ui->bleOtaMsg->appendPlainText(CommonUtils::isoDateTime() + QStringLiteral(" OTA 成功"));
     } else {
         ui->bleotaresult->setText(QStringLiteral("FAIL"));
-        ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #FF0000; color: "
+        ui->bleotaresult->setStyleSheet("font-size: 14px; background-color: #FF0000; color: "
                                         "white; border-radius: 10px; padding: 10px; text-align: center; ");
         const QString msg = errorText.isEmpty() ? QStringLiteral("未知错误") : errorText;
         showlog(QStringLiteral("图片资源 OTA v2 失败：") + msg);
@@ -4175,7 +6497,7 @@ void MainWindow::startUsmileBleOtaLegacy() {
         clearDisplay();
     }
     ui->bleotaresult->setText("WAIT");
-    ui->bleotaresult->setStyleSheet("font-size: 33px; background-color: #808080; color: black;  "
+    ui->bleotaresult->setStyleSheet("font-size: 14px; background-color: #808080; color: white;  "
                                     "border-radius: 10px; padding: 10px; text-align: center; ");
 
     if (!dongleSerialPort->isOpen()) {
@@ -4465,7 +6787,7 @@ void MainWindow::startUsmileBleOtaTransferLegacy() {
     connect(bleotatimer, &QTimer::timeout, this, [this, fileData, chunkSize, totalOtaSize, numChunks]() mutable {
         // QString timestamp = QDateTime::currentDateTime().toString("yyyy-MM-dd hh:mm:ss.zzz");
         // showlog("开始发送:" + timestamp);
-        ui->bleotalcdtime->display(bleOtaTestTime.elapsed() / 1000);
+        ui->bleotalcdtime->setText(QString::number(bleOtaTestTime.elapsed() / 1000));
         int offset = currentChunk * chunkSize;
         int size = qMin(chunkSize, totalOtaSize - offset);
 
@@ -4575,9 +6897,12 @@ void MainWindow::on_getBackLog_clicked() {
 }
 //skuid==产品
 void MainWindow::on_write_device_skuid_clicked() {
-    QByteArray skuid = ui->snInput->text().toUtf8();
-
-    protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SKUID, skuid}));
+    const QString text = consoleMetaFieldText(this, QStringLiteral("meta_skuid"), ui->snInput);
+    if (text.isEmpty()) {
+        showlog(QStringLiteral("产品ID为空，无法写入"));
+        return;
+    }
+    protocolManager.set(DeviceCmd::Sn, QVariant::fromValue(DeviceSnPayload{FacDevInfoType_SKUID, text.toUtf8()}));
     showlog("已绑定skuid==产品id到设备");
 }
 
@@ -4852,12 +7177,6 @@ void MainWindow::on_selectPath_source_clicked() {
     }
 }
 
-void MainWindow::on_set_mode_returnPressed() {
-    showlog("当前发送的模式是" + ui->set_mode->text());
-
-    protocolManager.set(DeviceCmd::DeviceMode, ui->set_mode->text().toInt());
-}
-
 void MainWindow::on_btn_startRecording_clicked() {
     protocolManager.set(DeviceCmd::MicControl, 1);
 }
@@ -4882,25 +7201,13 @@ void MainWindow::on_btn_getLDRInfo_clicked() {
     protocolManager.get(DeviceCmd::LightSensorInfo);
 }
 
-void MainWindow::on_enterSuctionMode_clicked() {
-    QVariantMap m;
-    m["enter"] = 1;
-    protocolManager.set(DeviceCmd::SuctionMode, m);
-}
-
-void MainWindow::on_exitSuctionMode_clicked() {
-    QVariantMap m;
-    m["enter"] = 0;
-    protocolManager.set(DeviceCmd::SuctionMode, m);
-}
-
 void MainWindow::on_send_root_suction_test_clicked() {
     QVariantMap m;
     m.insert(QStringLiteral("switch"), ui->root_suction_switch->currentIndex()); // 0关 1开
     m.insert(QStringLiteral("mode"), ui->root_suction_mode->currentIndex());     // 0按摩 1吸乳 2混合
     m.insert(QStringLiteral("level"), ui->root_suction_level->value());
     protocolManager.set(DeviceCmd::RootSuctionTest, m);
-    showlog(QStringLiteral("已发送吸力测试(0x81)：开关=%1，模式=%2，强度=%3")
+    showlog(QStringLiteral("已下发模式控制：开关=%1，模式=%2，强度=%3")
                 .arg(ui->root_suction_switch->currentText(), ui->root_suction_mode->currentText())
                 .arg(ui->root_suction_level->value()));
 }
@@ -4908,10 +7215,121 @@ void MainWindow::on_send_root_suction_test_clicked() {
 void MainWindow::on_send_root_heat_level_clicked() {
     QVariantMap m;
     m.insert(QStringLiteral("switch"), ui->root_heat_switch->currentIndex()); // 0关 1开
-    m.insert(QStringLiteral("level"), ui->root_heat_level->currentIndex());   // 0=L1 1=L2 2=L3
+    m.insert(QStringLiteral("level"), ui->root_heat_level->value() - 1); // 界面 L1~L3 → 协议 0~2
     protocolManager.set(DeviceCmd::RootHeatLevelControl, m);
-    showlog(QStringLiteral("已发送加热档位(0x83)：开关=%1，档位=%2")
-                .arg(ui->root_heat_switch->currentText(), ui->root_heat_level->currentText()));
+    showlog(QStringLiteral("已发送加热档位(0x83)：开关=%1，档位=L%2")
+                .arg(ui->root_heat_switch->currentText())
+                .arg(ui->root_heat_level->value()));
+}
+
+void MainWindow::on_send_root_pump_control_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("status"), ui->root_pump_status->currentIndex());
+    m.insert(QStringLiteral("mode"), ui->root_pump_mode->value());
+    m.insert(QStringLiteral("level"), ui->root_pump_level->value());
+    m.insert(QStringLiteral("controlType"), ui->root_pump_control_type->currentIndex());
+    m.insert(QStringLiteral("pumpFreq"), ui->root_pump_freq->currentIndex());
+    protocolManager.set(DeviceCmd::RootPumpControl, m);
+    showlog(QStringLiteral("已下发泵控制(0xC0)：状态=%1 模式=%2 档位=%3 侧=%4 频率=%5")
+                .arg(ui->root_pump_status->currentText())
+                .arg(ui->root_pump_mode->value())
+                .arg(ui->root_pump_level->value())
+                .arg(ui->root_pump_control_type->currentText(), ui->root_pump_freq->currentText()));
+}
+
+void MainWindow::on_root_pump_test_enter_clicked() {
+    protocolManager.set(DeviceCmd::RootPumpTestEnter);
+    showlog(QStringLiteral("已下发泵测试进入(0x9D)"));
+}
+
+void MainWindow::on_root_pump_test_exit_clicked() {
+    protocolManager.set(DeviceCmd::RootPumpTestExit);
+    showlog(QStringLiteral("已下发泵测试退出(0x9E)"));
+}
+
+void MainWindow::on_root_vib_on_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("value"), 1);
+    protocolManager.set(DeviceCmd::RootVibration, m);
+    showlog(QStringLiteral("已下发振子开(0x94)"));
+}
+
+void MainWindow::on_root_vib_off_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("value"), 0);
+    protocolManager.set(DeviceCmd::RootVibration, m);
+    showlog(QStringLiteral("已下发振子停(0x94)"));
+}
+
+void MainWindow::on_get_root_vib_status_clicked() {
+    rootTypeQueryPending_ = 2;
+    protocolManager.get(DeviceCmd::RootVibStatusQuery);
+    showlog(QStringLiteral("正在查询振子状态(0x99)"));
+}
+
+void MainWindow::on_get_root_ntc_clicked() {
+    rootTypeQueryPending_ = 1;
+    protocolManager.get(DeviceCmd::RootNtcQuery);
+    showlog(QStringLiteral("正在查询加热 NTC(0x97)"));
+}
+
+void MainWindow::on_get_root_aging_history_clicked() {
+    protocolManager.get(DeviceCmd::RootAgingHistoryQuery);
+    showlog(QStringLiteral("正在查询老化历史(0x9C)"));
+}
+
+void MainWindow::on_send_root2_mode_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("mode"), ui->root2_mode->currentIndex() + 1); // 1刺激 2吸乳 3混合
+    protocolManager.set(DeviceCmd::Root2ModeSet, m);
+    showlog(QStringLiteral("已下发 Qroot2 模式(0xA2)：%1").arg(ui->root2_mode->currentText()));
+}
+
+void MainWindow::on_send_root2_level_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("level"), ui->root2_level->value());
+    protocolManager.set(DeviceCmd::Root2LevelSet, m);
+    showlog(QStringLiteral("已下发 Qroot2 档位(0xA3)：%1").arg(ui->root2_level->value()));
+}
+
+void MainWindow::on_root2_pump_run_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("on"), 1);
+    protocolManager.set(DeviceCmd::Root2PumpState, m);
+    showlog(QStringLiteral("已下发 Qroot2 泵运行(0xA4)"));
+}
+
+void MainWindow::on_root2_pump_pause_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("on"), 0);
+    protocolManager.set(DeviceCmd::Root2PumpState, m);
+    showlog(QStringLiteral("已下发 Qroot2 泵暂停(0xA4)"));
+}
+
+void MainWindow::on_send_root2_pose_switch_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("on"), ui->root2_pose_switch->currentIndex());
+    protocolManager.set(DeviceCmd::Root2PoseSwitch, m);
+    showlog(QStringLiteral("已下发姿态开关(0xDB)：%1").arg(ui->root2_pose_switch->currentText()));
+}
+
+void MainWindow::on_send_root2_pose_calib_clicked() {
+    protocolManager.set(DeviceCmd::Root2PoseCalib);
+    showlog(QStringLiteral("已下发姿态校准(0xDD)"));
+}
+
+void MainWindow::on_send_root2_bowl_empty_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("value"), 0);
+    protocolManager.set(DeviceCmd::Root2BowlCalib, m);
+    showlog(QStringLiteral("已下发空碗校准(0xAE)"));
+}
+
+void MainWindow::on_send_root2_bowl_full_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("value"), 1);
+    protocolManager.set(DeviceCmd::Root2BowlCalib, m);
+    showlog(QStringLiteral("已下发满碗校准(0xAE)"));
 }
 
 void MainWindow::on_readBurningModestatus_clicked() {
@@ -4991,26 +7409,13 @@ void MainWindow::on_getCaseDeviceException_clicked() {
     protocolManager.get(DeviceCmd::DeviceExceptionRead);
 }
 
-void MainWindow::on_openCompensationSet_clicked() {
-    QVariantMap m;
-    m["enable"] = 1;
-    protocolManager.set(DeviceCmd::CompensationSet, m);
-}
-
-void MainWindow::on_closeCompensationSet_clicked() {
-    QVariantMap m;
-    m["enable"] = 0;
-
-    protocolManager.set(DeviceCmd::CompensationSet, m);
-}
-
 void MainWindow::on_get_device_mac_clicked() {
     protocolManager.get(DeviceCmd::MacRead);
     showlog("开始读取设备MAC");
 }
 
 void MainWindow::on_set_device_mac_clicked() {
-    QByteArray mac = ui->macInput->text().toUtf8();
+    QByteArray mac = consoleMetaFieldText(this, QStringLiteral("meta_mac"), ui->macInput).toUtf8();
     mac.replace(":", "");
     mac = mac.toUpper();
     if (mac.isEmpty()) {
@@ -6094,17 +8499,13 @@ void MainWindow::initDongleSuctionChart() {
     });
 
     if (ui->dongleSuctionPlotHost) {
-        ui->dongleSuctionPlotHost->setMinimumHeight(360);
+        ui->dongleSuctionPlotHost->setMinimumHeight(280);
         QSizePolicy sp = ui->dongleSuctionPlotHost->sizePolicy();
-        sp.setVerticalStretch(10);
+        sp.setVerticalPolicy(QSizePolicy::Expanding);
+        sp.setVerticalStretch(1);
         ui->dongleSuctionPlotHost->setSizePolicy(sp);
     }
-    if (ui->gridLayout_12 && ui->dongleSuctionPlotHost) {
-        // 曲线图占满剩余垂直空间（位于网格第 2 行）
-        ui->gridLayout_12->setRowStretch(0, 0);
-        ui->gridLayout_12->setRowStretch(1, 0);
-        ui->gridLayout_12->setRowStretch(2, 1);
-    }
+    // 列/行拉伸已在 mainwindow.ui 的 gridLayout_12 写死，此处不再改布局
 
     // 轴窗口/刻度分辨率改动立即作用于主图/弹窗
     auto bindAxisValue = [this](QDoubleSpinBox* spin) {
@@ -6142,30 +8543,6 @@ void MainWindow::initDongleSuctionChart() {
             if (dongleSuctionPlotPopup_)
                 dongleSuctionPlotPopup_->replot(QCustomPlot::rpQueuedReplot);
         });
-    }
-
-    if (ui->tab_dongle_suction) {
-        const int spinWidth = 84;
-        for (QDoubleSpinBox* spin : ui->tab_dongle_suction->findChildren<QDoubleSpinBox*>()) {
-            spin->setMinimumWidth(spinWidth);
-            spin->setMaximumWidth(spinWidth);
-            spin->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-        }
-    }
-    if (ui->gridLayout_dongle_suction_peak_params) {
-        QGridLayout* grid = ui->gridLayout_dongle_suction_peak_params;
-        for (int c = 0; c < 4; ++c)
-            grid->setColumnStretch(c, 0);
-    }
-    if (ui->gridLayout_dongle_suction_live) {
-        QGridLayout* grid = ui->gridLayout_dongle_suction_live;
-        for (int c = 0; c < 3; ++c)
-            grid->setColumnStretch(c, 0);
-    }
-    if (ui->gridLayout_12) {
-        ui->gridLayout_12->setRowStretch(0, 0);
-        ui->gridLayout_12->setRowStretch(1, 0);
-        ui->gridLayout_12->setRowStretch(2, 1);
     }
 
     dongleSuctionPlot_->replot();

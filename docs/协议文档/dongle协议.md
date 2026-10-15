@@ -45,11 +45,17 @@ qroot、qfctp 发往 Dongle 的产测数据须先套 PHY 外层，再写入串�
 
 | 值 | 名称 | 说明 |
 |----|------|------|
-| `1` | 产测通道 | 默认；qroot 固定使用；qfctp 工厂指令 |
-| `2` | App 通道 | qfctp App 透传 |
-| `3` | 主通道 | qfctp Main 透传 |
+| `1` | FAC | TONGYONG / FCT&ATE、V3 factory、usmile factory；qroot 固定使用 |
+| `2` | APP | OTA；qfctp App 透传同此通道 |
+| `3` | MAIN | 旧 usmile main；qfctp Main 透传 |
+| `4` | SUCTION | 本地吸力，非 BLE |
+| `5` | DEV_MGMT | 应用层 5.1 Device Management（Service ID `0x01`） |
+| `6` | DATA | 应用层 5.7 Data Service（Service ID `0x07`） |
+| `7` | PUMP | 应用层 5.10 Pump Service（Service ID `0x10`） |
 
-qroot 仅接受通道 `1`；qfctp 接受 `1`、`2`、`3`。
+应用层发给 Dongle 时，通道号看服务小节，不看命令字：`5.1` → `5`，`5.7` → `6`，`5.10` → `7`。通道 `2` 只给 OTA。
+
+qroot 仅接受通道 `1`；qfctp 接受 `1`、`2`、`3`；qaiotapp 按上表服务发送并接收 `1`、`2`、`5`、`6`、`7`。
 
 ---
 

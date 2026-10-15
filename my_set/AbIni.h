@@ -25,7 +25,7 @@
 
 #include <QDateTime>      // 日期和时间操作
 #include <QDebug>         // 调试输出
-#include <QDesktopWidget> // 桌面信息
+#include <qdesktopwidget.h> // 桌面信息
 #include <QDir>           // 目录操作
 #include <QFile>          // 文件操作
 #include <QFileDialog>    // 文件对话框

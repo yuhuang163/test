@@ -2,8 +2,10 @@
 
 #include <QApplication>
 #include <QAuthenticator>
+#include <QCoreApplication>
 #include <QDialog>
 #include <QElapsedTimer>
+#include <QEventLoop>
 #include <QMessageBox>
 #include <QMenu>
 #include <QRegularExpression>
@@ -289,7 +291,7 @@ void box_base::closeEvent(QCloseEvent*) {
     // 先保存串口，再关子窗口（避免关窗过程中下拉被清空后写空值）
     saveCustom();
     // 自由工站测试中有 dlg.exec() / 人工确认框时，叉掉主窗口不会结束嵌套循环，进程会留在后台
-    for (int i = 0; i < 8; ++i) {
+    for (int i = 0; i < 16; ++i) {
         QWidget* modal = QApplication::activeModalWidget();
         if (!modal)
             break;
@@ -297,6 +299,7 @@ void box_base::closeEvent(QCloseEvent*) {
             dlg->reject();
         else
             modal->close();
+        QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
     }
 
     if (qsetting_ui != NULL)
@@ -348,7 +351,8 @@ void box_base::TotallyTask() {
 
     Qlog::saveResidentLog(QStringLiteral("TotallyTask"), QStringLiteral("退出主任务环"));
     ApplicationShutdown::prepareForExit();
-    ApplicationShutdown::waitBackgroundTasks();
+    // 关窗路径 prepareForExit 用 quickStop，这里多等一会把心跳/HTTP 线程收干净，避免 exe 仍占后台
+    ApplicationShutdown::waitBackgroundTasks(3000);
 }
 // void box_base::TotallyTask() {
 //     QList<QThread*> threads;

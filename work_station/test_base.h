@@ -231,8 +231,8 @@ class test_base : public QWidget {
         return independent_state;
     }
     void solveGetBrushResponse(int data);
-    void solveMesSucess(const int mechines);
-    void solveMesData(const int mechines, QString msg);
+    virtual void solveMesSucess(const int mechines);
+    virtual void solveMesData(const int mechines, QString msg);
     /** 测试开始前统一开启会话日志（各工站勿直接调 Qlog::beginSession） */
     void onTestSessionStarting(const QString& sn, const QString& mac = {});
     void showlog(QString msg);
@@ -326,7 +326,7 @@ class test_base : public QWidget {
     virtual void refreshLightCalibData(ProtocolLightCalibData) {}
     virtual void refreshFlangeStatus(ProtocolTypeData) {}
     virtual void refreshPumpStallCurrent(ProtocolPumpStallCurrentData) {}
-    virtual void refreshRoot2BowlCalibCap(const QString& reportType, ProtocolRoot2BowlCalibCapData) {}
+    virtual void refreshRoot2BowlCalibCap(const QString& , ProtocolRoot2BowlCalibCapData) {}
     virtual void refreshRoot2BowlCapDiff(ProtocolRoot2BowlCapDiffData) {}
     virtual void refreshRoot2PoseAngle(ProtocolRoot2PoseAngleData) {}
     virtual void refreshRootAgingHistory(ProtocolRootAgingHistoryData) {}

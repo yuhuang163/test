@@ -1,5 +1,6 @@
 #include "test_case_policy_service.h"
 
+#include "auth_service.h"
 #include "factory_cloud_client.h"
 #include "test_case_paths.h"
 #include "test_case_store.h"
@@ -398,6 +399,11 @@ TestCasePolicyService::GateResult TestCasePolicyService::evaluateStartGate(const
                                                                            const QString& displayName,
                                                                            QString* exemptionCode) {
     GateResult result;
+    // 离线调试无法拉策略/验豁免码，与其它云端功能一致直接放行
+    if (AuthService::isOfflineSession()) {
+        result.message = QStringLiteral("离线测试模式，跳过量产用例卡控");
+        return result;
+    }
     const QString key = TestCaseStore::resolveFlowStationKey(stationKey.trimmed());
     const QString name =
         displayName.trimmed().isEmpty() ? TestCaseStore::flowStationDisplayName(key) : displayName.trimmed();

@@ -52,8 +52,6 @@ class ScreenInspectWidget : public QWidget {
     void on_btnColorBlack_clicked();
     void on_btnLcdColorGray_clicked();
     void on_btnLcdColorGrayBar_clicked();
-    void on_btnConnectDevice_clicked();
-    void on_btnDisconnectDevice_clicked();
     void on_btnEnterLcdMode_clicked();
     void on_btnExitLcdMode_clicked();
     void on_btnCalibrateCircle_clicked();
@@ -119,13 +117,9 @@ class ScreenInspectWidget : public QWidget {
     void loadLedRoisFromSettings();
     int currentLedCount() const;
 
-    void connectDevice();
-    void disconnectDevice();
     void enterLcdMode(std::function<void()> onDone = nullptr);
     void exitLcdMode();
     void sendLcdColor(int colorId, const QString& colorName, int expectedColorVal);
-    void checkConnectionStatus();
-    void updateConnectionUi(bool connected);
     void updateLcdModeUi();
     void updateReferenceCircle();
     void calibrateReferenceCircle();
@@ -166,7 +160,6 @@ class ScreenInspectWidget : public QWidget {
     ScreenInspectAnalyzer::ScreenCircle refCircle_;
     ScreenInspectAnalyzer::ScreenCircle lastDetectedCircle_;
     bool isLcdMode_ = false;
-    QTimer* connStatusTimer_ = nullptr;
 };
 
 #endif // SCREEN_INSPECT_WIDGET_H

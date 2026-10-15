@@ -24,6 +24,7 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QPixmap>
+#include <QSize>
 class QAction;
 #include <QQmlApplicationEngine>
 // #include <QTextToSpeech>
@@ -49,6 +50,7 @@ class QAction;
 #include <QWheelEvent>
 #include "qfctp.h"
 #include "qaiot.h"
+#include "qaiot_app.h"
 #include "qroot.h"
 #include "qroot2.h"
 #include "root_ble_ota.h"
@@ -57,6 +59,7 @@ class QAction;
 
 #include <QPointer>
 
+class QStackedWidget;
 class QCustomPlot;
 class QCPRange;
 class QDialog;
@@ -278,6 +281,8 @@ class MainWindow : public QMainWindow {
     QFile dongleSuctionCsvFile_;
     QTextStream dongleSuctionCsvStream_;
     QString dongleSuctionCsvPath_;
+    // 0无 1加热NTC 2振子状态：区分通用 ProtocolTypeData 回包
+    int rootTypeQueryPending_ = 0;
     DongleSuctionChannelPeakMonitor dongleSuctionPeakMonitors_[kDongleSuctionChannelCount];
     double dongleSuctionPeakTargetKpa_ = -36.0;
     double dongleSuctionPeakToleranceKpa_ = 2.6;
@@ -321,6 +326,34 @@ class MainWindow : public QMainWindow {
     QLabel* sub_pid = nullptr;
     QLabel* sku_id = nullptr;
     QLabel* cloudLoginLabel = nullptr;
+    QButtonGroup* consoleNavGroup_ = nullptr;
+    QStackedWidget* consoleStack_ = nullptr;
+    QLabel* consolePageTitle_ = nullptr;
+    QLabel* consolePageSub_ = nullptr;
+    QWidget* consoleShell_ = nullptr;
+    QWidget* consoleSidebar_ = nullptr;
+    QWidget* consoleMid_ = nullptr;
+    QWidget* consoleRail_ = nullptr;
+    QWidget* consoleHeader_ = nullptr;
+    QWidget* consoleTitleBox_ = nullptr;
+    QWidget* consoleConnectPage_ = nullptr;
+    QWidget* consoleFieldReset_ = nullptr;
+    QWidget* consoleStatusDevice_ = nullptr;
+    QWidget* consoleStatusMotor_ = nullptr;
+    QWidget* consoleStatusPump_ = nullptr;
+    QWidget* consoleStatusValve_ = nullptr;
+    QWidget* consoleMetricBattery_ = nullptr;
+    QWidget* consoleMetricTemp_ = nullptr;
+    bool consoleEnterPlayed_ = false;
+    bool consoleStep2Touched_ = false;
+    bool consoleShellNarrow_ = false;
+    QList<int> consoleShellSplitSizes_;
+    QPixmap consoleSidePhotoSrc_;
+    QSize consoleSidePhotoFitSize_;
+    void playConsoleEnterAnimations();
+    void updateConsoleSidePhotoFit();
+    void updateConsoleLogPromoFit();
+    void updateConsoleNarrowLayout();
     void refreshCloudLoginState();
     void refreshSettingsMenuVisibility();
 
@@ -329,6 +362,13 @@ class MainWindow : public QMainWindow {
     QProtocolManager protocolManager;
     Qfctp* qfctp = nullptr;
     Qaiot* qaiot = nullptr;
+    QaiotApp* qaiotApp = nullptr;
+    int aiotPumpLevel_ = 1;
+    int aiotHeatLevel_ = 1;
+    int aiotHeatDuration_ = 300;
+    int aiotLightType_ = 0;
+    bool aiotHeatOn_ = false;
+    bool aiotLightOn_ = false;
     Qroot* qroot = nullptr;
     Qroot2* qroot2 = nullptr;
     Qpb* pb = nullptr;
@@ -395,6 +435,7 @@ class MainWindow : public QMainWindow {
 
   protected:
     void closeEvent(QCloseEvent*) override;
+    void showEvent(QShowEvent* event) override;
 
   private slots:
     void onProtocolReport(const ProtocolReport& report);
@@ -437,6 +478,15 @@ class MainWindow : public QMainWindow {
     void saveImuTestDataToCsv(const QString& macAddress, const QString& result);
     void initDebugTabChrome();
     void initDebugTabLayout();
+    void bindConsoleShellWidgets();
+    void initConsoleShell();
+    void installConsoleSegmentedSwitches();
+    void installPhysicalDevicePads();
+    void syncConsoleConnectSeg();
+    void updateConsoleConnectFlow();
+    void connectPickDeviceMac(const QString& macOrLabel);
+    void selectConsoleNav(int id);
+    void playConsolePageEnter(QWidget* page);
     void applyDebugOtaTabVisibility();
     void initBasicInfo();
     void initPeriphState();
@@ -524,8 +574,18 @@ class MainWindow : public QMainWindow {
     void refreshRoot2PoseAngle(ProtocolRoot2PoseAngleData data);
     void refreshTupleData(ProtocolTupleData data);
     void refreshDongleDeviceName(const QString& name);
-    /** 专用测试页 Qaiot/Air2 控件：填充下拉 itemData；通信走设置页当前协议 */
+    /** 模式/工厂下拉：填充 itemData；通信走设置页当前协议 */
     void initQaiotFeatureButtons();
+    void initAiotAppPage();
+    void aiotRefreshStatus();
+    void aiotExportPageJson();
+    void aiotImportPageJson();
+    void refreshAiotAppPanel(const QVariantMap& panel);
+    int aiotSelectedSide() const;
+    void aiotSendPump(const QVariantMap& map);
+    void aiotSendHeat(int enable, int level);
+    void aiotSendLight(int enable, int type);
+    void sendUnifiedFacMode(bool enter);
     void logExtraProtocolReport(const QString& reportType, const QVariant& payload);
 
   private slots:
@@ -593,7 +653,6 @@ class MainWindow : public QMainWindow {
     void on_light_test_clicked();
     void on_clear_picture_clicked();
     void on_start_search_clicked();
-    void on_pick_device_textActivated(const QString& arg1);
     void on_open_motor_cali_clicked();
     void on_close_motor_cali_clicked();
     void on_R1_valueChanged(int value);
@@ -687,21 +746,20 @@ class MainWindow : public QMainWindow {
     void on_open_key_notify_clicked();
     void on_close_key_notify_clicked();
     void on_selectPath_source_clicked();
-    void on_set_mode_returnPressed();
     void on_btn_startRecording_clicked();
     void on_btn_stopRecording_clicked();
     void on_btn_startUpload_clicked();
     void on_btn_stopUpload_clicked();
     void on_btn_getSDCardStatus_clicked();
     void on_btn_getLDRInfo_clicked();
-    void on_enterSuctionMode_clicked();
-    void on_exitSuctionMode_clicked();
     void on_send_root_suction_test_clicked();
     void on_qaiot_enter_fac_mode_clicked();
     void on_qaiot_exit_fac_mode_clicked();
     void on_qaiot_travel_lock_clicked();
-    void on_qaiot_read_soft_ver_clicked();
-    void on_qaiot_read_device_name_clicked();
+    void on_algo_report_on_clicked();
+    void on_algo_report_off_clicked();
+    void on_compensation_on_clicked();
+    void on_compensation_off_clicked();
     void on_qaiot_send_sim_key_clicked();
     void on_qaiot_read_aging_status_clicked();
     void on_qaiot_send_batt_percent_clicked();
@@ -721,6 +779,22 @@ class MainWindow : public QMainWindow {
     void on_qaiot_vib_on_clicked();
     void on_qaiot_vib_off_clicked();
     void on_send_root_heat_level_clicked();
+    void on_send_root_pump_control_clicked();
+    void on_root_pump_test_enter_clicked();
+    void on_root_pump_test_exit_clicked();
+    void on_root_vib_on_clicked();
+    void on_root_vib_off_clicked();
+    void on_get_root_vib_status_clicked();
+    void on_get_root_ntc_clicked();
+    void on_get_root_aging_history_clicked();
+    void on_send_root2_mode_clicked();
+    void on_send_root2_level_clicked();
+    void on_root2_pump_run_clicked();
+    void on_root2_pump_pause_clicked();
+    void on_send_root2_pose_switch_clicked();
+    void on_send_root2_pose_calib_clicked();
+    void on_send_root2_bowl_empty_clicked();
+    void on_send_root2_bowl_full_clicked();
     void on_readBurningModestatus_clicked();
     void on_kTlvKeyWrite_clicked();
     void on_kTlvKeyread_clicked();
@@ -731,8 +805,6 @@ class MainWindow : public QMainWindow {
     void on_light_repo_start_clicked();
     void on_light_repo_stop_clicked();
     void on_getCaseDeviceException_clicked();
-    void on_openCompensationSet_clicked();
-    void on_closeCompensationSet_clicked();
     void on_factory_flag_clicked();
     void on_factory_flag_undone_clicked();
     void on_get_trim_data_clicked();
