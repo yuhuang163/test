@@ -271,6 +271,10 @@ def convert_file(path: Path, dry_run: bool) -> str:
 
 
 def main() -> int:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="replace")
+    if hasattr(sys.stderr, "reconfigure"):
+        sys.stderr.reconfigure(errors="replace")
     dry_run = "--dry-run" in sys.argv
     check_only = "--check-blank-lines" in sys.argv
     cli_paths = resolve_cli_paths(sys.argv[1:])
