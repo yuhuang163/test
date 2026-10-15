@@ -128,7 +128,8 @@ constexpr const char kHintAlgoResultReportSet[] =
 constexpr const char kHintAlgoResultReportWait[] =
     u8"Qfctp：等待 Algo Service NOTIFY TLV 0x0008（本命令不发令）\r\n"
     u8"payload：1B 组数 N + N×48B；leakage_status 字节0=左、字节1=右（0无效 1正常无漏 2微小漏 3强漏）\r\n"
-    u8"分项卡控 Expected 填状态码数字（如 3=强漏），结果表/MES VALUE 报纯数字\r\n"
+    u8"分项卡控 Expected 填中文状态或状态码（强漏 或 3）；结果表/要求列显示中文\r\n"
+    u8"MES VALUE 仍报状态码数字（0~3）\r\n"
     u8"卡控：ReportType=ProtocolAlgoFusionResultData，Field=leakageLeft|leakageRight 或 multi";
 constexpr const char kHintPressSampleOnoffGet[] =
     u8"Qfctp ALGO TLV 0x0002：应答 1 字节 0=关 1=开\r\n"

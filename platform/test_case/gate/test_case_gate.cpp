@@ -359,8 +359,19 @@ bool GateRegistry::evaluate(const TestCaseGate& gate, const QString& reportType,
                     detailOut = QStringLiteral("当前=%1, 期望=%2").arg(actual, expected);
                 }
             } else {
-                passOut = (actual == expected);
-                detailOut = QStringLiteral("当前=%1, 期望=%2").arg(actual, expected);
+                // 漏气等：Expected 可填「3」或「强漏」，与 formatValue/overrideText 对齐后再比
+                QString actualNorm = actual;
+                QString expectedNorm = expected;
+                if (fieldEntry && fieldEntry->formatValue) {
+                    if (numOk)
+                        actualNorm = fieldEntry->formatValue(value);
+                    bool ok = false;
+                    const double parsed = expected.toDouble(&ok);
+                    if (ok)
+                        expectedNorm = fieldEntry->formatValue(parsed);
+                }
+                passOut = (actualNorm == expectedNorm) || (actual == expected);
+                detailOut = QStringLiteral("当前=%1, 期望=%2").arg(actualNorm, expectedNorm);
             }
             return true;
         }
