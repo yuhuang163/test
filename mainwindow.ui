@@ -2640,6 +2640,52 @@ Every Baby</string>
                          </widget>
                         </item>
                         <item>
+                         <widget class="QGroupBox" name="groupBox_business_algo">
+                          <property name="sizePolicy">
+                           <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
+                            <horstretch>0</horstretch>
+                            <verstretch>0</verstretch>
+                           </sizepolicy>
+                          </property>
+                          <property name="title">
+                           <string>算法与吸力</string>
+                          </property>
+                          <layout class="QGridLayout" name="gridLayout_business_algo">
+                           <property name="spacing">
+                            <number>8</number>
+                           </property>
+                           <item row="0" column="0">
+                            <widget class="QPushButton" name="algo_report_on">
+                             <property name="text">
+                              <string>开启算法结果上报</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="0" column="1">
+                            <widget class="QPushButton" name="algo_report_off">
+                             <property name="text">
+                              <string>关闭算法结果上报</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="0" column="2">
+                            <widget class="QPushButton" name="compensation_on">
+                             <property name="text">
+                              <string>开启吸力补偿</string>
+                             </property>
+                            </widget>
+                           </item>
+                           <item row="0" column="3">
+                            <widget class="QPushButton" name="compensation_off">
+                             <property name="text">
+                              <string>关闭吸力补偿</string>
+                             </property>
+                            </widget>
+                           </item>
+                          </layout>
+                         </widget>
+                        </item>
+                        <item>
                          <widget class="QGroupBox" name="groupBox_business_power">
                           <property name="sizePolicy">
                            <sizepolicy hsizetype="Expanding" vsizetype="Minimum">

@@ -756,6 +756,10 @@ class MainWindow : public QMainWindow {
     void on_qaiot_enter_fac_mode_clicked();
     void on_qaiot_exit_fac_mode_clicked();
     void on_qaiot_travel_lock_clicked();
+    void on_algo_report_on_clicked();
+    void on_algo_report_off_clicked();
+    void on_compensation_on_clicked();
+    void on_compensation_off_clicked();
     void on_qaiot_send_sim_key_clicked();
     void on_qaiot_read_aging_status_clicked();
     void on_qaiot_send_batt_percent_clicked();

@@ -3294,6 +3294,34 @@ void MainWindow::on_qaiot_travel_lock_clicked() {
     showlog(QStringLiteral("已发送旅行锁"));
 }
 
+void MainWindow::on_algo_report_on_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("enable"), 1);
+    protocolManager.set(DeviceCmd::AlgoResultReportSet, m);
+    showlog(QStringLiteral("已发送开启算法结果上报"));
+}
+
+void MainWindow::on_algo_report_off_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("enable"), 0);
+    protocolManager.set(DeviceCmd::AlgoResultReportSet, m);
+    showlog(QStringLiteral("已发送关闭算法结果上报"));
+}
+
+void MainWindow::on_compensation_on_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("enable"), 1);
+    protocolManager.set(DeviceCmd::CompensationSet, m);
+    showlog(QStringLiteral("已发送开启吸力补偿"));
+}
+
+void MainWindow::on_compensation_off_clicked() {
+    QVariantMap m;
+    m.insert(QStringLiteral("enable"), 0);
+    protocolManager.set(DeviceCmd::CompensationSet, m);
+    showlog(QStringLiteral("已发送关闭吸力补偿"));
+}
+
 void MainWindow::on_qaiot_send_sim_key_clicked() {
     QVariantMap m;
     m.insert(QStringLiteral("int"), ui->qaiot_sim_key->currentData().toInt());
