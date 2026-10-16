@@ -46,6 +46,10 @@
         <file>stytle/picture/status/icon-flask.png</file>
         <file>stytle/picture/fw/toggle-off.svg</file>
         <file>stytle/picture/fw/toggle-on.svg</file>
+        <file>stytle/picture/fw/toggle-off.png</file>
+        <file>stytle/picture/fw/toggle-on.png</file>
+        <file>stytle/picture/fw/checkbox-unchecked.png</file>
+        <file>stytle/picture/fw/checkbox-checked.png</file>
         <file>stytle/picture/fw/icon-station.png</file>
         <file>stytle/picture/fw/icon-gear.png</file>
         <file>stytle/picture/fw/icon-fixture.png</file>

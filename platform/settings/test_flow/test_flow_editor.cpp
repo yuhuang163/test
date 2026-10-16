@@ -26,6 +26,7 @@
 #include <QFontMetrics>
 #include <QFrame>
 #include <QFutureWatcher>
+#include <QGuiApplication>
 #include <QHBoxLayout>
 #include <QIcon>
 #include <QInputDialog>
@@ -35,6 +36,7 @@
 #include <QListView>
 #include <QMenu>
 #include <QMessageBox>
+#include <QScreen>
 #include <QSet>
 #include <QMimeData>
 #include <QMouseEvent>
@@ -1437,16 +1439,35 @@ void TestFlowEditor::promptStationBindingsConfig() {
 
     QDialog dlg(dialogParent_);
     dlg.setWindowTitle(QStringLiteral("工站设备能力绑定"));
-    dlg.resize(520, 580);
-    auto* root = new QVBoxLayout(&dlg);
+    dlg.setWindowFlags(dlg.windowFlags() | Qt::WindowMaximizeButtonHint);
 
-    root->addWidget(new QLabel(
+    auto* root = new QVBoxLayout(&dlg);
+    root->setSpacing(8);
+    root->setContentsMargins(12, 10, 12, 10);
+
+    // 顶部卡片：工站信息 + 重新扫描按钮横向并排，大幅节省纵向空间
+    auto* topCard = new QWidget(&dlg);
+    auto* topLay = new QHBoxLayout(topCard);
+    topLay->setContentsMargins(0, 0, 0, 0);
+    topLay->setSpacing(12);
+
+    auto* tipLabel = new QLabel(
         QStringLiteral(
-            "当前工站：%1\n"
-            "勾选本站会用到的产品协议、治具与测试设备；步骤配置时只显示这些能力的指令。\n"
-            "未手工保存过绑定时，会按本站现有步骤自动扫描并写入（存量工站无需逐站重配）。")
+            "<b>当前工站：%1</b><br>"
+            "<span style='color: #64748b; font-size: 12px;'>"
+            "勾选本站会用到的产品协议、治具与外设；步骤配置时将只显示已绑定能力的指令。<br>"
+            "未手工保存过绑定时，系统会自动按本站现有步骤扫描并写入（存量工站无需逐站重配）。</span>")
             .arg(TestCaseStore::flowStationDisplayName(key)),
-        &dlg));
+        topCard);
+    tipLabel->setWordWrap(true);
+    topLay->addWidget(tipLabel, 1);
+
+    auto* scanBtn = new QPushButton(QStringLiteral("按现有步骤重新扫描"), topCard);
+    scanBtn->setToolTip(QStringLiteral("扫描本站主流程与失败区步骤里的通道/协议/外设，勾选结果覆盖当前对话框（需再点确定才保存）"));
+    scanBtn->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    topLay->addWidget(scanBtn, 0, Qt::AlignVCenter);
+
+    root->addWidget(topCard);
 
     auto fillCheckList = [](QListWidget* list, const QStringList& keys, const QStringList& labels,
                             const QStringList& selected) {
@@ -1459,13 +1480,25 @@ void TestFlowEditor::promptStationBindingsConfig() {
         }
     };
 
-    auto* scanBtn = new QPushButton(QStringLiteral("按现有步骤重新扫描"), &dlg);
-    scanBtn->setToolTip(QStringLiteral("扫描本站主流程与失败区步骤里的通道/协议/外设，勾选结果覆盖当前对话框（需再点确定才保存）"));
-    root->addWidget(scanBtn);
+    // 主体部分放入可滚动的 QScrollArea 中，确保小屏/矮屏笔记本下底部确定/取消按钮永不遮挡
+    auto* scrollArea = new QScrollArea(&dlg);
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setFrameShape(QFrame::NoFrame);
+    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
 
-    auto* productGroup = new QGroupBox(QStringLiteral("产品协议（可多选）"), &dlg);
+    auto* scrollContent = new QWidget(scrollArea);
+    auto* scrollLayout = new QHBoxLayout(scrollContent);
+    scrollLayout->setContentsMargins(0, 4, 0, 4);
+    scrollLayout->setSpacing(10);
+
+    // 左列：产品协议、其它通道、程控电源/SCPI
+    auto* leftCol = new QVBoxLayout();
+    leftCol->setSpacing(8);
+
+    auto* productGroup = new QGroupBox(QStringLiteral("产品协议（可多选）"), scrollContent);
     auto* productList = new QListWidget(productGroup);
-    productList->setMinimumHeight(110);
+    productList->setMinimumHeight(100);
     {
         QStringList keys;
         QStringList labels;
@@ -1478,6 +1511,7 @@ void TestFlowEditor::promptStationBindingsConfig() {
         fillCheckList(productList, keys, labels, cfg.productProtocols);
     }
     auto* productLay = new QVBoxLayout(productGroup);
+    productLay->setSpacing(6);
     productLay->addWidget(productList);
     auto* enableProduct = new QCheckBox(QStringLiteral("启用产品通道指令"), productGroup);
     enableProduct->setChecked(cfg.enableProduct);
@@ -1485,21 +1519,41 @@ void TestFlowEditor::promptStationBindingsConfig() {
     auto* enableProductSerial = new QCheckBox(QStringLiteral("启用产品串口指令"), productGroup);
     enableProductSerial->setChecked(cfg.enableProductSerial);
     productLay->addWidget(enableProductSerial);
-    root->addWidget(productGroup);
+    leftCol->addWidget(productGroup);
 
-    auto* channelGroup = new QGroupBox(QStringLiteral("其它通道"), &dlg);
-    auto* channelLay = new QVBoxLayout(channelGroup);
+    auto* channelGroup = new QGroupBox(QStringLiteral("其它通道"), scrollContent);
+    auto* channelLay = new QHBoxLayout(channelGroup);
+    channelLay->setSpacing(12);
     auto* enableDongle = new QCheckBox(QStringLiteral("Dongle"), channelGroup);
     enableDongle->setChecked(cfg.enableDongle);
     channelLay->addWidget(enableDongle);
     auto* enableCloud = new QCheckBox(QStringLiteral("云端（三元组等）"), channelGroup);
     enableCloud->setChecked(cfg.enableCloud);
     channelLay->addWidget(enableCloud);
-    root->addWidget(channelGroup);
+    channelLay->addStretch();
+    leftCol->addWidget(channelGroup);
 
-    auto* fixtureGroup = new QGroupBox(QStringLiteral("治具（可多选）"), &dlg);
+    auto* scpiGroup = new QGroupBox(QStringLiteral("程控电源 / SCPI（可多选）"), scrollContent);
+    auto* scpiList = new QListWidget(scpiGroup);
+    scpiList->setMinimumHeight(90);
+    {
+        const QStringList keys = ScpiPeriphCmdCatalog::allDeviceKeys();
+        QStringList labels;
+        for (const QString& k : keys)
+            labels << ScpiPeriphCmdCatalog::deviceUiLabel(ScpiPeriphCmdCatalog::deviceFromIni(k));
+        fillCheckList(scpiList, keys, labels, cfg.scpiDevices);
+    }
+    auto* scpiLay = new QVBoxLayout(scpiGroup);
+    scpiLay->addWidget(scpiList);
+    leftCol->addWidget(scpiGroup);
+
+    // 右列：治具、Modbus 外设 / PLC
+    auto* rightCol = new QVBoxLayout();
+    rightCol->setSpacing(8);
+
+    auto* fixtureGroup = new QGroupBox(QStringLiteral("治具（可多选）"), scrollContent);
     auto* fixtureList = new QListWidget(fixtureGroup);
-    fixtureList->setMinimumHeight(120);
+    fixtureList->setMinimumHeight(110);
     {
         QStringList keys;
         QStringList labels;
@@ -1515,11 +1569,11 @@ void TestFlowEditor::promptStationBindingsConfig() {
     }
     auto* fixtureLay = new QVBoxLayout(fixtureGroup);
     fixtureLay->addWidget(fixtureList);
-    root->addWidget(fixtureGroup);
+    rightCol->addWidget(fixtureGroup);
 
-    auto* modbusGroup = new QGroupBox(QStringLiteral("Modbus 外设 / PLC（可多选）"), &dlg);
+    auto* modbusGroup = new QGroupBox(QStringLiteral("Modbus 外设 / PLC（可多选）"), scrollContent);
     auto* modbusList = new QListWidget(modbusGroup);
-    modbusList->setMinimumHeight(120);
+    modbusList->setMinimumHeight(110);
     {
         const QStringList keys = ModbusPeriphCmdCatalog::allDeviceKeys();
         QStringList labels;
@@ -1529,21 +1583,12 @@ void TestFlowEditor::promptStationBindingsConfig() {
     }
     auto* modbusLay = new QVBoxLayout(modbusGroup);
     modbusLay->addWidget(modbusList);
-    root->addWidget(modbusGroup);
+    rightCol->addWidget(modbusGroup);
 
-    auto* scpiGroup = new QGroupBox(QStringLiteral("程控电源 / SCPI（可多选）"), &dlg);
-    auto* scpiList = new QListWidget(scpiGroup);
-    scpiList->setMinimumHeight(100);
-    {
-        const QStringList keys = ScpiPeriphCmdCatalog::allDeviceKeys();
-        QStringList labels;
-        for (const QString& k : keys)
-            labels << ScpiPeriphCmdCatalog::deviceUiLabel(ScpiPeriphCmdCatalog::deviceFromIni(k));
-        fillCheckList(scpiList, keys, labels, cfg.scpiDevices);
-    }
-    auto* scpiLay = new QVBoxLayout(scpiGroup);
-    scpiLay->addWidget(scpiList);
-    root->addWidget(scpiGroup);
+    scrollLayout->addLayout(leftCol, 1);
+    scrollLayout->addLayout(rightCol, 1);
+    scrollArea->setWidget(scrollContent);
+    root->addWidget(scrollArea, 1);
 
     auto applyCfgToUi = [=](const TestCaseStationBindings& b) {
         QStringList protoKeys;
@@ -1595,9 +1640,42 @@ void TestFlowEditor::promptStationBindingsConfig() {
     });
 
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dlg);
-    root->addWidget(buttons);
+    root->addWidget(buttons, 0);
     connect(buttons, &QDialogButtonBox::accepted, &dlg, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, &dlg, &QDialog::reject);
+
+    // 屏幕自适应：针对小屏笔记本（1366x768、缩放 125%/150% 等矮屏）动态计算最优窗口大小与居中显示
+    dlg.setMinimumSize(560, 360);
+    QScreen* scr = nullptr;
+    if (dialogParent_ && dialogParent_->window())
+        scr = dialogParent_->window()->screen();
+    if (!scr)
+        scr = QGuiApplication::primaryScreen();
+
+    const QRect avail = scr ? scr->availableGeometry() : QRect(0, 0, 1024, 768);
+    const int maxH = qMax(360, avail.height() - 50);
+    const int maxW = qMax(560, avail.width() - 50);
+    const int targetW = qBound(560, qMin(760, int(avail.width() * 0.7)), maxW);
+    const int targetH = qBound(360, qMin(560, int(avail.height() * 0.75)), maxH);
+    dlg.resize(targetW, targetH);
+
+    if (dialogParent_ && dialogParent_->window() && dialogParent_->window()->isVisible()) {
+        const QRect parentGeo = dialogParent_->window()->geometry();
+        dlg.move(parentGeo.center().x() - targetW / 2, parentGeo.center().y() - targetH / 2);
+    } else {
+        dlg.move(avail.center().x() - targetW / 2, avail.center().y() - targetH / 2);
+    }
+
+    QRect geo = dlg.geometry();
+    if (geo.bottom() > avail.bottom())
+        geo.moveBottom(avail.bottom() - 10);
+    if (geo.top() < avail.top())
+        geo.moveTop(avail.top() + 10);
+    if (geo.right() > avail.right())
+        geo.moveRight(avail.right() - 10);
+    if (geo.left() < avail.left())
+        geo.moveLeft(avail.left() + 10);
+    dlg.setGeometry(geo);
 
     if (dlg.exec() != QDialog::Accepted)
         return;

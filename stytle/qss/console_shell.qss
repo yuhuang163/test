@@ -2025,12 +2025,12 @@ QWidget#QFreeWork QPushButton#stopTest:disabled {
 }
 QWidget#QFreeWork QCheckBox#isformmes::indicator,
 QWidget#QFreeWork QCheckBox#isusemes::indicator {
-    width: 36px; height: 20px; border: 0; background: transparent;
-    image: url(:/stytle/picture/fw/toggle-off.svg);
+    width: 40px; height: 22px; border: 0; background: transparent;
+    image: url(:/stytle/picture/fw/toggle-off.png);
 }
 QWidget#QFreeWork QCheckBox#isformmes::indicator:checked,
 QWidget#QFreeWork QCheckBox#isusemes::indicator:checked {
-    border: 0; background: transparent; image: url(:/stytle/picture/fw/toggle-on.svg);
+    border: 0; background: transparent; image: url(:/stytle/picture/fw/toggle-on.png);
 }
 
 /* 自由工站桌面字号：略紧凑，避免整页偏大 */
