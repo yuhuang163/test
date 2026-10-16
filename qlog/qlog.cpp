@@ -86,9 +86,9 @@ QHash<int, SuctionSampleBuffer> g_suctionSamples;
 QHash<int, SuctionSampleBuffer> g_pinnedSuctionSamples;
 QHash<int, QStringList> g_suctionExtraFiles;
 QHash<int, QStringList> g_screenInspectFiles;
+QHash<int, QStringList> g_pinnedScreenInspectFiles;
 QHash<int, QStringList> g_suctionCurveFiles;
 QHash<int, QStringList> g_pinnedSuctionCurveFiles;
-QHash<int, QStringList> g_pinnedScreenInspectFiles;
 
 bool sessionLogEnabled() {
     return SETTINGS.value(QStringLiteral("FactoryCloud/Log/SessionLogEnabled"), true).toBool();
@@ -100,6 +100,48 @@ bool qtDebugToProcessLog() {
 
 QString logRootRelative() {
     return QString::fromUtf8(kLogRootName);
+}
+
+QString resolveUniqueFilePath(const QString& dirPath, const QString& fileName); // 下方定义
+
+/**
+ * 将附件复制到 所有log/<subDir>；已在该目录内则原样保留。失败时回退源路径。
+ * 用于屏幕截图 / 吸力曲线：登记即落盘，避免收尾清理或四工位互踩导致日志包缺附件。
+ */
+static QStringList ensureLogArtifactDurableCopies(int slot, const QStringList& srcPaths, const QString& subDir) {
+    QStringList durable;
+    durable.reserve(srcPaths.size());
+    if (srcPaths.isEmpty())
+        return durable;
+    const QString outDirRel = logRootRelative() + QLatin1Char('/') + subDir;
+    if (!CommonUtils::ensureLogDirectory(outDirRel))
+        return srcPaths;
+    const QString outDirAbs =
+        QDir::cleanPath(QDir(QCoreApplication::applicationDirPath()).filePath(outDirRel));
+    const QString outDirPrefix = outDirAbs + QLatin1Char('/');
+    int index = 0;
+    const QString stamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss_zzz"));
+    for (const QString& srcRaw : srcPaths) {
+        const QString srcAbs = QDir::cleanPath(srcRaw.trimmed());
+        if (srcAbs.isEmpty() || !QFile::exists(srcAbs))
+            continue;
+        if (srcAbs.startsWith(outDirPrefix, Qt::CaseInsensitive) || srcAbs.compare(outDirAbs, Qt::CaseInsensitive) == 0) {
+            durable.append(srcAbs);
+            continue;
+        }
+        ++index;
+        const QString baseName = QFileInfo(srcAbs).fileName();
+        const QString outName =
+            QStringLiteral("pin_s%1_%2_%3_%4").arg(slot).arg(stamp).arg(index).arg(baseName);
+        const QString outAbs = resolveUniqueFilePath(outDirAbs, outName);
+        if (QFile::exists(outAbs))
+            QFile::remove(outAbs);
+        if (QFile::copy(srcAbs, outAbs))
+            durable.append(outAbs);
+        else
+            durable.append(srcAbs);
+    }
+    return durable;
 }
 
 QString slotFolderName(int slot) {
@@ -1000,98 +1042,38 @@ void Qlog::setSuctionSamples(int slot, const QVector<double>& timeSec, const QVe
     buf.ch3 = ch3;
 }
 
-static QString ensureLogResolveUniqueFilePath(const QString& dirPath, const QString& fileName) {
-    const QString first = CommonUtils::joinPath(dirPath, fileName);
-    if (!QFile::exists(first)) {
-        return first;
-    }
-    const int dot = fileName.lastIndexOf(QLatin1Char('.'));
-    const QString stem = dot > 0 ? fileName.left(dot) : fileName;
-    const QString ext = dot > 0 ? fileName.mid(dot) : QString();
-    for (int n = 1; n < 1000; ++n) {
-        const QString candidateName = stem + QLatin1Char('_') + QString::number(n) + ext;
-        const QString candidate = CommonUtils::joinPath(dirPath, candidateName);
-        if (!QFile::exists(candidate)) {
-            return candidate;
-        }
-    }
-    return first;
-}
-
-static QStringList ensureLogArtifactDurableCopies(int slot, const QStringList& srcPaths, const QString& subDir) {
-    if (srcPaths.isEmpty()) {
-        return srcPaths;
-    }
-    const QString outDirRel = QStringLiteral("所有log/") + subDir;
-    if (!CommonUtils::ensureLogDirectory(outDirRel)) {
-        return srcPaths;
-    }
-    const QString outDirAbs = QDir(QCoreApplication::applicationDirPath()).filePath(outDirRel);
-    const QString outDirNorm = QDir::fromNativeSeparators(QFileInfo(outDirAbs).absoluteFilePath());
-    const QString stamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss_zzz"));
-    QStringList durable;
-    int index = 0;
-    for (const QString& rawPath : srcPaths) {
-        const QString trimmed = rawPath.trimmed();
-        if (trimmed.isEmpty() || !QFile::exists(trimmed)) {
-            continue;
-        }
-        const QString srcAbs = QDir::fromNativeSeparators(QFileInfo(trimmed).absoluteFilePath());
-        if (srcAbs.startsWith(outDirNorm, Qt::CaseInsensitive)) {
-            if (!durable.contains(srcAbs)) {
-                durable.append(srcAbs);
-            }
-            continue;
-        }
-        ++index;
-        const QString baseName = QFileInfo(trimmed).fileName();
-        const QString outName =
-            QStringLiteral("pin_s%1_%2_%3_%4").arg(slot).arg(stamp).arg(index).arg(baseName);
-        const QString outAbs = ensureLogResolveUniqueFilePath(outDirAbs, outName);
-        if (QFile::exists(outAbs)) {
-            QFile::remove(outAbs);
-        }
-        if (!QFile::copy(trimmed, outAbs)) {
-            if (!durable.contains(srcAbs)) {
-                durable.append(srcAbs);
-            }
-            continue;
-        }
-        const QString copiedAbs = QDir::fromNativeSeparators(QFileInfo(outAbs).absoluteFilePath());
-        if (!durable.contains(copiedAbs)) {
-            durable.append(copiedAbs);
-        }
-    }
-    return durable.isEmpty() ? srcPaths : durable;
-}
-
-static void mergePinnedLogArtifactList(QHash<int, QStringList>& pinned, int slot, const QStringList& paths) {
-    if (paths.isEmpty()) {
-        return;
-    }
-    QStringList& dst = pinned[slot];
-    for (const QString& path : paths) {
-        const QString trimmed = path.trimmed();
-        if (!trimmed.isEmpty() && !dst.contains(trimmed)) {
-            dst.append(trimmed);
-        }
-    }
-}
-
 void Qlog::pinSessionUploadArtifacts(int slot) {
-    QMutexLocker lock(&g_sessionMutex);
-    // 活缓冲 → 钉住区；上传 take 钉住区，下一轮 initData 清活缓冲不影响
-    if (g_suctionSamples.contains(slot))
-        g_pinnedSuctionSamples.insert(slot, g_suctionSamples.take(slot));
-    if (g_suctionCurveFiles.contains(slot)) {
-        const QStringList durable =
-            ensureLogArtifactDurableCopies(slot, g_suctionCurveFiles.take(slot), QStringLiteral("吸力曲线"));
-        mergePinnedLogArtifactList(g_pinnedSuctionCurveFiles, slot, durable);
+    QStringList screenToPin;
+    QStringList curveToPin;
+    {
+        QMutexLocker lock(&g_sessionMutex);
+        // 活缓冲 → 钉住区；上传 take 钉住区，下一轮 initData 清活缓冲不影响
+        if (g_suctionSamples.contains(slot))
+            g_pinnedSuctionSamples.insert(slot, g_suctionSamples.take(slot));
+        if (g_suctionCurveFiles.contains(slot))
+            curveToPin = g_suctionCurveFiles.take(slot);
+        if (g_screenInspectFiles.contains(slot))
+            screenToPin = g_screenInspectFiles.take(slot);
     }
-    if (g_screenInspectFiles.contains(slot)) {
-        const QStringList durable =
-            ensureLogArtifactDurableCopies(slot, g_screenInspectFiles.take(slot), QStringLiteral("屏幕检测"));
-        mergePinnedLogArtifactList(g_pinnedScreenInspectFiles, slot, durable);
+    // 登记时多数已落盘；此处再兜底复制，防止仍指向 bin/screen_inspect、suction_chart
+    const QStringList durableScreen =
+        ensureLogArtifactDurableCopies(slot, screenToPin, QStringLiteral("屏幕检测"));
+    const QStringList durableCurve =
+        ensureLogArtifactDurableCopies(slot, curveToPin, QStringLiteral("吸力曲线"));
+    QMutexLocker lock(&g_sessionMutex);
+    if (!durableScreen.isEmpty()) {
+        QStringList& pinned = g_pinnedScreenInspectFiles[slot];
+        for (const QString& p : durableScreen) {
+            if (!pinned.contains(p))
+                pinned.append(p);
+        }
+    }
+    if (!durableCurve.isEmpty()) {
+        QStringList& pinned = g_pinnedSuctionCurveFiles[slot];
+        for (const QString& p : durableCurve) {
+            if (!pinned.contains(p))
+                pinned.append(p);
+        }
     }
 }
 
@@ -1218,20 +1200,21 @@ QStringList Qlog::exportSuctionExtraFiles(const QlogSessionInfo& info, QString* 
 }
 
 void Qlog::addSuctionCurveImageFiles(int slot, const QStringList& absolutePaths) {
-    QMutexLocker lock(&g_sessionMutex);
     if (absolutePaths.isEmpty()) {
+        QMutexLocker lock(&g_sessionMutex);
         g_suctionCurveFiles.remove(slot);
         return;
     }
+    // 与屏幕截图一致：登记即复制到 所有log/吸力曲线，四工位同秒也不互相覆盖源图后丢附件
     const QStringList durable =
         ensureLogArtifactDurableCopies(slot, absolutePaths, QStringLiteral("吸力曲线"));
+    if (durable.isEmpty())
+        return;
+    QMutexLocker lock(&g_sessionMutex);
     QStringList& list = g_suctionCurveFiles[slot];
     for (const QString& path : durable) {
-        const QString trimmed = path.trimmed();
-        if (trimmed.isEmpty() || !QFile::exists(trimmed) || list.contains(trimmed)) {
-            continue;
-        }
-        list.append(trimmed);
+        if (!path.isEmpty() && QFile::exists(path) && !list.contains(path))
+            list.append(path);
     }
 }
 
@@ -1292,20 +1275,22 @@ QStringList Qlog::exportSuctionCurveImageFiles(const QlogSessionInfo& info, QStr
 }
 
 void Qlog::addScreenInspectImageFiles(int slot, const QStringList& absolutePaths) {
-    QMutexLocker lock(&g_sessionMutex);
     if (absolutePaths.isEmpty()) {
+        QMutexLocker lock(&g_sessionMutex);
         g_screenInspectFiles.remove(slot);
         return;
     }
+    // 步内立刻复制到日志目录：多工位共用 bin/screen_inspect，任一工位 cleanup 都可能误删
+    // 尚未收尾工位的源图，导致平台日志包「有几率」缺截图
     const QStringList durable =
         ensureLogArtifactDurableCopies(slot, absolutePaths, QStringLiteral("屏幕检测"));
+    if (durable.isEmpty())
+        return;
+    QMutexLocker lock(&g_sessionMutex);
     QStringList& list = g_screenInspectFiles[slot];
     for (const QString& path : durable) {
-        const QString trimmed = path.trimmed();
-        if (trimmed.isEmpty() || !QFile::exists(trimmed) || list.contains(trimmed)) {
-            continue;
-        }
-        list.append(trimmed);
+        if (!path.isEmpty() && QFile::exists(path) && !list.contains(path))
+            list.append(path);
     }
 }
 
@@ -1316,6 +1301,7 @@ QStringList Qlog::exportScreenInspectImageFiles(const QlogSessionInfo& info, QSt
     QStringList srcPaths;
     {
         QMutexLocker lock(&g_sessionMutex);
+        // 优先钉住区（收尾 pin 时可能已复制到 所有log/屏幕检测）
         if (g_pinnedScreenInspectFiles.contains(info.slot))
             srcPaths = g_pinnedScreenInspectFiles.take(info.slot);
         else if (g_screenInspectFiles.contains(info.slot))

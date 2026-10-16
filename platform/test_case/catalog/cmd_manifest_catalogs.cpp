@@ -12,6 +12,7 @@
 #include "cmd_manifest_catalogs.h"
 #include "test_case_ini_param.h"
 #include "tuple_cmd_manifest.h"
+#include "audio_expert_cmd_manifest.h"
 #include "usb_camera_cmd_manifest.h"
 #include "ves_light_cmd_manifest.h"
 #include "universal_fixture_cmd_manifest.h"
@@ -137,6 +138,17 @@ static CmdManifestRegistry makeVesLightCmdRegistry(const CmdManifestRegistry::Po
     reg.rows.reserve(VesLightCmdManifest::rowCount());
     for (int i = 0; i < VesLightCmdManifest::rowCount(); ++i) {
         const VesLightCmdManifest::Row& r = VesLightCmdManifest::rows()[i];
+        reg.rows.append({static_cast<int>(r.cmd), r.enumName, r.uiLabel, r.paramKind, r.paramHint, r.sendActions});
+    }
+    return reg;
+}
+
+static CmdManifestRegistry makeAudioExpertCmdRegistry(const CmdManifestRegistry::Policy& policy) {
+    CmdManifestRegistry reg;
+    reg.policy = policy;
+    reg.rows.reserve(AudioExpertCmdManifest::rowCount());
+    for (int i = 0; i < AudioExpertCmdManifest::rowCount(); ++i) {
+        const AudioExpertCmdManifest::Row& r = AudioExpertCmdManifest::rows()[i];
         reg.rows.append({static_cast<int>(r.cmd), r.enumName, r.uiLabel, r.paramKind, r.paramHint, r.sendActions});
     }
     return reg;
@@ -362,6 +374,20 @@ CmdManifestRegistry::Policy VesLightCmdManifestCatalog::vesLightPolicy() {
 VesLightCmdManifestCatalog::VesLightCmdManifestCatalog()
     : CmdManifestCatalog(makeVesLightCmdRegistry(vesLightPolicy())) {}
 
+// ---------- AudioExpertCmdManifestCatalog ----------
+
+CmdManifestRegistry::Policy AudioExpertCmdManifestCatalog::audioExpertPolicy() {
+    CmdManifestRegistry::Policy p;
+    p.unknownCmdLabel = QStringLiteral("未登记 AudioExpert 指令");
+    p.unknownNameParamHint = QStringLiteral("未知 AudioExpert 指令");
+    p.paramHintStyle = CmdCatalogParamHintStyle::HintOnly;
+    p.missingCmdDefaultAction = TestCaseSendAction::Get;
+    return p;
+}
+
+AudioExpertCmdManifestCatalog::AudioExpertCmdManifestCatalog()
+    : CmdManifestCatalog(makeAudioExpertCmdRegistry(audioExpertPolicy())) {}
+
 // ---------- FixturePcbaCmdManifestCatalog ----------
 
 CmdManifestRegistry::Policy FixturePcbaCmdManifestCatalog::fixturePcbaPolicy() {
@@ -563,6 +589,11 @@ CmdManifestCatalog& VesLightCmdCatalog::catalog() {
     return catalog;
 }
 
+CmdManifestCatalog& AudioExpertCmdCatalog::catalog() {
+    static AudioExpertCmdManifestCatalog catalog;
+    return catalog;
+}
+
 CmdManifestCatalog& FixturePcbaCmdCatalog::catalog() {
     static FixturePcbaCmdManifestCatalog catalog;
     return catalog;
@@ -581,13 +612,22 @@ TestCaseFixtureProtocol FixturePcbaCmdCatalog::fixtureProtocolFromIni(const QStr
     if (text.compare(QStringLiteral("JIELI_BT_BOX"), Qt::CaseInsensitive) == 0
         || text.compare(QStringLiteral("JieliBtBox"), Qt::CaseInsensitive) == 0)
         return TestCaseFixtureProtocol::JieliBtBox;
-    if (text.compare(QStringLiteral("USB_CAMERA"), Qt::CaseInsensitive) == 0
-        || text.compare(QStringLiteral("UsbCamera"), Qt::CaseInsensitive) == 0)
+    // 新 USB 专用键；旧 USB_CAMERA 曾表示「USB/GigE 合一、默认 GigE」，读成 GigE
+    if (text.compare(QStringLiteral("USB_WEBCAM"), Qt::CaseInsensitive) == 0
+        || text.compare(QStringLiteral("UsbWebcam"), Qt::CaseInsensitive) == 0)
         return TestCaseFixtureProtocol::UsbCamera;
+    if (text.compare(QStringLiteral("GIGE_CAMERA"), Qt::CaseInsensitive) == 0
+        || text.compare(QStringLiteral("GigECamera"), Qt::CaseInsensitive) == 0
+        || text.compare(QStringLiteral("USB_CAMERA"), Qt::CaseInsensitive) == 0
+        || text.compare(QStringLiteral("UsbCamera"), Qt::CaseInsensitive) == 0)
+        return TestCaseFixtureProtocol::GigECamera;
     if (text.compare(QStringLiteral("VES"), Qt::CaseInsensitive) == 0
         || text.compare(QStringLiteral("VES_LIGHT"), Qt::CaseInsensitive) == 0
         || text.compare(QStringLiteral("VesLight"), Qt::CaseInsensitive) == 0)
         return TestCaseFixtureProtocol::VesLight;
+    if (text.compare(QStringLiteral("AUDIO_EXPERT"), Qt::CaseInsensitive) == 0
+        || text.compare(QStringLiteral("AudioExpert"), Qt::CaseInsensitive) == 0)
+        return TestCaseFixtureProtocol::AudioExpert;
     if (text.compare(QStringLiteral("Universal"), Qt::CaseInsensitive) == 0
         || text.compare(QStringLiteral("UNIVERSAL"), Qt::CaseInsensitive) == 0
         || text.compare(QStringLiteral("通用治具"), Qt::CaseInsensitive) == 0)
@@ -606,9 +646,13 @@ QString FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol prot
     case TestCaseFixtureProtocol::JieliBtBox:
         return QStringLiteral("JIELI_BT_BOX");
     case TestCaseFixtureProtocol::UsbCamera:
-        return QStringLiteral("USB_CAMERA");
+        return QStringLiteral("USB_WEBCAM");
+    case TestCaseFixtureProtocol::GigECamera:
+        return QStringLiteral("GIGE_CAMERA");
     case TestCaseFixtureProtocol::VesLight:
         return QStringLiteral("VES");
+    case TestCaseFixtureProtocol::AudioExpert:
+        return QStringLiteral("AUDIO_EXPERT");
     case TestCaseFixtureProtocol::Universal:
         return QStringLiteral("Universal");
     case TestCaseFixtureProtocol::Pcba:
@@ -620,15 +664,19 @@ QString FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol prot
 QString FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol protocol) {
     switch (protocol) {
     case TestCaseFixtureProtocol::Asd9026a:
-        return QStringLiteral("ASD9026A模拟电池");
+        return QStringLiteral("M8组装电流工站程控电源ASD9026A");
     case TestCaseFixtureProtocol::Xwd:
         return QStringLiteral("XWD治具");
     case TestCaseFixtureProtocol::JieliBtBox:
         return QStringLiteral("杰理蓝牙盒子");
     case TestCaseFixtureProtocol::UsbCamera:
         return QStringLiteral("USB摄像头");
+    case TestCaseFixtureProtocol::GigECamera:
+        return QStringLiteral("GigE工业摄像头");
     case TestCaseFixtureProtocol::VesLight:
-        return QStringLiteral("VES光源");
+        return QStringLiteral("V3系列光感工站VES光源");
+    case TestCaseFixtureProtocol::AudioExpert:
+        return QStringLiteral("AudioExpert(TCP)");
     case TestCaseFixtureProtocol::Universal:
         return QStringLiteral("通用治具");
     case TestCaseFixtureProtocol::Pcba:
@@ -695,13 +743,13 @@ QStringList ScpiPeriphCmdCatalog::allDeviceKeys() {
 QString ScpiPeriphCmdCatalog::deviceUiLabel(ScpiDeviceRoute device) {
     switch (device) {
     case ScpiDeviceRoute::HuilingWfp60h:
-        return QStringLiteral("WFP60H 程控电源");
+        return QStringLiteral("WFP60H程控电源");
     case ScpiDeviceRoute::Agilent66319d:
         return QStringLiteral("66319D程控电源");
     case ScpiDeviceRoute::GenericVisaPower:
-        return QStringLiteral("通用VISA程控电源");
+        return QStringLiteral("通用类SCPI程控电源");
     case ScpiDeviceRoute::RsCmw100:
-        return QStringLiteral("罗德与施瓦茨 CMW100");
+        return QStringLiteral("蓝牙综测仪CMW100");
     default:
         return QStringLiteral("未知设备");
     }

@@ -189,8 +189,9 @@ struct ProtocolAirPressureSampleData {
     QVector<ProtocolAirPressureSamplePoint> samples;
 };
 
+/** FCTP ALGO NOTIFY 0x0008 RESULT_REPORT：algo_fusion_result_t 汇总（漏气卡控用） */
 struct ProtocolAlgoFusionResultData {
-    int leakageLeft = 0; // 0无效 1正常无漏 2微小漏 3强漏
+    int leakageLeft = 0;  // 0无效 1正常无漏 2微小漏 3强漏
     int leakageRight = 0;
     int groupCount = 0;
 };
@@ -631,8 +632,8 @@ enum class DeviceCmd {
     StartMultiBleOtaApp,   // 【Qpb】双路 BLE OTA：同时下发两路 RotasFileStatusReq（StartMultiBleOtaPayload 或 QVariantList）
     PressCollect,          // 【Qpb】压力传感器产测采集开关；【Qfctp】ALGO TLV 0x0000 气压采样开关
     PressSampleIntervalSet, // 【Qfctp】ALGO TLV 0x0001 气压采样间隔(ms)
-    AlgoResultReportSet,   // 【Qfctp】ALGO TLV 0x0007 算法结果上报开关
-    AlgoResultReportWait,  // 【Qfctp】等待 NOTIFY 0x0008；Gate 卡 leakageLeft/Right
+    AlgoResultReportSet,    // 【Qfctp】ALGO TLV 0x0007 算法结果上报开关（Param_enable/on=1开/0关）
+    AlgoResultReportWait,   // 【Qfctp】等 ALGO NOTIFY 0x0008 算法结果上报（不发令）；Gate 卡 leakage*
     ImuCollect,            // 【Qpb】IMU 产测采集开关（FacSwitch，set_imu_collect_param）
     CameraFaultDataPacket, // 【预留】当前 Qpb/Qfctp 均未在 switch 中实现
     ServoMotorInfo,        // 【Qpb】舵机信息查询触发/下发（无参 set，set_servo_motor_info）

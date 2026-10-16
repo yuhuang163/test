@@ -67,6 +67,16 @@ class TestCaseStore {
     /** 工站 flow.ini [ScreenInspect] 参考圆/GigE；缺键回退全局 ScreenInspect/* */
     static TestCaseScreenInspectConfig loadStationScreenInspectConfig(const QString& stationKey = QString());
     static bool saveStationScreenInspectConfig(const QString& stationKey, const TestCaseScreenInspectConfig& config);
+    /** 工站 flow.ini [StationBindings]：产品协议/治具/外设绑定（步骤编排 UI） */
+    static TestCaseStationBindings loadStationBindings(const QString& stationKey);
+    static bool saveStationBindings(const QString& stationKey, const TestCaseStationBindings& config);
+    /** 按工站显示名推断默认绑定（configured=false，不落盘） */
+    static TestCaseStationBindings inferStationBindingsDefaults(const QString& stationDisplayName);
+    /**
+     * 扫描本站主流程+失败区现有步骤的 Channel/Protocol/Device，汇总绑定能力。
+     * configured=false（由调用方决定是否落盘）；无步骤时返回空能力。
+     */
+    static TestCaseStationBindings inferStationBindingsFromFlowSteps(const QString& stationKey);
     /** profiles/{工站}/profile.ini [Profile/ProfileVersion]；stationKey 空则当前选中工站，缺失返回 0 */
     static int loadStationProfileVersion(const QString& stationKey = QString());
     /** profiles/{工站}/profile.ini [StationCustom/SkipDefaultPreInspection] 或 [Profile/SkipDefaultPreInspection] */

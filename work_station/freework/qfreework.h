@@ -145,6 +145,7 @@ class QFreeWork : public test_base {
     void executeFixtureUniversalCase(const TestCaseDefinition& def);
     void executeFixtureJieliBtBoxCase(const TestCaseDefinition& def);
     void executeFixtureVesLightCase(const TestCaseDefinition& def);
+    void executeFixtureAudioExpertCase(const TestCaseDefinition& def);
     /** VES 单通道指令固定 CH1，brightness 0~255。失败时 failReason 非空。 */
     bool sendVesCh1BrightnessOnFixture(int brightness, QString* failReason = nullptr);
     int resolveFixtureMachineIndex(const QVariant& param) const;
@@ -167,8 +168,10 @@ class QFreeWork : public test_base {
     QString wholeMachineSn_;
     QString transitionCode_;
     QString newSfc_;
-    /** BYD 开局扫码过程码：MES Start/Complete/AddSfcKey 的 SFC；界面可被 MES 主板 SN 回填，此字段不被冲掉 */
+    /** BYD 开局扫码过程码：MES Start/Complete/AddSfcKey 的 SFC；勿被 MES 主板 SN / 三元组整机 SN 冲掉 */
     QString mesProcessCode_;
+    /** BYD 过程码换回的主板 SN（回填界面 + 会话日志；过站 SFC 仍用 mesProcessCode_） */
+    QString mesBoardSn_;
     /** 开测卡控嵌套事件循环期间防重入（按工位，勿用函数内 static 让多工位互相屏蔽） */
     bool startGateBusy_ = false;
     QString macAddress = "没有mac地址";
@@ -297,6 +300,8 @@ class QFreeWork : public test_base {
     bool isCurrentStep(const QString& functionName) const;
     bool isCurrentInstrumentStep(const QString& stepName) const;
     bool isBydFactory() const;
+    /** 主流程启用 Hook BYD_MES_SERIALIZABLE_COMPLETE 时，PASS 收尾走序列化过站 */
+    bool stationFlowUsesBydSerializableComplete() const;
     QString resolvedExpectedTailSnText() const;
     QByteArray resolvedTailSnToWrite() const;
 
@@ -400,6 +405,9 @@ class QFreeWork : public test_base {
     void resetTupleStatus(const TestCaseDefinition& def);
     void emitFixtureMultiGateTableRows(const QVector<TestCaseGate>& gates, const QString& reportType,
                                        const QVariant& payload, bool& allPass, QString& detailOut);
+    /** AudioExpert：结果表测试项名=Data Info，实测=数值+单位 */
+    void emitAudioExpertMeasureTableRows(const QVariant& payload, const QVector<TestCaseGate>& gates, bool& allPass,
+                                         QString& detailOut);
     void applyRuntimeSnGateExpected(QVector<TestCaseGate>& gates);
     /** Gate/Expected 中的 $MAC/$SN 等占位符展开为运行时值（$MAC=界面 MAC 框） */
     void applyRuntimePlaceholderGateExpected(QVector<TestCaseGate>& gates);

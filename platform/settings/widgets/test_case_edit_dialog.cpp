@@ -31,6 +31,7 @@
 #include <QApplication>
 #include <QComboBox>
 #include <QEvent>
+#include <QLabel>
 
 #include <algorithm>
 #include <functional>
@@ -115,6 +116,12 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("tempPassMode"), QStringLiteral("多路温度卡控：all=同轮全部达标（默认）；any=任一路达标即过")},
         {QStringLiteral("seconds"), QStringLiteral("倒计时等待秒数（COUNTDOWN_WAIT）")},
         {QStringLiteral("waitSeconds"), QStringLiteral("倒计时等待秒数（同 seconds）")},
+        {QStringLiteral("host"), QStringLiteral("AudioExpert TCP 主机（默认127.0.0.1）")},
+        {QStringLiteral("port"), QStringLiteral("AudioExpert Remote 端口号")},
+        {QStringLiteral("command"), QStringLiteral("发送指令（默认$test#）")},
+        {QStringLiteral("connectTimeoutMs"), QStringLiteral("TCP连接超时ms")},
+        {QStringLiteral("readTimeoutMs"), QStringLiteral("等待$test_over超时ms（0=用步骤超时）")},
+        {QStringLiteral("requireOk"), QStringLiteral("要求Result/Status为OK（1/0）")},
         {QStringLiteral("prompt"), QStringLiteral("倒计时弹窗提示文字（可选）")},
         {QStringLiteral("spare"), QStringLiteral("整机SN备用4位（默认0000）")},
         {QStringLiteral("expected"), QStringLiteral("期望SN前四位")},
@@ -179,7 +186,7 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("password"), QStringLiteral("密码")},
         {QStringLiteral("cameraIndex"), QStringLiteral("摄像头序号（从 0，仅 USB）")},
         {QStringLiteral("cameraName"), QStringLiteral("摄像头名称（可选，仅 USB）")},
-        {QStringLiteral("cameraSource"), QStringLiteral("采集源（空/gige=网口，usb=USB）")},
+        {QStringLiteral("cameraSource"), QStringLiteral("旧兼容：usb/gige（优先用目标设备 USB摄像头/GigE工业摄像头）")},
         {QStringLiteral("cameraIp"), QStringLiteral("GigE 相机 IP（如 169.254.64.10）")},
         {QStringLiteral("gigeIp"), QStringLiteral("GigE 相机 IP（同 cameraIp）")},
         {QStringLiteral("cameraSerial"), QStringLiteral("GigE 序列号（可选，优先于 IP）")},
@@ -209,7 +216,7 @@ QString sendParamKeyZhLabel(const QString& key) {
         {QStringLiteral("customFreq"), QStringLiteral("自定义频率（1低/2中/3高）")},
         {QStringLiteral("controlType"), QStringLiteral("控制侧（0左/1右/2双边）")},
         {QStringLiteral("pumpFreq"), QStringLiteral("泵频率（0低/1中/2高）")},
-        {QStringLiteral("on"), QStringLiteral("开关（1开/0关）")},
+        {QStringLiteral("on"), QStringLiteral("开关（1进入/开，0退出/关）")},
         {QStringLiteral("state"), QStringLiteral("状态（1运行/0暂停）")},
         {QStringLiteral("which_sn"), QStringLiteral("SN 类型（整机SN / deviceName / productKey）")},
         {QStringLiteral("length"), QStringLiteral("写入SN长度（仅Qroot2：35=M5；39=Air1补0）")},
@@ -365,19 +372,140 @@ QVariantMap hookSendParamDefaultMap(const QString& hookId) {
     return {};
 }
 
-void setSendCommandFieldRowsVisible(Ui::TestCaseEditDialog* ui, bool visible) {
+void setSendCommandFieldRowsVisible(Ui::TestCaseEditDialog* ui, QLabel* stationTargetLabel,
+                                    QComboBox* stationTargetCombo, bool visible, bool stationBindingsMode) {
     if (!ui)
         return;
-    ui->label_sendChannel->setVisible(visible);
-    ui->comboBox_sendChannel->setVisible(visible);
     ui->label_action->setVisible(visible);
     ui->comboBox_action->setVisible(visible);
     ui->label_deviceCmd->setVisible(visible);
     ui->comboBox_deviceCmd->setVisible(visible);
-    if (visible)
+    if (!visible) {
+        ui->label_sendChannel->setVisible(false);
+        ui->comboBox_sendChannel->setVisible(false);
+        ui->label_productProtocol->setVisible(false);
+        ui->comboBox_productProtocol->setVisible(false);
+        if (stationTargetLabel)
+            stationTargetLabel->setVisible(false);
+        if (stationTargetCombo)
+            stationTargetCombo->setVisible(false);
         return;
-    ui->label_productProtocol->setVisible(false);
-    ui->comboBox_productProtocol->setVisible(false);
+    }
+    if (stationBindingsMode) {
+        ui->label_sendChannel->setVisible(false);
+        ui->comboBox_sendChannel->setVisible(false);
+        ui->label_productProtocol->setVisible(false);
+        ui->comboBox_productProtocol->setVisible(false);
+        if (stationTargetLabel)
+            stationTargetLabel->setVisible(true);
+        if (stationTargetCombo)
+            stationTargetCombo->setVisible(true);
+    } else {
+        ui->label_sendChannel->setVisible(true);
+        ui->comboBox_sendChannel->setVisible(true);
+        if (stationTargetLabel)
+            stationTargetLabel->setVisible(false);
+        if (stationTargetCombo)
+            stationTargetCombo->setVisible(false);
+    }
+}
+
+QString stationTargetKeyForSend(TestCaseSendChannel channel, const QString& protoOrDevice) {
+    switch (channel) {
+    case TestCaseSendChannel::Product:
+        return QStringLiteral("product:%1").arg(protoOrDevice);
+    case TestCaseSendChannel::ProductSerial:
+        return QStringLiteral("product_serial:%1").arg(protoOrDevice);
+    case TestCaseSendChannel::Dongle:
+        return QStringLiteral("dongle");
+    case TestCaseSendChannel::Cloud:
+        return QStringLiteral("cloud");
+    case TestCaseSendChannel::Fixture:
+        return QStringLiteral("fixture:%1").arg(protoOrDevice);
+    case TestCaseSendChannel::Modbus:
+        return QStringLiteral("modbus:%1").arg(protoOrDevice);
+    case TestCaseSendChannel::Scpi:
+        return QStringLiteral("scpi:%1").arg(protoOrDevice);
+    }
+    return {};
+}
+
+bool parseStationTargetKey(const QString& targetKey, TestCaseSendChannel& channel, QString& device) {
+    const QString t = targetKey.trimmed();
+    if (t.isEmpty())
+        return false;
+    if (t == QLatin1String("dongle")) {
+        channel = TestCaseSendChannel::Dongle;
+        device.clear();
+        return true;
+    }
+    if (t == QLatin1String("cloud")) {
+        channel = TestCaseSendChannel::Cloud;
+        device.clear();
+        return true;
+    }
+    const int colon = t.indexOf(QLatin1Char(':'));
+    if (colon <= 0)
+        return false;
+    const QString kind = t.left(colon);
+    const QString rest = t.mid(colon + 1).trimmed();
+    if (kind == QLatin1String("product")) {
+        channel = TestCaseSendChannel::Product;
+        device = rest;
+        return !rest.isEmpty();
+    }
+    if (kind == QLatin1String("product_serial")) {
+        channel = TestCaseSendChannel::ProductSerial;
+        device = rest;
+        return !rest.isEmpty();
+    }
+    if (kind == QLatin1String("fixture")) {
+        channel = TestCaseSendChannel::Fixture;
+        device = rest;
+        return !rest.isEmpty();
+    }
+    if (kind == QLatin1String("modbus")) {
+        channel = TestCaseSendChannel::Modbus;
+        device = rest;
+        return !rest.isEmpty();
+    }
+    if (kind == QLatin1String("scpi")) {
+        channel = TestCaseSendChannel::Scpi;
+        device = rest;
+        return !rest.isEmpty();
+    }
+    return false;
+}
+
+/** 目标设备展示名（【类别】短名）；用于绑定列表与旧步骤回显。 */
+QString stationTargetUiLabel(const QString& targetKey) {
+    TestCaseSendChannel channel = TestCaseSendChannel::Product;
+    QString device;
+    if (!parseStationTargetKey(targetKey, channel, device))
+        return targetKey.trimmed();
+    switch (channel) {
+    case TestCaseSendChannel::Product:
+        return QStringLiteral("【产品】%1")
+            .arg(DeviceCmdCatalog::productProtocolUiLabel(DeviceCmdCatalog::productProtocolFromIni(device)));
+    case TestCaseSendChannel::ProductSerial:
+        return QStringLiteral("【产品串口】%1")
+            .arg(DeviceCmdCatalog::productProtocolUiLabel(DeviceCmdCatalog::productProtocolFromIni(device)));
+    case TestCaseSendChannel::Dongle:
+        return QStringLiteral("【蓝牙Dongle】");
+    case TestCaseSendChannel::Cloud:
+        return QStringLiteral("【云端三元组】");
+    case TestCaseSendChannel::Fixture:
+        return QStringLiteral("【治具】%1")
+            .arg(FixturePcbaCmdCatalog::fixtureProtocolUiLabel(
+                FixturePcbaCmdCatalog::fixtureProtocolFromIni(device)));
+    case TestCaseSendChannel::Modbus:
+        return QStringLiteral("【外设】%1")
+            .arg(ModbusDeviceCatalog::deviceRouteUiLabel(ModbusDeviceCatalog::deviceRouteFromIni(device)));
+    case TestCaseSendChannel::Scpi:
+        return QStringLiteral("【电源/仪表】%1")
+            .arg(ScpiPeriphCmdCatalog::deviceUiLabel(ScpiPeriphCmdCatalog::deviceFromIni(device)));
+    }
+    return targetKey.trimmed();
 }
 
 enum {
@@ -512,24 +640,24 @@ QStringList sendParamPreferredOrder(TestCaseSendChannel channel, const QString& 
         && (cmdName == QLatin1String("ScreenDeadPixelCheck")
             || cmdName == QLatin1String("ScreenDisplayAnomalyCheck")
             || cmdName == QLatin1String("ScreenCameraCalibration"))) {
-        QStringList keys = {QStringLiteral("cameraSource"), QStringLiteral("cameraIp"),
-                            QStringLiteral("cameraSerial"), QStringLiteral("cameraIndex"),
-                            QStringLiteral("cameraName"), QStringLiteral("warmupMs"),
-                            QStringLiteral("expectedColor"), QStringLiteral("deadDiff"),
+        // cameraSource 已拆到设备协议；参数表按 USB/GigE 设备区分（编辑时仍可能看到旧键）
+        QStringList keys = {QStringLiteral("cameraIp"), QStringLiteral("cameraSerial"),
+                            QStringLiteral("cameraIndex"), QStringLiteral("cameraName"),
+                            QStringLiteral("warmupMs"), QStringLiteral("expectedColor"), QStringLiteral("deadDiff"),
                             QStringLiteral("deadRadiusPercent"), QStringLiteral("saveCapture"), QStringLiteral("roi"),
-                            QStringLiteral("reuseCircleRoi")};
+                            QStringLiteral("reuseCircleRoi"), QStringLiteral("cameraSource")};
         if (cmdName == QLatin1String("ScreenDisplayAnomalyCheck")
             || cmdName == QLatin1String("ScreenCameraCalibration"))
             keys.append(QStringLiteral("referencePath"));
         return keys;
     }
     if (channel == TestCaseSendChannel::Fixture && cmdName == QLatin1String("LedOnOffCheck")) {
-        return {QStringLiteral("cameraSource"), QStringLiteral("cameraIp"), QStringLiteral("cameraSerial"),
-                QStringLiteral("cameraIndex"), QStringLiteral("cameraName"), QStringLiteral("warmupMs"),
-                QStringLiteral("saveCapture"), QStringLiteral("ledCount"), QStringLiteral("minLuma"),
-                QStringLiteral("mode1"), QStringLiteral("mode2"), QStringLiteral("mode3"), QStringLiteral("mode4"),
-                QStringLiteral("modes"), QStringLiteral("mode"), QStringLiteral("sampleDurationMs"),
-                QStringLiteral("sampleIntervalMs")};
+        return {QStringLiteral("cameraIp"), QStringLiteral("cameraSerial"), QStringLiteral("cameraIndex"),
+                QStringLiteral("cameraName"), QStringLiteral("warmupMs"), QStringLiteral("saveCapture"),
+                QStringLiteral("ledCount"), QStringLiteral("minLuma"), QStringLiteral("mode1"),
+                QStringLiteral("mode2"), QStringLiteral("mode3"), QStringLiteral("mode4"), QStringLiteral("modes"),
+                QStringLiteral("mode"), QStringLiteral("sampleDurationMs"), QStringLiteral("sampleIntervalMs"),
+                QStringLiteral("cameraSource")};
     }
     if ((channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial)
         && (cmdName == QLatin1String("RootPumpControl") || cmdName == QLatin1String("RootSuctionTest"))) {
@@ -548,6 +676,10 @@ QStringList sendParamPreferredOrder(TestCaseSendChannel channel, const QString& 
     if ((channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial)
         && cmdName == QLatin1String("Root2PumpState")) {
         return {QStringLiteral("on"), QStringLiteral("state"), QStringLiteral("value")};
+    }
+    if ((channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial)
+        && cmdName == QLatin1String("FacMode")) {
+        return {QStringLiteral("on"), QStringLiteral("mode"), QStringLiteral("value")};
     }
     if ((channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial)
         && cmdName == QLatin1String("Sn")) {
@@ -852,10 +984,7 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
         if (cmdName == QLatin1String("SetLcdColor")) {
             return QVariantMap{{QStringLiteral("color"), QStringLiteral("0")}};
         }
-        if (cmdName == QLatin1String("CompensationSet")) {
-            return QVariantMap{{QStringLiteral("enable"), QStringLiteral("1")}};
-        }
-        if (cmdName == QLatin1String("AlgoResultReportSet")) {
+        if (cmdName == QLatin1String("CompensationSet") || cmdName == QLatin1String("AlgoResultReportSet")) {
             return QVariantMap{{QStringLiteral("enable"), QStringLiteral("1")}};
         }
         if (cmdName == QLatin1String("BtSignalMode") || cmdName == QLatin1String("BtNoSignalMode")
@@ -1073,22 +1202,27 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
         return {};
     }
     if (channel == TestCaseSendChannel::Fixture
-        && FixturePcbaCmdCatalog::fixtureProtocolFromIni(device) == TestCaseFixtureProtocol::UsbCamera) {
+        && FixturePcbaCmdCatalog::isScreenCameraFixture(
+               FixturePcbaCmdCatalog::fixtureProtocolFromIni(device))) {
+        const bool usbCam =
+            FixturePcbaCmdCatalog::fixtureProtocolFromIni(device) == TestCaseFixtureProtocol::UsbCamera;
         if (cmdName == QLatin1String("ScreenDeadPixelCheck")
             || cmdName == QLatin1String("ScreenDisplayAnomalyCheck")
             || cmdName == QLatin1String("ScreenCameraCalibration")) {
-            QVariantMap map{{QStringLiteral("cameraSource"), QString()},
-                            {QStringLiteral("cameraIp"), QStringLiteral("169.254.64.10")},
-                            {QStringLiteral("cameraSerial"), QString()},
-                            {QStringLiteral("cameraIndex"), QStringLiteral("0")},
-                            {QStringLiteral("cameraName"), QString()},
-                            {QStringLiteral("warmupMs"), QStringLiteral("450")},
+            QVariantMap map{{QStringLiteral("warmupMs"), QStringLiteral("450")},
                             {QStringLiteral("expectedColor"), QStringLiteral("不判断")},
                             {QStringLiteral("deadDiff"), QStringLiteral("35")},
                             {QStringLiteral("deadRadiusPercent"), QStringLiteral("82")},
                             {QStringLiteral("saveCapture"), QStringLiteral("1")},
                             {QStringLiteral("roi"), QString()},
                             {QStringLiteral("reuseCircleRoi"), QStringLiteral("0")}};
+            if (usbCam) {
+                map.insert(QStringLiteral("cameraIndex"), QStringLiteral("0"));
+                map.insert(QStringLiteral("cameraName"), QString());
+            } else {
+                map.insert(QStringLiteral("cameraIp"), QStringLiteral("169.254.64.10"));
+                map.insert(QStringLiteral("cameraSerial"), QString());
+            }
             if (cmdName == QLatin1String("ScreenDisplayAnomalyCheck")
                 || cmdName == QLatin1String("ScreenCameraCalibration"))
                 map.insert(QStringLiteral("referencePath"), QString());
@@ -1100,21 +1234,24 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
             return map;
         }
         if (cmdName == QLatin1String("LedOnOffCheck")) {
-            return QVariantMap{{QStringLiteral("cameraSource"), QString()},
-                               {QStringLiteral("cameraIp"), QStringLiteral("169.254.64.10")},
-                               {QStringLiteral("cameraSerial"), QString()},
-                               {QStringLiteral("cameraIndex"), QStringLiteral("0")},
-                               {QStringLiteral("cameraName"), QString()},
-                               {QStringLiteral("warmupMs"), QStringLiteral("450")},
-                               {QStringLiteral("saveCapture"), QStringLiteral("1")},
-                               {QStringLiteral("ledCount"), QStringLiteral("4")},
-                               {QStringLiteral("minLuma"), QStringLiteral("80")},
-                               {QStringLiteral("mode1"), QStringLiteral("on")},
-                               {QStringLiteral("mode2"), QStringLiteral("on")},
-                               {QStringLiteral("mode3"), QStringLiteral("blink")},
-                               {QStringLiteral("mode4"), QStringLiteral("blink")},
-                               {QStringLiteral("sampleDurationMs"), QStringLiteral("1500")},
-                               {QStringLiteral("sampleIntervalMs"), QStringLiteral("80")}};
+            QVariantMap map{{QStringLiteral("warmupMs"), QStringLiteral("450")},
+                            {QStringLiteral("saveCapture"), QStringLiteral("1")},
+                            {QStringLiteral("ledCount"), QStringLiteral("4")},
+                            {QStringLiteral("minLuma"), QStringLiteral("80")},
+                            {QStringLiteral("mode1"), QStringLiteral("on")},
+                            {QStringLiteral("mode2"), QStringLiteral("on")},
+                            {QStringLiteral("mode3"), QStringLiteral("blink")},
+                            {QStringLiteral("mode4"), QStringLiteral("blink")},
+                            {QStringLiteral("sampleDurationMs"), QStringLiteral("1500")},
+                            {QStringLiteral("sampleIntervalMs"), QStringLiteral("80")}};
+            if (usbCam) {
+                map.insert(QStringLiteral("cameraIndex"), QStringLiteral("0"));
+                map.insert(QStringLiteral("cameraName"), QString());
+            } else {
+                map.insert(QStringLiteral("cameraIp"), QStringLiteral("169.254.64.10"));
+                map.insert(QStringLiteral("cameraSerial"), QString());
+            }
+            return map;
         }
         return {};
     }
@@ -1122,6 +1259,19 @@ QVariantMap sendParamDefaultMapForCmd(TestCaseSendChannel channel, const QString
         && FixturePcbaCmdCatalog::fixtureProtocolFromIni(device) == TestCaseFixtureProtocol::VesLight) {
         if (cmdName == QLatin1String("SetBrightness"))
             return QVariantMap{{QStringLiteral("brightness"), QStringLiteral("22")}};
+        return {};
+    }
+    if (channel == TestCaseSendChannel::Software
+        || (channel == TestCaseSendChannel::Fixture
+            && FixturePcbaCmdCatalog::fixtureProtocolFromIni(device) == TestCaseFixtureProtocol::AudioExpert)) {
+        if (cmdName == QLatin1String("RunTest")) {
+            return QVariantMap{{QStringLiteral("host"), QStringLiteral("127.0.0.1")},
+                               {QStringLiteral("port"), QString()},
+                               {QStringLiteral("command"), QStringLiteral("$test#")},
+                               {QStringLiteral("connectTimeoutMs"), QStringLiteral("3000")},
+                               {QStringLiteral("readTimeoutMs"), QStringLiteral("120000")},
+                               {QStringLiteral("requireOk"), QStringLiteral("1")}};
+        }
         return {};
     }
     if (channel == TestCaseSendChannel::Cloud && cmdName == QLatin1String("Login")) {
@@ -1465,6 +1615,7 @@ void fillSendChannelCombo(QComboBox* box) {
     box->addItem(QStringLiteral("Dongle通信"), QStringLiteral("Dongle"));
     box->addItem(QStringLiteral("云端交互"), QStringLiteral("Cloud"));
     box->addItem(QStringLiteral("治具通信"), QStringLiteral("Fixture"));
+    box->addItem(QStringLiteral("软件通信"), QStringLiteral("Software"));
     box->addItem(QStringLiteral("Modbus通信"), QStringLiteral("Modbus"));
     box->addItem(QStringLiteral("SCPI通信"), QStringLiteral("Scpi"));
 }
@@ -1497,16 +1648,26 @@ void fillFixtureProtocolCombo(QComboBox* box) {
                  FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::JieliBtBox));
     box->addItem(FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol::UsbCamera),
                  FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::UsbCamera));
+    box->addItem(FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol::GigECamera),
+                 FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::GigECamera));
     box->addItem(FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol::VesLight),
                  FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::VesLight));
     box->addItem(FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol::Universal),
                  FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::Universal));
 }
 
+void fillSoftwareProtocolCombo(QComboBox* box) {
+    box->clear();
+    box->addItem(FixturePcbaCmdCatalog::fixtureProtocolUiLabel(TestCaseFixtureProtocol::AudioExpert),
+                 FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::AudioExpert));
+}
+
 void fillProtocolComboForChannel(QComboBox* box, TestCaseSendChannel channel) {
     box->clear();
     if (channel == TestCaseSendChannel::Fixture) {
         fillFixtureProtocolCombo(box);
+    } else if (channel == TestCaseSendChannel::Software) {
+        fillSoftwareProtocolCombo(box);
     } else if (channel == TestCaseSendChannel::Modbus) {
         for (const QString& dev : ModbusPeriphCmdCatalog::allDeviceKeys()) {
             box->addItem(ModbusDeviceCatalog::deviceRouteUiLabel(ModbusDeviceCatalog::deviceRouteFromIni(dev)), dev);
@@ -1565,7 +1726,7 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
             items.reserve(names.size());
             for (const QString& name : names)
                 items.append({JieliBtBoxCmdCatalog::catalog().cmdUiLabel(name), name});
-        } else if (proto == TestCaseFixtureProtocol::UsbCamera) {
+        } else if (FixturePcbaCmdCatalog::isScreenCameraFixture(proto)) {
             const QStringList names = UsbCameraCmdCatalog::catalog().allCmdNames(action);
             items.reserve(names.size());
             for (const QString& name : names)
@@ -1581,6 +1742,11 @@ void fillDeviceCmdCombo(QComboBox* box, TestCaseSendChannel channel, TestCaseSen
             for (const QString& name : names)
                 items.append({FixturePcbaCmdCatalog::catalog().cmdUiLabel(name), name});
         }
+    } else if (channel == TestCaseSendChannel::Software) {
+        const QStringList names = AudioExpertCmdCatalog::catalog().allCmdNames(action);
+        items.reserve(names.size());
+        for (const QString& name : names)
+            items.append({AudioExpertCmdCatalog::catalog().cmdUiLabel(name), name});
     } else if (channel == TestCaseSendChannel::Modbus) {
         ModbusDeviceRoute devRoute = ModbusDeviceCatalog::deviceRouteFromIni(device);
         const QStringList names = ModbusPeriphCmdCatalog::allCmdNames(devRoute, action);
@@ -1646,6 +1812,8 @@ TestCaseSendChannel sendChannelFromComboData(const QString& data) {
         return TestCaseSendChannel::ProductSerial;
     if (data.compare(QStringLiteral("Fixture"), Qt::CaseInsensitive) == 0)
         return TestCaseSendChannel::Fixture;
+    if (data.compare(QStringLiteral("Software"), Qt::CaseInsensitive) == 0)
+        return TestCaseSendChannel::Software;
     if (data.compare(QStringLiteral("Modbus"), Qt::CaseInsensitive) == 0)
         return TestCaseSendChannel::Modbus;
     if (data.compare(QStringLiteral("Scpi"), Qt::CaseInsensitive) == 0)
@@ -1662,6 +1830,8 @@ QString sendChannelComboData(TestCaseSendChannel channel) {
         return QStringLiteral("ProductSerial");
     if (channel == TestCaseSendChannel::Fixture)
         return QStringLiteral("Fixture");
+    if (channel == TestCaseSendChannel::Software)
+        return QStringLiteral("Software");
     if (channel == TestCaseSendChannel::Modbus)
         return QStringLiteral("Modbus");
     if (channel == TestCaseSendChannel::Scpi)
@@ -1698,8 +1868,8 @@ SendCmdParamKind sendParamUiKindFromSchema(DeviceCmdParamKind kind) {
 }
 
 QString sendParamProtocolContext(TestCaseSendChannel channel, const QString& protocolComboData) {
-    if (channel == TestCaseSendChannel::Fixture || channel == TestCaseSendChannel::Modbus
-        || channel == TestCaseSendChannel::Scpi)
+    if (channel == TestCaseSendChannel::Fixture || channel == TestCaseSendChannel::Software
+        || channel == TestCaseSendChannel::Modbus || channel == TestCaseSendChannel::Scpi)
         return protocolComboData;
     return QString();
 }
@@ -1725,6 +1895,18 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
             if (TupleCmdCatalog::catalog().paramSchemaFor(static_cast<int>(tupleCmd), schema)) {
                 out.valid = true;
                 out.hint = TupleCmdCatalog::catalog().paramUiHint(name);
+                out.kind = sendParamUiKindFromSchema(schema.kind);
+            }
+        }
+        return out;
+    }
+    if (channel == TestCaseSendChannel::Software) {
+        AudioExpertCmd aeCmd;
+        if (cmdEnumFromName(AudioExpertCmdCatalog::catalog(), name, aeCmd)) {
+            DeviceCmdParamSchema schema;
+            if (AudioExpertCmdCatalog::catalog().paramSchemaFor(static_cast<int>(aeCmd), schema)) {
+                out.valid = true;
+                out.hint = AudioExpertCmdCatalog::catalog().paramUiHint(name);
                 out.kind = sendParamUiKindFromSchema(schema.kind);
             }
         }
@@ -1780,7 +1962,7 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
             }
             return out;
         }
-        if (proto == TestCaseFixtureProtocol::UsbCamera) {
+        if (FixturePcbaCmdCatalog::isScreenCameraFixture(proto)) {
             UsbCameraCmd camCmd;
             if (cmdEnumFromName(UsbCameraCmdCatalog::catalog(), name, camCmd)) {
                 DeviceCmdParamSchema schema;
@@ -1799,6 +1981,18 @@ SendCmdParamUi sendCmdParamUiForName(const QString& name, TestCaseSendChannel ch
                 if (VesLightCmdCatalog::catalog().paramSchemaFor(static_cast<int>(vesCmd), schema)) {
                     out.valid = true;
                     out.hint = VesLightCmdCatalog::catalog().paramUiHint(name);
+                    out.kind = sendParamUiKindFromSchema(schema.kind);
+                }
+            }
+            return out;
+        }
+        if (proto == TestCaseFixtureProtocol::AudioExpert) {
+            AudioExpertCmd aeCmd;
+            if (cmdEnumFromName(AudioExpertCmdCatalog::catalog(), name, aeCmd)) {
+                DeviceCmdParamSchema schema;
+                if (AudioExpertCmdCatalog::catalog().paramSchemaFor(static_cast<int>(aeCmd), schema)) {
+                    out.valid = true;
+                    out.hint = AudioExpertCmdCatalog::catalog().paramUiHint(name);
                     out.kind = sendParamUiKindFromSchema(schema.kind);
                 }
             }
@@ -2347,6 +2541,8 @@ const QHash<QString, QString>& hookDisplayNameMap() {
         {QStringLiteral("BYD_MES_GET_TRANSITION_CODE"), QStringLiteral("BYD MES 通过整机SN获取过渡码")},
         {QStringLiteral("BYD_MES_GET_NEW_SFC"), QStringLiteral("BYD MES 通过过渡码获取 newSfc")},
         {QStringLiteral("BYD_MES_START_BY_NEW_SFC"), QStringLiteral("BYD MES 使用 newSfc 进行站前检查")},
+        {QStringLiteral("BYD_MES_SERIALIZABLE_COMPLETE"),
+         QStringLiteral("BYD MES 序列化过站（PASS 收尾 OSFC↔NSFC，替代普通 Complete）")},
         {QStringLiteral("PLC_SYNC_WRITE_COIL"), QStringLiteral("[一拖多同步] 统一写线圈(自定义线圈)")},
         {QStringLiteral("PLC_SYNC_READ_COIL"), QStringLiteral("[一拖多同步] 统一监控线圈(自定义线圈)")},
         {QStringLiteral("PLC_SYNC_WRITE_M10"), QStringLiteral("[一拖多同步] 统一写M10脉冲复位(默认M10/可改)")},
@@ -2422,6 +2618,16 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
     registerQFreeWorkCatalogTestCaseHooks();
     fillHookCombo(ui->comboBox_hookId);
 
+    // 工站已绑定能力时：用「目标设备」代替通道/协议，给工人简化配置
+    label_stationTarget_ = new QLabel(QStringLiteral("目标设备"), this);
+    comboBox_stationTarget_ = new QComboBox(this);
+    comboBox_stationTarget_->setToolTip(
+        QStringLiteral("本工站在「设备能力绑定」中勾选的产品/治具/电源等；选后自动带上通道与协议"));
+    ui->formLayout_send->insertRow(0, label_stationTarget_, comboBox_stationTarget_);
+    label_stationTarget_->setVisible(false);
+    comboBox_stationTarget_->setVisible(false);
+    comboBox_stationTarget_->installEventFilter(comboWheelGuard);
+
     if (QPushButton* saveBtn = ui->buttonBox->button(QDialogButtonBox::Save)) {
         saveBtn->setText(QStringLiteral("保存"));
     }
@@ -2437,6 +2643,8 @@ TestCaseEditDialog::TestCaseEditDialog(QWidget* parent) : QDialog(parent), ui(ne
             &TestCaseEditDialog::onSendActionChanged);
     connect(ui->comboBox_deviceCmd, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
             &TestCaseEditDialog::onDeviceCmdChanged);
+    connect(comboBox_stationTarget_, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
+            &TestCaseEditDialog::onStationTargetChanged);
     connect(ui->comboBox_gateReportType, QOverload<int>::of(&QComboBox::currentIndexChanged), this,
             &TestCaseEditDialog::onGateReportTypeChanged);
     connect(ui->checkBox_gateEnabled, &QCheckBox::toggled, this, [this](bool) {
@@ -2928,7 +3136,8 @@ void TestCaseEditDialog::updateHookFieldsEnabled() {
         ui->groupBox_send->setVisible(true);
         ui->groupBox_send->setTitle(QStringLiteral("Hook 参数"));
         ui->label_param->setText(QStringLiteral("步骤参数"));
-        setSendCommandFieldRowsVisible(ui, false);
+        setSendCommandFieldRowsVisible(ui, label_stationTarget_, comboBox_stationTarget_, false,
+                                       stationBindings_.configured);
         const QVariantMap current = readSendParamMapFromTable(ui->tableWidget_sendParam);
         const QVariantMap tmpl = hookSendParamDefaultMap(hookId);
         bool hasMatchingKey = false;
@@ -2954,12 +3163,14 @@ void TestCaseEditDialog::updateHookFieldsEnabled() {
     ui->label_param->setText(QStringLiteral("指令参数"));
     ui->groupBox_send->setVisible(!on && !promptOnly);
     if (!on && !promptOnly) {
-        setSendCommandFieldRowsVisible(ui, true);
+        setSendCommandFieldRowsVisible(ui, label_stationTarget_, comboBox_stationTarget_, true,
+                                       stationBindings_.configured);
         updateProductProtocolRowVisible();
         onDeviceCmdChanged(ui->comboBox_deviceCmd->currentIndex());
         return;
     }
-    setSendCommandFieldRowsVisible(ui, false);
+    setSendCommandFieldRowsVisible(ui, label_stationTarget_, comboBox_stationTarget_, false,
+                                   stationBindings_.configured);
     updateSendParamVisibility(false);
 }
 
@@ -3037,6 +3248,11 @@ void TestCaseEditDialog::onGateReportTypeChanged(int) {
 
 void TestCaseEditDialog::setStationContext(const QString& stationKey) {
     stationKey_ = stationKey.trimmed();
+    if (stationKey_.isEmpty())
+        stationBindings_ = TestCaseStationBindings{};
+    else
+        stationBindings_ = TestCaseStore::loadStationBindings(stationKey_);
+    applyStationBindingsUiMode();
 }
 
 void TestCaseEditDialog::setFlowContext(const QVector<TestFlowItemEntry>& entries) {
@@ -3073,8 +3289,10 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     ui->comboBox_productProtocol->blockSignals(true);
     fillProtocolComboForChannel(ui->comboBox_productProtocol, channel);
     QString protoIni;
-    if (channel == TestCaseSendChannel::Fixture)
-        protoIni = FixturePcbaCmdCatalog::fixtureProtocolToIni(def.send.fixtureProtocol);
+    if (channel == TestCaseSendChannel::Fixture || channel == TestCaseSendChannel::Software)
+        protoIni = FixturePcbaCmdCatalog::fixtureProtocolToIni(
+            channel == TestCaseSendChannel::Software ? TestCaseFixtureProtocol::AudioExpert
+                                                    : def.send.fixtureProtocol);
     else if (channel == TestCaseSendChannel::Modbus || channel == TestCaseSendChannel::Scpi)
         protoIni = def.send.device;
     else
@@ -3083,17 +3301,37 @@ void TestCaseEditDialog::setDefinition(const TestCaseDefinition& def, const QStr
     if (protoIdx >= 0)
         ui->comboBox_productProtocol->setCurrentIndex(protoIdx);
     ui->comboBox_productProtocol->blockSignals(false);
-    updateProductProtocolRowVisible();
+    applyStationBindingsUiMode();
+    if (stationBindings_.configured) {
+        const QString wantTarget = stationTargetKeyForSend(channel, protoIni);
+        fillStationTargetCombo(wantTarget);
+        // 回显目标后同步内部通道/协议（含绑定外旧步骤临时补进的一项）
+        if (comboBox_stationTarget_ && comboBox_stationTarget_->findData(wantTarget) >= 0)
+            applyStationTargetToChannelProtocol();
+    }
 
-    // 产品/治具/外设：指令表按「协议或目标设备」下拉过滤，统一传 protoIni（勿用空的 send.device）
+    // 产品/治具/软件/外设：指令表按「协议或目标设备」下拉过滤，统一传 protoIni（勿用空的 send.device）
     const QString cmdListDevice =
         (channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial
-         || channel == TestCaseSendChannel::Fixture || channel == TestCaseSendChannel::Modbus
-         || channel == TestCaseSendChannel::Scpi)
+         || channel == TestCaseSendChannel::Fixture || channel == TestCaseSendChannel::Software
+         || channel == TestCaseSendChannel::Modbus || channel == TestCaseSendChannel::Scpi)
             ? protoIni
             : def.send.device;
-    fillDeviceCmdCombo(ui->comboBox_deviceCmd, channel, action, cmdListDevice, def.send.deviceCmd);
-    const int cmdIdx = comboIndexByData(ui->comboBox_deviceCmd, def.send.deviceCmd);
+    // 绑定模式下指令表与目标设备一致（apply 后通道/协议已对齐）
+    QString cmdFilterDevice = cmdListDevice;
+    TestCaseSendChannel cmdFilterChannel = channel;
+    if (stationBindings_.configured && comboBox_stationTarget_) {
+        TestCaseSendChannel targetCh = channel;
+        QString targetDev;
+        if (parseStationTargetKey(comboBox_stationTarget_->currentData().toString(), targetCh, targetDev)) {
+            cmdFilterChannel = targetCh;
+            cmdFilterDevice = targetDev;
+        }
+    }
+    fillDeviceCmdCombo(ui->comboBox_deviceCmd, cmdFilterChannel, action, cmdFilterDevice, QString());
+    int cmdIdx = comboIndexByData(ui->comboBox_deviceCmd, def.send.deviceCmd);
+    if (cmdIdx < 0 && ui->comboBox_deviceCmd->count() > 0)
+        cmdIdx = 0;
     if (cmdIdx >= 0)
         ui->comboBox_deviceCmd->setCurrentIndex(cmdIdx);
     ui->comboBox_sendChannel->blockSignals(false);
@@ -3192,6 +3430,9 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
     if (def.send.channel == TestCaseSendChannel::Fixture) {
         def.send.fixtureProtocol =
             FixturePcbaCmdCatalog::fixtureProtocolFromIni(comboData(ui->comboBox_productProtocol));
+    } else if (def.send.channel == TestCaseSendChannel::Software) {
+        def.send.fixtureProtocol = TestCaseFixtureProtocol::AudioExpert;
+        def.send.device = QStringLiteral("AUDIO_EXPERT");
     } else if (def.send.channel == TestCaseSendChannel::Modbus || def.send.channel == TestCaseSendChannel::Scpi) {
         def.send.device = comboData(ui->comboBox_productProtocol);
     } else {
@@ -3249,16 +3490,23 @@ TestCaseDefinition TestCaseEditDialog::definition() const {
 }
 
 void TestCaseEditDialog::updateProductProtocolRowVisible() {
+    if (stationBindings_.configured) {
+        ui->label_productProtocol->setVisible(false);
+        ui->comboBox_productProtocol->setVisible(false);
+        return;
+    }
     const TestCaseSendChannel channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
     const bool showProtocol =
         channel == TestCaseSendChannel::Product || channel == TestCaseSendChannel::ProductSerial
-        || channel == TestCaseSendChannel::Fixture || channel == TestCaseSendChannel::Modbus
-        || channel == TestCaseSendChannel::Scpi;
+        || channel == TestCaseSendChannel::Fixture || channel == TestCaseSendChannel::Software
+        || channel == TestCaseSendChannel::Modbus || channel == TestCaseSendChannel::Scpi;
     ui->label_productProtocol->setVisible(showProtocol);
     ui->comboBox_productProtocol->setVisible(showProtocol);
     if (showProtocol) {
         if (channel == TestCaseSendChannel::Fixture)
             ui->label_productProtocol->setText(QStringLiteral("治具协议"));
+        else if (channel == TestCaseSendChannel::Software)
+            ui->label_productProtocol->setText(QStringLiteral("软件协议"));
         else if (channel == TestCaseSendChannel::Modbus || channel == TestCaseSendChannel::Scpi)
             ui->label_productProtocol->setText(QStringLiteral("目标外设"));
         else
@@ -3266,7 +3514,100 @@ void TestCaseEditDialog::updateProductProtocolRowVisible() {
     }
 }
 
+void TestCaseEditDialog::applyStationBindingsUiMode() {
+    const bool use = stationBindings_.configured;
+    if (label_stationTarget_)
+        label_stationTarget_->setVisible(use);
+    if (comboBox_stationTarget_)
+        comboBox_stationTarget_->setVisible(use);
+    ui->label_sendChannel->setVisible(!use);
+    ui->comboBox_sendChannel->setVisible(!use);
+    updateProductProtocolRowVisible();
+}
+
+void TestCaseEditDialog::fillStationTargetCombo(const QString& keepTargetKey) {
+    if (!comboBox_stationTarget_)
+        return;
+    const QSignalBlocker blocker(comboBox_stationTarget_);
+    comboBox_stationTarget_->clear();
+    if (!stationBindings_.configured)
+        return;
+
+    // 类别用【】打头；后缀短名。旧步骤目标若不在绑定内，按同款文案临时补一项以便回显/保存
+    auto addTarget = [this](const QString& label, const QString& targetKey) {
+        comboBox_stationTarget_->addItem(label, targetKey);
+    };
+
+    if (stationBindings_.enableProduct) {
+        for (const QString& protoIni : stationBindings_.productProtocols)
+            addTarget(stationTargetUiLabel(QStringLiteral("product:") + protoIni),
+                      QStringLiteral("product:") + protoIni);
+    }
+    if (stationBindings_.enableProductSerial) {
+        for (const QString& protoIni : stationBindings_.productProtocols)
+            addTarget(stationTargetUiLabel(QStringLiteral("product_serial:") + protoIni),
+                      QStringLiteral("product_serial:") + protoIni);
+    }
+    if (stationBindings_.enableDongle)
+        addTarget(stationTargetUiLabel(QStringLiteral("dongle")), QStringLiteral("dongle"));
+    if (stationBindings_.enableCloud)
+        addTarget(stationTargetUiLabel(QStringLiteral("cloud")), QStringLiteral("cloud"));
+    for (const QString& fix : stationBindings_.fixtures) {
+        const QString shortName =
+            FixturePcbaCmdCatalog::fixtureProtocolToIni(FixturePcbaCmdCatalog::fixtureProtocolFromIni(fix));
+        addTarget(stationTargetUiLabel(QStringLiteral("fixture:") + shortName),
+                  QStringLiteral("fixture:") + shortName);
+    }
+    for (const QString& mod : stationBindings_.modbusDevices)
+        addTarget(stationTargetUiLabel(QStringLiteral("modbus:") + mod), QStringLiteral("modbus:") + mod);
+    for (const QString& scpi : stationBindings_.scpiDevices)
+        addTarget(stationTargetUiLabel(QStringLiteral("scpi:") + scpi), QStringLiteral("scpi:") + scpi);
+
+    const QString keep = keepTargetKey.trimmed();
+    if (!keep.isEmpty() && comboBox_stationTarget_->findData(keep) < 0)
+        addTarget(stationTargetUiLabel(keep), keep);
+
+    QString want = keep;
+    if (want.isEmpty() && !stationBindings_.defaultTarget.isEmpty())
+        want = stationBindings_.defaultTarget.trimmed();
+    int idx = want.isEmpty() ? -1 : comboBox_stationTarget_->findData(want);
+    if (idx < 0 && keep.isEmpty() && comboBox_stationTarget_->count() > 0)
+        idx = 0;
+    comboBox_stationTarget_->setCurrentIndex(idx >= 0 ? idx : -1);
+}
+
+void TestCaseEditDialog::applyStationTargetToChannelProtocol() {
+    if (!comboBox_stationTarget_)
+        return;
+    TestCaseSendChannel channel = TestCaseSendChannel::Product;
+    QString device;
+    if (!parseStationTargetKey(comboBox_stationTarget_->currentData().toString(), channel, device))
+        return;
+    ui->comboBox_sendChannel->blockSignals(true);
+    ui->comboBox_productProtocol->blockSignals(true);
+    const int channelIdx = comboIndexByData(ui->comboBox_sendChannel, sendChannelComboData(channel));
+    if (channelIdx >= 0)
+        ui->comboBox_sendChannel->setCurrentIndex(channelIdx);
+    fillProtocolComboForChannel(ui->comboBox_productProtocol, channel);
+    if (!device.isEmpty()) {
+        const int protoIdx = comboIndexByData(ui->comboBox_productProtocol, device);
+        if (protoIdx >= 0)
+            ui->comboBox_productProtocol->setCurrentIndex(protoIdx);
+    }
+    ui->comboBox_sendChannel->blockSignals(false);
+    ui->comboBox_productProtocol->blockSignals(false);
+}
+
+void TestCaseEditDialog::onStationTargetChanged(int) {
+    if (!comboBox_stationTarget_ || loadingDefinition_)
+        return;
+    applyStationTargetToChannelProtocol();
+    refreshDeviceCmdCombo();
+}
+
 void TestCaseEditDialog::onSendChannelChanged(int) {
+    if (stationBindings_.configured)
+        return;
     const TestCaseSendChannel channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
     fillProtocolComboForChannel(ui->comboBox_productProtocol, channel);
     updateProductProtocolRowVisible();
@@ -3274,6 +3615,8 @@ void TestCaseEditDialog::onSendChannelChanged(int) {
 }
 
 void TestCaseEditDialog::onProductProtocolChanged(int) {
+    if (stationBindings_.configured)
+        return;
     refreshDeviceCmdCombo();
 }
 
@@ -3283,11 +3626,21 @@ void TestCaseEditDialog::onSendActionChanged(int) {
 
 void TestCaseEditDialog::refreshDeviceCmdCombo() {
     const QString previousCmd = comboData(ui->comboBox_deviceCmd);
-    const TestCaseSendChannel channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
+    TestCaseSendChannel channel = sendChannelFromComboData(comboData(ui->comboBox_sendChannel));
     const TestCaseSendAction action = sendActionFromComboData(comboData(ui->comboBox_action));
-    const QString device = comboData(ui->comboBox_productProtocol);
-    fillDeviceCmdCombo(ui->comboBox_deviceCmd, channel, action, device, previousCmd);
+    QString device = comboData(ui->comboBox_productProtocol);
+    // 绑定模式下以「目标设备」为准，避免隐藏的协议下拉未同步导致指令串设备
+    if (stationBindings_.configured && comboBox_stationTarget_) {
+        TestCaseSendChannel targetCh = channel;
+        QString targetDev;
+        if (parseStationTargetKey(comboBox_stationTarget_->currentData().toString(), targetCh, targetDev)) {
+            channel = targetCh;
+            device = targetDev;
+        }
+    }
+    fillDeviceCmdCombo(ui->comboBox_deviceCmd, channel, action, device, QString());
     int cmdIdx = comboIndexByData(ui->comboBox_deviceCmd, previousCmd);
+    // 上一指令不属于当前设备时落到首项（产品通道为「不发送」）
     if (cmdIdx < 0 && ui->comboBox_deviceCmd->count() > 0)
         cmdIdx = 0;
     if (cmdIdx >= 0)

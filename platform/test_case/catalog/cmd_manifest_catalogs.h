@@ -30,6 +30,14 @@ class VesLightCmdManifestCatalog : public CmdManifestCatalog {
     static CmdManifestRegistry::Policy vesLightPolicy();
 };
 
+class AudioExpertCmdManifestCatalog : public CmdManifestCatalog {
+  public:
+    AudioExpertCmdManifestCatalog();
+
+  private:
+    static CmdManifestRegistry::Policy audioExpertPolicy();
+};
+
 class Asd9026aCmdManifestCatalog : public CmdManifestCatalog {
   public:
     Asd9026aCmdManifestCatalog();

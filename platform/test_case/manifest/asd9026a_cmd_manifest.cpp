@@ -19,7 +19,7 @@ const Row kRows[] = {
      u8"语义：currentRange；通道按工位 index 自动取 1/2；txHex 地址和 CRC 自动改写\r\n"
      u8"例自动档 txHex=02 21 10 0D 00 00 00 00 00 00 00 00 00 04 00 00 00 14 A9",
      kSet},
-    {Asd9026aCmd::ProgrammablePowerOutput, "ProgrammablePowerOutput", u8"输出开关", DeviceCmdParamKind::JsonMap,
+    {Asd9026aCmd::ProgrammablePowerOutput, "ProgrammablePowerOutput", u8"模拟电池输出开关", DeviceCmdParamKind::JsonMap,
      u8"语义：enable=0|1；通道按工位 index 自动取 1/2；txHex 地址和 CRC 自动改写\r\n"
      u8"模板开：02 11 04 03 01 00 00 9B C5；关：02 11 04 03 00 00 00 CA 05",
      kSet},

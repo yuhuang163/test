@@ -1,0 +1,52 @@
+---
+description: 禁止 perl/PowerShell 整文件重写换行；防止中文源文件与 EFS 目录被弄成乱码
+alwaysApply: true
+---
+
+# UTF-8 / CRLF 安全（禁止弄坏文件）
+
+## 已确认会弄坏文件的操作（本仓库实测，视为百分百禁止）
+
+1. **`perl -pi` / `perl -i` 原地改写**（含 `perl -pi -e 's/\r?\n/\r\n/g' <文件>`）
+   - Windows 上对含中文的 UTF-8 `.cpp` / `.h` 等会打成二进制乱码。
+   - 2026-10：`scpi_cmd_manifest.cpp`、`cmd_manifest_catalogs.cpp` 因此损坏。
+   - **禁止再使用**，即使旧文档曾写「python 不可用时用 perl」。
+
+2. **PowerShell / .NET 整文件读写重写换行或编码**
+   - **禁止**：`[IO.File]::ReadAllText` / `ReadAllBytes` + `WriteAllText` / `WriteAllBytes` 整文件重写；
+   - **禁止**：`Get-Content` + `Set-Content` / `Out-File` 整文件覆盖源码；
+   - **禁止**：`$t -replace "`r`n","`n"` 一类整文件换行脚本。
+   - 本机部分目录为 **EFS 加密**时，上述读写会读到密文或写出不可读内容（看起来像乱码）。
+   - 2026-10：`test_case_edit_dialog.cpp`、`dongle_cmd_manifest.cpp`、`asd9026a_cmd_manifest.cpp` 因此再次损坏。
+   - **以后杜绝**，不要再当「perl 的替代方案」。
+
+3. **对同一文件并发跑多个换行/编码脚本**（多 Shell 同时 convert / perl / PowerShell）
+   - 与编辑器/Write 竞态，半写入或二次损坏。
+
+4. **批量全仓转编码/换行**（无路径参数扫全仓库）
+   - 极易误伤第三方与中文文件。
+
+5. **在已确认乱码/密文的文件上继续编辑或叠跑转换**
+   - 先 `git checkout -- <路径>`（或明文副本）恢复，再改内容。
+
+## 正确做法（按优先级）
+
+1. **改内容**：只用 Cursor **Write / StrReplace**（或等价编辑器），不要用 Shell 整文件覆盖源码。
+2. **转 CRLF（可选）**：仅当需要时对**本次改动的单个文件**执行  
+   `py -3 scripts/convert_to_crlf.py <路径>`（或可用的 `python`）。  
+   - `new_production.pro`：同脚本，目标为 **LF**。  
+   - 无参数不要批量扫仓。
+3. **`python` / `py` 不可用**（Store 占位、退出码 49）：  
+   - **跳过**换行转换，保留 Write/StrReplace 的结果；  
+   - **不要**改用 perl，**不要**改用 PowerShell 整文件重写。
+4. **写完自检**：Read 文件头应是可读 `#include` / 中文；若乱码 → 立刻 `git checkout -- <路径>`，禁止再跑转换叠写。
+5. **疑似 EFS**：`cipher /c <目录>`；需明文时对该目录 `cipher /d` 后再恢复/编辑（不要对全盘盲目解密）。
+
+## 写文件后检查清单
+
+- [ ] 未使用 `perl -pi` / `perl -i`
+- [ ] 未使用 PowerShell/`[IO.File]::ReadAllText`+`WriteAllText` 整文件重写
+- [ ] 未对同一文件并发转换
+- [ ] 需要 CRLF 时只用 `py -3 scripts/convert_to_crlf.py <单文件>`；不可用则跳过
+- [ ] Read 抽查中文 `u8"..."` / 注释仍正常
+- [ ] 损坏时先 `git checkout` 恢复，再改内容

@@ -1324,6 +1324,26 @@ bool QFreeWork::isBydFactory() const {
     return pack.factory.trimmed().compare(QStringLiteral("byd"), Qt::CaseInsensitive) == 0;
 }
 
+bool QFreeWork::stationFlowUsesBydSerializableComplete() const {
+    QString stationKey = activeFlowStationKey_.trimmed();
+    if (stationKey.isEmpty())
+        stationKey = TestCaseStore::resolveActiveFlowStationKey();
+    if (stationKey.isEmpty())
+        return false;
+    const QVector<TestFlowItemEntry> items = TestCaseStore::loadStationFlowItems(stationKey);
+    for (const TestFlowItemEntry& item : items) {
+        if (!item.enabled)
+            continue;
+        TestCaseDefinition def;
+        if (!TestCaseStore::loadCaseForStation(stationKey, item.caseName, def))
+            continue;
+        if (def.hook.enabled
+            && def.hook.hookId.compare(QStringLiteral("BYD_MES_SERIALIZABLE_COMPLETE"), Qt::CaseInsensitive) == 0)
+            return true;
+    }
+    return false;
+}
+
 namespace {
 
 QString formatMacFrom12Hex(const QString& macRawUpper) {
@@ -1432,10 +1452,13 @@ void QFreeWork::runTestFlowBootstrap() {
 
     const QString sn = ui->getMac->text().trimmed();
     const QString mac = ui->macInput->text().trimmed();
-    // initData 会清成员；开局过程码须跨 init 保留，供 BYD Complete/SFC 使用
+    // initData 会清成员；开局过程码 / MES 主板 SN 须跨 init 保留
     const QString processCode = !mesProcessCode_.isEmpty() ? mesProcessCode_ : sn;
-    if (!sn.isEmpty() || !mac.isEmpty()) {
-        onTestSessionStarting(sn, mac);
+    const QString boardSnKeep = mesBoardSn_.trimmed();
+    // 会话日志 sn= 优先主板 SN（过站 SFC 仍用 mesProcessCode_）
+    const QString snForSession = !boardSnKeep.isEmpty() ? boardSnKeep : sn;
+    if (!snForSession.isEmpty() || !mac.isEmpty()) {
+        onTestSessionStarting(snForSession, mac);
     }
     showlog(QStringLiteral("开始测试"));
     // 只清本工位 waitKey + 上一轮「近期完成」缓存；不打断对端已在等的同步会话
@@ -1449,9 +1472,13 @@ void QFreeWork::runTestFlowBootstrap() {
     refreshOrderedTestIndexes();
     initData();
     mesProcessCode_ = processCode.trimmed();
+    mesBoardSn_ = boardSnKeep;
     if (!mesProcessCode_.isEmpty()) {
         pack.sn = mesProcessCode_;
         showlog(QStringLiteral("MES 过站过程码已锁定：%1").arg(mesProcessCode_));
+    }
+    if (!mesBoardSn_.isEmpty()) {
+        showlog(QStringLiteral("MES 主板 SN（会话日志）：%1").arg(mesBoardSn_));
     }
     singleStepDebugRun_ = false;
     suppressProductBleAutoReconnect_ = false;
@@ -1802,6 +1829,10 @@ void QFreeWork::finalizeTestFlowIfComplete() {
     pack.mac = ui->macInput->text().trimmed();
     pack.product = SETTINGS.value("Mes/Product_Name").toString();
     pack.instruct_num = QStringLiteral("079");
+    // 流程含 BYD_MES_SERIALIZABLE_COMPLETE 时，PASS 收尾走 OSFC↔NSFC 序列化过站
+    pack.useBydSerializableComplete = stationFlowUsesBydSerializableComplete();
+    if (pack.useBydSerializableComplete)
+        showlog(QStringLiteral("MES：本工站已配置序列化过站（SerializableStartCollectComplete）"));
     // 测试总时长（毫秒）随云端上报，供网页详情顶部展示
     pack.totalTimeMs = static_cast<double>(TestTime.elapsed());
     if (TestResult == failValue) {
@@ -2602,8 +2633,10 @@ void QFreeWork::saveSuctionCurveImageForUpload() {
 
     const QString dir = QDir(QCoreApplication::applicationDirPath()).filePath(QStringLiteral("suction_chart"));
     QDir().mkpath(dir);
-    const QString stamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss"));
-    const QString curvePath = dir + QLatin1Char('/') + stamp + QStringLiteral("_suction_curve.jpg");
+    // 文件名带工位号：一拖多四工位同秒收尾时避免互相覆盖同一张 jpg
+    const QString stamp = QDateTime::currentDateTime().toString(QStringLiteral("yyyyMMdd_HHmmss_zzz"));
+    const QString curvePath = dir + QLatin1Char('/') + stamp + QStringLiteral("_s") + QString::number(getIndex())
+                              + QStringLiteral("_suction_curve.jpg");
 
     // 生成高清晰度（1000x450）吸力曲线并存为 JPEG，注册到云端上报清单
     QPixmap pix = suctionPlot_->toPixmap(1000, 450, 1.0);
@@ -2850,9 +2883,13 @@ void QFreeWork::runLedInspectStep() {
 
     const int cameraIndex = mapInt(QStringLiteral("cameraIndex"), 0);
     const QString cameraName = map.value(QStringLiteral("cameraName")).toString().trimmed();
-    // 自由工站默认 GigE；Param_cameraSource=usb 时仍走 USB 摄像头
+    // 以治具协议为准：USB摄像头 / GigE工业摄像头；旧 Param_cameraSource 仅作覆盖
     const QString cameraSource = map.value(QStringLiteral("cameraSource")).toString().trimmed().toLower();
-    const bool useUsb = (cameraSource == QLatin1String("usb"));
+    bool useUsb = (activeTestCase_.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera);
+    if (cameraSource == QLatin1String("usb"))
+        useUsb = true;
+    else if (cameraSource == QLatin1String("gige"))
+        useUsb = false;
     QString cameraIp = map.value(QStringLiteral("cameraIp")).toString().trimmed();
     if (cameraIp.isEmpty())
         cameraIp = map.value(QStringLiteral("gigeIp")).toString().trimmed();
@@ -3186,9 +3223,13 @@ void QFreeWork::runScreenInspectStep() {
 
     const int cameraIndex = mapInt(QStringLiteral("cameraIndex"), 0);
     const QString cameraName = map.value(QStringLiteral("cameraName")).toString().trimmed();
-    // 自由工站默认 GigE；Param_cameraSource=usb 时仍走 USB 摄像头
+    // 以治具协议为准；旧 Param_cameraSource 仅作覆盖
     const QString cameraSource = map.value(QStringLiteral("cameraSource")).toString().trimmed().toLower();
-    const bool useUsb = (cameraSource == QLatin1String("usb"));
+    bool useUsb = (activeTestCase_.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera);
+    if (cameraSource == QLatin1String("usb"))
+        useUsb = true;
+    else if (cameraSource == QLatin1String("gige"))
+        useUsb = false;
     QString cameraIp = map.value(QStringLiteral("cameraIp")).toString().trimmed();
     if (cameraIp.isEmpty())
         cameraIp = map.value(QStringLiteral("gigeIp")).toString().trimmed();
@@ -3472,7 +3513,8 @@ void QFreeWork::runScreenInspectStep() {
         forSave(report.annotated).save(dir + QStringLiteral("/last_mark.jpg"), "JPG", 85);
     if (!refMarked.isNull())
         forSave(refMarked).save(dir + QStringLiteral("/last_reference.jpg"), "JPG", 85);
-    // 步内不清理：同一次多色的 capture/mark 要留到收尾上传；整轮结束/停止测试时再 cleanupStoredImages
+    // 步内不清理：同一次多色的 capture/mark 要留到收尾；收尾 pinSessionUploadArtifacts 会先复制到
+    // 所有log/屏幕检测 再打包，避免失败人工确认弹窗后 cleanup 删源文件导致日志包缺图
     const qint64 msSave = phaseT.elapsed();
     if (!uploadImagePaths.isEmpty())
         Qlog::addScreenInspectImageFiles(getIndex(), uploadImagePaths);
@@ -3703,6 +3745,7 @@ void QFreeWork::initData(bool deferDongleAtForVisa) {
     transitionCode_.clear();
     newSfc_.clear();
     mesProcessCode_.clear();
+    mesBoardSn_.clear();
     hasBowlEmptyCapCache_ = false;
     hasBowlFullCapCache_ = false;
     bowlEmptyCapCh0_ = bowlEmptyCapCh1_ = bowlEmptyCapCh2_ = 0;
@@ -4195,11 +4238,12 @@ void QFreeWork::getTestValue(const int mechines, const QString value) {
             showlog(value);
             return;
         }
+        mesBoardSn_ = snFromMes;
         if (ui && ui->getMac)
             ui->getMac->setText(snFromMes);
         ui->macInput->setText(mesmacAddress);
         showlog(QStringLiteral("MES 主板 SN=%1，已解析 MAC=%2（已回填界面 SN；过站仍用过程码）")
-                    .arg(snFromMes, mesmacAddress));
+                    .arg(mesBoardSn_, mesmacAddress));
         on_macInput_returnPressed();
     } else {
         if (mechines == getIndex()) {
@@ -4342,6 +4386,7 @@ void QFreeWork::on_stopTest_clicked() {
     ui->macInput->clear();
     ui->getMac->clear();
     mesProcessCode_.clear();
+    mesBoardSn_.clear();
     ui->test_result->setText(QStringLiteral("WAIT\n等待开始测试"));
     applyStatusCardStyle(ui->test_result, QStringLiteral("idle"));
     if (ui->isformmes->isChecked()) {

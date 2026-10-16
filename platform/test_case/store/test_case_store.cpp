@@ -878,6 +878,7 @@ bool isMultiFieldGateReportType(const QString& reportType) {
         || reportType == QLatin1String("ProtocolJieliBtBoxData")
         || reportType == QLatin1String("ProtocolScreenInspectData")
         || reportType == QLatin1String("ProtocolLedInspectData")
+        || reportType == QLatin1String("ProtocolAudioExpertData")
         || reportType == QLatin1String("ProtocolPeriphStateData");
 }
 
@@ -947,19 +948,23 @@ void applySendChannelIniText(const QString& channelIni, TestCaseDefinition& def)
         def.send.channel = TestCaseSendChannel::Product;
     } else if (channelIni.compare(QStringLiteral("Fixture"), Qt::CaseInsensitive) == 0) {
         def.send.channel = TestCaseSendChannel::Fixture;
+    } else if (channelIni.compare(QStringLiteral("Software"), Qt::CaseInsensitive) == 0
+               || channelIni.compare(QStringLiteral("软件通信"), Qt::CaseInsensitive) == 0) {
+        def.send.channel = TestCaseSendChannel::Software;
+        def.send.fixtureProtocol = TestCaseFixtureProtocol::AudioExpert;
     } else if (channelIni.compare(QStringLiteral("Modbus"), Qt::CaseInsensitive) == 0) {
         def.send.channel = TestCaseSendChannel::Modbus;
     } else if (channelIni.compare(QStringLiteral("Scpi"), Qt::CaseInsensitive) == 0) {
         def.send.channel = TestCaseSendChannel::Scpi;
     } else if (channelIni.compare(QStringLiteral("UsbCamera"), Qt::CaseInsensitive) == 0) {
-        // 兼容旧 Channel=UsbCamera：并入治具通信
+        // 兼容旧 Channel=UsbCamera：并入治具通信（历史默认 GigE）
         def.send.channel = TestCaseSendChannel::Fixture;
-        def.send.fixtureProtocol = TestCaseFixtureProtocol::UsbCamera;
+        def.send.fixtureProtocol = TestCaseFixtureProtocol::GigECamera;
     }
 }
 
 void applySendProtocolIniText(const QString& protocolIni, TestCaseDefinition& def) {
-    if (def.send.channel == TestCaseSendChannel::Fixture)
+    if (def.send.channel == TestCaseSendChannel::Fixture || def.send.channel == TestCaseSendChannel::Software)
         def.send.fixtureProtocol = FixturePcbaCmdCatalog::fixtureProtocolFromIni(protocolIni);
     else
         def.send.productProtocol = DeviceCmdCatalog::productProtocolFromIni(protocolIni);
@@ -1085,15 +1090,24 @@ bool loadCaseDefinitionFromIniFile(const QString& iniPath, const QString& stepId
         out.send.channel = TestCaseSendChannel::Product;
     } else if (channelIni.compare(QStringLiteral("Fixture"), Qt::CaseInsensitive) == 0) {
         out.send.channel = TestCaseSendChannel::Fixture;
+    } else if (channelIni.compare(QStringLiteral("Software"), Qt::CaseInsensitive) == 0
+               || channelIni.compare(QStringLiteral("软件通信"), Qt::CaseInsensitive) == 0) {
+        out.send.channel = TestCaseSendChannel::Software;
+        out.send.fixtureProtocol = TestCaseFixtureProtocol::AudioExpert;
     } else if (channelIni.compare(QStringLiteral("Modbus"), Qt::CaseInsensitive) == 0) {
         out.send.channel = TestCaseSendChannel::Modbus;
     } else if (channelIni.compare(QStringLiteral("Scpi"), Qt::CaseInsensitive) == 0) {
         out.send.channel = TestCaseSendChannel::Scpi;
     } else if (channelIni.compare(QStringLiteral("UsbCamera"), Qt::CaseInsensitive) == 0) {
         out.send.channel = TestCaseSendChannel::Fixture;
-        out.send.fixtureProtocol = TestCaseFixtureProtocol::UsbCamera;
+        out.send.fixtureProtocol = TestCaseFixtureProtocol::GigECamera;
     } else {
         TestCaseSendDispatch::inferChannelFromDeviceCmd(out.send.deviceCmd, out.send.channel, out.send.fixtureProtocol);
+    }
+    // 旧：治具+AudioExpert → 软件通信
+    if (out.send.channel == TestCaseSendChannel::Fixture
+        && out.send.fixtureProtocol == TestCaseFixtureProtocol::AudioExpert) {
+        out.send.channel = TestCaseSendChannel::Software;
     }
     TestCaseSendDispatch::normalizeLegacyUsbCameraSend(out.send);
     TestCaseSendDispatch::loadSendParamFromIni(ini, out.send, true);
@@ -1355,7 +1369,7 @@ void applyCaseIniOverlay(QSettings& overlay, TestCaseDefinition& def) {
             } else if (def.send.channel == TestCaseSendChannel::Product
                        || def.send.channel == TestCaseSendChannel::ProductSerial
                        || (def.send.channel == TestCaseSendChannel::Fixture
-                           && (def.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera
+                           && (FixturePcbaCmdCatalog::isScreenCameraFixture(def.send.fixtureProtocol)
                                || def.send.fixtureProtocol == TestCaseFixtureProtocol::VesLight))) {
                 // 编辑/存档侧保持 JsonMap；DeviceCmdManifest::normalizeSendParam（如 Sn→DeviceSnPayload）仅在下发时做
                 QVariantMap merged;
@@ -1796,6 +1810,8 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
         channelStr = QStringLiteral("ProductSerial");
     else if (def.send.channel == TestCaseSendChannel::Fixture)
         channelStr = QStringLiteral("Fixture");
+    else if (def.send.channel == TestCaseSendChannel::Software)
+        channelStr = QStringLiteral("Software");
     else if (def.send.channel == TestCaseSendChannel::Modbus)
         channelStr = QStringLiteral("Modbus");
     else if (def.send.channel == TestCaseSendChannel::Scpi)
@@ -1803,7 +1819,12 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
     ini.setValue(QStringLiteral("Send/Channel"), channelStr);
     if (def.send.channel == TestCaseSendChannel::Product || def.send.channel == TestCaseSendChannel::ProductSerial)
         ini.setValue(QStringLiteral("Send/Protocol"), DeviceCmdCatalog::productProtocolToIni(def.send.productProtocol));
-    else if (def.send.channel == TestCaseSendChannel::Fixture) {
+    else if (def.send.channel == TestCaseSendChannel::Software) {
+        ini.setValue(QStringLiteral("Send/Protocol"),
+                     FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::AudioExpert));
+        ini.setValue(QStringLiteral("Send/Device"),
+                     def.send.device.isEmpty() ? QStringLiteral("AUDIO_EXPERT") : def.send.device);
+    } else if (def.send.channel == TestCaseSendChannel::Fixture) {
         ini.setValue(QStringLiteral("Send/Protocol"), FixturePcbaCmdCatalog::fixtureProtocolToIni(def.send.fixtureProtocol));
         if (def.send.fixtureProtocol == TestCaseFixtureProtocol::Asd9026a) {
             ini.setValue(QStringLiteral("Send/Device"),
@@ -1816,7 +1837,10 @@ bool writeCaseIniFile(const QString& path, const TestCaseDefinition& def, bool p
                          def.send.device.isEmpty() ? QStringLiteral("JIELI_BT_BOX") : def.send.device);
         } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera) {
             ini.setValue(QStringLiteral("Send/Device"),
-                         def.send.device.isEmpty() ? QStringLiteral("USB_CAMERA") : def.send.device);
+                         def.send.device.isEmpty() ? QStringLiteral("USB_WEBCAM") : def.send.device);
+        } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::GigECamera) {
+            ini.setValue(QStringLiteral("Send/Device"),
+                         def.send.device.isEmpty() ? QStringLiteral("GIGE_CAMERA") : def.send.device);
         } else if (def.send.fixtureProtocol == TestCaseFixtureProtocol::VesLight) {
             ini.setValue(QStringLiteral("Send/Device"),
                          def.send.device.isEmpty() ? QStringLiteral("VES") : def.send.device);
@@ -2306,6 +2330,297 @@ bool TestCaseStore::saveStationSerialUiConfig(const QString& stationKey, const T
     profileIni.setValue(QStringLiteral("PlcFixtureMenuLabel"), config.plcFixtureMenuLabel);
     profileIni.setValue(QStringLiteral("PlcFixtureBaudRate"),
                         config.plcFixtureBaudRate > 0 ? config.plcFixtureBaudRate : 9600);
+    profileIni.endGroup();
+    syncTestCaseIni(profileIni, profileFlow);
+    return true;
+}
+
+static QStringList splitStationBindingList(const QString& text) {
+    QStringList out;
+    const QStringList parts = text.split(QLatin1Char(','), Qt::SkipEmptyParts);
+    for (QString p : parts) {
+        p = p.trimmed();
+        if (!p.isEmpty() && !out.contains(p))
+            out.append(p);
+    }
+    return out;
+}
+
+static void appendUniqueBindingToken(QStringList& list, const QString& token) {
+    const QString t = token.trimmed();
+    if (!t.isEmpty() && !list.contains(t))
+        list.append(t);
+}
+
+TestCaseStationBindings TestCaseStore::inferStationBindingsDefaults(const QString& stationDisplayName) {
+    TestCaseStationBindings out;
+    out.configured = false;
+    out.enableProduct = true;
+    out.enableDongle = true;
+    out.enableCloud = true;
+    out.enableProductSerial = false;
+    const QString n = stationDisplayName.trimmed();
+
+    auto addProductProto = [&out](TestCaseProductProtocol protocol) {
+        appendUniqueBindingToken(out.productProtocols, DeviceCmdCatalog::productProtocolToIni(protocol));
+    };
+
+    if (n.contains(QStringLiteral("Air1"), Qt::CaseInsensitive)
+        || n.contains(QStringLiteral("AIR1"), Qt::CaseInsensitive)
+        || n.contains(QStringLiteral("Smart"), Qt::CaseInsensitive)) {
+        addProductProto(TestCaseProductProtocol::Qroot2);
+        addProductProto(TestCaseProductProtocol::Qroot);
+        addProductProto(TestCaseProductProtocol::Qfctp);
+    } else if (n.contains(QStringLiteral("M8"), Qt::CaseInsensitive)
+               || n.contains(QStringLiteral("M5"), Qt::CaseInsensitive)) {
+        addProductProto(TestCaseProductProtocol::Qroot);
+        addProductProto(TestCaseProductProtocol::Qfctp);
+        if (n.contains(QStringLiteral("吸"), Qt::CaseInsensitive))
+            appendUniqueBindingToken(out.fixtures,
+                                     FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::Xwd));
+    } else if (n.contains(QStringLiteral("Wellness"), Qt::CaseInsensitive)
+               || n.contains(QStringLiteral("W1"), Qt::CaseInsensitive)) {
+        addProductProto(TestCaseProductProtocol::Qroot);
+        addProductProto(TestCaseProductProtocol::Qfctp);
+        appendUniqueBindingToken(out.scpiDevices,
+                                 ScpiPeriphCmdCatalog::deviceToIni(ScpiDeviceRoute::Agilent66319d));
+        appendUniqueBindingToken(out.modbusDevices,
+                                 ModbusDeviceCatalog::deviceRouteToIni(ModbusDeviceRoute::XinjiePlcRtu));
+    } else if (n.contains(QStringLiteral("V3"), Qt::CaseInsensitive)) {
+        addProductProto(TestCaseProductProtocol::Qfctp);
+        appendUniqueBindingToken(out.fixtures,
+                                 FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::VesLight));
+    } else {
+        addProductProto(TestCaseProductProtocol::Qfctp);
+    }
+
+    if (!out.productProtocols.isEmpty())
+        out.defaultTarget = QStringLiteral("product:") + out.productProtocols.constFirst();
+    return out;
+}
+
+static bool stationBindingsHasCapabilities(const TestCaseStationBindings& b) {
+    return b.enableDongle || b.enableCloud || b.enableProduct || b.enableProductSerial
+        || !b.productProtocols.isEmpty() || !b.fixtures.isEmpty() || !b.modbusDevices.isEmpty()
+        || !b.scpiDevices.isEmpty();
+}
+
+TestCaseStationBindings TestCaseStore::inferStationBindingsFromFlowSteps(const QString& stationKey) {
+    TestCaseStationBindings out;
+    out.configured = false;
+    out.enableProduct = false;
+    out.enableProductSerial = false;
+    out.enableDongle = false;
+    out.enableCloud = false;
+
+    const QString key = stationKey.trimmed();
+    if (key.isEmpty())
+        return out;
+
+    QVector<TestFlowItemEntry> entries = loadStationFlowItems(key);
+    const QVector<TestFlowItemEntry> failEntries = loadStationFailFlowItems(key);
+    for (const TestFlowItemEntry& e : failEntries) {
+        bool exists = false;
+        for (const TestFlowItemEntry& m : entries) {
+            if (m.caseName == e.caseName) {
+                exists = true;
+                break;
+            }
+        }
+        if (!exists)
+            entries.append(e);
+    }
+
+    QString firstProductTarget;
+    QString firstAnyTarget;
+    for (const TestFlowItemEntry& entry : entries) {
+        if (entry.caseName.trimmed().isEmpty())
+            continue;
+        TestCaseDefinition def;
+        if (!loadCaseForStation(key, entry.caseName, def, nullptr))
+            continue;
+
+        switch (def.send.channel) {
+        case TestCaseSendChannel::Product: {
+            out.enableProduct = true;
+            const QString proto = DeviceCmdCatalog::productProtocolToIni(def.send.productProtocol);
+            appendUniqueBindingToken(out.productProtocols, proto);
+            if (firstProductTarget.isEmpty())
+                firstProductTarget = QStringLiteral("product:") + proto;
+            if (firstAnyTarget.isEmpty())
+                firstAnyTarget = firstProductTarget;
+            break;
+        }
+        case TestCaseSendChannel::ProductSerial: {
+            out.enableProductSerial = true;
+            const QString proto = DeviceCmdCatalog::productProtocolToIni(def.send.productProtocol);
+            appendUniqueBindingToken(out.productProtocols, proto);
+            if (firstAnyTarget.isEmpty())
+                firstAnyTarget = QStringLiteral("product_serial:") + proto;
+            break;
+        }
+        case TestCaseSendChannel::Dongle:
+            out.enableDongle = true;
+            if (firstAnyTarget.isEmpty())
+                firstAnyTarget = QStringLiteral("dongle");
+            break;
+        case TestCaseSendChannel::Cloud:
+            out.enableCloud = true;
+            if (firstAnyTarget.isEmpty())
+                firstAnyTarget = QStringLiteral("cloud");
+            break;
+        case TestCaseSendChannel::Fixture: {
+            const QString fix = FixturePcbaCmdCatalog::fixtureProtocolToIni(def.send.fixtureProtocol);
+            appendUniqueBindingToken(out.fixtures, fix);
+            if (firstAnyTarget.isEmpty())
+                firstAnyTarget = QStringLiteral("fixture:") + fix;
+            break;
+        }
+        case TestCaseSendChannel::Modbus: {
+            const QString dev = def.send.device.trimmed();
+            if (!dev.isEmpty()) {
+                appendUniqueBindingToken(out.modbusDevices, dev);
+                if (firstAnyTarget.isEmpty())
+                    firstAnyTarget = QStringLiteral("modbus:") + dev;
+            }
+            break;
+        }
+        case TestCaseSendChannel::Scpi: {
+            const QString dev = def.send.device.trimmed();
+            if (!dev.isEmpty()) {
+                appendUniqueBindingToken(out.scpiDevices, dev);
+                if (firstAnyTarget.isEmpty())
+                    firstAnyTarget = QStringLiteral("scpi:") + dev;
+            }
+            break;
+        }
+        }
+    }
+
+    if (!firstProductTarget.isEmpty())
+        out.defaultTarget = firstProductTarget;
+    else
+        out.defaultTarget = firstAnyTarget;
+    return out;
+}
+
+TestCaseStationBindings TestCaseStore::loadStationBindings(const QString& stationKey) {
+    const QString key = stationKey.trimmed().isEmpty() ? resolveActiveFlowStationKey() : stationKey.trimmed();
+    TestCaseStationBindings nameDefaults = inferStationBindingsDefaults(flowStationDisplayName(key));
+    if (key.isEmpty())
+        return nameDefaults;
+
+    TestCasePaths::ensureRootDir();
+    ensureFilesystemLayout();
+    const QString profileFlow = TestCasePaths::profileFlowPath(key);
+
+    auto tryAutoBindFromSteps = [key]() -> TestCaseStationBindings {
+        TestCaseStationBindings fromSteps = inferStationBindingsFromFlowSteps(key);
+        if (!stationBindingsHasCapabilities(fromSteps))
+            return {};
+        // 产线存量工站：按现有步骤自动落盘，免手工逐站重绑
+        fromSteps.configured = true;
+        saveStationBindings(key, fromSteps);
+        fromSteps.configured = true;
+        return fromSteps;
+    };
+
+    if (!QFile::exists(profileFlow)) {
+        TestCaseStationBindings migrated = tryAutoBindFromSteps();
+        if (stationBindingsHasCapabilities(migrated))
+            return migrated;
+        return nameDefaults;
+    }
+
+    QSettings profileIni(profileFlow, QSettings::IniFormat);
+    applyTestCaseIniCodec(profileIni);
+    profileIni.beginGroup(QStringLiteral("StationBindings"));
+    const bool hasConfiguredKey = profileIni.contains(QStringLiteral("Configured"));
+    const bool hasLegacyOrData =
+        profileIni.contains(QStringLiteral("ProductProtocols"))
+        || profileIni.contains(QStringLiteral("ProductProtocol"))
+        || profileIni.contains(QStringLiteral("Fixtures")) || profileIni.contains(QStringLiteral("ScpiDevices"))
+        || profileIni.contains(QStringLiteral("ModbusDevices")) || profileIni.contains(QStringLiteral("DefaultTarget"))
+        || profileIni.contains(QStringLiteral("EnableProduct")) || profileIni.contains(QStringLiteral("EnableDongle"));
+    if (!hasConfiguredKey && !hasLegacyOrData) {
+        profileIni.endGroup();
+        TestCaseStationBindings migrated = tryAutoBindFromSteps();
+        if (stationBindingsHasCapabilities(migrated))
+            return migrated;
+        return nameDefaults;
+    }
+
+    TestCaseStationBindings out = nameDefaults;
+    out.configured = profileIni.value(QStringLiteral("Configured"), false).toBool();
+    if (profileIni.contains(QStringLiteral("ProductProtocols")))
+        out.productProtocols = splitStationBindingList(profileIni.value(QStringLiteral("ProductProtocols")).toString());
+    else if (profileIni.contains(QStringLiteral("ProductProtocol")))
+        out.productProtocols =
+            splitStationBindingList(profileIni.value(QStringLiteral("ProductProtocol")).toString());
+    out.enableProduct = profileIni.value(QStringLiteral("EnableProduct"), out.enableProduct).toBool();
+    out.enableProductSerial =
+        profileIni.value(QStringLiteral("EnableProductSerial"), out.enableProductSerial).toBool();
+    out.enableDongle = profileIni.value(QStringLiteral("EnableDongle"), out.enableDongle).toBool();
+    out.enableCloud = profileIni.value(QStringLiteral("EnableCloud"), out.enableCloud).toBool();
+    out.fixtures = splitStationBindingList(profileIni.value(QStringLiteral("Fixtures")).toString());
+    // 旧 Fixtures=USB_CAMERA 表示合一设备（默认 GigE）→ 归一为 GIGE_CAMERA
+    for (QString& fix : out.fixtures) {
+        if (fix.compare(QStringLiteral("USB_CAMERA"), Qt::CaseInsensitive) == 0
+            || fix.compare(QStringLiteral("UsbCamera"), Qt::CaseInsensitive) == 0) {
+            fix = FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::GigECamera);
+        }
+    }
+    out.modbusDevices = splitStationBindingList(profileIni.value(QStringLiteral("ModbusDevices")).toString());
+    out.scpiDevices = splitStationBindingList(profileIni.value(QStringLiteral("ScpiDevices")).toString());
+    out.defaultTarget = profileIni.value(QStringLiteral("DefaultTarget")).toString().trimmed();
+    if (out.defaultTarget.compare(QStringLiteral("fixture:USB_CAMERA"), Qt::CaseInsensitive) == 0
+        || out.defaultTarget.compare(QStringLiteral("fixture:UsbCamera"), Qt::CaseInsensitive) == 0) {
+        out.defaultTarget = QStringLiteral("fixture:")
+            + FixturePcbaCmdCatalog::fixtureProtocolToIni(TestCaseFixtureProtocol::GigECamera);
+    }
+    profileIni.endGroup();
+
+    // 未确认绑定或内容空洞：用步骤扫描补齐并落盘（工程师已手改且 Configured=true 则不覆盖）
+    if (!out.configured || !stationBindingsHasCapabilities(out)) {
+        TestCaseStationBindings migrated = tryAutoBindFromSteps();
+        if (stationBindingsHasCapabilities(migrated))
+            return migrated;
+    }
+
+    if (out.productProtocols.isEmpty() && out.configured)
+        out.productProtocols = nameDefaults.productProtocols;
+    if (out.defaultTarget.isEmpty() && !out.productProtocols.isEmpty())
+        out.defaultTarget = QStringLiteral("product:") + out.productProtocols.constFirst();
+    return out;
+}
+
+bool TestCaseStore::saveStationBindings(const QString& stationKey, const TestCaseStationBindings& config) {
+    TestCasePaths::ensureRootDir();
+    const QString key = stationKey.trimmed().isEmpty() ? resolveActiveFlowStationKey() : stationKey.trimmed();
+    if (key.isEmpty())
+        return false;
+    ensureProfileDirectory(key, flowStationDisplayName(key), QString());
+
+    TestCaseStationBindings toSave = config;
+    toSave.configured = true;
+    if (toSave.defaultTarget.trimmed().isEmpty() && !toSave.productProtocols.isEmpty())
+        toSave.defaultTarget = QStringLiteral("product:") + toSave.productProtocols.constFirst();
+
+    const QString profileFlow = TestCasePaths::profileFlowPath(key);
+    QSettings profileIni(profileFlow, QSettings::IniFormat);
+    applyTestCaseIniCodec(profileIni);
+    profileIni.beginGroup(QStringLiteral("StationBindings"));
+    profileIni.setValue(QStringLiteral("Configured"), true);
+    profileIni.setValue(QStringLiteral("ProductProtocols"), toSave.productProtocols.join(QLatin1Char(',')));
+    profileIni.setValue(QStringLiteral("EnableProduct"), toSave.enableProduct);
+    profileIni.setValue(QStringLiteral("EnableProductSerial"), toSave.enableProductSerial);
+    profileIni.setValue(QStringLiteral("EnableDongle"), toSave.enableDongle);
+    profileIni.setValue(QStringLiteral("EnableCloud"), toSave.enableCloud);
+    profileIni.setValue(QStringLiteral("Fixtures"), toSave.fixtures.join(QLatin1Char(',')));
+    profileIni.setValue(QStringLiteral("ModbusDevices"), toSave.modbusDevices.join(QLatin1Char(',')));
+    profileIni.setValue(QStringLiteral("ScpiDevices"), toSave.scpiDevices.join(QLatin1Char(',')));
+    profileIni.setValue(QStringLiteral("DefaultTarget"), toSave.defaultTarget.trimmed());
+    profileIni.remove(QStringLiteral("ProductProtocol"));
     profileIni.endGroup();
     syncTestCaseIni(profileIni, profileFlow);
     return true;

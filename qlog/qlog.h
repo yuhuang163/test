@@ -139,8 +139,8 @@ class Qlog {
     static void setSuctionSamples(int slot, const QVector<double>& timeSec, const QVector<double>& ch1,
                                   const QVector<double>& ch2, const QVector<double>& ch3);
     /**
-     * 测完收尾立刻调用：把本工位吸力采样/曲线钉到「待上传」区，避免下一轮 initData 清空后
-     * 异步 LogUpload 取不到，平台会话包缺吸力 CSV/曲线。
+     * 测完收尾立刻调用：把本工位吸力采样/曲线/屏幕检测图钉到「待上传」区，避免下一轮 initData
+     * 或 cleanupStoredImages 清掉后异步 LogUpload 取不到（失败弹窗拉长收尾时尤甚）。
      */
     static void pinSessionUploadArtifacts(int slot);
     /** 导出本轮吸力采样 CSV（列同主窗口吸力页），无采样数据时返回空且不置 error */
@@ -151,12 +151,12 @@ class Qlog {
     /** 复制到 所有log/吸力CSV/ 并返回相对路径列表；无文件时返回空且不置 error */
     static QStringList exportSuctionExtraFiles(const QlogSessionInfo& info, QString* error);
 
-    /** 吸力曲线图片：非空时先复制到 所有log/吸力曲线/ 再登记绝对路径；传空列表清空 */
+    /** 吸力曲线：登记时即复制到 所有log/吸力曲线 并按工位暂存；传空清空活缓冲。测完导出进会话包 */
     static void addSuctionCurveImageFiles(int slot, const QStringList& absolutePaths);
     /** 复制到 所有log/吸力曲线/ 并返回相对路径列表；无图时返回空且不置 error */
     static QStringList exportSuctionCurveImageFiles(const QlogSessionInfo& info, QString* error);
 
-    /** 屏幕检测图：非空时先复制到 所有log/屏幕检测/ 再登记绝对路径；传空列表清空 */
+    /** 屏幕检测拍摄图：登记时即复制到 所有log/屏幕检测 并按工位暂存；传空清空活缓冲。测完导出进会话包 */
     static void addScreenInspectImageFiles(int slot, const QStringList& absolutePaths);
     /** 复制到 所有log/屏幕检测/ 并返回相对路径列表；无图时返回空且不置 error */
     static QStringList exportScreenInspectImageFiles(const QlogSessionInfo& info, QString* error);

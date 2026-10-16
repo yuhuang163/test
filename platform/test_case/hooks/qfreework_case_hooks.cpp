@@ -291,6 +291,12 @@ void QFreeWorkTestCaseHookRegistrar::dispatch(QFreeWork* fw, const QString& hook
         fw->markActiveTestCaseStepDone(true, sfc, QStringLiteral("通过"));
         return;
     }
+    // 配置步：主流程启用后，PASS 收尾走 SerializableStartCollectComplete（不写死产品/工站名单）
+    if (hookId == QStringLiteral("BYD_MES_SERIALIZABLE_COMPLETE")) {
+        fw->markActiveTestCaseStepDone(true, QStringLiteral("已配置"), QStringLiteral("通过"));
+        fw->showlog(QStringLiteral("BYD MES：已配置序列化过站，PASS 收尾将调用 SerializableStartCollectComplete（OSFC↔NSFC）"));
+        return;
+    }
     if (hookId == QStringLiteral("AIR_PRESSURE_SAMPLE")) {
         fw->runAirPressureSampleStep();
         return;
@@ -521,6 +527,7 @@ void QFreeWorkTestCaseHookRegistrar::registerAll() {
     registerDispatchHook(QStringLiteral("BYD_MES_GET_TRANSITION_CODE"));
     registerDispatchHook(QStringLiteral("BYD_MES_GET_NEW_SFC"));
     registerDispatchHook(QStringLiteral("BYD_MES_START_BY_NEW_SFC"));
+    registerDispatchHook(QStringLiteral("BYD_MES_SERIALIZABLE_COMPLETE"));
     registerDispatchHook(QStringLiteral("PLC_SYNC_WRITE_COIL"));
     registerDispatchHook(QStringLiteral("PLC_SYNC_READ_COIL"));
     registerDispatchHook(QStringLiteral("PLC_SYNC_WRITE_M10"));

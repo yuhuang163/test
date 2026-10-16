@@ -34,6 +34,11 @@ class VesLightCmdCatalog {
     static CmdManifestCatalog& catalog();
 };
 
+class AudioExpertCmdCatalog {
+  public:
+    static CmdManifestCatalog& catalog();
+};
+
 enum class ProductSerialCmd {
     InstrumentReset,
     StartRx2402Ble1M,
@@ -134,6 +139,11 @@ class FixturePcbaCmdCatalog {
     static TestCaseFixtureProtocol fixtureProtocolFromIni(const QString& text);
     static QString fixtureProtocolToIni(TestCaseFixtureProtocol protocol);
     static QString fixtureProtocolUiLabel(TestCaseFixtureProtocol protocol);
+    /** USB / GigE 屏幕检测治具（共用 UsbCameraCmd 指令表） */
+    static bool isScreenCameraFixture(TestCaseFixtureProtocol protocol) {
+        return protocol == TestCaseFixtureProtocol::UsbCamera
+            || protocol == TestCaseFixtureProtocol::GigECamera;
+    }
 };
 
 class ProductSerialCmdCatalog {

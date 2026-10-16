@@ -459,6 +459,8 @@ typedef struct MesPacketData {
     double totalTimeMs = 0.0;
     int testCount = 1;      //测试次数（默认 1）
     int iskeydata = 0;      // GetTestData 入口分流：0=GetSfcKeyBySfc，1=AddSfcKey，2=GetCustomData(ROOTSKU)
+    /** BYD：流程含 Hook BYD_MES_SERIALIZABLE_COMPLETE 时，PASS 收尾走 SerializableStartCollectComplete */
+    bool useBydSerializableComplete = false;
 
 } MesPacketData;
 

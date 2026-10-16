@@ -123,8 +123,10 @@ constexpr const char kHintPressSampleIntervalSet[] =
     u8"Qfctp ALGO TLV 0x0001：Param_intervalMs 或 Param_value，单位 ms\r\n"
     u8"示例：Param_intervalMs=50 / 100 / 200 / 500 / 1000";
 constexpr const char kHintAlgoResultReportSet[] =
-    u8"Qfctp ALGO TLV 0x0007：enable/on/enter=1 开启算法融合结果 NOTIFY，0 关闭\r\n"
-    u8"示例：Param_enable=1";
+    u8"Qfctp ALGO TLV 0x0007 RESULT_REPORT_ONOFF_SET：算法结果上报开关\r\n"
+    u8"Param_enable/on/enter/value=1 开启上报，0 关闭\r\n"
+    u8"示例：Param_enable=1\r\n"
+    u8"应答：业务值 1 成功 / 0 失败，错误码 0 成功";
 constexpr const char kHintAlgoResultReportWait[] =
     u8"Qfctp：等待 Algo Service NOTIFY TLV 0x0008（本命令不发令）\r\n"
     u8"payload：1B 组数 N + N×48B；leakage_status 字节0=左、字节1=右（0无效 1正常无漏 2微小漏 3强漏）\r\n"
@@ -300,9 +302,11 @@ constexpr const char kHintBurningMode[] =
     u8"示例：Param_mode=1 或 {\"mode\":1,\"seconds\":3600}";
 constexpr const char kHintSleep[] = u8"休眠：switch=1 进入，0 退出\r\n示例：{\"switch\":1}";
 constexpr const char kHintFacMode[] =
-    u8"工厂模式：Param_on/value=1 进入 0 退出；Param_mode 模式类型\r\n"
-    u8"0 idle / 1 factory_test / 2 aging / 3 suction / 4 suction_compensate / 5 ate / 6 freeman\r\n"
-    u8"示例：Param_mode=1 Param_on=1";
+    u8"工厂模式进/退：\r\n"
+    u8"Qroot / Qroot2 / Qfctp / Qpb：只需开关，Param_on（或 value）=1 进入 / 0 退出；不要填 mode\r\n"
+    u8"示例：Param_on=1 或 Param_value=1\r\n"
+    u8"Qaiot：另需 Param_mode 指定类型（0 idle / 1 factory_test / 2 aging / 3 suction / 4 compensate / 5 ate / 6 freeman）\r\n"
+    u8"Qaiot 示例：Param_mode=1 Param_on=1";
 constexpr const char kHintSuctionMode[] =
     u8"FCTP 吸力测试模式：enter=1 进入，0 退出\r\n示例：Param_enter=1 或 {\"enter\":1}\r\n"
     u8"注意：Qroot 开泵档位请改用「吸力测试(档位)」+ switch/mode/level";
@@ -486,7 +490,7 @@ const Row kRows[] = {
      kHintPressSampleIntervalSet, kSet},
     {DeviceCmd::AlgoResultReportSet, "AlgoResultReportSet", u8"算法结果上报(开/关)", DeviceCmdParamKind::JsonMap,
      kHintAlgoResultReportSet, kSet},
-    {DeviceCmd::AlgoResultReportWait, "AlgoResultReportWait", u8"等待算法融合结果上报", DeviceCmdParamKind::None,
+    {DeviceCmd::AlgoResultReportWait, "AlgoResultReportWait", u8"等待算法结果上报", DeviceCmdParamKind::None,
      kHintAlgoResultReportWait, kGet, "ProtocolAlgoFusionResultData", "leakageLeft"},
     {DeviceCmd::ImuCollect, "ImuCollect", u8"惯性传感器采集", DeviceCmdParamKind::None, nullptr, kSet},
     {DeviceCmd::CameraFaultDataPacket, "CameraFaultDataPacket", u8"摄像头故障数据", DeviceCmdParamKind::None, nullptr, kSet},

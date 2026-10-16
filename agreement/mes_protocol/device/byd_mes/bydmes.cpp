@@ -436,12 +436,10 @@ static QString bydNcCodeFromPack(const MesPacketData& pack) {
 }
 
 bool bydmes::shouldUseBydSerializableComplete(const MesPacketData& pack, bool isPassResult) const {
+    // 由自由工站流程 Hook BYD_MES_SERIALIZABLE_COMPLETE 配置，不再写死产品/工站名单
     if (!isPassResult || pack.factory.trimmed().compare(QLatin1String("byd"), Qt::CaseInsensitive) != 0)
         return false;
-    const QString product = resolvedMesUiProductModel(pack);
-    if (!isSerializableCompleteUiProductModel(product))
-        return false;
-    return isSerializableCompleteBluetoothTestStation();
+    return pack.useBydSerializableComplete;
 }
 
 QJsonObject bydmes::buildBydSerializableStartCollectCompleteParam(const MesPacketData& pack) const {

@@ -10,6 +10,7 @@
 #include "modbus_cmd_manifest.h"
 #include "scpi_cmd_manifest.h"
 #include "test_case_gate_accessors.h"
+#include "audio_expert_cmd_manifest.h"
 #include "usb_camera_cmd_manifest.h"
 #include "ves_light_cmd_manifest.h"
 #include "xwd_fixture_cmd_manifest.h"
@@ -193,6 +194,10 @@ GateSendBinding GateRegistry::bindingForSend(TestCaseSendChannel channel, const 
         if (const DongleCmdManifest::Row* row = DongleCmdManifest::findByEnumName(cmd))
             applyRow(row->gateReportType, row->gateDefaultField);
         break;
+    case TestCaseSendChannel::Software:
+        if (const AudioExpertCmdManifest::Row* row = AudioExpertCmdManifest::findByEnumName(cmd))
+            applyRow(row->gateReportType, row->gateDefaultField);
+        break;
     case TestCaseSendChannel::Fixture: {
         const TestCaseFixtureProtocol proto = FixturePcbaCmdCatalog::fixtureProtocolFromIni(protocolOrDevice);
         if (proto == TestCaseFixtureProtocol::JieliBtBox) {
@@ -204,11 +209,14 @@ GateSendBinding GateRegistry::bindingForSend(TestCaseSendChannel channel, const 
         } else if (proto == TestCaseFixtureProtocol::Pcba) {
             if (const FixturePcbaCmdManifest::Row* row = FixturePcbaCmdManifest::findByEnumName(cmd))
                 applyRow(row->gateReportType, row->gateDefaultField);
-        } else if (proto == TestCaseFixtureProtocol::UsbCamera) {
+        } else if (FixturePcbaCmdCatalog::isScreenCameraFixture(proto)) {
             if (const UsbCameraCmdManifest::Row* row = UsbCameraCmdManifest::findByEnumName(cmd))
                 applyRow(row->gateReportType, row->gateDefaultField);
         } else if (proto == TestCaseFixtureProtocol::VesLight) {
             if (const VesLightCmdManifest::Row* row = VesLightCmdManifest::findByEnumName(cmd))
+                applyRow(row->gateReportType, row->gateDefaultField);
+        } else if (proto == TestCaseFixtureProtocol::AudioExpert) {
+            if (const AudioExpertCmdManifest::Row* row = AudioExpertCmdManifest::findByEnumName(cmd))
                 applyRow(row->gateReportType, row->gateDefaultField);
         } else if (proto == TestCaseFixtureProtocol::Xwd) {
             if (const XwdRawFixtureCmdManifest::Row* row = XwdRawFixtureCmdManifest::findByEnumName(cmd))
@@ -482,8 +490,9 @@ GateStepDisplay GateRegistry::formatStepDisplay(const TestCaseGate& primaryGate,
                                                 bool multiFieldMode) {
     GateStepDisplay out;
     const QString unit = unitFor(reportType, primaryGate.field, payload);
-    // summary 仅多字段步骤级汇总；分项行用当前 field 实测值（漏气等上报平台要纯数字）
-    if (multiFieldMode && allGates.size() > 1) {
+    // summary：多字段步骤级展示；算法漏气也用左/右汇总
+    if ((multiFieldMode && allGates.size() > 1)
+        || reportType == QLatin1String("ProtocolAlgoFusionResultData")) {
         if (const GateTypeEntry* typeEntry = GateAccessorRegistry::findType(reportType)) {
             if (typeEntry->summary)
                 out.testData = typeEntry->summary(payload);

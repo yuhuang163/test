@@ -2,6 +2,7 @@
 #define PLATFORM_TEST_CASE_TYPES_H
 
 #include <QString>
+#include <QStringList>
 #include <QVariant>
 #include <QVector>
 
@@ -17,7 +18,16 @@ struct DeviceCmdParamSchema {
 };
 
 // clang-format off
-enum class TestCaseSendChannel { Product, ProductSerial, Dongle, Cloud, Fixture, Modbus, Scpi };
+enum class TestCaseSendChannel {
+    Product,
+    ProductSerial,
+    Dongle,
+    Cloud,
+    Fixture,
+    Modbus,
+    Scpi,
+    Software // 上位机与桌面/远端软件 TCP 等（如 AudioExpert Remote），非治具串口
+};
 enum class UsbCameraCmd {
     ScreenCameraCalibration,
     ScreenDeadPixelCheck,
@@ -25,15 +35,19 @@ enum class UsbCameraCmd {
     LedOnOffCheck
 };
 enum class VesLightCmd { SetBrightness };
+/** AudioExpert Remote：TCP 发指令控制测试并取 $test_over / data（非串口）。 */
+enum class AudioExpertCmd { RunTest };
 enum class TestCaseProductProtocol { Qfctp, Qpb, Qroot, Qroot2, Qaiot, QaiotV2, QaiotApp };
 enum class TestCaseFixtureProtocol {
     Pcba,
     Asd9026a,
     Xwd, // 原 XWD_BLE / XWD_SUCTION 同一治具串口物理层
     JieliBtBox,
-    UsbCamera,
+    UsbCamera,   // USB 摄像头（ini: USB_WEBCAM）
+    GigECamera,  // GigE 工业摄像头（ini: GIGE_CAMERA；旧 USB_CAMERA 兼容为此）
     VesLight, // VES 四通道光源，协议固定走通道 1
-    Universal // 通用治具串口协议 V1.2（气缸/继电器/电流 + SLOT）
+    Universal, // 通用治具串口协议 V1.2（气缸/继电器/电流 + SLOT）
+    AudioExpert // AudioExpert Remote TCP（IP+端口发指令取测试数据）
 };
 // clang-format on
 
@@ -172,6 +186,25 @@ struct TestCaseScreenInspectConfig {
     int refCircleR = -1;
     bool reuseCircle = false;
     QString gigEIp = QStringLiteral("169.254.64.10");
+};
+
+/**
+ * 工站 flow.ini [StationBindings]：本站可用的产品协议 / 治具 / 外设（仅约束步骤编排 UI）。
+ * configured=false 时步骤编辑仍显示通道+协议下拉。
+ */
+struct TestCaseStationBindings {
+    bool configured = false;
+    /** 产品协议 ini 键，可多选，如 Qroot,Qfctp */
+    QStringList productProtocols;
+    bool enableProduct = true;
+    bool enableProductSerial = false;
+    bool enableDongle = true;
+    bool enableCloud = true;
+    QStringList fixtures;
+    QStringList modbusDevices;
+    QStringList scpiDevices;
+    /** 步骤「目标设备」默认项，如 product:Qroot */
+    QString defaultTarget;
 };
 
 #endif // PLATFORM_TEST_CASE_TYPES_H

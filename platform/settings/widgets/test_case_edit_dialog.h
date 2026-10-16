@@ -5,6 +5,7 @@
 
 #include <QDialog>
 
+class QComboBox;
 class QLabel;
 class QShowEvent;
 class QTableWidget;
@@ -33,6 +34,7 @@ class TestCaseEditDialog : public QDialog {
     void onProductProtocolChanged(int index);
     void onSendActionChanged(int index);
     void onDeviceCmdChanged(int index);
+    void onStationTargetChanged(int index);
     void onGateReportTypeChanged(int index);
     void updateGateFieldsEnabled();
     bool isPeriphMultiGateMode() const;
@@ -53,15 +55,21 @@ class TestCaseEditDialog : public QDialog {
     void updateProductProtocolRowVisible();
     void updateSendParamVisibility(bool hasParam);
     void fitDialogToScreen();
+    void applyStationBindingsUiMode();
+    void fillStationTargetCombo(const QString& keepTargetKey = QString());
+    void applyStationTargetToChannelProtocol();
 
     Ui::TestCaseEditDialog* ui = nullptr;
     /** 一项回包多项卡控（外设状态 / PCBA治具数据包） */
     QTableWidget* tableWidget_multiGates_ = nullptr;
     QLabel* label_gateTableHint_ = nullptr;
+    QLabel* label_stationTarget_ = nullptr;
+    QComboBox* comboBox_stationTarget_ = nullptr;
     /** 打开对话框时的配置名（用于改名后删除旧 ini） */
     QString originalCaseName_;
     /** 当前工站 Profile 键；非空时保存工站参数覆盖 */
     QString stationKey_;
+    TestCaseStationBindings stationBindings_;
     /** 打开对话框时编排区中的流程项（含本步），用于 MesTag 重复校验 */
     QVector<TestFlowItemEntry> flowEntries_;
     /** 避免 setDefinition 末尾再进 onDeviceCmdChanged 时冲掉已加载的参数表 */

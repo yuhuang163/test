@@ -1,5 +1,6 @@
 #include "test_case_runner.h"
 
+#include "test_case_catalog.h"
 #include "test_case_store.h"
 
 #if _MSC_VER >= 1600
@@ -37,7 +38,7 @@ bool TestCaseRunner::needAsyncDone(const TestCaseDefinition& def) {
         return true;
     if (def.send.channel == TestCaseSendChannel::ProductSerial)
         return true;
-    if (def.send.channel == TestCaseSendChannel::Fixture)
+    if (def.send.channel == TestCaseSendChannel::Fixture || def.send.channel == TestCaseSendChannel::Software)
         return true;
     if (def.send.channel == TestCaseSendChannel::Dongle
         && (def.send.deviceCmd == QStringLiteral("SampleSuctionDual")
@@ -95,8 +96,12 @@ int TestCaseRunner::commandTimeoutMs(const TestCaseDefinition& def) {
             || def.send.deviceCmd == QStringLiteral("SampleSuctionSingle")))
         return 10000;
     if (def.send.channel == TestCaseSendChannel::Fixture
-        && def.send.fixtureProtocol == TestCaseFixtureProtocol::UsbCamera)
+        && FixturePcbaCmdCatalog::isScreenCameraFixture(def.send.fixtureProtocol))
         return 15000;
+    if (def.send.channel == TestCaseSendChannel::Software
+        || (def.send.channel == TestCaseSendChannel::Fixture
+            && def.send.fixtureProtocol == TestCaseFixtureProtocol::AudioExpert))
+        return 120000;
     if (def.send.channel == TestCaseSendChannel::Fixture)
         return def.gate.enabled ? 8000 : 5000;
     if (def.send.channel == TestCaseSendChannel::ProductSerial)
